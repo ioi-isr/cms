@@ -129,6 +129,11 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
         <td>
           <input type="text" name="submission_format" value="{{ task.submission_format|join(", ") }}"/>
         </td>
+        {% if task.active_dataset.task_type == "OutputOnly" %}
+        <td>
+          <a onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "refresh_submission_format") }}');">Restore</a>
+        </td>
+        {% endif %}
       </tr>
       <tr>
         <td>

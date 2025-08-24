@@ -90,7 +90,7 @@ from .task import \
     AddAttachmentHandler, \
     AttachmentHandler, \
     TaskListHandler, \
-    RemoveTaskHandler
+    RemoveTaskHandler, RefreshSubmissionFormatHandler
 from .user import \
     AddUserHandler, \
     UserHandler, \
@@ -175,6 +175,7 @@ HANDLERS = [
     (r"/task/([0-9]+)/statement/([0-9]+)", StatementHandler),
     (r"/task/([0-9]+)/attachments/add", AddAttachmentHandler),
     (r"/task/([0-9]+)/attachment/([0-9]+)", AttachmentHandler),
+    (r"/task/([0-9]+)/refresh_submission_format", RefreshSubmissionFormatHandler),
 
     # Datasets
 
