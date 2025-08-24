@@ -25,6 +25,7 @@ from cms.db import Testcase, Dataset
 from cms.db.filecacher import FileCacher
 from sqlalchemy.orm import Session
 
+from cms.server.admin.handlers.task import set_default_output_only_task_submisison_format
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,13 @@ def import_testcases_from_zipfile(
         raise Exception(
             "The selected file is not a zip file. "
             "Please select a valid zip file.")
+
+    if dataset.task_type == 'OutputOnly':
+        try:
+            set_default_output_only_task_submisison_format(dataset.task)
+            session.commit()
+        except Exception:
+            raise Exception("Couldn't create default submission format")
 
     return (
         "Successfully added %d and overwritten %d testcase(s)" %
