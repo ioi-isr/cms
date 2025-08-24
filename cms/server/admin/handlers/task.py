@@ -47,6 +47,18 @@ from .base import BaseHandler, SimpleHandler, require_permission
 logger = logging.getLogger(__name__)
 
 
+def set_default_output_only_task_submisison_format(task: Task):
+    dataset = task.active_dataset
+    assert dataset is not None
+    assert dataset.task_type == "OutputOnly"
+    test_case_names = []
+    for testcase_codename in dataset.testcases.keys():
+        test_case_names.append(testcase_codename)
+    submission_format = [f'output_{codename}.txt' for codename in test_case_names]
+    submission_format.sort()
+    task.submission_format = submission_format
+
+
 class AddTaskHandler(SimpleHandler("add_task.html", permission_all=True)):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
