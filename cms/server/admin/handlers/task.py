@@ -536,3 +536,18 @@ class RemoveTaskHandler(BaseHandler):
 
         # Maybe they'll want to do this again (for another task)
         self.write("../../tasks")
+
+
+class RefreshSubmissionFormatHandler(BaseHandler):
+    """
+    Create from scratch an automatic submission format for the given task.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, task_id):
+        task = self.safe_get_item(Task, task_id)
+        set_default_output_only_task_submisison_format(task)
+        self.try_commit()
+
+        # Page to redirect to.
+        self.write("%s" % task.id)
