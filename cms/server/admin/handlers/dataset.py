@@ -34,6 +34,9 @@ import re
 import zipfile
 
 import collections
+
+from .task import set_default_output_only_task_submisison_format
+
 try:
     collections.MutableMapping
 except:
@@ -287,6 +290,12 @@ class ActivateDatasetHandler(BaseHandler):
         task = dataset.task
 
         task.active_dataset = dataset
+
+        if dataset.task_type == 'OutputOnly':
+            try:
+                set_default_output_only_task_submisison_format(task)
+            except Exception:
+                raise Exception("Couldn't create default submission format")
 
         if self.try_commit():
             self.service.proxy_service.dataset_updated(
@@ -610,6 +619,12 @@ class AddTestcaseHandler(BaseHandler):
             codename, public, input_digest, output_digest, dataset=dataset)
         self.sql_session.add(testcase)
 
+        if dataset.task_type == 'OutputOnly':
+            try:
+                set_default_output_only_task_submisison_format(task)
+            except Exception:
+                raise Exception("Couldn't create default submission format")
+
         if self.try_commit():
             # max_score and/or extra_headers might have changed.
             self.service.proxy_service.reinitialize()
@@ -695,8 +710,15 @@ class DeleteTestcaseHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         task_id = testcase.dataset.task_id
+        task = dataset.task
 
         self.sql_session.delete(testcase)
+
+        if dataset.task_type == 'OutputOnly':
+            try:
+                set_default_output_only_task_submisison_format(task)
+            except Exception:
+                raise Exception("Couldn't create default submission format")
 
         if self.try_commit():
             # max_score and/or extra_headers might have changed.
