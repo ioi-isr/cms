@@ -29,7 +29,7 @@
 import collections
 try:
     collections.MutableMapping
-except:
+except Exception:
     # Monkey-patch: Tornado 4.5.3 does not work on Python 3.11 by default
     collections.MutableMapping = collections.abc.MutableMapping
 
@@ -62,10 +62,44 @@ class AddAnnouncementHandler(BaseHandler):
 
 
 class AnnouncementHandler(BaseHandler):
-    """Called to remove an announcement.
+    """Called to view, edit or remove an announcement.
 
     """
-    # No page to show a single attachment.
+
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def get(self, contest_id: str, ann_id: str):
+        ann = self.safe_get_item(Announcement, ann_id)
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        # Protect against URLs providing incompatible parameters.
+        if self.contest is not ann.contest:
+            raise tornado.web.HTTPError(404)
+
+        self.r_params = self.render_params()
+        self.r_params["announcement"] = ann
+        self.render("announcement.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, contest_id: str, ann_id: str):
+        ann = self.safe_get_item(Announcement, ann_id)
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        # Protect against URLs providing incompatible parameters.
+        if self.contest is not ann.contest:
+            raise tornado.web.HTTPError(404)
+
+        subject: str = self.get_argument("subject", "")
+        text: str = self.get_argument("text", "")
+        if len(subject) > 0:
+            ann.subject = subject
+            ann.text = text
+            self.try_commit()
+            self.redirect(self.url("contest", contest_id, "announcements"))
+        else:
+            self.service.add_notification(
+                make_datetime(), "Subject is mandatory.", "")
+            self.redirect(self.url(
+                "contest", contest_id, "announcement", ann_id))
 
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def delete(self, contest_id: str, ann_id: str):

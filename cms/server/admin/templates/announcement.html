@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import 'macro/markdown_input.html' as macro_markdown %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Edit announcement</h1>
+</div>
+
+<div class="notifications">
+  <div class="notification communication">
+    <div class="notification_msg">
+      <form method="post" action="{{ url('contest', contest.id, 'announcement', announcement.id) }}">
+        {{ xsrf_form_html|safe }}
+        <div class="notification_subject">
+          <label for="subject">Subject</label>
+          <input type="text" name="subject" id="subject" style="width: 100%" list="task_names_list" autocomplete="off" value="{{ announcement.subject }}">
+          <datalist id="task_names_list">
+            {% for task in contest.tasks %}
+            <option value="{{ task.name }}">
+            {% endfor %}
+          </datalist>
+        </div>
+        <div class="notification_text">
+          <label for="text">Text</label>
+          {{ macro_markdown.markdown_input("text", announcement.text) }}
+        </div>
+        <input type="submit" value="Update announcement" />
+        {{ macro_markdown.markdown_preview() }}
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock core %}
+
