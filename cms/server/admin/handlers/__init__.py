@@ -55,7 +55,8 @@ from .contestuser import \
     RemoveParticipationHandler, \
     AddContestUserHandler, \
     ParticipationHandler, \
-    MessageHandler
+    MessageHandler, \
+    ExportParticipantsHandler
 from .dataset import \
     DatasetSubmissionsHandler, \
     CloneDatasetHandler, \
@@ -131,6 +132,7 @@ HANDLERS = [
     # Contest's users
 
     (r"/contest/([0-9]+)/users", ContestUsersHandler),
+    (r"/contest/([0-9]+)/users/export", ExportParticipantsHandler),
     (r"/contest/([0-9]+)/users/add", AddContestUserHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/remove", RemoveParticipationHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/edit", ParticipationHandler),

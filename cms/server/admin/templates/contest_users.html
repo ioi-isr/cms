@@ -7,6 +7,10 @@
 
 {% include "fragments/overload_warning.html" %}
 
+<form action="{{ url("contest", contest.id, "users", "export") }}" method="GET">
+  <button type="submit">Download participants info</button>
+</form>
+
 <form action="{{ url("contest", contest.id, "users", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Add a new user:
