@@ -45,4 +45,7 @@ ALTER TABLE user_test_results DROP COLUMN evaluation_sandbox;
 -- https://github.com/cms-dev/cms/pull/1486
 ALTER TABLE public.tasks ADD COLUMN allowed_languages varchar[];
 
+-- Track starting IP address for participations
+ALTER TABLE public.participations ADD COLUMN starting_ip inet;
+
 COMMIT;

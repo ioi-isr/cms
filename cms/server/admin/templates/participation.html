@@ -96,6 +96,13 @@
       </tr>
       <tr>
         <td>
+          <span class="info" title="IP address used when the contestant started the contest."></span>
+          Starting IP address
+        </td>
+        <td>{{ participation.starting_ip if participation.starting_ip is not none else "" }}</td>
+      </tr>
+      <tr>
+        <td>
           <span class="info" title="To be set (in seconds) to acknowledge that the contestant lost that amount of time at the beginning of the contest.
                                     If this is non-zero, all the events (token generation, end of contest) for this contestant will be shifted of the appropriate amount."></span>
           Delay

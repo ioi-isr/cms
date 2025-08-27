@@ -270,8 +270,21 @@ class StartHandler(ContestHandler):
     def post(self):
         participation: Participation = self.current_user
 
-        logger.info("Starting now for user %s", participation.user.username)
+        logger.info(
+            "Starting now for user %s from %s",
+            participation.user.username,
+            self.request.remote_ip,
+        )
         participation.starting_time = self.timestamp
+        try:
+            participation.starting_ip = ipaddress.ip_address(
+                self.request.remote_ip
+            )
+        except ValueError:
+            logger.warning(
+                "Invalid IP address provided by Tornado: %s",
+                self.request.remote_ip,
+            )
         self.sql_session.commit()
 
         self.redirect(self.contest_url())
