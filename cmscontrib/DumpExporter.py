@@ -50,7 +50,7 @@ from sqlalchemy.types import (
     Enum,
     TypeEngine,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, CIDR, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET, JSONB
 
 from cms import rmtree, utf8_decoder
 from cms.db import (
@@ -145,8 +145,8 @@ def encode_value(type_: TypeEngine, value: object) -> object:
     elif isinstance(type_, Interval):
         return value.total_seconds()
     elif isinstance(type_, (ARRAY, FilenameSchemaArray)):
-        return list(encode_value(type_.item_type, item) for item in value)
-    elif isinstance(type_, CIDR):
+        return [encode_value(type_.item_type, item) for item in value]
+    elif isinstance(type_, (CIDR, INET)):
         return str(value)
     else:
         raise RuntimeError("Unknown SQLAlchemy column type: %s" % type_)

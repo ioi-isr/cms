@@ -52,7 +52,7 @@ from sqlalchemy.types import (
     Enum,
     TypeEngine,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, CIDR, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET, JSONB
 
 import cms.db as class_hook
 from cms import utf8_decoder
@@ -136,9 +136,11 @@ def decode_value(type_: TypeEngine, value: object) -> object:
     elif isinstance(type_, Interval):
         return timedelta(seconds=value)
     elif isinstance(type_, (ARRAY, FilenameSchemaArray)):
-        return list(decode_value(type_.item_type, item) for item in value)
+        return [decode_value(type_.item_type, item) for item in value]
     elif isinstance(type_, CIDR):
         return ipaddress.ip_network(value)
+    elif isinstance(type_, INET):
+        return ipaddress.ip_address(value)
     else:
         raise RuntimeError(
             "Unknown SQLAlchemy column type: %s" % type_)
