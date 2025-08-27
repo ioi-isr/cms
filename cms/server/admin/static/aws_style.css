@@ -450,6 +450,10 @@ th .column-sort {
     padding: 0.429em;
 }
 
+#notifications .notification_edit {
+    padding: 0.429em;
+    display: none;
+}
 #notifications .notification_close {
     float: right;
     cursor: pointer;
@@ -501,6 +505,10 @@ th .column-sort {
     padding: 0.429em;
 }
 
+.notifications .notification_edit {
+    padding: 0.429em;
+    display: none;
+}
 .notifications .notification_close {
     float: right;
     cursor: pointer;
