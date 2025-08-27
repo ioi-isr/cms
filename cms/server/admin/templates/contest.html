@@ -205,6 +205,18 @@
     <tr><td colspan=2><h2>Times</h2></td></tr>
     <tr>
       <td>
+        <span class="info" title="Reset the start time of all participants"></span>
+        <button type="button" onclick="if (confirm('Are you sure you want to reset all start times?'))CMS.AWSUtils.ajax_post('{{ url("contest", contest.id, "reset") }}')">Reset start times</button>
+      </td>
+      <td>
+        <span class="info" title="Download the start time of all participants"></span>
+        <a href="{{ url("contest", contest.id, "export_time") }}" download="start_time_{{ contest.name }}_{{ timestamp.strftime("%d-%m-%Y") }}.csv">
+          <button type="button">Export start times</button>
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td>
         <span class="info" title="Start time of the contest in the UTC timezone.
                                   Example: '2015-12-31 15:00:00'."></span>
         Start time (in UTC)
