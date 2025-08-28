@@ -400,7 +400,9 @@ class Communication(TaskType):
         # If at least one sandbox had problems, or the manager did not
         # terminate correctly, we report an error (and no need for user stats).
         if not success:
-            stats_user = None
+            success = True
+            outcome = 0.0
+            text = [N_("Internal error occurred, please contact orginizers")]
 
         # If just asked to execute, fill text and set dummy outcome.
         elif job.only_execution:
