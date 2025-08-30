@@ -1,7 +1,7 @@
 {
     "python.analysis.typeCheckingMode": "basic",
     "files.insertFinalNewline": true,
-    "editor.formatOnSave": true,
+    "editor.formatOnSave": false,
     "editor.formatOnSaveMode": "modifications",
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",

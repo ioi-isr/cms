@@ -48,7 +48,7 @@
           <div class="notification_admin_owner">
             By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
           </div>
-          <a href="javascript:void(0);" onclick="utils.question_reply_toggle(event, this);">Edit</a>
+          <a href="javascript:void(0);" onclick="utils.announcement_edit_toggle(event, this);">Edit</a>
           <div class="reply_question">
             <form method="post" action="{{ url("contest", contest.id, "announcements", "edit", msg.id) }}" >
               {{ xsrf_form_html|safe }}

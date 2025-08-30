@@ -65,15 +65,12 @@ class EditAnnouncementHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def post(self, contest_id: str, ann_id: str):
-        ann = self.safe_get_item(Announcement, ann_id)
+        original_ann = self.safe_get_item(Announcement, ann_id)
         self.contest = self.safe_get_item(Contest, contest_id)
 
         # Protect against URLs providing incompatible parameters.
-        if self.contest is not ann.contest:
+        if self.contest is not original_ann.contest:
             raise tornado.web.HTTPError(404)
-
-        self.sql_session.delete(ann)
-        self.try_commit()
 
         # Page to redirect to.
         self.write("announcements")
@@ -88,6 +85,7 @@ class EditAnnouncementHandler(BaseHandler):
                 contest=self.contest,
                 admin=self.current_user,
             )
+            self.sql_session.delete(original_ann)
             self.sql_session.add(ann)
             self.try_commit()
         else:
