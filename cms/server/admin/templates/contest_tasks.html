@@ -5,6 +5,10 @@
   <h1>Tasks list of <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a></h1>
 </div>
 
+{% if contest.start <= timestamp %}
+<span style="color: red;">Warning: the contest is visible to contestants, tasks added can be seen</span>
+{% endif %}
+
 <form action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Add a new task:
