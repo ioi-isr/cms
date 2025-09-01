@@ -1,3 +1,41 @@
+
+
+-- Add contest_folders table and folder_id on contests
+CREATE TABLE public.contest_folders (
+    id integer NOT NULL,
+    name public.codename NOT NULL,
+    description character varying NOT NULL,
+    parent_id integer
+);
+
+CREATE SEQUENCE public.contest_folders_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.contest_folders_id_seq OWNED BY public.contest_folders.id;
+
+ALTER TABLE ONLY public.contest_folders
+    ALTER COLUMN id SET DEFAULT nextval('public.contest_folders_id_seq'::regclass);
+
+ALTER TABLE ONLY public.contest_folders
+    ADD CONSTRAINT contest_folders_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.contest_folders
+    ADD CONSTRAINT contest_folders_name_key UNIQUE (name);
+
+ALTER TABLE ONLY public.contest_folders
+    ADD CONSTRAINT contest_folders_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.contest_folders(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_contest_folders_parent_id ON public.contest_folders USING btree (parent_id);
+
+ALTER TABLE public.contests ADD COLUMN folder_id integer;
+ALTER TABLE ONLY public.contests
+    ADD CONSTRAINT contests_folder_id_fkey FOREIGN KEY (folder_id) REFERENCES public.contest_folders(id) ON UPDATE CASCADE ON DELETE SET NULL;
+CREATE INDEX ix_contests_folder_id ON public.contests (folder_id);
 BEGIN;
 
 -- https://github.com/cms-dev/cms/pull/1378

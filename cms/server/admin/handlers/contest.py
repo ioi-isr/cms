@@ -31,7 +31,7 @@
 from datetime import timedelta
 
 from cms import ServiceCoord, get_service_shards, get_service_address
-from cms.db import Contest, Participation, Submission
+from cms.db import Contest, Participation, Submission, ContestFolder
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleContestHandler, SimpleHandler, \
@@ -73,6 +73,17 @@ class AddContestHandler(
 
 
 class ContestHandler(SimpleContestHandler("contest.html")):
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id: str):
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        self.r_params = self.render_params()
+        self.r_params["all_folders"] = (
+            self.sql_session.query(ContestFolder)
+            .order_by(ContestFolder.name)
+            .all()
+        )
+        self.render("contest.html", **self.r_params)
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, contest_id: str):
         contest = self.safe_get_item(Contest, contest_id)
@@ -132,7 +143,14 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_datetime(attrs, "analysis_start")
             self.get_datetime(attrs, "analysis_stop")
 
-            # Update the contest.
+            # Folder assignment: persist via folder_id in attrs so set_attrs keeps it
+            folder_id_str = self.get_argument("folder_id", None)
+            if folder_id_str is None or folder_id_str == "" or folder_id_str == "none":
+                attrs["folder_id"] = None
+            else:
+                attrs["folder_id"] = int(folder_id_str)
+
+            # Update the contest (includes folder_id)
             contest.set_attrs(attrs)
 
             new_start = attrs.get("start")
