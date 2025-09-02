@@ -6,6 +6,7 @@ function showTaskTypeOption(dataset_id) {
     var selector = $("select[name=task_type_" + dataset_id + "]")[0];
     $(".TaskTypeOptions_" + dataset_id + ":visible").hide("fast");
     $("#TaskType" + selector.options[selector.selectedIndex].value + "Options_" + dataset_id).show("fast")
+    updateRealPrecOptions(dataset_id);
 };
 
 {% for dataset in task.datasets %}
@@ -14,6 +15,30 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
     showTaskTypeOption({{ dataset.id }});
 });
 {% endfor %}
+
+function updateRealPrecOptions(dataset_id) {
+  var visible = $(".TaskTypeOptions_" + dataset_id + ":visible");
+  visible.each(function() {
+    var table = $(this);
+    var evalSelect = table.find("select[name$='_output_eval']");
+    if (evalSelect.length == 0) return;
+    var val = evalSelect.val();
+    var row = table.find("tr.param_row[data-param-short='realprec_exp']");
+    if (val === 'realprecision') {
+      row.show();
+    } else {
+      row.hide();
+    }
+  });
+}
+
+$(document).ready(function() {
+  {% for dataset in task.datasets %}
+  $(".TaskTypeOptions_{{ dataset.id }} select[name$='_output_eval']").change(function(){
+    updateRealPrecOptions({{ dataset.id }});
+  });
+  {% endfor %}
+});
 
 {% endblock js_init %}
 
@@ -388,7 +413,7 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
             {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
               {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
               {% set parameter_value = parameters[i] if dataset.task_type == task_type_name and parameters is not none and i < parameters|length else none %}
-              <tr>
+              <tr class="param_row" data-param-short="{{ param_def.short_name }}">
                 <td>{{ param_def.name }}</td>
                 <td>
                   {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value)|safe }}
