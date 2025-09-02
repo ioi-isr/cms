@@ -35,6 +35,11 @@ from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleContestHandler, SimpleHandler, \
     require_permission
 
+from typing import List
+import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AddContestHandler(
         SimpleHandler("add_contest.html", permission_all=True)):
@@ -142,6 +147,36 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.service.proxy_service.reinitialize()
         self.redirect(self.url("contest", contest_id))
 
+class ResetContestHandler(BaseHandler):
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id: str):
+        self.sql_session.query(Participation).filter(
+            Participation.contest_id == contest_id
+        ).update({"starting_time": None}, synchronize_session="fetch")
+
+        if self.try_commit():
+            # Update the contest on RWS.
+            self.service.proxy_service.reinitialize()
+        self.write("./%s" % contest_id)
+
+class TimeExportingHandler(BaseHandler):
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id: str):
+        contest = self.safe_get_item(Contest, contest_id)
+        participations : List[Participation] = self.sql_session.query(Participation).filter(
+            Participation.contest_id == contest_id
+        ).all()
+
+        export = ''
+
+        for participation in participations:
+            export += f'{participation.user.username}, {participation.starting_time}\n'
+
+        self.set_header("Content-Type", "text/csv")
+        self.set_header("Content-Disposition",
+                        f"attachment; filename=\"start_time_{contest.name}_{datetime.datetime.now().strftime('%d-%m-%Y')}.csv\"")
+
+        self.write(export)
 
 class OverviewHandler(BaseHandler):
     """Home page handler, with queue and workers statuses.

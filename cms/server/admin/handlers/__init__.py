@@ -30,6 +30,8 @@ from .base import \
 from .contest import \
     AddContestHandler, \
     ContestHandler, \
+    ResetContestHandler, \
+    TimeExportingHandler, \
     OverviewHandler, \
     ResourcesListHandler, \
     ContestListHandler, \
@@ -125,6 +127,8 @@ HANDLERS = [
     (r"/contests/([0-9]+)/remove", RemoveContestHandler),
     (r"/contests/add", AddContestHandler),
     (r"/contest/([0-9]+)", ContestHandler),
+    (r"/contest/([0-9]+)/reset",ResetContestHandler),
+    (r"/contest/([0-9]+)/export_time", TimeExportingHandler),
     (r"/contest/([0-9]+)/overview", OverviewHandler),
     (r"/contest/([0-9]+)/resourceslist", ResourcesListHandler),
 
