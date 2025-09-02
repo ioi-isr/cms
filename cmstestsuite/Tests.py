@@ -35,10 +35,13 @@ import cmstestsuite.tasks.communication_stdio_stubbed \
     as communication_stdio_stubbed
 import cmstestsuite.tasks.outputonly as outputonly
 import cmstestsuite.tasks.outputonly_comparator as outputonly_comparator
+import cmstestsuite.tasks.outputonly_comparator_cpp as outputonly_comparator_cpp
 import cmstestsuite.tasks.twosteps as twosteps
 import cmstestsuite.tasks.twosteps_comparator as twosteps_comparator
+import cmstestsuite.tasks.batch_comparator_cpp as batch_comparator_cpp
+import cmstestsuite.tasks.communication_stdio_cpp as communication_stdio_cpp
 from cmstestsuite.Test import CheckMemoryLimit, Test, CheckOverallScore, CheckCompilationFail, \
-    CheckTimeout, CheckTimeoutWall, CheckNonzeroReturn, CheckUserTestEvaluated
+    CheckTimeout, CheckTimeoutWall, CheckNonzeroReturn, CheckUserTestEvaluated, CheckManagersPresence
 
 
 LANG_CPP = "C++11 / g++"
@@ -183,6 +186,62 @@ ALL_TESTS = [
                     'incorrect-outputonly-001.txt'],
          languages=[None], checks=[CheckOverallScore(50, 100)]),
 
+    # OutputOnly with C++ comparator (tests compile-on-upload for managers).
+    Test('correct-outputonly-comparator-cpp',
+         task=outputonly_comparator_cpp,
+         filenames=['correct-outputonly-000.txt',
+                    'correct-outputonly-001.txt'],
+         languages=[None], checks=[
+             CheckOverallScore(100, 100),
+             # Source visible, compiled hidden
+             CheckManagersPresence(outputonly_comparator_cpp,
+                                   present=["checker.cpp"],
+                                   absent=["checker"])
+         ]),
+
+    Test('incorrect-outputonly-comparator-cpp',
+         task=outputonly_comparator_cpp,
+         filenames=['incorrect-outputonly-000.txt',
+                    'incorrect-outputonly-001.txt'],
+         languages=[None], checks=[CheckOverallScore(0, 100)]),
+
+    Test('partial-correct-outputonly-comparator-cpp',
+         task=outputonly_comparator_cpp,
+         filenames=['correct-outputonly-000.txt',
+                    'incorrect-outputonly-001.txt'],
+         languages=[None], checks=[CheckOverallScore(50, 100)]),
+
+    # Batch with C++ comparator; ensures checker.cpp compiles on upload.
+    Test('batch-cpp-comparator-correct',
+         task=batch_comparator_cpp, filenames=['correct-stdio.%l'],
+         languages=(LANG_CPP,), checks=[
+             CheckOverallScore(100, 100),
+             CheckManagersPresence(batch_comparator_cpp,
+                                   present=["checker.cpp"],
+                                   absent=["checker"]) 
+         ]),
+
+    Test('batch-cpp-comparator-incorrect',
+         task=batch_comparator_cpp, filenames=['incorrect-stdio.%l'],
+         languages=(LANG_CPP,), checks=[CheckOverallScore(0, 100)]),
+
+    # Communication with C++ manager; ensures manager.cpp compiles on upload.
+    Test('communication-stdio-cpp-correct',
+         task=communication_stdio_cpp,
+         filenames=['communication-stdio-correct.%l'],
+         languages=(LANG_CPP,), checks=[
+             CheckOverallScore(100, 100),
+             # Source visible, compiled hidden
+             CheckManagersPresence(communication_stdio_cpp,
+                                   present=["manager.cpp"],
+                                   absent=["manager"]) 
+         ]),
+
+    Test('communication-stdio-cpp-incorrect',
+         task=communication_stdio_cpp,
+         filenames=['communication-stdio-incorrect.%l'],
+         languages=(LANG_CPP,), checks=[CheckOverallScore(0, 100)]),
+
     # Failed compilation.
 
     Test('compile-fail',
@@ -269,7 +328,13 @@ ALL_TESTS = [
     Test('managed-correct',
          task=batch_fileio_managed, filenames=['managed-correct.%l'],
          languages=MANAGER_LANGUAGES,
-         checks=[CheckOverallScore(100, 100)],
+         checks=[
+             CheckOverallScore(100, 100),
+             # Ensure grader.cpp is not auto-compiled
+             CheckManagersPresence(batch_fileio_managed,
+                                   present=["grader.cpp"],
+                                   absent=["grader"])
+         ],
          user_tests=True, user_managers=['grader.%l'],
          user_checks=[CheckUserTestEvaluated()]),
 
@@ -296,7 +361,13 @@ ALL_TESTS = [
          task=communication_stdio_stubbed,
          filenames=['communication-stubbed-correct.%l'],
          languages=COMMUNICATION_LANGUAGES,
-         checks=[CheckOverallScore(100, 100)]),
+         checks=[
+             CheckOverallScore(100, 100),
+             # Ensure stub.cpp is not auto-compiled
+             CheckManagersPresence(communication_stdio_stubbed,
+                                   present=["stub.cpp"],
+                                   absent=["stub"])
+         ]),
 
     Test('communication-stdio-incorrect',
          task=communication_stdio_stubbed,
