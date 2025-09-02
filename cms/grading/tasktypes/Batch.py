@@ -26,7 +26,7 @@ import os
 
 from cms.db import Executable
 from cms.grading.ParameterTypes import ParameterTypeCollection, \
-    ParameterTypeChoice, ParameterTypeString
+    ParameterTypeChoice, ParameterTypeString, ParameterTypeInt
 from cms.grading.language import Language
 from cms.grading.languagemanager import LANGUAGES, get_language
 from cms.grading.steps import compilation_step, evaluation_step, \
@@ -113,9 +113,49 @@ class Batch(TaskType):
         "",
         {OUTPUT_EVAL_DIFF: "Outputs compared with white diff",
          OUTPUT_EVAL_CHECKER: "Outputs are compared by a comparator",
-         OUTPUT_EVAL_REALPREC: "Outputs compared as real numbers (with precision of 1e-6)"})
+         OUTPUT_EVAL_REALPREC: "Outputs compared as real numbers (with precision of 1e-X)"})
+    _REALPREC_EXP = ParameterTypeInt(
+        "Real precision exponent X (precision is 1e-X)",
+        "realprec_exp",
+        "If using real-number comparison, specify X in 1e-X (e.g., 6)")
 
-    ACCEPTED_PARAMETERS = [_COMPILATION, _USE_FILE, _EVALUATION]
+    ACCEPTED_PARAMETERS = [_COMPILATION, _USE_FILE, _EVALUATION, _REALPREC_EXP]
+
+    @classmethod
+    def parse_handler(cls, handler, prefix):
+        """Parse parameters from AWS forms with optional exponent.
+
+        - Always parse compilation, io, and output_eval.
+        - Try to parse realprecision exponent; tolerate missing field.
+        - Parse any remaining subclass-specific parameters (e.g., BatchAndOutput)
+          preserving their order.
+
+        Returns the full parameter list. When output_eval != 'realprecision',
+        the exponent is omitted if absent.
+        """
+        params = []
+        # First three are common
+        comp = cls._COMPILATION.parse_handler(handler, prefix)
+        io = cls._USE_FILE.parse_handler(handler, prefix)
+        out_eval = cls._EVALUATION.parse_handler(handler, prefix)
+        params.extend([comp, io, out_eval])
+
+        # Optional exponent
+        exp = None
+        try:
+            exp = cls._REALPREC_EXP.parse_handler(handler, prefix)
+        except Exception:
+            exp = None
+        if out_eval == cls.OUTPUT_EVAL_REALPREC and exp is not None:
+            params.append(exp)
+
+        # Parse any extra parameters declared by subclasses beyond index 3
+        # Determine how many extra we should parse: skip the first 4 declared
+        # (comp, io, eval, exp), and parse the rest in order.
+        for extra_param in cls.ACCEPTED_PARAMETERS[4:]:
+            params.append(extra_param.parse_handler(handler, prefix))
+
+        return params
 
     @property
     def name(self) -> str:
@@ -124,6 +164,9 @@ class Batch(TaskType):
         return "Batch"
 
     def __init__(self, parameters):
+        # Backward compatibility: accept legacy 3-parameter lists
+        if isinstance(parameters, list) and len(parameters) == 3:
+            parameters = list(parameters) + [6]
         super().__init__(parameters)
 
         # Data in the parameters.
@@ -134,6 +177,7 @@ class Batch(TaskType):
         self.compilation = self.parameters[0]
         self.input_filename, self.output_filename = self.parameters[1]
         self.output_eval = self.parameters[2]
+        # Optional realprecision exponent at parameters[3]
 
         # Actual input and output are the files used to store input and
         # where the output is checked, regardless of using redirects or not.
@@ -185,6 +229,37 @@ class Batch(TaskType):
 
     def _uses_realprecision(self) -> bool:
         return self.output_eval == self.OUTPUT_EVAL_REALPREC
+
+    def validate_parameters(self):
+        # Accept legacy/new and subclass-extended parameter lists
+        if not isinstance(self.parameters, list):
+            raise ValueError(
+                "Task type parameters for %s are not a list" % self.__class__)
+
+        if len(self.parameters) < 3:
+            raise ValueError(
+                "Task type %s should have at least 3 parameters, received %s" %
+                (self.__class__, len(self.parameters)))
+
+        # Validate core params
+        self._COMPILATION.validate(self.parameters[0])
+        # IO collection validated at parse time; skip deep validation here
+        self._EVALUATION.validate(self.parameters[2])
+
+        # Manage optional exponent only when realprecision is selected
+        out_eval = self.parameters[2]
+        if out_eval == self.OUTPUT_EVAL_REALPREC:
+            # Ensure an exponent exists at index 3; if absent or occupied by
+            # subclass-specific parameter, insert the default (6).
+            if len(self.parameters) == 3:
+                self.parameters.insert(3, 6)
+            try:
+                self.parameters[3] = int(self.parameters[3])
+            except Exception:
+                # Insert default exponent before subclass extras
+                self.parameters.insert(3, 6)
+        # Otherwise, do not expect/parse exponent; any following parameters
+        # belong to subclasses (e.g., BatchAndOutput) and are validated there.
 
     @staticmethod
     def _executable_filename(codenames: Iterable[str], language: Language) -> str:

@@ -44,10 +44,10 @@ _FIXED_DEC_RE = re.compile(rb'[+-]?(?:\d+(?:\.\d*)?|\.\d+)')
 _EPS = 1e-6
 
 
-def _compare_real_pair(a: float, b: float) -> bool:
+def _compare_real_pair(a: float, b: float, eps: float) -> bool:
     """Return True if a and b match within absolute/relative tolerance."""
     diff = abs(a - b)
-    tol = _EPS * max(1.0, abs(a), abs(b))
+    tol = eps * max(1.0, abs(a), abs(b))
     return diff <= tol
 
 
@@ -75,7 +75,7 @@ def _extract_fixed_decimals(stream: typing.BinaryIO) -> list[float]:
 
 
 def _real_numbers_compare(
-    output: typing.BinaryIO, correct: typing.BinaryIO
+    output: typing.BinaryIO, correct: typing.BinaryIO, exponent: int | None = None
 ) -> bool:
     """Compare the two output files. Two files are equal if they have the
     same number of real numbers, and all for every integer i, the absolute
@@ -96,16 +96,17 @@ def _real_numbers_compare(
     n = len(exp_nums)
 
     # Pairwise comparisons
+    eps = _EPS if exponent is None else 10 ** (-(int(exponent)))
     for i in range(n):
         a, b = exp_nums[i], act_nums[i]
-        if not _compare_real_pair(a, b):
+        if not _compare_real_pair(a, b, eps):
             return False
     
     return True
 
 
 def realprecision_diff_fobj_step(
-    output_fobj: typing.BinaryIO, correct_output_fobj: typing.BinaryIO
+    output_fobj: typing.BinaryIO, correct_output_fobj: typing.BinaryIO, exponent: int | None = None
 ) -> tuple[float, list[str]]:
     """Compare user output and correct output by extracting the fixed
     floating point format number, and comparing their values.
@@ -121,7 +122,7 @@ def realprecision_diff_fobj_step(
     return: the outcome as above and a description text.
 
     """
-    if _real_numbers_compare(output_fobj, correct_output_fobj):
+    if _real_numbers_compare(output_fobj, correct_output_fobj, exponent):
         return 1.0, [EVALUATION_MESSAGES.get("success").message]
     else:
         return 0.0, [EVALUATION_MESSAGES.get("wrong").message]
@@ -147,7 +148,7 @@ def realprecision_diff_step(
     if sandbox.file_exists(output_filename):
         with sandbox.get_file(output_filename) as out_file, \
              sandbox.get_file(correct_output_filename) as res_file:
-            return real_precision_fobj_step(out_file, res_file)
+            return realprecision_diff_fobj_step(out_file, res_file)
     else:
         return 0.0, [
             EVALUATION_MESSAGES.get("nooutput").message, output_filename]
