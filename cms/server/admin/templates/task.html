@@ -412,11 +412,21 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
             {% if dataset.managers|length == 0 %}
               No managers.
             {% else %}
+              {# Determine if source files for checker/manager exist; if so, hide compiled counterparts #}
+              {% set flags = namespace(checker_src=False, manager_src=False) %}
+              {% for m in dataset.managers.values() %}
+                {% if m.filename.startswith('checker.') %}{% set flags.checker_src = True %}{% endif %}
+                {% if m.filename.startswith('manager.') %}{% set flags.manager_src = True %}{% endif %}
+              {% endfor %}
               {% for manager in dataset.managers.values() %}
+                {% if (manager.filename == 'checker' and flags.checker_src) or (manager.filename == 'manager' and flags.manager_src) %}
+                  {# hide compiled when source is present #}
+                {% else %}
                 <div class="manager">
                   <a href="{{ url("file", manager.digest, manager.filename) }}">{{ manager.filename }}</a>
                   - <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');">Delete</a>
                 </div>
+                {% endif %}
               {% endfor %}
             {% endif %}
           </td>

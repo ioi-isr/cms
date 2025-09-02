@@ -193,9 +193,10 @@ ALL_TESTS = [
                     'correct-outputonly-001.txt'],
          languages=[None], checks=[
              CheckOverallScore(100, 100),
-             # Ensure both source and compiled checker are present
+             # Source visible, compiled hidden
              CheckManagersPresence(outputonly_comparator_cpp,
-                                   present=["checker", "checker.cpp"])
+                                   present=["checker.cpp"],
+                                   absent=["checker"])
          ]),
 
     Test('incorrect-outputonly-comparator-cpp',
@@ -216,7 +217,8 @@ ALL_TESTS = [
          languages=(LANG_CPP,), checks=[
              CheckOverallScore(100, 100),
              CheckManagersPresence(batch_comparator_cpp,
-                                   present=["checker", "checker.cpp"])
+                                   present=["checker.cpp"],
+                                   absent=["checker"]) 
          ]),
 
     Test('batch-cpp-comparator-incorrect',
@@ -229,8 +231,10 @@ ALL_TESTS = [
          filenames=['communication-stdio-correct.%l'],
          languages=(LANG_CPP,), checks=[
              CheckOverallScore(100, 100),
+             # Source visible, compiled hidden
              CheckManagersPresence(communication_stdio_cpp,
-                                   present=["manager", "manager.cpp"])
+                                   present=["manager.cpp"],
+                                   absent=["manager"]) 
          ]),
 
     Test('communication-stdio-cpp-incorrect',
