@@ -38,6 +38,11 @@ class TestWhiteDiff(unittest.TestCase):
         return _real_numbers_compare(
             BytesIO(s1.encode("utf-8")), BytesIO(s2.encode("utf-8")))
 
+    @staticmethod
+    def _cmp_exp(s1, s2, exponent):
+        return _real_numbers_compare(
+            BytesIO(s1.encode("utf-8")), BytesIO(s2.encode("utf-8")), exponent)
+
     # --- Tokenization ----------------------------------------------------------------
     
     def test_no_numbers_equal(self):
@@ -118,6 +123,32 @@ class TestWhiteDiff(unittest.TestCase):
         E = B.copy()
         E[7] = A[7] - _DIFF * max(1.0, abs(A[7]))
         self.assertFalse(self._cmp(" ".join(map(f, A)), " ".join(map(f, E))))
+
+    # --- Configurable exponent -------------------------------------------------------
+
+    def test_coarser_precision_exponent(self):
+        # With exponent 4, tolerance is larger; differences around 1e-6 should pass
+        exp = 4
+        eps = 10 ** (-exp)
+        noise = eps * 0.9
+        diff = eps * 1.1
+        self.assertTrue(self._cmp_exp(f(noise), "0", exp))
+        self.assertFalse(self._cmp_exp(f(diff), "0", exp))
+        a = 1.0
+        self.assertTrue(self._cmp_exp(f(a), f(a + noise * a), exp))
+        self.assertFalse(self._cmp_exp(f(a), f(a + diff * a), exp))
+
+    def test_finer_precision_exponent(self):
+        # With exponent 8, tolerance is tighter
+        exp = 8
+        eps = 10 ** (-exp)
+        noise = eps * 0.9
+        diff = eps * 1.1
+        self.assertTrue(self._cmp_exp(f(noise), "0", exp))
+        self.assertFalse(self._cmp_exp(f(diff), "0", exp))
+        a = 1.0
+        self.assertTrue(self._cmp_exp(f(a), f(a + noise * a), exp))
+        self.assertFalse(self._cmp_exp(f(a), f(a + diff * a), exp))
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,7 +26,7 @@
 import logging
 
 from cms.grading.Job import Job
-from cms.grading.ParameterTypes import ParameterTypeChoice
+from cms.grading.ParameterTypes import ParameterTypeChoice, ParameterTypeInt
 from . import TaskType, eval_output
 
 
@@ -68,9 +68,33 @@ class OutputOnly(TaskType):
         "",
         {OUTPUT_EVAL_DIFF: "Outputs compared with white diff",
          OUTPUT_EVAL_CHECKER: "Outputs are compared by a comparator",
-         OUTPUT_EVAL_REALPREC: "Outputs compared as real numbers (with precision of 1e-6)"})
+         OUTPUT_EVAL_REALPREC: "Outputs compared as real numbers (with precision of 1e-X)"})
 
-    ACCEPTED_PARAMETERS = [_EVALUATION]
+    _REALPREC_EXP = ParameterTypeInt(
+        "Real precision exponent X (precision is 1e-X)",
+        "realprec_exp",
+        "If using real-number comparison, specify X in 1e-X (e.g., 6)")
+
+    ACCEPTED_PARAMETERS = [_EVALUATION, _REALPREC_EXP]
+
+    @classmethod
+    def parse_handler(cls, handler, prefix):
+        """Parse parameters from AWS forms with optional exponent.
+
+        When output_eval == 'realprecision', an exponent may be provided; if
+        missing, we omit it and default later. For other modes, return just
+        the single parameter to preserve legacy shape.
+        """
+        out_eval = cls._EVALUATION.parse_handler(handler, prefix)
+        exp = None
+        try:
+            exp = cls._REALPREC_EXP.parse_handler(handler, prefix)
+        except Exception:
+            exp = None
+        if out_eval == cls.OUTPUT_EVAL_REALPREC:
+            return [out_eval] if exp is None else [out_eval, exp]
+        else:
+            return [out_eval]
 
     @property
     def name(self):
@@ -81,8 +105,31 @@ class OutputOnly(TaskType):
     testable = False
 
     def __init__(self, parameters):
+        # Accept legacy single-parameter lists by appending default exponent 6
+        if isinstance(parameters, list) and len(parameters) == 1:
+            parameters = list(parameters) + [6]
         super().__init__(parameters)
         self.output_eval: str = self.parameters[0]
+        self.realprec_exp: int = int(self.parameters[1])
+
+    def validate_parameters(self):
+        # Override to allow backward compatibility: len 1 or 2
+        if not isinstance(self.parameters, list):
+            raise ValueError(
+                "Task type parameters for %s are not a list" % self.__class__)
+        if len(self.parameters) not in (1, 2):
+            raise ValueError(
+                "Task type %s should have 1 or 2 parameters, received %s" %
+                (self.__class__, len(self.parameters)))
+        # First param must be a valid choice
+        OutputOnly._EVALUATION.validate(self.parameters[0])
+        # Second param: default to 6 if missing, otherwise int
+        if len(self.parameters) == 1:
+            self.parameters.append(6)
+        try:
+            self.parameters[1] = int(self.parameters[1])
+        except Exception:
+            raise ValueError("Real precision exponent must be an integer")
 
     def get_compilation_commands(self, submission_format):
         """See TaskType.get_compilation_commands."""
@@ -132,7 +179,7 @@ class OutputOnly(TaskType):
         box_success, outcome, text = eval_output(
             file_cacher, job,
             OutputOnly.CHECKER_CODENAME if self._uses_checker() else None,
-            use_realprecision = self._uses_realprecision(),
+            use_realprecision=self._uses_realprecision(),
             user_output_digest=job.files[user_output_filename].digest)
 
         # Fill in the job with the results.
