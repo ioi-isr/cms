@@ -121,7 +121,7 @@ class ParameterTypeString(ParameterType):
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
 <input type="text"
        name="{{ prefix ~ parameter.short_name }}"
-       value="{{ previous_value }}" />
+       value="{{ previous_value if previous_value is not none else '' }}" />
 """)
 
     def validate(self, value):

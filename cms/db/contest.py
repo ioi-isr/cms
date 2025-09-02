@@ -100,7 +100,7 @@ class Contest(Base):
     allow_user_tests: bool = Column(
         Boolean,
         nullable=False,
-        default=True)
+        default=False)
 
     # Allow unofficial submission before analysis mode
     allow_unofficial_submission_before_analysis_mode = Column(
@@ -157,7 +157,7 @@ class Contest(Base):
         Enum(TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE,
              name="token_mode"),
         nullable=False,
-        default=TOKEN_MODE_INFINITE)
+        default=TOKEN_MODE_DISABLED)
 
     # The maximum number of tokens a contestant is allowed to use
     # during the whole contest (on all tasks).
@@ -229,7 +229,8 @@ class Contest(Base):
     # "Europe/Rome", "Australia/Sydney", "America/New_York", etc.
     timezone: str | None = Column(
         Unicode,
-        nullable=True)
+        nullable=True,
+        default="Asia/Jerusalem")
 
     # Max contest time for each user in seconds.
     per_user_time: timedelta | None = Column(
