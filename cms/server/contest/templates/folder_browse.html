@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}
+    {% trans %}Choose a contest{% endtrans %}
+{% endblock title %}
+{% block body %}
+    <div class="hero-unit contest-list">
+        <h3>{% trans %}Choose a contest{% endtrans %}</h3>
+
+        {% if breadcrumbs and breadcrumbs|length > 0 %}
+        <p>
+            <a href="{{ url("browse") }}">/</a>
+            {% for f in breadcrumbs %}
+              / {{ f.description }}
+            {% endfor %}
+            {% if breadcrumbs|length > 0 %}
+              &nbsp; <a href="{{ url("browse", "/".join(breadcrumbs[:-1]|map(attribute='name'))) if breadcrumbs|length > 1 else url("browse") }}">(Up)</a>
+            {% endif %}
+        </p>
+        {% endif %}
+
+        <ul class="nav nav-list">
+            {% for f in subfolders %}
+            <li>
+                <a href="{{ folder_href(f) }}">📁 {{ f.description }}</a>
+            </li>
+            {% endfor %}
+            {% for c in contests|sort(attribute='name') %}
+            <li>
+                <a {% if c.stop < now %} style="color: #adadad" {% endif %} href="{{ contest_href(c) }}">{{ c.description }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endblock body %}

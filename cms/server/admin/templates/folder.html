@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Folder</h1>
+</div>
+
+<form action="{{ url("folder", folder.id) }}" method="POST" name="edit_folder" style="display:inline;">
+  {{ xsrf_form_html|safe }}
+  <table class="sub_table">
+    <tr>
+      <td>Codename</td>
+      <td><input type="text" name="name" value="{{ folder.name }}"/></td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td><input type="text" name="description" value="{{ folder.description }}"/></td>
+    </tr>
+    <tr>
+      <td>Parent</td>
+      <td>
+        <select name="parent_id">
+          <option value="none">(root)</option>
+          {% for f in possible_parents %}
+          <option value="{{ f.id }}" {{ 'selected' if f.id == (folder.parent.id if folder.parent else -1) else '' }}>{{ f.description }}</option>
+          {% endfor %}
+        </select>
+      </td>
+    </tr>
+  </table>
+  <input type="submit" value="Update"/>
+</form>
+
+<form action="{{ url("folders") }}" method="POST" style="display:inline;">
+    {{ xsrf_form_html|safe }}
+    <input type="hidden" name="folder_id" value="{{ folder.id }}"/>
+    <input type="submit" name="operation" value="Remove" style="float: right;"/>
+  </form>
+
+<h2>Subfolders</h2>
+<ul>
+  {% for f in folder.children %}
+  <li><a href="{{ url("folder", f.id) }}">{{ f.description }}</a></li>
+  {% endfor %}
+</ul>
+
+<h2>Contests in this folder</h2>
+<ul>
+  {% for c in folder.contests %}
+  <li><a href="{{ url("contest", c.id) }}">{{ c.description }}</a></li>
+  {% endfor %}
+</ul>
+
+{% endblock core %}
+

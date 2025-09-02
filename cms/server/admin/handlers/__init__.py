@@ -105,6 +105,11 @@ from .user import \
 from .usertest import \
     UserTestHandler, \
     UserTestFileHandler
+from .folder import \
+    FolderListHandler, \
+    FolderHandler, \
+    AddFolderHandler, \
+    RemoveFolderHandler
 
 
 HANDLERS = [
@@ -203,6 +208,12 @@ HANDLERS = [
     (r"/team/([0-9]+)", TeamHandler),
     (r"/user/([0-9]+)/add_participation", AddParticipationHandler),
     (r"/user/([0-9]+)/edit_participation", EditParticipationHandler),
+
+    # Folders
+    (r"/folders", FolderListHandler),
+    (r"/folders/([0-9]+)/remove", RemoveFolderHandler),
+    (r"/folders/add", AddFolderHandler),
+    (r"/folder/([0-9]+)", FolderHandler),
 
     # Admins
 

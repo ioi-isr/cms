@@ -315,4 +315,6 @@ def update_contest(old_contest: Contest, new_contest: Contest, parent=None):
         # must be handled differently.
         Contest.tasks: False,
         Contest.participations: False,
+        # Folder assignment is not handled by contest importers.
+        Contest.folder: False,
     }, parent=parent)
