@@ -143,15 +143,15 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_datetime(attrs, "analysis_start")
             self.get_datetime(attrs, "analysis_stop")
 
-            # Folder assignment: persist via folder_id in attrs so set_attrs keeps it
+            # Update the contest first
+            contest.set_attrs(attrs)
+
+            # Folder assignment (relationship)
             folder_id_str = self.get_argument("folder_id", None)
             if folder_id_str is None or folder_id_str == "" or folder_id_str == "none":
-                attrs["folder_id"] = None
+                contest.folder = None
             else:
-                attrs["folder_id"] = int(folder_id_str)
-
-            # Update the contest (includes folder_id)
-            contest.set_attrs(attrs)
+                contest.folder = self.safe_get_item(ContestFolder, int(folder_id_str))
 
             new_start = attrs.get("start")
             if new_start is not None and new_start != old_start:
