@@ -499,6 +499,21 @@ class DeleteManagerHandler(BaseHandler):
 
         task_id = dataset.task_id
 
+        # If deleting a source manager for checker/manager, also delete the compiled counterpart.
+        filename = manager.filename
+        base_noext = os.path.splitext(os.path.basename(filename))[0]
+        # Determine if this is a source file (has an extension) for special basenames.
+        if base_noext in ("checker", "manager") and "." in filename:
+            # compiled counterpart has exactly the basename with no extension
+            counterpart_name = base_noext
+            # Need to re-fetch dataset.managers in this session scope
+            try:
+                counterpart = dataset.managers.get(counterpart_name)
+            except Exception:
+                counterpart = None
+            if counterpart is not None:
+                self.sql_session.delete(counterpart)
+
         self.sql_session.delete(manager)
 
         self.try_commit()
