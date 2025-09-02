@@ -221,13 +221,23 @@ CMS.AWSUtils.prototype.display_notification = function(type, timestamp,
         .append(subject_string);
     var close_div = $('<div>').html("&times;").addClass("notification_close")
         .click(function() { self.close_notification(this); });
+    // Build body: default plain text; special-case manager compilation errors
+    // to render in monospace and preserve newlines.
+    var text_div = $("<div>").addClass("notification_text");
+    if (subject === "Manager compilation failed") {
+        text_div.empty().append(
+            $('<pre>').text(text).css({ 'white-space': 'pre-wrap', 'margin': 0 })
+        );
+    } else {
+        text_div.text(text);
+    }
     var inner =
         $('<div>').addClass("notification").addClass("notification_type_" + type)
             .append(close_div)
             .append($('<div>').addClass("notification_msg")
                     .append(timestamp_div)
                     .append(subject_div.append($("<span>").text(subject)))
-                    .append($("<div>").addClass("notification_text").text(text))
+                    .append(text_div)
                    );
     outer.append(inner);
 
