@@ -85,6 +85,15 @@ class Browser:
                     fobj.close()
         return response
 
+    def do_delete(self, url: str):
+        """Send a DELETE request with XSRF header.
+
+        url: the URL to open.
+        """
+        headers = {"X-XSRFToken": self.xsrf_token} if self.xsrf_token else {}
+        response = self.session.delete(url, headers=headers)
+        return response
+
 
 class GenericRequest(metaclass=ABCMeta):
     """Request to a server.
