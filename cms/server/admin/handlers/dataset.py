@@ -35,8 +35,6 @@ import zipfile
 
 import collections
 
-from .task import set_default_output_only_task_submisison_format
-
 try:
     collections.MutableMapping
 except:
@@ -293,7 +291,7 @@ class ActivateDatasetHandler(BaseHandler):
 
         if dataset.task_type == 'OutputOnly':
             try:
-                set_default_output_only_task_submisison_format(task)
+                task.set_default_output_only_task_submisison_format()
             except Exception:
                 raise Exception("Couldn't create default submission format")
 
@@ -621,7 +619,7 @@ class AddTestcaseHandler(BaseHandler):
 
         if dataset.task_type == 'OutputOnly':
             try:
-                set_default_output_only_task_submisison_format(task)
+                task.set_default_output_only_task_submisison_format()
             except Exception:
                 raise Exception("Couldn't create default submission format")
 
@@ -716,7 +714,7 @@ class DeleteTestcaseHandler(BaseHandler):
 
         if dataset.task_type == 'OutputOnly':
             try:
-                set_default_output_only_task_submisison_format(task)
+                task.set_default_output_only_task_submisison_format()
             except Exception:
                 raise Exception("Couldn't create default submission format")
 
