@@ -32,7 +32,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import relationship
-from sqlalchemy.schema import Column, ForeignKey, CheckConstraint
+from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, UniqueConstraint
 from sqlalchemy.types import Integer, Unicode, DateTime, Interval, Enum, \
     Boolean, String
 
@@ -41,6 +41,7 @@ from . import Codename, Base, Admin
 import typing
 if typing.TYPE_CHECKING:
     from . import Task, Participation
+    from .training_program import TrainingProgram
 
 
 class Contest(Base):
@@ -54,6 +55,10 @@ class Contest(Base):
         CheckConstraint("stop <= analysis_start"),
         CheckConstraint("analysis_start <= analysis_stop"),
         CheckConstraint("token_gen_initial <= token_gen_max"),
+        CheckConstraint("(training_program_id IS NULL) = (training_program_role IS NULL)",
+                        name="contests_training_program_consistency"),
+        UniqueConstraint("training_program_id", "training_program_role",
+                         name="contests_training_program_role_key"),
     )
 
     # Auto increment primary key.
@@ -125,6 +130,18 @@ class Contest(Base):
         Boolean,
         nullable=False,
         default=False)
+
+    # Training program membership.
+    training_program_id: int | None = Column(
+        Integer,
+        ForeignKey("training_programs.id",
+                   onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        index=True)
+
+    training_program_role: str | None = Column(
+        Enum("regular", "home", name="training_program_role"),
+        nullable=True)
 
     # Whether to enforce that the IP address of the request matches
     # the IP address or subnet specified for the participation (if
@@ -271,6 +288,10 @@ class Contest(Base):
         nullable=False,
         default=0)
 
+    training_program: "TrainingProgram | None" = relationship(
+        "TrainingProgram",
+        back_populates="contests")
+
     # These one-to-many relationships are the reversed directions of
     # the ones defined in the "child" classes using foreign keys.
 
@@ -316,7 +337,6 @@ class Contest(Base):
             elif timestamp <= self.analysis_stop:
                 return 2
         return 3
-
 
 class Announcement(Base):
     """Class to store a messages sent by the contest managers to all
