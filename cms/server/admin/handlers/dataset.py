@@ -617,7 +617,7 @@ class AddTestcaseHandler(BaseHandler):
             codename, public, input_digest, output_digest, dataset=dataset)
         self.sql_session.add(testcase)
 
-        if dataset.task_type == 'OutputOnly':
+        if dataset.active and dataset.task_type == "OutputOnly":
             try:
                 task.set_default_output_only_task_submisison_format()
             except Exception:
@@ -712,7 +712,7 @@ class DeleteTestcaseHandler(BaseHandler):
 
         self.sql_session.delete(testcase)
 
-        if dataset.task_type == 'OutputOnly':
+        if dataset.active and dataset.task_type == "OutputOnly":
             try:
                 task.set_default_output_only_task_submisison_format()
             except Exception:

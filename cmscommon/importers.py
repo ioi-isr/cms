@@ -129,7 +129,7 @@ def import_testcases_from_zipfile(
             "The selected file is not a zip file. "
             "Please select a valid zip file.")
 
-    if dataset.task_type == 'OutputOnly':
+    if dataset.active and dataset.task_type == "OutputOnly":
         try:
             dataset.task.set_default_output_only_task_submisison_format()
             session.commit()
