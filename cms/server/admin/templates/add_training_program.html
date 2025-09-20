@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>New training program</h1>
+</div>
+
+<form action="{{ url("training_programs", "add") }}" method="POST" name="add_training_program">
+  {{ xsrf_form_html|safe }}
+  <div class="panel">
+    <table class="sub_table">
+      <tr>
+        <td>
+          <span class="info" title="Short codename used to reference this training program."></span>
+          Name
+        </td>
+        <td><input type="text" name="name" required></td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="Human-readable title shown in the admin interface."></span>
+          Title
+        </td>
+        <td><input type="text" name="title" required></td>
+      </tr>
+    </table>
+    <div class="form_actions">
+      <input type="submit" value="Create" />
+    </div>
+  </div>
+</form>
+{% endblock core %}

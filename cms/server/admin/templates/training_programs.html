@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training programs</h1>
+</div>
+
+{% if training_programs|length == 0 %}
+<div class="panel">
+  <p>No training programs are defined.</p>
+</div>
+{% else %}
+<form action="{{ url("training_programs") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <div class="panel">
+    <div class="panel_actions">
+      Manage selected training program:
+      <input type="submit" name="operation" value="Delete"{% if not admin.permission_all %} disabled{% endif %} />
+    </div>
+    <table class="bordered">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Name</th>
+          <th>Title</th>
+          <th>Regular contest</th>
+          <th>Home contest</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for program in training_programs %}
+        <tr>
+          <td><input type="radio" name="training_program_id" value="{{ program.id }}"/></td>
+          <td>{{ program.name }}</td>
+          <td>{{ program.title }}</td>
+          <td>
+            {% if program.regular_contest %}
+              <a href="{{ url("contest", program.regular_contest.id) }}">{{ program.regular_contest.name }}</a>
+            {% else %}
+              <span class="empty">(none)</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if program.home_contest %}
+              <a href="{{ url("contest", program.home_contest.id) }}">{{ program.home_contest.name }}</a>
+            {% else %}
+              <span class="empty">(none)</span>
+            {% endif %}
+          </td>
+          <td><a href="{{ url("training_program", program.id) }}">view</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+{% endif %}
+{% endblock core %}

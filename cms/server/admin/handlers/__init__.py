@@ -91,6 +91,11 @@ from .task import \
     AttachmentHandler, \
     TaskListHandler, \
     RemoveTaskHandler
+from .training_program import \
+    TrainingProgramListHandler, \
+    TrainingProgramHandler, \
+    AddTrainingProgramHandler, \
+    RemoveTrainingProgramHandler
 from .user import \
     AddUserHandler, \
     UserHandler, \
@@ -163,6 +168,13 @@ HANDLERS = [
 
     (r"/contest/([0-9]+)/ranking", RankingHandler),
     (r"/contest/([0-9]+)/ranking/([a-z]+)", RankingHandler),
+
+    # Training programs
+
+    (r"/training_programs", TrainingProgramListHandler),
+    (r"/training_programs/add", AddTrainingProgramHandler),
+    (r"/training_programs/([0-9]+)/remove", RemoveTrainingProgramHandler),
+    (r"/training_program/([0-9]+)", TrainingProgramHandler),
 
     # Tasks
 

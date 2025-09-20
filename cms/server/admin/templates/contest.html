@@ -28,6 +28,20 @@
     </tr>
     <tr>
       <td>
+        <span class="info" title="If part of a training program, shows the linked training program and the contest role within it."></span>
+        Training program
+      </td>
+      <td>
+        {% if contest.training_program %}
+          <a href="{{ url("training_program", contest.training_program.id) }}">{{ contest.training_program.title }}</a>
+          ({{ contest.training_program_role|capitalize }})
+        {% else %}
+          <span class="empty">(none)</span>
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <td>
         <span class="info" title="The list of languages that contestants can use, or empty for allowing any language.
                                   Example: 'en,ja' (without quotes)."></span>
         Allowed localizations

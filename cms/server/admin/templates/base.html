@@ -134,6 +134,39 @@ $(document).ready(init);
 {% endif %}
         </ul>
 
+        <h1><a class="menu_link" href="{{ url("training_programs") }}">Training&nbsp;programs</a></h1>
+        <ul class="menu">
+          {% if training_program_list|length < 1 %}
+          <li class="menu_entry">
+            (no training programs available)
+          </li>
+          {% endif %}
+
+          {% for tp in training_program_list[:5] %}
+          <li class="menu_entry">
+            <a class="menu_link bold" href="{{ url("training_program", tp.id) }}" title="{{ tp.title }}">
+              {{ tp.name }}
+            </a>
+          </li>
+          {% endfor %}
+
+{% if admin.permission_all %}
+          <li class="menu_entry">
+            <a class="menu_link" href="{{ url("training_programs", "add") }}">
+              (create&nbsp;new&nbsp;training&nbsp;program...)
+            </a>
+          </li>
+{% endif %}
+
+          {% if training_program_list|length > 5 %}
+          <li>
+            <a class="menu_link" href="{{ url("training_programs") }}">
+              (show more...)
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+
         <h1><a class="menu_link" href="{{ url("tasks") }}">Tasks</a></h1>
         <ul class="menu">
           {% if task_list|length < 1 %}

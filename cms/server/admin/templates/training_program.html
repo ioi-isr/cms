@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training program: {{ training_program.title }}</h1>
+</div>
+
+<form action="{{ url("training_program", training_program.id) }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table class="sub_table">
+    <tr><td colspan=2><h2>General</h2></td></tr>
+    <tr>
+      <td>
+        <span class="info" title="Short codename used to reference this training program."></span>
+        Name
+      </td>
+      <td><input type="text" name="name" value="{{ training_program.name }}"></td>
+    </tr>
+    <tr>
+      <td>
+        <span class="info" title="Human-readable title shown in the admin interface."></span>
+        Title
+      </td>
+      <td><input type="text" name="title" value="{{ training_program.title }}"></td>
+    </tr>
+    <tr><td colspan=2><h2>Assigned contests</h2></td></tr>
+    <tr>
+      <td>
+        <span class="info" title="Select the contest that represents the regular leg of this training program."></span>
+        Regular contest
+      </td>
+      <td>
+        <select name="regular_contest">
+          <option value="">(none)</option>
+          {% for contest in contests %}
+            <option value="{{ contest.id }}"{% if training_program.regular_contest and training_program.regular_contest.id == contest.id %} selected{% endif %}>
+              {{ contest.name }} - {{ contest.description }}
+            </option>
+          {% endfor %}
+        </select>
+        {% if training_program.regular_contest %}
+          <a class="button secondary" href="{{ url("contest", training_program.regular_contest.id) }}">View contest</a>
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span class="info" title="Select the contest used for the home leg of this training program."></span>
+        Home contest
+      </td>
+      <td>
+        <select name="home_contest">
+          <option value="">(none)</option>
+          {% for contest in contests %}
+            <option value="{{ contest.id }}"{% if training_program.home_contest and training_program.home_contest.id == contest.id %} selected{% endif %}>
+              {{ contest.name }} - {{ contest.description }}
+            </option>
+          {% endfor %}
+        </select>
+        {% if training_program.home_contest %}
+          <a class="button secondary" href="{{ url("contest", training_program.home_contest.id) }}">View contest</a>
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+  <div class="form_actions">
+    <input type="submit" value="Save" />
+    <input type="reset" value="Reset" />
+  </div>
+</form>
+{% endblock core %}
