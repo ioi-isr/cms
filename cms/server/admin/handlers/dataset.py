@@ -291,7 +291,7 @@ class ActivateDatasetHandler(BaseHandler):
 
         if dataset.task_type == 'OutputOnly':
             try:
-                task.set_default_output_only_task_submisison_format()
+                task.set_default_output_only_submission_format()
             except Exception:
                 raise Exception("Couldn't create default submission format")
 
@@ -619,7 +619,7 @@ class AddTestcaseHandler(BaseHandler):
 
         if dataset.active and dataset.task_type == "OutputOnly":
             try:
-                task.set_default_output_only_task_submisison_format()
+                task.set_default_output_only_submission_format()
             except Exception:
                 raise Exception("Couldn't create default submission format")
 
@@ -714,7 +714,7 @@ class DeleteTestcaseHandler(BaseHandler):
 
         if dataset.active and dataset.task_type == "OutputOnly":
             try:
-                task.set_default_output_only_task_submisison_format()
+                task.set_default_output_only_submission_format()
             except Exception:
                 raise Exception("Couldn't create default submission format")
 

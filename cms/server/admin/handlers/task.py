@@ -535,7 +535,7 @@ class DefaultSubmissionFormatHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
         task = self.safe_get_item(Task, task_id)
-        task.set_default_output_only_task_submisison_format()
+        task.set_default_output_only_submission_format()
         self.try_commit()
 
         # Page to redirect to.

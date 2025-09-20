@@ -131,7 +131,7 @@ def import_testcases_from_zipfile(
 
     if dataset.active and dataset.task_type == "OutputOnly":
         try:
-            dataset.task.set_default_output_only_task_submisison_format()
+            dataset.task.set_default_output_only_submission_format()
             session.commit()
         except Exception:
             raise Exception("Couldn't create default submission format")

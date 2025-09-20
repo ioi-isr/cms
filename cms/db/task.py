@@ -294,7 +294,7 @@ class Task(Base):
         # Otherwise, use contest language restrictions
         return self.contest.languages if self.contest else None
 
-    def set_default_output_only_task_submisison_format(self) -> None:
+    def set_default_output_only_submission_format(self) -> None:
         """
         Sets the default submission format for an output-only task.
         Does not save the changes.
