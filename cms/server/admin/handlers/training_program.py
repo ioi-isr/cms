@@ -68,6 +68,8 @@ class RemoveTrainingProgramHandler(BaseHandler):
     def get(self, program_id: str):
         program = self.safe_get_item(TrainingProgram, program_id)
 
+        self.training_program = program
+
         self.r_params = self.render_params()
         self.r_params["training_program"] = program
         self.r_params["assigned_contests"] = list(program.contests)
@@ -331,6 +333,8 @@ class TrainingProgramHandler(BaseHandler):
         program = self.safe_get_item(TrainingProgram, program_id)
         contests = self.sql_session.query(Contest).order_by(Contest.name).all()
 
+        self.training_program = program
+
         self.r_params = self.render_params()
         self.r_params["training_program"] = program
         self.r_params["contests"] = contests
@@ -339,6 +343,8 @@ class TrainingProgramHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, program_id: str):
         program = self.safe_get_item(TrainingProgram, program_id)
+
+        self.training_program = program
 
         new_name = self.get_argument("name", "").strip()
         new_title = self.get_argument("title", "").strip()

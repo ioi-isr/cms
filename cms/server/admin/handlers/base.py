@@ -308,6 +308,7 @@ class BaseHandler(CommonRequestHandler):
         """
         super().prepare()
         self.contest = None
+        self.training_program = None
 
     def render(self, template_name: str, **params):
         t = self.service.jinja2_environment.get_template(template_name)
@@ -325,6 +326,7 @@ class BaseHandler(CommonRequestHandler):
                                 else "v" + __version__[:3]
         params["timestamp"] = make_datetime()
         params["contest"] = self.contest
+        params["training_program"] = self.training_program
         params["url"] = self.url
         params["xsrf_form_html"] = self.xsrf_form_html()
         # FIXME These objects provide too broad an access: their usage
