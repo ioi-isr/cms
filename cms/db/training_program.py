@@ -19,6 +19,7 @@
 
 import typing
 
+from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column
 from sqlalchemy.types import Integer, Unicode
@@ -27,6 +28,7 @@ from . import Base, Codename
 
 if typing.TYPE_CHECKING:
     from .contest import Contest
+    from .task import Task
 
 
 class TrainingProgram(Base):
@@ -55,6 +57,14 @@ class TrainingProgram(Base):
 
     contests: list["Contest"] = relationship(
         "Contest",
+        back_populates="training_program",
+        passive_deletes=True,
+    )
+
+    tasks: list["Task"] = relationship(
+        "Task",
+        collection_class=ordering_list("num"),
+        order_by="[Task.num]",
         back_populates="training_program",
         passive_deletes=True,
     )

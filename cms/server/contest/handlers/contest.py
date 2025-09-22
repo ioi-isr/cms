@@ -231,7 +231,7 @@ class ContestHandler(BaseHandler):
         # some information about token configuration
         ret["tokens_contest"] = self.contest.token_mode
 
-        t_tokens = set(t.token_mode for t in self.contest.tasks)
+        t_tokens = set(t.token_mode for t in self.contest.visible_tasks)
         if len(t_tokens) == 1:
             ret["tokens_tasks"] = next(iter(t_tokens))
         else:

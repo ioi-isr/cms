@@ -26,7 +26,7 @@
 import sys
 import logging
 
-from sqlalchemy import union
+from sqlalchemy import and_, or_, union
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Query
 
@@ -324,7 +324,16 @@ def enumerate_files(
 
     queries = list()
 
-    task_q = contest_q.join(Contest.tasks)
+    task_q = contest_q.join(
+        Task,
+        or_(
+            Task.contest_id == Contest.id,
+            and_(
+                Contest.training_program_id.isnot(None),
+                Task.training_program_id == Contest.training_program_id,
+            ),
+        ),
+    )
     queries.append(task_q.join(Task.statements).with_entities(Statement.digest))
     queries.append(task_q.join(Task.attachments)
                    .with_entities(Attachment.digest))

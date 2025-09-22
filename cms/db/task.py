@@ -40,7 +40,7 @@ from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
     FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED, FEEDBACK_LEVEL_OI_RESTRICTED
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
-from . import Codename, Filename, FilenameSchemaArray, Digest, Base, Contest
+from . import Codename, Filename, FilenameSchemaArray, Digest, Base, Contest, TrainingProgram
 
 import typing
 if typing.TYPE_CHECKING:
@@ -57,6 +57,8 @@ class Task(Base):
     __table_args__ = (
         UniqueConstraint('contest_id', 'num'),
         UniqueConstraint('contest_id', 'name'),
+        UniqueConstraint('training_program_id', 'num'),
+        UniqueConstraint('training_program_id', 'name'),
         ForeignKeyConstraint(
             ("id", "active_dataset_id"),
             ("datasets.task_id", "datasets.id"),
@@ -68,6 +70,8 @@ class Task(Base):
             name="fk_active_dataset_id"
         ),
         CheckConstraint("token_gen_initial <= token_gen_max"),
+        CheckConstraint("contest_id IS NULL OR training_program_id IS NULL",
+                        name="tasks_single_owner"),
     )
 
     # Auto increment primary key.
@@ -92,6 +96,16 @@ class Task(Base):
         index=True)
     contest: Contest | None = relationship(
         Contest,
+        back_populates="tasks")
+
+    training_program_id: int | None = Column(
+        Integer,
+        ForeignKey(TrainingProgram.id,
+                   onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        index=True)
+    training_program: TrainingProgram | None = relationship(
+        TrainingProgram,
         back_populates="tasks")
 
     # Short name and long human readable title of the task.

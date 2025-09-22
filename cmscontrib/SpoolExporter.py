@@ -189,10 +189,10 @@ class SpoolExporter:
             (task.id, dict((participation.user.username, 0.0)
                            for participation in self.contest.participations
                            if not participation.hidden))
-            for task in self.contest.tasks)
+            for task in self.contest.visible_tasks)
 
         is_partial = False
-        for task in self.contest.tasks:
+        for task in self.contest.visible_tasks:
             for participation in self.contest.participations:
                 if participation.hidden:
                     continue
@@ -207,7 +207,7 @@ class SpoolExporter:
                                   key=lambda username: (scores[username],
                                                         username),
                                   reverse=True)
-        sorted_tasks = sorted(self.contest.tasks,
+        sorted_tasks = sorted(self.contest.visible_tasks,
                               key=lambda task: task.num)
 
         with open(os.path.join(self.spool_dir, "ranking.txt"),

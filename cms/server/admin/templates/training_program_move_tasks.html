@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Confirm task reassignment</h1>
+</div>
+
+<form action="{{ url("training_program", training_program.id) }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <input type="hidden" name="confirm_move" value="yes" />
+  <input type="hidden" name="name" value="{{ new_name }}" />
+  <input type="hidden" name="title" value="{{ new_title }}" />
+  <input type="hidden" name="regular_contest" value="{{ regular_contest_id }}" />
+  <input type="hidden" name="home_contest" value="{{ home_contest_id }}" />
+  <div class="panel">
+    <p>
+      The selected contest assignments still own tasks. If you continue, these tasks will be reassigned to
+      <strong>{{ training_program.title }}</strong> and removed from their contests.
+    </p>
+    {% for move in pending_moves %}
+    <div class="sub_panel">
+      <h2>{{ move.label }}</h2>
+      <p>Tasks currently owned by <a href="{{ url("contest", move.contest.id) }}">{{ move.contest.name }}</a>:</p>
+      <ul>
+        {% for task in move.tasks %}
+        <li><a href="{{ url("task", task.id) }}">{{ task.name }}</a> - {{ task.title }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+    <p>This operation cannot be undone.</p>
+    <div class="form_actions">
+      <input type="submit" value="Move tasks" />
+      <a class="button secondary" href="{{ url("training_program", training_program.id) }}">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock core %}

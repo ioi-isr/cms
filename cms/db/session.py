@@ -31,6 +31,7 @@ import typing
 
 import psycopg2
 import sqlalchemy.orm
+from sqlalchemy import event
 from sqlalchemy.engine.url import URL, make_url
 from sqlalchemy.orm import sessionmaker, scoped_session
 
@@ -111,3 +112,15 @@ def custom_psycopg2_connection(**kwargs: dict[str, str]):
     args.update(kwargs)
 
     return psycopg2.connect(**args)
+
+
+@event.listens_for(Session, "before_flush")
+def validate_contest_tasks(session, flush_context, instances):
+    from cms.db.contest import Contest
+
+    for obj in session.new:
+        if isinstance(obj, Contest):
+            obj.assert_valid()
+    for obj in session.dirty:
+        if isinstance(obj, Contest):
+            obj.assert_valid()

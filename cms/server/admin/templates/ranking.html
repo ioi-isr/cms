@@ -13,7 +13,7 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
       {% if show_teams %}
       <th>Team</th>
       {% endif %}
-      {% for task in contest.tasks %}
+      {% for task in contest.visible_tasks %}
       <th data-sort-settings="numeric reversed"><a href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
       {% endfor %}
       <th data-sort-settings="numeric reversed">Global</th>

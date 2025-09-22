@@ -65,7 +65,7 @@ class RankingHandler(BaseHandler):
             p.scores = []
             total_score = 0.0
             partial = False
-            for task in self.contest.tasks:
+            for task in self.contest.visible_tasks:
                 t_score, t_partial = task_score(p, task, rounded=True)
                 p.scores.append((t_score, t_partial))
                 total_score += t_score
@@ -95,7 +95,7 @@ class RankingHandler(BaseHandler):
             row = ["Username", "User"]
             if show_teams:
                 row.append("Team")
-            for task in contest.tasks:
+            for task in contest.visible_tasks:
                 row.append(task.name)
                 if include_partial:
                     row.append("P")
@@ -115,7 +115,7 @@ class RankingHandler(BaseHandler):
                        "%s %s" % (p.user.first_name, p.user.last_name)]
                 if show_teams:
                     row.append(p.team.name if p.team else "")
-                assert len(contest.tasks) == len(p.scores)
+                assert len(contest.visible_tasks) == len(p.scores)
                 for t_score, t_partial in p.scores:  # Custom field, see above
                     row.append(t_score)
                     if include_partial:

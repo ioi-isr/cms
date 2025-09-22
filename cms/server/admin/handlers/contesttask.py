@@ -42,11 +42,16 @@ class ContestTasksHandler(BaseHandler):
     def get(self, contest_id):
         self.contest = self.safe_get_item(Contest, contest_id)
 
+        if self.contest.training_program is not None:
+            self.redirect(self.url("training_program", self.contest.training_program.id, "tasks"))
+            return
+
         self.r_params = self.render_params()
         self.r_params["contest"] = self.contest
         self.r_params["unassigned_tasks"] = \
             self.sql_session.query(Task)\
                 .filter(Task.contest_id.is_(None))\
+                .filter(Task.training_program_id.is_(None))\
                 .all()
         self.render("contest_tasks.html", **self.r_params)
 
@@ -55,6 +60,15 @@ class ContestTasksHandler(BaseHandler):
         fallback_page = self.url("contest", contest_id, "tasks")
 
         self.contest = self.safe_get_item(Contest, contest_id)
+
+        if self.contest.training_program is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Operation failed.",
+                "Tasks are managed by the linked training program.",
+            )
+            self.redirect(self.url("training_program", self.contest.training_program.id, "tasks"))
+            return
 
         try:
             task_id: str = self.get_argument("task_id")
@@ -159,6 +173,15 @@ class AddContestTaskHandler(BaseHandler):
 
         self.contest = self.safe_get_item(Contest, contest_id)
 
+        if self.contest.training_program is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Operation failed.",
+                "Tasks are managed by the linked training program.",
+            )
+            self.redirect(self.url("training_program", self.contest.training_program.id, "tasks"))
+            return
+
         try:
             task_id: str = self.get_argument("task_id")
             # Check that the admin selected some task.
@@ -170,6 +193,15 @@ class AddContestTaskHandler(BaseHandler):
             return
 
         task = self.safe_get_item(Task, task_id)
+
+        if task.training_program is not None or task.contest is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Operation failed.",
+                "Task already belongs to a training program or contest.",
+            )
+            self.redirect(fallback_page)
+            return
 
         # Assign the task to the contest.
         task.num = len(self.contest.tasks)

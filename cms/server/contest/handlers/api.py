@@ -126,7 +126,7 @@ class ApiTaskListHandler(ApiContestHandler):
     def get(self):
         contest = self.contest
         tasks = []
-        for task in contest.tasks:
+        for task in contest.visible_tasks:
             name = task.name
             statements = [s for s in task.statements]
             sub_format = task.submission_format

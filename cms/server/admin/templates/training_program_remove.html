@@ -20,6 +20,16 @@
     {% endfor %}
   {% endif %}
 </ul>
+<p>The following tasks will be detached from this training program:</p>
+<ul>
+  {% if managed_tasks|length == 0 %}
+    <li>(none)</li>
+  {% else %}
+    {% for task in managed_tasks %}
+      <li><a href="{{ url("task", task.id) }}">{{ task.name }}</a></li>
+    {% endfor %}
+  {% endif %}
+</ul>
 <p>This operation cannot be undone.</p>
 <br>
 <a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_programs", training_program.id, "remove") }}'); " class="button-link">Yes, remove</a>

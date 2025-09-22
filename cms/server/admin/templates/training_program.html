@@ -3,6 +3,7 @@
 {% block core %}
 <div class="core_title">
   <h1>Training program: {{ training_program.title }}</h1>
+  <a class="button" href="{{ url("training_program", training_program.id, "tasks") }}">Manage tasks</a>
 </div>
 
 <form action="{{ url("training_program", training_program.id) }}" method="POST">

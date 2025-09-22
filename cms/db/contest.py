@@ -316,6 +316,18 @@ class Contest(Base):
         passive_deletes=True,
         back_populates="contest")
 
+    def assert_valid(self):
+        if self.training_program is not None and self.tasks:
+            raise ValueError(
+                f"Contest {self.name} belongs to a training program but still owns tasks."
+            )
+
+    @property
+    def visible_tasks(self):
+        if self.training_program is not None:
+            return self.training_program.tasks
+        return self.tasks
+
     def phase(self, timestamp: datetime) -> int:
         """Return: -1 if contest isn't started yet at time timestamp,
                     0 if the contest is active at time timestamp,
