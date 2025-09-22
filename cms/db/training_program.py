@@ -29,6 +29,7 @@ from . import Base, Codename
 if typing.TYPE_CHECKING:
     from .contest import Contest
     from .task import Task
+    from .user import Participation
 
 
 class TrainingProgram(Base):
@@ -67,6 +68,13 @@ class TrainingProgram(Base):
         order_by="[Task.num]",
         back_populates="training_program",
         passive_deletes=True,
+    )
+
+    participations: list["Participation"] = relationship(
+        "Participation",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="training_program",
     )
 
     def _get_contest_by_role(self, role: str) -> "Contest | None":

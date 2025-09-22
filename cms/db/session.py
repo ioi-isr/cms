@@ -115,12 +115,12 @@ def custom_psycopg2_connection(**kwargs: dict[str, str]):
 
 
 @event.listens_for(Session, "before_flush")
-def validate_contest_tasks(session, flush_context, instances):
-    from cms.db.contest import Contest
+def validate_entities(session, flush_context, instances):
+    def _validate(objects):
+        for obj in objects:
+            validator = getattr(obj, "assert_valid", None)
+            if validator is not None:
+                validator()
 
-    for obj in session.new:
-        if isinstance(obj, Contest):
-            obj.assert_valid()
-    for obj in session.dirty:
-        if isinstance(obj, Contest):
-            obj.assert_valid()
+    _validate(session.new)
+    _validate(session.dirty)

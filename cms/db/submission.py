@@ -39,7 +39,7 @@ from sqlalchemy.types import Integer, Float, String, Unicode, DateTime, Enum, \
 
 from cmscommon.datetime import make_datetime
 from . import Filename, FilenameSchema, Digest, Base, Participation, Task, \
-    Dataset, Testcase
+    Dataset, Testcase, Contest
 
 
 class Submission(Base):
@@ -73,6 +73,14 @@ class Submission(Base):
     participation: Participation = relationship(
         Participation,
         back_populates="submissions")
+
+    contest_id: int | None = Column(
+        Integer,
+        ForeignKey(Contest.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=True,
+        index=True)
+    contest: Contest | None = relationship(Contest)
 
     # Task (id and object) of the submission.
     task_id: int = Column(
@@ -135,6 +143,15 @@ class Submission(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="submission")
+
+    def assert_valid(self):
+        participation = self.participation
+        if participation is None:
+            return
+        expects_contest = participation.is_training_program()
+        has_contest = self.contest_id is not None
+        if expects_contest != has_contest:
+            raise ValueError("Submission must set contest_id iff participation belongs to a training program.")
 
     def get_result(self, dataset: Dataset | None = None) -> "SubmissionResult | None":
         """Return the result associated to a dataset.
