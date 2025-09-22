@@ -50,6 +50,9 @@ class TrainingProgram(Base):
         nullable=False,
     )
 
+    # These one-to-many relationships are the reversed directions of
+    # the ones defined in the "child" classes using foreign keys.
+
     contests: list["Contest"] = relationship(
         "Contest",
         back_populates="training_program",
