@@ -315,6 +315,7 @@ class DumpImporter:
                         continue
 
                     obj = self.objs[id_]
+                    print(obj)
                     session.add(obj)
                     session.flush()
 

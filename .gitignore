@@ -16,3 +16,4 @@ log/
 codecov/
 .dev/
 test_logs/
+dump_*

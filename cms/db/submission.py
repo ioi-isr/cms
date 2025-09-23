@@ -149,7 +149,7 @@ class Submission(Base):
         if participation is None:
             return
         expects_contest = participation.is_training_program()
-        has_contest = self.contest_id is not None
+        has_contest = self.contest is not None
         if expects_contest != has_contest:
             raise ValueError("Submission must set contest_id iff participation belongs to a training program.")
 

@@ -119,7 +119,9 @@ def validate_entities(session, flush_context, instances):
     def _validate(objects):
         for obj in objects:
             validator = getattr(obj, "assert_valid", None)
-            if validator is not None:
+            if validator is None:
+                continue
+            if getattr(obj, "validation_enabled", True):
                 validator()
 
     _validate(session.new)

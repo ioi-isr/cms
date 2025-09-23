@@ -18,7 +18,7 @@
 
 """Handlers for training program administration pages."""
 
-from cms.db import Contest, Task, TrainingProgram
+from cms.db import Contest, Task, TrainingProgram, TrainingProgramParticipation
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -346,6 +346,9 @@ class TrainingProgramHandler(BaseHandler):
 
         self.training_program = program
 
+        previous_regular_contest = program.regular_contest
+        previous_home_contest = program.home_contest
+
         new_name = self.get_argument("name", "").strip()
         new_title = self.get_argument("title", "").strip()
         if not new_name or not new_title:
@@ -394,35 +397,102 @@ class TrainingProgramHandler(BaseHandler):
             self.redirect(self.url("training_program", program.id))
             return
 
-        pending_moves = []
-        role_map = [
-            ("Regular contest", regular_contest),
-            ("Home contest", home_contest),
-        ]
-        for label, contest in role_map:
-            if contest is None:
-                continue
-            contest_tasks = sorted(
-                contest.tasks,
-                key=lambda t: t.num if t.num is not None else 0,
-            )
-            if contest_tasks:
-                pending_moves.append({
-                    "label": label,
-                    "contest": contest,
-                    "tasks": contest_tasks,
-                })
+        def collect_task_moves() -> list[dict]:
+            moves: list[dict] = []
+            for label, contest in (
+                ("Regular contest", regular_contest),
+                ("Home contest", home_contest),
+            ):
+                if contest is None:
+                    continue
+                contest_tasks = sorted(
+                    contest.tasks,
+                    key=lambda task: task.num if task.num is not None else 0,
+                )
+                if contest_tasks:
+                    moves.append({
+                        "label": label,
+                        "contest": contest,
+                        "tasks": contest_tasks,
+                    })
+            return moves
 
-        confirm_move = self.get_argument("confirm_move", "no") == "yes"
-        if pending_moves and not confirm_move:
+        def collect_participation_losses() -> tuple[list[dict], dict]:
+            entries: list[dict] = []
+            totals = {
+                "submissions": 0,
+                "user_tests": 0,
+                "messages": 0,
+                "questions": 0,
+                "printjobs": 0,
+                "total": 0,
+            }
+
+            def append_loss(participation, role, contest):
+                counts = {
+                    "submissions": len(participation.submissions),
+                    "user_tests": len(participation.user_tests),
+                    "messages": len(participation.messages),
+                    "questions": len(participation.questions),
+                    "printjobs": len(participation.printjobs),
+                }
+                total = sum(counts.values())
+                if total == 0:
+                    return
+                entries.append({
+                    "user": participation.user,
+                    "role": role,
+                    "contest": contest,
+                    "counts": counts,
+                    "total": total,
+                })
+                for key, value in counts.items():
+                    totals[key] += value
+                totals["total"] += total
+
+            changes = [
+                (
+                    "regular",
+                    previous_regular_contest,
+                    regular_contest,
+                    lambda pp: pp.regular_participation,
+                ),
+                (
+                    "home",
+                    previous_home_contest,
+                    home_contest,
+                    lambda pp: pp.home_participation,
+                ),
+            ]
+
+            for role, old_contest, new_contest, getter in changes:
+                if old_contest is None or old_contest is new_contest:
+                    continue
+                for program_participation in program.training_program_participations:
+                    participation = getter(program_participation)
+                    append_loss(participation, role, old_contest)
+
+            return entries, totals
+
+        pending_moves = collect_task_moves()
+        data_loss_entries, data_loss_totals = collect_participation_losses()
+
+        regular_changed = previous_regular_contest is not regular_contest
+        home_changed = previous_home_contest is not home_contest
+
+        if (pending_moves or data_loss_entries) and self.get_argument("confirm_change", "no") != "yes":
             self.r_params = self.render_params()
-            self.r_params["training_program"] = program
-            self.r_params["pending_moves"] = pending_moves
-            self.r_params["new_name"] = new_name
-            self.r_params["new_title"] = new_title
-            self.r_params["regular_contest_id"] = regular_arg
-            self.r_params["home_contest_id"] = home_arg
-            self.render("training_program_move_tasks.html", **self.r_params)
+            self.r_params.update({
+                "training_program": program,
+                "pending_moves": pending_moves,
+                "data_loss_entries": data_loss_entries,
+                "data_loss_totals": data_loss_totals,
+                "new_name": new_name,
+                "new_title": new_title,
+                "regular_contest_id": regular_arg,
+                "home_contest_id": home_arg,
+            })
+            self.render("training_program_reassign_warning.html", **self.r_params)
             return
 
         try:
@@ -444,6 +514,14 @@ class TrainingProgramHandler(BaseHandler):
 
             program.regular_contest = regular_contest
             program.home_contest = home_contest
+
+            if regular_changed or home_changed:
+                for program_participation in program.training_program_participations:
+                    TrainingProgramParticipation.ensure(
+                        self.sql_session,
+                        program,
+                        program_participation.user,
+                    )
         except ValueError as error:
             self.sql_session.rollback()
             self.service.add_notification(
@@ -457,5 +535,3 @@ class TrainingProgramHandler(BaseHandler):
         if self.try_commit():
             self.service.proxy_service.reinitialize()
         self.redirect(self.url("training_program", program.id))
-
-

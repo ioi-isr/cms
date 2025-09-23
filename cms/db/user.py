@@ -32,8 +32,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, CIDR
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, \
     UniqueConstraint
-from sqlalchemy.types import Boolean, Integer, String, Unicode, DateTime, \
-    Interval
+from sqlalchemy.types import Boolean, Integer, String, Unicode, DateTime, Interval, Enum
 
 from cmscommon.crypto import generate_random_password, build_password
 from . import CastingArray, Codename, Base, Admin, Contest, TrainingProgram
@@ -107,6 +106,15 @@ class User(Base):
         passive_deletes=True,
         back_populates="user")
 
+    training_program_participations: list["TrainingProgramParticipation"] = (
+        relationship(
+            "TrainingProgramParticipation",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+            back_populates="user",
+        )
+    )
+
 
 class Team(Base):
     """Class to store a team.
@@ -167,24 +175,26 @@ class Participation(Base):
     # Starting time: for contests where every user has at most x hours
     # of the y > x hours totally available, this is the time the user
     # decided to start their time-frame.
-    starting_time: datetime | None = Column(
-        DateTime,
-        nullable=True)
+    _starting_time: datetime | None = Column("starting_time", DateTime, nullable=True)
 
     # A shift in the time interval during which the user is allowed to
     # submit.
-    delay_time: timedelta = Column(
+    _delay_time: timedelta = Column(
+        "delay_time",
         Interval,
         CheckConstraint("delay_time >= '0 seconds'"),
         nullable=False,
-        default=timedelta())
+        default=timedelta(),
+    )
 
     # An extra amount of time allocated for this user.
-    extra_time: timedelta = Column(
+    _extra_time: timedelta = Column(
+        "extra_time",
         Interval,
         CheckConstraint("extra_time >= '0 seconds'"),
         nullable=False,
-        default=timedelta())
+        default=timedelta(),
+    )
 
     # Contest-specific password. If this password is not null then the
     # traditional user.password field will be "replaced" by this field's
@@ -210,25 +220,27 @@ class Participation(Base):
         default=False)
 
     # Contest (id and object) to which the user is participating.
-    contest_id: int | None = Column(
+    contest_id: int = Column(
         Integer,
-        ForeignKey(Contest.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=True,
-        index=True)
-    contest: Contest | None = relationship(
-        Contest,
-        back_populates="participations")
+        ForeignKey(Contest.id, onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    contest: Contest = relationship(Contest, back_populates="participations")
 
-    training_program_id: int | None = Column(
+    training_program_participation_id: int | None = Column(
         Integer,
-        ForeignKey(TrainingProgram.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
+        ForeignKey(
+            "training_program_participations.id",
+            onupdate="CASCADE",
+            ondelete="SET NULL",
+        ),
         nullable=True,
-        index=True)
-    training_program: "TrainingProgram | None" = relationship(
-        "TrainingProgram",
-        back_populates="participations")
+        index=True,
+    )
+    training_program_role: str | None = Column(
+        Enum("regular", "home", name="training_program_contest_role"), nullable=True
+    )
 
     # User (id and object) which is participating.
     user_id: int = Column(
@@ -242,10 +254,11 @@ class Participation(Base):
         back_populates="participations")
     __table_args__ = (
         UniqueConstraint("contest_id", "user_id"),
-        UniqueConstraint("training_program_id", "user_id"),
+        UniqueConstraint("training_program_participation_id", "training_program_role"),
         CheckConstraint(
-            "(contest_id IS NOT NULL) <> (training_program_id IS NOT NULL)",
-            name="participations_single_owner"),
+            "(training_program_participation_id IS NULL) = (training_program_role IS NULL)",
+            name="participations_program_fields_sync",
+        ),
     )
 
     # Team (id and object) that the user is representing with this
@@ -294,10 +307,337 @@ class Participation(Base):
         passive_deletes=True,
         back_populates="participation")
 
+    training_program_participation: "TrainingProgramParticipation | None" = (
+        relationship(
+            "TrainingProgramParticipation",
+            back_populates="participations",
+            foreign_keys=[training_program_participation_id],
+        )
+    )
+
     def is_training_program(self) -> bool:
         """Return whether this participation belongs to a training program."""
 
-        return self.training_program_id is not None
+        return self.training_program_participation is not None
+
+    @property
+    def starting_time(self) -> datetime | None:
+        if self.training_program_participation is not None:
+            return self.training_program_participation.starting_time
+        return self._starting_time
+
+    @starting_time.setter
+    def starting_time(self, value: datetime | None) -> None:
+        if self.training_program_participation is not None:
+            self.training_program_participation.starting_time = value
+        else:
+            self._starting_time = value
+
+    @property
+    def delay_time(self) -> timedelta:
+        if self.training_program_participation is not None:
+            return self.training_program_participation.delay_time
+        return self._delay_time
+
+    @delay_time.setter
+    def delay_time(self, value: timedelta) -> None:
+        if self.training_program_participation is not None:
+            self.training_program_participation.delay_time = value
+        else:
+            self._delay_time = value
+
+    @property
+    def extra_time(self) -> timedelta:
+        if self.training_program_participation is not None:
+            return self.training_program_participation.extra_time
+        return self._extra_time
+
+    @extra_time.setter
+    def extra_time(self, value: timedelta) -> None:
+        if self.training_program_participation is not None:
+            self.training_program_participation.extra_time = value
+        else:
+            self._extra_time = value
+
+    def assert_valid(self) -> None:
+        bound = self.is_training_program()
+        if bound != (self.training_program_role is not None):
+            raise ValueError(
+                "Participation program link requires role and participation to be set together."
+            )
+
+        contest = self.contest
+
+        if not bound:
+            if contest is not None and contest.training_program is not None:
+                raise ValueError(
+                    "Contest participations for training-program contests must be linked to a training program participation."
+                )
+            return
+
+        program_participation = self.training_program_participation
+        assert program_participation is not None
+
+        if program_participation.user is not self.user:
+            raise ValueError(
+                "Training program participation must reference the same user as contest participation."
+            )
+
+        program = program_participation.training_program
+        if program is None:
+            raise ValueError(
+                "Training program participation missing training program reference."
+            )
+
+        if self.training_program_role == "regular":
+            expected_contest = program.regular_contest
+        elif self.training_program_role == "home":
+            expected_contest = program.home_contest
+        else:
+            raise ValueError("Invalid training program contest role for participation.")
+
+        if expected_contest is None:
+            raise ValueError(
+                "Training program participation assigned to a role without corresponding contest."
+            )
+
+        if contest is not expected_contest:
+            raise ValueError(
+                "Contest participation does not match its training program role."
+            )
+
+
+class TrainingProgramParticipation(Base):
+    """Aggregate participation metadata for a user in a training program."""
+
+    __tablename__ = "training_program_participations"
+
+    id: int = Column(
+        Integer,
+        primary_key=True,
+    )
+
+    user_id: int = Column(
+        Integer,
+        ForeignKey(User.id, onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    training_program_id: int = Column(
+        Integer,
+        ForeignKey(TrainingProgram.id, onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    starting_time: datetime | None = Column(
+        DateTime,
+        nullable=True,
+    )
+
+    delay_time: timedelta = Column(
+        Interval,
+        CheckConstraint("delay_time >= '0 seconds'"),
+        nullable=False,
+        default=timedelta(),
+    )
+
+    extra_time: timedelta = Column(
+        Interval,
+        CheckConstraint("extra_time >= '0 seconds'"),
+        nullable=False,
+        default=timedelta(),
+    )
+
+    __table_args__ = (UniqueConstraint("training_program_id", "user_id"),)
+
+    user: User = relationship(
+        User,
+        back_populates="training_program_participations",
+    )
+
+    training_program: TrainingProgram = relationship(
+        TrainingProgram,
+        back_populates="training_program_participations",
+    )
+
+    participations: list[Participation] = relationship(
+        Participation,
+        back_populates="training_program_participation",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    @property
+    def regular_participation(self) -> Participation | None:
+        for participation in self.participations:
+            if participation.training_program_role == "regular":
+                return participation
+        return None
+
+    @regular_participation.setter
+    def regular_participation(self, participation: Participation | None) -> None:
+        self._assign_participation(participation, "regular")
+
+    @property
+    def home_participation(self) -> Participation | None:
+        for participation in self.participations:
+            if participation.training_program_role == "home":
+                return participation
+        return None
+
+    @home_participation.setter
+    def home_participation(self, participation: Participation | None) -> None:
+        self._assign_participation(participation, "home")
+
+    def _assign_participation(
+        self, participation: Participation | None, role: str
+    ) -> None:
+        current = (
+            self.regular_participation if role == "regular" else self.home_participation
+        )
+        if participation is current:
+            return
+
+        if participation is None:
+            if current is not None:
+                self.participations.remove(current)
+            return
+
+        if participation.training_program_participation not in (None, self):
+            raise ValueError(
+                "Participation already associated with another training program participation."
+            )
+
+        if current is not None:
+            self.participations.remove(current)
+
+        if participation not in self.participations:
+            self.participations.append(participation)
+
+        participation.training_program_role = role
+
+    @classmethod
+    def ensure(
+        cls,
+        sql_session: "Session",
+        training_program: TrainingProgram,
+        user: User,
+    ) -> "TrainingProgramParticipation":
+        participation = (
+            sql_session.query(cls)
+            .filter(cls.training_program == training_program)
+            .filter(cls.user == user)
+            .one_or_none()
+        )
+
+        if participation is None:
+            participation = cls(training_program=training_program, user=user)
+            sql_session.add(participation)
+
+        with participation.temporarily_invalid():
+            participation._ensure_contest_participation(
+                sql_session, training_program.regular_contest, user, "regular"
+            )
+            participation._ensure_contest_participation(
+                sql_session, training_program.home_contest, user, "home"
+            )
+
+        sql_session.flush([participation])
+
+        return participation
+
+    def _ensure_contest_participation(
+        self,
+        sql_session: "Session",
+        contest: "Contest | None",
+        user: User,
+        role: str,
+    ) -> None:
+        if contest is None:
+            existing = (
+                self.regular_participation
+                if role == "regular"
+                else self.home_participation
+            )
+            if existing is not None:
+                sql_session.delete(existing)
+            return
+
+        participation = (
+            sql_session.query(Participation)
+            .filter(Participation.contest == contest)
+            .filter(Participation.user == user)
+            .one_or_none()
+        )
+
+        if participation is None:
+            participation = Participation(contest=contest, user=user)
+            sql_session.add(participation)
+
+        participation.training_program_participation = self
+        participation.training_program_role = role
+
+    def assert_valid(self) -> None:
+        if self.training_program is None:
+            raise ValueError(
+                "Training program participation requires a training program."
+            )
+        if self.user is None:
+            raise ValueError("Training program participation requires a user.")
+
+        for participation in self.participations:
+            if participation.user is not self.user:
+                raise ValueError(
+                    "Linked contest participation must belong to the same user."
+                )
+            if participation.training_program_participation is not self:
+                raise ValueError(
+                    "Contest participation does not reference this training program participation."
+                )
+            if participation.training_program_role not in {"regular", "home"}:
+                raise ValueError(
+                    "Contest participation linked to training program has invalid role."
+                )
+
+        if (
+            sum(1 for p in self.participations if p.training_program_role == "regular")
+            > 1
+        ):
+            raise ValueError(
+                "Multiple contest participations assigned as regular for training program."
+            )
+        if sum(1 for p in self.participations if p.training_program_role == "home") > 1:
+            raise ValueError(
+                "Multiple contest participations assigned as home for training program."
+            )
+
+        regular_contest = self.training_program.regular_contest
+        home_contest = self.training_program.home_contest
+
+        regular = self.regular_participation
+        home = self.home_participation
+
+        if regular_contest is not None:
+            if regular is None or regular.contest is not regular_contest:
+                raise ValueError(
+                    "Regular contest participation missing or mismatched for training program."
+                )
+        elif regular is not None:
+            raise ValueError(
+                "Regular participation set but training program has no regular contest."
+            )
+
+        if home_contest is not None:
+            if home is None or home.contest is not home_contest:
+                raise ValueError(
+                    "Home contest participation missing or mismatched for training program."
+                )
+        elif home is not None:
+            raise ValueError(
+                "Home participation set but training program has no home contest."
+            )
 
 
 class Message(Base):

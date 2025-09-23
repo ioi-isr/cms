@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training program participants: {{ training_program.title }}</h1>
+</div>
+
+<form action="{{ url("training_program", training_program.id, "participants") }}" method="POST" class="inline-form">
+  {{ xsrf_form_html|safe }}
+  <input type="hidden" name="operation" value="Add" />
+  <label for="participant_user">Add participant:</label>
+  <select name="user_id" id="participant_user">
+    <option value="null" selected>Select a user</option>
+    {% for user in unassigned_users %}
+      <option value="{{ user.id }}">{{ user.username }} — {{ user.first_name }} {{ user.last_name }}</option>
+    {% endfor %}
+  </select>
+  <input type="submit" value="Add" {% if unassigned_users|length == 0 %}disabled{% endif %} />
+</form>
+
+<table class="bordered spaced">
+  <thead>
+    <tr>
+      <th>User</th>
+      <th>Regular contest</th>
+      <th>Home contest</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if program_participations|length == 0 %}
+      <tr>
+        <td colspan="4">No participants assigned.</td>
+      </tr>
+    {% endif %}
+    {% for participation in program_participations %}
+      <tr>
+        <td>{{ participation.user.username }}</td>
+        <td>
+          {% if participation.regular_participation %}
+            <a href="{{ url("contest", participation.regular_participation.contest.id, "user", participation.user.id, "edit") }}">
+              {{ participation.regular_participation.contest.name }}
+            </a>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if participation.home_participation %}
+            <a href="{{ url("contest", participation.home_participation.contest.id, "user", participation.user.id, "edit") }}">
+              {{ participation.home_participation.contest.name }}
+            </a>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          <form action="{{ url("training_program", training_program.id, "participants") }}" method="POST">
+            {{ xsrf_form_html|safe }}
+            <input type="hidden" name="operation" value="Remove" />
+            <input type="hidden" name="participation_id" value="{{ participation.id }}" />
+            <input type="submit" value="Remove" class="danger" />
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock core %}

@@ -55,6 +55,19 @@ class ContestUsersHandler(BaseHandler):
     def get(self, contest_id):
         self.contest = self.safe_get_item(Contest, contest_id)
 
+        if self.contest.training_program is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Contest managed by training program",
+                "Manage participants from the training program participants page.",
+            )
+            self.redirect(self.url(
+                "training_program",
+                self.contest.training_program.id,
+                "participants",
+            ))
+            return
+
         self.r_params = self.render_params()
         self.r_params["contest"] = self.contest
         self.r_params["unassigned_users"] = \
@@ -112,6 +125,19 @@ class RemoveParticipationHandler(BaseHandler):
         if participation is None:
             raise tornado.web.HTTPError(404)
 
+        if participation.training_program_participation is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Operation not allowed.",
+                "Remove participants from the training program page.",
+            )
+            self.redirect(self.url(
+                "training_program",
+                participation.training_program_participation.training_program.id,
+                "participants",
+            ))
+            return
+
         submission_query = self.sql_session.query(Submission)\
             .filter(Submission.participation == participation)
         self.render_params_for_remove_confirmation(submission_query)
@@ -133,6 +159,19 @@ class RemoveParticipationHandler(BaseHandler):
         )
 
         # Unassign the user from the contest.
+        if participation.training_program_participation is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Operation not allowed.",
+                "Remove participants from the training program page.",
+            )
+            self.redirect(self.url(
+                "training_program",
+                participation.training_program_participation.training_program.id,
+                "participants",
+            ))
+            return
+
         self.sql_session.delete(participation)
 
         if self.try_commit():
@@ -149,6 +188,19 @@ class AddContestUserHandler(BaseHandler):
         fallback_page = self.url("contest", contest_id, "users")
 
         self.contest = self.safe_get_item(Contest, contest_id)
+
+        if self.contest.training_program is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Operation not allowed.",
+                "Add participants from the training program participants page.",
+            )
+            self.redirect(self.url(
+                "training_program",
+                self.contest.training_program.id,
+                "participants",
+            ))
+            return
 
         try:
             user_id: str = self.get_argument("user_id")

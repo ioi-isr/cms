@@ -98,6 +98,7 @@ from .training_program import \
     RemoveTrainingProgramHandler, \
     TrainingProgramTasksHandler, \
     AddTrainingProgramTaskHandler
+from .training_program_user import TrainingProgramParticipantsHandler
 from .user import \
     AddUserHandler, \
     UserHandler, \
@@ -178,6 +179,7 @@ HANDLERS = [
     (r"/training_programs/([0-9]+)/remove", RemoveTrainingProgramHandler),
     (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
     (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),
+    (r"/training_program/([0-9]+)/participants", TrainingProgramParticipantsHandler),
     (r"/training_program/([0-9]+)", TrainingProgramHandler),
 
     # Tasks

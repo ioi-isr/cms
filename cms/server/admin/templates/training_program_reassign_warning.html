@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Confirm training program updates: {{ training_program.title }}</h1>
+</div>
+<p>
+  The requested changes require additional confirmation.
+  Review the information below carefully before proceeding.
+</p>
+
+{% if pending_moves %}
+<div class="panel">
+  <h2>Task reassignment</h2>
+  <p>The selected contests currently own the tasks listed below. Continuing will move these tasks under
+    <strong>{{ training_program.title }}</strong> and remove them from their contests.</p>
+  {% for move in pending_moves %}
+  <div class="sub_panel">
+    <h3>{{ move.label }}</h3>
+    <p>Tasks currently owned by <a href="{{ url("contest", move.contest.id) }}">{{ move.contest.name }}</a>:</p>
+    <ul>
+      {% for task in move.tasks %}
+      <li><a href="{{ url("task", task.id) }}">{{ task.name }}</a> – {{ task.title }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if data_loss_entries %}
+<div class="panel warning">
+  <h2>Participant data removal</h2>
+  <p>Changing the contest assignments will remove the following contest participations and all related data.</p>
+  <table class="bordered spaced">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Role</th>
+        <th>Contest</th>
+        <th>Submissions</th>
+        <th>User tests</th>
+        <th>Messages</th>
+        <th>Questions</th>
+        <th>Print jobs</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in data_loss_entries %}
+      <tr>
+        <td>{{ entry.user.username }}</td>
+        <td>{{ entry.role|capitalize }}</td>
+        <td>{{ entry.contest.name }}</td>
+        <td>{{ entry.counts.submissions }}</td>
+        <td>{{ entry.counts.user_tests }}</td>
+        <td>{{ entry.counts.messages }}</td>
+        <td>{{ entry.counts.questions }}</td>
+        <td>{{ entry.counts.printjobs }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="totals">
+        <td colspan="3">Totals</td>
+        <td>{{ data_loss_totals.submissions }}</td>
+        <td>{{ data_loss_totals.user_tests }}</td>
+        <td>{{ data_loss_totals.messages }}</td>
+        <td>{{ data_loss_totals.questions }}</td>
+        <td>{{ data_loss_totals.printjobs }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="strong">This operation cannot be undone.</p>
+</div>
+{% endif %}
+
+<form action="{{ url("training_program", training_program.id) }}" method="POST" class="inline-form">
+  {{ xsrf_form_html|safe }}
+  <input type="hidden" name="name" value="{{ new_name }}" />
+  <input type="hidden" name="title" value="{{ new_title }}" />
+  <input type="hidden" name="regular_contest" value="{{ regular_contest_id }}" />
+  <input type="hidden" name="home_contest" value="{{ home_contest_id }}" />
+  <input type="hidden" name="confirm_change" value="yes" />
+  <div class="form_actions">
+    <input type="submit" value="Proceed" class="danger" />
+    <a class="button secondary" href="{{ url("training_program", training_program.id) }}">Cancel</a>
+  </div>
+</form>
+{% endblock core %}

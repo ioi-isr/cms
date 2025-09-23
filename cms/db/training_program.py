@@ -29,7 +29,7 @@ from . import Base, Codename
 if typing.TYPE_CHECKING:
     from .contest import Contest
     from .task import Task
-    from .user import Participation
+    from .user import TrainingProgramParticipation
 
 
 class TrainingProgram(Base):
@@ -70,8 +70,8 @@ class TrainingProgram(Base):
         passive_deletes=True,
     )
 
-    participations: list["Participation"] = relationship(
-        "Participation",
+    training_program_participations: list["TrainingProgramParticipation"] = relationship(
+        "TrainingProgramParticipation",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="training_program",

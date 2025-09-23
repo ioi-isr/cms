@@ -71,6 +71,7 @@ from cms.db import (
     PrintJob,
     Announcement,
     Participation,
+    TrainingProgram,
     Base,
     enumerate_files,
 )
@@ -175,6 +176,12 @@ class DumpExporter:
             with SessionGen() as session:
                 contests: list[Contest] = session.query(Contest).all()
                 self.contests_ids = [contest.id for contest in contests]
+                training_programs: list[TrainingProgram] = session.query(
+                    TrainingProgram
+                ).all()
+                self.training_program_ids = [
+                    training_program.id for training_program in training_programs
+                ]
                 if not skip_users:
                     users: list[User] = session.query(User).all()
                     self.users_ids = [user.id for user in users]
@@ -191,6 +198,7 @@ class DumpExporter:
             self.contests_ids = contest_ids
             self.users_ids = []
             self.tasks_ids = []
+            self.training_program_ids = []
         self.dump_files = dump_files
         self.dump_model = dump_model
         self.skip_generated = skip_generated
@@ -269,9 +277,12 @@ class DumpExporter:
 
                 data: dict[str, object] = dict()
 
-                for cls, lst in [(Contest, self.contests_ids),
-                                 (User, self.users_ids),
-                                 (Task, self.tasks_ids)]:
+                for cls, lst in [
+                    (Contest, self.contests_ids),
+                    (User, self.users_ids),
+                    (Task, self.tasks_ids),
+                    (TrainingProgram, self.training_program_ids),
+                ]:
                     for i in lst:
                         cls: type[Base]
                         obj = cls.get_from_id(i, session)

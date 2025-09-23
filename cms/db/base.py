@@ -22,6 +22,7 @@
 import ipaddress
 from datetime import datetime, timedelta
 import typing
+from contextlib import contextmanager
 
 from sqlalchemy.dialects.postgresql import ARRAY, CIDR, JSONB, OID
 from sqlalchemy.ext.declarative import as_declarative
@@ -84,6 +85,32 @@ class Base:
     @property
     def sa_identity_key(self):
         return self.sa_mapper.identity_key_from_instance(self)
+
+    def _get_validation_suppression(self) -> int:
+        return getattr(self, "_validation_suppression", 0)
+
+    def _set_validation_suppression(self, value: int) -> None:
+        if value <= 0:
+            if hasattr(self, "_validation_suppression"):
+                delattr(self, "_validation_suppression")
+        else:
+            setattr(self, "_validation_suppression", value)
+
+    @property
+    def validation_enabled(self) -> bool:
+        return self._get_validation_suppression() == 0
+
+    @contextmanager
+    def temporarily_invalid(self, *, validate: bool = True):
+        self._set_validation_suppression(self._get_validation_suppression() + 1)
+        try:
+            yield self
+        finally:
+            self._set_validation_suppression(self._get_validation_suppression() - 1)
+            if validate and self.validation_enabled:
+                validator = getattr(self, "assert_valid", None)
+                if validator is not None:
+                    validator()
 
     # This method gets called after the mapper has been initialized
     # (i.e. all properties, both columns and relationships) are ready to use
