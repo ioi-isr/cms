@@ -12,7 +12,7 @@
   <select name="user_id" id="participant_user">
     <option value="null" selected>Select a user</option>
     {% for user in unassigned_users %}
-      <option value="{{ user.id }}">{{ user.username }} — {{ user.first_name }} {{ user.last_name }}</option>
+      <option value="{{ user.id }}">{{ user.username }} - {{ user.first_name }} {{ user.last_name }}</option>
     {% endfor %}
   </select>
   <input type="submit" value="Add" {% if unassigned_users|length == 0 %}disabled{% endif %} />
@@ -21,9 +21,9 @@
 <table class="bordered spaced">
   <thead>
     <tr>
-      <th>User</th>
-      <th>Regular contest</th>
-      <th>Home contest</th>
+      <th>Username</th>
+      <th>First name</th>
+      <th>Last name</th>
       <th></th>
     </tr>
   </thead>
@@ -35,25 +35,13 @@
     {% endif %}
     {% for participation in program_participations %}
       <tr>
-        <td>{{ participation.user.username }}</td>
         <td>
-          {% if participation.regular_participation %}
-            <a href="{{ url("contest", participation.regular_participation.contest.id, "user", participation.user.id, "edit") }}">
-              {{ participation.regular_participation.contest.name }}
-            </a>
-          {% else %}
-            —
-          {% endif %}
+          <a href="{{ url("training_program", training_program.id, "user", participation.user.id, "edit") }}">
+            {{ participation.user.username }}
+          </a>
         </td>
-        <td>
-          {% if participation.home_participation %}
-            <a href="{{ url("contest", participation.home_participation.contest.id, "user", participation.user.id, "edit") }}">
-              {{ participation.home_participation.contest.name }}
-            </a>
-          {% else %}
-            —
-          {% endif %}
-        </td>
+        <td>{{ participation.user.first_name }}</td>
+        <td>{{ participation.user.last_name }}</td>
         <td>
           <form action="{{ url("training_program", training_program.id, "participants") }}" method="POST">
             {{ xsrf_form_html|safe }}

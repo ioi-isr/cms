@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block core %}
+<h1>
+  Participation of <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
+  in <a href="{{ url("training_program", training_program.id) }}">{{ training_program.title }}</a>
+</h1>
+
+<h2 id="title_program_settings" class="toggling_on">Program settings</h2>
+<div id="program_settings">
+  <form action="{{ url("training_program", training_program.id, "user", selected_user.id, "edit") }}" method="POST">
+    {{ xsrf_form_html|safe }}
+    <input type="hidden" name="section" value="program" />
+    <table>
+      <tr>
+        <td>
+          <span class="info" title="Time of first login during this program, used for USACO-style contests. Example: '2015-12-31 15:00:00'."></span>
+          Time of first login (in UTC)
+        </td>
+        <td>
+          <input type="text" name="starting_time" value="{{ program_participation.starting_time if program_participation.starting_time is not none else "" }}" />
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="Seconds of delay to acknowledge lost time before the start of the program. Shifts all contest events for this user."></span>
+          Delay
+        </td>
+        <td>
+          <input type="text" name="delay_time" value="{{ program_participation.delay_time.total_seconds()|int }}" />
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="Seconds of extra time granted to the user during the program. Extends contest end time for this user."></span>
+          Extra time
+        </td>
+        <td>
+          <input type="text" name="extra_time" value="{{ program_participation.extra_time.total_seconds()|int }}" />
+        </td>
+      </tr>
+    </table>
+    <input type="submit" value="Update" />
+    <input type="reset" value="Reset" />
+  </form>
+  <div class="hr"></div>
+</div>
+
+{% macro participation_section(role_label, role_key, participation) %}
+  <h2 id="title_{{ role_key }}_settings" class="toggling_on">{{ role_label }} participation</h2>
+  <div id="{{ role_key }}_settings">
+    {% if participation %}
+      <form action="{{ url("training_program", training_program.id, "user", selected_user.id, "edit") }}" method="POST">
+        {{ xsrf_form_html|safe }}
+        <input type="hidden" name="section" value="{{ role_key }}" />
+        <table>
+          <tr>
+            <td>
+              Contest
+            </td>
+            <td>
+              {{ participation.contest.name }}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <span class="info" title="Code of the team of the contestant in this contest. Only used in the external ranking."></span>
+              Team
+            </td>
+            <td>
+              <input list="{{ role_key }}_teams" name="team" value="{{ participation.team.code if participation.team is not none else "" }}" />
+              <datalist id="{{ role_key }}_teams">
+                {% for team in teams %}
+                  <option value="{{ team.code }}"></option>
+                {% endfor %}
+              </datalist>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <span class="info" title="Contestant password for this contest. If empty, the contestant's main password is used."></span>
+              Password <strong style="color:#c00; font-weight: 700;">(only inside {{ participation.contest.name }})</strong>
+            </td>
+            <td>
+              {% set hashed_password = participation.password %}
+              {% set current_method = "plaintext" %}
+              {% set current_password = "" %}
+              {% if hashed_password is not none %}
+                {% set parsed = parse_authentication(hashed_password) %}
+                {% set current_method = parsed[0] %}
+                {% set current_password = parsed[1] %}
+              {% endif %}
+              <input type="text" name="password" id="{{ role_key }}_password" value="{{ current_password if current_method == "plaintext" else "" }}" />
+              <select name="method" id="{{ role_key }}_method">
+                <option value="plaintext" {% if current_method == "plaintext" %}selected{% endif %}>Plain text</option>
+                <option value="bcrypt" {% if current_method == "bcrypt" %}selected{% endif %}>Hashed (bcrypt)</option>
+              </select>
+              <script>
+                (function() {
+                  var methodField = document.getElementById("{{ role_key }}_method");
+                  var passwordField = document.getElementById("{{ role_key }}_password");
+                  if (!methodField || !passwordField) { return; }
+                  function updatePlaceholder() {
+                    if (methodField.value !== "plaintext") {
+                      passwordField.placeholder = "The password is hashed, type a new one in here to change it";
+                    } else {
+                      passwordField.placeholder = "";
+                    }
+                  }
+                  methodField.addEventListener("change", updatePlaceholder);
+                  updatePlaceholder();
+                })();
+              </script>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <span class="info" title="Whether the contestant's results will be visible in the external ranking."></span>
+              Hidden participation
+            </td>
+            <td><input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %} /></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="info" title="Whether the contestant is unrestricted by submission and time limits."></span>
+              Unrestricted participation
+            </td>
+            <td><input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %} /></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="info" title="Comma-separated IP addresses or subnets used for IP-based restrictions or autologin."></span>
+              IP address or subnet
+            </td>
+            <td><input type="text" name="ip" value="{{ participation.ip|map('string')|join(', ') if participation.ip is not none else "" }}" /></td>
+          </tr>
+        </table>
+        <input type="submit" value="Update" />
+        <input type="reset" value="Reset" />
+      </form>
+    {% else %}
+      <div class="notifications">
+        <div class="notification info">No {{ role_label|lower }} available for this training program.</div>
+      </div>
+    {% endif %}
+    <div class="hr"></div>
+  </div>
+{% endmacro %}
+
+{{ participation_section("Regular contest", "regular", regular_participation) }}
+{{ participation_section("Home contest", "home", home_participation) }}
+
+{% endblock core %}

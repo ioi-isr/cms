@@ -244,6 +244,22 @@ class ParticipationHandler(BaseHandler):
         if participation is None:
             raise tornado.web.HTTPError(404)
 
+        if participation.is_training_program():
+            program_participation = participation.training_program_participation
+            self.service.add_notification(
+                make_datetime(),
+                "Contest participation managed by training program",
+                "Edit the participant from the training program page.",
+            )
+            self.redirect(self.url(
+                "training_program",
+                program_participation.training_program.id,
+                "user",
+                participation.user.id,
+                "edit",
+            ))
+            return
+
         submission_query = self.sql_session.query(Submission)\
             .filter(Submission.participation == participation)
         page = int(self.get_query_argument("page", 0))
@@ -270,6 +286,22 @@ class ParticipationHandler(BaseHandler):
         # Check that the participation is valid.
         if participation is None:
             raise tornado.web.HTTPError(404)
+
+        if participation.is_training_program():
+            program_participation = participation.training_program_participation
+            self.service.add_notification(
+                make_datetime(),
+                "Contest participation managed by training program",
+                "Edit the participant from the training program page.",
+            )
+            self.redirect(self.url(
+                "training_program",
+                program_participation.training_program.id,
+                "user",
+                participation.user.id,
+                "edit",
+            ))
+            return
 
         try:
             attrs = participation.get_attrs()
