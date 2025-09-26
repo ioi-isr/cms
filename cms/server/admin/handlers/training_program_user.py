@@ -77,6 +77,10 @@ class TrainingProgramParticipantsHandler(BaseHandler):
                 if participation.training_program is not self.training_program:
                     raise tornado.web.HTTPError(404)
                 user = participation.user
+
+                for contest_participation in list(participation.participations):
+                    self.sql_session.delete(contest_participation)
+
                 self.sql_session.delete(participation)
                 message = "Participant removed"
                 description = f"{user.username} removed from the training program."

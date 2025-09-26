@@ -512,6 +512,13 @@ class TrainingProgramHandler(BaseHandler):
                 for idx, task in enumerate(ordered):
                     task.num = idx
 
+            if regular_changed and previous_regular_contest is not None:
+                program.regular_contest = None
+            if home_changed and previous_home_contest is not None:
+                program.home_contest = None
+
+            self.sql_session.flush([program])
+
             program.regular_contest = regular_contest
             program.home_contest = home_contest
 

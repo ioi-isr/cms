@@ -476,47 +476,12 @@ class TrainingProgramParticipation(Base):
                 return participation
         return None
 
-    @regular_participation.setter
-    def regular_participation(self, participation: Participation | None) -> None:
-        self._assign_participation(participation, "regular")
-
     @property
     def home_participation(self) -> Participation | None:
         for participation in self.participations:
             if participation.training_program_role == "home":
                 return participation
         return None
-
-    @home_participation.setter
-    def home_participation(self, participation: Participation | None) -> None:
-        self._assign_participation(participation, "home")
-
-    def _assign_participation(
-        self, participation: Participation | None, role: str
-    ) -> None:
-        current = (
-            self.regular_participation if role == "regular" else self.home_participation
-        )
-        if participation is current:
-            return
-
-        if participation is None:
-            if current is not None:
-                self.participations.remove(current)
-            return
-
-        if participation.training_program_participation not in (None, self):
-            raise ValueError(
-                "Participation already associated with another training program participation."
-            )
-
-        if current is not None:
-            self.participations.remove(current)
-
-        if participation not in self.participations:
-            self.participations.append(participation)
-
-        participation.training_program_role = role
 
     @classmethod
     def ensure(
@@ -544,7 +509,7 @@ class TrainingProgramParticipation(Base):
                 sql_session, training_program.home_contest, user, "home"
             )
 
-        sql_session.flush([participation])
+        sql_session.flush()
 
         return participation
 
@@ -555,14 +520,15 @@ class TrainingProgramParticipation(Base):
         user: User,
         role: str,
     ) -> None:
+        existing = (
+            self.regular_participation if role == "regular" else self.home_participation
+        )
+        if existing is not None and existing.contest != contest:
+            existing.training_program_participation = None
+            existing.training_program_role = None
+            sql_session.delete(existing)
+
         if contest is None:
-            existing = (
-                self.regular_participation
-                if role == "regular"
-                else self.home_participation
-            )
-            if existing is not None:
-                sql_session.delete(existing)
             return
 
         participation = (
