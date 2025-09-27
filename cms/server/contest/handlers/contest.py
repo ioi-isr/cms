@@ -254,10 +254,16 @@ class ContestHandler(BaseHandler):
         return: the corresponding task object, if found.
 
         """
-        return self.sql_session.query(Task) \
-            .filter(Task.contest == self.contest) \
-            .filter(Task.name == task_name) \
-            .one_or_none()
+        query = self.sql_session.query(Task).filter(Task.name == task_name)
+
+        if self.contest.training_program is not None:
+            query = query.filter(
+                Task.training_program == self.contest.training_program
+            )
+        else:
+            query = query.filter(Task.contest == self.contest)
+
+        return query.one_or_none()
 
     def get_submission(self, task: Task, opaque_id: str | int) -> Submission | None:
         """Return the num-th contestant's submission on the given task.
@@ -334,3 +340,4 @@ class ContestHandler(BaseHandler):
 
 class FileHandler(ContestHandler, FileHandlerMixin):
     pass
+

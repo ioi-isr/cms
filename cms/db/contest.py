@@ -328,6 +328,14 @@ class Contest(Base):
             return self.training_program.tasks
         return self.tasks
 
+    def contains_task(self, task: "Task") -> bool:
+        """Return whether the given task belongs to this contest."""
+        if task is None:
+            return False
+        if self.training_program is not None:
+            return task.training_program is self.training_program
+        return task.contest is self
+
     def phase(self, timestamp: datetime) -> int:
         """Return: -1 if contest isn't started yet at time timestamp,
                     0 if the contest is active at time timestamp,

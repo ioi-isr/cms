@@ -69,12 +69,15 @@ def _filter_submission_query(
 
     """
     if task is not None:
-        if contest is not None and contest is not task.contest:
+        if contest is not None and not contest.contains_task(task):
             raise ValueError("contest and task don't match")
         q = q.filter(cls.task == task)
     elif contest is not None:
-        q = q.join(cls.task) \
-            .filter(Task.contest == contest)
+        q = q.join(cls.task)
+        if contest.training_program is not None:
+            q = q.filter(Task.training_program == contest.training_program)
+        else:
+            q = q.filter(Task.contest == contest)
     else:
         raise ValueError("need at least one of contest and task")
     q = q.filter(cls.participation == participation)

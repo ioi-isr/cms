@@ -119,7 +119,7 @@ def accept_submission(
 
     """
     contest = participation.contest
-    assert task.contest is contest
+    assert contest.contains_task(task)
 
     # Check whether the contestant is allowed to submit.
 
@@ -268,14 +268,18 @@ def accept_submission(
     received_filenames_joined = ",".join(
         [file.filename for file in received_files])
 
-    submission = Submission(
+    submission_kwargs = dict(
         timestamp=timestamp,
         opaque_id=Submission.generate_opaque_id(sql_session, participation.id),
         language=language.name if language is not None else None,
         task=task,
         participation=participation,
         comment=received_filenames_joined,
-        official=official)
+        official=official,
+    )
+    if contest.training_program is not None:
+        submission_kwargs["contest"] = contest
+    submission = Submission(**submission_kwargs)
     sql_session.add(submission)
 
     for codename, digest in digests.items():
@@ -336,7 +340,7 @@ def accept_user_test(
 
     """
     contest = participation.contest
-    assert task.contest is contest
+    assert contest.contains_task(task)
 
     # Check whether the task is testable.
 
@@ -484,12 +488,16 @@ def accept_user_test(
     logger.info("All files stored for test sent by %s",
                 participation.user.username)
 
-    user_test = UserTest(
+    user_test_kwargs = dict(
         timestamp=timestamp,
         language=language.name if language is not None else None,
         input=digests["input"],
         participation=participation,
-        task=task)
+        task=task,
+    )
+    if contest.training_program is not None:
+        user_test_kwargs["contest"] = contest
+    user_test = UserTest(**user_test_kwargs)
     sql_session.add(user_test)
 
     for codename, digest in digests.items():
