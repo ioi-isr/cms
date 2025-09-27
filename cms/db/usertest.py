@@ -32,7 +32,7 @@ from sqlalchemy.types import Integer, Float, String, Unicode, DateTime, \
     BigInteger
 
 from . import Filename, FilenameSchema, Digest, Base, Participation, Task, \
-    Dataset, Contest
+    Dataset
 
 
 class UserTest(Base):
@@ -46,8 +46,7 @@ class UserTest(Base):
         Integer,
         primary_key=True)
 
-    # User and Contest, thus Participation (id and object) that did the
-    # submission.
+    # Participation (id and object) that requested the user test.
     participation_id: int = Column(
         Integer,
         ForeignKey(Participation.id,
@@ -57,14 +56,6 @@ class UserTest(Base):
     participation: Participation = relationship(
         Participation,
         back_populates="user_tests")
-
-    contest_id: int | None = Column(
-        Integer,
-        ForeignKey(Contest.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=True,
-        index=True)
-    contest: Contest | None = relationship(Contest)
 
     # Task (id and object) of the test.
     task_id: int = Column(
@@ -119,10 +110,6 @@ class UserTest(Base):
         participation = self.participation
         if participation is None:
             return
-        expects_contest = participation.is_training_program()
-        has_contest = self.contest_id is not None
-        if expects_contest != has_contest:
-            raise ValueError("UserTest must set contest_id iff participation belongs to a training program.")
 
     def get_result(self, dataset: Dataset | None = None) -> "UserTestResult | None":
         """Return the result associated to a dataset.

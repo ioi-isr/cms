@@ -642,14 +642,6 @@ class Message(Base):
         Participation,
         back_populates="messages")
 
-    contest_id: int | None = Column(
-        Integer,
-        ForeignKey(Contest.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=True,
-        index=True)
-    contest: Contest | None = relationship(Contest)
-
     # Admin that sent the message (or null if the admin has been later
     # deleted). Admins only loosely "own" a message, so we do not back
     # populate any field in Admin, nor we delete the message when the admin
@@ -663,14 +655,7 @@ class Message(Base):
     admin: Admin | None = relationship(Admin)
 
     def assert_valid(self):
-        participation = self.participation
-        if participation is None:
-            return
-        expects_contest = participation.is_training_program()
-        has_contest = self.contest_id is not None
-        if expects_contest != has_contest:
-            raise ValueError("Message must set contest_id iff participation belongs to a training program.")
-
+        return
 
 class Question(Base):
     """Class to store a private question from the user to the
@@ -737,14 +722,6 @@ class Question(Base):
         Participation,
         back_populates="questions")
 
-    contest_id: int | None = Column(
-        Integer,
-        ForeignKey(Contest.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=True,
-        index=True)
-    contest: Contest | None = relationship(Contest)
-
     # Latest admin to interact with the question (null if no interactions
     # yet, or if the admin has been later deleted). Admins only loosely "own" a
     # question, so we do not back populate any field in Admin, nor delete the
@@ -758,10 +735,4 @@ class Question(Base):
     admin: Admin | None = relationship(Admin)
 
     def assert_valid(self):
-        participation = self.participation
-        if participation is None:
-            return
-        expects_contest = participation.is_training_program()
-        has_contest = self.contest_id is not None
-        if expects_contest != has_contest:
-            raise ValueError("Question must set contest_id iff participation belongs to a training program.")
+        return

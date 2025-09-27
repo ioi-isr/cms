@@ -277,8 +277,6 @@ def accept_submission(
         comment=received_filenames_joined,
         official=official,
     )
-    if contest.training_program is not None:
-        submission_kwargs["contest"] = contest
     submission = Submission(**submission_kwargs)
     sql_session.add(submission)
 
@@ -495,8 +493,6 @@ def accept_user_test(
         participation=participation,
         task=task,
     )
-    if contest.training_program is not None:
-        user_test_kwargs["contest"] = contest
     user_test = UserTest(**user_test_kwargs)
     sql_session.add(user_test)
 
