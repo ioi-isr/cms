@@ -122,3 +122,13 @@ class TrainingProgram(Base):
                 raise ValueError("Contest already belongs to another training program.")
             contest.training_program = self
             contest.training_program_role = "home"
+
+    def contest_ids(self) -> list[int]:
+        """Return the contest ids assigned to this training program."""
+
+        return [
+            contest.id
+            for contest in (self.regular_contest, self.home_contest)
+            if contest is not None
+        ]
+

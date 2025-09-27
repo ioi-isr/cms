@@ -9,15 +9,16 @@ utils.show_page("questions", 1);
 {% block core %}
 
 <div class="core_title">
-  <h1>Questions</h1>
+  <h1>{{ question_title if question_title is defined else "Questions" }}</h1>
 </div>
 
+{% set training_redirect = question_training_redirect if question_training_redirect is defined else none %}
 {% if questions != [] %}
 <div id="questions" class="notifications">
   <div id="page_selector_questions"></div>
   <div id="paged_content_questions">
   {% for msg in questions %}
-    {{ macro_question.question(msg, none) }}
+    {{ macro_question.question(msg, none, training_redirect) }}
   {% endfor %}
   </div>
 </div>

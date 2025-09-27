@@ -50,7 +50,9 @@ user_id (int|None): if we are rendering one of the questions on a single user's
               {% endif %}
               {% if training_redirect %}
                 <input type="hidden" name="training_program_id" value="{{ training_redirect.program_id }}" />
-                <input type="hidden" name="training_program_user_id" value="{{ training_redirect.user_id }}" />
+                {% if training_redirect.user_id is defined %}
+                  <input type="hidden" name="training_program_user_id" value="{{ training_redirect.user_id }}" />
+                {% endif %}
               {% endif %}
               {% if msg.admin is none %}
                 <input type="hidden" name="claim" value="yes"/>
@@ -70,7 +72,9 @@ user_id (int|None): if we are rendering one of the questions on a single user's
         {% endif %}
         {% if training_redirect %}
           <input type="hidden" name="training_program_id" value="{{ training_redirect.program_id }}" />
-          <input type="hidden" name="training_program_user_id" value="{{ training_redirect.user_id }}" />
+          {% if training_redirect.user_id is defined %}
+            <input type="hidden" name="training_program_user_id" value="{{ training_redirect.user_id }}" />
+          {% endif %}
         {% endif %}
         {% if not msg.ignored %}
           <input type="hidden" name="ignore" value="yes"/>
@@ -100,7 +104,9 @@ user_id (int|None): if we are rendering one of the questions on a single user's
         {% endif %}
         {% if training_redirect %}
           <input type="hidden" name="training_program_id" value="{{ training_redirect.program_id }}" />
-          <input type="hidden" name="training_program_user_id" value="{{ training_redirect.user_id }}" />
+          {% if training_redirect.user_id is defined %}
+            <input type="hidden" name="training_program_user_id" value="{{ training_redirect.user_id }}" />
+          {% endif %}
         {% endif %}
         Precompiled answer:
         <select name="reply_question_quick_answer" onchange="utils.update_additional_answer(event, this);">

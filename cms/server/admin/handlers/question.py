@@ -36,8 +36,9 @@ except:
     collections.MutableMapping = collections.abc.MutableMapping
 
 import tornado.web
+from sqlalchemy.orm import subqueryload
 
-from cms.db import Contest, Question, Participation
+from cms.db import Contest, Question, Participation, TrainingProgram
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 
@@ -62,6 +63,51 @@ class QuestionsHandler(BaseHandler):
         self.render("questions.html", **self.r_params)
 
 
+class TrainingProgramQuestionsHandler(BaseHandler):
+    """Show consolidated questions for a training program."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, program_id: str):
+        program = self.safe_get_item(TrainingProgram, program_id)
+        self.training_program = program
+
+        regular_questions = self._collect_contest_questions(program.regular_contest)
+        home_questions = self._collect_contest_questions(program.home_contest)
+
+        self.r_params = self.render_params()
+        self.r_params.update(
+            {
+                "training_program": program,
+                "regular_contest": program.regular_contest,
+                "home_contest": program.home_contest,
+                "regular_questions": regular_questions,
+                "home_questions": home_questions,
+            }
+        )
+        self.render("training_program_questions.html", **self.r_params)
+
+    def _collect_contest_questions(
+        self, contest: Contest | None
+    ) -> list[Question] | None:
+        if contest is None:
+            return None
+
+        query = (
+            self.sql_session.query(Question)
+            .join(Participation)
+            .filter(Participation.contest == contest)
+            .options(
+                subqueryload(Question.participation).subqueryload(Participation.user)
+            )
+            .options(
+                subqueryload(Question.participation).subqueryload(Participation.contest)
+            )
+            .options(subqueryload(Question.admin))
+            .order_by(Question.question_timestamp.desc())
+            .order_by(Question.id)
+        )
+        return query.all()
+
 
 class QuestionActionHandler(BaseHandler, metaclass=ABCMeta):
     """Base class for handlers for actions on questions."""
@@ -80,14 +126,17 @@ class QuestionActionHandler(BaseHandler, metaclass=ABCMeta):
         )
         user_id = self.get_argument("user_id", None)
 
-        if training_program_id and training_program_user_id:
-            ref = self.url(
-                "training_program",
-                training_program_id,
-                "user",
-                training_program_user_id,
-                "edit",
-            )
+        if training_program_id:
+            if training_program_user_id:
+                ref = self.url(
+                    "training_program",
+                    training_program_id,
+                    "user",
+                    training_program_user_id,
+                    "edit",
+                )
+            else:
+                ref = self.url("training_program", training_program_id, "questions")
         elif user_id is not None:
             ref = self.url("contest", contest_id, "user", user_id, "edit")
         else:

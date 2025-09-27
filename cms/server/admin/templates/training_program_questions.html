@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% import "macro/question.html" as macro_question with context %}
+
+{% block js_init %}
+{% if regular_questions %}
+utils.show_page("regular_questions", 1);
+{% endif %}
+{% if home_questions %}
+utils.show_page("home_questions", 1);
+{% endif %}
+{% endblock js_init %}
+
+{% macro contest_section(title, dom_id, contest, questions, redirect) %}
+  <h2 id="title_{{ dom_id }}" class="toggling_on">{{ title }}</h2>
+  <div id="{{ dom_id }}">
+    {% if contest is none %}
+      <div class="notifications">
+        <div class="notification info">No contest configured.</div>
+      </div>
+    {% else %}
+      <p>Contest: <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a></p>
+      {% if questions %}
+        <div class="notifications">
+          <div id="page_selector_{{ dom_id }}"></div>
+          <div id="paged_content_{{ dom_id }}">
+          {% for msg in questions %}
+            {{ macro_question.question(msg, none, redirect) }}
+          {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        <p>No questions.</p>
+      {% endif %}
+    {% endif %}
+    <div class="hr"></div>
+  </div>
+{% endmacro %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training program questions: {{ training_program.title }}</h1>
+</div>
+
+{% set training_redirect = {"program_id": training_program.id} %}
+
+{{ contest_section("Regular contest", "regular_questions", regular_contest, regular_questions, training_redirect) }}
+{{ contest_section("Home contest", "home_questions", home_contest, home_questions, training_redirect) }}
+
+{% endblock core %}

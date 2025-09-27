@@ -39,6 +39,7 @@ from .announcement import \
     AnnouncementHandler
 from .question import \
     QuestionsHandler, \
+    TrainingProgramQuestionsHandler, \
     QuestionReplyHandler, \
     QuestionIgnoreHandler, \
     QuestionClaimHandler
@@ -192,6 +193,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/participants", TrainingProgramParticipantsHandler),
     (r"/training_program/([0-9]+)/participants/add", AddTrainingProgramParticipantHandler),
     (r"/training_program/([0-9]+)/participant/([0-9]+)/remove", RemoveTrainingProgramParticipantHandler),
+    (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
     (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
     (r"/training_program/([0-9]+)/user_tests", TrainingProgramUserTestsHandler),
     (r"/training_program/([0-9]+)/user/([0-9]+)/edit", TrainingProgramParticipationHandler),
@@ -261,7 +263,4 @@ HANDLERS = [
     # * /static, defined in cms/io/web_service.py
 ]
 
-
 __all__ = ["HANDLERS"]
-
-
