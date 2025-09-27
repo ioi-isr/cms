@@ -111,6 +111,7 @@ class TaskHandler(BaseHandler):
     def get(self, task_id):
         task = self.safe_get_item(Task, task_id)
         self.contest = task.contest
+        self.training_program = task.training_program
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
@@ -231,6 +232,7 @@ class AddStatementHandler(BaseHandler):
     def get(self, task_id):
         task = self.safe_get_item(Task, task_id)
         self.contest = task.contest
+        self.training_program = task.training_program
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
@@ -319,6 +321,7 @@ class AddAttachmentHandler(BaseHandler):
     def get(self, task_id):
         task = self.safe_get_item(Task, task_id)
         self.contest = task.contest
+        self.training_program = task.training_program
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
@@ -397,6 +400,7 @@ class AddDatasetHandler(BaseHandler):
     def get(self, task_id):
         task = self.safe_get_item(Task, task_id)
         self.contest = task.contest
+        self.training_program = task.training_program
 
         original_dataset = None
         description = "Default"
@@ -492,6 +496,8 @@ class RemoveTaskHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, task_id):
         task = self.safe_get_item(Task, task_id)
+        self.contest = task.contest
+        self.training_program = task.training_program
         submission_query = self.sql_session.query(Submission)\
             .filter(Submission.task == task)
 
