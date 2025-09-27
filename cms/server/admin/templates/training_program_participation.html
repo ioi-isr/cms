@@ -1,3 +1,6 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+{% import "macro/submission.html" as macro_submission %}
+
 {% extends "base.html" %}
 
 {% block core %}
@@ -46,7 +49,7 @@
   <div class="hr"></div>
 </div>
 
-{% macro participation_section(role_label, role_key, participation) %}
+{% macro participation_section(role_label, role_key, participation, submission_data) %}
   <h2 id="title_{{ role_key }}_settings" class="toggling_on">{{ role_label }} participation</h2>
   <div id="{{ role_key }}_settings">
     {% if participation %}
@@ -138,6 +141,29 @@
         <input type="submit" value="Update" />
         <input type="reset" value="Reset" />
       </form>
+
+      {% if submission_data %}
+        <h3 id="title_{{ role_key }}_submissions" class="toggling_on">Submissions</h3>
+        <div id="{{ role_key }}_submissions">
+          <p>
+            Reevaluate all {{ submission_data.count }} submissions for this user in this contest (for all datasets)
+            {{ macro_reevaluation_buttons.reevaluation_buttons(
+               admin.permission_all,
+               url("training_program", participation.contest.id, "user", selected_user.id, "edit"),
+               participation_id=participation.id) }}
+          </p>
+
+          {{ macro_submission.rows(
+             admin,
+             url,
+             submission_data.page_url,
+             submission_data.submissions,
+             submission_data.page,
+             submission_data.pages) }}
+
+          <div class="hr"></div>
+        </div>
+      {% endif %}
     {% else %}
       <div class="notifications">
         <div class="notification info">No {{ role_label|lower }} available for this training program.</div>
@@ -147,7 +173,7 @@
   </div>
 {% endmacro %}
 
-{{ participation_section("Regular contest", "regular", regular_participation) }}
-{{ participation_section("Home contest", "home", home_participation) }}
+{{ participation_section("Regular contest", "regular", regular_participation, regular_submission_data) }}
+{{ participation_section("Home contest", "home", home_participation, home_submission_data) }}
 
 {% endblock core %}

@@ -7,7 +7,14 @@ from datetime import timedelta
 import tornado.web
 from sqlalchemy.orm import joinedload
 
-from cms.db import Participation, Team, TrainingProgram, TrainingProgramParticipation, User
+from cms.db import (
+    Participation,
+    Submission,
+    Team,
+    TrainingProgram,
+    TrainingProgramParticipation,
+    User,
+)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -181,14 +188,56 @@ class TrainingProgramParticipationHandler(BaseHandler):
         if program_participation is None:
             raise tornado.web.HTTPError(404)
 
+        regular_participation = program_participation.regular_participation
+        home_participation = program_participation.home_participation
+
+        regular_page = self.get_page_argument("regular_page")
+        home_page = self.get_page_argument("home_page")
+
+        page_components = (
+            "training_program",
+            self.training_program.id,
+            "user",
+            user.id,
+            "edit",
+        )
+
+        regular_submission_data = None
+        if regular_participation is not None:
+            regular_query = (
+                self.sql_session.query(Submission)
+                .filter(Submission.participation == regular_participation)
+            )
+            regular_submission_data = self.build_submission_listing(
+                regular_query,
+                regular_page,
+                "regular_page",
+                page_components,
+            )
+
+        home_submission_data = None
+        if home_participation is not None:
+            home_query = (
+                self.sql_session.query(Submission)
+                .filter(Submission.participation == home_participation)
+            )
+            home_submission_data = self.build_submission_listing(
+                home_query,
+                home_page,
+                "home_page",
+                page_components,
+            )
+
         self.r_params = self.render_params()
         self.r_params.update(
             {
                 "training_program": self.training_program,
                 "selected_user": user,
                 "program_participation": program_participation,
-                "regular_participation": program_participation.regular_participation,
-                "home_participation": program_participation.home_participation,
+                "regular_participation": regular_participation,
+                "home_participation": home_participation,
+                "regular_submission_data": regular_submission_data,
+                "home_submission_data": home_submission_data,
                 "teams": self.sql_session.query(Team).order_by(Team.name).all(),
             }
         )

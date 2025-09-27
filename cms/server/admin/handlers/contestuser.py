@@ -260,10 +260,22 @@ class ParticipationHandler(BaseHandler):
             ))
             return
 
-        submission_query = self.sql_session.query(Submission)\
+        submission_query = (
+            self.sql_session.query(Submission)
             .filter(Submission.participation == participation)
-        page = int(self.get_query_argument("page", 0))
-        self.render_params_for_submissions(submission_query, page)
+        )
+        page = self.get_page_argument("page")
+        self.render_params_for_submissions(
+            submission_query,
+            page,
+            url_components=(
+                "contest",
+                self.contest.id,
+                "user",
+                participation.user_id,
+                "edit",
+            ),
+        )
 
         self.r_params["participation"] = participation
         self.r_params["selected_user"] = participation.user

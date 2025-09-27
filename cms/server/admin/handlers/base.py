@@ -584,8 +584,75 @@ class BaseHandler(CommonRequestHandler):
         else:
             dest["password"] = hash_password("", method)
 
+    def get_page_argument(self, name: str, default: int = 0) -> int:
+        """Return a non-negative integer from a query argument."""
+        value = self.get_query_argument(name, None)
+        if value is None:
+            return max(default, 0)
+        try:
+            page = int(value)
+        except (TypeError, ValueError):
+            return max(default, 0)
+        return max(page, 0)
+
+    def build_submission_listing(
+        self,
+        query: Query,
+        page: int,
+        page_param: str = "page",
+        url_components: tuple[object, ...] | None = None,
+        page_size: int = 50,
+    ) -> dict[str, object]:
+        """Return paginated submission data for templates."""
+        query = (
+            query.options(subqueryload(Submission.task))
+            .options(subqueryload(Submission.participation))
+            .options(subqueryload(Submission.files))
+            .options(subqueryload(Submission.token))
+            .options(
+                subqueryload(Submission.results).subqueryload(
+                    SubmissionResult.evaluations
+                )
+            )
+            .order_by(Submission.timestamp.desc())
+        )
+
+        count = query.count()
+        pages = (count + page_size - 1) // page_size
+        if pages > 0 and page >= pages:
+            page = pages - 1
+        page = max(page, 0)
+        offset = page * page_size
+        submissions = query.slice(offset, offset + page_size).all()
+
+        if url_components is not None:
+
+            def page_url(*, page: int) -> str:
+                query_args = {
+                    key: values[-1].decode()
+                    for key, values in self.request.query_arguments.items()
+                    if values
+                }
+                query_args[page_param] = str(page)
+                return self.url(*url_components, **query_args)
+        else:
+            page_url = None
+
+        return {
+            "count": count,
+            "submissions": submissions,
+            "page": page,
+            "pages": pages,
+            "page_url": page_url,
+        }
+
     def render_params_for_submissions(
-        self, query: Query, page: int, page_size: int = 50
+        self,
+        query: Query,
+        page: int,
+        page_size: int = 50,
+        page_param: str = "page",
+        url_components: tuple[object, ...] | None = None,
     ):
         """Add data about the requested submissions to r_params.
 
@@ -594,17 +661,13 @@ class BaseHandler(CommonRequestHandler):
         page_size: the number of submissions per page.
 
         """
-        query = query\
-            .options(subqueryload(Submission.task))\
-            .options(subqueryload(Submission.participation))\
-            .options(subqueryload(Submission.files))\
-            .options(subqueryload(Submission.token))\
-            .options(subqueryload(Submission.results)
-                     .subqueryload(SubmissionResult.evaluations))\
-            .order_by(Submission.timestamp.desc())
-
-        offset = page * page_size
-        count = query.count()
+        listing = self.build_submission_listing(
+            query,
+            page,
+            page_param=page_param,
+            url_components=url_components,
+            page_size=page_size,
+        )
 
         if self.r_params is None:
             self.r_params = self.render_params()
@@ -613,12 +676,14 @@ class BaseHandler(CommonRequestHandler):
         # parameters: total number of submissions, submissions to
         # display in this page, index of the current page, total
         # number of pages.
-        self.r_params["submission_count"] = count
-        self.r_params["submissions"] = \
-            query.slice(offset, offset + page_size).all()
-        self.r_params["submission_page"] = page
-        self.r_params["submission_pages"] = \
-            (count + page_size - 1) // page_size
+        self.r_params["submission_count"] = listing["count"]
+        self.r_params["submissions"] = listing["submissions"]
+        self.r_params["submission_page"] = listing["page"]
+        self.r_params["submission_pages"] = listing["pages"]
+        if listing["page_url"] is not None:
+            self.r_params["submission_page_url"] = listing["page_url"]
+        else:
+            self.r_params.pop("submission_page_url", None)
 
     def render_params_for_user_tests(
         self, query: Query, page: int, page_size: int = 50
