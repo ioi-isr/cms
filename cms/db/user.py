@@ -322,39 +322,39 @@ class Participation(Base):
 
     @property
     def starting_time(self) -> datetime | None:
-        if self.training_program_participation is not None:
+        if self.is_training_program():
             return self.training_program_participation.starting_time
         return self._starting_time
 
     @starting_time.setter
     def starting_time(self, value: datetime | None) -> None:
-        if self.training_program_participation is not None:
+        if self.is_training_program():
             self.training_program_participation.starting_time = value
         else:
             self._starting_time = value
 
     @property
     def delay_time(self) -> timedelta:
-        if self.training_program_participation is not None:
+        if self.is_training_program():
             return self.training_program_participation.delay_time
         return self._delay_time
 
     @delay_time.setter
     def delay_time(self, value: timedelta) -> None:
-        if self.training_program_participation is not None:
+        if self.is_training_program():
             self.training_program_participation.delay_time = value
         else:
             self._delay_time = value
 
     @property
     def extra_time(self) -> timedelta:
-        if self.training_program_participation is not None:
+        if self.is_training_program():
             return self.training_program_participation.extra_time
         return self._extra_time
 
     @extra_time.setter
     def extra_time(self, value: timedelta) -> None:
-        if self.training_program_participation is not None:
+        if self.is_training_program():
             self.training_program_participation.extra_time = value
         else:
             self._extra_time = value

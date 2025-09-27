@@ -59,10 +59,11 @@
         <table>
           <tr>
             <td>
+              <span class="info" title="Contest associated with this training program participation. Opens the contest settings page."></span>
               Contest
             </td>
             <td>
-              {{ participation.contest.name }}
+              <a href="{{ url("contest", participation.contest.id) }}">{{ participation.contest.name }}</a>
             </td>
           </tr>
           <tr>
