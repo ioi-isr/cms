@@ -26,7 +26,7 @@
 {% block additional_js %}
 // Define TASK_LANGUAGES for task-specific language filtering
 var TASK_LANGUAGES = {
-{% for lang in task.get_allowed_languages() or [] %}
+{% for lang in task.get_allowed_languages(contest) or [] %}
     '{{ lang }}': {
 {% for extension in (lang|to_language).source_extensions %}
         '{{ extension }}': true,
@@ -272,7 +272,7 @@ $(document).ready(function () {
                 <div class="control-group">
                     <div class="controls">
                         <select name="language">
-  {% for lang in task.get_allowed_languages() or [] %}
+  {% for lang in task.get_allowed_languages(contest) or [] %}
                             <option value="{{ lang }}">{{ lang }}</option>
   {% endfor %}
                         </select>
@@ -404,3 +404,4 @@ $(document).ready(function () {
 
 </div>
 {% endblock core %}
+

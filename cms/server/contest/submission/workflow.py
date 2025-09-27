@@ -199,7 +199,7 @@ def accept_submission(
             received_files,
             language_name,
             required_codenames,
-            task.get_allowed_languages(),
+            task.get_allowed_languages(contest),
         )
     except InvalidFilesOrLanguage as err:
         logger.info(f'Submission rejected: {err}')
@@ -409,7 +409,7 @@ def accept_user_test(
             received_files,
             language_name,
             required_codenames,
-            task.get_allowed_languages(),
+            task.get_allowed_languages(contest),
         )
     except InvalidFilesOrLanguage as err:
         logger.info(f'Test rejected: {err}')
@@ -516,3 +516,4 @@ def accept_user_test(
                 filename=filename, digest=digest, user_test=user_test))
 
     return user_test
+

@@ -118,7 +118,7 @@
 {% endif %}
 {% set compilation_commands = task_type.get_compilation_commands(task.submission_format) %}
 {% if compilation_commands is not none %}
-{% set allowed_languages = task.get_allowed_languages() %}
+{% set allowed_languages = task.get_allowed_languages(contest) %}
 {% set compilation_commands = compilation_commands|dictselect("in", allowed_languages, by="key") %}
 <tr>
     <th rowspan="{{ compilation_commands|length }}">{% trans %}Compilation commands{% endtrans %}</th>
@@ -206,3 +206,4 @@
 
 </div>
 {% endblock core %}
+

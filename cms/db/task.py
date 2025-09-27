@@ -293,20 +293,41 @@ class Task(Base):
         passive_deletes=True,
         back_populates="task")
 
-    def get_allowed_languages(self) -> list[str] | None:
+    def get_allowed_languages(self, contest: "Contest | None" = None) -> list[str] | None:
         """Get the list of allowed languages for this task.
 
         If the task has specific allowed languages configured, return those.
-        Otherwise, return the contest's allowed languages.
+        Otherwise, use the languages allowed in the provided contest context;
+        fall back to the contest owning the task or the contests associated
+        with the training program.
 
-        return: list of allowed language names, or None if no contest is set
+        return: list of allowed language names, or None if they cannot be
+            determined.
         """
-        # If task has specific language restrictions, use those
         if self.allowed_languages is not None:
             return self.allowed_languages
 
-        # Otherwise, use contest language restrictions
-        return self.contest.languages if self.contest else None
+        if contest is not None:
+            return contest.languages
+
+        if self.contest is not None:
+            return self.contest.languages
+
+        if self.training_program is not None:
+            collected: list[str] = []
+            for program_contest in (
+                self.training_program.regular_contest,
+                self.training_program.home_contest,
+            ):
+                if program_contest is None or program_contest.languages is None:
+                    continue
+                for lang in program_contest.languages:
+                    if lang not in collected:
+                        collected.append(lang)
+            if collected:
+                return collected
+
+        return None
 
 
 class Statement(Base):
@@ -652,3 +673,4 @@ class Testcase(Base):
     output: str = Column(
         Digest,
         nullable=False)
+

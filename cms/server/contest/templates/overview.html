@@ -206,7 +206,7 @@
     </thead>
     <tbody>
 {% for t_iter in contest.visible_tasks %}
-        {% set task_allowed_languages = t_iter.get_allowed_languages() %}
+        {% set task_allowed_languages = t_iter.get_allowed_languages(contest) %}
         {% set extensions = "[%s]"|format(task_allowed_languages|map("to_language")|map(attribute="source_extension")|unique|join("|")) %}
         <tr>
             <th>{{ t_iter.name }}</th>
@@ -244,3 +244,4 @@
 
 </div>
 {% endblock core %}
+
