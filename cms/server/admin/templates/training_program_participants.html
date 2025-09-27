@@ -5,9 +5,8 @@
   <h1>Training program participants: {{ training_program.title }}</h1>
 </div>
 
-<form action="{{ url("training_program", training_program.id, "participants") }}" method="POST" class="inline-form">
+<form action="{{ url("training_program", training_program.id, "participants", "add") }}" method="POST" class="inline-form">
   {{ xsrf_form_html|safe }}
-  <input type="hidden" name="operation" value="Add" />
   <label for="participant_user">Add participant:</label>
   <select name="user_id" id="participant_user">
     <option value="null" selected>Select a user</option>
@@ -43,10 +42,8 @@
         <td>{{ participation.user.first_name }}</td>
         <td>{{ participation.user.last_name }}</td>
         <td>
-          <form action="{{ url("training_program", training_program.id, "participants") }}" method="POST">
+          <form action="{{ url("training_program", training_program.id, "participant", participation.id, "remove") }}" method="POST">
             {{ xsrf_form_html|safe }}
-            <input type="hidden" name="operation" value="Remove" />
-            <input type="hidden" name="participation_id" value="{{ participation.id }}" />
             <input type="submit" value="Remove" class="danger" />
           </form>
         </td>

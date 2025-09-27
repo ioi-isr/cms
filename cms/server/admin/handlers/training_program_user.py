@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 
 """Handlers for training program participants management."""
 
@@ -15,9 +15,6 @@ from .base import BaseHandler, require_permission
 
 class TrainingProgramParticipantsHandler(BaseHandler):
     """Manage training program participants."""
-
-    ADD_OPERATION = "Add"
-    REMOVE_OPERATION = "Remove"
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, program_id: str):
@@ -51,44 +48,26 @@ class TrainingProgramParticipantsHandler(BaseHandler):
         self.r_params["unassigned_users"] = unassigned_users
         self.render("training_program_participants.html", **self.r_params)
 
+
+class AddTrainingProgramParticipantHandler(BaseHandler):
+    """Create a new training program participation."""
+
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, program_id: str):
+        fallback_page = self.url("training_program", program_id, "participants")
         self.training_program = self.safe_get_item(TrainingProgram, program_id)
 
-        operation = self.get_argument("operation", "").strip()
-        fallback_page = self.url("training_program", program_id, "participants")
-
+        user: User | None = None
         try:
-            if operation == self.ADD_OPERATION:
-                user_id = self.get_argument("user_id")
-                user = self.safe_get_item(User, user_id)
-                TrainingProgramParticipation.ensure(
-                    self.sql_session,
-                    self.training_program,
-                    user,
-                )
-                message = "Participant added"
-                description = f"{user.username} is now part of the training program."
+            user_id = self.get_argument("user_id")
+            assert user_id != "null", "Please select a valid user"
+            user = self.safe_get_item(User, user_id)
 
-            elif operation == self.REMOVE_OPERATION:
-                participation_id = self.get_argument("participation_id")
-                participation = self.safe_get_item(
-                    TrainingProgramParticipation,
-                    participation_id,
-                )
-                if participation.training_program is not self.training_program:
-                    raise tornado.web.HTTPError(404)
-                user = participation.user
-
-                for contest_participation in list(participation.participations):
-                    self.sql_session.delete(contest_participation)
-
-                self.sql_session.delete(participation)
-                message = "Participant removed"
-                description = f"{user.username} removed from the training program."
-            else:
-                raise ValueError("Please select a valid operation")
-
+            TrainingProgramParticipation.ensure(
+                self.sql_session,
+                self.training_program,
+                user,
+            )
         except Exception as error:
             self.sql_session.rollback()
             self.service.add_notification(
@@ -97,12 +76,60 @@ class TrainingProgramParticipantsHandler(BaseHandler):
                 str(error),
             )
             self.redirect(fallback_page)
-            raise
             return
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()
-            self.service.add_notification(make_datetime(), message, description)
+            assert user is not None
+            self.service.add_notification(
+                make_datetime(),
+                "Participant added",
+                f"{user.username} is now part of the training program.",
+            )
+
+        self.redirect(fallback_page)
+
+
+class RemoveTrainingProgramParticipantHandler(BaseHandler):
+    """Remove a user from a training program."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, program_id: str, participation_id: str):
+        fallback_page = self.url("training_program", program_id, "participants")
+        self.training_program = self.safe_get_item(TrainingProgram, program_id)
+
+        user: User | None = None
+        try:
+            participation = self.safe_get_item(
+                TrainingProgramParticipation,
+                participation_id,
+            )
+            if participation.training_program is not self.training_program:
+                raise tornado.web.HTTPError(404)
+            user = participation.user
+
+            for contest_participation in list(participation.participations):
+                self.sql_session.delete(contest_participation)
+
+            self.sql_session.delete(participation)
+        except Exception as error:
+            self.sql_session.rollback()
+            self.service.add_notification(
+                make_datetime(),
+                "Operation failed.",
+                str(error),
+            )
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+            assert user is not None
+            self.service.add_notification(
+                make_datetime(),
+                "Participant removed",
+                f"{user.username} removed from the training program.",
+            )
 
         self.redirect(fallback_page)
 
