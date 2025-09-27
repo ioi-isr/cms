@@ -51,8 +51,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, subqueryload
 
 from cms import __version__, config
-from cms.db import Admin, Contest, Participation, Question, Submission, \
-    SubmissionResult, Task, Team, TrainingProgram, User, UserTest
+from cms.db import (
+    Admin,
+    Contest,
+    Participation,
+    Question,
+    Submission,
+    SubmissionResult,
+    Task,
+    Team,
+    TrainingProgram,
+    User,
+    UserTest,
+)
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
@@ -646,6 +657,54 @@ class BaseHandler(CommonRequestHandler):
             "page_url": page_url,
         }
 
+    def build_user_test_listing(
+        self,
+        query: Query,
+        page: int,
+        page_param: str = "page",
+        url_components: tuple[object, ...] | None = None,
+        page_size: int = 50,
+    ) -> dict[str, object]:
+        """Return paginated user test data for templates."""
+
+        query = (
+            query.options(subqueryload(UserTest.task))
+            .options(subqueryload(UserTest.participation))
+            .options(subqueryload(UserTest.files))
+            .options(subqueryload(UserTest.results))
+            .order_by(UserTest.timestamp.desc())
+        )
+
+        count = query.count()
+        pages = (count + page_size - 1) // page_size
+        if pages > 0 and page >= pages:
+            page = pages - 1
+        page = max(page, 0)
+        offset = page * page_size
+        user_tests = query.slice(offset, offset + page_size).all()
+
+        if url_components is not None:
+
+            def page_url(*, page: int) -> str:
+                query_args = {
+                    key: values[-1].decode()
+                    for key, values in self.request.query_arguments.items()
+                    if values
+                }
+                query_args[page_param] = str(page)
+                return self.url(*url_components, **query_args)
+
+        else:
+            page_url = None
+
+        return {
+            "count": count,
+            "user_tests": user_tests,
+            "page": page,
+            "pages": pages,
+            "page_url": page_url,
+        }
+
     def render_params_for_submissions(
         self,
         query: Query,
@@ -686,7 +745,12 @@ class BaseHandler(CommonRequestHandler):
             self.r_params.pop("submission_page_url", None)
 
     def render_params_for_user_tests(
-        self, query: Query, page: int, page_size: int = 50
+        self,
+        query: Query,
+        page: int,
+        page_size: int = 50,
+        page_param: str = "page",
+        url_components: tuple[object, ...] | None = None,
     ):
         """Add data about the requested user tests to r_params.
 
@@ -695,25 +759,25 @@ class BaseHandler(CommonRequestHandler):
         page_size: the number of submissions per page.
 
         """
-        query = query\
-            .options(subqueryload(UserTest.task))\
-            .options(subqueryload(UserTest.participation))\
-            .options(subqueryload(UserTest.files))\
-            .options(subqueryload(UserTest.results))\
-            .order_by(UserTest.timestamp.desc())
-
-        offset = page * page_size
-        count = query.count()
+        listing = self.build_user_test_listing(
+            query,
+            page,
+            page_param=page_param,
+            url_components=url_components,
+            page_size=page_size,
+        )
 
         if self.r_params is None:
             self.r_params = self.render_params()
 
-        self.r_params["user_test_count"] = count
-        self.r_params["user_tests"] = \
-            query.slice(offset, offset + page_size).all()
-        self.r_params["user_test_page"] = page
-        self.r_params["user_test_pages"] = \
-            (count + page_size - 1) // page_size
+        self.r_params["user_test_count"] = listing["count"]
+        self.r_params["user_tests"] = listing["user_tests"]
+        self.r_params["user_test_page"] = listing["page"]
+        self.r_params["user_test_pages"] = listing["pages"]
+        if listing["page_url"] is not None:
+            self.r_params["user_test_page_url"] = listing["page_url"]
+        else:
+            self.r_params.pop("user_test_page_url", None)
 
     def render_params_for_remove_confirmation(self, query):
         count = query.count()

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% macro contest_section(title, contest, listing) %}
+  <h2>{{ title }}</h2>
+  {% if contest is none %}
+    <div class="notifications">
+      <div class="notification info">No contest configured.</div>
+    </div>
+  {% else %}
+    {% set count = listing.count if listing is not none else 0 %}
+    <p>There are {{ count }} user tests in {{ contest.name }}</p>
+
+    {% if listing is none %}
+      <p>No user tests found.</p>
+    {% else %}
+      {% set user_test_count = listing.count %}
+      {% set user_tests = listing.user_tests %}
+      {% set user_test_page = listing.page %}
+      {% set user_test_pages = listing.pages %}
+      {% set page_url = listing.page_url %}
+      {% include "fragments/user_test_rows.html" %}
+    {% endif %}
+  {% endif %}
+  <div class="hr"></div>
+{% endmacro %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training program user tests: {{ training_program.title }}</h1>
+</div>
+
+{{ contest_section("Regular contest", regular_contest, regular_user_tests) }}
+{{ contest_section("Home contest", home_contest, home_user_tests) }}
+
+{% endblock core %}

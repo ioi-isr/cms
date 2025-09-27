@@ -97,8 +97,11 @@ from .training_program import \
     AddTrainingProgramHandler, \
     RemoveTrainingProgramHandler, \
     TrainingProgramTasksHandler, \
-    AddTrainingProgramTaskHandler, \
-    TrainingProgramSubmissionsHandler
+    AddTrainingProgramTaskHandler
+from .training_program_submissions import (
+    TrainingProgramSubmissionsHandler,
+    TrainingProgramUserTestsHandler,
+)
 from .training_program_user import (
     AddTrainingProgramParticipantHandler,
     RemoveTrainingProgramParticipantHandler,
@@ -189,6 +192,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/participants/add", AddTrainingProgramParticipantHandler),
     (r"/training_program/([0-9]+)/participant/([0-9]+)/remove", RemoveTrainingProgramParticipantHandler),
     (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
+    (r"/training_program/([0-9]+)/user_tests", TrainingProgramUserTestsHandler),
     (r"/training_program/([0-9]+)/user/([0-9]+)/edit", TrainingProgramParticipationHandler),
     (r"/training_program/([0-9]+)", TrainingProgramHandler),
 

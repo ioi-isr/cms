@@ -18,14 +18,7 @@
 
 """Handlers for training program administration pages."""
 
-from cms.db import (
-    Contest,
-    Participation,
-    Submission,
-    Task,
-    TrainingProgram,
-    TrainingProgramParticipation,
-)
+from cms.db import Contest, Task, TrainingProgram, TrainingProgramParticipation
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -550,69 +543,3 @@ class TrainingProgramHandler(BaseHandler):
             self.service.proxy_service.reinitialize()
         self.redirect(self.url("training_program", program.id))
 
-
-class TrainingProgramSubmissionsHandler(BaseHandler):
-    """Show consolidated submissions for a training program."""
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, program_id: str):
-        program = self.safe_get_item(TrainingProgram, program_id)
-        self.training_program = program
-
-        page_components = (
-            "training_program",
-            program.id,
-            "submissions",
-        )
-
-        regular_listing = self._build_contest_listing(
-            contest=program.regular_contest,
-            page=self.get_page_argument("regular_page"),
-            page_param="regular_page",
-            url_components=page_components,
-        )
-
-        home_listing = self._build_contest_listing(
-            contest=program.home_contest,
-            page=self.get_page_argument("home_page"),
-            page_param="home_page",
-            url_components=page_components,
-        )
-
-        self.r_params = self.render_params()
-        self.r_params.update(
-            {
-                "training_program": program,
-                "regular_contest": program.regular_contest,
-                "home_contest": program.home_contest,
-                "regular_submission_data": regular_listing,
-                "home_submission_data": home_listing,
-            }
-        )
-        self.render("training_program_submissions.html", **self.r_params)
-
-    def _build_contest_listing(
-        self,
-        *,
-        contest: Contest | None,
-        page: int,
-        page_param: str,
-        url_components: tuple[object, ...],
-    ) -> dict[str, object] | None:
-        """Return submission listing data for a contest in the program."""
-
-        if contest is None:
-            return None
-
-        query = (
-            self.sql_session.query(Submission)
-            .join(Participation)
-            .filter(Participation.contest == contest)
-        )
-
-        return self.build_submission_listing(
-            query,
-            page,
-            page_param,
-            url_components,
-        )
