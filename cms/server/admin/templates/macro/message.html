@@ -1,0 +1,55 @@
+{% import 'macro/markdown_input.html' as macro_markdown %}
+
+{% macro messages_block(participation, selected_user_id, form_prefix='', training_redirect=None) %}
+{#
+Render the messaging form and message history for a participation.
+
+participation (Participation): contest participation instance.
+selected_user_id (int): id of the user shown in the admin page.
+form_prefix (str): optional prefix for DOM ids to avoid collisions.
+training_redirect (dict|None): optional redirect target containing
+    program_id and user_id when returning to a training program page.
+#}
+  {% set prefix = form_prefix ~ '_' if form_prefix else '' %}
+  <div class="notifications">
+    <div class="notification communication">
+      <form id="send_{{ prefix }}message_form" action="{{ url("contest", participation.contest.id, "user", selected_user_id, "message") }}" method="POST">
+        {{ xsrf_form_html|safe }}
+        {% if training_redirect %}
+          <input type="hidden" name="training_program_id" value="{{ training_redirect.program_id }}" />
+          <input type="hidden" name="training_program_user_id" value="{{ training_redirect.user_id }}" />
+        {% endif %}
+        <div class="notification_msg">
+          <div class="notification_subject">
+            Subject:
+            <input id="send_{{ prefix }}message_subject" type="text" name="message_subject" style="width: 100%" />
+          </div>
+          <div class="notification_text">
+            Text:
+            {{ macro_markdown.markdown_input("message_text") }}
+          </div>
+          <input type="submit" value="Send" />
+          {{ macro_markdown.markdown_preview() }}
+        </div>
+      </form>
+    </div>
+
+    {% if participation.messages %}
+      {% for msg in participation.messages|reverse %}
+        <div class="notification communication">
+          <div class="notification_msg">
+            <div class="notification_timestamp">{{ msg.timestamp }}</div>
+            <div class="notification_subject">{{ msg.subject }}</div>
+            <div class="notification_text">{{ msg.text | markdown }}</div>
+            <hr>
+            <div class="notification_admin_owner">
+              By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      No messages.
+    {% endif %}
+  </div>
+{% endmacro %}

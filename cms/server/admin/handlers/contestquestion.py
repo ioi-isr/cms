@@ -74,8 +74,21 @@ class QuestionActionHandler(BaseHandler, metaclass=ABCMeta):
 
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def post(self, contest_id, question_id):
+        training_program_id = self.get_argument("training_program_id", None)
+        training_program_user_id = self.get_argument(
+            "training_program_user_id", None
+        )
         user_id = self.get_argument("user_id", None)
-        if user_id is not None:
+
+        if training_program_id and training_program_user_id:
+            ref = self.url(
+                "training_program",
+                training_program_id,
+                "user",
+                training_program_user_id,
+                "edit",
+            )
+        elif user_id is not None:
             ref = self.url("contest", contest_id, "user", user_id, "edit")
         else:
             ref = self.url("contest", contest_id, "questions")

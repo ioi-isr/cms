@@ -386,4 +386,20 @@ class MessageHandler(BaseHandler):
             logger.info("Message submitted to user %s in contest %s.",
                         user.username, self.contest.name)
 
-        self.redirect(self.url("contest", contest_id, "user", user_id, "edit"))
+        training_program_id = self.get_argument("training_program_id", None)
+        training_program_user_id = self.get_argument(
+            "training_program_user_id", None
+        )
+
+        if training_program_id and training_program_user_id:
+            redirect_url = self.url(
+                "training_program",
+                training_program_id,
+                "user",
+                training_program_user_id,
+                "edit",
+            )
+        else:
+            redirect_url = self.url("contest", contest_id, "user", user_id, "edit")
+
+        self.redirect(redirect_url)

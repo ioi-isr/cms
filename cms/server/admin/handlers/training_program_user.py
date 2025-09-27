@@ -179,6 +179,12 @@ class TrainingProgramParticipationHandler(BaseHandler):
                 joinedload(TrainingProgramParticipation.participations).joinedload(
                     Participation.team
                 ),
+                joinedload(TrainingProgramParticipation.participations)
+                .subqueryload(Participation.questions)
+                .joinedload("admin"),
+                joinedload(TrainingProgramParticipation.participations)
+                .subqueryload(Participation.messages)
+                .joinedload("admin"),
             )
             .filter(TrainingProgramParticipation.training_program == self.training_program)
             .filter(TrainingProgramParticipation.user == user)

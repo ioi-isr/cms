@@ -1,5 +1,7 @@
 {% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
 {% import "macro/submission.html" as macro_submission %}
+{% import "macro/question.html" as macro_question with context %}
+{% import "macro/message.html" as macro_message with context %}
 
 {% extends "base.html" %}
 
@@ -165,6 +167,28 @@
           <div class="hr"></div>
         </div>
       {% endif %}
+
+      {% with contest = participation.contest, training_redirect = {"program_id": training_program.id, "user_id": selected_user.id} %}
+        <h3 id="title_{{ role_key }}_questions" class="toggling_on">Questions</h3>
+        <div id="{{ role_key }}_questions">
+          {% if participation.questions %}
+            <div class="notifications">
+              {% for msg in participation.questions %}
+                {{ macro_question.question(msg, none, training_redirect) }}
+              {% endfor %}
+            </div>
+          {% else %}
+            No questions.
+          {% endif %}
+          <div class="hr"></div>
+        </div>
+
+        <h3 id="title_{{ role_key }}_messages" class="toggling_on">Messages</h3>
+        <div id="{{ role_key }}_messages">
+          {{ macro_message.messages_block(participation, selected_user.id, role_key, training_redirect) }}
+          <div class="hr"></div>
+        </div>
+      {% endwith %}
     {% else %}
       <div class="notifications">
         <div class="notification info">No {{ role_label|lower }} available for this training program.</div>
