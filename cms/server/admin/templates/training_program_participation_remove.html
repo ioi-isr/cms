@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Remove Training Program Participation</h1>
+</div>
+
+{% if admin.permission_all %}
+<p>
+  Are you sure you want to remove user {{ user.username }} from training program {{ training_program.title }}?
+  <br>
+  This will remove {{ contest_participations_count }} contest participation{{ "s" if contest_participations_count != 1 else "" }} associated with this training program, along with their related data.
+  <br>
+  This operation cannot be undone.
+</p>
+<br>
+<a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "participant", participation.id, "remove") }}');" class="button-link">Yes, remove</a>
+<a href="{{ url("training_program", training_program.id, "participants") }}" class="button-link">No</a>
+
+{% else %}
+You do not have permission to remove a participation.
+{% endif %}
+
+{% endblock core %}

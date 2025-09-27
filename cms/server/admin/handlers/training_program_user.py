@@ -91,23 +91,43 @@ class AddTrainingProgramParticipantHandler(BaseHandler):
 
 
 class RemoveTrainingProgramParticipantHandler(BaseHandler):
-    """Remove a user from a training program."""
+    """Ask for confirmation and remove a training program participation."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def post(self, program_id: str, participation_id: str):
+    def get(self, program_id: str, participation_id: str):
+        self.training_program = self.safe_get_item(TrainingProgram, program_id)
+        participation = self.safe_get_item(
+            TrainingProgramParticipation,
+            participation_id,
+        )
+        if participation.training_program is not self.training_program:
+            raise tornado.web.HTTPError(404)
+
+        self.r_params = self.render_params()
+        self.r_params.update(
+            {
+                "training_program": self.training_program,
+                "participation": participation,
+                "user": participation.user,
+                "contest_participations_count": len(participation.participations),
+            }
+        )
+        self.render("training_program_participation_remove.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, program_id: str, participation_id: str):
         fallback_page = self.url("training_program", program_id, "participants")
         self.training_program = self.safe_get_item(TrainingProgram, program_id)
 
-        user: User | None = None
-        try:
-            participation = self.safe_get_item(
-                TrainingProgramParticipation,
-                participation_id,
-            )
-            if participation.training_program is not self.training_program:
-                raise tornado.web.HTTPError(404)
-            user = participation.user
+        participation = self.safe_get_item(
+            TrainingProgramParticipation,
+            participation_id,
+        )
+        if participation.training_program is not self.training_program:
+            raise tornado.web.HTTPError(404)
+        user = participation.user
 
+        try:
             for contest_participation in list(participation.participations):
                 self.sql_session.delete(contest_participation)
 
@@ -119,7 +139,7 @@ class RemoveTrainingProgramParticipantHandler(BaseHandler):
                 "Operation failed.",
                 str(error),
             )
-            self.redirect(fallback_page)
+            self.write(fallback_page)
             return
 
         if self.try_commit():
@@ -131,7 +151,7 @@ class RemoveTrainingProgramParticipantHandler(BaseHandler):
                 f"{user.username} removed from the training program.",
             )
 
-        self.redirect(fallback_page)
+        self.write(fallback_page)
 
 
 class TrainingProgramParticipationHandler(BaseHandler):

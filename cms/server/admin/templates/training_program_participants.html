@@ -42,8 +42,7 @@
         <td>{{ participation.user.first_name }}</td>
         <td>{{ participation.user.last_name }}</td>
         <td>
-          <form action="{{ url("training_program", training_program.id, "participant", participation.id, "remove") }}" method="POST">
-            {{ xsrf_form_html|safe }}
+          <form action="{{ url("training_program", training_program.id, "participant", participation.id, "remove") }}" method="GET">
             <input type="submit" value="Remove" class="danger" />
           </form>
         </td>
