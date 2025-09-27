@@ -50,7 +50,7 @@ class SubmissionHandler(BaseHandler):
     def get(self, submission_id, dataset_id=None):
         submission = self.safe_get_item(Submission, submission_id)
         task = submission.task
-        self.contest = task.contest
+        self.contest = submission.participation.contest
 
         if dataset_id is not None:
             dataset = self.safe_get_item(Dataset, dataset_id)

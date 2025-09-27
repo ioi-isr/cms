@@ -479,11 +479,14 @@ class ProxyService(TriggeredService[ProxyOperation, ProxyExecutor]):
 
             # ScoringService sent us a submission of another contest, they
             # do not know about our contest_id in multicontest setup.
-            if submission.task.contest_id != self.contest_id:
-                logger.debug("Ignoring submission %d of contest %d "
-                             "(this ProxyService considers contest %d only).",
-                             submission.id, submission.task.contest_id,
-                             self.contest_id)
+            if submission.participation.contest_id != self.contest_id:
+                logger.debug(
+                    "Ignoring submission %d of contest %d "
+                    "(this ProxyService considers contest %d only).",
+                    submission.id,
+                    submission.participation.contest_id,
+                    self.contest_id,
+                )
                 return
 
             if submission.participation.hidden:
@@ -523,11 +526,14 @@ class ProxyService(TriggeredService[ProxyOperation, ProxyExecutor]):
 
             # ScoringService sent us a submission of another contest, they
             # do not know about our contest_id in multicontest setup.
-            if submission.task.contest_id != self.contest_id:
-                logger.debug("Ignoring submission %d of contest %d "
-                             "(this ProxyService considers contest %d only).",
-                             submission.id, submission.task.contest_id,
-                             self.contest_id)
+            if submission.participation.contest_id != self.contest_id:
+                logger.debug(
+                    "Ignoring submission %d of contest %d "
+                    "(this ProxyService considers contest %d only).",
+                    submission.id,
+                    submission.participation.contest_id,
+                    self.contest_id,
+                )
                 return
 
             if submission.participation.hidden:

@@ -33,6 +33,7 @@ class UserTestHandler(BaseHandler):
         user_test = self.safe_get_item(UserTest, user_test_id)
         task = user_test.task
         self.contest = task.contest
+        self.training_program = task.training_program
 
         if dataset_id is not None:
             dataset = self.safe_get_item(Dataset, dataset_id)

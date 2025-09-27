@@ -281,6 +281,7 @@ class AddStatementHandler(BaseHandler):
         self.sql_session = Session()
         task = self.safe_get_item(Task, task_id)
         self.contest = task.contest
+        self.training_program = task.training_program
 
         statement = Statement(language, digest, task=task)
         self.sql_session.add(statement)
@@ -509,6 +510,7 @@ class RemoveTaskHandler(BaseHandler):
     def delete(self, task_id):
         task = self.safe_get_item(Task, task_id)
         contest_id = task.contest_id
+        training_program_id = task.training_program_id
         num = task.num
 
         self.sql_session.delete(task)
@@ -518,6 +520,17 @@ class RemoveTaskHandler(BaseHandler):
             following_tasks: list[Task] = (
                 self.sql_session.query(Task)
                 .filter(Task.contest_id == contest_id)
+                .filter(Task.num > num)
+                .order_by(Task.num)
+                .all()
+            )
+            for task in following_tasks:
+                task.num -= 1
+                self.sql_session.flush()
+        elif training_program_id is not None:
+            following_tasks = (
+                self.sql_session.query(Task)
+                .filter(Task.training_program_id == training_program_id)
                 .filter(Task.num > num)
                 .order_by(Task.num)
                 .all()

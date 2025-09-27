@@ -188,7 +188,10 @@ class DumpExporter:
                 else:
                     self.users_ids = []
                 tasks: list[Task] = (
-                    session.query(Task).filter(Task.contest_id.is_(None)).all()
+                    session.query(Task)
+                    .filter(Task.contest_id.is_(None))
+                    .filter(Task.training_program_id.is_(None))
+                    .all()
                 )
                 self.tasks_ids = [task.id for task in tasks]
         else:
