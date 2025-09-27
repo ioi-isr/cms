@@ -95,7 +95,8 @@ from .training_program import \
     TrainingProgramListHandler, \
     TrainingProgramHandler, \
     AddTrainingProgramHandler, \
-    RemoveTrainingProgramHandler, \
+    RemoveTrainingProgramHandler
+from .training_program_task import \
     TrainingProgramTasksHandler, \
     AddTrainingProgramTaskHandler
 from .training_program_submissions import (
