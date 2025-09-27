@@ -12,7 +12,7 @@
   {% else %}
     {% set count = submission_data.count if submission_data is not none else 0 %}
     <p>
-      Reevaluate all {{ count }} submissions in {{ contest.name }} (for all datasets)
+      Reevaluate all {{ count }} submissions in <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a> (for all datasets)
       {{ macro_reevaluation_buttons.reevaluation_buttons(
            admin.permission_all,
            url("training_program", training_program.id, "submissions"),

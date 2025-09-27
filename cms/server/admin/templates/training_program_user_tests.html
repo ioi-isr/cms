@@ -8,7 +8,7 @@
     </div>
   {% else %}
     {% set count = listing.count if listing is not none else 0 %}
-    <p>There are {{ count }} user tests in {{ contest.name }}</p>
+    <p>There are {{ count }} user tests in <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a></p>
 
     {% if listing is none %}
       <p>No user tests found.</p>

@@ -66,7 +66,7 @@ class DatasetSubmissionsHandler(BaseHandler):
 
         submission_query = self.sql_session.query(Submission)\
             .filter(Submission.task == task)
-        page = int(self.get_query_argument("page", 0))
+        page = self.get_page_argument("page")
         self.render_params_for_submissions(submission_query, page)
 
         self.r_params["task"] = task

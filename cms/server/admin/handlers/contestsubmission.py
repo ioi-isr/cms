@@ -39,9 +39,21 @@ class ContestSubmissionsHandler(BaseHandler):
         contest = self.safe_get_item(Contest, contest_id)
         self.contest = contest
 
+        page = self.get_page_argument("page")
+
+        if contest.training_program is not None:
+            role = contest.training_program_role
+            target_param = "regular_page" if role == "regular" else "home_page"
+            kwargs = {}
+            if "page" in self.request.query_arguments:
+                kwargs[target_param] = str(page)
+            self.redirect(
+                self.url("training_program", contest.training_program.id, "submissions", **kwargs)
+            )
+            return
+
         query = self.sql_session.query(Submission).join(Task)\
             .filter(Task.contest == contest)
-        page = int(self.get_query_argument("page", 0))
         self.render_params_for_submissions(query, page)
 
         self.render("contest_submissions.html", **self.r_params)
@@ -56,9 +68,21 @@ class ContestUserTestsHandler(BaseHandler):
         contest = self.safe_get_item(Contest, contest_id)
         self.contest = contest
 
+        page = self.get_page_argument("page")
+
+        if contest.training_program is not None:
+            role = contest.training_program_role
+            target_param = "regular_page" if role == "regular" else "home_page"
+            kwargs = {}
+            if "page" in self.request.query_arguments:
+                kwargs[target_param] = str(page)
+            self.redirect(
+                self.url("training_program", contest.training_program.id, "user_tests", **kwargs)
+            )
+            return
+
         query = self.sql_session.query(UserTest).join(Task)\
             .filter(Task.contest == contest)
-        page = int(self.get_query_argument("page", 0))
         self.render_params_for_user_tests(query, page)
 
         self.render("contest_user_tests.html", **self.r_params)
