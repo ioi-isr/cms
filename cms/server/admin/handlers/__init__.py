@@ -34,10 +34,10 @@ from .contest import \
     ResourcesListHandler, \
     ContestListHandler, \
     RemoveContestHandler
-from .contestannouncement import \
+from .announcement import \
     AddAnnouncementHandler, \
     AnnouncementHandler
-from .contestquestion import \
+from .question import \
     QuestionsHandler, \
     QuestionReplyHandler, \
     QuestionIgnoreHandler, \
@@ -263,3 +263,5 @@ HANDLERS = [
 
 
 __all__ = ["HANDLERS"]
+
+
