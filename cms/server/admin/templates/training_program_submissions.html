@@ -1,0 +1,45 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+{% import "macro/submission.html" as macro_submission %}
+
+{% extends "base.html" %}
+
+{% macro contest_section(title, contest, submission_data) %}
+  <h2>{{ title }}</h2>
+  {% if contest is none %}
+    <div class="notifications">
+      <div class="notification info">No contest configured.</div>
+    </div>
+  {% else %}
+    {% set count = submission_data.count if submission_data is not none else 0 %}
+    <p>
+      Reevaluate all {{ count }} submissions in {{ contest.name }} (for all datasets)
+      {{ macro_reevaluation_buttons.reevaluation_buttons(
+           admin.permission_all,
+           url("training_program", training_program.id, "submissions"),
+           contest_id=contest.id) }}
+    </p>
+
+    {% if submission_data is none %}
+      <p>No submissions found.</p>
+    {% else %}
+      {{ macro_submission.rows(
+         admin,
+         url,
+         submission_data.page_url,
+         submission_data.submissions,
+         submission_data.page,
+         submission_data.pages) }}
+    {% endif %}
+  {% endif %}
+  <div class="hr"></div>
+{% endmacro %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training program submissions: {{ training_program.title }}</h1>
+</div>
+
+{{ contest_section("Regular contest", regular_contest, regular_submission_data) }}
+{{ contest_section("Home contest", home_contest, home_submission_data) }}
+
+{% endblock core %}

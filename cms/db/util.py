@@ -208,9 +208,11 @@ def get_submissions(
     if task_id is not None:
         query = query.filter(Submission.task_id == task_id)
     if contest_id is not None:
-        query = query.join(Participation) \
-            .filter(Participation.contest_id == contest_id) \
-            .join(Task).filter(Task.contest_id == contest_id)
+        query = (
+            query.join(Participation)
+            .filter(Participation.contest_id == contest_id)
+            .join(Task)
+        )
     return query
 
 
@@ -274,9 +276,11 @@ def get_submission_results(
     if task_id is not None:
         query = query.filter(Submission.task_id == task_id)
     if contest_id is not None:
-        query = query.join(Participation) \
-            .filter(Participation.contest_id == contest_id)\
-            .join(Task).filter(Task.contest_id == contest_id)
+        query = (
+            query.join(Participation)
+            .filter(Participation.contest_id == contest_id)
+            .join(Task)
+        )
     return query
 
 
