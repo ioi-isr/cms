@@ -35,10 +35,56 @@ except:
 
 import tornado.web
 
-from cms.db import Contest, Announcement
+from cms.db import Contest, Announcement, TrainingProgram
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 
+
+class TrainingProgramAnnouncementsHandler(BaseHandler):
+    """Show announcements for all contests in a training program."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, program_id: str):
+        program = self.safe_get_item(TrainingProgram, program_id)
+        self.training_program = program
+
+        regular_announcements = (
+            program.regular_contest.announcements if program.regular_contest else []
+        )
+        home_announcements = (
+            program.home_contest.announcements if program.home_contest else []
+        )
+
+        self.r_params = self.render_params()
+        self.r_params.update(
+            {
+                "training_program": program,
+                "regular_contest": program.regular_contest,
+                "home_contest": program.home_contest,
+                "regular_announcements": regular_announcements,
+                "home_announcements": home_announcements,
+            }
+        )
+        self.render("training_program_announcements.html", **self.r_params)
+
+
+
+
+class ContestAnnouncementsHandler(BaseHandler):
+    """Show contest announcements, redirecting to training program if applicable."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id: str):
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        if self.contest.training_program is not None:
+            self.redirect(
+                self.url("training_program", self.contest.training_program.id, "announcements"),
+            )
+            return
+
+        self.r_params = self.render_params()
+        self.render("announcements.html", **self.r_params)
 
 class AddAnnouncementHandler(BaseHandler):
     """Called to actually add an announcement
@@ -50,16 +96,31 @@ class AddAnnouncementHandler(BaseHandler):
 
         subject: str = self.get_argument("subject", "")
         text: str = self.get_argument("text", "")
+        redirect_url = self.get_argument("next", None)
+        if redirect_url:
+            redirect_url = "/" + redirect_url.lstrip("/")
+
         if len(subject) > 0:
-            ann = Announcement(make_datetime(), subject, text,
-                               contest=self.contest, admin=self.current_user)
+            ann = Announcement(
+                make_datetime(),
+                subject,
+                text,
+                contest=self.contest,
+                admin=self.current_user,
+            )
             self.sql_session.add(ann)
             self.try_commit()
         else:
             self.service.add_notification(
-                make_datetime(), "Subject is mandatory.", "")
-        self.redirect(self.url("contest", contest_id, "announcements"))
+                make_datetime(),
+                "Subject is mandatory.",
+                "",
+            )
 
+        if redirect_url:
+            self.redirect(redirect_url)
+        else:
+            self.redirect(self.url("contest", contest_id, "announcements"))
 
 class AnnouncementHandler(BaseHandler):
     """Called to remove an announcement.

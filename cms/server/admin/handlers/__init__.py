@@ -35,7 +35,9 @@ from .contest import \
     ContestListHandler, \
     RemoveContestHandler
 from .announcement import \
+    ContestAnnouncementsHandler, \
     AddAnnouncementHandler, \
+    TrainingProgramAnnouncementsHandler, \
     AnnouncementHandler
 from .question import \
     QuestionsHandler, \
@@ -167,7 +169,7 @@ HANDLERS = [
 
     # Contest's announcements
 
-    (r"/contest/([0-9]+)/announcements", SimpleContestHandler("announcements.html")),
+    (r"/contest/([0-9]+)/announcements", ContestAnnouncementsHandler),
     (r"/contest/([0-9]+)/announcements/add", AddAnnouncementHandler),
     (r"/contest/([0-9]+)/announcement/([0-9]+)", AnnouncementHandler),
 
@@ -193,6 +195,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/participants", TrainingProgramParticipantsHandler),
     (r"/training_program/([0-9]+)/participants/add", AddTrainingProgramParticipantHandler),
     (r"/training_program/([0-9]+)/participant/([0-9]+)/remove", RemoveTrainingProgramParticipantHandler),
+    (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
     (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
     (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
     (r"/training_program/([0-9]+)/user_tests", TrainingProgramUserTestsHandler),

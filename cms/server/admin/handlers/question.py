@@ -53,6 +53,9 @@ class QuestionsHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
         self.contest = self.safe_get_item(Contest, contest_id)
+        if self.contest.training_program is not None:
+            self.redirect(self.url("training_program", self.contest.training_program.id, "questions"))
+            return
 
         self.r_params = self.render_params()
         self.r_params["questions"] = self.sql_session.query(Question)\

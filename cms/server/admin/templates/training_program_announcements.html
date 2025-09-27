@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% import "macro/markdown_input.html" as macro_markdown %}
+{% import "macro/announcement.html" as macro_announcement with context %}
+
+{% block js_init %}
+{% if regular_announcements %}
+utils.show_page("regular_announcements", 1);
+{% endif %}
+{% if home_announcements %}
+utils.show_page("home_announcements", 1);
+{% endif %}
+{% endblock js_init %}
+
+{% macro contest_section(title, dom_id, contest, announcements, next_url) %}
+  <h2 id="title_{{ dom_id }}" class="toggling_on">{{ title }}</h2>
+  <div id="{{ dom_id }}">
+    {% if contest is none %}
+      <div class="notifications">
+        <div class="notification info">No contest configured.</div>
+      </div>
+    {% else %}
+      <p>Contest: <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a></p>
+      {{ macro_announcement.add_form(contest, next_url) }}
+      <div class="notifications">
+        <div id="page_selector_{{ dom_id }}"></div>
+        <div id="paged_content_{{ dom_id }}">
+          {{ macro_announcement.entries(announcements|reverse, contest, admin, False) }}
+        </div>
+      </div>
+    {% endif %}
+    <div class="hr"></div>
+  </div>
+{% endmacro %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training program announcements: {{ training_program.title }}</h1>
+</div>
+
+{{ contest_section("Regular contest", "regular_announcements", regular_contest, regular_announcements, url("training_program", training_program.id, "announcements")) }}
+{{ contest_section("Home contest", "home_announcements", home_contest, home_announcements, url("training_program", training_program.id, "announcements")) }}
+
+{% endblock core %}
+
