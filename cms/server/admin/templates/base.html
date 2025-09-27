@@ -79,6 +79,9 @@ $(document).ready(init);
           </div>
           {% if contest is not none %}
           <h1 class="parent"><a href="{{ url() }}">Administration</a></h1>
+          {% if contest.training_program is not none %}
+          <h1 class="child"><a href="{{ url("training_program", contest.training_program.id) }}">{{ contest.training_program.title }}</a></h1>
+          {% endif %}
           <h1 class="child">{{ contest.name }}</h1>
           {% elif training_program is not none %}
           <h1 class="parent"><a href="{{ url() }}">Administration</a></h1>
