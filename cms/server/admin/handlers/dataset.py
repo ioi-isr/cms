@@ -29,9 +29,6 @@
 
 import io
 import os
-import shutil
-import subprocess
-import tempfile
 import logging
 import re
 import zipfile
@@ -48,8 +45,10 @@ import tornado.web
 from cms.db import Dataset, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
 from cms.grading.tasktypes import get_task_type_class
+from cms.grading.tasktypes.util import create_sandbox
 from cms.grading.languagemanager import filename_to_language
 from cms.grading.language import CompiledLanguage
+from cms.grading.steps.compilation import compilation_step
 from cms.grading.scoring import compute_changes_for_dataset
 from cmscommon.datetime import make_datetime
 from cmscommon.importers import import_testcases_from_zipfile
@@ -372,19 +371,9 @@ class AddManagerHandler(BaseHandler):
 
         manager = self.request.files["manager"][0]
         task_name = task.name
-        self.sql_session.close()
 
         filename = manager["filename"]
         body = manager["body"]
-
-        # If a source file for a known compiled language is uploaded,
-        # compile it into an executable manager.
-        compiled_filename = None
-        compiled_bytes = None
-        try:
-            language = filename_to_language(filename)
-        except Exception:
-            language = None
 
         # Decide which auto-compiled basenames are allowed for this task type.
         # Use TaskType constants to avoid hardcoding names and to avoid
@@ -404,50 +393,84 @@ class AddManagerHandler(BaseHandler):
             allowed_compile_basenames = set()
         base_noext = os.path.splitext(os.path.basename(filename))[0]
 
+        # compiled files (no extension) when a source file already exists.
+        has_extension = "." in os.path.basename(filename)
+        if (base_noext in allowed_compile_basenames and not has_extension):
+            for existing_filename in dataset.managers.keys():
+                existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
+                existing_has_ext = "." in os.path.basename(existing_filename)
+                if existing_base == base_noext and existing_has_ext:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Cannot upload compiled manager",
+                        ("A source file '%s' already exists for '%s'. "
+                         "Compiled files are auto-generated from source. "
+                         "Please upload the source file instead, or delete "
+                         "the existing source first." %
+                         (existing_filename, base_noext)))
+                    self.redirect(fallback_page)
+                    return
+
+        self.sql_session.close()
+
+        # If a source file for a known compiled language is uploaded,
+        # compile it into an executable manager.
+        compiled_filename = None
+        compiled_bytes = None
+        try:
+            language = filename_to_language(filename)
+        except Exception:
+            language = None
+
         if (language is not None
                 and isinstance(language, CompiledLanguage)
                 and base_noext in allowed_compile_basenames):
-            # Produce executable name by stripping the extension.
             safe_src = os.path.basename(filename)
             compiled_filename = base_noext
-            tmpdir = tempfile.mkdtemp(prefix="cms_manager_compile_")
+            
+            sandbox = None
             try:
-                # Write source into a safe, fixed path under tmpdir.
-                src_path = os.path.join(tmpdir, safe_src)
-                with open(src_path, "wb") as f:
-                    f.write(body)
-                exe_path = os.path.join(tmpdir, compiled_filename)
+                sandbox = create_sandbox(self.service.file_cacher, name="admin_compile")
+                
+                sandbox.create_file_from_string(safe_src, body)
+                
                 commands = language.get_compilation_commands(
                     [safe_src], compiled_filename, for_evaluation=True)
-                # For C++, drop '-static' which is often unavailable.
-                filtered_commands = []
-                for cmd in commands:
-                    if "C++" in getattr(language, "name", ""):
-                        cmd = [arg for arg in cmd if arg != "-static"]
-                    filtered_commands.append(cmd)
-                # Run the commands in tmpdir.
-                for cmd in filtered_commands:
-                    proc = subprocess.run(
-                        cmd, cwd=tmpdir, stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE)
-                    if proc.returncode != 0:
-                        err = proc.stderr.decode(errors="ignore")
-                        out = proc.stdout.decode(errors="ignore")
-                        self.service.add_notification(
-                            make_datetime(),
-                            "Manager compilation failed",
-                            ("Command: %r\nStdout:\n%s\nStderr:\n%s" %
-                             (cmd, out, err)))
-                        self.redirect(fallback_page)
-                        return
-                # Read compiled binary
-                with open(exe_path, "rb") as f:
-                    compiled_bytes = f.read()
+                
+                box_success, compilation_success, text, stats = \
+                    compilation_step(sandbox, commands)
+                
+                if not box_success:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Manager compilation failed",
+                        "Sandbox error during compilation. See logs for details.")
+                    self.redirect(fallback_page)
+                    return
+                
+                if not compilation_success:
+                    stdout = stats.get("stdout", "") if stats else ""
+                    stderr = stats.get("stderr", "") if stats else ""
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Manager compilation failed",
+                        ("Compilation failed. Command:%r\nStdout:\n%s\nStderr:\n%s" %
+                         (commands, stdout, stderr)))
+                    self.redirect(fallback_page)
+                    return
+                
+                compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
+                
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Manager compilation error",
+                    repr(error))
+                self.redirect(fallback_page)
+                return
             finally:
-                try:
-                    shutil.rmtree(tmpdir)
-                except Exception:
-                    pass
+                if sandbox:
+                    sandbox.cleanup(delete=True)
 
         # Store the appropriate content(s) into the file cache.
         stored_entries: list[tuple[str, str]] = []  # (filename, digest)
@@ -473,10 +496,13 @@ class AddManagerHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        # Create Manager DB entries for all stored files (original and, if any, compiled executable).
         for fname, dig in stored_entries:
-            manager = Manager(fname, dig, dataset=dataset)
-            self.sql_session.add(manager)
+            existing_manager = dataset.managers.get(fname)
+            if existing_manager is not None:
+                existing_manager.digest = dig
+            else:
+                manager = Manager(fname, dig, dataset=dataset)
+                self.sql_session.add(manager)
 
         if self.try_commit():
             self.redirect(self.url("task", task.id))
