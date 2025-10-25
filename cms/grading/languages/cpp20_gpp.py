@@ -18,46 +18,17 @@
 
 """C++20 programming language definition."""
 
-from cms.grading import CompiledLanguage
+from cms.grading.languages.cpp_gpp import CppGppBase
 
 
 __all__ = ["Cpp20Gpp"]
 
 
-class Cpp20Gpp(CompiledLanguage):
+class Cpp20Gpp(CppGppBase):
     """This defines the C++ programming language, compiled with g++ (the
     version available on the system) using the C++20 standard.
 
     """
 
-    @property
-    def name(self):
-        """See Language.name."""
-        return "C++20 / g++"
-
-    @property
-    def source_extensions(self):
-        """See Language.source_extensions."""
-        return [".cpp", ".cc", ".cxx", ".c++", ".C"]
-
-    @property
-    def header_extensions(self):
-        """See Language.header_extensions."""
-        return [".h"]
-
-    @property
-    def object_extensions(self):
-        """See Language.object_extensions."""
-        return [".o"]
-
-    def get_compilation_commands(self,
-                                 source_filenames, executable_filename,
-                                 for_evaluation=True):
-        """See Language.get_compilation_commands."""
-        command = ["/usr/bin/g++"]
-        if for_evaluation:
-            command += ["-DEVAL"]
-        command += ["-std=gnu++20", "-O2", "-pipe", "-static",
-                    "-s", "-o", executable_filename]
-        command += source_filenames
-        return [command]
+    def __init__(self):
+        super().__init__("20")
