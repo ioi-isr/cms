@@ -1,6 +1,4 @@
-
-
--- Add contest_folders table and folder_id on contests
+-- Add contest_folders table and folder_id on contests
 CREATE TABLE public.contest_folders (
     id integer NOT NULL,
     name public.codename NOT NULL,
