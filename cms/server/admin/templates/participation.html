@@ -56,7 +56,7 @@
         <td>
           <span class="info" title="Contestant password for this contest. If empty, the contestant's main password is used.
                                      Caution: stored in plain text."></span>
-          Password
+          Password <strong style="color:#c00; font-weight: 700;">(only inside the contest {{ contest.name }})</strong>
         </td>
         <td>
           {% set hashed_password = participation.password %}
