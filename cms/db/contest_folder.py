@@ -33,7 +33,7 @@ class ContestFolder(Base):
         index=True,
     )
 
-    hidden: bool = Column(Boolean, nullable=False, default=False, server_default="false")
+    hidden: bool = Column(Boolean, nullable=False, default=False)
 
     parent: "ContestFolder | None" = relationship(
         "ContestFolder", remote_side="ContestFolder.id", back_populates="children"

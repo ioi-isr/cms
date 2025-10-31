@@ -33,6 +33,9 @@ ALTER TABLE ONLY public.contest_folders
 
 CREATE INDEX ix_contest_folders_parent_id ON public.contest_folders USING btree (parent_id);
 
+ALTER TABLE ONLY public.contest_folders
+    ALTER COLUMN hidden DROP DEFAULT;
+
 ALTER TABLE public.contests ADD COLUMN folder_id integer;
 ALTER TABLE ONLY public.contests
     ADD CONSTRAINT contests_folder_id_fkey FOREIGN KEY (folder_id) REFERENCES public.contest_folders(id) ON UPDATE CASCADE ON DELETE SET NULL;
