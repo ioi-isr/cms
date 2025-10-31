@@ -211,8 +211,11 @@ class ContestFolderBrowseHandler(BaseHandler):
     """
     
     def _build_folder_tree(self) -> dict:
-        """Build complete folder tree with contests for client-side navigation."""
-        all_folders = self.sql_session.query(ContestFolder).all()
+        """Build complete folder tree with contests for client-side navigation.
+        
+        Excludes hidden folders and their descendants from the tree.
+        """
+        all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
         all_contests = self.sql_session.query(Contest).order_by(Contest.name).all()
         
         folder_map = {}
@@ -262,22 +265,22 @@ class ContestFolderBrowseHandler(BaseHandler):
                     self.sql_session.query(ContestFolder)
                     .filter(ContestFolder.name == seg)
                     .filter(ContestFolder.parent == parent)
+                    .filter(ContestFolder.hidden == False)
                     .first()
                 )
                 if cur_folder is None:
-                    # Unknown path segment: 404
-                    self.render("contest_list.html", contest_list={}, **self.r_params)
-                    return
+                    raise tornado.web.HTTPError(404)
                 breadcrumbs.append(cur_folder)
                 parent = cur_folder
         else:
             cur_folder = None
 
-        # Subfolders
+        # Subfolders (exclude hidden folders)
         if cur_folder is None:
             subfolders = (
                 self.sql_session.query(ContestFolder)
                 .filter(ContestFolder.parent_id.is_(None))
+                .filter(ContestFolder.hidden == False)
                 .order_by(ContestFolder.name)
                 .all()
             )
@@ -290,6 +293,7 @@ class ContestFolderBrowseHandler(BaseHandler):
             subfolders = (
                 self.sql_session.query(ContestFolder)
                 .filter(ContestFolder.parent == cur_folder)
+                .filter(ContestFolder.hidden == False)
                 .order_by(ContestFolder.name)
                 .all()
             )

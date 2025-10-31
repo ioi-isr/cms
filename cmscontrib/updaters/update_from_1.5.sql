@@ -5,7 +5,8 @@ CREATE TABLE public.contest_folders (
     id integer NOT NULL,
     name public.codename NOT NULL,
     description character varying NOT NULL,
-    parent_id integer
+    parent_id integer,
+    hidden boolean NOT NULL DEFAULT false
 );
 
 CREATE SEQUENCE public.contest_folders_id_seq
