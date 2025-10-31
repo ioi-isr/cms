@@ -309,7 +309,6 @@ class ContestFolderBrowseHandler(BaseHandler):
             return self.url(*[bf.name for bf in breadcrumbs], c.name)
 
         folder_tree = self._build_folder_tree()
-        folder_tree_json = json.dumps(folder_tree)
 
         self.render(
             "folder_browse.html",
@@ -318,7 +317,7 @@ class ContestFolderBrowseHandler(BaseHandler):
             contests=contests,
             folder_href=folder_href,
             contest_href=contest_href,
-            folder_tree_json=folder_tree_json,
+            folder_tree=folder_tree,
             current_path=path or "",
             **self.r_params,
         )
