@@ -6,22 +6,22 @@
     <div class="hero-unit contest-list">
         <h3>{% trans %}Choose a contest{% endtrans %}</h3>
 
-        {% if breadcrumbs and breadcrumbs|length > 0 %}
-        <p>
-            <a href="{{ url("browse") }}">/</a>
+        <p id="breadcrumb-nav">
+            <a href="{{ url("browse") }}" data-path="">/</a>
+            {% if breadcrumbs and breadcrumbs|length > 0 %}
             {% for f in breadcrumbs %}
               / {{ f.description }}
             {% endfor %}
             {% if breadcrumbs|length > 0 %}
-              &nbsp; <a href="{{ url("browse", "/".join(breadcrumbs[:-1]|map(attribute='name'))) if breadcrumbs|length > 1 else url("browse") }}">(Up)</a>
+              &nbsp; <a href="{{ url("browse", "/".join(breadcrumbs[:-1]|map(attribute='name'))) if breadcrumbs|length > 1 else url("browse") }}" data-path="{{ "/".join(breadcrumbs[:-1]|map(attribute='name')) if breadcrumbs|length > 1 else "" }}">(Up)</a>
+            {% endif %}
             {% endif %}
         </p>
-        {% endif %}
 
-        <ul class="nav nav-list">
+        <ul class="nav nav-list" id="folder-list">
             {% for f in subfolders %}
             <li>
-                <a href="{{ folder_href(f) }}">📁 {{ f.description }}</a>
+                <a href="{{ folder_href(f) }}" data-folder="{{ f.name }}">📁 {{ f.description }}</a>
             </li>
             {% endfor %}
             {% for c in contests|sort(attribute='name') %}
@@ -31,4 +31,113 @@
             {% endfor %}
         </ul>
     </div>
+
+    <script type="application/json" id="folder-tree-data">
+        {{ folder_tree_json|safe }}
+    </script>
+
+    <script>
+    (function() {
+        var folderTree = JSON.parse(document.getElementById('folder-tree-data').textContent);
+        var currentPath = "{{ current_path }}";
+        var urlRoot = "{{ url("browse") }}";
+        var contestUrlRoot = "{{ url("") }}";
+        var now = new Date("{{ now.isoformat() }}");
+
+        function navigateToPath(path) {
+            var segments = path ? path.split('/').filter(function(s) { return s; }) : [];
+            var current = folderTree;
+            var breadcrumbs = [];
+
+            for (var i = 0; i < segments.length; i++) {
+                var seg = segments[i];
+                var found = false;
+                for (var j = 0; j < current.children.length; j++) {
+                    if (current.children[j].name === seg) {
+                        breadcrumbs.push(current.children[j]);
+                        current = current.children[j];
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return;
+                }
+            }
+
+            var breadcrumbNav = document.getElementById('breadcrumb-nav');
+            breadcrumbNav.innerHTML = '<a href="' + urlRoot + '" data-path="">/</a>';
+            
+            if (breadcrumbs.length > 0) {
+                for (var i = 0; i < breadcrumbs.length; i++) {
+                    breadcrumbNav.innerHTML += ' / ' + breadcrumbs[i].description;
+                }
+                var upPath = segments.slice(0, -1).join('/');
+                var upUrl = upPath ? urlRoot + '/' + upPath : urlRoot;
+                breadcrumbNav.innerHTML += ' &nbsp; <a href="' + upUrl + '" data-path="' + upPath + '">(Up)</a>';
+            }
+
+            var folderList = document.getElementById('folder-list');
+            folderList.innerHTML = '';
+
+            for (var i = 0; i < current.children.length; i++) {
+                var folder = current.children[i];
+                var folderPath = segments.concat([folder.name]).join('/');
+                var li = document.createElement('li');
+                var a = document.createElement('a');
+                a.href = urlRoot + '/' + folderPath;
+                a.setAttribute('data-folder', folder.name);
+                a.textContent = '📁 ' + folder.description;
+                li.appendChild(a);
+                folderList.appendChild(li);
+            }
+
+            for (var i = 0; i < current.contests.length; i++) {
+                var contest = current.contests[i];
+                var contestPath = segments.concat([contest.name]).join('/');
+                var li = document.createElement('li');
+                var a = document.createElement('a');
+                a.href = contestUrlRoot + '/' + contestPath;
+                a.textContent = contest.description;
+                
+                if (contest.stop && new Date(contest.stop) < now) {
+                    a.style.color = '#adadad';
+                }
+                
+                li.appendChild(a);
+                folderList.appendChild(li);
+            }
+
+            currentPath = path;
+            if (window.history && window.history.pushState) {
+                var newUrl = path ? urlRoot + '/' + path : urlRoot;
+                window.history.pushState({path: path}, '', newUrl);
+            }
+        }
+
+        document.getElementById('folder-list').addEventListener('click', function(e) {
+            if (e.target.tagName === 'A' && e.target.hasAttribute('data-folder')) {
+                e.preventDefault();
+                var folderName = e.target.getAttribute('data-folder');
+                var newPath = currentPath ? currentPath + '/' + folderName : folderName;
+                navigateToPath(newPath);
+            }
+        });
+
+        document.getElementById('breadcrumb-nav').addEventListener('click', function(e) {
+            if (e.target.tagName === 'A' && e.target.hasAttribute('data-path')) {
+                e.preventDefault();
+                navigateToPath(e.target.getAttribute('data-path'));
+            }
+        });
+
+        if (window.history && window.history.pushState) {
+            window.addEventListener('popstate', function(e) {
+                if (e.state && e.state.path !== undefined) {
+                    navigateToPath(e.state.path);
+                }
+            });
+        }
+    })();
+    </script>
 {% endblock body %}

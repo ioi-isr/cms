@@ -29,6 +29,7 @@
 
 """
 
+import json
 import logging
 import traceback
 
@@ -208,6 +209,45 @@ class ContestFolderBrowseHandler(BaseHandler):
     Renders a listing of subfolders and contests under a given folder path.
     If no path is provided, lists root folders and contests without folder.
     """
+    
+    def _build_folder_tree(self) -> dict:
+        """Build complete folder tree with contests for client-side navigation."""
+        all_folders = self.sql_session.query(ContestFolder).all()
+        all_contests = self.sql_session.query(Contest).order_by(Contest.name).all()
+        
+        folder_map = {}
+        for folder in all_folders:
+            folder_map[folder.id] = {
+                "id": folder.id,
+                "name": folder.name,
+                "description": folder.description,
+                "parent_id": folder.parent_id,
+                "children": [],
+                "contests": []
+            }
+        
+        for contest in all_contests:
+            contest_data = {
+                "name": contest.name,
+                "description": contest.description,
+                "stop": contest.stop.isoformat() if contest.stop else None
+            }
+            if contest.folder_id and contest.folder_id in folder_map:
+                folder_map[contest.folder_id]["contests"].append(contest_data)
+            elif not contest.folder_id:
+                folder_map.setdefault(None, {"children": [], "contests": []})
+                folder_map[None]["contests"].append(contest_data)
+        
+        for folder in all_folders:
+            if folder.parent_id and folder.parent_id in folder_map:
+                folder_map[folder.parent_id]["children"].append(folder_map[folder.id])
+            elif not folder.parent_id:
+                folder_map.setdefault(None, {"children": [], "contests": []})
+                folder_map[None]["children"].append(folder_map[folder.id])
+        
+        root = folder_map.get(None, {"children": [], "contests": []})
+        return root
+    
     def get(self, path: str | None = None):
         self.r_params = self.render_params()
 
@@ -268,6 +308,9 @@ class ContestFolderBrowseHandler(BaseHandler):
             # nested paths by capturing full path but resolve by last segment.
             return self.url(*[bf.name for bf in breadcrumbs], c.name)
 
+        folder_tree = self._build_folder_tree()
+        folder_tree_json = json.dumps(folder_tree)
+
         self.render(
             "folder_browse.html",
             breadcrumbs=breadcrumbs,
@@ -275,5 +318,7 @@ class ContestFolderBrowseHandler(BaseHandler):
             contests=contests,
             folder_href=folder_href,
             contest_href=contest_href,
+            folder_tree_json=folder_tree_json,
+            current_path=path or "",
             **self.r_params,
         )
