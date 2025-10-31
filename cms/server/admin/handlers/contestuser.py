@@ -30,8 +30,6 @@
 """
 
 import logging
-import csv
-import io
 
 import collections
 try:
@@ -293,36 +291,3 @@ class MessageHandler(BaseHandler):
                         user.username, self.contest.name)
 
         self.redirect(self.url("contest", contest_id, "user", user_id, "edit"))
-
-
-class ExportParticipantsHandler(BaseHandler):
-    """Exports contest participants information as CSV."""
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id):
-        contest = self.safe_get_item(Contest, contest_id)
-        participations: list[Participation] = (
-            self.sql_session.query(Participation)
-            .filter(Participation.contest == contest)
-            .all()
-        )
-
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(
-            ["username", "first_name", "last_name", "starting_time", "starting_ip"]
-        )
-        for p in participations:
-            user = p.user
-            starting_time = p.starting_time.isoformat() if p.starting_time else ""
-            starting_ip = str(p.starting_ip) if p.starting_ip else ""
-            writer.writerow(
-                [user.username, user.first_name, user.last_name, starting_time, starting_ip]
-            )
-
-        self.set_header("Content-Type", "text/csv")
-        self.set_header(
-            "Content-Disposition",
-            f"attachment; filename=participants_{contest_id}.csv",
-        )
-        self.write(output.getvalue())
