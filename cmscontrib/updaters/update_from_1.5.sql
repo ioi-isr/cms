@@ -28,7 +28,7 @@ ALTER TABLE ONLY public.contest_folders
     ADD CONSTRAINT contest_folders_name_key UNIQUE (name);
 
 ALTER TABLE ONLY public.contest_folders
-    ADD CONSTRAINT contest_folders_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.contest_folders(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT contest_folders_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.contest_folders(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 CREATE INDEX ix_contest_folders_parent_id ON public.contest_folders USING btree (parent_id);
 

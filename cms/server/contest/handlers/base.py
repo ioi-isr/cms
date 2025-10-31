@@ -261,14 +261,12 @@ class ContestFolderBrowseHandler(BaseHandler):
 
         # Build url helper for folder/contest entries
         def folder_href(f: ContestFolder) -> str:
-            parts = [bf.name for bf in breadcrumbs] + [f.name]
-            return self.url("browse", "/".join(parts))
+            return self.url("browse", *[bf.name for bf in breadcrumbs], f.name)
 
         def contest_href(c: Contest) -> str:
             # Contest pages expect the contest name segment; we still support
             # nested paths by capturing full path but resolve by last segment.
-            parts = [bf.name for bf in breadcrumbs] + [c.name]
-            return self.url("/" + "/".join(parts))
+            return self.url(*[bf.name for bf in breadcrumbs], c.name)
 
         self.render(
             "folder_browse.html",

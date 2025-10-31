@@ -28,7 +28,7 @@ class ContestFolder(Base):
     # Parent folder (nullable for root folders).
     parent_id: int | None = Column(
         Integer,
-        ForeignKey("contest_folders.id", onupdate="CASCADE", ondelete="CASCADE"),
+        ForeignKey("contest_folders.id", onupdate="CASCADE", ondelete="RESTRICT"),
         nullable=True,
         index=True,
     )
