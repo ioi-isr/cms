@@ -1,11 +1,10 @@
-
-
--- Add contest_folders table and folder_id on contests
+-- Add contest_folders table and folder_id on contests
 CREATE TABLE public.contest_folders (
     id integer NOT NULL,
     name public.codename NOT NULL,
     description character varying NOT NULL,
-    parent_id integer
+    parent_id integer,
+    hidden boolean NOT NULL DEFAULT false
 );
 
 CREATE SEQUENCE public.contest_folders_id_seq
@@ -28,9 +27,12 @@ ALTER TABLE ONLY public.contest_folders
     ADD CONSTRAINT contest_folders_name_key UNIQUE (name);
 
 ALTER TABLE ONLY public.contest_folders
-    ADD CONSTRAINT contest_folders_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.contest_folders(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT contest_folders_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.contest_folders(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 CREATE INDEX ix_contest_folders_parent_id ON public.contest_folders USING btree (parent_id);
+
+ALTER TABLE ONLY public.contest_folders
+    ALTER COLUMN hidden DROP DEFAULT;
 
 ALTER TABLE public.contests ADD COLUMN folder_id integer;
 ALTER TABLE ONLY public.contests

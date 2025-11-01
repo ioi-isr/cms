@@ -8,7 +8,7 @@ optional `parent` forming a tree. Contests can be assigned to a single folder.
 
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey
-from sqlalchemy.types import Integer, Unicode
+from sqlalchemy.types import Boolean, Integer, Unicode
 
 from . import Base, Codename
 
@@ -28,10 +28,12 @@ class ContestFolder(Base):
     # Parent folder (nullable for root folders).
     parent_id: int | None = Column(
         Integer,
-        ForeignKey("contest_folders.id", onupdate="CASCADE", ondelete="CASCADE"),
+        ForeignKey("contest_folders.id", onupdate="CASCADE", ondelete="RESTRICT"),
         nullable=True,
         index=True,
     )
+
+    hidden: bool = Column(Boolean, nullable=False, default=False)
 
     parent: "ContestFolder | None" = relationship(
         "ContestFolder", remote_side="ContestFolder.id", back_populates="children"
@@ -48,8 +50,8 @@ class ContestFolder(Base):
         "Contest", back_populates="folder", cascade="save-update"
     )
 
-    # Utility: compute full path by walking parents
     def full_path_parts(self) -> list[str]:
+        """Compute full path by walking parents."""
         cur = self
         parts: list[str] = []
         while cur is not None:
@@ -57,3 +59,12 @@ class ContestFolder(Base):
             cur = cur.parent
         parts.reverse()
         return parts
+
+    def is_descendant_of(self, ancestor: "ContestFolder") -> bool:
+        """Check if this folder is a descendant of the given ancestor folder."""
+        cur = self
+        while cur is not None:
+            if cur.id is not None and ancestor.id is not None and cur.id == ancestor.id:
+                return True
+            cur = cur.parent
+        return False
