@@ -91,6 +91,7 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
 
         self.eval_output.assert_called_once_with(
             self.file_cacher, job, None, use_realprecision=False,
+            realprecision_exponent=None,
             user_output_digest="digest of 023")
         self.assertResultsInJob(job, True, str(OUTCOME), TEXT, {})
 
@@ -116,6 +117,7 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
 
         self.eval_output.assert_called_once_with(
             self.file_cacher, job, None, use_realprecision=False,
+            realprecision_exponent=None,
             user_output_digest="digest of 023")
         self.assertResultsInJob(job, False, None, None, None)
 
@@ -129,7 +131,7 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
 
         self.eval_output.assert_called_once_with(
             self.file_cacher, job, "checker",
-            use_realprecision=False,
+            use_realprecision=False, realprecision_exponent=None,
             user_output_digest="digest of 023")
         self.assertResultsInJob(job, True, str(OUTCOME), TEXT, {})
 
