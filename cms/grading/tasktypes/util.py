@@ -40,7 +40,7 @@ from cms.grading.Job import CompilationJob, EvaluationJob, Job
 from cms.grading.Sandbox import Sandbox
 from cms.grading.language import Language
 from cms.grading.steps import EVALUATION_MESSAGES, checker_step, \
-    white_diff_fobj_step, realprecision_diff_fobj_step
+    white_diff_fobj_step, realprecision_diff_fobj_step, _DEFAULT_EXP
 
 
 logger = logging.getLogger(__name__)
@@ -218,7 +218,7 @@ def eval_output(
     job: Job,
     checker_codename: str | None,
     use_realprecision: bool = False,
-    realprecision_exponent: int | None = None,
+    realprecision_exponent: int = _DEFAULT_EXP,
     user_output_path: str | None = None,
     user_output_digest: str | None = None,
     user_output_filename: str = "",
@@ -231,6 +231,8 @@ def eval_output(
     checker_codename: codename of the checker amongst the manager,
         or None to use white diff / real number precision.
     use_realprecision: whether we should use real precision comparator.
+    realprecision_exponent: exponent X for tolerance 1e-X when using real
+        precision comparison; Default is 6 for 1e-6.
     user_output_path: full path of the user output file, None if
         using the digest (exactly one must be non-None).
     user_output_digest: digest of the user output file, None if
@@ -286,29 +288,16 @@ def eval_output(
         return success, outcome, text
 
     else:
-        def _compare(uo_fobj, co_fobj):
-            if use_realprecision:
-                exp = realprecision_exponent
-                if exp is None:
-                    try:
-                        params = job.task_type_parameters
-                        if isinstance(params, list):
-                            # OutputOnly: [ 'realprecision', X ]
-                            if len(params) >= 2 and params[0] == 'realprecision':
-                                exp = int(params[1])
-                            # Batch: [ compilation, io, 'realprecision', X ]
-                            elif len(params) >= 4 and params[2] == 'realprecision':
-                                exp = int(params[3])
-                    except Exception:
-                        exp = None
-                return realprecision_diff_fobj_step(uo_fobj, co_fobj, exp)
-            else:
-                return white_diff_fobj_step(uo_fobj, co_fobj)
         if user_output_path is not None:
             user_output_fobj = open(user_output_path, "rb")
         else:
             user_output_fobj = file_cacher.get_file(user_output_digest)
         with user_output_fobj:
             with file_cacher.get_file(job.output) as correct_output_fobj:
-                outcome, text = _compare(user_output_fobj, correct_output_fobj)
+                if use_realprecision:
+                    outcome, text = realprecision_diff_fobj_step(
+                        user_output_fobj, correct_output_fobj, realprecision_exponent)
+                else:
+                    outcome, text = white_diff_fobj_step(
+                        user_output_fobj, correct_output_fobj)
         return True, outcome, text

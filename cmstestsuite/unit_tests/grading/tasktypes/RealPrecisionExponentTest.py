@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 """Tests for deriving realprecision exponent at evaluation-time.
-
 Covers eval_output() reading job.task_type_parameters to pick 1e-<X>.
 """
 
