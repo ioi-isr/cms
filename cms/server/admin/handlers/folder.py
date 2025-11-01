@@ -55,15 +55,8 @@ class FolderHandler(BaseHandler):
         self.r_params["folder"] = folder
         # Potential parents: all except self and descendants
         all_folders = self.sql_session.query(ContestFolder).order_by(ContestFolder.name).all()
-        # Exclude self descendants to prevent cycles
-        def is_descendant(candidate: ContestFolder) -> bool:
-            cur = candidate
-            while cur is not None:
-                if cur is folder:
-                    return True
-                cur = cur.parent
-            return False
-        self.r_params["possible_parents"] = [f for f in all_folders if f is not folder and not is_descendant(f)]
+        # Exclude self and descendants to prevent cycles
+        self.r_params["possible_parents"] = [f for f in all_folders if f is not folder and not f.is_descendant_of(folder)]
         self.render("folder.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -82,8 +75,11 @@ class FolderHandler(BaseHandler):
             else:
                 parent = self.safe_get_item(ContestFolder, int(parent_id_str))
 
+            hidden = self.get_argument("hidden", "0") == "1"
+
             folder.set_attrs(attrs)
             folder.parent = parent
+            folder.hidden = hidden
         except Exception as error:
             self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback)
@@ -114,7 +110,8 @@ class AddFolderHandler(SimpleHandler("add_folder.html", permission_all=True)):
                 parent = None
             else:
                 parent = self.safe_get_item(ContestFolder, int(parent_id_str))
-            folder = ContestFolder(name=name, description=description, parent=parent)
+            hidden = self.get_argument("hidden", "0") == "1"
+            folder = ContestFolder(name=name, description=description, parent=parent, hidden=hidden)
             self.sql_session.add(folder)
         except Exception as error:
             self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
