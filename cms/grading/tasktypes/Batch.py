@@ -113,11 +113,11 @@ class Batch(TaskType):
         "",
         {OUTPUT_EVAL_DIFF: "Outputs compared with white diff",
          OUTPUT_EVAL_CHECKER: "Outputs are compared by a comparator",
-         OUTPUT_EVAL_REALPREC: "Outputs compared as real numbers (with precision of 1e-X)"})
+         OUTPUT_EVAL_REALPREC: "Outputs compared as real numbers (with precision of 1e-X, default X=6)"})
     _REALPREC_EXP = ParameterTypeInt(
         "Real precision exponent X (precision is 1e-X)",
         "realprec_exp",
-        "If using real-number comparison, specify X in 1e-X (e.g., 6)")
+        "If using real-number comparison, specify X in 1e-X (default: 6)")
 
     ACCEPTED_PARAMETERS = [_COMPILATION, _USE_FILE, _EVALUATION, _REALPREC_EXP]
 
@@ -130,8 +130,8 @@ class Batch(TaskType):
         - Parse any remaining subclass-specific parameters (e.g., BatchAndOutput)
           preserving their order.
 
-        Returns the full parameter list. When output_eval != 'realprecision',
-        the exponent is omitted if absent.
+        Returns the full parameter list. When output_eval == 'realprecision',
+        the exponent is always included (possibly None for default).
         """
         params = []
         # First three are common
@@ -144,9 +144,9 @@ class Batch(TaskType):
         exp = None
         try:
             exp = cls._REALPREC_EXP.parse_handler(handler, prefix)
-        except Exception:
+        except (ValueError, KeyError):
             exp = None
-        if out_eval == cls.OUTPUT_EVAL_REALPREC and exp is not None:
+        if out_eval == cls.OUTPUT_EVAL_REALPREC:
             params.append(exp)
 
         # Parse any extra parameters declared by subclasses beyond index 3
@@ -164,9 +164,6 @@ class Batch(TaskType):
         return "Batch"
 
     def __init__(self, parameters):
-        # Backward compatibility: accept legacy 3-parameter lists
-        if isinstance(parameters, list) and len(parameters) == 3:
-            parameters = list(parameters) + [6]
         super().__init__(parameters)
 
         # Data in the parameters.
@@ -174,10 +171,14 @@ class Batch(TaskType):
         self.input_filename: str
         self.output_filename: str
         self.output_eval: str
+        self.realprec_exp: int | None
         self.compilation = self.parameters[0]
         self.input_filename, self.output_filename = self.parameters[1]
         self.output_eval = self.parameters[2]
-        # Optional realprecision exponent at parameters[3]
+        if len(self.parameters) >= 4:
+            self.realprec_exp = self.parameters[3]
+        else:
+            self.realprec_exp = None
 
         # Actual input and output are the files used to store input and
         # where the output is checked, regardless of using redirects or not.
@@ -243,23 +244,18 @@ class Batch(TaskType):
 
         # Validate core params
         self._COMPILATION.validate(self.parameters[0])
-        # IO collection validated at parse time; skip deep validation here
+        self._USE_FILE.validate(self.parameters[1])
         self._EVALUATION.validate(self.parameters[2])
 
-        # Manage optional exponent only when realprecision is selected
+        # Validate optional exponent when realprecision is selected
         out_eval = self.parameters[2]
         if out_eval == self.OUTPUT_EVAL_REALPREC:
-            # Ensure an exponent exists at index 3; if absent or occupied by
-            # subclass-specific parameter, insert the default (6).
-            if len(self.parameters) == 3:
-                self.parameters.insert(3, 6)
-            try:
-                self.parameters[3] = int(self.parameters[3])
-            except Exception:
-                # Insert default exponent before subclass extras
-                self.parameters.insert(3, 6)
-        # Otherwise, do not expect/parse exponent; any following parameters
-        # belong to subclasses (e.g., BatchAndOutput) and are validated there.
+            if len(self.parameters) >= 4:
+                if self.parameters[3] is not None:
+                    try:
+                        self.parameters[3] = int(self.parameters[3])
+                    except (ValueError, TypeError):
+                        raise ValueError("Real precision exponent must be an integer or None")
 
     @staticmethod
     def _executable_filename(codenames: Iterable[str], language: Language) -> str:
@@ -451,7 +447,8 @@ class Batch(TaskType):
                     file_cacher, job,
                     self.CHECKER_CODENAME
                     if self._uses_checker() else None,
-                    use_realprecision = self._uses_realprecision(),
+                    use_realprecision=self._uses_realprecision(),
+                    realprecision_exponent=self.realprec_exp,
                     **output_file_params, extra_args=extra_args)
 
         # Fill in the job with the results.

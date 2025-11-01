@@ -362,7 +362,8 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
         # Check eval_output was called correctly.
         self.eval_output.assert_called_once_with(
             self.file_cacher, job, None,
-            use_realprecision=True, user_output_path="/path/0/output.txt",
+            use_realprecision=True, realprecision_exponent=None,
+            user_output_path="/path/0/output.txt",
             user_output_filename="", extra_args=None)
         # Results put in job and sandbox deleted.
         self.assertResultsInJob(job)
@@ -397,6 +398,7 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
         # Check eval_output was called correctly.
         self.eval_output.assert_called_once_with(
             self.file_cacher, job, None, use_realprecision=True,
+            realprecision_exponent=None,
             user_output_path="/path/0/myout",
             user_output_filename="myout", extra_args=None)
         # Results put in job and sandbox deleted.

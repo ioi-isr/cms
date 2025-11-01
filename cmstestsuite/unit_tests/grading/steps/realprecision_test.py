@@ -16,12 +16,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Tests for whitediff.py."""
+"""Tests for realprecision.py."""
 
 import unittest
 from io import BytesIO
 
-from cms.grading.steps import _EPS, _real_numbers_compare
+from cms.grading.steps.realprecision import _EPS, _real_numbers_compare
 
 _PREC = 12
 def f(x: float) -> str:
@@ -31,7 +31,7 @@ _ACC = 1e-10
 _NOISE = _EPS - _ACC
 _DIFF = _EPS + _ACC
 
-class TestWhiteDiff(unittest.TestCase):
+class TestRealPrecision(unittest.TestCase):
 
     @staticmethod
     def _cmp(s1, s2):
@@ -43,18 +43,38 @@ class TestWhiteDiff(unittest.TestCase):
         return _real_numbers_compare(
             BytesIO(s1.encode("utf-8")), BytesIO(s2.encode("utf-8")), exponent)
 
-    # --- Tokenization ----------------------------------------------------------------
+    # --- Tokenization and white-diff semantics ---------------------------------------
     
-    def test_no_numbers_equal(self):
+    def test_empty_files_equal(self):
         self.assertTrue(self._cmp("", ""))
-        self.assertTrue(self._cmp("Daniel W", "Ron R"))
-        self.assertTrue(self._cmp("你好", "谢谢"))
     
-    def test_no_diff_one_token_and_whites(self):
+    def test_only_whitespace_equal(self):
+        self.assertTrue(self._cmp("   ", "\t\n"))
+        self.assertTrue(self._cmp("", "  \t  \n"))
+    
+    def test_different_text_no_numbers_fail(self):
+        self.assertFalse(self._cmp("Daniel W", "Ron R"))
+        self.assertFalse(self._cmp("你好", "谢谢"))
+        self.assertFalse(self._cmp("hello", "world"))
+    
+    def test_same_text_different_whitespace_no_numbers(self):
+        self.assertTrue(self._cmp("hello world", "hello  world"))
+        self.assertTrue(self._cmp("hello\nworld", "hello world"))
+        self.assertTrue(self._cmp("  hello  world  ", "hello world"))
+    
+    def test_number_with_whitespace_variations(self):
         self.assertTrue(self._cmp("1.0   ", "1.0"))
         self.assertTrue(self._cmp("   1.0", "1.0"))
-        self.assertTrue(self._cmp(" The answer is  1.0 thanks", "It should be 1.0 ok?"))
-        self.assertFalse(self._cmp(" The answer is  1.0 thanks", "It should be 1.5 ok?"))
+        self.assertTrue(self._cmp("1.0\n", "1.0"))
+    
+    def test_text_and_number_same_text(self):
+        self.assertTrue(self._cmp("The answer is 1.0", "The  answer  is  1.0"))
+        self.assertTrue(self._cmp("Result: 1.0", "Result:\t1.0"))
+    
+    def test_text_and_number_different_text_fail(self):
+        self.assertFalse(self._cmp("The answer is 1.0 thanks", "It should be 1.0 ok?"))
+        self.assertFalse(self._cmp("Answer: 1.0", "Result: 1.0"))
+        self.assertFalse(self._cmp("The answer is 1.0 thanks", "The answer is 1.5 thanks"))
 
     def test_no_diff_multiple_tokens_and_whites(self):
         self.assertTrue(self._cmp("1\n2\n3", "1 2 3"))

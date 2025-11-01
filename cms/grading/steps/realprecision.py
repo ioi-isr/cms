@@ -19,12 +19,17 @@
 """High level functions to perform standardized real-number comparison.
 
 Policy:
-- Tokenization: only fixed-format decimals (no exponent, no inf/nan).
+- Tokenization: streams are split into alternating text and fixed-format decimal tokens.
+  Fixed-format decimals (no exponent, no inf/nan):
   Accepted examples: "12", "12.", "12.34", ".5", "-0.0", "+3.000"
   Rejected examples: "1e-3", "nan", "inf", "0x1.8p3"
-- Tolerance: 1e-6 absolute OR 1e-6 * max(1, |a|, |b|) relative.
-- Pairwise comparison in order in case the number of fixed-format decimals
-  is the same, otherwise the files are considered different.
+- Text comparison: non-numeric text is compared using white-diff semantics
+  (whitespace differences are ignored, but other text differences cause failure).
+- Number comparison: numeric tokens are compared with absolute/relative tolerance.
+  Default tolerance: 1e-6 absolute OR 1e-6 * max(1, |a|, |b|) relative.
+- Both streams must have the same sequence of text/number token types and the same
+  number of numeric tokens. Text tokens must match (up to whitespace), and numeric
+  tokens must match within tolerance.
 """
 
 import logging
@@ -42,6 +47,8 @@ logger = logging.getLogger(__name__)
 # Fixed-format decimals only (bytes regex).
 _FIXED_DEC_RE = re.compile(rb'[+-]?(?:\d+(?:\.\d*)?|\.\d+)')
 _EPS = 1e-6
+
+_WHITES = [b' ', b'\t', b'\n', b'\x0b', b'\x0c', b'\r']
 
 
 def _compare_real_pair(a: float, b: float, eps: float) -> bool:
@@ -63,44 +70,97 @@ def _parse_fixed(token: bytes) -> float | None:
         return None
 
 
-def _extract_fixed_decimals(stream: typing.BinaryIO) -> list[float]:
-    """Extract and parse all fixed-format decimal tokens from a binary stream."""
-    data = stream.read()
-    nums: list[float] = []
-    for m in _FIXED_DEC_RE.findall(data):
-        v = _parse_fixed(m)
-        if v is not None:
-            nums.append(v)
-    return nums
+def _white_diff_canonicalize(string: bytes) -> bytes:
+    """Canonicalize text for white-diff comparison.
+    
+    Strips leading/trailing whitespace and collapses runs of whitespace
+    into single spaces, matching white_diff behavior.
+    
+    string: the bytes string to canonicalize.
+    return: the canonicalized string.
+    """
+    for char in _WHITES[1:]:
+        string = string.replace(char, _WHITES[0])
+    
+    string = _WHITES[0].join([x for x in string.split(_WHITES[0]) if len(x) > 0])
+    return string
+
+
+def _tokenize_stream(data: bytes) -> list[tuple[str, bytes | float]]:
+    """Tokenize a byte stream into alternating text and number tokens.
+    
+    Returns a list of (type, value) tuples where type is either 'text' or 'number'.
+    For 'text' tokens, value is the canonicalized bytes.
+    For 'number' tokens, value is the parsed float.
+    
+    data: the byte stream data.
+    return: list of (type, value) tuples.
+    """
+    tokens = []
+    pos = 0
+    
+    for match in _FIXED_DEC_RE.finditer(data):
+        if match.start() > pos:
+            text = data[pos:match.start()]
+            canonical = _white_diff_canonicalize(text)
+            if len(canonical) > 0:
+                tokens.append(('text', canonical))
+        
+        num_bytes = match.group(0)
+        num_val = _parse_fixed(num_bytes)
+        if num_val is not None:
+            tokens.append(('number', num_val))
+        
+        pos = match.end()
+    
+    if pos < len(data):
+        text = data[pos:]
+        canonical = _white_diff_canonicalize(text)
+        if len(canonical) > 0:
+            tokens.append(('text', canonical))
+    
+    return tokens
 
 
 def _real_numbers_compare(
     output: typing.BinaryIO, correct: typing.BinaryIO, exponent: int | None = None
 ) -> bool:
-    """Compare the two output files. Two files are equal if they have the
-    same number of real numbers, and all for every integer i, the absolute
-    or relative difference of real number i of first file and real number i 
-    of second file is smaller or equal to 10^-6.
+    """Compare two output files using white-diff for text and tolerance for numbers.
+    
+    Two files are equal if:
+    1. They have the same sequence of text/number token types.
+    2. Text tokens match up to whitespace differences (white-diff semantics).
+    3. Numeric tokens match within absolute/relative tolerance.
+    
+    This matches the behavior of a C++ program reading numbers with cin >> double,
+    where non-numeric text differences would cause the comparison to fail.
 
-    output: the first file to compare.
-    res: the second file to compare.
-    return: True if the two file are (up to the 10^-6 accuracy) as explained above.
-
+    output: the user output file to compare.
+    correct: the correct output file to compare.
+    exponent: optional precision exponent X for tolerance 1e-X (default: 6).
+    return: True if the files match as explained above.
     """
-    exp_nums = _extract_fixed_decimals(correct)
-    act_nums = _extract_fixed_decimals(output)
-
-    if len(exp_nums) != len(act_nums):
+    output_data = output.read()
+    correct_data = correct.read()
+    
+    output_tokens = _tokenize_stream(output_data)
+    correct_tokens = _tokenize_stream(correct_data)
+    
+    if len(output_tokens) != len(correct_tokens):
         return False
     
-    n = len(exp_nums)
-
-    # Pairwise comparisons
     eps = _EPS if exponent is None else 10 ** (-(int(exponent)))
-    for i in range(n):
-        a, b = exp_nums[i], act_nums[i]
-        if not _compare_real_pair(a, b, eps):
+    for (out_type, out_val), (cor_type, cor_val) in zip(output_tokens, correct_tokens):
+        if out_type != cor_type:
             return False
+        
+        if out_type == 'text':
+            if out_val != cor_val:
+                return False
+        else:  # out_type == 'number'
+            # Number tokens must match within tolerance.
+            if not _compare_real_pair(out_val, cor_val, eps):
+                return False
     
     return True
 
