@@ -277,6 +277,13 @@ class Participation(Base):
         passive_deletes=True,
         back_populates="participation")
 
+    delay_requests: list["DelayRequest"] = relationship(
+        "DelayRequest",
+        order_by="[DelayRequest.request_timestamp]",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="participation")
+
 
 class Message(Base):
     """Class to store a private message from the managers to the
@@ -396,6 +403,66 @@ class Question(Base):
     # yet, or if the admin has been later deleted). Admins only loosely "own" a
     # question, so we do not back populate any field in Admin, nor delete the
     # question if the admin gets deleted.
+    admin_id: int | None = Column(
+        Integer,
+        ForeignKey(Admin.id,
+                   onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        index=True)
+    admin: Admin | None = relationship(Admin)
+
+
+class DelayRequest(Base):
+    """Class to store a delay request from a user to the managers.
+
+    """
+    __tablename__ = 'delay_requests'
+
+    MAX_REASON_LENGTH = 2000
+
+    # Auto increment primary key.
+    id: int = Column(
+        Integer,
+        primary_key=True)
+
+    # Time the request was made.
+    request_timestamp: datetime = Column(
+        DateTime,
+        nullable=False)
+
+    # Requested start time for the contest.
+    requested_start_time: datetime = Column(
+        DateTime,
+        nullable=False)
+
+    reason: str = Column(
+        Unicode,
+        nullable=False)
+
+    status: str = Column(
+        Unicode,
+        nullable=False,
+        default='pending')
+
+    # Time the request was processed (approved or rejected).
+    processed_timestamp: datetime | None = Column(
+        DateTime,
+        nullable=True)
+
+    # Participation (id and object) owning the delay request.
+    participation_id: int = Column(
+        Integer,
+        ForeignKey(Participation.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    participation: Participation = relationship(
+        Participation,
+        back_populates="delay_requests")
+
+    # Admin that processed the request (or null if not processed yet or
+    # if the admin has been later deleted). Admins only loosely "own" a
+    # delete the request if the admin gets deleted.
     admin_id: int | None = Column(
         Integer,
         ForeignKey(Admin.id,
