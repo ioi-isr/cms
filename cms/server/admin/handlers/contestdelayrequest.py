@@ -32,7 +32,7 @@ except:
 import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation
-from cmscommon.datetime import make_datetime
+from cmscommon.datetime import make_datetime, utc
 from .base import BaseHandler, require_permission
 
 
@@ -48,6 +48,7 @@ class DelaysAndExtraTimesHandler(BaseHandler):
         self.contest = self.safe_get_item(Contest, contest_id)
 
         self.r_params = self.render_params()
+        self.r_params["timezone"] = utc
         self.r_params["participations"] = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
             .order_by(Participation.id)\
