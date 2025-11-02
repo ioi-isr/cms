@@ -10,23 +10,6 @@ utils.show_page("delays_and_extra_times", 1);
 <div class="core_title">
   <h1>Delays and Extra Times</h1>
   <p class="muted">All times shown in UTC</p>
-  <div class="btn-group" style="margin-top: 10px;">
-    <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="btn btn-info">
-      <i class="icon-download-alt icon-white"></i> Export CSV
-    </a>
-    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to remove all delays and extra times for all participants?');">
-      {{ xsrf_form_html|safe }}
-      <button type="submit" class="btn btn-warning">
-        <i class="icon-remove icon-white"></i> Remove All Delays & Extra Times
-      </button>
-    </form>
-    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to erase all starting times for all participants?');">
-      {{ xsrf_form_html|safe }}
-      <button type="submit" class="btn btn-danger">
-        <i class="icon-trash icon-white"></i> Erase All Start Times
-      </button>
-    </form>
-  </div>
 </div>
 
 {% if delay_requests != [] %}
@@ -66,38 +49,25 @@ utils.show_page("delays_and_extra_times", 1);
   </div>
 </div>
 
-<h2>All Delay Requests</h2>
-<div id="all_delay_requests" class="notifications">
-  <div id="page_selector_all_delay_requests"></div>
-  <div id="paged_content_all_delay_requests">
-  {% for req in delay_requests %}
-    <div class="notification {% if req.status == 'approved' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
-      <div class="notification_msg">
-        <div class="notification_timestamp">
-          {{ req.request_timestamp|format_datetime }}
-        </div>
-        <div class="notification_subject">
-          <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }} ({{ req.participation.user.username }})
-        </div>
-        <div class="notification_text">
-          <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
-          <strong>Status:</strong> {{ req.status }}<br>
-          {% if req.processed_timestamp %}
-          <strong>Processed:</strong> {{ req.processed_timestamp|format_datetime }}<br>
-          {% endif %}
-          {% if req.admin %}
-          <strong>Processed by:</strong> {{ req.admin.name }}<br>
-          {% endif %}
-          <strong>Reason:</strong> {{ req.reason }}
-        </div>
-      </div>
-    </div>
-  {% endfor %}
-  </div>
-</div>
-{% endif %}
-
 <h2>All Participations - Delays and Extra Times</h2>
+  <div class="btn-group" style="margin-top: 10px;">
+    <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="btn btn-info">
+      <i class="icon-download-alt icon-white"></i> Export CSV
+    </a>
+    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to remove all delays and extra times for all participants?');">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="btn btn-warning">
+        <i class="icon-remove icon-white"></i> Remove All Delays & Extra Times
+      </button>
+    </form>
+    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to erase all starting times for all participants?');">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="btn btn-danger">
+        <i class="icon-trash icon-white"></i> Erase All Start Times
+      </button>
+    </form>
+  </div>
+
 <table class="table table-striped table-bordered">
   <thead>
     <tr>
@@ -143,5 +113,36 @@ utils.show_page("delays_and_extra_times", 1);
   {% endfor %}
   </tbody>
 </table>
+
+<h2>All Delay Requests</h2>
+<div id="all_delay_requests" class="notifications">
+  <div id="page_selector_all_delay_requests"></div>
+  <div id="paged_content_all_delay_requests">
+  {% for req in delay_requests %}
+    <div class="notification {% if req.status == 'approved' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
+      <div class="notification_msg">
+        <div class="notification_timestamp">
+          {{ req.request_timestamp|format_datetime }}
+        </div>
+        <div class="notification_subject">
+          <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }} ({{ req.participation.user.username }})
+        </div>
+        <div class="notification_text">
+          <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
+          <strong>Status:</strong> {{ req.status }}<br>
+          {% if req.processed_timestamp %}
+          <strong>Processed:</strong> {{ req.processed_timestamp|format_datetime }}<br>
+          {% endif %}
+          {% if req.admin %}
+          <strong>Processed by:</strong> {{ req.admin.name }}<br>
+          {% endif %}
+          <strong>Reason:</strong> {{ req.reason }}
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 {% endblock core %}
