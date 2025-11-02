@@ -32,7 +32,7 @@ import tornado.web
 
 from cms.db import DelayRequest
 from cms.server import multi_contest
-from cmscommon.datetime import make_datetime
+from cmscommon.datetime import make_datetime, get_timezone, utc
 from .contest import ContestHandler
 
 
@@ -67,12 +67,26 @@ class DelayRequestHandler(ContestHandler):
             return
 
         try:
-            requested_start_time = datetime.fromisoformat(requested_start_time_str)
+            naive_dt = datetime.fromisoformat(requested_start_time_str)
         except (ValueError, TypeError):
             self.notify_error(N_("Invalid date"),
                             N_("The requested start time is not valid."))
             self.redirect(self.contest_url("communication"))
             return
+
+        tz = get_timezone(self.current_user.user, self.contest)
+        try:
+            if hasattr(tz, "localize"):
+                local_dt = tz.localize(naive_dt, is_dst=None)
+            else:
+                local_dt = naive_dt.replace(tzinfo=tz)
+            
+            utc_dt = local_dt.astimezone(utc)
+            requested_start_time = utc_dt.replace(tzinfo=None)
+        except Exception as e:
+            logger.warning("Timezone conversion failed for delay request: %s. "
+                          "Treating input as UTC.", e)
+            requested_start_time = naive_dt
 
         delay_request = DelayRequest(
             request_timestamp=self.timestamp,
