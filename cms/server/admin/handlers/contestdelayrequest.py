@@ -20,6 +20,8 @@
 """
 
 from abc import ABCMeta, abstractmethod
+import csv
+import io
 import logging
 from datetime import timedelta
 
@@ -158,4 +160,116 @@ class RemoveDelayAndExtraTimeHandler(BaseHandler):
                        participation.contest.name,
                        self.current_user.name)
 
+        self.redirect(ref)
+
+
+class ExportDelaysAndExtraTimesHandler(BaseHandler):
+    """Export delays and extra times table as CSV.
+
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id):
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        participations = self.sql_session.query(Participation)\
+            .filter(Participation.contest_id == contest_id)\
+            .order_by(Participation.id)\
+            .all()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        writer.writerow([
+            'User',
+            'Username',
+            'Starting Time (UTC)',
+            'Delay Time (seconds)',
+            'Planned Start Time (UTC)',
+            'Extra Time (seconds)'
+        ])
+        
+        for participation in participations:
+            starting_time = participation.starting_time.strftime('%Y-%m-%d %H:%M:%S') if participation.starting_time else '-'
+            delay_seconds = int(participation.delay_time.total_seconds())
+            
+            if participation.delay_time.total_seconds() > 0:
+                planned_start = self.contest.start + participation.delay_time
+                planned_start_str = planned_start.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                planned_start_str = self.contest.start.strftime('%Y-%m-%d %H:%M:%S')
+            
+            extra_seconds = int(participation.extra_time.total_seconds())
+            
+            writer.writerow([
+                f"{participation.user.first_name} {participation.user.last_name}",
+                participation.user.username,
+                starting_time,
+                delay_seconds,
+                planned_start_str,
+                extra_seconds
+            ])
+        
+        self.set_header('Content-Type', 'text/csv')
+        self.set_header('Content-Disposition', 
+                       f'attachment; filename="delays_extra_times_contest_{contest_id}.csv"')
+        self.write(output.getvalue())
+        self.finish()
+
+
+class RemoveAllDelaysAndExtraTimesHandler(BaseHandler):
+    """Remove all delays and extra times for all participations in a contest.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, contest_id):
+        ref = self.url("contest", contest_id, "delays_and_extra_times")
+        
+        self.contest = self.safe_get_item(Contest, contest_id)
+        
+        participations = self.sql_session.query(Participation)\
+            .filter(Participation.contest_id == contest_id)\
+            .all()
+        
+        count = 0
+        for participation in participations:
+            if participation.delay_time.total_seconds() > 0 or participation.extra_time.total_seconds() > 0:
+                participation.delay_time = timedelta()
+                participation.extra_time = timedelta()
+                count += 1
+        
+        if self.try_commit():
+            logger.info("All delays and extra times removed for contest %s by admin %s (%d participations affected)",
+                       self.contest.name,
+                       self.current_user.name,
+                       count)
+        
+        self.redirect(ref)
+
+
+class EraseAllStartTimesHandler(BaseHandler):
+    """Erase all starting times for all participations in a contest.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, contest_id):
+        ref = self.url("contest", contest_id, "delays_and_extra_times")
+        
+        self.contest = self.safe_get_item(Contest, contest_id)
+        
+        participations = self.sql_session.query(Participation)\
+            .filter(Participation.contest_id == contest_id)\
+            .all()
+        
+        count = 0
+        for participation in participations:
+            if participation.starting_time is not None:
+                participation.starting_time = None
+                count += 1
+        
+        if self.try_commit():
+            logger.info("All starting times erased for contest %s by admin %s (%d participations affected)",
+                       self.contest.name,
+                       self.current_user.name,
+                       count)
+        
         self.redirect(ref)
