@@ -10,6 +10,23 @@ utils.show_page("delays_and_extra_times", 1);
 <div class="core_title">
   <h1>Delays and Extra Times</h1>
   <p class="muted">All times shown in UTC</p>
+  <div class="btn-group" style="margin-top: 10px;">
+    <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="btn btn-info">
+      <i class="icon-download-alt icon-white"></i> Export CSV
+    </a>
+    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to remove all delays and extra times for all participants?');">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="btn btn-warning">
+        <i class="icon-remove icon-white"></i> Remove All Delays & Extra Times
+      </button>
+    </form>
+    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to erase all starting times for all participants?');">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="btn btn-danger">
+        <i class="icon-trash icon-white"></i> Erase All Start Times
+      </button>
+    </form>
+  </div>
 </div>
 
 {% if delay_requests != [] %}
