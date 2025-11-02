@@ -115,7 +115,10 @@
                 <label class="control-label" for="input_requested_start_time">{% trans %}Requested Start Time{% endtrans %}</label>
                 <div class="controls">
                     <input type="datetime-local" name="requested_start_time" id="input_requested_start_time" class="input-xlarge" required>
-                    <span class="help-block">{% trans %}Select the date and time when you want to start the contest (in your timezone: {{ timezone.tzname(now) }}){% endtrans %}</span>
+                    <span class="help-block">
+                        {% trans %}Select the date and time when you want to start the contest{% endtrans %}
+                        (in your timezone: {{ timezone.tzname(now) }})
+                    </span>
                 </div>
             </div>
             <div class="control-group">
