@@ -26,7 +26,7 @@
 import logging
 
 from cms.grading.Job import Job
-from cms.grading.ParameterTypes import ParameterTypeChoice, ParameterTypeInt
+from cms.grading.ParameterTypes import ParameterTypeChoice, ParameterTypeOptionalInt
 from . import TaskType, eval_output
 
 
@@ -70,31 +70,13 @@ class OutputOnly(TaskType):
          OUTPUT_EVAL_CHECKER: "Outputs are compared by a comparator",
          OUTPUT_EVAL_REALPREC: "Outputs compared as real numbers (with precision of 1e-X, default X=6)"})
 
-    _REALPREC_EXP = ParameterTypeInt(
+    _REALPREC_EXP = ParameterTypeOptionalInt(
         "Real precision exponent X (precision is 1e-X)",
         "realprec_exp",
-        "If using real-number comparison, specify X in 1e-X (default: 6)")
+        "If using real-number comparison, specify X in 1e-X (default: 6)",
+        6)
 
     ACCEPTED_PARAMETERS = [_EVALUATION, _REALPREC_EXP]
-
-    @classmethod
-    def parse_handler(cls, handler, prefix):
-        """Parse parameters from AWS forms with optional exponent.
-        
-        The realprec_exp parameter is optional and only relevant when
-        output_eval == 'realprecision'. If missing or invalid, we use
-        the default value of 6.
-        """
-        params = []
-        params.append(cls._EVALUATION.parse_handler(handler, prefix))
-        
-        try:
-            exp = cls._REALPREC_EXP.parse_handler(handler, prefix)
-            params.append(exp)
-        except (ValueError, KeyError):
-            params.append(6)
-        
-        return params
 
     @property
     def name(self):

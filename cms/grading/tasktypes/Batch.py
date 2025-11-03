@@ -26,7 +26,7 @@ import os
 
 from cms.db import Executable
 from cms.grading.ParameterTypes import ParameterTypeCollection, \
-    ParameterTypeChoice, ParameterTypeString, ParameterTypeInt
+    ParameterTypeChoice, ParameterTypeString, ParameterTypeOptionalInt
 from cms.grading.language import Language
 from cms.grading.languagemanager import LANGUAGES, get_language
 from cms.grading.steps import compilation_step, evaluation_step, \
@@ -48,7 +48,7 @@ class Batch(TaskType):
     """Task type class for a unique standalone submission source, with
     comparator (or not).
 
-    Parameters needs to be a list of three elements.
+    Parameters needs to be a list of four elements.
 
     The first element is 'grader' or 'alone': in the first
     case, the source file is to be compiled with a provided piece of
@@ -114,33 +114,14 @@ class Batch(TaskType):
         {OUTPUT_EVAL_DIFF: "Outputs compared with white diff",
          OUTPUT_EVAL_CHECKER: "Outputs are compared by a comparator",
          OUTPUT_EVAL_REALPREC: "Outputs compared as real numbers (with precision of 1e-X, default X=6)"})
-    _REALPREC_EXP = ParameterTypeInt(
+
+    _REALPREC_EXP = ParameterTypeOptionalInt(
         "Real precision exponent X (precision is 1e-X)",
         "realprec_exp",
-        "If using real-number comparison, specify X in 1e-X (default: 6)")
+        "If using real-number comparison, specify X in 1e-X (default: 6)",
+        6)
 
     ACCEPTED_PARAMETERS = [_COMPILATION, _USE_FILE, _EVALUATION, _REALPREC_EXP]
-
-    @classmethod
-    def parse_handler(cls, handler, prefix):
-        """Parse parameters from AWS forms with optional exponent.
-        
-        The realprec_exp parameter is optional and only relevant when
-        output_eval == 'realprecision'. If missing or invalid, we use
-        the default value of 6.
-        """
-        params = []
-        params.append(cls._COMPILATION.parse_handler(handler, prefix))
-        params.append(cls._USE_FILE.parse_handler(handler, prefix))
-        params.append(cls._EVALUATION.parse_handler(handler, prefix))
-        
-        try:
-            exp = cls._REALPREC_EXP.parse_handler(handler, prefix)
-            params.append(exp)
-        except (ValueError, KeyError):
-            params.append(6)
-        
-        return params
 
     @property
     def name(self) -> str:
