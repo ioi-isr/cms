@@ -77,6 +77,25 @@ class OutputOnly(TaskType):
 
     ACCEPTED_PARAMETERS = [_EVALUATION, _REALPREC_EXP]
 
+    @classmethod
+    def parse_handler(cls, handler, prefix):
+        """Parse parameters from AWS forms with optional exponent.
+        
+        The realprec_exp parameter is optional and only relevant when
+        output_eval == 'realprecision'. If missing or invalid, we use
+        the default value of 6.
+        """
+        params = []
+        params.append(cls._EVALUATION.parse_handler(handler, prefix))
+        
+        try:
+            exp = cls._REALPREC_EXP.parse_handler(handler, prefix)
+            params.append(exp)
+        except (ValueError, KeyError):
+            params.append(6)
+        
+        return params
+
     @property
     def name(self):
         """See TaskType.name."""
