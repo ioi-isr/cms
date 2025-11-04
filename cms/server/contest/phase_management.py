@@ -51,7 +51,7 @@ def compute_actual_phase(
 
     The phases, and their meaning, are the following:
     * -2: the user cannot compete because the contest hasn't started
-          yet;
+          yet for them (contest_start + delay_time is not yet reached);
     * -1: the user cannot compete because, even if the contest has
           already started, its per-user time frame hasn't yet (this
           usually means the user still has to click on the "start!"
@@ -104,23 +104,26 @@ def compute_actual_phase(
     assert delay_time >= timedelta()
     assert extra_time >= timedelta()
 
+    earliest_permitted_start = contest_start + delay_time
+    latest_permitted_stop = contest_stop + delay_time + extra_time
+
     if per_user_time is not None and starting_time is None:
         # "USACO-like" contest, but we still don't know when the user
         # started/will start.
         actual_start = None
         actual_stop = None
 
-        if contest_start <= timestamp <= contest_stop:
+        if earliest_permitted_start <= timestamp <= latest_permitted_stop:
             actual_phase = -1
-            current_phase_begin = contest_start
-            current_phase_end = contest_stop
-        elif timestamp < contest_start:
+            current_phase_begin = earliest_permitted_start
+            current_phase_end = latest_permitted_stop
+        elif timestamp < earliest_permitted_start:
             actual_phase = -2
             current_phase_begin = None
-            current_phase_end = contest_start
-        elif contest_stop < timestamp:
+            current_phase_end = earliest_permitted_start
+        elif latest_permitted_stop < timestamp:
             actual_phase = +2
-            current_phase_begin = contest_stop
+            current_phase_begin = latest_permitted_stop
             current_phase_end = None
         else:
             raise RuntimeError("Logic doesn't seem to be working...")
@@ -128,50 +131,50 @@ def compute_actual_phase(
     else:
         if per_user_time is None:
             # "Traditional" contest.
-            intended_start = contest_start
-            intended_stop = contest_stop
+            actual_start = earliest_permitted_start
+            actual_stop = latest_permitted_stop
         else:
             # "USACO-like" contest, and we already know when the user
             # started/will start.
             # Both values are lower- and upper-bounded to prevent the
             # ridiculous situations of starting_time being set by the
             # admin way before contest_start or after contest_stop.
-            intended_start = min(max(starting_time,
-                                     contest_start), contest_stop)
-            intended_stop = min(max(starting_time + per_user_time,
-                                    contest_start), contest_stop)
-        actual_start = intended_start + delay_time
-        actual_stop = intended_stop + delay_time + extra_time
+            actual_start = min(max(starting_time,
+                                   earliest_permitted_start), latest_permitted_stop)
+            actual_stop = min(max(starting_time + per_user_time + extra_time,
+                                    earliest_permitted_start), latest_permitted_stop)
 
-        assert contest_start <= actual_start <= actual_stop
+        assert earliest_permitted_start <= actual_start <= actual_stop <= latest_permitted_stop
 
         if actual_start <= timestamp <= actual_stop:
             actual_phase = 0
             current_phase_begin = actual_start
             current_phase_end = actual_stop
-        elif contest_start <= timestamp < actual_start:
+        elif earliest_permitted_start <= timestamp < actual_start:
             # This also includes a funny corner case: the user's start
             # is known but is in the future (the admin either set it
             # that way or added some delay after the user started).
             actual_phase = -1
-            current_phase_begin = contest_start
+            current_phase_begin = earliest_permitted_start
             current_phase_end = actual_start
-        elif timestamp < contest_start:
+        elif timestamp < earliest_permitted_start:
             actual_phase = -2
             current_phase_begin = None
-            current_phase_end = contest_start
-        elif actual_stop < timestamp <= contest_stop:
+            current_phase_end = earliest_permitted_start
+        elif actual_stop < timestamp <= latest_permitted_stop:
             actual_phase = +1
             current_phase_begin = actual_stop
-            current_phase_end = contest_stop
-        elif contest_stop < timestamp:
+            current_phase_end = latest_permitted_stop
+        elif latest_permitted_stop < timestamp:
             actual_phase = +2
-            current_phase_begin = max(contest_stop, actual_stop)
+            current_phase_begin = latest_permitted_stop
             current_phase_end = None
         else:
             raise RuntimeError("Logic doesn't seem to be working...")
 
     if actual_phase == +2:
+        # If the user didn't reach actual_stop yet, it shouldn't be phase +2
+        assert actual_stop is None or actual_stop <= timestamp
         if analysis_start is not None:
             assert contest_stop <= analysis_start
             assert analysis_stop is not None
