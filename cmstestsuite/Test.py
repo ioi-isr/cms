@@ -80,6 +80,44 @@ class CheckCompilationFail(Check):
                               result_info['status'])
 
 
+class CheckManagersPresence(Check):
+    """Check that specific manager names are present/absent in the task page."""
+
+    def __init__(self, task_module, present=None, absent=None):
+        self.task_module = task_module
+        self.present = set(present or [])
+        self.absent = set(absent or [])
+
+    def _find_task_id(self, framework: FunctionalTestFramework) -> int:
+        base = self.task_module.task_info["name"]
+        tasks = framework.get_tasks()
+        # Prefer tasks we have just created in this run.
+        for tid, kwargs in framework.created_tasks.items():
+            name = kwargs.get("name", "")
+            if name == base or name.startswith(base + "_"):
+                return tid
+        # Fallback to scraping the tasks list.
+        tasks = framework.get_tasks()
+        for name, info in tasks.items():
+            if name == base or name.startswith(base + "_"):
+                return info["id"]
+        raise TestFailure(f"Task with base name {base} not found")
+
+    def check(self, result_info):
+        fw = FunctionalTestFramework()
+        task_id = self._find_task_id(fw)
+        r = fw.admin_req('task/%s' % task_id)
+        page = r.text
+        # Extract manager filenames by matching link text inside manager divs
+        names = set(m for m in re.findall(r'<div class="manager">\s*<a [^>]*>([^<]+)</a>', page))
+        missing = [n for n in self.present if n not in names]
+        unexpected = [n for n in self.absent if n in names]
+        if missing or unexpected:
+            raise TestFailure(
+                "Manager list mismatch. Missing: %s; Unexpected: %s; Found: %s" %
+                (missing, unexpected, sorted(names)))
+
+
 class CheckAbstractEvaluationFailure(Check):
     def __init__(self, short_adjective, failure_string):
         self.short_adjective = short_adjective
