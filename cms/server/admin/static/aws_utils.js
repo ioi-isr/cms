@@ -880,14 +880,13 @@ CMS.AWSUtils.prototype.question_reply_toggle = function(event, invoker) {
 
 CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
     const notification = invoker.closest('.notification_msg');
-    const subjectText = notification.querySelector('.notification_subject').innerText.trim();
-    const bodyText = notification.querySelector('.notification_text').innerText.trim();
+    const subjectText = notification.querySelector('.announcement_raw_subject').value;
+    const bodyText = notification.querySelector('.announcement_raw_text').value;
     const form = notification.querySelector('.reply_question form');
 
-    // Prefill the inputs
     form.querySelector('input[name="subject"]').value = subjectText;
     form.querySelector('textarea[name="text"]').value = bodyText;
-    var obj = invoker.parentElement.parentElement.querySelector(".reply_question");
+    var obj = notification.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
         invoker.innerHTML = "Hide Edit";
