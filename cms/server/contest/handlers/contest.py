@@ -111,9 +111,10 @@ class ContestHandler(BaseHandler):
 
         """
         if self.is_multi_contest():
-            # Choose the contest found in the path argument
+            # Choose contest name from last path segment to support nested folders
             # see: https://github.com/tornadoweb/tornado/issues/1673
-            contest_name = self.path_args[0]
+            raw_path = self.path_args[0]
+            contest_name = raw_path.split('/')[-1]
 
             # Select the correct contest or return an error
             self.contest = self.sql_session.query(Contest)\

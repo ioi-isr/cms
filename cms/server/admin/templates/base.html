@@ -130,6 +130,22 @@ $(document).ready(init);
 {% endif %}
         </ul>
 
+        <h1><a class="menu_link" href="{{ url("folders") }}">Folders</a></h1>
+        <ul class="menu">
+          <li>
+            <a class="menu_link" href="{{ url("folders") }}">
+              (manage folders...)
+            </a>
+          </li>
+          {% if admin.permission_all %}
+          <li class="menu_entry">
+            <a class="menu_link" href="{{ url("folders", "add") }}">
+              (create new folder...)
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+
         <h1><a class="menu_link" href="{{ url("tasks") }}">Tasks</a></h1>
         <ul class="menu">
           {% if task_list|length < 1 %}
