@@ -24,10 +24,7 @@ import os
 import tempfile
 import traceback
 
-import tornado.web
-
 from cms.db import Session, Task
-from cmscommon.archive import Archive
 from cmscommon.datetime import make_datetime
 from cmscontrib.DumpExporter import DumpExporter
 from cmscontrib.DumpImporter import DumpImporter
@@ -55,7 +52,8 @@ class ExportTaskHandler(BaseHandler):
         task = self.safe_get_item(Task, task_id)
         task_name = task.name
 
-        include_submissions = self.get_argument("include_submissions", "false") == "true"
+        include_submissions = (
+            self.get_argument("include_submissions", "false") == "true")
 
         self.sql_session.close()
 
@@ -95,8 +93,9 @@ class ExportTaskHandler(BaseHandler):
                     file_data = f.read()
 
                 self.set_header('Content-Type', 'application/gzip')
-                self.set_header('Content-Disposition',
-                               f'attachment; filename="{task_name}.tar.gz"')
+                self.set_header(
+                    'Content-Disposition',
+                    f'attachment; filename="{task_name}.tar.gz"')
                 self.write(file_data)
                 self.finish()
 
@@ -135,12 +134,15 @@ class ImportTaskHandler(BaseHandler):
         task_file = self.request.files["task_file"][0]
         filename = task_file["filename"]
 
-        if not (filename.endswith(".tar.gz") or filename.endswith(".tar.bz2") or
-                filename.endswith(".tar") or filename.endswith(".zip")):
+        if not (filename.endswith(".tar.gz") or
+                filename.endswith(".tar.bz2") or
+                filename.endswith(".tar") or
+                filename.endswith(".zip")):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid file format",
-                "Task archive must be a .tar.gz, .tar.bz2, .tar, or .zip file.")
+                "Task archive must be a .tar.gz, .tar.bz2, .tar, or .zip "
+                "file.")
             self.redirect(fallback_page)
             return
 
