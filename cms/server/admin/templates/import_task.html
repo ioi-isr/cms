@@ -6,9 +6,18 @@
 </div>
 <form enctype="multipart/form-data" action="{{ url("tasks", "import") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  <p>Import a task from a .tar.gz, .tar.bz2, .tar, or .zip archive.</p>
+  <p>Import a task from a .tar.gz, .tar.bz2, or .tar archive.</p>
   <p>
-    Task archive file: <input type="file" name="task_file" accept=".tar.gz,.tar.bz2,.tar,.zip"/>
+    Task archive file: <input type="file" name="task_file" accept=".tar.gz,.tar.bz2,.tar"/>
+  </p>
+  <p>
+    Attach to contest (optional):
+    <select name="contest_id">
+      <option value="">-- No contest (unattached) --</option>
+      {% for contest in contests %}
+      <option value="{{ contest.id }}">{{ contest.name }} - {{ contest.description }}</option>
+      {% endfor %}
+    </select>
   </p>
   <p>
     <input type="submit" value="Import Task">

@@ -24,10 +24,12 @@ import os
 import tempfile
 import traceback
 
-from cms.db import Session, Task
+from cms.db import Session, Task, Contest
+from cmscommon.archive import Archive
 from cmscommon.datetime import make_datetime
-from cmscontrib.DumpExporter import DumpExporter
-from cmscontrib.DumpImporter import DumpImporter
+from cmscontrib.TaskExporter import TaskExporter
+from cmscontrib.ImportTask import TaskImporter
+from cmscontrib.loaders.cms_task_dump import CMSTaskDumpLoader
 from .base import BaseHandler, require_permission
 
 
@@ -35,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExportTaskHandler(BaseHandler):
-    """Handler to export a task as a .zip file.
+    """Handler to export a task as a .tar.gz file.
 
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -61,21 +63,11 @@ class ExportTaskHandler(BaseHandler):
             with tempfile.TemporaryDirectory() as temp_dir:
                 export_path = os.path.join(temp_dir, f"{task_name}.tar.gz")
 
-                exporter = DumpExporter(
-                    contest_ids=None,
+                exporter = TaskExporter(
+                    task_id=int(task_id),
                     export_target=export_path,
-                    dump_files=True,
-                    dump_model=True,
-                    skip_generated=False,
-                    skip_submissions=not include_submissions,
-                    skip_user_tests=True,
-                    skip_users=True,
-                    skip_print_jobs=True,
+                    include_submissions=include_submissions,
                 )
-
-                exporter.tasks_ids = [int(task_id)]
-                exporter.contests_ids = []
-                exporter.users_ids = []
 
                 success = exporter.do_export()
 
@@ -111,12 +103,14 @@ class ExportTaskHandler(BaseHandler):
 
 
 class ImportTaskHandler(BaseHandler):
-    """Handler to import a task from a .zip file.
+    """Handler to import a task from a .tar.gz file.
 
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self):
         self.r_params = self.render_params()
+        contests = self.sql_session.query(Contest).all()
+        self.r_params["contests"] = contests
         self.render("import_task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -136,15 +130,16 @@ class ImportTaskHandler(BaseHandler):
 
         if not (filename.endswith(".tar.gz") or
                 filename.endswith(".tar.bz2") or
-                filename.endswith(".tar") or
-                filename.endswith(".zip")):
+                filename.endswith(".tar")):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid file format",
-                "Task archive must be a .tar.gz, .tar.bz2, .tar, or .zip "
-                "file.")
+                "Task archive must be a .tar.gz, .tar.bz2, or .tar file.")
             self.redirect(fallback_page)
             return
+
+        contest_id_str = self.get_argument("contest_id", "")
+        contest_id = int(contest_id_str) if contest_id_str else None
 
         self.sql_session.close()
 
@@ -155,16 +150,34 @@ class ImportTaskHandler(BaseHandler):
                 with open(archive_path, 'wb') as f:
                     f.write(task_file["body"])
 
-                importer = DumpImporter(
-                    drop=False,
-                    import_source=archive_path,
-                    load_files=True,
-                    load_model=True,
-                    skip_generated=False,
-                    skip_submissions=False,
-                    skip_user_tests=True,
-                    skip_users=True,
-                    skip_print_jobs=True,
+                extract_dir = os.path.join(temp_dir, "extracted")
+                os.mkdir(extract_dir)
+
+                archive = Archive(archive_path)
+                archive.unpack(extract_dir)
+
+                extracted_items = os.listdir(extract_dir)
+                if len(extracted_items) != 1:
+                    self.sql_session = Session()
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Import failed",
+                        "Invalid archive structure. Expected a single "
+                        "task directory.")
+                    self.redirect(fallback_page)
+                    return
+
+                task_dir = os.path.join(extract_dir, extracted_items[0])
+
+                # Import using TaskImporter with CMSTaskDumpLoader
+                importer = TaskImporter(
+                    path=task_dir,
+                    prefix=None,
+                    override_name=None,
+                    update=False,
+                    no_statement=False,
+                    contest_id=contest_id,
+                    loader_class=CMSTaskDumpLoader,
                 )
 
                 success = importer.do_import()
