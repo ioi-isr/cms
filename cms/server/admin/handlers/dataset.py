@@ -717,6 +717,7 @@ class DeleteTestcaseHandler(BaseHandler):
         self.sql_session.delete(testcase)
 
         if dataset.active and dataset.task_type == "OutputOnly":
+            dataset.testcases.pop(testcase.codename, None)
             try:
                 task.set_default_output_only_submission_format()
             except Exception as e:
