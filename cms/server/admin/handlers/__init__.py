@@ -91,6 +91,9 @@ from .task import \
     AttachmentHandler, \
     TaskListHandler, \
     RemoveTaskHandler
+from .taskimportexport import \
+    ExportTaskHandler, \
+    ImportTaskHandler
 from .user import \
     AddUserHandler, \
     UserHandler, \
@@ -169,7 +172,9 @@ HANDLERS = [
     (r"/tasks", TaskListHandler),
     (r"/tasks/([0-9]+)/remove", RemoveTaskHandler),
     (r"/tasks/add", AddTaskHandler),
+    (r"/tasks/import", ImportTaskHandler),
     (r"/task/([0-9]+)", TaskHandler),
+    (r"/task/([0-9]+)/export", ExportTaskHandler),
     (r"/task/([0-9]+)/add_dataset", AddDatasetHandler),
     (r"/task/([0-9]+)/statements/add", AddStatementHandler),
     (r"/task/([0-9]+)/statement/([0-9]+)", StatementHandler),

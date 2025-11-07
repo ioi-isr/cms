@@ -21,6 +21,9 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
 
 <div class="core_title">
   <h1>{{ task.title }} ({{ task.name }})</h1>
+{% if admin.permission_all %}
+  <p><a href="{{ url("task", task.id, "export") }}">Export task</a></p>
+{% endif %}
 </div>
 
 <h2 id="title_submissions" class="toggling_on">Submissions</h2>

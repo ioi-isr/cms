@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1><a href="{{ url("tasks") }}">Tasks</a> - Import task</h1>
+</div>
+<form enctype="multipart/form-data" action="{{ url("tasks", "import") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <p>Import a task from a .tar.gz, .tar.bz2, .tar, or .zip archive.</p>
+  <p>
+    Task archive file: <input type="file" name="task_file" accept=".tar.gz,.tar.bz2,.tar,.zip"/>
+  </p>
+  <p>
+    <input type="submit" value="Import Task">
+    <a href="{{ url("tasks") }}">Cancel</a>
+  </p>
+</form>
+{% endblock core %}

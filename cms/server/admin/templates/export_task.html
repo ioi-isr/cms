@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Export task</h1>
+</div>
+<form enctype="multipart/form-data" action="{{ url("task", task.id, "export") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <p>Export task "{{ task.name }}" as a .tar.gz archive.</p>
+  <p>
+    <label>
+      <input type="checkbox" name="include_submissions" value="true"/>
+      Include submissions
+    </label>
+  </p>
+  <p>
+    <input type="submit" value="Export Task">
+    <a href="{{ url("task", task.id) }}">Cancel</a>
+  </p>
+</form>
+{% endblock core %}

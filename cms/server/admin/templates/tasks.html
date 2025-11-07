@@ -4,6 +4,9 @@
 
 <div class="core_title">
   <h1>Tasks list</h1>
+{% if admin.permission_all %}
+  <p><a href="{{ url("tasks", "import") }}">Import task</a></p>
+{% endif %}
 </div>
 
 <form action="{{ url("tasks") }}" method="POST">
