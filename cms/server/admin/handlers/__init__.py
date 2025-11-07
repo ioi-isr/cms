@@ -81,16 +81,18 @@ from .submission import \
     SubmissionOfficialStatusHandler, \
     SubmissionFileHandler, \
     SubmissionDiffHandler
-from .task import \
-    AddTaskHandler, \
-    TaskHandler, \
-    AddDatasetHandler, \
-    AddStatementHandler, \
-    StatementHandler, \
-    AddAttachmentHandler, \
-    AttachmentHandler, \
-    TaskListHandler, \
-    RemoveTaskHandler
+from .task import (
+    AddTaskHandler,
+    TaskHandler,
+    AddDatasetHandler,
+    AddStatementHandler,
+    StatementHandler,
+    AddAttachmentHandler,
+    AttachmentHandler,
+    TaskListHandler,
+    RemoveTaskHandler,
+    DefaultSubmissionFormatHandler,
+)
 from .user import \
     AddUserHandler, \
     UserHandler, \
@@ -175,6 +177,7 @@ HANDLERS = [
     (r"/task/([0-9]+)/statement/([0-9]+)", StatementHandler),
     (r"/task/([0-9]+)/attachments/add", AddAttachmentHandler),
     (r"/task/([0-9]+)/attachment/([0-9]+)", AttachmentHandler),
+    (r"/task/([0-9]+)/default_submission_format", DefaultSubmissionFormatHandler),
 
     # Datasets
 

@@ -294,6 +294,19 @@ class Task(Base):
         # Otherwise, use contest language restrictions
         return self.contest.languages if self.contest else None
 
+    def set_default_output_only_submission_format(self) -> None:
+        """
+        Sets the default submission format for an output-only task.
+        Does not save the changes.
+        """
+        dataset = self.active_dataset
+        if dataset is None:
+            raise ValueError(f"Task {self.id} has no active dataset")
+        if dataset.task_type != "OutputOnly":
+            raise ValueError(
+                f"Task {self.id} type must be OutputOnly, got {dataset.task_type}")
+        self.submission_format = sorted([f'output_{c}.txt' for c in dataset.testcases])
+
 
 class Statement(Base):
     """Class to store a translation of the task statement.

@@ -129,6 +129,15 @@ def import_testcases_from_zipfile(
             "The selected file is not a zip file. "
             "Please select a valid zip file.")
 
+    if dataset.active and dataset.task_type == "OutputOnly":
+        try:
+            dataset.task.set_default_output_only_submission_format()
+            session.commit()
+        except Exception as e:
+            raise RuntimeError(
+                f"Couldn't create default submission format for task {dataset.task.id}, "
+                f"dataset {dataset.id}") from e
+
     return (
         "Successfully added %d and overwritten %d testcase(s)" %
         (len(added_tc), len(overwritten_tc)),

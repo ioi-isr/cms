@@ -34,6 +34,7 @@ import re
 import zipfile
 
 import collections
+
 try:
     collections.MutableMapping
 except:
@@ -287,6 +288,14 @@ class ActivateDatasetHandler(BaseHandler):
         task = dataset.task
 
         task.active_dataset = dataset
+
+        if dataset.task_type == 'OutputOnly':
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
 
         if self.try_commit():
             self.service.proxy_service.dataset_updated(
@@ -610,6 +619,14 @@ class AddTestcaseHandler(BaseHandler):
             codename, public, input_digest, output_digest, dataset=dataset)
         self.sql_session.add(testcase)
 
+        if dataset.active and dataset.task_type == "OutputOnly":
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
+
         if self.try_commit():
             # max_score and/or extra_headers might have changed.
             self.service.proxy_service.reinitialize()
@@ -695,8 +712,17 @@ class DeleteTestcaseHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         task_id = testcase.dataset.task_id
+        task = dataset.task
 
         self.sql_session.delete(testcase)
+
+        if dataset.active and dataset.task_type == "OutputOnly":
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
 
         if self.try_commit():
             # max_score and/or extra_headers might have changed.

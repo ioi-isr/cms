@@ -524,3 +524,32 @@ class RemoveTaskHandler(BaseHandler):
 
         # Maybe they'll want to do this again (for another task)
         self.write("../../tasks")
+
+
+class DefaultSubmissionFormatHandler(BaseHandler):
+    """
+    Intended to be called for output only tasks.
+    Replaces the submission format for the given task with the default one, consisting of all the test cases codenames.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, task_id):
+        task = self.safe_get_item(Task, task_id)
+        
+        if task.active_dataset is None:
+            raise tornado.web.HTTPError(400, "Task has no active dataset")
+        if task.active_dataset.task_type != "OutputOnly":
+            raise tornado.web.HTTPError(
+                400, f"Task type must be OutputOnly, got {task.active_dataset.task_type}")
+        
+        try:
+            task.set_default_output_only_submission_format()
+        except Exception as e:
+            raise RuntimeError(
+                f"Couldn't create default submission format for task {task.id}") from e
+        
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+
+        # Page to redirect to.
+        self.write("%s" % task.id)
