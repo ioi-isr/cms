@@ -167,10 +167,11 @@ class FunctionalTestFramework:
         if parent_id is not None:
             args["parent_id"] = str(parent_id)
         resp = self.admin_req('folders/add', args=args)
-        # Expect redirect to /folder/<id>
-        m = re.search(r'/folder/(\d+)$', resp.url or resp.text)
-        if not m:
+        if not resp.url or not resp.url.endswith('/folders'):
             raise TestException("Unable to create folder.")
+        m = re.search(r'<a class="bold" href="[^"]*/folder/(\d+)">\s*' + re.escape(name) + r'\s*</a>', resp.text)
+        if not m:
+            raise TestException("Unable to find created folder ID.")
         return int(m.group(1))
 
     def set_contest_folder(self, contest_id: int, folder_id: int | None):

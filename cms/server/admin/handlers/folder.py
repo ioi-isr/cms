@@ -68,6 +68,8 @@ class FolderHandler(BaseHandler):
             attrs = folder.get_attrs()
             self.get_string(attrs, "name")
             self.get_string(attrs, "description")
+            if not attrs["description"] or not attrs["description"].strip():
+                attrs["description"] = attrs["name"]
 
             parent_id_str = self.get_argument("parent_id", None)
             if parent_id_str is None or parent_id_str == "" or parent_id_str == "none":
@@ -102,9 +104,12 @@ class AddFolderHandler(SimpleHandler("add_folder.html", permission_all=True)):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
         fallback = self.url("folders", "add")
+        operation = self.get_argument("operation", "Create")
         try:
             name = self.get_argument("name")
-            description = self.get_argument("description", name)
+            description = self.get_argument("description", "")
+            if not description or not description.strip():
+                description = name
             parent_id_str = self.get_argument("parent_id", None)
             if parent_id_str is None or parent_id_str == "" or parent_id_str == "none":
                 parent = None
@@ -119,7 +124,10 @@ class AddFolderHandler(SimpleHandler("add_folder.html", permission_all=True)):
             return
 
         if self.try_commit():
-            self.redirect(self.url("folder", folder.id))
+            if operation == "Create and add another":
+                self.redirect(fallback)
+            else:
+                self.redirect(self.url("folders"))
         else:
             self.redirect(fallback)
 
