@@ -878,6 +878,25 @@ CMS.AWSUtils.prototype.question_reply_toggle = function(event, invoker) {
     event.preventDefault();
 }
 
+CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
+    const notification = invoker.closest('.notification_msg');
+    const subjectText = notification.querySelector('.announcement_raw_subject').value;
+    const bodyText = notification.querySelector('.announcement_raw_text').value;
+    const form = notification.querySelector('.reply_question form');
+
+    form.querySelector('input[name="subject"]').value = subjectText;
+    form.querySelector('textarea[name="text"]').value = bodyText;
+    var obj = notification.querySelector(".reply_question");
+    if (obj.style.display != "block") {
+        obj.style.display = "block";
+        invoker.innerHTML = "Hide Edit";
+    } else {
+        obj.style.display = "none";
+        invoker.innerHTML = "Edit";
+    }
+    event.preventDefault();
+}
+
 /**
  * Used by templates/macro/question.html.
  * Updates visibility of answer box when choosing quick answers.

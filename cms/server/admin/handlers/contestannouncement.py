@@ -60,6 +60,28 @@ class AddAnnouncementHandler(BaseHandler):
                 make_datetime(), "Subject is mandatory.", "")
         self.redirect(self.url("contest", contest_id, "announcements"))
 
+class EditAnnouncementHandler(BaseHandler):
+    """Called to edit an announcement"""
+
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, contest_id: str, ann_id: str):
+        original_ann = self.safe_get_item(Announcement, ann_id)
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        # Protect against URLs providing incompatible parameters.
+        if original_ann.contest_id != self.contest.id:
+            raise tornado.web.HTTPError(404)
+
+        subject: str = self.get_argument("subject", "")
+        text: str = self.get_argument("text", "")
+        if len(subject) > 0:
+            original_ann.subject = subject
+            original_ann.text = text
+            self.try_commit()
+        else:
+            self.service.add_notification(make_datetime(), "Subject is mandatory.", "")
+        self.redirect(self.url("contest", contest_id, "announcements"))
+
 
 class AnnouncementHandler(BaseHandler):
     """Called to remove an announcement.
