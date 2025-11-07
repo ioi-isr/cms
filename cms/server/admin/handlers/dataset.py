@@ -292,8 +292,10 @@ class ActivateDatasetHandler(BaseHandler):
         if dataset.task_type == 'OutputOnly':
             try:
                 task.set_default_output_only_submission_format()
-            except Exception:
-                raise Exception("Couldn't create default submission format")
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
 
         if self.try_commit():
             self.service.proxy_service.dataset_updated(
@@ -620,8 +622,10 @@ class AddTestcaseHandler(BaseHandler):
         if dataset.active and dataset.task_type == "OutputOnly":
             try:
                 task.set_default_output_only_submission_format()
-            except Exception:
-                raise Exception("Couldn't create default submission format")
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
 
         if self.try_commit():
             # max_score and/or extra_headers might have changed.
@@ -715,8 +719,10 @@ class DeleteTestcaseHandler(BaseHandler):
         if dataset.active and dataset.task_type == "OutputOnly":
             try:
                 task.set_default_output_only_submission_format()
-            except Exception:
-                raise Exception("Couldn't create default submission format")
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
 
         if self.try_commit():
             # max_score and/or extra_headers might have changed.

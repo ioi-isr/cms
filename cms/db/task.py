@@ -300,14 +300,12 @@ class Task(Base):
         Does not save the changes.
         """
         dataset = self.active_dataset
-        assert dataset is not None
-        assert dataset.task_type == "OutputOnly"
-        testcase_names = []
-        for testcase_codename in dataset.testcases.keys():
-            testcase_names.append(testcase_codename)
-        submission_format = [f'output_{codename}.txt' for codename in testcase_names]
-        submission_format.sort()
-        self.submission_format = submission_format
+        if dataset is None:
+            raise ValueError(f"Task {self.id} has no active dataset")
+        if dataset.task_type != "OutputOnly":
+            raise ValueError(
+                f"Task {self.id} type must be OutputOnly, got {dataset.task_type}")
+        self.submission_format = sorted([f'output_{c}.txt' for c in dataset.testcases])
 
 
 class Statement(Base):

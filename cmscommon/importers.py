@@ -133,8 +133,10 @@ def import_testcases_from_zipfile(
         try:
             dataset.task.set_default_output_only_submission_format()
             session.commit()
-        except Exception:
-            raise Exception("Couldn't create default submission format")
+        except Exception as e:
+            raise RuntimeError(
+                f"Couldn't create default submission format for task {dataset.task.id}, "
+                f"dataset {dataset.id}") from e
 
     return (
         "Successfully added %d and overwritten %d testcase(s)" %
