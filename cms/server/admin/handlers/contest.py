@@ -28,6 +28,8 @@
 
 """
 
+from datetime import timedelta
+
 from cms import ServiceCoord, get_service_shards, get_service_address
 from cms.db import Contest, Participation, Submission
 from cmscommon.datetime import make_datetime
@@ -74,6 +76,8 @@ class ContestHandler(SimpleContestHandler("contest.html")):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, contest_id: str):
         contest = self.safe_get_item(Contest, contest_id)
+
+        old_start = contest.start
 
         try:
             attrs = contest.get_attrs()
@@ -130,6 +134,14 @@ class ContestHandler(SimpleContestHandler("contest.html")):
 
             # Update the contest.
             contest.set_attrs(attrs)
+
+            new_start = attrs.get("start")
+            if new_start is not None and new_start != old_start:
+                time_diff = old_start - new_start
+                for participation in contest.participations:
+                    if participation.delay_time > timedelta():
+                        new_delay = participation.delay_time + time_diff
+                        participation.delay_time = max(new_delay, timedelta())
 
         except Exception as error:
             self.service.add_notification(
