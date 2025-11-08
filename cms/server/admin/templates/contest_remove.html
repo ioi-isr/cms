@@ -18,7 +18,7 @@
   The contest has {{ task_count }} task(s). Please choose what to do with them:
 </p>
 
-<form action="{{ url("contests", contest.id, "remove") }}" method="POST">
+<form id="contest-remove-form" action="{{ url("contests", contest.id, "remove") }}" method="POST">
   {{ xsrf_form_html|safe }}
   
   <div style="margin: 20px 0;">
@@ -44,7 +44,7 @@
     </label>
   </div>
   
-  <input type="submit" value="Yes, remove contest" class="button-link" />
+  <a href="#" class="button-link" id="submit-button" onclick="document.getElementById('contest-remove-form').submit(); return false;">Yes, remove contest</a>
   <a href="{{ url("contests") }}" class="button-link">No, cancel</a>
 </form>
 
