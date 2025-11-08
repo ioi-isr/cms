@@ -124,5 +124,62 @@
 {% endif %}
 
 
+<h2>{% trans %}Request Contest Delay{% endtrans %}</h2>
+<div class="well delay_request_submit">
+    <form class="form-horizontal" action="{{ contest_url("delay_request") }}" method="POST">
+        {{ xsrf_form_html|safe }}
+        <fieldset>
+            <div class="control-group">
+                <label class="control-label" for="input_requested_start_time">{% trans %}Requested Start Time{% endtrans %}</label>
+                <div class="controls">
+                    <input type="datetime-local" name="requested_start_time" id="input_requested_start_time" class="input-xlarge" required>
+                    <span class="help-block">
+                        {% trans %}Select the date and time when you want to start the contest{% endtrans %}
+                        (in your timezone: {{ timezone.tzname(now) }})
+                    </span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label class="control-label" for="input_reason">{% trans %}Reason{% endtrans %}</label>
+                <div class="controls">
+                    <textarea id="input_reason" class="input-xlarge" name="reason" rows="5" maxlength="2000" required></textarea>
+                    <span class="help-block">{% trans %}Please explain why you need a delay{% endtrans %}</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="controls">
+                    <button type="submit" class="btn btn-primary">{% trans %}Submit Delay Request{% endtrans %}</button>
+                    <button type="reset" class="btn">{% trans %}Reset{% endtrans %}</button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</div>
+
+{% if participation.delay_requests|length > 0 %}
+<div class="delay_request_list">
+    {% for req in participation.delay_requests|reverse %}
+    <div class="delay_request">
+        <h4 class="subject">{% trans %}Delay Request{% endtrans %}</h4>
+        <span class="timestamp">{{ req.request_timestamp|format_datetime_smart }}</span>
+        <div class="body">
+            <strong>{% trans %}Requested Start Time:{% endtrans %}</strong> {{ req.requested_start_time|format_datetime_smart }}<br>
+            <strong>{% trans %}Reason:{% endtrans %}</strong> {{ req.reason }}<br>
+            <strong>{% trans %}Status:{% endtrans %}</strong> 
+            {% if req.status == 'pending' %}
+                <span class="label label-warning">{% trans %}Pending{% endtrans %}</span>
+            {% elif req.status == 'approved' %}
+                <span class="label label-success">{% trans %}Approved{% endtrans %}</span>
+            {% elif req.status == 'rejected' %}
+                <span class="label label-important">{% trans %}Rejected{% endtrans %}</span>
+            {% endif %}
+        </div>
+    </div>
+    <hr style="margin: 20px 0;">
+    {% endfor %}
+</div>
+{% endif %}
+
+
 </div>
 {% endblock core %}

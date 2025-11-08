@@ -43,6 +43,14 @@ from .contestquestion import \
     QuestionReplyHandler, \
     QuestionIgnoreHandler, \
     QuestionClaimHandler
+from .contestdelayrequest import \
+    DelaysAndExtraTimesHandler, \
+    DelayRequestApproveHandler, \
+    DelayRequestRejectHandler, \
+    RemoveDelayAndExtraTimeHandler, \
+    ExportDelaysAndExtraTimesHandler, \
+    RemoveAllDelaysAndExtraTimesHandler, \
+    EraseAllStartTimesHandler
 from .contestranking import \
     RankingHandler
 from .contestsubmission import \
@@ -162,6 +170,16 @@ HANDLERS = [
     (r"/contest/([0-9]+)/question/([0-9]+)/reply", QuestionReplyHandler),
     (r"/contest/([0-9]+)/question/([0-9]+)/ignore", QuestionIgnoreHandler),
     (r"/contest/([0-9]+)/question/([0-9]+)/claim", QuestionClaimHandler),
+
+    # Contest's delay requests and extra times
+
+    (r"/contest/([0-9]+)/delays_and_extra_times", DelaysAndExtraTimesHandler),
+    (r"/contest/([0-9]+)/delays_and_extra_times/export", ExportDelaysAndExtraTimesHandler),
+    (r"/contest/([0-9]+)/delays_and_extra_times/remove_all", RemoveAllDelaysAndExtraTimesHandler),
+    (r"/contest/([0-9]+)/delays_and_extra_times/erase_start_times", EraseAllStartTimesHandler),
+    (r"/contest/([0-9]+)/delay_request/([0-9]+)/approve", DelayRequestApproveHandler),
+    (r"/contest/([0-9]+)/delay_request/([0-9]+)/reject", DelayRequestRejectHandler),
+    (r"/contest/([0-9]+)/participation/([0-9]+)/remove_delay_and_extra_time", RemoveDelayAndExtraTimeHandler),
 
     # Contest's ranking
 
