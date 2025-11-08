@@ -89,10 +89,16 @@ function disable_worker(shard) {
     }
 }
 
+var total_workers_configured = 0;
+
 function set_workers_count() {
     var count = parseInt($("#worker_count_input").val());
     if (isNaN(count) || count < 0) {
         alert("Please enter a valid number of workers (0 or greater).");
+        return;
+    }
+    if (count > total_workers_configured) {
+        alert("Please enter a number between 0 and " + total_workers_configured + " (total configured workers).");
         return;
     }
     if (confirm("Do you really want to enable workers 0 to " + (count - 1) + " and disable the rest?")) {
@@ -168,7 +174,8 @@ function update_workers_status(response)
         strings.push('</tr>');
     }
 
-    $("#title_workers_status").text(`Workers status (${connected_count} connected, ${Object.keys(response.data).length} configured)`);
+    total_workers_configured = Object.keys(response.data).length;
+    $("#title_workers_status").text(`Workers status (${connected_count} connected, ${total_workers_configured} configured)`);
     table.html(strings.join(""));
 };
 
