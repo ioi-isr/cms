@@ -89,6 +89,29 @@ function disable_worker(shard) {
     }
 }
 
+function set_workers_count() {
+    var count = parseInt($("#worker_count_input").val());
+    if (isNaN(count) || count < 0) {
+        alert("Please enter a valid number of workers (0 or greater).");
+        return;
+    }
+    if (confirm("Do you really want to enable workers 0 to " + (count - 1) + " and disable the rest?")) {
+        cmsrpc_request("EvaluationService", 0,
+                       "set_workers_count",
+                       {"count": count},
+                       function(response) {
+                          if (response && response.data === true) {
+                              cmsrpc_request("EvaluationService", 0,
+                                             "workers_status",
+                                             {},
+                                             update_workers_status);
+                          } else {
+                              alert("Failed to set worker count. Please check the logs.");
+                          }
+                       });
+    }
+}
+
 function update_workers_status(response)
 {
     var table = $("#workers_status_table > tbody");
@@ -285,6 +308,12 @@ update_statuses();
 
 <h2 id="title_workers_status" class="toggling_on">Workers status</h2>
 <div id="workers_status">
+  <div style="margin-bottom: 10px;">
+    <label for="worker_count_input">Number of workers to enable: </label>
+    <input type="number" id="worker_count_input" min="0" style="width: 80px;" />
+    <button onclick="javascript:set_workers_count(); return false;"{% if not admin.permission_all %} disabled{% endif %}>Set Worker Count</button>
+    <span style="margin-left: 10px; font-size: 0.9em; color: #666;">(Workers 0 to n-1 will be enabled, rest disabled)</span>
+  </div>
   <table id="workers_status_table" class="sub_table">
     <thead>
       <tr>
