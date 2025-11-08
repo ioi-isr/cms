@@ -7,15 +7,66 @@
 
 {% if admin.permission_all %}
 <p>
-  Are you sure you want to remove contest {{ contest.name }} from CMS, including all related data?
+  Are you sure you want to remove contest {{ contest.name }} from CMS?
   <br>
-  This will remove {{ contest.participations|length }} participation(s) and {{ submission_count }} submission(s).
+  <strong>Warning:</strong> This will remove {{ contest.participations|length }} participation(s) and {{ submission_count }} submission(s), regardless of the option you choose below.
   <br>
   This operation cannot be undone.
 </p>
-<br>
-<a onclick="CMS.AWSUtils.ajax_delete('{{ url("contests", contest.id, "remove") }}'); " class="button-link">Yes, remove</a>
-<a href="{{ url("contests") }}" class="button-link">No</a>
+
+<p>
+  The contest has {{ task_count }} task(s). Please choose what to do with them:
+</p>
+
+<form action="{{ url("contests", contest.id, "remove") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  
+  <div style="margin: 20px 0;">
+    <label style="display: block; margin-bottom: 10px;">
+      <input type="radio" name="action" value="move" id="action_move" required>
+      Move all tasks to another contest:
+      <select name="target_contest_id" id="target_contest_select" style="margin-left: 10px;">
+        <option value="">Select a contest</option>
+        {% for c in other_contests %}
+        <option value="{{ c.id }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    
+    <label style="display: block; margin-bottom: 10px;">
+      <input type="radio" name="action" value="detach" required>
+      Remove tasks from contest but keep them in the system (tasks will not belong to any contest)
+    </label>
+    
+    <label style="display: block; margin-bottom: 10px; color: red; font-weight: bold;">
+      <input type="radio" name="action" value="delete_all" required>
+      Delete all tasks from the system
+    </label>
+  </div>
+  
+  <input type="submit" value="Yes, remove contest" class="button-link" />
+  <a href="{{ url("contests") }}" class="button-link">No, cancel</a>
+</form>
+
+<script>
+  // Enable/disable the target contest dropdown based on the selected action
+  document.querySelectorAll('input[name="action"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      var targetSelect = document.getElementById('target_contest_select');
+      if (document.getElementById('action_move').checked) {
+        targetSelect.disabled = false;
+        targetSelect.required = true;
+      } else {
+        targetSelect.disabled = true;
+        targetSelect.required = false;
+      }
+    });
+  });
+  
+  // Initialize the dropdown state
+  document.getElementById('target_contest_select').disabled = true;
+  document.getElementById('target_contest_select').required = false;
+</script>
 
 {% else %}
 You do not have permission to remove a contest.

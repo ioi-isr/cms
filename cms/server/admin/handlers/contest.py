@@ -209,15 +209,95 @@ class RemoveContestHandler(BaseHandler):
 
         self.contest = contest
         self.render_params_for_remove_confirmation(submission_query)
+        
+        self.r_params["task_count"] = len(contest.tasks)
+        self.r_params["other_contests"] = self.sql_session.query(Contest)\
+            .filter(Contest.id != contest.id)\
+            .order_by(Contest.name)\
+            .all()
+        
         self.render("contest_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def delete(self, contest_id):
+    def post(self, contest_id):
+        """Handle POST request with task handling options."""
         contest = self.safe_get_item(Contest, contest_id)
+        
+        try:
+            action = self.get_argument("action")
+            assert action in ["move", "detach", "delete_all"], \
+                "Invalid action specified"
+            
+            target_contest_id = None
+            if action == "move":
+                target_contest_id = self.get_argument("target_contest_id", None)
+                assert target_contest_id, \
+                    "Target contest must be specified when moving tasks"
+                assert target_contest_id != str(contest_id), \
+                    "Target contest cannot be the same as the contest being deleted"
+            
+            self._remove_contest_with_action(contest, action, target_contest_id)
+            
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Error removing contest", repr(error))
+            self.redirect(self.url("contests", contest_id, "remove"))
+            return
+        
+        self.redirect(self.url("contests"))
 
-        self.sql_session.delete(contest)
-        if self.try_commit():
-            self.service.proxy_service.reinitialize()
-
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, contest_id):
+        """Handle DELETE request (backward compatibility - deletes all tasks)."""
+        contest = self.safe_get_item(Contest, contest_id)
+        self._remove_contest_with_action(contest, "delete_all", None)
         # Maybe they'll want to do this again (for another contest)
         self.write("../../contests")
+    
+    def _remove_contest_with_action(self, contest, action, target_contest_id):
+        """Remove contest with specified action for tasks.
+        
+        contest: Contest object to remove
+        action: One of "move", "detach", or "delete_all"
+        target_contest_id: ID of target contest (required if action is "move")
+        """
+        from cms.db import Task
+        from sqlalchemy import func
+        
+        if action == "move":
+            target_contest = self.safe_get_item(Contest, target_contest_id)
+            
+            max_num = self.sql_session.query(func.max(Task.num))\
+                .filter(Task.contest == target_contest)\
+                .scalar()
+            base_num = (max_num or -1) + 1
+            
+            tasks = self.sql_session.query(Task)\
+                .filter(Task.contest == contest)\
+                .order_by(Task.num)\
+                .all()
+            
+            for i, task in enumerate(tasks):
+                task.contest = target_contest
+                task.num = base_num + i
+                self.sql_session.flush()
+            
+        elif action == "detach":
+            tasks = self.sql_session.query(Task)\
+                .filter(Task.contest == contest)\
+                .all()
+            
+            for task in tasks:
+                task.contest = None
+                task.num = None
+                self.sql_session.flush()
+        
+        
+        self.sql_session.delete(contest)
+        
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+            self.service.add_notification(
+                make_datetime(), 
+                "Contest removed successfully",
+                f"Contest removed with action: {action}")
