@@ -45,4 +45,38 @@ ALTER TABLE user_test_results DROP COLUMN evaluation_sandbox;
 -- https://github.com/cms-dev/cms/pull/1486
 ALTER TABLE public.tasks ADD COLUMN allowed_languages varchar[];
 
+-- https://github.com/ioi-isr/cms/pull/22
+CREATE TABLE public.delay_requests (
+    id integer NOT NULL,
+    request_timestamp timestamp without time zone NOT NULL,
+    requested_start_time timestamp without time zone NOT NULL,
+    reason character varying NOT NULL,
+    status character varying NOT NULL,
+    processed_timestamp timestamp without time zone,
+    participation_id integer NOT NULL,
+    admin_id integer
+);
+
+CREATE SEQUENCE public.delay_requests_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.delay_requests_id_seq OWNED BY public.delay_requests.id;
+
+ALTER TABLE ONLY public.delay_requests ALTER COLUMN id SET DEFAULT nextval('public.delay_requests_id_seq'::regclass);
+
+ALTER TABLE ONLY public.delay_requests ADD CONSTRAINT delay_requests_pkey PRIMARY KEY (id);
+
+CREATE INDEX ix_delay_requests_participation_id ON public.delay_requests USING btree (participation_id);
+
+CREATE INDEX ix_delay_requests_admin_id ON public.delay_requests USING btree (admin_id);
+
+ALTER TABLE ONLY public.delay_requests ADD CONSTRAINT delay_requests_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.delay_requests ADD CONSTRAINT delay_requests_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.admins(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
 COMMIT;
