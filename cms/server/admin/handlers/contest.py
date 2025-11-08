@@ -139,8 +139,9 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             if new_start is not None and new_start != old_start:
                 time_diff = old_start - new_start
                 for participation in contest.participations:
-                    new_delay = participation.delay_time + time_diff
-                    participation.delay_time = max(new_delay, timedelta())
+                    if participation.delay_time > timedelta():
+                        new_delay = participation.delay_time + time_diff
+                        participation.delay_time = max(new_delay, timedelta())
 
         except Exception as error:
             self.service.add_notification(
