@@ -462,7 +462,9 @@ class DelayRequest(Base):
 
     # Admin that processed the request (or null if not processed yet or
     # if the admin has been later deleted). Admins only loosely "own" a
-    # delete the request if the admin gets deleted.
+    # delay request, so we do not back populate any field in Admin, and
+    # the request is not deleted if the admin is deleted (admin_id is
+    # set to NULL via ondelete="SET NULL").
     admin_id: int | None = Column(
         Integer,
         ForeignKey(Admin.id,

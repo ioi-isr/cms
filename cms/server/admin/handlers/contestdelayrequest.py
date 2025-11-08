@@ -92,8 +92,7 @@ class DelayRequestApproveHandler(DelayRequestActionHandler):
     """
     def process_delay_request(self, delay_request):
         if delay_request.status != 'pending':
-            logger.warning("Attempt to approve non-pending delay request %s", delay_request.id)
-            return
+            raise tornado.web.HTTPError(400, "Delay request is not pending")
 
         participation = delay_request.participation
         contest_start = participation.contest.start
@@ -122,8 +121,7 @@ class DelayRequestRejectHandler(DelayRequestActionHandler):
     """
     def process_delay_request(self, delay_request):
         if delay_request.status != 'pending':
-            logger.warning("Attempt to reject non-pending delay request %s", delay_request.id)
-            return
+            raise tornado.web.HTTPError(400, "Delay request is not pending")
 
         delay_request.status = 'rejected'
         delay_request.processed_timestamp = make_datetime()
