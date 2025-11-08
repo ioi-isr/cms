@@ -84,9 +84,19 @@ class DelayRequestHandler(ContestHandler):
             utc_dt = local_dt.astimezone(utc)
             requested_start_time = utc_dt.replace(tzinfo=None)
         except Exception as e:
-            logger.warning("Timezone conversion failed for delay request: %s. "
-                          "Treating input as UTC.", e)
-            requested_start_time = naive_dt
+            logger.error("Timezone conversion failed for delay request from user %s "
+                        "in contest %s. Input: %s, Timezone: %s. Error: %s",
+                        self.current_user.user.username,
+                        self.contest.name,
+                        requested_start_time_str,
+                        getattr(tz, "zone", str(tz)),
+                        e)
+            self.notify_error(N_("Couldn't interpret requested time"),
+                            N_("We couldn't interpret the requested start time in your time zone. "
+                               "This can happen around daylight saving time changes. "
+                               "Please pick a different time or adjust the date."))
+            self.redirect(self.contest_url("communication"))
+            return
 
         delay_request = DelayRequest(
             request_timestamp=self.timestamp,
