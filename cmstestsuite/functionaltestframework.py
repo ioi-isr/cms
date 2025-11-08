@@ -75,6 +75,12 @@ class FunctionalTestFramework:
         return FunctionalTestFramework.__instance
 
     def __init__(self):
+        # Guard against reinitialization: this class is a singleton via __new__.
+        # Re-running __init__ would wipe state (admin session, browsers, etc.)
+        # and break checks that instantiate the framework later.
+        if getattr(self, "_initialized", False):
+            return
+
         # This holds the decoded-TOML of the cms.toml configuration file.
         # Lazily loaded, to be accessed through the getter method.
         self._cms_config = None
@@ -90,6 +96,7 @@ class FunctionalTestFramework:
 
         # Information on the administrator running the tests.
         self.admin_info = {}
+        self._initialized = True
 
     def get_aws_browser(self):
         if self._aws_browser is None:

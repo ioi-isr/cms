@@ -28,6 +28,7 @@
 """
 
 import io
+import os
 import logging
 import re
 import zipfile
@@ -43,6 +44,11 @@ import tornado.web
 
 from cms.db import Dataset, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
+from cms.grading.tasktypes import get_task_type_class
+from cms.grading.tasktypes.util import create_sandbox
+from cms.grading.languagemanager import filename_to_language
+from cms.grading.language import CompiledLanguage
+from cms.grading.steps.compilation import compilation_step
 from cms.grading.scoring import compute_changes_for_dataset
 from cmscommon.datetime import make_datetime
 from cmscommon.importers import import_testcases_from_zipfile
@@ -365,12 +371,119 @@ class AddManagerHandler(BaseHandler):
 
         manager = self.request.files["manager"][0]
         task_name = task.name
+
+        filename = manager["filename"]
+        body = manager["body"]
+
+        # Decide which auto-compiled basenames are allowed for this task type.
+        # Use TaskType constants to avoid hardcoding names and to avoid
+        # compiling unintended files (e.g., manager.%l for TwoSteps).
+        allowed_compile_basenames: set[str] = set()
+        try:
+            tt_cls = get_task_type_class(dataset.task_type)
+            # Many task types (Batch, OutputOnly, TwoSteps, BatchAndOutput)
+            # define CHECKER_CODENAME = "checker"; only compile that.
+            if hasattr(tt_cls, "CHECKER_CODENAME"):
+                allowed_compile_basenames.add(getattr(tt_cls, "CHECKER_CODENAME"))
+            # Communication defines MANAGER_FILENAME = "manager"; allow that.
+            if hasattr(tt_cls, "MANAGER_FILENAME"):
+                allowed_compile_basenames.add(getattr(tt_cls, "MANAGER_FILENAME"))
+        except Exception:
+            # If anything goes wrong, fall back to not auto-compiling.
+            allowed_compile_basenames = set()
+        base_noext = os.path.splitext(os.path.basename(filename))[0]
+
+        # compiled files (no extension) when a source file already exists.
+        has_extension = "." in os.path.basename(filename)
+        if (base_noext in allowed_compile_basenames and not has_extension):
+            for existing_filename in dataset.managers.keys():
+                existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
+                existing_has_ext = "." in os.path.basename(existing_filename)
+                if existing_base == base_noext and existing_has_ext:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Cannot upload compiled manager",
+                        ("A source file '%s' already exists for '%s'. "
+                         "Compiled files are auto-generated from source. "
+                         "Please upload the source file instead, or delete "
+                         "the existing source first." %
+                         (existing_filename, base_noext)))
+                    self.redirect(fallback_page)
+                    return
+
         self.sql_session.close()
 
+        # If a source file for a known compiled language is uploaded,
+        # compile it into an executable manager.
+        compiled_filename = None
+        compiled_bytes = None
         try:
-            digest = self.service.file_cacher.put_file_content(
-                manager["body"],
-                "Task manager for %s" % task_name)
+            language = filename_to_language(filename)
+        except Exception:
+            language = None
+
+        if (language is not None
+                and isinstance(language, CompiledLanguage)
+                and base_noext in allowed_compile_basenames):
+            safe_src = os.path.basename(filename)
+            compiled_filename = base_noext
+            
+            sandbox = None
+            try:
+                sandbox = create_sandbox(self.service.file_cacher, name="admin_compile")
+                
+                sandbox.create_file_from_string(safe_src, body)
+                
+                commands = language.get_compilation_commands(
+                    [safe_src], compiled_filename, for_evaluation=True)
+                
+                box_success, compilation_success, text, stats = \
+                    compilation_step(sandbox, commands)
+                
+                if not box_success:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Manager compilation failed",
+                        "Sandbox error during compilation. See logs for details.")
+                    self.redirect(fallback_page)
+                    return
+                
+                if not compilation_success:
+                    stdout = stats.get("stdout", "") if stats else ""
+                    stderr = stats.get("stderr", "") if stats else ""
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Manager compilation failed",
+                        ("Compilation failed. Command:%r\nStdout:\n%s\nStderr:\n%s" %
+                         (commands, stdout, stderr)))
+                    self.redirect(fallback_page)
+                    return
+                
+                compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
+                
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Manager compilation error",
+                    repr(error))
+                self.redirect(fallback_page)
+                return
+            finally:
+                if sandbox:
+                    sandbox.cleanup(delete=True)
+
+        # Store the appropriate content(s) into the file cache.
+        stored_entries: list[tuple[str, str]] = []  # (filename, digest)
+        try:
+            # Always store the original upload.
+            orig_digest = self.service.file_cacher.put_file_content(
+                body, "Task manager for %s" % task_name)
+            stored_entries.append((filename, orig_digest))
+            # If compilation happened, also store compiled executable.
+            if compiled_bytes is not None and compiled_filename is not None:
+                comp_digest = self.service.file_cacher.put_file_content(
+                    compiled_bytes, "Compiled task manager for %s" % task_name)
+                stored_entries.append((compiled_filename, comp_digest))
         except Exception as error:
             self.service.add_notification(
                 make_datetime(),
@@ -383,8 +496,13 @@ class AddManagerHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        manager = Manager(manager["filename"], digest, dataset=dataset)
-        self.sql_session.add(manager)
+        for fname, dig in stored_entries:
+            existing_manager = dataset.managers.get(fname)
+            if existing_manager is not None:
+                existing_manager.digest = dig
+            else:
+                manager = Manager(fname, dig, dataset=dataset)
+                self.sql_session.add(manager)
 
         if self.try_commit():
             self.redirect(self.url("task", task.id))
@@ -406,6 +524,21 @@ class DeleteManagerHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         task_id = dataset.task_id
+
+        # If deleting a source manager for checker/manager, also delete the compiled counterpart.
+        filename = manager.filename
+        base_noext = os.path.splitext(os.path.basename(filename))[0]
+        # Determine if this is a source file (has an extension) for special basenames.
+        if base_noext in ("checker", "manager") and "." in filename:
+            # compiled counterpart has exactly the basename with no extension
+            counterpart_name = base_noext
+            # Need to re-fetch dataset.managers in this session scope
+            try:
+                counterpart = dataset.managers.get(counterpart_name)
+            except Exception:
+                counterpart = None
+            if counterpart is not None:
+                self.sql_session.delete(counterpart)
 
         self.sql_session.delete(manager)
 
