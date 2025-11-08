@@ -36,8 +36,6 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
       {{ submissions|length }} submissions
       {% endif %}
     </a>
-    <br/>
-    <a href="{{ url("task", task.id, "submissions", "download") }}">Download all submissions</a>
   {% endif %}
   <div class="hr"></div>
 </div>

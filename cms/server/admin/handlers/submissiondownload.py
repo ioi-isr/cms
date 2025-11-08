@@ -22,7 +22,6 @@
 import io
 import logging
 import zipfile
-from datetime import datetime
 
 from cms.db import Contest, Participation, Submission, Task
 from cms.grading.languagemanager import safe_get_lang_filename
@@ -30,6 +29,80 @@ from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_submission_status(submission, dataset):
+    """Get the status string for a submission.
+    
+    submission: the Submission object
+    dataset: the Dataset to evaluate against
+    
+    return: status string (e.g., "compiling", "95.0pts", "CompilationFailed")
+    
+    """
+    result = submission.get_result(dataset)
+    if result is None:
+        return "compiling"
+    elif result.compilation_failed():
+        return "CompilationFailed"
+    elif not result.evaluated():
+        return "evaluating"
+    elif not result.scored():
+        return "Scoring"
+    else:
+        score = result.score if result.score is not None else 0.0
+        task = submission.task
+        precision = task.score_precision if task.score_precision is not None else 0
+        return f"{score:.{precision}f}pts"
+
+
+def write_submission_files(zip_file, submission, base_path_parts, file_cacher):
+    """Write all files from a submission to the zip file.
+    
+    zip_file: ZipFile object to write to
+    submission: the Submission object
+    base_path_parts: list of path components (e.g., ["username", "taskname"])
+    file_cacher: FileCacher instance to retrieve file content
+    
+    """
+    dataset = submission.task.active_dataset
+    status = get_submission_status(submission, dataset)
+    timestamp = submission.timestamp.strftime("%Y%m%d_%H%M%S")
+    official_folder = "official" if submission.official else "unofficial"
+    
+    path_parts = base_path_parts + [official_folder]
+    
+    for filename, file_obj in submission.files.items():
+        real_filename = safe_get_lang_filename(submission.language, filename)
+        prefixed_filename = f"{timestamp}_{status}_{real_filename}"
+        file_path = "/".join(path_parts + [prefixed_filename])
+        
+        try:
+            file_content = file_cacher.get_file_content(file_obj.digest)
+            zip_file.writestr(file_path, file_content)
+        except Exception as e:
+            logger.warning(
+                f"Failed to retrieve file {filename} for submission {submission.id}: {e}")
+
+
+def build_zip(submissions, base_path_builder, file_cacher):
+    """Build a zip file containing all submissions.
+    
+    submissions: list of Submission objects
+    base_path_builder: function that takes a submission and returns list of path parts
+    file_cacher: FileCacher instance to retrieve file content
+    
+    return: BytesIO object containing the zip file
+    
+    """
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for submission in sorted(submissions, key=lambda s: s.timestamp):
+            base_path_parts = base_path_builder(submission)
+            write_submission_files(zip_file, submission, base_path_parts, file_cacher)
+    
+    zip_buffer.seek(0)
+    return zip_buffer
 
 
 class DownloadTaskSubmissionsHandler(BaseHandler):
@@ -43,54 +116,12 @@ class DownloadTaskSubmissionsHandler(BaseHandler):
 
         submissions = self.sql_session.query(Submission)\
             .filter(Submission.task_id == task_id)\
-            .order_by(Submission.timestamp).all()
+            .all()
 
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            user_submissions = {}
-            for submission in submissions:
-                username = submission.participation.user.username
-                if username not in user_submissions:
-                    user_submissions[username] = {'official': [], 'unofficial': []}
-                
-                if submission.official:
-                    user_submissions[username]['official'].append(submission)
-                else:
-                    user_submissions[username]['unofficial'].append(submission)
+        def base_path_builder(submission):
+            return [submission.participation.user.username]
 
-            for username, subs in user_submissions.items():
-                for official_type, submission_list in subs.items():
-                    for submission in submission_list:
-                        result = submission.get_result(task.active_dataset)
-                        if result is None:
-                            status = "compiling"
-                        elif result.compilation_failed():
-                            status = "CompilationFailed"
-                        elif not result.evaluated():
-                            status = "evaluating"
-                        elif not result.scored():
-                            status = "Scoring"
-                        else:
-                            score = result.score if result.score is not None else 0
-                            status = f"{score:.0f}"
-
-                        timestamp = submission.timestamp.strftime("%Y%m%d_%H%M%S")
-
-                        for filename, file_obj in submission.files.items():
-                            real_filename = safe_get_lang_filename(
-                                submission.language, filename)
-                            
-                            file_path = f"{username}/{official_type}/{timestamp}_{status}_{real_filename}"
-                            
-                            try:
-                                file_content = self.service.file_cacher.get_file_content(
-                                    file_obj.digest)
-                                zip_file.writestr(file_path, file_content)
-                            except Exception as e:
-                                logger.warning(
-                                    f"Failed to retrieve file {filename} for submission {submission.id}: {e}")
-
-        zip_buffer.seek(0)
+        zip_buffer = build_zip(submissions, base_path_builder, self.service.file_cacher)
         
         self.set_header("Content-Type", "application/zip")
         self.set_header("Content-Disposition",
@@ -117,57 +148,15 @@ class DownloadUserContestSubmissionsHandler(BaseHandler):
 
         submissions = self.sql_session.query(Submission)\
             .filter(Submission.participation_id == participation.id)\
-            .order_by(Submission.timestamp).all()
+            .all()
 
         username = participation.user.username
         contest_name = self.contest.name
 
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            task_submissions = {}
-            for submission in submissions:
-                task_name = submission.task.name
-                if task_name not in task_submissions:
-                    task_submissions[task_name] = {'official': [], 'unofficial': []}
-                
-                if submission.official:
-                    task_submissions[task_name]['official'].append(submission)
-                else:
-                    task_submissions[task_name]['unofficial'].append(submission)
+        def base_path_builder(submission):
+            return [submission.task.name]
 
-            for task_name, subs in task_submissions.items():
-                for official_type, submission_list in subs.items():
-                    for submission in submission_list:
-                        result = submission.get_result(submission.task.active_dataset)
-                        if result is None:
-                            status = "compiling"
-                        elif result.compilation_failed():
-                            status = "CompilationFailed"
-                        elif not result.evaluated():
-                            status = "evaluating"
-                        elif not result.scored():
-                            status = "Scoring"
-                        else:
-                            score = result.score if result.score is not None else 0
-                            status = f"{score:.0f}"
-
-                        timestamp = submission.timestamp.strftime("%Y%m%d_%H%M%S")
-
-                        for filename, file_obj in submission.files.items():
-                            real_filename = safe_get_lang_filename(
-                                submission.language, filename)
-                            
-                            file_path = f"{task_name}/{official_type}/{timestamp}_{status}_{real_filename}"
-                            
-                            try:
-                                file_content = self.service.file_cacher.get_file_content(
-                                    file_obj.digest)
-                                zip_file.writestr(file_path, file_content)
-                            except Exception as e:
-                                logger.warning(
-                                    f"Failed to retrieve file {filename} for submission {submission.id}: {e}")
-
-        zip_buffer.seek(0)
+        zip_buffer = build_zip(submissions, base_path_builder, self.service.file_cacher)
         
         self.set_header("Content-Type", "application/zip")
         self.set_header("Content-Disposition",
@@ -187,59 +176,12 @@ class DownloadContestSubmissionsHandler(BaseHandler):
         submissions = self.sql_session.query(Submission)\
             .join(Task)\
             .filter(Task.contest_id == contest_id)\
-            .order_by(Submission.timestamp).all()
+            .all()
 
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            user_task_submissions = {}
-            for submission in submissions:
-                username = submission.participation.user.username
-                task_name = submission.task.name
-                
-                if username not in user_task_submissions:
-                    user_task_submissions[username] = {}
-                if task_name not in user_task_submissions[username]:
-                    user_task_submissions[username][task_name] = {'official': [], 'unofficial': []}
-                
-                if submission.official:
-                    user_task_submissions[username][task_name]['official'].append(submission)
-                else:
-                    user_task_submissions[username][task_name]['unofficial'].append(submission)
+        def base_path_builder(submission):
+            return [submission.participation.user.username, submission.task.name]
 
-            for username, tasks in user_task_submissions.items():
-                for task_name, subs in tasks.items():
-                    for official_type, submission_list in subs.items():
-                        for submission in submission_list:
-                            result = submission.get_result(submission.task.active_dataset)
-                            if result is None:
-                                status = "compiling"
-                            elif result.compilation_failed():
-                                status = "CompilationFailed"
-                            elif not result.evaluated():
-                                status = "evaluating"
-                            elif not result.scored():
-                                status = "Scoring"
-                            else:
-                                score = result.score if result.score is not None else 0
-                                status = f"{score:.0f}"
-
-                            timestamp = submission.timestamp.strftime("%Y%m%d_%H%M%S")
-
-                            for filename, file_obj in submission.files.items():
-                                real_filename = safe_get_lang_filename(
-                                    submission.language, filename)
-                                
-                                file_path = f"{username}/{task_name}/{official_type}/{timestamp}_{status}_{real_filename}"
-                                
-                                try:
-                                    file_content = self.service.file_cacher.get_file_content(
-                                        file_obj.digest)
-                                    zip_file.writestr(file_path, file_content)
-                                except Exception as e:
-                                    logger.warning(
-                                        f"Failed to retrieve file {filename} for submission {submission.id}: {e}")
-
-        zip_buffer.seek(0)
+        zip_buffer = build_zip(submissions, base_path_builder, self.service.file_cacher)
         
         self.set_header("Content-Type", "application/zip")
         self.set_header("Content-Disposition",
