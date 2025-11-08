@@ -2,7 +2,8 @@
 
 {% block js_init %}
 
-utils.show_page("delays_and_extra_times", 1);
+utils.show_page("pending_delay_requests", 1);
+utils.show_page("all_delay_requests", 1);
 
 {% endblock js_init %}
 {% block core %}
@@ -13,10 +14,11 @@ utils.show_page("delays_and_extra_times", 1);
 </div>
 
 {% if delay_requests != [] %}
-<h2>Pending Delay Requests</h2>
-<div id="delay_requests" class="notifications">
-  <div id="page_selector_delay_requests"></div>
-  <div id="paged_content_delay_requests">
+<h2 id="title_pending_delay_requests_section" class="toggling_on">Pending Delay Requests</h2>
+<div id="pending_delay_requests_section">
+<div id="pending_delay_requests" class="notifications">
+  <div id="page_selector_pending_delay_requests"></div>
+  <div id="paged_content_pending_delay_requests">
   {% for req in delay_requests %}
     {% if req.status == 'pending' %}
     <div class="notification">
@@ -48,8 +50,10 @@ utils.show_page("delays_and_extra_times", 1);
   {% endfor %}
   </div>
 </div>
+</div>
 
-<h2>All Participations - Delays and Extra Times</h2>
+<h2 id="title_participations_section" class="toggling_on">All Participations - Delays and Extra Times</h2>
+<div id="participations_section">
   <div class="btn-group" style="margin-top: 10px;">
     <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="btn btn-info">
       <i class="icon-download-alt icon-white"></i> Export CSV
@@ -113,8 +117,10 @@ utils.show_page("delays_and_extra_times", 1);
   {% endfor %}
   </tbody>
 </table>
+</div>
 
-<h2>All Delay Requests</h2>
+<h2 id="title_all_delay_requests_section" class="toggling_on">All Delay Requests</h2>
+<div id="all_delay_requests_section">
 <div id="all_delay_requests" class="notifications">
   <div id="page_selector_all_delay_requests"></div>
   <div id="paged_content_all_delay_requests">
@@ -142,6 +148,7 @@ utils.show_page("delays_and_extra_times", 1);
     </div>
   {% endfor %}
   </div>
+</div>
 </div>
 {% endif %}
 
