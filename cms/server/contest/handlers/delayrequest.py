@@ -93,7 +93,6 @@ class DelayRequestHandler(ContestHandler):
                         e)
             self.notify_error(N_("Couldn't interpret requested time"),
                             N_("We couldn't interpret the requested start time in your time zone. "
-                               "This can happen around daylight saving time changes. "
                                "Please pick a different time or adjust the date."))
             self.redirect(self.contest_url("communication"))
             return
