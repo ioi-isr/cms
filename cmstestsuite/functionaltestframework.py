@@ -35,7 +35,7 @@ from cmstestsuite.web import Browser
 from cmstestsuite.web.AWSRequests import \
     AWSLoginRequest, AWSSubmissionViewRequest, AWSUserTestViewRequest
 from cmstestsuite.web.CWSRequests import \
-    CWSLoginRequest, SubmitRequest, SubmitUserTestRequest
+    CWSLoginRequest, StartRequest, SubmitRequest, SubmitUserTestRequest
 
 
 logger = logging.getLogger(__name__)
@@ -315,11 +315,25 @@ class FunctionalTestFramework:
         """Inform the framework of an existing user"""
         self.created_users[user_id] = kwargs
 
+    def cws_start(self, user_id):
+        """Press the start button for a user.
+        
+        This is required before submitting or viewing tasks in regular contests.
+        Silently succeeds if the user has already started or if starting is not
+        allowed (wrong phase).
+        """
+        browser = self.get_cws_browser(user_id)
+        sr = StartRequest(browser, base_url=self.CWS_BASE_URL)
+        sr.execute()
+
     def cws_submit(self, task_id, user_id,
                    submission_format, filenames, language):
         task = (task_id, self.created_tasks[task_id]['name'])
 
         browser = self.get_cws_browser(user_id)
+        
+        self.cws_start(user_id)
+        
         sr = SubmitRequest(browser, task, base_url=self.CWS_BASE_URL,
                            submission_format=submission_format,
                            filenames=filenames, language=language)
