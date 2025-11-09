@@ -4,6 +4,33 @@
 
 {% block core %}
 
+<style>
+.gl-apple {
+    position: fixed;
+    width: 110px;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(0) scale(1);
+}
+.gl-apple.gl-run {
+    animation: glHopFade 800ms cubic-bezier(.2, .8, .25, 1) forwards;
+}
+@keyframes glHopFade {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) translateY(0) scale(1);
+    }
+    55% {
+        transform: translate(-50%, -50%) translateY(-70px) scale(1.08);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) translateY(-100px) scale(.95);
+    }
+}
+</style>
+
 
 <div class="span9">
 
@@ -265,4 +292,46 @@
 {% endif %}
 
 </div>
+
+<script>
+(function() {
+    var startForms = document.querySelectorAll('form[action*="/start"]');
+    startForms.forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var btn = form.querySelector('button[type="submit"]');
+            var rect = btn.getBoundingClientRect();
+            
+            var img = document.createElement('img');
+            img.src = '{{ url("static", "img", "goodluck-apple.png") }}';
+            img.alt = 'Good luck!';
+            img.className = 'gl-apple';
+            img.style.left = (rect.left + rect.width / 2) + 'px';
+            img.style.top = (rect.top + rect.height / 2) + 'px';
+            document.body.appendChild(img);
+            
+            requestAnimationFrame(function() {
+                img.classList.add('gl-run');
+            });
+            
+            var formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            }).then(function() {
+                var nextInput = form.querySelector('input[name="next"]');
+                var nextUrl = nextInput ? nextInput.value : form.action;
+                setTimeout(function() {
+                    window.location = nextUrl;
+                }, 650);
+            }).catch(function() {
+                form.submit();
+            });
+        });
+    });
+})();
+</script>
+
 {% endblock core %}
