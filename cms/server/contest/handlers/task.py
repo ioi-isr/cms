@@ -56,6 +56,12 @@ class TaskDescriptionHandler(ContestHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name):
+        participation = self.current_user
+        
+        if not participation.unrestricted:
+            if participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
+        
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
@@ -71,6 +77,12 @@ class TaskStatementViewHandler(FileHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name: str, lang_code: str):
+        participation = self.current_user
+        
+        if not participation.unrestricted:
+            if participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
+        
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
@@ -97,6 +109,12 @@ class TaskAttachmentViewHandler(FileHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name: str, filename: str):
+        participation = self.current_user
+        
+        if not participation.unrestricted:
+            if participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
+        
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)

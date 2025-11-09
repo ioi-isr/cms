@@ -174,12 +174,34 @@
 
         </div>
     </div>
+{% else %}
+    {# Regular contest (non-per_user_time) - show start button if not started yet #}
+    {% if actual_phase == 0 and participation.starting_time is none %}
+    <div class="span4">
+        <div class="well per_user_time">
+            <p>
+        {% trans %}Before you can view the tasks and participate in the contest, you must click the button below to register your participation.{% endtrans %}
+            </p>
+
+            <p>
+        {% trans %}Once you start, you will be able to view tasks and submit solutions until the end of the contest.{% endtrans %}
+            </p>
+
+        <form action="{{ contest_url("start") }}" method="POST" style="margin: 0">
+            {{ xsrf_form_html|safe }}
+            <input type="hidden" name="next" value="{{ contest_url() }}">
+            <button type="submit" class="btn btn-success btn-large" style="width:100%;-moz-box-sizing:border-box;box-sizing:border-box;">{% trans %}Enter Contest{% endtrans %}</button>
+        </form>
+
+        </div>
+    </div>
+    {% endif %}
 {% endif %}
 </div>
 
 
 
-{% if actual_phase >= 0 or participation.unrestricted %}
+{% if (actual_phase >= 0 and participation.starting_time is not none) or participation.unrestricted %}
 <h2>{% trans %}Task overview{% endtrans %}</h2>
 
 <table class="table table-bordered table-striped">

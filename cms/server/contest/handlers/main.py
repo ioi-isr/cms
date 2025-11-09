@@ -261,14 +261,20 @@ class LoginHandler(ContestHandler):
 class StartHandler(ContestHandler):
     """Start handler.
 
-    Used by a user who wants to start their per_user_time.
+    Used by a user who wants to start their per_user_time (USACO-style contests)
+    or to register their participation in a regular contest.
 
     """
     @tornado.web.authenticated
-    @actual_phase_required(-1)
+    @actual_phase_required(-1, 0)
     @multi_contest
     def post(self):
         participation: Participation = self.current_user
+
+        if participation.starting_time is not None:
+            logger.warning("User %s tried to start again", participation.user.username)
+            self.redirect(self.contest_url())
+            return
 
         logger.info("Starting now for user %s", participation.user.username)
         participation.starting_time = self.timestamp
