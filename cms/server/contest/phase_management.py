@@ -203,12 +203,10 @@ def compute_actual_phase(
                     actual_phase = +3
             elif analysis_stop < timestamp:
                 actual_phase = +4
-                if timestamp <= latest_permitted_stop:
-                    current_phase_begin = max(analysis_stop, actual_stop) if actual_stop is not None else analysis_stop
-                    current_phase_end = latest_permitted_stop
-                else:
-                    current_phase_begin = max(analysis_stop, latest_permitted_stop)
-                    current_phase_end = None
+                current_phase_begin = analysis_stop
+                if actual_stop is not None:
+                    current_phase_begin = max(analysis_stop, actual_stop)
+                current_phase_end = None
             else:
                 raise RuntimeError("Logic doesn't seem to be working...")
         else:
