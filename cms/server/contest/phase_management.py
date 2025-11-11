@@ -146,6 +146,12 @@ def compute_actual_phase(
 
         assert earliest_permitted_start <= actual_start <= actual_stop <= latest_permitted_stop
 
+        # For USACO contests with analysis enabled, phase +1 should end when
+        if per_user_time is not None and analysis_start is not None:
+            horizon = min(analysis_start, latest_permitted_stop)
+        else:
+            horizon = latest_permitted_stop
+
         if actual_start <= timestamp <= actual_stop:
             actual_phase = 0
             current_phase_begin = actual_start
@@ -161,13 +167,13 @@ def compute_actual_phase(
             actual_phase = -2
             current_phase_begin = None
             current_phase_end = earliest_permitted_start
-        elif actual_stop < timestamp <= latest_permitted_stop:
+        elif actual_stop < timestamp <= horizon:
             actual_phase = +1
             current_phase_begin = actual_stop
-            current_phase_end = latest_permitted_stop
-        elif latest_permitted_stop < timestamp:
+            current_phase_end = horizon
+        elif horizon < timestamp:
             actual_phase = +2
-            current_phase_begin = latest_permitted_stop
+            current_phase_begin = horizon
             current_phase_end = None
         else:
             raise RuntimeError("Logic doesn't seem to be working...")
@@ -176,25 +182,31 @@ def compute_actual_phase(
         # If the user didn't reach actual_stop yet, it shouldn't be phase +2
         assert actual_stop is None or actual_stop <= timestamp
         if analysis_start is not None:
-            assert contest_stop <= analysis_start
+            # For regular contests, analysis can only start after contest_stop
+            if per_user_time is None:
+                assert contest_stop <= analysis_start
+            else:
+                assert contest_start + per_user_time <= analysis_start
             assert analysis_stop is not None
             assert analysis_start <= analysis_stop
             if timestamp < analysis_start:
                 current_phase_end = analysis_start
             elif analysis_start <= timestamp <= analysis_stop:
-                current_phase_begin = analysis_start
-                # actual_stop might be greater than analysis_start in case
-                # of extra_time or delay_time.
-                if actual_stop is not None:
-                    current_phase_begin = max(analysis_start, actual_stop)
-                current_phase_end = analysis_stop
-                actual_phase = +3
+                if per_user_time is not None and starting_time is None and analysis_start <= latest_permitted_stop:
+                    current_phase_begin = latest_permitted_stop
+                    current_phase_end = analysis_stop
+                else:
+                    current_phase_begin = analysis_start
+                    if actual_stop is not None:
+                        current_phase_begin = max(analysis_start, actual_stop)
+                    current_phase_end = analysis_stop
+                    actual_phase = +3
             elif analysis_stop < timestamp:
+                actual_phase = +4
                 current_phase_begin = analysis_stop
                 if actual_stop is not None:
                     current_phase_begin = max(analysis_stop, actual_stop)
                 current_phase_end = None
-                actual_phase = +4
             else:
                 raise RuntimeError("Logic doesn't seem to be working...")
         else:

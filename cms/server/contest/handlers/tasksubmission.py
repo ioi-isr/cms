@@ -78,6 +78,12 @@ class SubmitHandler(ContestHandler):
     @actual_phase_required(0, 1, 2, 3)
     @multi_contest
     def post(self, task_name):
+        participation = self.current_user
+
+        if not participation.unrestricted:
+            if participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
+
         # Reject submission if the contest disallow unofficial submission outside of official window or analysis mode
         if 0 < self.r_params["actual_phase"] < 3 and \
                 not self.contest.allow_unofficial_submission_before_analysis_mode:
@@ -128,6 +134,10 @@ class TaskSubmissionsHandler(ContestHandler):
     @multi_contest
     def get(self, task_name):
         participation: Participation = self.current_user
+
+        if not participation.unrestricted:
+            if participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
 
         task = self.get_task(task_name)
         if task is None:
@@ -240,6 +250,12 @@ class SubmissionStatusHandler(ContestHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name, opaque_id):
+        participation = self.current_user
+
+        if not participation.unrestricted:
+            if participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
+
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
@@ -300,6 +316,12 @@ class SubmissionDetailsHandler(ContestHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name, opaque_id):
+        participation = self.current_user
+
+        if not participation.unrestricted:
+            if participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
+
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
@@ -341,6 +363,12 @@ class SubmissionFileHandler(FileHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name, opaque_id, filename):
+        participation = self.current_user
+
+        if not participation.unrestricted:
+            if participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
+
         if not self.contest.submissions_download_allowed:
             raise tornado.web.HTTPError(404)
 
@@ -387,6 +415,12 @@ class UseTokenHandler(ContestHandler):
     @actual_phase_required(0)
     @multi_contest
     def post(self, task_name, opaque_id):
+        participation = self.current_user
+
+        if not participation.unrestricted:
+            if participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
+
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)

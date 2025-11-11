@@ -79,4 +79,8 @@ ALTER TABLE ONLY public.delay_requests ADD CONSTRAINT delay_requests_participati
 
 ALTER TABLE ONLY public.delay_requests ADD CONSTRAINT delay_requests_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.admins(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
+-- https://github.com/ioi-isr/cms/pull/31
+ALTER TABLE ONLY public.contests DROP CONSTRAINT contests_check1;
+ALTER TABLE ONLY public.contests ADD CONSTRAINT contests_check1 CHECK (((per_user_time IS NULL) AND (stop <= analysis_start)) OR ((per_user_time IS NOT NULL) AND ((start + per_user_time) <= analysis_start)));
+
 COMMIT;
