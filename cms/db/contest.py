@@ -51,7 +51,10 @@ class Contest(Base):
     __tablename__ = 'contests'
     __table_args__ = (
         CheckConstraint("start <= stop"),
-        CheckConstraint("stop <= analysis_start"),
+        CheckConstraint(
+            "(per_user_time IS NULL AND stop <= analysis_start) OR "
+            "(per_user_time IS NOT NULL AND start + per_user_time <= analysis_start)"
+        ),
         CheckConstraint("analysis_start <= analysis_stop"),
         CheckConstraint("token_gen_initial <= token_gen_max"),
     )
