@@ -369,6 +369,9 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 if self.enqueue(operation, priority, timestamp):
                     new_operations += 1
 
+        if new_operations > 0:
+            logger.info("Enqueued %d operations for model solution %d.",
+                        new_operations, model_solution.id)
         return new_operations
 
     @with_post_finish_lock
@@ -381,20 +384,32 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         counter = 0
         with SessionGen() as session:
 
+            submission_ops = 0
             for operation, priority, timestamp in \
                     get_submissions_operations(session, self.contest_id):
                 if self.enqueue(operation, priority, timestamp):
                     counter += 1
+                    submission_ops += 1
 
+            user_test_ops = 0
             for operation, priority, timestamp in \
                     get_user_tests_operations(session, self.contest_id):
                 if self.enqueue(operation, priority, timestamp):
                     counter += 1
+                    user_test_ops += 1
 
+            model_solution_ops = 0
             for operation, priority, timestamp in \
                     get_model_solutions_operations(session, self.contest_id):
                 if self.enqueue(operation, priority, timestamp):
                     counter += 1
+                    model_solution_ops += 1
+
+            if counter > 0:
+                logger.info("Found %d missing operations: %d submissions, "
+                            "%d user tests, %d model solutions",
+                            counter, submission_ops, user_test_ops, 
+                            model_solution_ops)
 
         return counter
 
@@ -716,14 +731,28 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         elif operation.type_ == ESOperation.MODEL_SOLUTION_COMPILATION:
             if result.job_success:
                 result.job.to_model_solution(object_result)
+                logger.info("Model solution %d compilation succeeded (dataset %d).",
+                            operation.object_id, operation.dataset_id)
             else:
                 object_result.compilation_tries += 1
+                logger.warning("Model solution %d compilation failed, tries: %d "
+                               "(dataset %d).",
+                               operation.object_id, object_result.compilation_tries,
+                               operation.dataset_id)
 
         elif operation.type_ == ESOperation.MODEL_SOLUTION_EVALUATION:
             if result.job_success:
                 result.job.to_model_solution(object_result)
+                logger.info("Model solution %d evaluation succeeded on testcase %s "
+                            "(dataset %d).",
+                            operation.object_id, operation.testcase_codename,
+                            operation.dataset_id)
             else:
                 object_result.evaluation_tries += 1
+                logger.warning("Model solution %d evaluation failed on testcase %s, "
+                               "tries: %d (dataset %d).",
+                               operation.object_id, operation.testcase_codename,
+                               object_result.evaluation_tries, operation.dataset_id)
 
         else:
             logger.error("Invalid operation type %r.", operation.type_)
@@ -1158,6 +1187,89 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
 
             session.commit()
         logger.info("Invalidate successfully completed.")
+
+    @rpc_method
+    @with_post_finish_lock
+    def invalidate_model_solution(
+        self,
+        model_solution_id: int,
+        dataset_id: int | None = None,
+        level: str = "compilation",
+    ):
+        """Request to invalidate computed data for a model solution.
+
+        Invalidate the compilation and/or evaluation data of the
+        ModelSolutionResult for the given model solution.
+
+        model_solution_id: id of the model solution to invalidate.
+        dataset_id: id of the dataset to invalidate, or None for all datasets.
+        level: 'compilation' or 'evaluation'
+
+        """
+        logger.info("Model solution invalidation request received for "
+                    "model_solution_id=%d, dataset_id=%s, level=%s",
+                    model_solution_id, dataset_id, level)
+
+        # Validate arguments
+        if level not in ("compilation", "evaluation"):
+            raise ValueError(
+                "Unexpected invalidation level `%s'." % level)
+
+        with SessionGen() as session:
+            model_solution = ModelSolution.get_from_id(
+                model_solution_id, session)
+            if model_solution is None:
+                logger.error("Model solution %d not found.", model_solution_id)
+                return
+
+            if dataset_id is not None:
+                datasets = [Dataset.get_from_id(dataset_id, session)]
+            else:
+                # Invalidate all datasets for this model solution's task
+                datasets = get_datasets_to_judge(model_solution.dataset.task)
+
+            for dataset in datasets:
+                model_solution_result = model_solution.get_result(dataset)
+                if model_solution_result is None:
+                    continue
+
+                operations_to_remove = []
+                if level == "compilation":
+                    operations_to_remove.append(
+                        ESOperation(ESOperation.MODEL_SOLUTION_COMPILATION,
+                                    model_solution_id, dataset.id))
+                    for testcase in dataset.testcases.values():
+                        operations_to_remove.append(
+                            ESOperation(ESOperation.MODEL_SOLUTION_EVALUATION,
+                                        model_solution_id, dataset.id,
+                                        testcase.codename))
+                elif level == "evaluation":
+                    for testcase in dataset.testcases.values():
+                        operations_to_remove.append(
+                            ESOperation(ESOperation.MODEL_SOLUTION_EVALUATION,
+                                        model_solution_id, dataset.id,
+                                        testcase.codename))
+
+                for operation in operations_to_remove:
+                    try:
+                        self.dequeue(operation)
+                    except KeyError:
+                        pass  # Ok, the operation wasn't in the queue.
+                    try:
+                        self.get_executor().pool.ignore_operation(operation)
+                    except LookupError:
+                        pass  # Ok, the operation wasn't in the pool.
+
+                # Invalidate the result data
+                if level == "compilation":
+                    model_solution_result.invalidate_compilation()
+                elif level == "evaluation":
+                    model_solution_result.invalidate_evaluation()
+
+            self.model_solution_enqueue_operations(model_solution)
+
+            session.commit()
+        logger.info("Model solution invalidation successfully completed.")
 
     @rpc_method
     def disable_worker(self, shard: int) -> bool:
