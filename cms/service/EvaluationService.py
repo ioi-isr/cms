@@ -43,15 +43,17 @@ from cms import ServiceCoord, get_service_shards
 from cms.db.session import Session
 from cms.io.priorityqueue import QueueEntry, QueueEntryDict, QueueItem
 from cmscommon.datetime import make_timestamp
-from cms.db import SessionGen, Digest, Dataset, Evaluation, Submission, \
-    SubmissionResult, Testcase, UserTest, UserTestResult, get_submissions, \
-    get_submission_results, get_datasets_to_judge
+from cms.db import SessionGen, Digest, Dataset, Evaluation, ModelSolution, \
+    ModelSolutionResult, Submission, SubmissionResult, Testcase, UserTest, \
+    UserTestResult, get_submissions, get_submission_results, \
+    get_datasets_to_judge
 from cms.grading.Job import Job, JobGroup
 from cms.io import Executor, TriggeredService, rpc_method
 from .esoperations import ESOperation, get_relevant_operations, \
     get_submissions_operations, get_user_tests_operations, \
-    submission_get_operations, submission_to_evaluate, \
-    user_test_get_operations
+    get_model_solutions_operations, submission_get_operations, \
+    submission_to_evaluate, user_test_get_operations, \
+    model_solution_get_operations
 from .flushingdict import FlushingDict
 from .workerpool import WorkerPool
 
@@ -351,6 +353,24 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
 
         return new_operations
 
+    def model_solution_enqueue_operations(
+            self, model_solution: ModelSolution) -> int:
+        """Push in queue the operations required by a model solution.
+
+        model_solution: a model solution.
+
+        return: the number of actually enqueued operations.
+
+        """
+        new_operations = 0
+        for dataset in get_datasets_to_judge(model_solution.dataset.task):
+            for operation, priority, timestamp in \
+                    model_solution_get_operations(model_solution, dataset):
+                if self.enqueue(operation, priority, timestamp):
+                    new_operations += 1
+
+        return new_operations
+
     @with_post_finish_lock
     def _missing_operations(self) -> int:
         """Look in the database for submissions that have not been compiled or
@@ -368,6 +388,11 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
 
             for operation, priority, timestamp in \
                     get_user_tests_operations(session, self.contest_id):
+                if self.enqueue(operation, priority, timestamp):
+                    counter += 1
+
+            for operation, priority, timestamp in \
+                    get_model_solutions_operations(session, self.contest_id):
                 if self.enqueue(operation, priority, timestamp):
                     counter += 1
 
@@ -519,11 +544,19 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                                  dataset_id)
                     continue
 
-                # Get submission or user test results.
+                # Get submission, user test, or model solution results.
                 if type_ in [ESOperation.COMPILATION, ESOperation.EVALUATION]:
                     object_ = Submission.get_from_id(object_id, session)
                     if object_ is None:
                         logger.error("Could not find submission %d "
+                                     "in the database.", object_id)
+                        continue
+                    object_result = object_.get_result_or_create(dataset)
+                elif type_ in [ESOperation.MODEL_SOLUTION_COMPILATION,
+                               ESOperation.MODEL_SOLUTION_EVALUATION]:
+                    object_ = ModelSolution.get_from_id(object_id, session)
+                    if object_ is None:
+                        logger.error("Could not find model solution %d "
                                      "in the database.", object_id)
                         continue
                     object_result = object_.get_result_or_create(dataset)
@@ -580,13 +613,21 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                     user_test_result = UserTestResult.get_from_id(
                         (object_id, dataset_id), session)
                     self.user_test_evaluation_ended(user_test_result)
+                elif type_ == ESOperation.MODEL_SOLUTION_COMPILATION:
+                    model_solution_result = ModelSolutionResult.get_from_id(
+                        (object_id, dataset_id), session)
+                    self.model_solution_compilation_ended(model_solution_result)
+                elif type_ == ESOperation.MODEL_SOLUTION_EVALUATION:
+                    model_solution_result = ModelSolutionResult.get_from_id(
+                        (object_id, dataset_id), session)
+                    self.model_solution_evaluation_ended(model_solution_result)
 
         logger.info("Done")
 
     def write_results_one_object_and_type(
         self,
         session: Session,
-        object_result: SubmissionResult | UserTestResult,
+        object_result: SubmissionResult | UserTestResult | ModelSolutionResult,
         operation_results: list[tuple[ESOperation, Result]],
     ):
         """Write to the DB the results for one object and type.
@@ -620,7 +661,7 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
     def write_results_one_row(
         self,
         session: Session,
-        object_result: SubmissionResult | UserTestResult,
+        object_result: SubmissionResult | UserTestResult | ModelSolutionResult,
         operation: ESOperation,
         result: Result,
     ):
@@ -669,6 +710,18 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         elif operation.type_ == ESOperation.USER_TEST_EVALUATION:
             if result.job_success:
                 result.job.to_user_test(object_result)
+            else:
+                object_result.evaluation_tries += 1
+
+        elif operation.type_ == ESOperation.MODEL_SOLUTION_COMPILATION:
+            if result.job_success:
+                result.job.to_model_solution(object_result)
+            else:
+                object_result.compilation_tries += 1
+
+        elif operation.type_ == ESOperation.MODEL_SOLUTION_EVALUATION:
+            if result.job_success:
+                result.job.to_model_solution(object_result)
             else:
                 object_result.evaluation_tries += 1
 
@@ -840,6 +893,86 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         # Enqueue next steps to be done (e.g., if evaluation failed).
         self.user_test_enqueue_operations(user_test)
 
+    def model_solution_compilation_ended(
+            self, model_solution_result: ModelSolutionResult):
+        """Actions to be performed when we have a model solution that has
+        ended compilation. In particular: we queue evaluation if
+        compilation was ok; we requeue compilation if it failed.
+
+        model_solution_result: the model solution result.
+
+        """
+        model_solution = model_solution_result.model_solution
+
+        # If compilation was ok, we emit a satisfied log message.
+        if model_solution_result.compilation_succeeded():
+            logger.info("Model solution %d(%d) was compiled successfully.",
+                        model_solution_result.model_solution_id,
+                        model_solution_result.dataset_id)
+
+        # If instead model solution failed compilation, we don't evaluate.
+        elif model_solution_result.compilation_failed():
+            logger.info("Model solution %d(%d) did not compile.",
+                        model_solution_result.model_solution_id,
+                        model_solution_result.dataset_id)
+
+        # If compilation failed for our fault, we log the error.
+        elif not model_solution_result.compiled():
+            logger.warning("Worker failed when compiling model solution "
+                           "%d(%d).",
+                           model_solution_result.model_solution_id,
+                           model_solution_result.dataset_id)
+            if model_solution_result.compilation_tries >= \
+                    EvaluationService.MAX_MODEL_SOLUTION_COMPILATION_TRIES:
+                logger.error("Maximum number of failures reached for the "
+                             "compilation of model solution %d(%d).",
+                             model_solution_result.model_solution_id,
+                             model_solution_result.dataset_id)
+
+        # Otherwise, error.
+        else:
+            logger.error("Compilation outcome %r not recognized.",
+                         model_solution_result.compilation_outcome)
+
+        # Enqueue next steps to be done
+        self.model_solution_enqueue_operations(model_solution)
+
+    def model_solution_evaluation_ended(
+            self, model_solution_result: ModelSolutionResult):
+        """Actions to be performed when we have a model solution that has
+        been evaluated. In particular: we do nothing on success, we
+        requeue on failure.
+
+        model_solution_result: the model solution result.
+
+        """
+        model_solution = model_solution_result.model_solution
+
+        if model_solution_result.evaluated():
+            logger.info("Model solution %d(%d) was evaluated successfully.",
+                        model_solution_result.model_solution_id,
+                        model_solution_result.dataset_id)
+            # Trigger scoring for this model solution result
+            model_solution_result.set_evaluation_outcome()
+            model_solution_result.sa_session.commit()
+            self.evaluation_ended(model_solution_result)
+
+        # Evaluation unsuccessful, we log the error.
+        else:
+            logger.warning("Worker failed when evaluating model solution "
+                           "%d(%d).",
+                           model_solution_result.model_solution_id,
+                           model_solution_result.dataset_id)
+            if model_solution_result.evaluation_tries >= \
+                    EvaluationService.MAX_MODEL_SOLUTION_EVALUATION_TRIES:
+                logger.error("Maximum number of failures reached for the "
+                             "evaluation of model solution %d(%d).",
+                             model_solution_result.model_solution_id,
+                             model_solution_result.dataset_id)
+
+        # Enqueue next steps to be done (e.g., if evaluation failed).
+        self.model_solution_enqueue_operations(model_solution)
+
     @rpc_method
     def new_submission(self, submission_id: int):
         """This RPC prompts ES of the existence of a new
@@ -877,6 +1010,27 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 return
 
             self.user_test_enqueue_operations(user_test)
+
+            session.commit()
+
+    @rpc_method
+    def new_model_solution(self, model_solution_id: int):
+        """This RPC prompts ES of the existence of a new model solution. ES
+        takes the right countermeasures, i.e., it schedules it for
+        compilation.
+
+        model_solution_id: the id of the new model solution.
+
+        """
+        with SessionGen() as session:
+            model_solution = ModelSolution.get_from_id(
+                model_solution_id, session)
+            if model_solution is None:
+                logger.error("[new_model_solution] Couldn't find model "
+                             "solution %d in the database.", model_solution_id)
+                return
+
+            self.model_solution_enqueue_operations(model_solution)
 
             session.commit()
 

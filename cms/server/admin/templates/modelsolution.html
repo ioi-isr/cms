@@ -5,10 +5,6 @@
 {% block core %}
 {% set st = get_score_type(dataset=shown_dataset) %}
 {% set msr = ms.get_result(shown_dataset) %}
-{% set status = ModelSolutionResult.COMPILING %}
-{% if msr is not none %}
-  {% set status = msr.get_status() %}
-{% endif %}
 <div class="core_title">
   <h1>Model Solution {{ ms.id }} (Task: <a href="{{ url("task", ms.dataset.task.id) }}">{{ ms.dataset.task.name }}</a>)</h1>
 </div>

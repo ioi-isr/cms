@@ -32,8 +32,8 @@ import logging
 
 from sqlalchemy import case, literal
 
-from cms.db import Dataset, Evaluation, Submission, SubmissionResult, \
-    Task, Testcase, UserTest, UserTestResult
+from cms.db import Dataset, Evaluation, ModelSolution, ModelSolutionResult, \
+    Submission, SubmissionResult, Task, Testcase, UserTest, UserTestResult
 from cms.db.session import Session
 from cms.io import PriorityQueue, QueueItem
 
@@ -45,6 +45,8 @@ MAX_COMPILATION_TRIES = 3
 MAX_EVALUATION_TRIES = 3
 MAX_USER_TEST_COMPILATION_TRIES = 3
 MAX_USER_TEST_EVALUATION_TRIES = 3
+MAX_MODEL_SOLUTION_COMPILATION_TRIES = 3
+MAX_MODEL_SOLUTION_EVALUATION_TRIES = 3
 
 
 FILTER_SUBMISSION_DATASETS_TO_JUDGE = (
@@ -74,6 +76,21 @@ FILTER_USER_TEST_RESULTS_TO_EVALUATE = (
     UserTestResult.filter_compilation_succeeded() &
     (~UserTestResult.filter_evaluated()) &
     (UserTestResult.evaluation_tries < MAX_EVALUATION_TRIES)
+)
+
+
+FILTER_MODEL_SOLUTION_DATASETS_TO_JUDGE = (
+    (Dataset.id == Task.active_dataset_id) |
+    (Dataset.autojudge.is_(True))
+)
+FILTER_MODEL_SOLUTION_RESULTS_TO_COMPILE = (
+    (~ModelSolutionResult.filter_compiled()) &
+    (ModelSolutionResult.compilation_tries < MAX_MODEL_SOLUTION_COMPILATION_TRIES)
+)
+FILTER_MODEL_SOLUTION_RESULTS_TO_EVALUATE = (
+    ModelSolutionResult.filter_compilation_succeeded() &
+    (~ModelSolutionResult.filter_evaluated()) &
+    (ModelSolutionResult.evaluation_tries < MAX_MODEL_SOLUTION_EVALUATION_TRIES)
 )
 
 
@@ -151,6 +168,36 @@ def user_test_to_evaluate(user_test_result: UserTestResult | None) -> bool:
     return r is not None and r.compilation_outcome == "ok" and \
         not r.evaluated() and \
         r.evaluation_tries < MAX_USER_TEST_EVALUATION_TRIES
+
+
+def model_solution_to_compile(
+        model_solution_result: ModelSolutionResult | None) -> bool:
+    """Return whether ES is interested in compiling the model solution.
+
+    model_solution_result: a model solution result.
+
+    return: True if ES wants to compile the model solution.
+
+    """
+    r = model_solution_result
+    return r is None or \
+        (not r.compiled() and
+         r.compilation_tries < MAX_MODEL_SOLUTION_COMPILATION_TRIES)
+
+
+def model_solution_to_evaluate(
+        model_solution_result: ModelSolutionResult | None) -> bool:
+    """Return whether ES is interested in evaluating the model solution.
+
+    model_solution_result: a model solution result.
+
+    return: True if ES wants to evaluate the model solution.
+
+    """
+    r = model_solution_result
+    return r is not None and r.compilation_outcome == "ok" and \
+        not r.evaluated() and \
+        r.evaluation_tries < MAX_MODEL_SOLUTION_EVALUATION_TRIES
 
 
 def submission_get_operations(
@@ -254,6 +301,51 @@ def user_test_get_operations(
                           dataset.id), \
             priority, \
             user_test.timestamp
+
+
+def model_solution_get_operations(
+    model_solution: ModelSolution, dataset: Dataset
+) -> Generator[tuple["ESOperation", int, datetime]]:
+    """Generate all operations originating from a model solution for a given
+    dataset.
+
+    model_solution: a model solution;
+    dataset: a dataset.
+
+    yield: an iterator providing triplets
+        consisting of a ESOperation for a certain operation to
+        perform, its priority and its timestamp.
+
+    """
+    model_solution_result = model_solution.get_result(dataset)
+    if model_solution_to_compile(model_solution_result):
+        if not dataset.active:
+            priority = PriorityQueue.PRIORITY_EXTRA_LOW
+        elif model_solution_result is None or \
+                model_solution_result.compilation_tries == 0:
+            priority = PriorityQueue.PRIORITY_HIGH
+        else:
+            priority = PriorityQueue.PRIORITY_MEDIUM
+
+        yield ESOperation(ESOperation.MODEL_SOLUTION_COMPILATION,
+                          model_solution.id,
+                          dataset.id), \
+            priority, \
+            model_solution.timestamp
+
+    elif model_solution_to_evaluate(model_solution_result):
+        if not dataset.active:
+            priority = PriorityQueue.PRIORITY_EXTRA_LOW
+        elif model_solution_result.evaluation_tries == 0:
+            priority = PriorityQueue.PRIORITY_MEDIUM
+        else:
+            priority = PriorityQueue.PRIORITY_LOW
+
+        yield ESOperation(ESOperation.MODEL_SOLUTION_EVALUATION,
+                          model_solution.id,
+                          dataset.id), \
+            priority, \
+            model_solution.timestamp
 
 
 def get_relevant_operations(
@@ -508,12 +600,107 @@ def get_user_tests_operations(
     return operations
 
 
+def get_model_solutions_operations(
+    session: Session, contest_id: int | None = None
+) -> list[tuple["ESOperation", int, datetime]]:
+    """Return all the operations to do for model solutions in the contest.
+
+    session: the database session to use.
+    contest_id: the contest for which we want the operations.
+        If none, get operations for any contest.
+
+    return: a list of tuples of operation, priority and timestamp.
+
+    """
+    operations = []
+
+    if contest_id is None:
+        contest_filter = literal(True)
+    else:
+        contest_filter = Task.contest_id == contest_id
+
+    to_compile = session.query(ModelSolution)\
+        .join(ModelSolution.dataset)\
+        .join(Dataset.task)\
+        .outerjoin(ModelSolutionResult,
+                   (Dataset.id == ModelSolutionResult.dataset_id) &
+                   (ModelSolution.id == ModelSolutionResult.model_solution_id))\
+        .filter(
+            contest_filter &
+            (FILTER_MODEL_SOLUTION_DATASETS_TO_JUDGE) &
+            (ModelSolutionResult.dataset_id.is_(None)))\
+        .with_entities(ModelSolution.id, Dataset.id,
+                       case([
+                           (Dataset.id != Task.active_dataset_id,
+                            literal(PriorityQueue.PRIORITY_EXTRA_LOW))
+                           ], else_=literal(PriorityQueue.PRIORITY_HIGH)),
+                       ModelSolution.timestamp)\
+        .all()
+
+    to_compile += session.query(ModelSolution)\
+        .join(ModelSolution.dataset)\
+        .join(Dataset.task)\
+        .join(ModelSolution.results)\
+        .join(ModelSolutionResult.dataset)\
+        .filter(
+            contest_filter &
+            (FILTER_MODEL_SOLUTION_DATASETS_TO_JUDGE) &
+            (FILTER_MODEL_SOLUTION_RESULTS_TO_COMPILE))\
+        .with_entities(ModelSolution.id, Dataset.id,
+                       case([
+                           (Dataset.id != Task.active_dataset_id,
+                            literal(PriorityQueue.PRIORITY_EXTRA_LOW)),
+                           (ModelSolutionResult.compilation_tries == 0,
+                            literal(PriorityQueue.PRIORITY_HIGH))
+                           ], else_=literal(PriorityQueue.PRIORITY_MEDIUM)),
+                       ModelSolution.timestamp)\
+        .all()
+
+    for data in to_compile:
+        model_solution_id, dataset_id, priority, timestamp = data
+        operations.append((
+            ESOperation(ESOperation.MODEL_SOLUTION_COMPILATION,
+                        model_solution_id, dataset_id),
+            priority, timestamp))
+
+    to_evaluate = session.query(ModelSolution)\
+        .join(ModelSolution.dataset)\
+        .join(Dataset.task)\
+        .join(ModelSolution.results)\
+        .join(ModelSolutionResult.dataset)\
+        .filter(
+            contest_filter &
+            (FILTER_MODEL_SOLUTION_DATASETS_TO_JUDGE) &
+            (FILTER_MODEL_SOLUTION_RESULTS_TO_EVALUATE))\
+        .with_entities(ModelSolution.id, Dataset.id,
+                       case([
+                           (Dataset.id != Task.active_dataset_id,
+                            literal(PriorityQueue.PRIORITY_EXTRA_LOW)),
+                           (ModelSolutionResult.evaluation_tries == 0,
+                            literal(PriorityQueue.PRIORITY_MEDIUM))
+                           ], else_=literal(PriorityQueue.PRIORITY_LOW)),
+                       ModelSolution.timestamp)\
+        .all()
+
+    for data in to_evaluate:
+        model_solution_id, dataset_id, priority, timestamp = data
+        operations.append((
+            ESOperation(
+                ESOperation.MODEL_SOLUTION_EVALUATION,
+                model_solution_id, dataset_id),
+            priority, timestamp))
+
+    return operations
+
+
 class ESOperation(QueueItem):
 
     COMPILATION = "compile"
     EVALUATION = "evaluate"
     USER_TEST_COMPILATION = "compile_test"
     USER_TEST_EVALUATION = "evaluate_test"
+    MODEL_SOLUTION_COMPILATION = "compile_model_solution"
+    MODEL_SOLUTION_EVALUATION = "evaluate_model_solution"
 
     # Testcase codename is only needed for EVALUATION type of operation
     def __init__(

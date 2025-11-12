@@ -42,6 +42,8 @@ from cms.db import (
     Executable,
     File,
     Manager,
+    ModelSolution,
+    ModelSolutionResult,
     Submission,
     UserTest,
     UserTestExecutable,
@@ -223,7 +225,9 @@ class Job:
 
     @staticmethod
     def from_operation(
-        operation: ESOperation, object_: Submission | UserTest, dataset: Dataset
+        operation: ESOperation,
+        object_: Submission | UserTest | ModelSolution,
+        dataset: Dataset
     ) -> "Job":
         """Produce the job for the operation in the argument.
 
@@ -232,7 +236,7 @@ class Job:
 
         operation: the operation to use.
         object_: the object this operation
-            refers to (might be a submission or a user test).
+            refers to (might be a submission, user test, or model solution).
         dataset: the dataset this operation refers to.
 
         return: the job encoding of the operation, as understood
@@ -262,6 +266,10 @@ class Job:
             job = CompilationJob.from_user_test(operation, object_, dataset)
         elif operation.type_ == ESOperation.USER_TEST_EVALUATION:
             job = EvaluationJob.from_user_test(operation, object_, dataset)
+        elif operation.type_ == ESOperation.MODEL_SOLUTION_COMPILATION:
+            job = CompilationJob.from_model_solution(operation, object_, dataset)
+        elif operation.type_ == ESOperation.MODEL_SOLUTION_EVALUATION:
+            job = EvaluationJob.from_model_solution(operation, object_, dataset)
         return job
 
     def get_sandbox_digest_list(self) -> list[str] | None:
@@ -499,6 +507,94 @@ class CompilationJob(Job):
             u_executable = UserTestExecutable(
                 executable.filename, executable.digest)
             ur.executables.set(u_executable)
+
+    @staticmethod
+    def from_model_solution(
+        operation: ESOperation, model_solution: ModelSolution, dataset: Dataset
+    ) -> "CompilationJob":
+        """Create a CompilationJob from a model solution.
+
+        operation: a MODEL_SOLUTION_COMPILATION operation.
+        model_solution: the model solution object referred by the
+            operation.
+        dataset: the dataset object referred by the
+            operation.
+
+        return: the job.
+
+        """
+        if operation.type_ != ESOperation.MODEL_SOLUTION_COMPILATION:
+            logger.error("Programming error: asking for a model solution "
+                         "compilation job, but the operation is %s.",
+                         operation.type_)
+            raise ValueError("Operation is not a model solution compilation")
+
+        task = dataset.task
+        multithreaded = _is_contest_multithreaded(task.contest)
+
+        # Add the managers to be got from the Task.
+        try:
+            language = get_language(model_solution.language)
+        except KeyError:
+            language = None
+        managers = {}
+        task_type = dataset.task_type_object
+        auto_managers = task_type.get_auto_managers()
+        if auto_managers is not None:
+            for manager_filename in auto_managers:
+                if manager_filename.endswith(".%l") and language is not None:
+                    manager_filename = manager_filename.replace(
+                        ".%l", language.source_extension)
+                managers[manager_filename] = dataset.managers[manager_filename]
+        else:
+            for manager_filename in dataset.managers:
+                managers[manager_filename] = dataset.managers[manager_filename]
+
+        # Copy header files from dataset.
+        if language is not None:
+            for manager_filename in dataset.managers:
+                if any(manager_filename.endswith(header)
+                       for header in language.header_extensions):
+                    managers[manager_filename] = \
+                        dataset.managers[manager_filename]
+
+        return CompilationJob(
+            operation=operation,
+            task_type=dataset.task_type,
+            task_type_parameters=dataset.task_type_parameters,
+            language=model_solution.language,
+            multithreaded_sandbox=multithreaded,
+            archive_sandbox=operation.archive_sandbox,
+            files=dict(model_solution.files),
+            managers=managers,
+            info="compile model solution %d" % (model_solution.id)
+        )
+
+    def to_model_solution(self, msr: ModelSolutionResult):
+        """Fill detail of the model solution result with the job result.
+
+        msr: the DB object to fill.
+
+        """
+        # This should actually be useless.
+        msr.invalidate_compilation()
+
+        # No need to check self.success because this method gets called
+        # only if it is True.
+
+        msr.set_compilation_outcome(self.compilation_success)
+        msr.compilation_text = self.text
+        msr.compilation_stdout = self.plus.get('stdout')
+        msr.compilation_stderr = self.plus.get('stderr')
+        msr.compilation_time = self.plus.get('execution_time')
+        msr.compilation_wall_clock_time = \
+            self.plus.get('execution_wall_clock_time')
+        msr.compilation_memory = self.plus.get('execution_memory')
+        msr.compilation_shard = self.shard
+        msr.compilation_sandbox_paths = self.sandboxes
+        msr.compilation_sandbox_digests = self.get_sandbox_digest_list()
+        for executable in self.executables.values():
+            msr.executables.set(executable)
 
 
 class EvaluationJob(Job):
@@ -750,6 +846,97 @@ class EvaluationJob(Job):
         ur.evaluation_sandbox_digests = self.get_sandbox_digest_list()
         ur.output = self.user_output
 
+    @staticmethod
+    def from_model_solution(
+        operation: ESOperation, model_solution: ModelSolution, dataset: Dataset
+    ) -> "EvaluationJob":
+        """Create an EvaluationJob from a model solution.
+
+        operation: a MODEL_SOLUTION_EVALUATION operation.
+        model_solution: the model solution object referred by the
+            operation.
+        dataset: the dataset object referred by the
+            operation.
+
+        return: the job.
+
+        """
+        if operation.type_ != ESOperation.MODEL_SOLUTION_EVALUATION:
+            logger.error("Programming error: asking for a model solution "
+                         "evaluation job, but the operation is %s.",
+                         operation.type_)
+            raise ValueError("Operation is not a model solution evaluation")
+
+        task = dataset.task
+        multithreaded = _is_contest_multithreaded(task.contest)
+
+        model_solution_result = model_solution.get_result(dataset)
+        # This should have been created by now.
+        assert model_solution_result is not None
+
+        # Add the managers to be got from the Task.
+        language = get_language(model_solution.language)
+        managers = {}
+        task_type = dataset.task_type_object
+        auto_managers = task_type.get_auto_managers()
+        if auto_managers is not None:
+            for manager_filename in auto_managers:
+                if manager_filename.endswith(".%l") and language is not None:
+                    manager_filename = manager_filename.replace(
+                        ".%l", language.source_extension)
+                managers[manager_filename] = dataset.managers[manager_filename]
+        else:
+            for manager_filename in dataset.managers:
+                managers[manager_filename] = dataset.managers[manager_filename]
+
+        return EvaluationJob(
+            operation=operation,
+            task_type=dataset.task_type,
+            task_type_parameters=dataset.task_type_parameters,
+            language=model_solution.language,
+            multithreaded_sandbox=multithreaded,
+            archive_sandbox=operation.archive_sandbox,
+            files=dict(model_solution.files),
+            managers=managers,
+            executables=dict(model_solution_result.executables),
+            testcase=operation.testcase_codename,
+            time_limit=dataset.time_limit,
+            memory_limit=dataset.memory_limit,
+            info="evaluate model solution %d on testcase %s" % (
+                model_solution.id, operation.testcase_codename)
+        )
+
+    def to_model_solution(self, msr: ModelSolutionResult):
+        """Fill detail of the model solution result with the job result.
+
+        msr: the DB object to fill.
+
+        """
+        # This should actually be useless.
+        msr.invalidate_evaluation()
+
+        # No need to check self.success because this method gets called
+        # only if it is True.
+
+        evaluation = msr.evaluations.get(self.testcase)
+        if evaluation is None:
+            evaluation = Evaluation(
+                text=self.text,
+                outcome=self.outcome,
+                testcase=msr.dataset.testcases[self.testcase])
+            msr.evaluations.set(evaluation)
+        else:
+            evaluation.text = self.text
+            evaluation.outcome = self.outcome
+
+        evaluation.execution_time = self.plus.get('execution_time')
+        evaluation.execution_wall_clock_time = \
+            self.plus.get('execution_wall_clock_time')
+        evaluation.execution_memory = self.plus.get('execution_memory')
+        evaluation.evaluation_shard = self.shard
+        evaluation.evaluation_sandbox_paths = self.sandboxes
+        evaluation.evaluation_sandbox_digests = self.get_sandbox_digest_list()
+
 
 class JobGroup:
     """A simple collection of jobs."""
@@ -777,6 +964,9 @@ class JobGroup:
             # object exists there), which thus acts as a cache.
             if operation.for_submission():
                 object_ = Submission.get_from_id(operation.object_id, session)
+            elif operation.type_ in (ESOperation.MODEL_SOLUTION_COMPILATION,
+                                      ESOperation.MODEL_SOLUTION_EVALUATION):
+                object_ = ModelSolution.get_from_id(operation.object_id, session)
             else:
                 object_ = UserTest.get_from_id(operation.object_id, session)
             dataset = Dataset.get_from_id(operation.dataset_id, session)

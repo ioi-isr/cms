@@ -45,6 +45,13 @@ class AddModelSolutionHandler(BaseHandler):
             self.get_string(attrs, "description")
             self.get_string(attrs, "language", empty=None)
 
+            allowed_languages = task.get_allowed_languages() or []
+            if allowed_languages and not attrs.get("language"):
+                raise ValueError("Language is required")
+            if allowed_languages and attrs.get("language") and \
+                    attrs["language"] not in allowed_languages:
+                raise ValueError("Invalid language selected")
+
             expected_score_min = self.get_argument(
                 "expected_score_min", "0.0")
             expected_score_max = self.get_argument(
@@ -96,6 +103,9 @@ class AddModelSolutionHandler(BaseHandler):
                 "Model solution added",
                 "Model solution %s added to task %s" % (
                     model_solution.description, task.name))
+
+            self.service.evaluation_service.new_model_solution(
+                model_solution_id=model_solution.id)
 
         self.redirect(self.url("task", task.id))
 
@@ -167,3 +177,8 @@ class DeleteModelSolutionHandler(BaseHandler):
                     description, task.name))
 
         self.redirect(self.url("task", task.id))
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, model_solution_id):
+        """Support DELETE method by delegating to POST."""
+        return self.post(model_solution_id)

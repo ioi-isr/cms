@@ -476,8 +476,8 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
           <tr>
             <td>Language:</td>
             <td>
-              <select name="language">
-                <option value="">-- Select Language --</option>
+              <select name="language" required>
+                <option value="" disabled selected>-- Select Language --</option>
 {% if allowed_languages %}
 {% for lang in allowed_languages %}
                 <option value="{{ lang }}">{{ lang }}</option>
