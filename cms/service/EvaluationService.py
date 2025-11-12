@@ -1099,7 +1099,8 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 # Give contest_id only if all others are None.
                 (
                     contest_id
-                    if {participation_id, task_id, submission_id} == {None}
+                    if (participation_id is None and task_id is None and 
+                        submission_id is None)
                     else None
                 ),
                 participation_id,
@@ -1129,7 +1130,8 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 # Give contest_id only if all others are None.
                 (
                     contest_id
-                    if {participation_id, task_id, submission_id, dataset_id} == {None}
+                    if (participation_id is None and task_id is None and 
+                        submission_id is None and dataset_id is None)
                     else None
                 ),
                 participation_id,

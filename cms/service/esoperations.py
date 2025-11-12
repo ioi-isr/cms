@@ -638,10 +638,9 @@ def get_model_solutions_operations(
         .all()
 
     to_compile += session.query(ModelSolution)\
-        .join(ModelSolution.dataset)\
-        .join(Dataset.task)\
         .join(ModelSolution.results)\
         .join(ModelSolutionResult.dataset)\
+        .join(Dataset.task)\
         .filter(
             contest_filter &
             (FILTER_MODEL_SOLUTION_DATASETS_TO_JUDGE) &
@@ -664,10 +663,9 @@ def get_model_solutions_operations(
             priority, timestamp))
 
     to_evaluate = session.query(ModelSolution)\
-        .join(ModelSolution.dataset)\
-        .join(Dataset.task)\
         .join(ModelSolution.results)\
         .join(ModelSolutionResult.dataset)\
+        .join(Dataset.task)\
         .filter(
             contest_filter &
             (FILTER_MODEL_SOLUTION_DATASETS_TO_JUDGE) &
