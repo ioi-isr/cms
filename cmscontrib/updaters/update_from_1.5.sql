@@ -238,6 +238,40 @@ ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_task_id_fkey 
 
 ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.submissions(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+-- https://github.com/ioi-isr/cms/pull/33
+CREATE TABLE public.model_solution_meta (
+    id integer NOT NULL,
+    submission_id integer NOT NULL,
+    dataset_id integer NOT NULL,
+    description character varying NOT NULL,
+    expected_score_min double precision NOT NULL,
+    expected_score_max double precision NOT NULL
+);
+
+CREATE SEQUENCE public.model_solution_meta_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.model_solution_meta_id_seq OWNED BY public.model_solution_meta.id;
+
+ALTER TABLE ONLY public.model_solution_meta ALTER COLUMN id SET DEFAULT nextval('public.model_solution_meta_id_seq'::regclass);
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_submission_id_dataset_id_key UNIQUE (submission_id, dataset_id);
+
+CREATE INDEX ix_model_solution_meta_dataset_id ON public.model_solution_meta USING btree (dataset_id);
+
+CREATE INDEX ix_model_solution_meta_submission_id ON public.model_solution_meta USING btree (submission_id);
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES public.datasets(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.submissions(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
 -- https://github.com/ioi-isr/cms/pull/82 - Add rejection reason to delay requests
 ALTER TABLE public.delay_requests ADD COLUMN rejection_reason character varying;
 

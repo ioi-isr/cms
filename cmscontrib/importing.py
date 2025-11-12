@@ -278,6 +278,7 @@ def update_dataset(old_dataset: Dataset, new_dataset: Dataset, parent=None):
         # Relationships to update (all others).
         Dataset.managers: True,
         Dataset.testcases: True,
+        Dataset.model_solution_metas: False,
     }, parent=parent)
 
 
