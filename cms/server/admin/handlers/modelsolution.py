@@ -21,10 +21,10 @@
 
 import logging
 
-from cms.db import Dataset, ModelSolution, ModelSolutionFile
-from cms.grading.languagemanager import safe_get_lang_filename
+from cms.db import Dataset, Submission, File, ModelSolutionMeta, \
+    get_or_create_model_solution_participation
 from cmscommon.datetime import make_datetime
-from .base import BaseHandler, FileHandler, require_permission
+from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
@@ -58,20 +58,28 @@ class AddModelSolutionHandler(BaseHandler):
                 "expected_score_max", "100.0")
 
             try:
-                attrs["expected_score_min"] = float(expected_score_min)
-                attrs["expected_score_max"] = float(expected_score_max)
+                expected_score_min = float(expected_score_min)
+                expected_score_max = float(expected_score_max)
             except ValueError:
                 raise ValueError("Invalid score range values")
 
-            if attrs["expected_score_min"] > attrs["expected_score_max"]:
+            if expected_score_min > expected_score_max:
                 raise ValueError(
                     "Minimum score cannot be greater than maximum score")
 
-            attrs["timestamp"] = make_datetime()
-            attrs["dataset"] = dataset
+            participation = get_or_create_model_solution_participation(
+                self.sql_session, self.contest)
 
-            model_solution = ModelSolution(**attrs)
-            self.sql_session.add(model_solution)
+            timestamp = make_datetime()
+            submission = Submission(
+                timestamp=timestamp,
+                language=attrs.get("language"),
+                participation=participation,
+                task=task,
+                official=False
+            )
+            self.sql_session.add(submission)
+            self.sql_session.flush()
 
             if self.request.files:
                 for filename, file_list in self.request.files.items():
@@ -81,12 +89,21 @@ class AddModelSolutionHandler(BaseHandler):
                             "Model solution file %s sent by %s at %s." % (
                                 uploaded_file["filename"],
                                 self.current_user.username,
-                                make_datetime()))
+                                timestamp))
 
-                        self.sql_session.add(ModelSolutionFile(
+                        self.sql_session.add(File(
                             filename=uploaded_file["filename"],
                             digest=digest,
-                            model_solution=model_solution))
+                            submission=submission))
+
+            meta = ModelSolutionMeta(
+                submission=submission,
+                dataset=dataset,
+                description=attrs["description"],
+                expected_score_min=expected_score_min,
+                expected_score_max=expected_score_max
+            )
+            self.sql_session.add(meta)
 
         except Exception as error:
             self.service.add_notification(
@@ -95,17 +112,18 @@ class AddModelSolutionHandler(BaseHandler):
             return
 
         if self.try_commit():
-            model_solution.get_result_or_create(dataset)
+            submission.get_result_or_create(dataset)
             self.sql_session.commit()
 
             self.service.add_notification(
                 make_datetime(),
                 "Model solution added",
                 "Model solution %s added to task %s" % (
-                    model_solution.description, task.name))
+                    attrs["description"], task.name))
 
-            self.service.evaluation_service.new_model_solution(
-                model_solution_id=model_solution.id)
+            self.service.evaluation_service.new_evaluation(
+                submission_id=submission.id,
+                dataset_id=dataset.id)
 
         self.redirect(self.url("task", task.id))
 
@@ -115,44 +133,28 @@ class ModelSolutionHandler(BaseHandler):
 
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, model_solution_id, dataset_id=None):
-        model_solution = self.safe_get_item(ModelSolution, model_solution_id)
-        dataset_obj = model_solution.dataset
-        task = dataset_obj.task
+    def get(self, model_solution_meta_id, dataset_id=None):
+        meta = self.safe_get_item(ModelSolutionMeta, model_solution_meta_id)
+        submission = meta.submission
+        task = submission.task
         self.contest = task.contest
 
         if dataset_id is not None:
             dataset = self.safe_get_item(Dataset, dataset_id)
         else:
-            dataset = dataset_obj
+            dataset = meta.dataset
         assert dataset.task is task
 
         self.r_params = self.render_params()
-        self.r_params["ms"] = model_solution
+        self.r_params["s"] = submission
+        self.r_params["meta"] = meta
         self.r_params["active_dataset"] = task.active_dataset
         self.r_params["shown_dataset"] = dataset
         self.r_params["datasets"] = \
             self.sql_session.query(Dataset)\
                             .filter(Dataset.task == task)\
                             .order_by(Dataset.description).all()
-        self.render("modelsolution.html", **self.r_params)
-
-
-class ModelSolutionFileHandler(FileHandler):
-    """Shows a model solution file.
-
-    """
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, file_id):
-        ms_file = self.safe_get_item(ModelSolutionFile, file_id)
-        model_solution = ms_file.model_solution
-
-        real_filename = safe_get_lang_filename(
-            model_solution.language, ms_file.filename)
-        digest = ms_file.digest
-
-        self.sql_session.close()
-        self.fetch(digest, "text/plain", real_filename)
+        self.render("submission.html", **self.r_params)
 
 
 class DeleteModelSolutionHandler(BaseHandler):
@@ -160,14 +162,16 @@ class DeleteModelSolutionHandler(BaseHandler):
 
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def post(self, model_solution_id):
-        model_solution = self.safe_get_item(ModelSolution, model_solution_id)
-        task = model_solution.dataset.task
+    def post(self, model_solution_meta_id):
+        meta = self.safe_get_item(ModelSolutionMeta, model_solution_meta_id)
+        submission = meta.submission
+        task = submission.task
         self.contest = task.contest
 
-        description = model_solution.description
+        description = meta.description
 
-        self.sql_session.delete(model_solution)
+        self.sql_session.delete(meta)
+        self.sql_session.delete(submission)
 
         if self.try_commit():
             self.service.add_notification(
@@ -179,6 +183,6 @@ class DeleteModelSolutionHandler(BaseHandler):
         self.redirect(self.url("task", task.id))
 
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def delete(self, model_solution_id):
+    def delete(self, model_solution_meta_id):
         """Support DELETE method by delegating to POST."""
-        return self.post(model_solution_id)
+        return self.post(model_solution_meta_id)

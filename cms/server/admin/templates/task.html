@@ -522,18 +522,19 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
           </tr>
         </thead>
         <tbody>
-          {% if dataset.model_solutions|length == 0 %}
+          {% if dataset.model_solution_metas|length == 0 %}
           <tr>
             <td colspan="8">No model solutions yet</td>
           </tr>
           {% else %}
-          {% for ms in dataset.model_solutions %}
-          {% set msr = ms.get_result(dataset) %}
+          {% for meta in dataset.model_solution_metas %}
+          {% set submission = meta.submission %}
+          {% set msr = submission.get_result(dataset) %}
           <tr>
             <td style="font-weight:bold;">{{ loop.index }}</td>
-            <td><a href="{{ url("model_solution", ms.id) }}">{{ ms.description }}</a></td>
-            <td>{{ ms.language if ms.language else "N/A" }}</td>
-            <td>{{ "%.2f"|format(ms.expected_score_min) }} - {{ "%.2f"|format(ms.expected_score_max) }}</td>
+            <td><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></td>
+            <td>{{ submission.language if submission.language else "N/A" }}</td>
+            <td>{{ "%.2f"|format(meta.expected_score_min) }} - {{ "%.2f"|format(meta.expected_score_max) }}</td>
             <td>
               {% if msr and msr.score is not none %}
               {{ "%.2f"|format(msr.score) }}
@@ -542,9 +543,10 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
               {% endif %}
             </td>
             <td>
-              {% if ms.score_in_range is none %}
+              {% set score_in_range = meta.is_score_in_range() %}
+              {% if score_in_range is none %}
               <span style="color: gray;">Not scored</span>
-              {% elif ms.score_in_range %}
+              {% elif score_in_range %}
               <span style="color: green;">✓ Yes</span>
               {% else %}
               <span style="color: red;">✗ No</span>
@@ -566,9 +568,9 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
               {% endif %}
             </td>
             <td>
-              <a href="{{ url("model_solution", ms.id) }}">View</a>
+              <a href="{{ url("model_solution", meta.id) }}">View</a>
 {% if admin.permission_all %}
-              | <a onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", ms.id, "delete") }}');">Delete</a>
+              | <a onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');">Delete</a>
 {% endif %}
             </td>
           </tr>

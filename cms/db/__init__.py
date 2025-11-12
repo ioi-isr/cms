@@ -66,8 +66,7 @@ __all__ = [
     # usertest
     "UserTest", "UserTestFile", "UserTestManager", "UserTestResult",
     "UserTestExecutable",
-    "ModelSolution", "ModelSolutionFile", "ModelSolutionResult",
-    "ModelSolutionExecutable", "ModelSolutionEvaluation",
+    "ModelSolutionMeta", "get_or_create_model_solution_participation",
     # printjob
     "PrintJob",
     # init
@@ -105,8 +104,8 @@ from .submission import Submission, File, Token, SubmissionResult, \
     Executable, Evaluation
 from .usertest import UserTest, UserTestFile, UserTestManager, \
     UserTestResult, UserTestExecutable
-from .modelsolution import ModelSolution, ModelSolutionFile, \
-    ModelSolutionResult, ModelSolutionExecutable, ModelSolutionEvaluation
+from .modelsolution import ModelSolutionMeta, \
+    get_or_create_model_solution_participation
 from .printjob import PrintJob
 
 from .init import init_db

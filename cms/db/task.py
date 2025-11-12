@@ -471,8 +471,8 @@ class Dataset(Base):
         passive_deletes=True,
         back_populates="dataset")
 
-    model_solutions: list["ModelSolution"] = relationship(
-        "ModelSolution",
+    model_solution_metas: list["ModelSolutionMeta"] = relationship(
+        "ModelSolutionMeta",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="dataset")

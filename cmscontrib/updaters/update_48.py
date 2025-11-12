@@ -19,10 +19,10 @@
 
 Used by DumpImporter and DumpUpdater.
 
-This version adds the ModelSolution tables (model_solutions,
-model_solution_files, model_solution_results, model_solution_executables,
-model_solution_evaluations) but doesn't require any data migration since
-they are new tables with no existing data.
+This version adds the ModelSolutionMeta table which stores metadata for
+model solutions. Model solutions are implemented as regular Submissions
+with a special hidden Participation, so this only adds one small metadata
+table rather than parallel infrastructure.
 
 """
 
