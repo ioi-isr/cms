@@ -471,6 +471,12 @@ class Dataset(Base):
         passive_deletes=True,
         back_populates="dataset")
 
+    model_solutions: list["ModelSolution"] = relationship(
+        "ModelSolution",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="dataset")
+
     @property
     def active(self) -> bool:
         """Shorthand for detecting if the dataset is active.
