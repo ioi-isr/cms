@@ -278,6 +278,9 @@ def update_dataset(old_dataset: Dataset, new_dataset: Dataset, parent=None):
         # Relationships to update (all others).
         Dataset.managers: True,
         Dataset.testcases: True,
+        # Model solutions are not provided by the loader, we should keep
+        # those we have.
+        Dataset.model_solutions: False,
     }, parent=parent)
 
 
