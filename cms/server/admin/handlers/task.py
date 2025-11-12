@@ -129,6 +129,7 @@ class TaskHandler(BaseHandler):
             pass
         self.r_params["has_model_solutions_support"] = \
             has_model_solutions_support
+        self.r_params["allowed_languages"] = task.get_allowed_languages()
 
         self.render("task.html", **self.r_params)
 
