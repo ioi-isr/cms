@@ -119,6 +119,17 @@ class TaskHandler(BaseHandler):
             self.sql_session.query(Submission)\
                 .join(Task).filter(Task.id == task_id)\
                 .order_by(Submission.timestamp.desc()).all()
+
+        has_model_solutions_support = False
+        try:
+            if task.datasets:
+                _ = task.datasets[0].model_solutions
+                has_model_solutions_support = True
+        except Exception:
+            pass
+        self.r_params["has_model_solutions_support"] = \
+            has_model_solutions_support
+
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

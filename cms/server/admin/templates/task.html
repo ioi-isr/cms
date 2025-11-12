@@ -463,7 +463,7 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
     </div>
 
   <!-- Model Solutions for this dataset -->
-
+{% if has_model_solutions_support %}
   <h4 id="title_model_solutions_{{ dataset.id }}" class="toggling_on">Model Solutions</h4>
     <div id="model_solutions_{{ dataset.id }}" class="task_dataset_model_solutions">
       <p>Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.</p>
@@ -567,6 +567,7 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
       </table>
       <div class="hr"></div>
     </div>
+{% endif %}
 
   <!-- Test cases for this dataset -->
 
