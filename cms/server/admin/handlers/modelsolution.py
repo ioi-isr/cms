@@ -20,10 +20,8 @@
 """
 
 import logging
-from datetime import datetime
 
-from cms.db import Dataset, ModelSolution, ModelSolutionFile, \
-    ModelSolutionResult
+from cms.db import Dataset, ModelSolution, ModelSolutionFile
 from cms.grading.languagemanager import safe_get_lang_filename
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, FileHandler, require_permission
@@ -46,19 +44,22 @@ class AddModelSolutionHandler(BaseHandler):
             attrs = {}
             self.get_string(attrs, "description")
             self.get_string(attrs, "language", empty=None)
-            
-            expected_score_min = self.get_argument("expected_score_min", "0.0")
-            expected_score_max = self.get_argument("expected_score_max", "100.0")
-            
+
+            expected_score_min = self.get_argument(
+                "expected_score_min", "0.0")
+            expected_score_max = self.get_argument(
+                "expected_score_max", "100.0")
+
             try:
                 attrs["expected_score_min"] = float(expected_score_min)
                 attrs["expected_score_max"] = float(expected_score_max)
             except ValueError:
                 raise ValueError("Invalid score range values")
-            
+
             if attrs["expected_score_min"] > attrs["expected_score_max"]:
-                raise ValueError("Minimum score cannot be greater than maximum score")
-            
+                raise ValueError(
+                    "Minimum score cannot be greater than maximum score")
+
             attrs["timestamp"] = make_datetime()
             attrs["dataset"] = dataset
 
@@ -74,7 +75,7 @@ class AddModelSolutionHandler(BaseHandler):
                                 uploaded_file["filename"],
                                 self.current_user.username,
                                 make_datetime()))
-                        
+
                         self.sql_session.add(ModelSolutionFile(
                             filename=uploaded_file["filename"],
                             digest=digest,
@@ -87,10 +88,9 @@ class AddModelSolutionHandler(BaseHandler):
             return
 
         if self.try_commit():
-            model_solution_result = model_solution.get_result_or_create(dataset)
+            model_solution.get_result_or_create(dataset)
             self.sql_session.commit()
-            
-            
+
             self.service.add_notification(
                 make_datetime(),
                 "Model solution added",
@@ -156,9 +156,9 @@ class DeleteModelSolutionHandler(BaseHandler):
         self.contest = task.contest
 
         description = model_solution.description
-        
+
         self.sql_session.delete(model_solution)
-        
+
         if self.try_commit():
             self.service.add_notification(
                 make_datetime(),

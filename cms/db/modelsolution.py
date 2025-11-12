@@ -100,7 +100,8 @@ class ModelSolution(Base):
         passive_deletes=True,
         back_populates="model_solution")
 
-    def get_result(self, dataset: Dataset | None = None) -> "ModelSolutionResult | None":
+    def get_result(self, dataset: Dataset | None = None) \
+            -> "ModelSolutionResult | None":
         """Return the result associated to a dataset.
 
         dataset: the dataset for which the caller wants
@@ -108,8 +109,8 @@ class ModelSolution(Base):
             model solution is used.
 
         return: the model solution result
-            associated to this model solution and the given dataset, if it
-            exists in the database, otherwise None.
+            associated to this model solution and the given dataset,
+            if it exists in the database, otherwise None.
 
         """
         if dataset is not None:
@@ -120,7 +121,8 @@ class ModelSolution(Base):
         return ModelSolutionResult.get_from_id(
             (self.id, dataset_id), self.sa_session)
 
-    def get_result_or_create(self, dataset: Dataset | None = None) -> "ModelSolutionResult":
+    def get_result_or_create(self, dataset: Dataset | None = None) \
+            -> "ModelSolutionResult":
         """Return and, if necessary, create the result for a dataset.
 
         dataset: the dataset for which the caller wants
@@ -336,13 +338,14 @@ class ModelSolutionResult(Base):
         else:
             return ModelSolutionResult.SCORED
 
-    def get_evaluation(self, testcase: Testcase) -> "ModelSolutionEvaluation | None":
+    def get_evaluation(self, testcase: Testcase) \
+            -> "ModelSolutionEvaluation | None":
         """Return the Evaluation of this MSR on the given Testcase, if any.
 
         testcase: the testcase the returned evaluation will belong to.
 
-        return: the (only!) evaluation of this model solution result on the
-            given testcase, or None if there isn't any.
+        return: the (only!) evaluation of this model solution result on
+            the given testcase, or None if there isn't any.
 
         """
         # Use IDs to avoid triggering a lazy-load query.
@@ -353,7 +356,8 @@ class ModelSolutionResult(Base):
             .filter(ModelSolutionEvaluation.testcase == testcase)\
             .first()
 
-    def get_max_evaluation_resources(self) -> tuple[float | None, int | None]:
+    def get_max_evaluation_resources(self) \
+            -> tuple[float | None, int | None]:
         """Return the maximum time and memory used by this result.
 
         return: max used time in seconds and memory in bytes,
@@ -377,7 +381,8 @@ class ModelSolutionResult(Base):
 
     @staticmethod
     def filter_compiled():
-        """Return a filtering expression for compiled model solution results."""
+        """Return a filtering expression for compiled model solution
+        results."""
         return ModelSolutionResult.compilation_outcome.isnot(None)
 
     def compilation_failed(self) -> bool:
