@@ -1,0 +1,247 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+
+{% extends "base.html" %}
+
+{% block core %}
+{% set st = get_score_type(dataset=shown_dataset) %}
+{% set msr = ms.get_result(shown_dataset) %}
+{% set status = ModelSolutionResult.COMPILING %}
+{% if msr is not none %}
+  {% set status = msr.get_status() %}
+{% endif %}
+<div class="core_title">
+  <h1>Model Solution {{ ms.id }} (Task: <a href="{{ url("task", ms.dataset.task.id) }}">{{ ms.dataset.task.name }}</a>)</h1>
+</div>
+
+{% set dataset_selector_par_url = url("model_solution", ms.id) %}
+{% include "fragments/dataset_selector.html" %}
+
+<h2 id="title_details" class="toggling_on">Model Solution details</h2>
+<div id="details">
+
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Upload time</td>
+        <td>{{ ms.timestamp }}</td>
+      </tr>
+      <tr>
+        <td>Id</td>
+        <td>{{ ms.id }}</td>
+      </tr>
+      <tr>
+        <td>Description</td>
+        <td>{{ ms.description }}</td>
+      </tr>
+      <tr>
+        <td>Task</td>
+        <td><a href="{{ url("task", ms.dataset.task.id) }}">{{ ms.dataset.task.name }}</a></td>
+      </tr>
+      <tr>
+        <td>Files</td>
+        <td>
+          {% for filename, file in ms.files.items() %}
+            {% set real_filename = get_lang_filename(ms.language, filename) %}
+          <a href="javascript:void(0);" onclick="utils.show_file('{{ real_filename }}','{{ url("model_solution_file", file.id) }}')">
+            {{ real_filename }}
+          </a>
+          <br/>
+          {% endfor %}
+        </td>
+      </tr>
+      <tr>
+        <td>Language</td>
+        <td>
+          {% if ms.language is none %}
+          N/A
+          {% else %}
+          {{ ms.language }}
+          {% endif %}
+      </tr>
+      <tr>
+        <td>Expected Score Range</td>
+        <td>{{ ms.expected_score_min }} - {{ ms.expected_score_max }}</td>
+      </tr>
+      <tr>
+        <td>Score In Range</td>
+        <td>
+          {% if ms.score_in_range is none %}
+          Not yet scored
+          {% elif ms.score_in_range %}
+          <span style="color: green;">✓ Yes</span>
+          {% else %}
+          <span style="color: red;">✗ No</span>
+          {% endif %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Compilation</h3>
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Compilation outcome</td>
+        <td>
+          {% if msr is none or not msr.compiled() %}
+          N/A
+          {% elif msr.compilation_failed() %}
+          <b>Failed</b>
+          {% else %}
+          <b>OK</b>
+          {% endif %}
+        </td>
+      </tr>
+      {% if msr is not none and msr.compiled() %}
+      <tr>
+        <td>Compilation text</td>
+        <td>
+          {% if msr.compilation_text|length == 0 %}
+          N/A
+          {% else %}
+          {{ format_status_text(msr.compilation_text) }}
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Compilation time</td>
+        <td>
+          {% if msr.compilation_time is none %}
+          N/A
+          {% else %}
+          {{ "%.3f s"|format(msr.compilation_time) }}
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Compilation memory</td>
+        <td>
+          {% if msr.compilation_memory is none %}
+          N/A
+          {% else %}
+          {{ format_size(msr.compilation_memory) }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  <h3>Evaluation</h3>
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Evaluation outcome</td>
+        <td>
+          {% if msr is none or not msr.evaluated() %}
+          N/A
+          {% else %}
+          <b>OK</b>
+          {% endif %}
+        </td>
+      </tr>
+      {% if msr is not none and msr.evaluated() %}
+      <tr>
+        <td>Score</td>
+        <td>
+          {% if msr.score is none %}
+          N/A
+          {% else %}
+          <b>{{ "%.2f"|format(msr.score) }}</b>
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  {% if msr is not none and msr.evaluated() %}
+  <h3>Evaluations</h3>
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Testcase</th>
+        <th>Outcome</th>
+        <th>Details</th>
+        <th>Time</th>
+        <th>Memory</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for tc_name in shown_dataset.testcases %}
+        {% set tc = shown_dataset.testcases[tc_name] %}
+        {% set ev = msr.get_evaluation(tc) %}
+        <tr>
+          <td>{{ tc.codename }}</td>
+          <td>
+            {% if ev is none %}
+            N/A
+            {% else %}
+            {{ ev.outcome }}
+            {% endif %}
+          </td>
+          <td>
+            {% if ev is none or ev.text|length == 0 %}
+            N/A
+            {% else %}
+            {{ format_status_text(ev.text) }}
+            {% endif %}
+          </td>
+          <td>
+            {% if ev is none or ev.execution_time is none %}
+            N/A
+            {% else %}
+            {{ "%.3f s"|format(ev.execution_time) }}
+            {% endif %}
+          </td>
+          <td>
+            {% if ev is none or ev.execution_memory is none %}
+            N/A
+            {% else %}
+            {{ format_size(ev.execution_memory) }}
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <h3>Actions</h3>
+  <p>
+    Re-evaluate:
+    {{ macro_reevaluation_buttons.reevaluation_buttons(
+         "model_solution",
+         ms.id,
+         shown_dataset.id,
+         {"model_solution_id": ms.id, "dataset_id": shown_dataset.id},
+         admin.permission_all,
+         url("model_solution", ms.id, shown_dataset.id)) }}
+  </p>
+
+  <form action="{{ url("model_solution", ms.id, "delete") }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this model solution?');">
+    {{ xsrf_form_html|safe }}
+    <input type="submit" value="Delete Model Solution" {% if not admin.permission_all %}disabled{% endif %} />
+  </form>
+
+</div>
+
+{% endblock core %}
