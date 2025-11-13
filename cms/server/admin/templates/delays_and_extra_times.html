@@ -6,7 +6,62 @@ utils.show_page("pending_delay_requests", 1);
 utils.show_page("all_delay_requests", 1);
 
 {% endblock js_init %}
+
 {% block core %}
+
+<style>
+/* Status row colors for attendance tracking */
+tr.pre-contest {
+  background-color: #e8ddff !important; /* Light purple - contest not started */
+}
+
+tr.can-start {
+  background-color: #fffacd !important; /* Light yellow - can still start */
+}
+
+tr.in-progress {
+  background-color: #d4edda !important; /* Light green - currently in contest */
+}
+
+tr.finished {
+  background-color: #d1ecf1 !important; /* Light blue - participated and finished */
+}
+
+tr.missed {
+  background-color: #f8d7da !important; /* Light red - missed opportunity */
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 3px;
+  background-color: #666;
+  color: white;
+}
+
+tr.pre-contest .status-badge {
+  background-color: #6f42c1; /* Purple */
+}
+
+tr.can-start .status-badge {
+  background-color: #ffc107; /* Yellow/amber */
+}
+
+tr.in-progress .status-badge {
+  background-color: #28a745; /* Green */
+}
+
+tr.finished .status-badge {
+  background-color: #17a2b8; /* Blue */
+}
+
+tr.missed .status-badge {
+  background-color: #dc3545; /* Red */
+}
+</style>
 
 <div class="core_title">
   <h1>Attendance</h1>
@@ -89,25 +144,17 @@ utils.show_page("all_delay_requests", 1);
       <th>Actual Start Time</th>
       <th>IP Address</th>
       <th>Extra Time (seconds)</th>
+      <th>Status</th>
       <th>Actions</th>
     </tr>
   </thead>
   <tbody>
-  {% for participation in participations %}
-    {% set actual_phase = participation.contest.phase(timestamp) %}
-    {% if participation.starting_time %}
-      {% set time_since_start = (timestamp - participation.starting_time).total_seconds() %}
-      {% set contest_duration = (participation.contest.stop - participation.contest.start).total_seconds() + participation.extra_time.total_seconds() %}
-      {% if time_since_start < contest_duration %}
-        {% set status_class = "success" %}
-      {% else %}
-        {% set status_class = "info" %}
-      {% endif %}
-    {% else %}
-      {% set status_class = "" %}
-    {% endif %}
-    <tr class="{{ status_class }}">
-      <td>{{ participation.user.first_name }} {{ participation.user.last_name }}</td>
+  {% for item in participation_statuses %}
+    {% set participation = item.participation %}
+    <tr class="{{ item.status_class }}">
+      <td>
+        {{ participation.user.first_name }} {{ participation.user.last_name }}
+      </td>
       <td>{{ participation.user.username }}</td>
       <td>{{ participation.delay_time.total_seconds()|int }}</td>
       <td>
@@ -133,10 +180,25 @@ utils.show_page("all_delay_requests", 1);
       </td>
       <td>{{ participation.extra_time.total_seconds()|int }}</td>
       <td>
+        {% if item.status_label %}
+          <span class="status-badge">{{ item.status_label }}</span>
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>
         {% if participation.delay_time.total_seconds() > 0 or participation.extra_time.total_seconds() > 0 %}
         <form action="{{ url("contest", contest.id, "participation", participation.id, "remove_delay_and_extra_time") }}" method="POST" style="display: inline;">
           {{ xsrf_form_html|safe }}
-          <button type="submit" class="btn btn-warning btn-small">Remove</button>
+          <button type="submit" class="btn btn-warning btn-small">
+            {% if participation.delay_time.total_seconds() == 0 %}
+              Remove extra time 
+            {% elif participation.extra_time.total_seconds() == 0 %}
+              Remove delay
+            {% else %}
+              Remove delay and extra time
+            {% endif %}
+          </button>
         </form>
         {% endif %}
       </td>
