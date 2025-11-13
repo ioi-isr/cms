@@ -23,6 +23,7 @@ from abc import ABCMeta, abstractmethod
 import csv
 import io
 import logging
+import re
 from datetime import timedelta
 
 import collections
@@ -40,6 +41,49 @@ from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def compute_participation_status(contest, participation, timestamp):
+    """Compute the status class and label for a participation.
+    
+    Args:
+        contest: The Contest object
+        participation: The Participation object
+        timestamp: The current timestamp
+    
+    Returns:
+        tuple: (status_class, status_label)
+    """
+    actual_phase, _, _, _, _ = compute_actual_phase(
+        timestamp,
+        contest.start,
+        contest.stop,
+        contest.analysis_start,
+        contest.analysis_stop,
+        contest.per_user_time,
+        participation.starting_time,
+        participation.delay_time,
+        participation.extra_time,
+    )
+    
+    if participation.starting_time is None:
+        if actual_phase == -2:
+            status_class = "pre-contest"
+            status_label = "Pre contest"
+        elif actual_phase <= 0:
+            status_class = "can-start"
+            status_label = "Can start"
+        else:
+            status_class = "missed"
+            status_label = "Missed"
+    elif actual_phase == 0:
+        status_class = "in-progress"
+        status_label = "In progress"
+    else:
+        status_class = "finished"
+        status_label = "Finished"
+    
+    return status_class, status_label
 
 
 class DelaysAndExtraTimesHandler(BaseHandler):
@@ -61,34 +105,9 @@ class DelaysAndExtraTimesHandler(BaseHandler):
         # Compute status for each participation
         participation_statuses = []
         for participation in participations:
-            actual_phase, _, _, _, _ = compute_actual_phase(
-                self.timestamp,
-                self.contest.start,
-                self.contest.stop,
-                self.contest.analysis_start,
-                self.contest.analysis_stop,
-                self.contest.per_user_time,
-                participation.starting_time,
-                participation.delay_time,
-                participation.extra_time,
+            status_class, status_label = compute_participation_status(
+                self.contest, participation, self.timestamp
             )
-            
-            if participation.starting_time is None:
-                if actual_phase == -2:
-                    status_class = "pre-contest"
-                    status_label = "Pre contest"
-                elif actual_phase <= 0:
-                    status_class = "can-start"
-                    status_label = "Can start"
-                else:
-                    status_class = "missed"
-                    status_label = "Missed"
-            elif actual_phase == 0:
-                status_class = "in-progress"
-                status_label = "In progress"
-            else:
-                status_class = "finished"
-                status_label = "Finished"
             
             participation_statuses.append({
                 'participation': participation,
@@ -226,7 +245,8 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
             'Planned Start Time (UTC)',
             'Actual Start Time (UTC)',
             'IP Address',
-            'Extra Time (seconds)'
+            'Extra Time (seconds)',
+            'Status'
         ])
         
         for participation in participations:
@@ -242,6 +262,11 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
             extra_seconds = int(participation.extra_time.total_seconds())
             ip_addresses = participation.starting_ip_addresses if participation.starting_ip_addresses else '-'
             
+            # Compute status for this participation
+            _, status_label = compute_participation_status(
+                self.contest, participation, self.timestamp
+            )
+            
             writer.writerow([
                 f"{participation.user.first_name} {participation.user.last_name}",
                 participation.user.username,
@@ -249,12 +274,17 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
                 planned_start_str,
                 starting_time,
                 ip_addresses,
-                extra_seconds
+                extra_seconds,
+                status_label
             ])
+        
+        start_date = self.contest.start.strftime('%Y%m%d')
+        contest_slug = re.sub(r'[^A-Za-z0-9_-]+', '_', self.contest.name)
+        filename = f"{start_date}_{contest_slug}_attendance.csv"
         
         self.set_header('Content-Type', 'text/csv')
         self.set_header('Content-Disposition', 
-                       f'attachment; filename="delays_extra_times_contest_{contest_id}.csv"')
+                       f'attachment; filename="{filename}"')
         self.write(output.getvalue())
         self.finish()
 

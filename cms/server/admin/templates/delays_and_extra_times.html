@@ -42,6 +42,10 @@ tr.missed {
   color: white;
 }
 
+.status-icon {
+  margin-right: 4px;
+}
+
 tr.pre-contest .status-badge {
   background-color: #6f42c1; /* Purple */
 }
@@ -181,7 +185,20 @@ tr.missed .status-badge {
       <td>{{ participation.extra_time.total_seconds()|int }}</td>
       <td>
         {% if item.status_label %}
-          <span class="status-badge">{{ item.status_label }}</span>
+          <span class="status-badge">
+            {% if item.status_class == "pre-contest" %}
+              <span class="status-icon">⏳</span>
+            {% elif item.status_class == "can-start" %}
+              <span class="status-icon">▶</span>
+            {% elif item.status_class == "in-progress" %}
+              <span class="status-icon">⏱</span>
+            {% elif item.status_class == "finished" %}
+              <span class="status-icon">✓</span>
+            {% elif item.status_class == "missed" %}
+              <span class="status-icon">⛔</span>
+            {% endif %}
+            {{ item.status_label }}
+          </span>
         {% else %}
           -
         {% endif %}
