@@ -278,6 +278,14 @@ class StartHandler(ContestHandler):
 
         logger.info("Starting now for user %s", participation.user.username)
         participation.starting_time = self.timestamp
+        
+        client_ip = self.request.remote_ip
+        if participation.starting_ip_addresses:
+            if client_ip not in participation.starting_ip_addresses:
+                participation.starting_ip_addresses += f", {client_ip}"
+        else:
+            participation.starting_ip_addresses = client_ip
+        
         self.sql_session.commit()
 
         self.redirect(self.contest_url())
