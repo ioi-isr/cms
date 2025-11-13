@@ -227,12 +227,13 @@ class ContestHandler(BaseHandler):
 
             if ret["actual_phase"] == 0:
                 ret["phase"] = 0
-                
+
                 if participation.starting_time is not None:
                     client_ip = self.request.remote_ip
                     if participation.starting_ip_addresses:
                         if client_ip not in participation.starting_ip_addresses:
-                            participation.starting_ip_addresses += f", {client_ip}"
+                            participation.starting_ip_addresses += \
+                                f", {client_ip}"
                             self.sql_session.commit()
                     else:
                         participation.starting_ip_addresses = client_ip
