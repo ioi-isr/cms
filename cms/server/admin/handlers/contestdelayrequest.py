@@ -77,8 +77,8 @@ def compute_participation_status(contest, participation, timestamp):
             status_class = "missed"
             status_label = "Missed"
     elif actual_phase == 0:
-        status_class = "in-progress"
-        status_label = "In progress"
+        status_class = "in-contest"
+        status_label = "In contest"
     else:
         status_class = "finished"
         status_label = "Finished"
