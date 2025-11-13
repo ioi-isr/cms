@@ -307,45 +307,12 @@ CMS.AWSUtils.prototype.update_unread_counts = function(delta_public, delta_priva
 
 
 /**
- * Update the number of unanswered questions and delay requests.
- *
- * delta_questions (int): how many unanswered questions to add.
- * delta_delay_requests (int): how many unanswered delay requests to add.
- */
-CMS.AWSUtils.prototype.update_unanswered_counts = function(delta_questions, delta_delay_requests) {
-    var unanswered_questions = $("#unanswered_questions");
-    if (unanswered_questions) {
-        var count_questions = parseInt(unanswered_questions.text());
-        count_questions += delta_questions;
-        unanswered_questions.text(count_questions);
-        if (count_questions > 0) {
-            unanswered_questions.show();
-        } else {
-            unanswered_questions.hide();
-        }
-    }
-    var unanswered_delay_requests = $("#unanswered_delay_requests");
-    if (unanswered_delay_requests) {
-        var count_delay_requests = parseInt(unanswered_delay_requests.text());
-        count_delay_requests += delta_delay_requests;
-        unanswered_delay_requests.text(count_delay_requests);
-        if (count_delay_requests > 0) {
-            unanswered_delay_requests.show();
-        } else {
-            unanswered_delay_requests.hide();
-        }
-    }
-};
-
-
-/**
  * Ask CWS (via ajax, not rpc) to send to the user the new
  * notifications.
  */
 CMS.AWSUtils.prototype.update_notifications = function() {
     var display_notification = this.bind_func(this, this.display_notification);
     var update_unread_counts = this.bind_func(this, this.update_unread_counts);
-    var update_unanswered_counts = this.bind_func(this, this.update_unanswered_counts);
     this.ajax_request(
         this.url("notifications"),
         "last_notification=" + this.last_notification,
@@ -354,8 +321,6 @@ CMS.AWSUtils.prototype.update_notifications = function() {
                 response = JSON.parse(response);
                 var msgs_public = 0;
                 var msgs_private = 0;
-                var new_questions = 0;
-                var new_delay_requests = 0;
                 for (var i = 0; i < response.length; i++) {
                     display_notification(
                         response[i].type,
@@ -368,14 +333,9 @@ CMS.AWSUtils.prototype.update_notifications = function() {
                     } else if (response[i].type == "question"
                                || response[i].type == "message") {
                         msgs_private++;
-                    } else if (response[i].type == "new_question") {
-                        new_questions++;
-                    } else if (response[i].type == "new_delay_request") {
-                        new_delay_requests++;
                     }
                 }
                 update_unread_counts(msgs_public, msgs_private);
-                update_unanswered_counts(new_questions, new_delay_requests);
             }
         });
 };
