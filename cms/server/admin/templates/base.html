@@ -232,7 +232,13 @@ $(document).ready(init);
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "questions") }}">Questions</a>
             </li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "delays_and_extra_times") }}">Delays and Extra Times</a></li>
+            <li class="menu_entry">
+              <span id="unanswered_delay_requests" class="unread"
+                {% if unanswered_delay_requests == 0 %} style="display: none;" {% endif %}>
+                {{ unanswered_delay_requests }}
+              </span>
+              <a class="menu_link" href="{{ url("contest", contest.id, "delays_and_extra_times") }}">Delays and Extra Times</a>
+            </li>
           </ul>
           <div class="hr"></div>
           <div class="footer">

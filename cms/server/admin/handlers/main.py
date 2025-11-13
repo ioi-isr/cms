@@ -29,7 +29,7 @@ import json
 import logging
 
 from cms import ServiceCoord, get_service_shards, get_service_address
-from cms.db import Admin, Contest, Question
+from cms.db import Admin, Contest, DelayRequest, Question
 from cms.server.jinja2_toolbox import markdown_filter
 from cmscommon.crypto import validate_password
 from cmscommon.datetime import make_datetime, make_timestamp
@@ -157,6 +157,22 @@ class NotificationsHandler(BaseHandler):
                 "subject": question.subject,
                 "text": question.text,
                 "contest_id": question.participation.contest_id
+            })
+
+        delay_requests: list[DelayRequest] = (
+            self.sql_session.query(DelayRequest)
+            .filter(DelayRequest.status == 'pending')
+            .filter(DelayRequest.request_timestamp > last_notification)
+            .all()
+        )
+
+        for delay_request in delay_requests:
+            res.append({
+                "type": "new_delay_request",
+                "timestamp": make_timestamp(delay_request.request_timestamp),
+                "subject": f"Delay request from {delay_request.participation.user.username}",
+                "text": delay_request.reason,
+                "contest_id": delay_request.participation.contest_id
             })
 
         # Simple notifications
