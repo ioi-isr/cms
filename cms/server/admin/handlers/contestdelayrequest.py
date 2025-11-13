@@ -34,6 +34,7 @@ except:
 import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation
+from cms.server.contest.phase_management import compute_actual_phase
 from cmscommon.datetime import make_datetime, utc
 from .base import BaseHandler, require_permission
 
@@ -51,10 +52,51 @@ class DelaysAndExtraTimesHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["timezone"] = utc
-        self.r_params["participations"] = self.sql_session.query(Participation)\
+        
+        participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
             .order_by(Participation.id)\
             .all()
+        
+        # Compute status for each participation
+        participation_statuses = []
+        for participation in participations:
+            actual_phase, _, _, _, _ = compute_actual_phase(
+                self.timestamp,
+                self.contest.start,
+                self.contest.stop,
+                self.contest.analysis_start,
+                self.contest.analysis_stop,
+                self.contest.per_user_time,
+                participation.starting_time,
+                participation.delay_time,
+                participation.extra_time,
+            )
+            
+            if participation.starting_time is None:
+                if actual_phase == -2:
+                    status_class = "pre-contest"
+                    status_label = "Pre contest"
+                elif actual_phase <= 0:
+                    status_class = "can-start"
+                    status_label = "Can start"
+                else:
+                    status_class = "missed"
+                    status_label = "Missed"
+            elif actual_phase == 0:
+                status_class = "in-progress"
+                status_label = "In progress"
+            else:
+                status_class = "finished"
+                status_label = "Finished"
+            
+            participation_statuses.append({
+                'participation': participation,
+                'status_class': status_class,
+                'status_label': status_label,
+            })
+        
+        self.r_params["participation_statuses"] = participation_statuses
         self.r_params["delay_requests"] = self.sql_session.query(DelayRequest)\
             .join(Participation)\
             .filter(Participation.contest_id == contest_id)\
