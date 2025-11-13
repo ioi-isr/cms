@@ -50,7 +50,8 @@ from .contestdelayrequest import \
     RemoveDelayAndExtraTimeHandler, \
     ExportDelaysAndExtraTimesHandler, \
     RemoveAllDelaysAndExtraTimesHandler, \
-    EraseAllStartTimesHandler
+    EraseAllStartTimesHandler, \
+    ResetAllIPAddressesHandler
 from .contestranking import \
     RankingHandler
 from .contestsubmission import \
@@ -183,6 +184,7 @@ HANDLERS = [
     (r"/contest/([0-9]+)/delays_and_extra_times/export", ExportDelaysAndExtraTimesHandler),
     (r"/contest/([0-9]+)/delays_and_extra_times/remove_all", RemoveAllDelaysAndExtraTimesHandler),
     (r"/contest/([0-9]+)/delays_and_extra_times/erase_start_times", EraseAllStartTimesHandler),
+    (r"/contest/([0-9]+)/delays_and_extra_times/reset_ip_addresses", ResetAllIPAddressesHandler),
     (r"/contest/([0-9]+)/delay_request/([0-9]+)/approve", DelayRequestApproveHandler),
     (r"/contest/([0-9]+)/delay_request/([0-9]+)/reject", DelayRequestRejectHandler),
     (r"/contest/([0-9]+)/participation/([0-9]+)/remove_delay_and_extra_time", RemoveDelayAndExtraTimeHandler),

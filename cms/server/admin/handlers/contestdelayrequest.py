@@ -180,9 +180,10 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
         writer.writerow([
             'User',
             'Username',
-            'Starting Time (UTC)',
             'Delay Time (seconds)',
             'Planned Start Time (UTC)',
+            'Actual Start Time (UTC)',
+            'IP Address',
             'Extra Time (seconds)'
         ])
         
@@ -197,13 +198,15 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
                 planned_start_str = self.contest.start.strftime('%Y-%m-%d %H:%M:%S')
             
             extra_seconds = int(participation.extra_time.total_seconds())
+            ip_addresses = participation.starting_ip_addresses if participation.starting_ip_addresses else '-'
             
             writer.writerow([
                 f"{participation.user.first_name} {participation.user.last_name}",
                 participation.user.username,
-                starting_time,
                 delay_seconds,
                 planned_start_str,
+                starting_time,
+                ip_addresses,
                 extra_seconds
             ])
         
@@ -266,6 +269,35 @@ class EraseAllStartTimesHandler(BaseHandler):
         
         if self.try_commit():
             logger.info("All starting times erased for contest %s by admin %s (%d participations affected)",
+                       self.contest.name,
+                       self.current_user.name,
+                       count)
+        
+        self.redirect(ref)
+
+
+class ResetAllIPAddressesHandler(BaseHandler):
+    """Reset all IP addresses for all participations in a contest.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, contest_id):
+        ref = self.url("contest", contest_id, "delays_and_extra_times")
+        
+        self.contest = self.safe_get_item(Contest, contest_id)
+        
+        participations = self.sql_session.query(Participation)\
+            .filter(Participation.contest_id == contest_id)\
+            .all()
+        
+        count = 0
+        for participation in participations:
+            if participation.starting_ip_addresses is not None:
+                participation.starting_ip_addresses = None
+                count += 1
+        
+        if self.try_commit():
+            logger.info("All IP addresses reset for contest %s by admin %s (%d participations affected)",
                        self.contest.name,
                        self.current_user.name,
                        count)

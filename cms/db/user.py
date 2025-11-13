@@ -170,6 +170,10 @@ class Participation(Base):
         DateTime,
         nullable=True)
 
+    starting_ip_addresses: str | None = Column(
+        Unicode,
+        nullable=True)
+
     # A shift in the time interval during which the user is allowed to
     # submit.
     delay_time: timedelta = Column(
