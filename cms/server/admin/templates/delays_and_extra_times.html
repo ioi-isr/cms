@@ -19,12 +19,12 @@ tr.can-start {
   background-color: #fffacd !important; /* Light yellow - can still start */
 }
 
-tr.in-progress {
-  background-color: #d4edda !important; /* Light green - currently in contest */
+tr.in-contest {
+  background-color: #d1ecf1 !important; /* Light blue - currently in contest */
 }
 
 tr.finished {
-  background-color: #d1ecf1 !important; /* Light blue - participated and finished */
+  background-color: #d4edda !important; /* Light green - participated and finished */
 }
 
 tr.missed {
@@ -54,12 +54,12 @@ tr.can-start .status-badge {
   background-color: #ffc107; /* Yellow/amber */
 }
 
-tr.in-progress .status-badge {
-  background-color: #28a745; /* Green */
+tr.in-contest .status-badge {
+  background-color: #17a2b8; /* Blue */
 }
 
 tr.finished .status-badge {
-  background-color: #17a2b8; /* Blue */
+  background-color: #28a745; /* Green */
 }
 
 tr.missed .status-badge {
@@ -190,7 +190,7 @@ tr.missed .status-badge {
               <span class="status-icon">⏳</span>
             {% elif item.status_class == "can-start" %}
               <span class="status-icon">▶</span>
-            {% elif item.status_class == "in-progress" %}
+            {% elif item.status_class == "in-contest" %}
               <span class="status-icon">⏱</span>
             {% elif item.status_class == "finished" %}
               <span class="status-icon">✓</span>
