@@ -90,6 +90,10 @@ from .submission import \
     SubmissionOfficialStatusHandler, \
     SubmissionFileHandler, \
     SubmissionDiffHandler
+from .submissiondownload import \
+    DownloadTaskSubmissionsHandler, \
+    DownloadUserContestSubmissionsHandler, \
+    DownloadContestSubmissionsHandler
 from .task import (
     AddTaskHandler,
     TaskHandler,
@@ -155,6 +159,8 @@ HANDLERS = [
     # Contest's submissions / user tests
 
     (r"/contest/([0-9]+)/submissions", ContestSubmissionsHandler),
+    (r"/contest/([0-9]+)/submissions/download", DownloadContestSubmissionsHandler),
+    (r"/contest/([0-9]+)/user/([0-9]+)/submissions/download", DownloadUserContestSubmissionsHandler),
     (r"/contest/([0-9]+)/user_tests", ContestUserTestsHandler),
 
     # Contest's announcements
@@ -192,6 +198,7 @@ HANDLERS = [
     (r"/tasks/([0-9]+)/remove", RemoveTaskHandler),
     (r"/tasks/add", AddTaskHandler),
     (r"/task/([0-9]+)", TaskHandler),
+    (r"/task/([0-9]+)/submissions/download", DownloadTaskSubmissionsHandler),
     (r"/task/([0-9]+)/add_dataset", AddDatasetHandler),
     (r"/task/([0-9]+)/statements/add", AddStatementHandler),
     (r"/task/([0-9]+)/statement/([0-9]+)", StatementHandler),
