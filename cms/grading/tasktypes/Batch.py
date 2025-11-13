@@ -26,7 +26,7 @@ import os
 
 from cms.db import Executable
 from cms.grading.ParameterTypes import ParameterTypeCollection, \
-    ParameterTypeChoice, ParameterTypeString
+    ParameterTypeChoice, ParameterTypeString, ParameterTypeOptionalInt
 from cms.grading.language import Language
 from cms.grading.languagemanager import LANGUAGES, get_language
 from cms.grading.steps import compilation_step, evaluation_step, \
@@ -48,7 +48,7 @@ class Batch(TaskType):
     """Task type class for a unique standalone submission source, with
     comparator (or not).
 
-    Parameters needs to be a list of three elements.
+    Parameters needs to be a list of four elements.
 
     The first element is 'grader' or 'alone': in the first
     case, the source file is to be compiled with a provided piece of
@@ -84,6 +84,7 @@ class Batch(TaskType):
     # Constants used in the parameter definition.
     OUTPUT_EVAL_DIFF = "diff"
     OUTPUT_EVAL_CHECKER = "comparator"
+    OUTPUT_EVAL_REALPREC = "realprecision"
     COMPILATION_ALONE = "alone"
     COMPILATION_GRADER = "grader"
 
@@ -111,9 +112,16 @@ class Batch(TaskType):
         "output_eval",
         "",
         {OUTPUT_EVAL_DIFF: "Outputs compared with white diff",
-         OUTPUT_EVAL_CHECKER: "Outputs are compared by a comparator"})
+         OUTPUT_EVAL_CHECKER: "Outputs are compared by a comparator",
+         OUTPUT_EVAL_REALPREC: "Outputs compared as real numbers (with precision of 1e-X, default X=6)"})
 
-    ACCEPTED_PARAMETERS = [_COMPILATION, _USE_FILE, _EVALUATION]
+    _REALPREC_EXP = ParameterTypeOptionalInt(
+        "Real precision exponent X (precision is 1e-X)",
+        "realprec_exp",
+        "If using real-number comparison, specify X in 1e-X (default: 6)",
+        6)
+
+    ACCEPTED_PARAMETERS = [_COMPILATION, _USE_FILE, _EVALUATION, _REALPREC_EXP]
 
     @property
     def name(self) -> str:
@@ -122,6 +130,9 @@ class Batch(TaskType):
         return "Batch"
 
     def __init__(self, parameters):
+        # Backward compatibility: accept legacy 3-parameter lists
+        if isinstance(parameters, list) and len(parameters) == 3:
+            parameters.append(6) # Default precision is 10-6
         super().__init__(parameters)
 
         # Data in the parameters.
@@ -129,9 +140,11 @@ class Batch(TaskType):
         self.input_filename: str
         self.output_filename: str
         self.output_eval: str
+        self.realprec_exp: int
         self.compilation = self.parameters[0]
         self.input_filename, self.output_filename = self.parameters[1]
         self.output_eval = self.parameters[2]
+        self.realprec_exp = self.parameters[3]
 
         # Actual input and output are the files used to store input and
         # where the output is checked, regardless of using redirects or not.
@@ -180,6 +193,9 @@ class Batch(TaskType):
 
     def _uses_checker(self) -> bool:
         return self.output_eval == self.OUTPUT_EVAL_CHECKER
+
+    def _uses_realprecision(self) -> bool:
+        return self.output_eval == self.OUTPUT_EVAL_REALPREC
 
     @staticmethod
     def _executable_filename(codenames: Iterable[str], language: Language) -> str:
@@ -371,6 +387,8 @@ class Batch(TaskType):
                     file_cacher, job,
                     self.CHECKER_CODENAME
                     if self._uses_checker() else None,
+                    use_realprecision=self._uses_realprecision(),
+                    realprecision_exponent=self.realprec_exp,
                     **output_file_params, extra_args=extra_args)
 
         # Fill in the job with the results.

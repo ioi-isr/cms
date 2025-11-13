@@ -40,7 +40,7 @@ from cms.grading.Job import CompilationJob, EvaluationJob, Job
 from cms.grading.Sandbox import Sandbox
 from cms.grading.language import Language
 from cms.grading.steps import EVALUATION_MESSAGES, checker_step, \
-    white_diff_fobj_step
+    white_diff_fobj_step, realprecision_diff_fobj_step, _DEFAULT_EXP
 
 
 logger = logging.getLogger(__name__)
@@ -213,10 +213,45 @@ def check_manager_present(job: Job, codename: str) -> bool:
     return True
 
 
+def _derive_realprecision_exponent(job: Job) -> int:
+    """Derive the realprecision exponent from job.task_type_parameters.
+    
+    Handles both OutputOnly and Batch parameter shapes:
+    - OutputOnly: ["realprecision", X?]
+    - Batch: ["alone", ["in", "out"], "realprecision", X?]
+    
+    Returns _DEFAULT_EXP (6) when not found or invalid.
+    
+    job: the job to extract parameters from.
+    
+    return: the exponent value, or _DEFAULT_EXP if not found.
+    """
+    try:
+        params = job.task_type_parameters
+        if not isinstance(params, list) or len(params) == 0:
+            return _DEFAULT_EXP
+        
+        if params[0] == "realprecision":
+            if len(params) >= 2 and isinstance(params[1], int):
+                return params[1]
+            return _DEFAULT_EXP
+        
+        if len(params) >= 3 and params[2] == "realprecision":
+            if len(params) >= 4 and isinstance(params[3], int):
+                return params[3]
+            return _DEFAULT_EXP
+        
+        return _DEFAULT_EXP
+    except Exception:
+        return _DEFAULT_EXP
+
+
 def eval_output(
     file_cacher: FileCacher,
     job: Job,
     checker_codename: str | None,
+    use_realprecision: bool = False,
+    realprecision_exponent: int | None = None,
     user_output_path: str | None = None,
     user_output_digest: str | None = None,
     user_output_filename: str = "",
@@ -227,7 +262,10 @@ def eval_output(
     file_cacher: file cacher to use to get files.
     job: the job triggering this checker run.
     checker_codename: codename of the checker amongst the manager,
-        or None to use white diff.
+        or None to use white diff / real number precision.
+    use_realprecision: whether we should use real precision comparator.
+    realprecision_exponent: exponent X for tolerance 1e-X when using real
+        precision comparison; if None, will be derived from job.task_type_parameters.
     user_output_path: full path of the user output file, None if
         using the digest (exactly one must be non-None).
     user_output_digest: digest of the user output file, None if
@@ -244,6 +282,9 @@ def eval_output(
     if (user_output_path is None) == (user_output_digest is None):
         raise ValueError(
             "Exactly one of user_output_{path,digest} should be None.")
+    
+    if realprecision_exponent is None:
+        realprecision_exponent = _derive_realprecision_exponent(job)
 
     if user_output_path is not None:
         # If a path was passed, it might not exist. First, check it does. We
@@ -289,6 +330,10 @@ def eval_output(
             user_output_fobj = file_cacher.get_file(user_output_digest)
         with user_output_fobj:
             with file_cacher.get_file(job.output) as correct_output_fobj:
-                outcome, text = white_diff_fobj_step(
-                    user_output_fobj, correct_output_fobj)
+                if use_realprecision:
+                    outcome, text = realprecision_diff_fobj_step(
+                        user_output_fobj, correct_output_fobj, realprecision_exponent)
+                else:
+                    outcome, text = white_diff_fobj_step(
+                        user_output_fobj, correct_output_fobj)
         return True, outcome, text
