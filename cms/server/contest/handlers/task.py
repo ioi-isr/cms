@@ -40,6 +40,8 @@ except:
 import tornado.web
 
 from cms.server import multi_contest
+from cms.db import StatementView
+from cmscommon.datetime import make_datetime
 from cmscommon.mimetypes import get_type_for_file_name
 from .contest import ContestHandler, FileHandler
 from ..phase_management import actual_phase_required
@@ -89,6 +91,20 @@ class TaskStatementViewHandler(FileHandler):
 
         if lang_code not in task.statements:
             raise tornado.web.HTTPError(404)
+
+        existing_view = self.sql_session.query(StatementView)\
+            .filter(StatementView.participation_id == participation.id)\
+            .filter(StatementView.task_id == task.id)\
+            .first()
+        
+        if existing_view is None:
+            statement_view = StatementView(
+                participation=participation,
+                task=task,
+                timestamp=make_datetime()
+            )
+            self.sql_session.add(statement_view)
+            self.sql_session.commit()
 
         statement = task.statements[lang_code].digest
         self.sql_session.close()

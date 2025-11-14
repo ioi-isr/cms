@@ -31,7 +31,7 @@ import io
 
 from sqlalchemy.orm import joinedload
 
-from cms.db import Contest
+from cms.db import Contest, StatementView
 from cms.grading.scoring import task_score
 from .base import BaseHandler, require_permission
 
@@ -54,8 +54,14 @@ class RankingHandler(BaseHandler):
             .options(joinedload("participations.submissions"))
             .options(joinedload("participations.submissions.token"))
             .options(joinedload("participations.submissions.results"))
+            .options(joinedload("participations.statement_views"))
             .first()
         )
+
+        statement_views_set = set()
+        for p in self.contest.participations:
+            for sv in p.statement_views:
+                statement_views_set.add((sv.participation_id, sv.task_id))
 
         # Preprocess participations: get data about teams, scores
         show_teams = False
@@ -67,7 +73,21 @@ class RankingHandler(BaseHandler):
             partial = False
             for task in self.contest.tasks:
                 t_score, t_partial = task_score(p, task, rounded=True)
-                p.scores.append((t_score, t_partial))
+                
+                has_submissions = any(s.task_id == task.id and s.official 
+                                     for s in p.submissions)
+                has_opened = (p.id, task.id) in statement_views_set
+                
+                if t_partial:
+                    indicator = '*'
+                elif not has_opened:
+                    indicator = 'X'
+                elif not has_submissions:
+                    indicator = '-'
+                else:
+                    indicator = ''
+                
+                p.scores.append((t_score, indicator))
                 total_score += t_score
                 partial = partial or t_partial
             total_score = round(total_score, self.contest.score_precision)
@@ -116,17 +136,17 @@ class RankingHandler(BaseHandler):
                 if show_teams:
                     row.append(p.team.name if p.team else "")
                 assert len(contest.tasks) == len(p.scores)
-                for t_score, t_partial in p.scores:  # Custom field, see above
+                for t_score, indicator in p.scores:
                     row.append(t_score)
                     if include_partial:
-                        row.append("*" if t_partial else "")
+                        row.append(indicator)
 
-                total_score, partial = p.total_score  # Custom field, see above
+                total_score, partial = p.total_score
                 row.append(total_score)
                 if include_partial:
                     row.append("*" if partial else "")
 
-                writer.writerow(row)  # untested
+                writer.writerow(row)
 
             self.finish(output.getvalue())
         else:
