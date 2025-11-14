@@ -7,6 +7,54 @@
 
 {% include "fragments/overload_warning.html" %}
 
+<form action="{{ url("contest", contest.id, "users", "bulk_add") }}" method="POST" enctype="multipart/form-data">
+  {{ xsrf_form_html|safe }}
+  Add users from a list:
+  <input type="file" name="users_file" accept=".txt"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+         />
+  <input type="submit"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+         value="Upload and add users" />
+  <br/>
+  <small>Upload a .txt file with whitespace-separated usernames</small>
+</form>
+
+{% if bulk_add_results %}
+<h2>Bulk Add Results</h2>
+<p>{{ users_added }} user(s) successfully added to the contest.</p>
+<table class="bordered">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Status</th>
+      <th>Message</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for result in bulk_add_results %}
+    <tr>
+      <td>{{ result.username }}</td>
+      <td>
+        {% if result.status == "success" %}
+        <span style="color: green;">✓ Success</span>
+        {% elif result.status == "already_exists" %}
+        <span style="color: orange;">⚠ Already in contest</span>
+        {% else %}
+        <span style="color: red;">✗ Not found</span>
+        {% endif %}
+      </td>
+      <td>{{ result.message }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
 <form action="{{ url("contest", contest.id, "users", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Add a new user:
