@@ -39,6 +39,8 @@ except:
 
 import tornado.web
 
+from sqlalchemy.exc import IntegrityError
+
 from cms.server import multi_contest
 from cms.db import StatementView
 from cmscommon.datetime import make_datetime
@@ -98,13 +100,16 @@ class TaskStatementViewHandler(FileHandler):
             .first()
         
         if existing_view is None:
-            statement_view = StatementView(
-                participation=participation,
-                task=task,
-                timestamp=make_datetime()
-            )
-            self.sql_session.add(statement_view)
-            self.sql_session.commit()
+            try:
+                statement_view = StatementView(
+                    participation=participation,
+                    task=task,
+                    timestamp=make_datetime()
+                )
+                self.sql_session.add(statement_view)
+                self.sql_session.commit()
+            except IntegrityError:
+                self.sql_session.rollback()
 
         statement = task.statements[lang_code].digest
         self.sql_session.close()
