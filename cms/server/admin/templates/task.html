@@ -477,6 +477,9 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
             <th>#</th>
             <th>Codename</th>
             <th>Public</th>
+            {% if dataset.id in testcase_subtasks %}
+            <th>Subtasks</th>
+            {% endif %}
             <th>Input</th>
             <th>Output</th>
             <th>Ops</th>
@@ -490,6 +493,15 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
             <td style="font-weight:bold;">
               <input type="checkbox" name="testcase_{{ testcase.id }}_public" {% if testcase.public %}checked{% endif %} />
             </td>
+            {% if dataset.id in testcase_subtasks %}
+            <td>
+              {% if codename in testcase_subtasks[dataset.id] %}
+                {{ testcase_subtasks[dataset.id][codename]|join(", ") }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            {% endif %}
             <td>
               <a href="javascript:void(0);" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')">Show input</a>
             </td>
