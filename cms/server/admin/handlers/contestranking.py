@@ -68,7 +68,8 @@ class RankingHandler(BaseHandler):
         for p in self.contest.participations:
             show_teams = show_teams or p.team_id
 
-            p.scores = []
+            p.scores_export = []  # For CSV/TXT: (score, indicator)
+            p.scores_html = []    # For HTML: (display_text, use_partial_class)
             total_score = 0.0
             partial = False
             for task in self.contest.tasks:
@@ -78,16 +79,33 @@ class RankingHandler(BaseHandler):
                                      for s in p.submissions)
                 has_opened = (p.id, task.id) in statement_views_set
                 
-                if t_partial:
-                    indicator = '*'
-                elif not has_opened:
-                    indicator = 'X'
-                elif not has_submissions:
-                    indicator = '-'
+                if not has_opened and not has_submissions:
+                    export_indicator = 'X'
+                elif has_opened and not has_submissions:
+                    export_indicator = '-'
+                elif not has_opened and has_submissions:
+                    export_indicator = '!*' if t_partial else '!'
+                elif has_opened and has_submissions and t_partial:
+                    export_indicator = '*'
                 else:
-                    indicator = ''
+                    export_indicator = ''
                 
-                p.scores.append((t_score, indicator))
+                if not has_opened and not has_submissions:
+                    html_display = '🙈'
+                    use_partial_class = False
+                elif has_opened and not has_submissions:
+                    html_display = '💤'
+                    use_partial_class = False
+                elif not has_opened and has_submissions:
+                    star = '*' if t_partial else ''
+                    html_display = f'⚠️{t_score}{star}🙈⚠️'
+                    use_partial_class = False
+                else:
+                    html_display = str(t_score)
+                    use_partial_class = t_partial
+                
+                p.scores_export.append((t_score, export_indicator))
+                p.scores_html.append((html_display, use_partial_class))
                 total_score += t_score
                 partial = partial or t_partial
             total_score = round(total_score, self.contest.score_precision)
@@ -135,8 +153,8 @@ class RankingHandler(BaseHandler):
                        "%s %s" % (p.user.first_name, p.user.last_name)]
                 if show_teams:
                     row.append(p.team.name if p.team else "")
-                assert len(contest.tasks) == len(p.scores)
-                for t_score, indicator in p.scores:
+                assert len(contest.tasks) == len(p.scores_export)
+                for t_score, indicator in p.scores_export:
                     row.append(t_score)
                     if include_partial:
                         row.append(indicator)
