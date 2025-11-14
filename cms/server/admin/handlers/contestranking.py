@@ -113,15 +113,21 @@ class RankingHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["show_teams"] = show_teams
+        
+        date_str = self.contest.start.strftime("%Y%m%d")
+        contest_name = self.contest.name.replace(" ", "_")
+        
         if format == "txt":
+            filename = f"{date_str}_{contest_name}_ranking.txt"
             self.set_header("Content-Type", "text/plain")
             self.set_header("Content-Disposition",
-                            "attachment; filename=\"ranking.txt\"")
+                            f"attachment; filename=\"{filename}\"")
             self.render("ranking.txt", **self.r_params)
         elif format == "csv":
+            filename = f"{date_str}_{contest_name}_ranking.csv"
             self.set_header("Content-Type", "text/csv")
             self.set_header("Content-Disposition",
-                            "attachment; filename=\"ranking.csv\"")
+                            f"attachment; filename=\"{filename}\"")
 
             output = io.StringIO()  # untested
             writer = csv.writer(output)
