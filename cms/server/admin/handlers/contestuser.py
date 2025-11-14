@@ -57,6 +57,7 @@ class ContestUsersHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["contest"] = self.contest
+        self.r_params["bulk_add_results"] = None
         self.r_params["unassigned_users"] = \
             self.sql_session.query(User)\
                 .filter(User.id.notin_(
