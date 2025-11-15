@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Edit Model Solution</h1>
+</div>
+<form action="{{ url("model_solution", meta.id, "edit") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>Description:</td>
+      <td><input type="text" name="description" value="{{ meta.description }}" required /></td>
+    </tr>
+    <tr>
+      <td>Expected Score Min:</td>
+      <td><input type="number" step="0.01" name="expected_score_min" value="{{ meta.expected_score_min }}" required /></td>
+    </tr>
+    <tr>
+      <td>Expected Score Max:</td>
+      <td><input type="number" step="0.01" name="expected_score_max" value="{{ meta.expected_score_max }}" required /></td>
+    </tr>
+  </table>
+  <input type="submit" value="Update">
+  <input type="reset" value="Reset">
+</form>
+{% endblock core %}
