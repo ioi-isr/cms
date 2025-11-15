@@ -407,6 +407,32 @@ class DocumentationHandler(ContestHandler):
                     **self.r_params)
 
 
+def translate_text(source_text, source_lang, target_lang, supported_languages):
+    """Translate text from source language to target language.
+
+    Returns a tuple of (translation_result, error_message).
+    If successful, translation_result is the translated text and error_message is None.
+    If failed, translation_result is None and error_message contains the error.
+
+    """
+    if not source_text:
+        return None, N_("Please enter text to translate.")
+    if source_lang not in supported_languages:
+        return None, N_("Invalid source language.")
+    if target_lang not in supported_languages:
+        return None, N_("Invalid target language.")
+    if source_lang == target_lang:
+        return None, N_("Source and target languages must be different.")
+
+    try:
+        translator = GoogleTranslator(source=source_lang, target=target_lang)
+        translation_result = translator.translate(source_text)
+        return translation_result, None
+    except Exception as e:
+        logger.error("Translation error: %s", str(e))
+        return None, N_("Translation failed. Please try again.")
+
+
 class TranslationHandler(ContestHandler):
     """Handles text translation for contestants.
 
@@ -423,6 +449,11 @@ class TranslationHandler(ContestHandler):
     def get(self):
         self.render("translation.html",
                     supported_languages=self.SUPPORTED_LANGUAGES,
+                    error_message=None,
+                    source_text="",
+                    source_lang="",
+                    target_lang="",
+                    translation_result=None,
                     **self.r_params)
 
     @tornado.web.authenticated
@@ -432,24 +463,8 @@ class TranslationHandler(ContestHandler):
         source_lang = self.get_argument("source_lang", "")
         target_lang = self.get_argument("target_lang", "")
 
-        translation_result = None
-        error_message = None
-
-        if not source_text:
-            error_message = N_("Please enter text to translate.")
-        elif source_lang not in self.SUPPORTED_LANGUAGES:
-            error_message = N_("Invalid source language.")
-        elif target_lang not in self.SUPPORTED_LANGUAGES:
-            error_message = N_("Invalid target language.")
-        elif source_lang == target_lang:
-            error_message = N_("Source and target languages must be different.")
-        else:
-            try:
-                translator = GoogleTranslator(source=source_lang, target=target_lang)
-                translation_result = translator.translate(source_text)
-            except Exception as e:
-                logger.error("Translation error: %s", str(e))
-                error_message = N_("Translation failed. Please try again.")
+        translation_result, error_message = translate_text(
+            source_text, source_lang, target_lang, self.SUPPORTED_LANGUAGES)
 
         self.render("translation.html",
                     supported_languages=self.SUPPORTED_LANGUAGES,
