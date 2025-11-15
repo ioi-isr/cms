@@ -533,11 +533,10 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
               {% endif %}
             </td>
             <td>
-              <form action="{{ url("submission", submission.id, dataset.id, "comment") }}" method="POST" style="display:inline;">
-                {{ xsrf_form_html|safe }}
-                <input type="text" name="comment" value="{{ submission.comment if submission.comment else "" }}" size="20" />
-                <input type="submit" value="Set" />
-              </form>
+              <input type="text" name="comment_{{ submission.id }}" value="{{ submission.comment if submission.comment else "" }}" size="20" />
+              <input type="submit" value="Set" 
+                     formaction="{{ url("submission", submission.id, dataset.id, "comment") }}" 
+                     formmethod="POST" />
             </td>
             <td>
 {% from "macro/reevaluation_buttons.html" import reevaluation_buttons %}

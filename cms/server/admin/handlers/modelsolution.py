@@ -40,6 +40,17 @@ class AddModelSolutionHandler(BaseHandler):
 
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.render("add_model_solution.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
@@ -65,8 +76,6 @@ class AddModelSolutionHandler(BaseHandler):
                     "Minimum score cannot be greater than maximum score")
 
             required_codenames = set(task.submission_format)
-            task_type = dataset.task_type_object
-            required_codenames.update(task_type.get_user_managers())
 
             archive_size_limit = config.contest_web_server.max_submission_length * len(
                 required_codenames
@@ -149,8 +158,9 @@ class AddModelSolutionHandler(BaseHandler):
                 "Model solution %s added to task %s" % (
                     attrs["description"], task.name))
 
-            self.service.evaluation_service.new_submission(
-                submission_id=submission.id)
+            self.service.evaluation_service.new_evaluation(
+                submission_id=submission.id,
+                dataset_id=dataset.id)
 
         self.redirect(self.url("task", task.id))
 
