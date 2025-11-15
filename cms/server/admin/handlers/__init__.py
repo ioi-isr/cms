@@ -119,6 +119,7 @@ from .usertest import \
 from .modelsolution import \
     AddModelSolutionHandler, \
     ModelSolutionHandler, \
+    EditModelSolutionHandler, \
     DeleteModelSolutionHandler
 
 
@@ -253,6 +254,7 @@ HANDLERS = [
 
     (r"/dataset/([0-9]+)/model_solutions/add", AddModelSolutionHandler),
     (r"/model_solution/([0-9]+)(?:/([0-9]+))?", ModelSolutionHandler),
+    (r"/model_solution/([0-9]+)/edit", EditModelSolutionHandler),
     (r"/model_solution/([0-9]+)/delete", DeleteModelSolutionHandler),
 
     # The following prefixes are handled by WSGI middlewares:
