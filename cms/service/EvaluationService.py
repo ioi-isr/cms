@@ -951,6 +951,7 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 participation_id,
                 task_id,
                 submission_id,
+                include_model_solutions=True,
             ).all()
 
             # Then we get all relevant operations, and we remove them
@@ -984,6 +985,7 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 task_id if dataset_id is None else None,
                 submission_id,
                 dataset_id,
+                include_model_solutions=True,
             ).all()
             logger.info("Submission results to invalidate %s for: %d.",
                         level, len(submission_results))
