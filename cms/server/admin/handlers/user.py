@@ -50,6 +50,7 @@ class UserHandler(BaseHandler):
                     self.sql_session.query(Participation.contest_id)
                         .filter(Participation.user == user)
                         .all()))\
+                .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
                 .all()
         self.render("user.html", **self.r_params)
 
