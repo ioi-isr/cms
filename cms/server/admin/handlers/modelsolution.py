@@ -158,9 +158,8 @@ class AddModelSolutionHandler(BaseHandler):
                 "Model solution %s added to task %s" % (
                     attrs["description"], task.name))
 
-            self.service.evaluation_service.new_evaluation(
-                submission_id=submission.id,
-                dataset_id=dataset.id)
+            self.service.evaluation_service.new_submission(
+                submission_id=submission.id)
 
         self.redirect(self.url("task", task.id))
 
