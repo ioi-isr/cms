@@ -128,10 +128,19 @@ class ContestHandler(BaseHandler):
                 super().prepare()
                 self.r_params = super().render_params()
                 raise tornado.web.HTTPError(404)
+            if self.contest.name.startswith("__"):
+                super().prepare()
+                self.r_params = super().render_params()
+                raise tornado.web.HTTPError(404)
         else:
             # Select the contest specified on the command line
             self.contest = Contest.get_from_id(
                 self.service.contest_id, self.sql_session)
+            if self.contest is not None and \
+                    self.contest.name.startswith("__"):
+                super().prepare()
+                self.r_params = super().render_params()
+                raise tornado.web.HTTPError(404)
 
     def get_current_user(self) -> Participation | None:
         """Return the currently logged in participation.
