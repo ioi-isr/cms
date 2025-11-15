@@ -246,8 +246,10 @@ class ContestFolderBrowseHandler(BaseHandler):
         Excludes hidden folders and their descendants from the tree.
         """
         all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
-        all_contests = self.sql_session.query(Contest).order_by(Contest.name).all()
-        
+        all_contests = self.sql_session.query(Contest)\
+            .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
+            .order_by(Contest.name).all()
+
         folder_map = {}
         for folder in all_folders:
             folder_map[folder.id] = {
@@ -317,6 +319,7 @@ class ContestFolderBrowseHandler(BaseHandler):
             contests = (
                 self.sql_session.query(Contest)
                 .filter(Contest.folder_id.is_(None))
+                .filter(~Contest.name.like(r'\_\_%', escape='\\'))
                 .all()
             )
         else:
@@ -330,6 +333,7 @@ class ContestFolderBrowseHandler(BaseHandler):
             contests = (
                 self.sql_session.query(Contest)
                 .filter(Contest.folder == cur_folder)
+                .filter(~Contest.name.like(r'\_\_%', escape='\\'))
                 .all()
             )
 

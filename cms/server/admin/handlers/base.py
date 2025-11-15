@@ -347,10 +347,20 @@ class BaseHandler(CommonRequestHandler):
                 .count()
         # TODO: not all pages require all these data.
         # TODO: use a better sorting method.
-        params["contest_list"] = self.sql_session.query(Contest).order_by(Contest.name).all()
-        params["task_list"] = self.sql_session.query(Task).order_by(Task.name).all()
-        params["user_list"] = self.sql_session.query(User).order_by(User.username).all()
-        params["team_list"] = self.sql_session.query(Team).order_by(Team.name).all()
+        params["contest_list"] = [
+            c for c in self.sql_session.query(Contest)
+            .order_by(Contest.name).all()
+            if not c.name.startswith("__")
+        ]
+        params["task_list"] = self.sql_session.query(Task)\
+            .order_by(Task.name).all()
+        params["user_list"] = [
+            u for u in self.sql_session.query(User)
+            .order_by(User.username).all()
+            if not u.username.startswith("__")
+        ]
+        params["team_list"] = self.sql_session.query(Team)\
+            .order_by(Team.name).all()
         return params
 
     def write_error(self, status_code, **kwargs):
