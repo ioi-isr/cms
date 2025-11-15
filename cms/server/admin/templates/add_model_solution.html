@@ -13,8 +13,7 @@
       <td><input type="text" name="description" required /></td>
     </tr>
 {% set allowed_langs = task.get_allowed_languages() or [] %}
-{% set needs_language = allowed_langs and task.submission_format|select("match", ".*\\.%l$")|list|length > 0 %}
-{% if needs_language %}
+{% if allowed_langs %}
     <tr>
       <td>Language:</td>
       <td>
