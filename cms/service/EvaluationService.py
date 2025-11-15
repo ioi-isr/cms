@@ -1006,6 +1006,87 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         logger.info("Invalidate successfully completed.")
 
     @rpc_method
+    @with_post_finish_lock
+    def invalidate_model_solutions(
+        self,
+        dataset_id: int,
+        level: str = "compilation",
+        testcase_id: int | None = None,
+        archive_sandbox: bool = False,
+    ):
+        """Request to invalidate computed data for all model solutions of a dataset.
+
+        This method invalidates only model solutions (not regular submissions)
+        for the specified dataset. It's similar to invalidate_submission but
+        explicitly filters to only model solutions via ModelSolutionMeta.
+
+        dataset_id: id of the dataset whose model solutions should be invalidated.
+        level: 'compilation' or 'evaluation'
+        testcase_id: id of the testcase to invalidate, or None.
+        archive_sandbox: whether to store submission output.
+
+        """
+        logger.info("Model solution invalidation request received for dataset %d.",
+                    dataset_id)
+
+        # Validate arguments
+        if level not in ("compilation", "evaluation"):
+            raise ValueError(
+                "Unexpected invalidation level `%s'." % level)
+
+        with SessionGen() as session:
+            from cms.db import ModelSolutionMeta
+
+            model_solution_metas = session.query(ModelSolutionMeta).filter(
+                ModelSolutionMeta.dataset_id == dataset_id
+            ).all()
+
+            submissions = [meta.submission for meta in model_solution_metas]
+
+            if not submissions:
+                logger.info("No model solutions found for dataset %d.", dataset_id)
+                session.commit()
+                return
+
+            operations = get_relevant_operations(
+                level, submissions, dataset_id)
+            for operation in operations:
+                try:
+                    self.dequeue(operation)
+                except KeyError:
+                    pass  # Ok, the operation wasn't in the queue.
+                try:
+                    self.get_executor().pool.ignore_operation(operation)
+                except LookupError:
+                    pass  # Ok, the operation wasn't in the pool.
+
+            # Get submission results for model solutions only
+            submission_results = session.query(SubmissionResult).join(
+                Submission
+            ).join(
+                ModelSolutionMeta,
+                ModelSolutionMeta.submission_id == Submission.id
+            ).filter(
+                SubmissionResult.dataset_id == dataset_id,
+                ModelSolutionMeta.dataset_id == dataset_id
+            ).all()
+
+            logger.info("Model solution results to invalidate %s for: %d.",
+                        level, len(submission_results))
+            for submission_result in submission_results:
+                # Invalidate the appropriate data
+                if level == "compilation":
+                    submission_result.invalidate_compilation()
+                elif level == "evaluation":
+                    submission_result.invalidate_evaluation(testcase_id=testcase_id)
+
+            for submission in submissions:
+                self.submission_enqueue_operations(submission, archive_sandbox)
+
+            session.commit()
+        logger.info("Model solution invalidation successfully completed.")
+
+    @rpc_method
     def disable_worker(self, shard: int) -> bool:
         """Disable a specific worker (recovering its assigned operations).
 

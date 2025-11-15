@@ -473,6 +473,34 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
   </h4>
     <div id="model_solutions_{{ dataset.id }}" class="task_dataset_model_solutions">
       <p>Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.</p>
+{% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
+      <p>
+        <strong>Reevaluate all model solutions:</strong>
+        <button onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+                         'EvaluationService', 0,
+                         'invalidate_model_solutions', {
+                         'dataset_id': {{ dataset.id }},
+                         'level': 'compilation'},
+                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                         );"
+                title="Compilation" >C</button>
+        <button onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+                         'EvaluationService', 0,
+                         'invalidate_model_solutions', {
+                         'dataset_id': {{ dataset.id }},
+                         'level': 'evaluation'},
+                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                         );"
+                title="Evaluation" >E</button>
+        <button onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+                         'ScoringService', 0,
+                         'invalidate_model_solutions', {
+                         'dataset_id': {{ dataset.id }}},
+                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                         );"
+                title="Score" >S</button>
+      </p>
+{% endif %}
       <table class="bordered" style="text-align:center">
         <thead>
           <tr>
