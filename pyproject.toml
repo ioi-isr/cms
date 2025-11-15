@@ -51,6 +51,9 @@ dependencies = [
 
     # Only for cmsTelegramBot
     "python-telegram-bot>=21.9,<21.12", # https://pypi.org/project/python-telegram-bot
+
+    # Only for translation feature
+    "deep-translator>=1.11,<2.0",  # https://pypi.org/project/deep-translator
 ]
 
 [project.urls]

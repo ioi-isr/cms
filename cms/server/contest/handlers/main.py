@@ -36,6 +36,8 @@ import re
 
 import collections
 
+from deep_translator import GoogleTranslator
+
 from cms.db.contest import Contest
 
 try:
@@ -402,4 +404,58 @@ class DocumentationHandler(ContestHandler):
                     COMPILATION_MESSAGES=COMPILATION_MESSAGES,
                     EVALUATION_MESSAGES=EVALUATION_MESSAGES,
                     language_docs=language_docs,
+                    **self.r_params)
+
+
+class TranslationHandler(ContestHandler):
+    """Handles text translation for contestants.
+
+    """
+    SUPPORTED_LANGUAGES = {
+        'en': 'English',
+        'he': 'Hebrew',
+        'ru': 'Russian',
+        'ar': 'Arabic'
+    }
+
+    @tornado.web.authenticated
+    @multi_contest
+    def get(self):
+        self.render("translation.html",
+                    supported_languages=self.SUPPORTED_LANGUAGES,
+                    **self.r_params)
+
+    @tornado.web.authenticated
+    @multi_contest
+    def post(self):
+        source_text = self.get_argument("source_text", "")
+        source_lang = self.get_argument("source_lang", "")
+        target_lang = self.get_argument("target_lang", "")
+
+        translation_result = None
+        error_message = None
+
+        if not source_text:
+            error_message = N_("Please enter text to translate.")
+        elif source_lang not in self.SUPPORTED_LANGUAGES:
+            error_message = N_("Invalid source language.")
+        elif target_lang not in self.SUPPORTED_LANGUAGES:
+            error_message = N_("Invalid target language.")
+        elif source_lang == target_lang:
+            error_message = N_("Source and target languages must be different.")
+        else:
+            try:
+                translator = GoogleTranslator(source=source_lang, target=target_lang)
+                translation_result = translator.translate(source_text)
+            except Exception as e:
+                logger.error("Translation error: %s", str(e))
+                error_message = N_("Translation failed. Please try again.")
+
+        self.render("translation.html",
+                    supported_languages=self.SUPPORTED_LANGUAGES,
+                    source_text=source_text,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    translation_result=translation_result,
+                    error_message=error_message,
                     **self.r_params)

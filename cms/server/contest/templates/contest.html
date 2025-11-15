@@ -194,6 +194,9 @@ $(document).ready(function () {
                             <li{% if page == "documentation" %} class="active"{% endif %}>
                                 <a href="{{ contest_url("documentation") }}">{% trans %}Documentation{% endtrans %}</a>
                             </li>
+                            <li{% if page == "translation" %} class="active"{% endif %}>
+                                <a href="{{ contest_url("translation") }}">{% trans %}Translation{% endtrans %}</a>
+                            </li>
     {% if actual_phase == 0 or participation.unrestricted %}{# FIXME maybe >= 0? #}
         {% if testing_enabled %}
                             <li{% if page == "test_interface" %} class="active"{% endif %}>
