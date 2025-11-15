@@ -28,12 +28,18 @@
 
 import csv
 import io
+from collections import namedtuple
 
 from sqlalchemy.orm import joinedload
 
 from cms.db import Contest, StatementView
 from cms.grading.scoring import task_score
 from .base import BaseHandler, require_permission
+
+
+TaskStatus = namedtuple(
+    "TaskStatus", ["score", "partial", "has_submissions", "has_opened"]
+)
 
 
 class RankingHandler(BaseHandler):
@@ -68,8 +74,7 @@ class RankingHandler(BaseHandler):
         for p in self.contest.participations:
             show_teams = show_teams or p.team_id
 
-            p.scores_export = []  # For CSV/TXT: (score, indicator)
-            p.scores_html = []    # For HTML: (display_text, use_partial_class)
+            p.task_statuses = []  # status per task for rendering/export
             total_score = 0.0
             partial = False
             for task in self.contest.tasks:
@@ -78,34 +83,14 @@ class RankingHandler(BaseHandler):
                 has_submissions = any(s.task_id == task.id and s.official 
                                      for s in p.submissions)
                 has_opened = (p.id, task.id) in statement_views_set
-                
-                if not has_opened and not has_submissions:
-                    export_indicator = 'X'
-                elif has_opened and not has_submissions:
-                    export_indicator = '-'
-                elif not has_opened and has_submissions:
-                    export_indicator = '!*' if t_partial else '!'
-                elif has_opened and has_submissions and t_partial:
-                    export_indicator = '*'
-                else:
-                    export_indicator = ''
-                
-                if not has_opened and not has_submissions:
-                    html_display = '🙈'
-                    use_partial_class = False
-                elif has_opened and not has_submissions:
-                    html_display = '💤'
-                    use_partial_class = False
-                elif not has_opened and has_submissions:
-                    star = '*' if t_partial else ''
-                    html_display = f'⚠️{t_score}{star}🙈⚠️'
-                    use_partial_class = False
-                else:
-                    html_display = str(t_score)
-                    use_partial_class = t_partial
-                
-                p.scores_export.append((t_score, export_indicator))
-                p.scores_html.append((html_display, use_partial_class))
+                p.task_statuses.append(
+                    TaskStatus(
+                        score=t_score,
+                        partial=t_partial,
+                        has_submissions=has_submissions,
+                        has_opened=has_opened,
+                    )
+                )
                 total_score += t_score
                 partial = partial or t_partial
             total_score = round(total_score, self.contest.score_precision)
@@ -159,11 +144,11 @@ class RankingHandler(BaseHandler):
                        "%s %s" % (p.user.first_name, p.user.last_name)]
                 if show_teams:
                     row.append(p.team.name if p.team else "")
-                assert len(contest.tasks) == len(p.scores_export)
-                for t_score, indicator in p.scores_export:
-                    row.append(t_score)
+                assert len(contest.tasks) == len(p.task_statuses)
+                for status in p.task_statuses:
+                    row.append(status.score)
                     if include_partial:
-                        row.append(indicator)
+                        row.append(self._status_indicator(status))
 
                 total_score, partial = p.total_score
                 row.append(total_score)
@@ -175,3 +160,12 @@ class RankingHandler(BaseHandler):
             self.finish(output.getvalue())
         else:
             self.render("ranking.html", **self.r_params)
+
+    @staticmethod
+    def _status_indicator(status: TaskStatus) -> str:
+        star = "*" if status.partial else ""
+        if not status.has_submissions:
+            return "X" if not status.has_opened else "-"
+        if not status.has_opened:
+            return "!" + star
+        return star
