@@ -43,7 +43,9 @@ RPCS_ALLOWED_FOR_ALL = RPCS_ALLOWED_FOR_MESSAGING + [
     ("EvaluationService", "disable_worker"),
     ("EvaluationService", "set_workers_count"),
     ("EvaluationService", "invalidate_submission"),
+    ("EvaluationService", "invalidate_model_solutions"),
     ("ScoringService", "invalidate_submission"),
+    ("ScoringService", "invalidate_model_solutions"),
 ]
 
 
