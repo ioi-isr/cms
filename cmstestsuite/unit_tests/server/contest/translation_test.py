@@ -69,7 +69,7 @@ class TestTranslateText(unittest.TestCase):
 
         self.assertIsNone(error)
         self.assertEqual(result, "שלום")
-        mock_translator_class.assert_called_once_with(source="en", target="he")
+        mock_translator_class.assert_called_once_with(source="en", target="iw")
         mock_translator.translate.assert_called_once_with("Hello")
 
     @patch('cms.server.contest.handlers.main.GoogleTranslator')
@@ -123,6 +123,70 @@ class TestTranslateText(unittest.TestCase):
 
         self.assertIsNone(error)
         self.assertEqual(result, "translated special")
+
+    @patch('cms.server.contest.handlers.main.GoogleTranslator')
+    def test_hebrew_normalization_he_to_iw(self, mock_translator_class):
+        mock_translator = Mock()
+        mock_translator.translate.return_value = "שלום"
+        mock_translator_class.return_value = mock_translator
+
+        result, error = translate_text("Hello", "en", "he", SUPPORTED_LANGUAGES)
+
+        self.assertIsNone(error)
+        mock_translator_class.assert_called_once_with(source="en", target="iw")
+
+    @patch('cms.server.contest.handlers.main.GoogleTranslator')
+    def test_hebrew_iw_alias_accepted(self, mock_translator_class):
+        mock_translator = Mock()
+        mock_translator.translate.return_value = "Hello"
+        mock_translator_class.return_value = mock_translator
+
+        result, error = translate_text("שלום", "iw", "en", SUPPORTED_LANGUAGES)
+
+        self.assertIsNone(error)
+        mock_translator_class.assert_called_once_with(source="iw", target="en")
+
+    @patch('cms.server.contest.handlers.main.GoogleTranslator')
+    def test_auto_detect_source_language(self, mock_translator_class):
+        mock_translator = Mock()
+        mock_translator.translate.return_value = "Hello"
+        mock_translator_class.return_value = mock_translator
+
+        result, error = translate_text("שלום", "auto", "en", SUPPORTED_LANGUAGES)
+
+        self.assertIsNone(error)
+        mock_translator_class.assert_called_once_with(source="auto", target="en")
+
+    def test_auto_as_target_rejected(self):
+        result, error = translate_text("Hello", "en", "auto", SUPPORTED_LANGUAGES)
+
+        self.assertIsNone(result)
+        self.assertIsNotNone(error)
+        self.assertIn("cannot use auto-detect as target", error.lower())
+
+    @patch('cms.server.contest.handlers.main.GoogleTranslator')
+    def test_auto_source_with_same_target_allowed(self, mock_translator_class):
+        mock_translator = Mock()
+        mock_translator.translate.return_value = "Hello"
+        mock_translator_class.return_value = mock_translator
+
+        result, error = translate_text("Hello", "auto", "en", SUPPORTED_LANGUAGES)
+
+        self.assertIsNone(error)
+        self.assertEqual(result, "Hello")
+
+    @patch('cms.server.contest.handlers.main.GoogleTranslator')
+    def test_russian_and_arabic_no_normalization(self, mock_translator_class):
+        mock_translator = Mock()
+        mock_translator.translate.return_value = "translated"
+        mock_translator_class.return_value = mock_translator
+
+        translate_text("Hello", "en", "ru", SUPPORTED_LANGUAGES)
+        mock_translator_class.assert_called_with(source="en", target="ru")
+
+        mock_translator_class.reset_mock()
+        translate_text("Hello", "en", "ar", SUPPORTED_LANGUAGES)
+        mock_translator_class.assert_called_with(source="en", target="ar")
 
 
 if __name__ == "__main__":

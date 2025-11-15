@@ -24,7 +24,7 @@
         <label class="control-label" for="source_lang">{% trans %}Source Language{% endtrans %}</label>
         <div class="controls">
             <select name="source_lang" id="source_lang" class="input-xlarge" required>
-                <option value="">{% trans %}Select source language{% endtrans %}</option>
+                <option value="auto"{% if source_lang == "auto" %} selected{% endif %}>{% trans %}Detect Language{% endtrans %}</option>
                 {% for code, name in supported_languages.items() %}
                 <option value="{{ code }}"{% if source_lang == code %} selected{% endif %}>{{ name }}</option>
                 {% endfor %}

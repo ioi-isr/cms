@@ -407,6 +407,16 @@ class DocumentationHandler(ContestHandler):
                     **self.r_params)
 
 
+GOOGLE_TRANSLATE_CODE_MAP = {
+    'en': 'en',
+    'he': 'iw',
+    'iw': 'iw',
+    'ru': 'ru',
+    'ar': 'ar',
+    'auto': 'auto'
+}
+
+
 def translate_text(source_text, source_lang, target_lang, supported_languages):
     """Translate text from source language to target language.
 
@@ -417,15 +427,31 @@ def translate_text(source_text, source_lang, target_lang, supported_languages):
     """
     if not source_text:
         return None, N_("Please enter text to translate.")
-    if source_lang not in supported_languages:
+    
+    supported_language_codes = set(supported_languages.keys())
+    supported_language_codes |= {
+        GOOGLE_TRANSLATE_CODE_MAP[lang]
+        for lang in supported_languages
+        if lang in GOOGLE_TRANSLATE_CODE_MAP
+    }
+    
+    allowed_source_codes = supported_language_codes | {'auto'}
+    allowed_target_codes = supported_language_codes
+
+    if source_lang not in allowed_source_codes:
         return None, N_("Invalid source language.")
-    if target_lang not in supported_languages:
+    if target_lang == 'auto':
+        return None, N_("Cannot use auto-detect as target language.")
+    if target_lang not in allowed_target_codes:
         return None, N_("Invalid target language.")
-    if source_lang == target_lang:
+    if source_lang == target_lang and source_lang != 'auto':
         return None, N_("Source and target languages must be different.")
+    
+    normalized_source = GOOGLE_TRANSLATE_CODE_MAP.get(source_lang, source_lang)
+    normalized_target = GOOGLE_TRANSLATE_CODE_MAP.get(target_lang, target_lang)
 
     try:
-        translator = GoogleTranslator(source=source_lang, target=target_lang)
+        translator = GoogleTranslator(source=normalized_source, target=normalized_target)
         translation_result = translator.translate(source_text)
         return translation_result, None
     except Exception as e:
@@ -451,7 +477,7 @@ class TranslationHandler(ContestHandler):
                     supported_languages=self.SUPPORTED_LANGUAGES,
                     error_message=None,
                     source_text="",
-                    source_lang="",
+                    source_lang="auto",
                     target_lang="",
                     translation_result=None,
                     **self.r_params)
