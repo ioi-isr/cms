@@ -1,3 +1,5 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+
 {% extends "base.html" %}
 
 {% block js_init %}
@@ -533,14 +535,14 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
               {% endif %}
             </td>
             <td>
-              <input type="text" name="comment_{{ submission.id }}" value="{{ submission.comment if submission.comment else "" }}" size="20" />
-              <input type="submit" value="Set" 
-                     formaction="{{ url("submission", submission.id, dataset.id, "comment") }}" 
-                     formmethod="POST" />
+              {{ submission.comment if submission.comment else "" }}
             </td>
             <td>
-{% from "macro/reevaluation_buttons.html" import reevaluation_buttons %}
-{{ reevaluation_buttons(admin.permission_all, url("task", task.id), submission_id=submission.id, dataset_id=dataset.id) }}
+            {{ macro_reevaluation_buttons.reevaluation_buttons(
+                 admin.permission_all,
+                 url("task", task.id),
+                 submission_id=submission.id,
+                 dataset_id=dataset.id) }}
             </td>
             <td>
               <a href="{{ url("model_solution", meta.id, "edit") }}">Edit</a>
