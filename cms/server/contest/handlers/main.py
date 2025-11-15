@@ -153,6 +153,8 @@ class RegistrationHandler(ContestHandler):
                 raise ValueError()
             if not re.match(r"^[A-Za-z0-9_-]+$", username):
                 raise ValueError()
+            if username.startswith("__"):
+                raise ValueError()
             if not self.MIN_PASSWORD_LENGTH <= len(password) \
                     <= self.MAX_INPUT_LENGTH:
                 raise ValueError()
