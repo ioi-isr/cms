@@ -201,7 +201,9 @@ class ContestListHandler(BaseHandler):
         # We need this to be computed for each request because we want to be
         # able to import new contests without having to restart CWS.
         contest_list = dict()
-        for contest in self.sql_session.query(Contest).all():
+        for contest in self.sql_session.query(Contest)\
+                .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
+                .all():
             contest: Contest
             contest_list[contest.name] = contest
         self.render("contest_list.html", contest_list=contest_list,
