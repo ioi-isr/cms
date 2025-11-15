@@ -56,6 +56,7 @@ class UserHandler(BaseHandler):
                     self.sql_session.query(Participation.contest_id)
                         .filter(Participation.user == user)
                         .all()))\
+                .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
                 .all()
         self.render("user.html", **self.r_params)
 
@@ -91,6 +92,8 @@ class UserHandler(BaseHandler):
 
             assert attrs.get("username") is not None, \
                 "No username specified."
+            assert not attrs.get("username").startswith("__"), \
+                "Username cannot start with '__' (reserved for system users)."
 
             # Update the user.
             user.set_attrs(attrs)
@@ -578,6 +581,8 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
 
             assert attrs.get("username") is not None, \
                 "No username specified."
+            assert not attrs.get("username").startswith("__"), \
+                "Username cannot start with '__' (reserved for system users)."
 
             # Validate password strength unless explicitly bypassed
             # (e.g., for imports or tests)
