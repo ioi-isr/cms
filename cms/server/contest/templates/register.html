@@ -171,6 +171,10 @@ $(document).ready(function() {
                         $("#username-input").addClass("error");
                         $("#username-input span.help-block").text("{% trans %}Username may only contain letters, digits, underscores, and hyphens.{% endtrans %}");
                         $("#username").focus();
+                    } else if (payload.code === "invalid_username_start") {
+                        $("#username-input").addClass("error");
+                        $("#username-input span.help-block").text("{% trans %}Username may not start in __.{% endtrans %}");
+                        $("#username").focus();
                     } else if (payload.code === "invalid_username_length") {
                         $("#username-input").addClass("error");
                         $("#username-input span.help-block").text("{% trans %}Username must be between 1 and {{ MAX_INPUT_LENGTH }} characters.{% endtrans %}");
