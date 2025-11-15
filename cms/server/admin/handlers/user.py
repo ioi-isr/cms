@@ -74,6 +74,8 @@ class UserHandler(BaseHandler):
 
             assert attrs.get("username") is not None, \
                 "No username specified."
+            assert not attrs.get("username").startswith("__"), \
+                "Username cannot start with '__' (reserved for system users)."
 
             # Update the user.
             user.set_attrs(attrs)
@@ -300,6 +302,8 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
 
             assert attrs.get("username") is not None, \
                 "No username specified."
+            assert not attrs.get("username").startswith("__"), \
+                "Username cannot start with '__' (reserved for system users)."
 
             self.get_string(attrs, "timezone", empty=None)
 
