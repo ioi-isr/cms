@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Add Model Solution</h1>
+</div>
+<p>Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.</p>
+<form enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "model_solutions", "add") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>Description:</td>
+      <td><input type="text" name="description" required /></td>
+    </tr>
+{% set allowed_langs = task.get_allowed_languages() or [] %}
+{% set needs_language = allowed_langs and task.submission_format|select("match", ".*\\.%l$")|list|length > 0 %}
+{% if needs_language %}
+    <tr>
+      <td>Language:</td>
+      <td>
+        <select name="language" required>
+          <option value="" disabled selected>-- Select Language --</option>
+{% for lang in allowed_langs %}
+          <option value="{{ lang }}">{{ lang }}</option>
+{% endfor %}
+        </select>
+      </td>
+    </tr>
+{% endif %}
+    <tr>
+      <td>Expected Score Min:</td>
+      <td><input type="number" step="0.01" name="expected_score_min" value="0.0" required /></td>
+    </tr>
+    <tr>
+      <td>Expected Score Max:</td>
+      <td><input type="number" step="0.01" name="expected_score_max" value="100.0" required /></td>
+    </tr>
+{% for filename in task.submission_format %}
+    <tr>
+      <td>{{ filename }}:</td>
+      <td><input type="file" name="{{ filename }}" required /></td>
+    </tr>
+{% endfor %}
+  </table>
+  <input type="submit" value="Add Model Solution">
+  <input type="reset" value="Reset">
+</form>
+{% endblock core %}

@@ -171,6 +171,69 @@ class ModelSolutionHandler(BaseHandler):
         self.redirect(self.url("submission", meta.submission_id, dataset_id))
 
 
+class EditModelSolutionHandler(BaseHandler):
+    """Handler for editing a model solution's metadata.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, meta_id):
+        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
+        task = meta.dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["meta"] = meta
+        self.render("edit_model_solution.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, meta_id):
+        fallback_page = self.url("model_solution", meta_id, "edit")
+        
+        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
+        task = meta.dataset.task
+
+        try:
+            attrs = {}
+            self.get_string(attrs, "description")
+            
+            expected_score_min = self.get_argument(
+                "expected_score_min", "0.0")
+            expected_score_max = self.get_argument(
+                "expected_score_max", "100.0")
+
+            try:
+                expected_score_min = float(expected_score_min)
+                expected_score_max = float(expected_score_max)
+            except ValueError:
+                raise ValueError("Invalid score range values")
+
+            if expected_score_min > expected_score_max:
+                raise ValueError(
+                    "Minimum score cannot be greater than maximum score")
+
+            meta.description = attrs["description"]
+            meta.expected_score_min = expected_score_min
+            meta.expected_score_max = expected_score_max
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid field(s)",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Model solution updated",
+                "Model solution updated for task %s" % task.name)
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
 class DeleteModelSolutionHandler(BaseHandler):
     """Handler for deleting a model solution.
 
@@ -179,6 +242,7 @@ class DeleteModelSolutionHandler(BaseHandler):
     def post(self, meta_id):
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
         task = meta.dataset.task
+        task_id = task.id
         
         submission = meta.submission
         
@@ -193,7 +257,7 @@ class DeleteModelSolutionHandler(BaseHandler):
                 "Model solution deleted",
                 "Model solution deleted from task %s" % task.name)
         
-        self.redirect(self.url("task", task.id))
+        self.write("./%d" % task_id)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, meta_id):
