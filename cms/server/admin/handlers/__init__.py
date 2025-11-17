@@ -27,6 +27,8 @@ from .base import \
     FileFromDigestHandler, \
     SimpleHandler, \
     SimpleContestHandler
+from .email import \
+    SendEmailHandler
 from .contest import \
     AddContestHandler, \
     ContestHandler, \
@@ -231,6 +233,7 @@ HANDLERS = [
 
     (r"/admins", AdminsHandler),
     (r"/admins/add", AddAdminHandler),
+    (r"/admins/send_email", SendEmailHandler),
     (r"/admin/([0-9]+)", AdminHandler),
 
     # Submissions

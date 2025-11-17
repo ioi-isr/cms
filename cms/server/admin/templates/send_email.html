@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block core %}
+
+<div class="core_title">
+  <h1>Send Email</h1>
+</div>
+
+<!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
+<form enctype="multipart/form-data" action="{{ url("admins", "send_email") }}" method="post" >
+  {{ xsrf_form_html|safe }}
+  <h2>Email Configuration</h2>
+
+  <table>
+    <tr>
+      <td>SMTP Server:</td>
+      <td><input type="text" name="smtp_server" value="mailout.biu.ac.il" /></td>
+    </tr>
+    <tr>
+      <td>SMTP Port:</td>
+      <td><input type="number" name="smtp_port" value="25" /></td>
+    </tr>
+    <tr>
+      <td>From Address:</td>
+      <td><input type="email" name="from_address" /></td>
+    </tr>
+    <tr>
+      <td>To Address:</td>
+      <td><input type="email" name="to_address" /></td>
+    </tr>
+    <tr>
+      <td>Subject:</td>
+      <td><input type="text" name="subject" style="width: 400px;" /></td>
+    </tr>
+    <tr>
+      <td>Content:</td>
+      <td><textarea name="content" rows="10" cols="50"></textarea></td>
+    </tr>
+  </table>
+
+  <input type="submit" value="Send Email" />
+  <input type="reset" value="Reset" />
+</form>
+{% endblock core %}
