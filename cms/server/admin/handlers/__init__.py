@@ -106,6 +106,7 @@ from .user import \
     AddUserHandler, \
     UserHandler, \
     UserListHandler, \
+    ExportUsersHandler, \
     RemoveUserHandler, \
     AddParticipationHandler, \
     EditParticipationHandler, \
@@ -217,6 +218,7 @@ HANDLERS = [
     # Users/Teams
 
     (r"/users", UserListHandler),
+    (r"/users/export", ExportUsersHandler),
     (r"/users/([0-9]+)/remove", RemoveUserHandler),
     (r"/teams", TeamListHandler),
     (r"/teams/([0-9]+)/remove", RemoveTeamHandler),
