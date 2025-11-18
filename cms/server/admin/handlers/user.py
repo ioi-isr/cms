@@ -298,6 +298,8 @@ class ImportUsersHandler(BaseHandler):
 
             if existing_user:
                 user_data["existing_id"] = existing_user.id
+                user_data["existing_first_name"] = existing_user.first_name
+                user_data["existing_last_name"] = existing_user.last_name
                 user_data["existing_email"] = existing_user.email
                 user_data["existing_timezone"] = existing_user.timezone
                 existing_users.append(user_data)
