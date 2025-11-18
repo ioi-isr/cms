@@ -281,7 +281,10 @@ class ImportUsersHandler(BaseHandler):
             if password_type.lower() == "plain text":
                 password_value = build_password(password, "plaintext")
             else:
-                password_value = build_password(password, "bcrypt")
+                if password.startswith("bcrypt:"):
+                    password_value = password
+                else:
+                    password_value = f"bcrypt:{password}"
 
             existing_user = self.sql_session.query(User).filter(User.username == username).first()
 

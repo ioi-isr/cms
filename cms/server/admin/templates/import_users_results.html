@@ -75,25 +75,25 @@
         <td>{{ user.username }}</td>
         <td>
           {{ user.first_name }}
-          {% if user.first_name != user.existing_first_name %}
+          {% if user.existing_first_name is defined and user.first_name != user.existing_first_name %}
           <br/><small style="color: #666;">(was: {{ user.existing_first_name or "" }})</small>
           {% endif %}
         </td>
         <td>
           {{ user.last_name }}
-          {% if user.last_name != user.existing_last_name %}
+          {% if user.existing_last_name is defined and user.last_name != user.existing_last_name %}
           <br/><small style="color: #666;">(was: {{ user.existing_last_name or "" }})</small>
           {% endif %}
         </td>
         <td>
           {{ user.email or "" }}
-          {% if user.email != user.existing_email %}
+          {% if user.existing_email is defined and user.email != user.existing_email %}
           <br/><small style="color: #666;">(was: {{ user.existing_email or "" }})</small>
           {% endif %}
         </td>
         <td>
           {{ user.timezone or "" }}
-          {% if user.timezone != user.existing_timezone %}
+          {% if user.existing_timezone is defined and user.timezone != user.existing_timezone %}
           <br/><small style="color: #666;">(was: {{ user.existing_timezone or "" }})</small>
           {% endif %}
         </td>
