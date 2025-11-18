@@ -97,7 +97,7 @@ class BatchAndOutput(Batch):
 
         # Data in the parameters that is not in Batch.
         self.output_only_testcases: set[str] = set(
-            self.parameters[len(Batch.ACCEPTED_PARAMETERS)].split(','))
+            self.parameters[-1].split(','))
 
     @staticmethod
     def _get_user_output_filename(job):

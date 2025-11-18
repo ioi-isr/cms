@@ -36,7 +36,7 @@ class TestRealPrecisionExponentDerivation(unittest.TestCase):
         # With exponent 4, tolerance 1e-4: a 5e-5 delta should pass
         job = self.make_job(["realprecision", 4])
         fc = self.make_file_cacher(user_text="0.00005", correct_text="0")
-        success, outcome, text = eval_output(fc, job, None, use_realprecision=True, user_output_digest="user")
+        success, outcome, text = eval_output(fc, job, None, use_realprecision=True, realprecision_exponent=4, user_output_digest="user")
         self.assertTrue(success)
         self.assertEqual(outcome, 1.0)
 
@@ -44,7 +44,7 @@ class TestRealPrecisionExponentDerivation(unittest.TestCase):
         # No exponent given; default 1e-6: 5e-5 should fail
         job = self.make_job(["realprecision"])  # legacy single parameter
         fc = self.make_file_cacher(user_text="0.00005", correct_text="0")
-        success, outcome, text = eval_output(fc, job, None, use_realprecision=True, user_output_digest="user")
+        success, outcome, text = eval_output(fc, job, None, use_realprecision=True, realprecision_exponent=None, user_output_digest="user")
         self.assertTrue(success)
         self.assertEqual(outcome, 0.0)
 
@@ -53,7 +53,7 @@ class TestRealPrecisionExponentDerivation(unittest.TestCase):
         job = self.make_job(["alone", ["", ""], "realprecision", 4])
         fc = self.make_file_cacher(user_text="0.00005", correct_text="0")
         success, outcome, text = eval_output(
-            fc, job, None, use_realprecision=True, user_output_digest="user"
+            fc, job, None, use_realprecision=True, realprecision_exponent=4, user_output_digest="user"
         )
         self.assertTrue(success)
         self.assertEqual(outcome, 1.0)
@@ -63,7 +63,7 @@ class TestRealPrecisionExponentDerivation(unittest.TestCase):
         job = self.make_job(["alone", ["", ""], "realprecision"])  # missing exponent
         fc = self.make_file_cacher(user_text="0.00005", correct_text="0")
         success, outcome, text = eval_output(
-            fc, job, None, use_realprecision=True, user_output_digest="user"
+            fc, job, None, use_realprecision=True, realprecision_exponent=None, user_output_digest="user"
         )
         self.assertTrue(success)
         self.assertEqual(outcome, 0.0)

@@ -43,10 +43,9 @@ from .evaluation import EVALUATION_MESSAGES
 logger = logging.getLogger(__name__)
 
 
-# Fixed-format decimals only (bytes regex).
-_FIXED_DEC_RE = re.compile(rb'[+-]?(?:\d+(?:\.\d*)?|\.\d+)')
+# Fixed-format decimals only (bytes regex, no exponents/inf/nan).
+_FIXED_DEC_PATTERN = rb'[+-]?(?:\d+(?:\.\d*)?|\.\d+)'
 
-_WHITES = [b' ', b'\t', b'\n', b'\x0b', b'\x0c', b'\r']
 # default precision is 10^-6
 _DEFAULT_EXP = 6
 
@@ -55,18 +54,6 @@ def _compare_real_pair(a: float, b: float, eps: float) -> bool:
     diff = abs(a - b)
     tol = eps * max(1.0, abs(a), abs(b))
     return diff <= tol
-
-
-def _parse_fixed(token: bytes) -> float | None:
-    """Parse a fixed-format decimal token into float; return None on failure."""
-    # The regex already excludes exponents/inf/nan; this is defensive.
-    try:
-        # Decode strictly ASCII; reject weird Unicode digits.
-        s = token.decode("ascii", errors="strict")
-        # float() accepts exponent, but regex guarantees none are present.
-        return float(s)
-    except Exception:
-        return None
 
 
 def _white_diff_canonicalize(string: bytes) -> bytes:
@@ -78,90 +65,41 @@ def _white_diff_canonicalize(string: bytes) -> bytes:
     string: the bytes string to canonicalize.
     return: the canonicalized string.
     """
-    for char in _WHITES[1:]:
-        string = string.replace(char, _WHITES[0])
-    
-    string = _WHITES[0].join([x for x in string.split(_WHITES[0]) if len(x) > 0])
+    string = re.sub(rb'\s+', b' ', string).strip()
     return string
-
-
-def _tokenize_stream(data: bytes) -> list[tuple[str, bytes | float]]:
-    """Tokenize a byte stream into alternating text and number tokens.
-    
-    Returns a list of (type, value) tuples where type is either 'text' or 'number'.
-    For 'text' tokens, value is the canonicalized bytes.
-    For 'number' tokens, value is the parsed float.
-    
-    data: the byte stream data.
-    return: list of (type, value) tuples.
-    """
-    tokens = []
-    pos = 0
-    
-    for match in _FIXED_DEC_RE.finditer(data):
-        if match.start() > pos:
-            text = data[pos:match.start()]
-            canonical = _white_diff_canonicalize(text)
-            if len(canonical) > 0:
-                tokens.append(('text', canonical))
-        
-        num_bytes = match.group(0)
-        num_val = _parse_fixed(num_bytes)
-        if num_val is not None:
-            tokens.append(('number', num_val))
-        
-        pos = match.end()
-    
-    if pos < len(data):
-        text = data[pos:]
-        canonical = _white_diff_canonicalize(text)
-        if len(canonical) > 0:
-            tokens.append(('text', canonical))
-    
-    return tokens
 
 
 def _real_numbers_compare(
     output: typing.BinaryIO, correct: typing.BinaryIO, exponent: int = _DEFAULT_EXP
 ) -> bool:
     """Compare two output files using white-diff for text and tolerance for numbers.
-    
-    Two files are equal if:
-    1. They have the same sequence of text/number token types.
-    2. Text tokens match up to whitespace differences (white-diff semantics).
-    3. Numeric tokens match within absolute/relative tolerance.
-    
-    This matches the behavior of a C++ program reading numbers with cin >> double,
-    where non-numeric text differences would cause the comparison to fail.
 
-    output: the user output file to compare.
-    correct: the correct output file to compare.
-    exponent: optional precision exponent X for tolerance 1e-X (default: 6).
-    return: True if the files match as explained above.
+    Two files are equal if:
+    1. They have the same sequence of text/number segments under the same splitting.
+    2. Text segments match up to whitespace differences (white-diff semantics).
+    3. Numeric segments match within absolute/relative tolerance.
     """
     output_data = output.read()
     correct_data = correct.read()
-    
-    output_tokens = _tokenize_stream(output_data)
-    correct_tokens = _tokenize_stream(correct_data)
-    
-    if len(output_tokens) != len(correct_tokens):
+
+    # Split into [text, number, text, number, ...] parts;
+    # even indices: text, odd indices: numbers.
+    out_parts = re.split(rb'(' + _FIXED_DEC_PATTERN + rb')', output_data)
+    cor_parts = re.split(rb'(' + _FIXED_DEC_PATTERN + rb')', correct_data)
+
+    if len(out_parts) != len(cor_parts):
         return False
-    
+
     eps = 10 ** (-(int(exponent)))
-    for (out_type, out_val), (cor_type, cor_val) in zip(output_tokens, correct_tokens):
-        if out_type != cor_type:
-            return False
-        
-        if out_type == 'text':
-            if out_val != cor_val:
-                return False
-        else:  # out_type == 'number'
-            # Number tokens must match within tolerance.
-            if not _compare_real_pair(out_val, cor_val, eps):
-                return False
-    
-    return True
+
+    return all(
+        (
+            _white_diff_canonicalize(out_part) == _white_diff_canonicalize(cor_part)
+            if i % 2 == 0
+            else _compare_real_pair(float(out_part), float(cor_part), eps)
+        )
+        for i, (out_part, cor_part) in enumerate(zip(out_parts, cor_parts))
+    )
 
 
 def realprecision_diff_fobj_step(

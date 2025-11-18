@@ -213,39 +213,6 @@ def check_manager_present(job: Job, codename: str) -> bool:
     return True
 
 
-def _derive_realprecision_exponent(job: Job) -> int:
-    """Derive the realprecision exponent from job.task_type_parameters.
-    
-    Handles both OutputOnly and Batch parameter shapes:
-    - OutputOnly: ["realprecision", X?]
-    - Batch: ["alone", ["in", "out"], "realprecision", X?]
-    
-    Returns _DEFAULT_EXP (6) when not found or invalid.
-    
-    job: the job to extract parameters from.
-    
-    return: the exponent value, or _DEFAULT_EXP if not found.
-    """
-    try:
-        params = job.task_type_parameters
-        if not isinstance(params, list) or len(params) == 0:
-            return _DEFAULT_EXP
-        
-        if params[0] == "realprecision":
-            if len(params) >= 2 and isinstance(params[1], int):
-                return params[1]
-            return _DEFAULT_EXP
-        
-        if len(params) >= 3 and params[2] == "realprecision":
-            if len(params) >= 4 and isinstance(params[3], int):
-                return params[3]
-            return _DEFAULT_EXP
-        
-        return _DEFAULT_EXP
-    except Exception:
-        return _DEFAULT_EXP
-
-
 def eval_output(
     file_cacher: FileCacher,
     job: Job,
@@ -265,7 +232,7 @@ def eval_output(
         or None to use white diff / real number precision.
     use_realprecision: whether we should use real precision comparator.
     realprecision_exponent: exponent X for tolerance 1e-X when using real
-        precision comparison; if None, will be derived from job.task_type_parameters.
+        precision comparison; defaults to 6 (1e-6) if None.
     user_output_path: full path of the user output file, None if
         using the digest (exactly one must be non-None).
     user_output_digest: digest of the user output file, None if
@@ -283,8 +250,9 @@ def eval_output(
         raise ValueError(
             "Exactly one of user_output_{path,digest} should be None.")
     
-    if realprecision_exponent is None:
-        realprecision_exponent = _derive_realprecision_exponent(job)
+    if use_realprecision and realprecision_exponent is None:
+        realprecision_exponent = 6
+        logger.warning("Real precision exponent is None, defaulting to 6")
 
     if user_output_path is not None:
         # If a path was passed, it might not exist. First, check it does. We
