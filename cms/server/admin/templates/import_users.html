@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block core %}
+
+<div class="core_title">
+  <h1>Import users from CSV</h1>
+</div>
+
+<div style="margin-bottom: 20px;">
+  <p>Upload a CSV file to import users. The CSV file must have the following columns:</p>
+  <ul>
+    <li>First name (required)</li>
+    <li>Last name (required)</li>
+    <li>Username (required)</li>
+    <li>Password (required)</li>
+    <li>Plain text / Hash (required - specify "Plain text" or "Hash")</li>
+    <li>E-mail (optional)</li>
+    <li>Timezone (optional)</li>
+    <li>Preferred languages (optional - comma-separated)</li>
+  </ul>
+  <p><strong>Note:</strong> Only CSV files are accepted. The file must be UTF-8 encoded.</p>
+</div>
+
+<form enctype="multipart/form-data" action="{{ url("users", "import") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>CSV File:</td>
+      <td>
+        <input type="file" name="csv_file" accept=".csv" required/>
+      </td>
+    </tr>
+  </table>
+  <input type="submit" value="Upload and Process">
+  <a href="{{ url("users") }}">Cancel</a>
+</form>
+
+{% endblock core %}

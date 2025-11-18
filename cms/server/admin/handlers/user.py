@@ -29,9 +29,10 @@
 
 import csv
 import io
+import re
 
 from cms.db import Contest, Participation, Submission, Team, User
-from cmscommon.crypto import parse_authentication, validate_password_strength
+from cmscommon.crypto import parse_authentication, build_password, validate_password_strength
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -175,6 +176,211 @@ class ExportUsersHandler(BaseHandler):
         self.set_header("Content-Type", "text/csv")
         self.set_header("Content-Disposition", "attachment; filename=users.csv")
         self.write(output.getvalue())
+
+
+class ImportUsersHandler(BaseHandler):
+    """Import users from a CSV file.
+
+    GET shows the upload form.
+    POST processes the CSV and shows results with conflicts.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self):
+        self.r_params = self.render_params()
+        self.render("import_users.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self):
+        fallback_page = self.url("users", "import")
+
+        if "csv_file" not in self.request.files:
+            self.service.add_notification(
+                make_datetime(), "No file uploaded", "Please select a CSV file to upload.")
+            self.redirect(fallback_page)
+            return
+
+        csv_file = self.request.files["csv_file"][0]
+        filename = csv_file["filename"]
+
+        if not filename.lower().endswith('.csv'):
+            self.service.add_notification(
+                make_datetime(), "Invalid file type", "Only CSV files are accepted.")
+            self.redirect(fallback_page)
+            return
+
+        try:
+            content = csv_file["body"].decode("utf-8")
+        except UnicodeDecodeError:
+            self.service.add_notification(
+                make_datetime(), "Invalid file encoding", "CSV file must be UTF-8 encoded.")
+            self.redirect(fallback_page)
+            return
+
+        reader = csv.DictReader(io.StringIO(content))
+
+        expected_headers = {
+            "First name", "Last name", "Username", "Password",
+            "Plain text / Hash", "E-mail", "Timezone", "Preferred languages"
+        }
+
+        if not reader.fieldnames or not expected_headers.issubset(set(reader.fieldnames)):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid CSV format",
+                f"CSV must have headers: {', '.join(expected_headers)}")
+            self.redirect(fallback_page)
+            return
+
+        new_users = []
+        failed_users = []
+        existing_users = []
+        row_num = 1
+
+        username_pattern = re.compile(r'^[A-Za-z0-9_-]+$')
+
+        for row in reader:
+            row_num += 1
+            errors = []
+
+            username = row.get("Username", "").strip()
+            first_name = row.get("First name", "").strip()
+            last_name = row.get("Last name", "").strip()
+            password = row.get("Password", "").strip()
+            password_type = row.get("Plain text / Hash", "").strip()
+            email = row.get("E-mail", "").strip()
+            timezone = row.get("Timezone", "").strip()
+            preferred_languages_str = row.get("Preferred languages", "").strip()
+
+            if not username:
+                errors.append("Username is required")
+            elif not username_pattern.match(username):
+                errors.append("Username must contain only letters, numbers, hyphens, and underscores")
+
+            if not first_name:
+                errors.append("First name is required")
+
+            if not last_name:
+                errors.append("Last name is required")
+
+            if not password:
+                errors.append("Password is required")
+
+            if errors:
+                failed_users.append({
+                    "row": row_num,
+                    "username": username,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "errors": errors
+                })
+                continue
+
+            preferred_languages = [lang.strip() for lang in preferred_languages_str.split(",") if lang.strip()]
+
+            if password_type.lower() == "plain text":
+                password_value = build_password(password, "plaintext")
+            else:
+                password_value = build_password(password, "bcrypt")
+
+            existing_user = self.sql_session.query(User).filter(User.username == username).first()
+
+            user_data = {
+                "username": username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "password": password_value,
+                "email": email if email else None,
+                "timezone": timezone if timezone else None,
+                "preferred_languages": preferred_languages,
+                "row": row_num
+            }
+
+            if existing_user:
+                user_data["existing_id"] = existing_user.id
+                user_data["existing_email"] = existing_user.email
+                user_data["existing_timezone"] = existing_user.timezone
+                existing_users.append(user_data)
+            else:
+                new_users.append(user_data)
+
+        self.r_params = self.render_params()
+        self.r_params["new_users"] = new_users
+        self.r_params["failed_users"] = failed_users
+        self.r_params["existing_users"] = existing_users
+        self.render("import_users_results.html", **self.r_params)
+
+
+class ImportUsersConfirmHandler(BaseHandler):
+    """Confirm and execute the user import.
+
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self):
+        import json
+
+        new_users_json = self.get_argument("new_users", "[]")
+        existing_users_json = self.get_argument("existing_users", "[]")
+
+        try:
+            new_users = json.loads(new_users_json)
+            existing_users = json.loads(existing_users_json)
+        except json.JSONDecodeError:
+            self.service.add_notification(
+                make_datetime(), "Invalid data", "Failed to parse user data.")
+            self.redirect(self.url("users"))
+            return
+
+        created_count = 0
+        updated_count = 0
+        errors = []
+
+        for user_data in new_users:
+            try:
+                user = User(
+                    username=user_data["username"],
+                    first_name=user_data["first_name"],
+                    last_name=user_data["last_name"],
+                    password=user_data["password"],
+                    email=user_data.get("email"),
+                    timezone=user_data.get("timezone"),
+                    preferred_languages=user_data.get("preferred_languages", [])
+                )
+                self.sql_session.add(user)
+                created_count += 1
+            except Exception as error:
+                errors.append(f"Failed to create user {user_data['username']}: {str(error)}")
+
+        update_user_ids = self.get_arguments("update_user")
+
+        for user_data in existing_users:
+            user_id = str(user_data["existing_id"])
+            if user_id in update_user_ids:
+                try:
+                    user = self.sql_session.query(User).filter(User.id == user_data["existing_id"]).first()
+                    if user:
+                        user.first_name = user_data["first_name"]
+                        user.last_name = user_data["last_name"]
+                        user.password = user_data["password"]
+                        user.email = user_data.get("email")
+                        user.timezone = user_data.get("timezone")
+                        user.preferred_languages = user_data.get("preferred_languages", [])
+                        updated_count += 1
+                except Exception as error:
+                    errors.append(f"Failed to update user {user_data['username']}: {str(error)}")
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+            message = f"Successfully created {created_count} user(s) and updated {updated_count} user(s)."
+            if errors:
+                message += f" Errors: {'; '.join(errors)}"
+            self.service.add_notification(make_datetime(), "Import completed", message)
+        else:
+            self.service.add_notification(
+                make_datetime(), "Import failed", "Failed to commit changes to database.")
+
+        self.redirect(self.url("users"))
 
 
 class TeamListHandler(SimpleHandler("teams.html")):
