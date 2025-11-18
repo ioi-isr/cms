@@ -59,6 +59,36 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def parse_ip_list(ip_string):
+    """Parse a comma-separated string of IP addresses into a list.
+    
+    Args:
+        ip_string (str|None): Comma-separated IP addresses
+    
+    Returns:
+        list[str]: List of IP addresses, with whitespace stripped
+    """
+    if not ip_string:
+        return []
+    return [ip.strip() for ip in ip_string.split(',') if ip.strip()]
+
+
+def add_ip_to_list(ip_string, new_ip):
+    """Add an IP address to a comma-separated list if not already present.
+    
+    Args:
+        ip_string (str|None): Existing comma-separated IP addresses
+        new_ip (str): New IP address to add
+    
+    Returns:
+        str: Updated comma-separated IP addresses
+    """
+    ips = parse_ip_list(ip_string)
+    if new_ip not in ips:
+        ips.append(new_ip)
+    return ', '.join(ips)
+
+
 class BaseHandler(CommonRequestHandler):
     """Base RequestHandler for this application.
 

@@ -60,6 +60,7 @@ from cmscommon.crypto import hash_password, validate_password
 from cmscommon.datetime import make_datetime, make_timestamp
 from .contest import ContestHandler, api_login_required
 from ..phase_management import actual_phase_required
+from .base import add_ip_to_list
 
 
 logger = logging.getLogger(__name__)
@@ -280,11 +281,9 @@ class StartHandler(ContestHandler):
         participation.starting_time = self.timestamp
 
         client_ip = self.request.remote_ip
-        if participation.starting_ip_addresses:
-            if client_ip not in participation.starting_ip_addresses:
-                participation.starting_ip_addresses += f", {client_ip}"
-        else:
-            participation.starting_ip_addresses = client_ip
+        participation.starting_ip_addresses = add_ip_to_list(
+            participation.starting_ip_addresses, client_ip
+        )
 
         self.sql_session.commit()
 
