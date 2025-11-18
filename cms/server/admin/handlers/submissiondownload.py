@@ -23,6 +23,8 @@ import io
 import logging
 import zipfile
 
+import tornado.web
+
 from cms.db import Contest, Participation, Submission, Task
 from cms.grading.languagemanager import safe_get_lang_filename
 from .base import BaseHandler, require_permission
@@ -37,18 +39,18 @@ def get_submission_status(submission, dataset):
     submission: the Submission object
     dataset: the Dataset to evaluate against
     
-    return: status string (e.g., "compiling", "95.0pts", "CompilationFailed")
+    return: status string (e.g., "compiling", "95.0pts", "compilationFailed")
     
     """
     result = submission.get_result(dataset)
     if result is None:
         return "compiling"
     elif result.compilation_failed():
-        return "CompilationFailed"
+        return "compilationFailed"
     elif not result.evaluated():
         return "evaluating"
     elif not result.scored():
-        return "Scoring"
+        return "scoring"
     else:
         score = result.score if result.score is not None else 0.0
         task = submission.task
@@ -101,7 +103,6 @@ def build_zip(submissions, base_path_builder, file_cacher):
             base_path_parts = base_path_builder(submission)
             write_submission_files(zip_file, submission, base_path_parts, file_cacher)
     
-    zip_buffer.seek(0)
     return zip_buffer
 
 
@@ -143,8 +144,7 @@ class DownloadUserContestSubmissionsHandler(BaseHandler):
             .first()
 
         if participation is None:
-            self.write("Participation not found")
-            return
+            raise tornado.web.HTTPError(404)
 
         submissions = self.sql_session.query(Submission)\
             .filter(Submission.participation_id == participation.id)\
