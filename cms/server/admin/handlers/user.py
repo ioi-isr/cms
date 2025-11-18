@@ -27,8 +27,11 @@
 
 """
 
+import csv
+import io
+
 from cms.db import Contest, Participation, Submission, Team, User
-from cmscommon.crypto import validate_password_strength
+from cmscommon.crypto import parse_authentication, validate_password_strength
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -122,6 +125,56 @@ class UserListHandler(SimpleHandler("users.html")):
             self.service.add_notification(
                 make_datetime(), "Invalid operation %s" % operation, "")
             self.redirect(self.url("contests"))
+
+
+class ExportUsersHandler(BaseHandler):
+    """Export all users to a CSV file.
+
+    """
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self):
+        users = self.sql_session.query(User).order_by(User.username).all()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        writer.writerow([
+            "First name",
+            "Last name",
+            "Username",
+            "Password",
+            "Plain text / Hash",
+            "E-mail",
+            "Timezone",
+            "Preferred languages"
+        ])
+
+        for user in users:
+            try:
+                method, payload = parse_authentication(user.password)
+                password_type = "Plain text" if method == "plaintext" else "Hash"
+                password_value = payload
+            except (ValueError, AttributeError):
+                password_type = "Hash"
+                password_value = user.password
+
+            preferred_languages = ", ".join(user.preferred_languages) if user.preferred_languages else ""
+
+            writer.writerow([
+                user.first_name or "",
+                user.last_name or "",
+                user.username or "",
+                password_value or "",
+                password_type,
+                user.email or "",
+                user.timezone or "",
+                preferred_languages
+            ])
+
+        self.set_header("Content-Type", "text/csv")
+        self.set_header("Content-Disposition", "attachment; filename=users.csv")
+        self.write(output.getvalue())
 
 
 class TeamListHandler(SimpleHandler("teams.html")):
