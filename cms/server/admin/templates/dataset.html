@@ -20,6 +20,8 @@
            admin.permission_all,
            url("dataset", shown_dataset.id),
            dataset_id=shown_dataset.id) }}
+    <br/>
+    <a href="{{ url("task", task.id, "submissions", "download") }}">Download all submissions</a>
   </p>
 
   {{ macro_submission.rows(
