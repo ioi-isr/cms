@@ -313,7 +313,7 @@ class ImportUsersHandler(BaseHandler):
         self.r_params["new_users"] = new_users
         self.r_params["failed_users"] = failed_users
         self.r_params["existing_users"] = existing_users
-        self.render("import_users_results.html", **self.r_params)
+        self.render("import_users_confirm.html", **self.r_params)
 
 
 class ImportUsersConfirmHandler(BaseHandler):
