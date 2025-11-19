@@ -6,10 +6,69 @@ utils.show_page("pending_delay_requests", 1);
 utils.show_page("all_delay_requests", 1);
 
 {% endblock js_init %}
+
 {% block core %}
 
+<style>
+/* Status row colors for attendance tracking */
+tr.pre-contest {
+  background-color: #e8ddff !important; /* Light purple - contest not started */
+}
+
+tr.can-start {
+  background-color: #fffacd !important; /* Light yellow - can still start */
+}
+
+tr.in-contest {
+  background-color: #d1ecf1 !important; /* Light blue - currently in contest */
+}
+
+tr.finished {
+  background-color: #d4edda !important; /* Light green - participated and finished */
+}
+
+tr.missed {
+  background-color: #f8d7da !important; /* Light red - missed opportunity */
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 3px;
+  background-color: #666;
+  color: white;
+}
+
+.status-icon {
+  margin-right: 4px;
+}
+
+tr.pre-contest .status-badge {
+  background-color: #6f42c1; /* Purple */
+}
+
+tr.can-start .status-badge {
+  background-color: #ffc107; /* Yellow/amber */
+}
+
+tr.in-contest .status-badge {
+  background-color: #17a2b8; /* Blue */
+}
+
+tr.finished .status-badge {
+  background-color: #28a745; /* Green */
+}
+
+tr.missed .status-badge {
+  background-color: #dc3545; /* Red */
+}
+</style>
+
 <div class="core_title">
-  <h1>Delays and Extra Times</h1>
+  <h1>Attendance</h1>
   <p class="muted">All times shown in UTC</p>
 </div>
 
@@ -51,8 +110,9 @@ utils.show_page("all_delay_requests", 1);
   </div>
 </div>
 </div>
+{% endif %}
 
-<h2 id="title_participations_section" class="toggling_on">All Participations - Delays and Extra Times</h2>
+<h2 id="title_participations_section" class="toggling_on">All Participations</h2>
 <div id="participations_section">
   <div class="btn-group" style="margin-top: 10px;">
     <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="btn btn-info">
@@ -70,6 +130,12 @@ utils.show_page("all_delay_requests", 1);
         <i class="icon-trash icon-white"></i> Erase All Start Times
       </button>
     </form>
+    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "reset_ip_addresses") }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to reset all IP addresses for all participants?');">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="btn btn-danger">
+        <i class="icon-trash icon-white"></i> Reset All IP Addresses
+      </button>
+    </form>
   </div>
 
 <table class="table table-striped table-bordered">
@@ -77,25 +143,23 @@ utils.show_page("all_delay_requests", 1);
     <tr>
       <th>User</th>
       <th>Username</th>
-      <th>Starting Time</th>
       <th>Delay Time (seconds)</th>
       <th>Planned Start Time</th>
+      <th>Actual Start Time</th>
+      <th>IP Address</th>
       <th>Extra Time (seconds)</th>
+      <th>Status</th>
       <th>Actions</th>
     </tr>
   </thead>
   <tbody>
-  {% for participation in participations %}
-    <tr>
-      <td>{{ participation.user.first_name }} {{ participation.user.last_name }}</td>
-      <td>{{ participation.user.username }}</td>
+  {% for item in participation_statuses %}
+    {% set participation = item.participation %}
+    <tr class="{{ item.status_class }}">
       <td>
-        {% if participation.starting_time %}
-          {{ participation.starting_time|format_datetime }}
-        {% else %}
-          -
-        {% endif %}
+        {{ participation.user.first_name }} {{ participation.user.last_name }}
       </td>
+      <td>{{ participation.user.username }}</td>
       <td>{{ participation.delay_time.total_seconds()|int }}</td>
       <td>
         {% if participation.delay_time.total_seconds() > 0 %}
@@ -104,12 +168,54 @@ utils.show_page("all_delay_requests", 1);
           {{ contest.start|format_datetime }}
         {% endif %}
       </td>
+      <td>
+        {% if participation.starting_time %}
+          {{ participation.starting_time|format_datetime }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>
+        {% if participation.starting_ip_addresses %}
+          {{ participation.starting_ip_addresses }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
       <td>{{ participation.extra_time.total_seconds()|int }}</td>
+      <td>
+        {% if item.status_label %}
+          <span class="status-badge">
+            {% if item.status_class == "pre-contest" %}
+              <span class="status-icon">⏳</span>
+            {% elif item.status_class == "can-start" %}
+              <span class="status-icon">▶</span>
+            {% elif item.status_class == "in-contest" %}
+              <span class="status-icon">⏱</span>
+            {% elif item.status_class == "finished" %}
+              <span class="status-icon">✓</span>
+            {% elif item.status_class == "missed" %}
+              <span class="status-icon">⛔</span>
+            {% endif %}
+            {{ item.status_label }}
+          </span>
+        {% else %}
+          -
+        {% endif %}
+      </td>
       <td>
         {% if participation.delay_time.total_seconds() > 0 or participation.extra_time.total_seconds() > 0 %}
         <form action="{{ url("contest", contest.id, "participation", participation.id, "remove_delay_and_extra_time") }}" method="POST" style="display: inline;">
           {{ xsrf_form_html|safe }}
-          <button type="submit" class="btn btn-warning btn-small">Remove</button>
+          <button type="submit" class="btn btn-warning btn-small">
+            {% if participation.delay_time.total_seconds() == 0 %}
+              Remove extra time 
+            {% elif participation.extra_time.total_seconds() == 0 %}
+              Remove delay
+            {% else %}
+              Remove delay and extra time
+            {% endif %}
+          </button>
         </form>
         {% endif %}
       </td>
@@ -119,6 +225,7 @@ utils.show_page("all_delay_requests", 1);
 </table>
 </div>
 
+{% if delay_requests != [] %}
 <h2 id="title_all_delay_requests_section" class="toggling_on">All Delay Requests</h2>
 <div id="all_delay_requests_section">
 <div id="all_delay_requests" class="notifications">

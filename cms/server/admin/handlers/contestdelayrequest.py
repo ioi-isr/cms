@@ -23,6 +23,7 @@ from abc import ABCMeta, abstractmethod
 import csv
 import io
 import logging
+import re
 from datetime import timedelta
 
 import collections
@@ -34,11 +35,55 @@ except:
 import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation
+from cms.server.contest.phase_management import compute_actual_phase
 from cmscommon.datetime import make_datetime, utc
 from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def compute_participation_status(contest, participation, timestamp):
+    """Compute the status class and label for a participation.
+    
+    Args:
+        contest: The Contest object
+        participation: The Participation object
+        timestamp: The current timestamp
+    
+    Returns:
+        tuple: (status_class, status_label)
+    """
+    actual_phase, _, _, _, _ = compute_actual_phase(
+        timestamp,
+        contest.start,
+        contest.stop,
+        contest.analysis_start,
+        contest.analysis_stop,
+        contest.per_user_time,
+        participation.starting_time,
+        participation.delay_time,
+        participation.extra_time,
+    )
+    
+    if participation.starting_time is None:
+        if actual_phase == -2:
+            status_class = "pre-contest"
+            status_label = "Pre contest"
+        elif actual_phase <= 0:
+            status_class = "can-start"
+            status_label = "Can start"
+        else:
+            status_class = "missed"
+            status_label = "Missed"
+    elif actual_phase == 0:
+        status_class = "in-contest"
+        status_label = "In contest"
+    else:
+        status_class = "finished"
+        status_label = "Finished"
+    
+    return status_class, status_label
 
 
 class DelaysAndExtraTimesHandler(BaseHandler):
@@ -51,10 +96,26 @@ class DelaysAndExtraTimesHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["timezone"] = utc
-        self.r_params["participations"] = self.sql_session.query(Participation)\
+        
+        participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
             .order_by(Participation.id)\
             .all()
+        
+        # Compute status for each participation
+        participation_statuses = []
+        for participation in participations:
+            status_class, status_label = compute_participation_status(
+                self.contest, participation, self.timestamp
+            )
+            
+            participation_statuses.append({
+                'participation': participation,
+                'status_class': status_class,
+                'status_label': status_label,
+            })
+        
+        self.r_params["participation_statuses"] = participation_statuses
         self.r_params["delay_requests"] = self.sql_session.query(DelayRequest)\
             .join(Participation)\
             .filter(Participation.contest_id == contest_id)\
@@ -180,10 +241,12 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
         writer.writerow([
             'User',
             'Username',
-            'Starting Time (UTC)',
             'Delay Time (seconds)',
             'Planned Start Time (UTC)',
-            'Extra Time (seconds)'
+            'Actual Start Time (UTC)',
+            'IP Address',
+            'Extra Time (seconds)',
+            'Status'
         ])
         
         for participation in participations:
@@ -197,19 +260,31 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
                 planned_start_str = self.contest.start.strftime('%Y-%m-%d %H:%M:%S')
             
             extra_seconds = int(participation.extra_time.total_seconds())
+            ip_addresses = participation.starting_ip_addresses if participation.starting_ip_addresses else '-'
+            
+            # Compute status for this participation
+            _, status_label = compute_participation_status(
+                self.contest, participation, self.timestamp
+            )
             
             writer.writerow([
                 f"{participation.user.first_name} {participation.user.last_name}",
                 participation.user.username,
-                starting_time,
                 delay_seconds,
                 planned_start_str,
-                extra_seconds
+                starting_time,
+                ip_addresses,
+                extra_seconds,
+                status_label
             ])
+        
+        start_date = self.contest.start.strftime('%Y%m%d')
+        contest_slug = re.sub(r'[^A-Za-z0-9_-]+', '_', self.contest.name)
+        filename = f"{start_date}_{contest_slug}_attendance.csv"
         
         self.set_header('Content-Type', 'text/csv')
         self.set_header('Content-Disposition', 
-                       f'attachment; filename="delays_extra_times_contest_{contest_id}.csv"')
+                       f'attachment; filename="{filename}"')
         self.write(output.getvalue())
         self.finish()
 
@@ -266,6 +341,35 @@ class EraseAllStartTimesHandler(BaseHandler):
         
         if self.try_commit():
             logger.info("All starting times erased for contest %s by admin %s (%d participations affected)",
+                       self.contest.name,
+                       self.current_user.name,
+                       count)
+        
+        self.redirect(ref)
+
+
+class ResetAllIPAddressesHandler(BaseHandler):
+    """Reset all IP addresses for all participations in a contest.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, contest_id):
+        ref = self.url("contest", contest_id, "delays_and_extra_times")
+        
+        self.contest = self.safe_get_item(Contest, contest_id)
+        
+        participations = self.sql_session.query(Participation)\
+            .filter(Participation.contest_id == contest_id)\
+            .all()
+        
+        count = 0
+        for participation in participations:
+            if participation.starting_ip_addresses is not None:
+                participation.starting_ip_addresses = None
+                count += 1
+        
+        if self.try_commit():
+            logger.info("All IP addresses reset for contest %s by admin %s (%d participations affected)",
                        self.contest.name,
                        self.current_user.name,
                        count)
