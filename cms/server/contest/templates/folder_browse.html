@@ -41,7 +41,6 @@
         var folderTree = JSON.parse(document.getElementById('folder-tree-data').textContent);
         var currentPath = "{{ current_path }}";
         var urlRoot = "{{ url("browse") }}";
-        var contestUrlRoot = "{{ url("") }}";
         var now = new Date("{{ now.isoformat() }}");
 
         function encodePathSegments(segments) {
@@ -131,7 +130,7 @@
                 var contestPath = encodePathSegments(contestSegments);
                 var li = document.createElement('li');
                 var a = document.createElement('a');
-                a.href = contestUrlRoot + (contestPath ? '/' + contestPath : '/' + encodeURIComponent(contest.name));
+                a.href = '/' + contestPath;
                 a.textContent = contest.description;
                 
                 if (contest.stop && new Date(contest.stop) < now) {
