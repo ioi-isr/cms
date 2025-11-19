@@ -260,8 +260,11 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
                 planned_start_str = self.contest.start.strftime('%Y-%m-%d %H:%M:%S')
             
             extra_seconds = int(participation.extra_time.total_seconds())
-            ip_addresses = participation.starting_ip_addresses if participation.starting_ip_addresses else '-'
-            
+            ip_addresses = (
+                ', '.join(str(ip) for ip in participation.starting_ip_addresses)
+                if participation.starting_ip_addresses else '-'
+            )
+
             # Compute status for this participation
             _, status_label = compute_participation_status(
                 self.contest, participation, self.timestamp

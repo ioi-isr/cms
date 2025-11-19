@@ -84,6 +84,6 @@ ALTER TABLE ONLY public.contests DROP CONSTRAINT contests_check1;
 ALTER TABLE ONLY public.contests ADD CONSTRAINT contests_check1 CHECK (((per_user_time IS NULL) AND (stop <= analysis_start)) OR ((per_user_time IS NOT NULL) AND ((start + per_user_time) <= analysis_start)));
 
 -- https://github.com/ioi-isr/cms/pull/35
-ALTER TABLE public.participations ADD COLUMN starting_ip_addresses character varying;
+ALTER TABLE public.participations ADD COLUMN starting_ip_addresses inet[];
 
 COMMIT;

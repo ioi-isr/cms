@@ -177,7 +177,7 @@ tr.missed .status-badge {
       </td>
       <td>
         {% if participation.starting_ip_addresses %}
-          {{ participation.starting_ip_addresses }}
+          {{ participation.starting_ip_addresses|join(', ') }}
         {% else %}
           -
         {% endif %}

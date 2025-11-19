@@ -45,6 +45,7 @@ except:
 import tornado.web
 from werkzeug.datastructures import LanguageAccept
 from werkzeug.http import parse_accept_header
+from ipaddress import IPv4Interface, IPv6Interface
 
 from cms.db import Contest
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
@@ -59,34 +60,25 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def parse_ip_list(ip_string):
-    """Parse a comma-separated string of IP addresses into a list.
+def add_ip_to_array(ip_array: list[IPv4Interface | IPv6Interface] | None,
+                    new_ip: IPv4Interface | IPv6Interface):
+    """Add an IP address to an array if not already present.
     
     Args:
-        ip_string (str|None): Comma-separated IP addresses
+        ip_array (list[IPv4Interface | IPv6Interface]|None): 
+                 Existing IP addresses array
+        new_ip (IPv4Interface | IPv6Interface): New IP address to add
     
     Returns:
-        list[str]: List of IP addresses, with whitespace stripped
+        list[IPv4Interface | IPv6Interface]: Updated IP addresses array.
     """
-    if not ip_string:
-        return []
-    return [ip.strip() for ip in ip_string.split(',') if ip.strip()]
-
-
-def add_ip_to_list(ip_string, new_ip):
-    """Add an IP address to a comma-separated list if not already present.
+    if ip_array is None:
+        return [new_ip]
     
-    Args:
-        ip_string (str|None): Existing comma-separated IP addresses
-        new_ip (str): New IP address to add
+    if new_ip not in ip_array:
+        return ip_array + [new_ip]
     
-    Returns:
-        str: Updated comma-separated IP addresses
-    """
-    ips = parse_ip_list(ip_string)
-    if new_ip not in ips:
-        ips.append(new_ip)
-    return ', '.join(ips)
+    return ip_array
 
 
 class BaseHandler(CommonRequestHandler):

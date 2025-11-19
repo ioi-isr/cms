@@ -55,7 +55,7 @@ from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
 from cmscommon.datetime import get_timezone
-from .base import BaseHandler, add_ip_to_list
+from .base import BaseHandler, add_ip_to_array
 from ..phase_management import compute_actual_phase
 
 
@@ -229,12 +229,12 @@ class ContestHandler(BaseHandler):
                 ret["phase"] = 0
 
                 if participation.starting_time is not None:
-                    client_ip = self.request.remote_ip
-                    new_ip_list = add_ip_to_list(
+                    client_ip = ipaddress.ip_interface(self.request.remote_ip)
+                    new_ip_array = add_ip_to_array(
                         participation.starting_ip_addresses, client_ip
                     )
-                    if new_ip_list != participation.starting_ip_addresses:
-                        participation.starting_ip_addresses = new_ip_list
+                    if new_ip_array != participation.starting_ip_addresses:
+                        participation.starting_ip_addresses = new_ip_array
                         self.sql_session.commit()
 
             # set the timezone used to format timestamps

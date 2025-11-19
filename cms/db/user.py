@@ -26,9 +26,9 @@
 """
 
 from datetime import datetime, timedelta
-from ipaddress import IPv4Network, IPv6Network
+from ipaddress import IPv4Network, IPv6Network, IPv4Interface, IPv6Interface
 
-from sqlalchemy.dialects.postgresql import ARRAY, CIDR
+from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, \
     UniqueConstraint
@@ -170,8 +170,8 @@ class Participation(Base):
         DateTime,
         nullable=True)
 
-    starting_ip_addresses: str | None = Column(
-        Unicode,
+    starting_ip_addresses: list[IPv4Interface | IPv6Interface] | None = Column(
+        CastingArray(INET),
         nullable=True)
 
     # A shift in the time interval during which the user is allowed to
