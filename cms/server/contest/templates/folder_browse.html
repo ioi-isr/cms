@@ -40,14 +40,17 @@
     (function() {
         var folderTree = JSON.parse(document.getElementById('folder-tree-data').textContent);
         var currentPath = "{{ current_path }}";
-        var urlRoot = "{{ url("browse") }}";
+        var base = "{{ url("browse") }}";
+        var urlBase = ('/' + base.replace(/^\/+/, '')).replace(/\/+$/, '');
         var now = new Date("{{ now.isoformat() }}");
 
         function encodePathSegments(segments) {
             return segments.map(function(s) { return encodeURIComponent(s); }).join('/');
         }
 
-        function navigateToPath(path) {
+        function navigateToPath(path, options) {
+            options = options || {};
+            var fromPopstate = options.fromPopstate || false;
             var segments = path ? path.split('/').filter(function(s) { return s; }) : [];
             var current = folderTree;
             var breadcrumbs = [];
@@ -74,7 +77,7 @@
             }
             
             var rootLink = document.createElement('a');
-            rootLink.href = urlRoot;
+            rootLink.href = urlBase;
             rootLink.setAttribute('data-path', '');
             rootLink.textContent = '/';
             breadcrumbNav.appendChild(rootLink);
@@ -88,7 +91,7 @@
                 
                 var upSegments = segments.slice(0, -1);
                 var upPath = upSegments.join('/');
-                var upUrl = upSegments.length > 0 ? urlRoot + '/' + encodePathSegments(upSegments) : urlRoot;
+                var upUrl = upSegments.length > 0 ? urlBase + '/' + encodePathSegments(upSegments) : urlBase;
                 
                 breadcrumbNav.appendChild(document.createTextNode(' \u00A0 '));
                 var upLink = document.createElement('a');
@@ -113,7 +116,7 @@
                 var folderPath = encodePathSegments(folderSegments);
                 var li = document.createElement('li');
                 var a = document.createElement('a');
-                a.href = urlRoot + '/' + folderPath;
+                a.href = urlBase + '/' + folderPath;
                 a.setAttribute('data-folder', folder.name);
                 a.textContent = '📁 ' + folder.description;
                 li.appendChild(a);
@@ -142,32 +145,32 @@
             }
 
             currentPath = path;
-            if (window.history && window.history.pushState) {
-                var newUrl = path ? urlRoot + '/' + encodePathSegments(segments) : urlRoot;
+            if (window.history && window.history.pushState && !fromPopstate) {
+                var newUrl = path ? urlBase + '/' + encodePathSegments(segments) : urlBase;
                 window.history.pushState({path: path}, '', newUrl);
             }
         }
 
         document.getElementById('folder-list').addEventListener('click', function(e) {
-            if (e.target.tagName === 'A' && e.target.hasAttribute('data-folder')) {
-                e.preventDefault();
-                var folderName = e.target.getAttribute('data-folder');
-                var newPath = currentPath ? currentPath + '/' + folderName : folderName;
-                navigateToPath(newPath);
-            }
+            var link = e.target.closest('a[data-folder]');
+            if (!link) return;
+            e.preventDefault();
+            var folderName = link.getAttribute('data-folder');
+            var newPath = currentPath ? currentPath + '/' + folderName : folderName;
+            navigateToPath(newPath);
         });
 
         document.getElementById('breadcrumb-nav').addEventListener('click', function(e) {
-            if (e.target.tagName === 'A' && e.target.hasAttribute('data-path')) {
-                e.preventDefault();
-                navigateToPath(e.target.getAttribute('data-path'));
-            }
+            var link = e.target.closest('a[data-path]');
+            if (!link) return;
+            e.preventDefault();
+            navigateToPath(link.getAttribute('data-path'));
         });
 
         if (window.history && window.history.pushState) {
             window.addEventListener('popstate', function(e) {
                 if (e.state && e.state.path !== undefined) {
-                    navigateToPath(e.state.path);
+                    navigateToPath(e.state.path, {fromPopstate: true});
                 }
             });
         }
