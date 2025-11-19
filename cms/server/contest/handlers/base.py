@@ -29,6 +29,7 @@
 
 """
 
+import json
 import logging
 import traceback
 
@@ -47,6 +48,7 @@ from werkzeug.datastructures import LanguageAccept
 from werkzeug.http import parse_accept_header
 
 from cms.db import Contest
+from cms.db.contest_folder import ContestFolder
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
 from cms.server import CommonRequestHandler
 from cmscommon.datetime import utc as utc_tzinfo
@@ -227,12 +229,129 @@ class BaseHandler(CommonRequestHandler):
 
 class ContestListHandler(BaseHandler):
     def get(self):
+        # Redirect to folder-aware browser
+        self.redirect(self.url("browse"))
+
+
+class ContestFolderBrowseHandler(BaseHandler):
+    """Browse contests by folders.
+
+    Renders a listing of subfolders and contests under a given folder path.
+    If no path is provided, lists root folders and contests without folder.
+    """
+    
+    def _build_folder_tree(self) -> dict:
+        """Build complete folder tree with contests for client-side navigation.
+        
+        Excludes hidden folders and their descendants from the tree.
+        """
+        all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
+        all_contests = self.sql_session.query(Contest).order_by(Contest.name).all()
+        
+        folder_map = {}
+        for folder in all_folders:
+            folder_map[folder.id] = {
+                "id": folder.id,
+                "name": folder.name,
+                "description": folder.description,
+                "parent_id": folder.parent_id,
+                "children": [],
+                "contests": []
+            }
+        
+        for contest in all_contests:
+            contest_data = {
+                "name": contest.name,
+                "description": contest.description,
+                "stop": contest.stop.isoformat() if contest.stop else None
+            }
+            if contest.folder_id and contest.folder_id in folder_map:
+                folder_map[contest.folder_id]["contests"].append(contest_data)
+            elif not contest.folder_id:
+                folder_map.setdefault(None, {"children": [], "contests": []})
+                folder_map[None]["contests"].append(contest_data)
+        
+        for folder in all_folders:
+            if folder.parent_id and folder.parent_id in folder_map:
+                folder_map[folder.parent_id]["children"].append(folder_map[folder.id])
+            elif not folder.parent_id:
+                folder_map.setdefault(None, {"children": [], "contests": []})
+                folder_map[None]["children"].append(folder_map[folder.id])
+        
+        root = folder_map.get(None, {"children": [], "contests": []})
+        return root
+    
+    def get(self, path: str | None = None):
         self.r_params = self.render_params()
-        # We need this to be computed for each request because we want to be
-        # able to import new contests without having to restart CWS.
-        contest_list = dict()
-        for contest in self.sql_session.query(Contest).all():
-            contest: Contest
-            contest_list[contest.name] = contest
-        self.render("contest_list.html", contest_list=contest_list,
-                    **self.r_params)
+
+        # Resolve current folder
+        cur_folder: ContestFolder | None = None
+        breadcrumbs: list[ContestFolder] = []
+        if path:
+            segments = [p for p in path.split("/") if p]
+            parent = None
+            for seg in segments:
+                cur_folder = (
+                    self.sql_session.query(ContestFolder)
+                    .filter(ContestFolder.name == seg)
+                    .filter(ContestFolder.parent == parent)
+                    .filter(ContestFolder.hidden == False)
+                    .first()
+                )
+                if cur_folder is None:
+                    raise tornado.web.HTTPError(404)
+                breadcrumbs.append(cur_folder)
+                parent = cur_folder
+        else:
+            cur_folder = None
+
+        # Subfolders (exclude hidden folders)
+        if cur_folder is None:
+            subfolders = (
+                self.sql_session.query(ContestFolder)
+                .filter(ContestFolder.parent_id.is_(None))
+                .filter(ContestFolder.hidden == False)
+                .order_by(ContestFolder.name)
+                .all()
+            )
+            contests = (
+                self.sql_session.query(Contest)
+                .filter(Contest.folder_id.is_(None))
+                .all()
+            )
+        else:
+            subfolders = (
+                self.sql_session.query(ContestFolder)
+                .filter(ContestFolder.parent == cur_folder)
+                .filter(ContestFolder.hidden == False)
+                .order_by(ContestFolder.name)
+                .all()
+            )
+            contests = (
+                self.sql_session.query(Contest)
+                .filter(Contest.folder == cur_folder)
+                .all()
+            )
+
+        # Build url helper for folder/contest entries
+        def folder_href(f: ContestFolder) -> str:
+            return self.url("browse", *[bf.name for bf in breadcrumbs], f.name)
+
+        def contest_href(c: Contest) -> str:
+            # Contest pages expect the contest name segment; we still support
+            # nested paths by capturing full path but resolve by last segment.
+            return self.url(*[bf.name for bf in breadcrumbs], c.name)
+
+        folder_tree = self._build_folder_tree()
+
+        self.render(
+            "folder_browse.html",
+            breadcrumbs=breadcrumbs,
+            subfolders=subfolders,
+            contests=contests,
+            folder_href=folder_href,
+            contest_href=contest_href,
+            folder_tree=folder_tree,
+            current_path=path or "",
+            **self.r_params,
+        )

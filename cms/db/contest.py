@@ -38,6 +38,7 @@ from sqlalchemy.types import Integer, Unicode, DateTime, Interval, Enum, \
 
 from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE
 from . import Codename, Base, Admin
+from .contest_folder import ContestFolder
 import typing
 if typing.TYPE_CHECKING:
     from . import Task, Participation
@@ -298,6 +299,15 @@ class Contest(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="contest")
+
+    # Optional folder this contest belongs to
+    folder_id: int | None = Column(
+        Integer,
+        ForeignKey(ContestFolder.id, onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    folder: ContestFolder | None = relationship(ContestFolder, back_populates="contests")
 
     def phase(self, timestamp: datetime) -> int:
         """Return: -1 if contest isn't started yet at time timestamp,
