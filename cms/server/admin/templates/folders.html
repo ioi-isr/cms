@@ -22,10 +22,7 @@
     <td>{{ f.description }}</td>
     <td>{{ f.parent.description if f.parent is not none else "(root)" }}</td>
     <td>
-      <form action="{{ url("folders") }}" method="POST" class="inline">{{ xsrf_form_html|safe }}
-        <input type="hidden" name="folder_id" value="{{ f.id }}"/>
-        <input type="submit" name="operation" value="Remove"/>
-      </form>
+      <a href="{{ url('folders', f.id, 'remove') }}">Remove</a>
     </td>
   </tr>
   {% endfor %}

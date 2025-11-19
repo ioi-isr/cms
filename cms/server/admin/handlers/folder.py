@@ -28,21 +28,6 @@ class FolderListHandler(SimpleHandler("folders.html")):
             .all()
         )
         self.render("folders.html", **self.r_params)
-    """List all folders and allow removing via POST -> remove confirmation."""
-
-    REMOVE = "Remove"
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def post(self):
-        folder_id: str = self.get_argument("folder_id")
-        operation: str = self.get_argument("operation")
-
-        if operation == self.REMOVE:
-            self.redirect(self.url("folders", folder_id, "remove"))
-        else:
-            self.service.add_notification(
-                make_datetime(), f"Invalid operation {operation}", "")
-            self.redirect(self.url("folders"))
 
 
 class FolderHandler(BaseHandler):
@@ -157,8 +142,6 @@ class RemoveFolderHandler(BaseHandler):
         parent = folder.parent
         for c in list(self.sql_session.query(Contest).filter(Contest.folder == folder).all()):
             c.folder = parent
-        # Persist reparenting before deleting folder
-        self.sql_session.flush()
         # Delete the folder itself; contests will be detached via FK SET NULL
         self.sql_session.delete(folder)
         self.try_commit()
