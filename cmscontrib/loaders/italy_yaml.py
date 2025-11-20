@@ -846,6 +846,26 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 break
         else:
             evaluation_param = "diff"
+        
+        exponent = load(conf, None, "exponent")
+        if exponent is not None:
+            try:
+                exponent = int(exponent)
+                if exponent < 0:
+                    error_msg = "exponent must be a non-negative integer, got: %d" % exponent
+                    logger.error(error_msg)
+                    raise LoaderValidationError(error_msg)
+            except (ValueError, TypeError) as e:
+                error_msg = "exponent must be an integer, got: %s" % exponent
+                logger.error(error_msg)
+                raise LoaderValidationError(error_msg)
+            
+            if evaluation_param == "comparator":
+                logger.warning(
+                    "Both checker and exponent specified. Checker takes precedence, "
+                    "ignoring exponent parameter.")
+            else:
+                evaluation_param = "realprecision"
 
         managers_folder = find_first_existing_dir(
             self.path, ["managers", "Managers"])
@@ -1015,6 +1035,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             args["time_limit"] = None
             args["memory_limit"] = None
             args["task_type_parameters"] = [evaluation_param]
+            if evaluation_param == "realprecision":
+                args["task_type_parameters"].append(exponent if exponent is not None else 6)
             task.submission_format = \
                 ["output_%03d.txt" % i for i in range(n_input)]
 
@@ -1080,6 +1102,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     [infile_param, outfile_param],
                     evaluation_param,
                 ]
+                
+                if evaluation_param == "realprecision":
+                    args["task_type_parameters"].append(exponent if exponent is not None else 6)
 
                 output_only_testcases = load(conf, None, "output_only_testcases",
                                              conv=lambda x: "" if x is None else x)
