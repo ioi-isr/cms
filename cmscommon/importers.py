@@ -29,6 +29,23 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 
+def compile_template_regex(template: str) -> re.Pattern:
+    """Compile a testcase filename template into a regex pattern.
+    
+    template: template string with exactly one '*' placeholder (e.g., "input.*", "*.in")
+    
+    return: compiled regex pattern that matches filenames and captures the codename
+    
+    The '*' placeholder is replaced with a capturing group that matches any characters.
+    This is the canonical implementation used by both the admin UI and loaders.
+    """
+    if template.count('*') != 1:
+        raise ValueError(
+            "Template must have exactly one '*' placeholder, got: %s" % template)
+    
+    return re.compile(re.escape(template).replace("\\*", "(.*)") + "$")
+
+
 def import_testcases_from_zipfile(
     session: Session,
     file_cacher: FileCacher,

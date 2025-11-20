@@ -49,6 +49,7 @@ from cms.grading.steps.compilation import compilation_step
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
 from cmscommon.crypto import build_password
+from cmscommon.importers import compile_template_regex
 from cmscontrib import touch
 from .base_loader import ContestLoader, TaskLoader, UserLoader, TeamLoader, \
     LANGUAGE_MAP, LoaderValidationError
@@ -69,15 +70,32 @@ def find_first_existing_dir(base_path, folder_names):
 
     """
     found_folders = []
+    found_paths = []
+    
     for folder_name in folder_names:
         folder_path = os.path.join(base_path, folder_name)
-        if os.path.exists(folder_path):
-            found_folders.append(folder_name)
+        if os.path.isdir(folder_path):
+            # Check if this is the same directory as any we've already found
+            is_duplicate = False
+            for existing_path in found_paths:
+                try:
+                    if os.path.samefile(folder_path, existing_path):
+                        is_duplicate = True
+                        break
+                except (OSError, ValueError):
+                    if os.path.realpath(folder_path) == os.path.realpath(existing_path):
+                        is_duplicate = True
+                        break
+            
+            if not is_duplicate:
+                found_folders.append(folder_name)
+                found_paths.append(folder_path)
 
     if len(found_folders) > 1:
-        raise LoaderValidationError(
-            "Multiple alternative folders found: %s. "
-            "Please keep only one." % ", ".join(found_folders))
+        error_msg = ("Multiple alternative folders found: %s. "
+                     "Please keep only one." % ", ".join(found_folders))
+        logger.error(error_msg)
+        raise LoaderValidationError(error_msg)
 
     return found_folders[0] if found_folders else None
 
@@ -111,19 +129,22 @@ def detect_testcase_sources(task_path):
             folder_sources.append((folder_name, folder_path))
     
     if len(zip_sources) > 1:
-        raise LoaderValidationError(
-            "Multiple testcase zip files found: %s. Please keep only one." %
-            ", ".join([name for name, _ in zip_sources]))
+        error_msg = ("Multiple testcase zip files found: %s. Please keep only one." %
+                     ", ".join([name for name, _ in zip_sources]))
+        logger.error(error_msg)
+        raise LoaderValidationError(error_msg)
     
     if len(folder_sources) > 1:
-        raise LoaderValidationError(
-            "Multiple testcase folders found: %s. Please keep only one." %
-            ", ".join([name for name, _ in folder_sources]))
+        error_msg = ("Multiple testcase folders found: %s. Please keep only one." %
+                     ", ".join([name for name, _ in folder_sources]))
+        logger.error(error_msg)
+        raise LoaderValidationError(error_msg)
     
     if len(zip_sources) > 0 and len(folder_sources) > 0:
-        raise LoaderValidationError(
-            "Both testcase zip (%s) and folder (%s) found. Please keep only one." %
-            (zip_sources[0][0], folder_sources[0][0]))
+        error_msg = ("Both testcase zip (%s) and folder (%s) found. Please keep only one." %
+                     (zip_sources[0][0], folder_sources[0][0]))
+        logger.error(error_msg)
+        raise LoaderValidationError(error_msg)
     
     if has_legacy:
         if zip_sources or folder_sources:
@@ -149,14 +170,13 @@ def pair_testcases_from_directory(directory, input_template, output_template):
     return: dict mapping codename to (input_path, output_path) tuples.
 
     """
-    if input_template.count('*') != 1 or output_template.count('*') != 1:
-        raise LoaderValidationError(
-            "Templates must have exactly one '*' placeholder. "
-            "Got input_template='%s', output_template='%s'" % 
-            (input_template, output_template))
-
-    input_re = re.compile(re.escape(input_template).replace("\\*", "(.*)") + "$")
-    output_re = re.compile(re.escape(output_template).replace("\\*", "(.*)") + "$")
+    try:
+        input_re = compile_template_regex(input_template)
+        output_re = compile_template_regex(output_template)
+    except ValueError as e:
+        error_msg = str(e)
+        logger.error(error_msg)
+        raise LoaderValidationError(error_msg)
 
     inputs = {}
     outputs = {}
@@ -183,7 +203,9 @@ def pair_testcases_from_directory(directory, input_template, output_template):
             error_msg.append("Missing outputs for: %s" % ", ".join(sorted(missing_outputs)))
         if missing_inputs:
             error_msg.append("Missing inputs for: %s" % ", ".join(sorted(missing_inputs)))
-        raise LoaderValidationError("Testcase pairing failed. %s" % "; ".join(error_msg))
+        error_message = "Testcase pairing failed. %s" % "; ".join(error_msg)
+        logger.error(error_message)
+        raise LoaderValidationError(error_message)
 
     return {codename: (inputs[codename], outputs[codename])
             for codename in sorted(inputs.keys())}
@@ -618,7 +640,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 ["statement", "statements", "Statement", "Statements", "testo"])
 
             if statement is None:
-                raise LoaderValidationError("Statement folder not found.")
+                error_msg = "Statement folder not found."
+                logger.error(error_msg)
+                raise LoaderValidationError(error_msg)
 
             single_statement_path = os.path.join(
                 self.path, statement, "%s.pdf" % statement)
@@ -660,8 +684,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     primary_language: single_statement_path}
 
             if primary_language not in statements_to_import.keys() or statements_to_import[primary_language] is None:
-                raise LoaderValidationError(
-                    "Couldn't find statement for primary language %s, aborting." % primary_language)
+                error_msg = "Couldn't find statement for primary language %s, aborting." % primary_language
+                logger.error(error_msg)
+                raise LoaderValidationError(error_msg)
 
             args["statements"] = dict()
             for lang_code, statement_path in statements_to_import.items():
@@ -975,7 +1000,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 args["score_type"] = "Sum"
                 total_value = float(conf.get("total_value", 100.0))
                 input_value = 0.0
-                n_input = int(conf['n_input'])
+                n_input = load(conf, None, ["n_input", "n_test"])
+                if n_input is None:
+                    n_input = 0
+                else:
+                    n_input = int(n_input)
                 if n_input != 0:
                     input_value = total_value / n_input
                 args["score_type_parameters"] = input_value
@@ -1103,7 +1132,12 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
                 with zipfile.ZipFile(source_path, 'r') as zip_ref:
                     zip_ref.extractall(testcases_temp_dir)
-                testcases_dir = testcases_temp_dir
+                
+                contents = os.listdir(testcases_temp_dir)
+                if len(contents) == 1 and os.path.isdir(os.path.join(testcases_temp_dir, contents[0])):
+                    testcases_dir = os.path.join(testcases_temp_dir, contents[0])
+                else:
+                    testcases_dir = testcases_temp_dir
                 logger.info("Extracted testcases from %s", os.path.basename(source_path))
             else:
                 testcases_dir = source_path
@@ -1126,9 +1160,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 if testcases_temp_dir:
                     import shutil
                     shutil.rmtree(testcases_temp_dir)
-                raise LoaderValidationError(
-                    "Testcase count mismatch: found %d testcases but expected %d" %
-                    (len(paired_testcases), n_input))
+                error_msg = ("Testcase count mismatch: found %d testcases but expected %d" %
+                             (len(paired_testcases), n_input))
+                logger.error(error_msg)
+                raise LoaderValidationError(error_msg)
 
             # Load testcases
             for codename, (input_path, output_path) in paired_testcases.items():
@@ -1153,9 +1188,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 shutil.rmtree(testcases_temp_dir)
         else:
             # No testcase source found
-            raise LoaderValidationError(
-                "No testcases found. Expected input/output folders or "
-                "tests/testcases folder/zip.")
+            error_msg = ("No testcases found. Expected input/output folders or "
+                         "tests/testcases folder/zip.")
+            logger.error(error_msg)
+            raise LoaderValidationError(error_msg)
 
         public_testcases = load(conf, None, ["public_testcases", "risultati"],
                                 conv=lambda x: "" if x is None else x)

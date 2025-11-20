@@ -52,7 +52,7 @@ from cms.grading.language import CompiledLanguage
 from cms.grading.steps.compilation import compilation_step
 from cms.grading.scoring import compute_changes_for_dataset
 from cmscommon.datetime import make_datetime
-from cmscommon.importers import import_testcases_from_zipfile
+from cmscommon.importers import import_testcases_from_zipfile, compile_template_regex
 from .base import BaseHandler, require_permission
 
 
@@ -674,10 +674,15 @@ class AddTestcasesHandler(BaseHandler):
         # Get input/output file names templates, or use default ones.
         input_template: str = self.get_argument("input_template", "input.*")
         output_template: str = self.get_argument("output_template", "output.*")
-        input_re = re.compile(re.escape(input_template).replace("\\*",
-                              "(.*)") + "$")
-        output_re = re.compile(re.escape(output_template).replace("\\*",
-                               "(.*)") + "$")
+        
+        try:
+            input_re = compile_template_regex(input_template)
+            output_re = compile_template_regex(output_template)
+        except ValueError as e:
+            self.service.add_notification(
+                make_datetime(), "Invalid template", str(e))
+            self.redirect(fallback_page)
+            return
 
         fp = io.BytesIO(archive["body"])
         try:

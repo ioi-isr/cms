@@ -180,7 +180,8 @@ class ImportTaskHandler(
 
             success, error_detail = _run_import_with_error_capture(
                 lambda: importer.do_import(),
-                ["cmscontrib.ImportTask", "cmscontrib.importing"]
+                ["cmscontrib.ImportTask", "cmscontrib.importing", 
+                 "cmscontrib.loaders", "cmscontrib.loaders.italy_yaml"]
             )
 
             if success:
@@ -291,7 +292,8 @@ class ImportContestHandler(
 
             success, error_detail = _run_import_with_error_capture(
                 lambda: importer.do_import(),
-                ["cmscontrib.ImportContest", "cmscontrib.importing"]
+                ["cmscontrib.ImportContest", "cmscontrib.importing",
+                 "cmscontrib.loaders", "cmscontrib.loaders.italy_yaml"]
             )
 
             if success:
