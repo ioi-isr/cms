@@ -52,6 +52,21 @@
     </select>
   </div>
   
+  <h2>Testcase Templates (for tests/testcases folders)</h2>
+  <p>Specify templates for matching input and output files. Use * as wildcard placeholder.</p>
+  
+  <div style="margin: 10px 0;">
+    <label for="input_template"><strong>Input file template:</strong></label><br/>
+    <input type="text" name="input_template" id="input_template" placeholder="input.*" style="width: 300px;"/>
+    <span style="color: #666; font-size: 0.9em;">(default: input.*)</span>
+  </div>
+  
+  <div style="margin: 10px 0;">
+    <label for="output_template"><strong>Output file template:</strong></label><br/>
+    <input type="text" name="output_template" id="output_template" placeholder="output.*" style="width: 300px;"/>
+    <span style="color: #666; font-size: 0.9em;">(default: output.*)</span>
+  </div>
+  
   <div style="margin: 20px 0;">
     <input type="submit" value="Import Task">
     <input type="button" value="Cancel" onclick="window.location.href='{{ url("tasks") }}'">
