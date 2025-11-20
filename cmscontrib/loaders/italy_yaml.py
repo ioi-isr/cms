@@ -36,7 +36,8 @@ from copy import deepcopy
 import yaml
 
 from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
-    FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED, FEEDBACK_LEVEL_OI_RESTRICTED
+    FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED, \
+    FEEDBACK_LEVEL_OI_RESTRICTED
 from cms.db import Contest, User, Task, Statement, Attachment, Team, Dataset, \
     Manager, Testcase
 from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
@@ -57,39 +58,39 @@ logger = logging.getLogger(__name__)
 
 def find_first_existing_dir(base_path, folder_names):
     """Find the first existing directory from a list of alternatives.
-    
+
     base_path: the base directory to search in.
     folder_names: list of folder names to try.
-    
+
     return: the name of the first existing folder, or None if none exist.
-    
+
     Raises a critical error if multiple folders exist.
-    
+
     """
     found_folders = []
     for folder_name in folder_names:
         folder_path = os.path.join(base_path, folder_name)
         if os.path.exists(folder_path):
             found_folders.append(folder_name)
-    
+
     if len(found_folders) > 1:
         logger.critical(
             "Multiple alternative folders found: %s. "
             "Please keep only one.", ", ".join(found_folders))
         sys.exit(1)
-    
+
     return found_folders[0] if found_folders else None
 
 
 def pair_testcases_from_directory(directory, input_template, output_template):
     """Pair input and output files from a directory using templates.
-    
+
     directory: path to directory containing testcase files.
     input_template: template for input files (e.g., "input.*").
     output_template: template for output files (e.g., "output.*").
-    
+
     return: dict mapping codename to (input_path, output_path) tuples.
-    
+
     """
     if input_template.count('*') != 1 or output_template.count('*') != 1:
         logger.critical(
@@ -97,27 +98,27 @@ def pair_testcases_from_directory(directory, input_template, output_template):
             "Got input_template='%s', output_template='%s'",
             input_template, output_template)
         sys.exit(1)
-    
+
     input_re = re.compile(re.escape(input_template).replace("\\*", "(.*)") + "$")
     output_re = re.compile(re.escape(output_template).replace("\\*", "(.*)") + "$")
-    
+
     inputs = {}
     outputs = {}
-    
+
     for filename in os.listdir(directory):
         input_match = input_re.match(filename)
         if input_match:
             codename = input_match.group(1)
             inputs[codename] = os.path.join(directory, filename)
-        
+
         output_match = output_re.match(filename)
         if output_match:
             codename = output_match.group(1)
             outputs[codename] = os.path.join(directory, filename)
-    
+
     input_codenames = set(inputs.keys())
     output_codenames = set(outputs.keys())
-    
+
     if input_codenames != output_codenames:
         missing_outputs = input_codenames - output_codenames
         missing_inputs = output_codenames - input_codenames
@@ -128,7 +129,7 @@ def pair_testcases_from_directory(directory, input_template, output_template):
             error_msg.append("Missing inputs for: %s" % ", ".join(sorted(missing_inputs)))
         logger.critical("Testcase pairing failed. %s", "; ".join(error_msg))
         sys.exit(1)
-    
+
     return {codename: (inputs[codename], outputs[codename])
             for codename in sorted(inputs.keys())}
 
@@ -136,19 +137,19 @@ def pair_testcases_from_directory(directory, input_template, output_template):
 def compile_manager_source(file_cacher, source_path, source_filename,
                            compiled_filename, task_name):
     """Compile a manager source file (checker.cpp or manager.cpp).
-    
+
     file_cacher: FileCacher instance for storing files.
     source_path: path to the source file.
     source_filename: name of the source file.
     compiled_filename: name for the compiled binary.
     task_name: name of the task (for logging).
-    
+
     return: tuple (source_digest, compiled_digest) or None if compilation fails.
-    
+
     """
     with open(source_path, 'rb') as f:
         source_body = f.read()
-    
+
     try:
         language = filename_to_language(source_filename)
     except Exception:
@@ -156,30 +157,30 @@ def compile_manager_source(file_cacher, source_path, source_filename,
             "Could not detect language for %s, skipping compilation",
             source_filename)
         return None
-    
+
     if not isinstance(language, CompiledLanguage):
         logger.warning(
             "%s is not a compiled language, skipping compilation",
             source_filename)
         return None
-    
+
     sandbox = None
     try:
         sandbox = create_sandbox(file_cacher, name="loader_compile")
         sandbox.create_file_from_string(source_filename, source_body)
-        
+
         commands = language.get_compilation_commands(
             [source_filename], compiled_filename, for_evaluation=True)
-        
+
         box_success, compilation_success, text, stats = \
             compilation_step(sandbox, commands)
-        
+
         if not box_success:
             logger.error(
                 "Sandbox error during compilation of %s for task %s",
                 source_filename, task_name)
             return None
-        
+
         if not compilation_success:
             stdout = stats.get("stdout", "") if stats else ""
             stderr = stats.get("stderr", "") if stats else ""
@@ -187,16 +188,16 @@ def compile_manager_source(file_cacher, source_path, source_filename,
                 "Compilation failed for %s in task %s.\nStdout:\n%s\nStderr:\n%s",
                 source_filename, task_name, stdout, stderr)
             return None
-        
+
         compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
-        
+
         source_digest = file_cacher.put_file_content(
             source_body, "Manager source %s for task %s" % (source_filename, task_name))
         compiled_digest = file_cacher.put_file_content(
             compiled_bytes, "Compiled manager %s for task %s" % (compiled_filename, task_name))
-        
+
         return (source_digest, compiled_digest)
-        
+
     except Exception as error:
         logger.error(
             "Error compiling %s for task %s: %s",
@@ -759,6 +760,71 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         else:
             evaluation_param = "diff"
 
+        managers_folder = find_first_existing_dir(
+            self.path, ["managers", "Managers"])
+        if managers_folder is not None:
+            managers_path = os.path.join(self.path, managers_folder)
+
+            # Determine allowed compile basenames from task type
+            allowed_compile_basenames = set()
+            if "task_type" in conf:
+                try:
+                    tt_cls = get_task_type_class(conf["task_type"])
+                    if hasattr(tt_cls, "CHECKER_CODENAME"):
+                        allowed_compile_basenames.add(
+                            getattr(tt_cls, "CHECKER_CODENAME"))
+                    if hasattr(tt_cls, "MANAGER_FILENAME"):
+                        allowed_compile_basenames.add(
+                            getattr(tt_cls, "MANAGER_FILENAME"))
+                except Exception:
+                    pass
+
+            if not allowed_compile_basenames:
+                allowed_compile_basenames = {"checker", "manager"}
+
+            existing_manager_filenames = {m.filename for m in args["managers"]}
+
+            for filename in os.listdir(managers_path):
+                file_path = os.path.join(managers_path, filename)
+                if not os.path.isfile(file_path):
+                    continue
+
+                base_noext = os.path.splitext(filename)[0]
+
+                # Check if this is a source file that should be compiled
+                should_compile = (base_noext in allowed_compile_basenames and
+                                filename.endswith(('.cpp', '.c', '.cc', '.cxx')))
+
+                if should_compile:
+                    result = compile_manager_source(
+                        self.file_cacher, file_path, filename,
+                        base_noext, task.name)
+
+                    if result is not None:
+                        source_digest, compiled_digest = result
+
+                        if filename not in existing_manager_filenames:
+                            args["managers"] += [Manager(filename, source_digest)]
+                            existing_manager_filenames.add(filename)
+
+                        if base_noext not in existing_manager_filenames:
+                            args["managers"] += [Manager(base_noext, compiled_digest)]
+                            existing_manager_filenames.add(base_noext)
+
+                            if base_noext == "checker":
+                                evaluation_param = "comparator"
+                    else:
+                        logger.warning(
+                            "Failed to compile %s from managers folder, skipping",
+                            filename)
+                else:
+                    if filename not in existing_manager_filenames:
+                        digest = self.file_cacher.put_file_from_path(
+                            file_path,
+                            "Manager %s for task %s" % (filename, task.name))
+                        args["managers"] += [Manager(filename, digest)]
+                        existing_manager_filenames.add(filename)
+
         # Override score_type if explicitly specified
         if "score_type" in conf and "score_type_parameters" in conf and "n_input" in conf:
             logger.info("Overriding 'score_type' and 'score_type_parameters' "
@@ -772,7 +838,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                             "specify all 'score_type', "
                             "'score_type_parameters' and "
                             "'n_input'.")
-                
+
             # Detect subtasks by checking GEN
             gen_filename = os.path.join(self.path, 'gen', 'GEN')
             try:
@@ -945,24 +1011,100 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     task.submission_format.extend(["output_%s.txt" % s for s in sorted(output_codenames)])
 
         args["testcases"] = []
-        for i in range(n_input):
-            input_digest = self.file_cacher.put_file_from_path(
-                os.path.join(self.path, "input", "input%d.txt" % i),
-                "Input %d for task %s" % (i, task.name))
-            output_digest = self.file_cacher.put_file_from_path(
-                os.path.join(self.path, "output", "output%d.txt" % i),
-                "Output %d for task %s" % (i, task.name))
-            test_codename = "%03d" % i
-            args["testcases"] += [
-                Testcase(test_codename, True, input_digest, output_digest)]
-            add_attachment = False
-            if args["task_type"] == "OutputOnly":
-                task.attachments.set(
-                    Attachment("input_%s.txt" % test_codename, input_digest))
-            elif args["task_type"] == "BatchAndOutput":
-                if output_codenames is not None and test_codename in output_codenames:
+        testcases_temp_dir = None
+
+        # Check if legacy input/output folders exist (backward compatibility)
+        has_legacy_folders = (os.path.exists(os.path.join(self.path, "input")) and
+                             os.path.exists(os.path.join(self.path, "output")))
+
+        if has_legacy_folders:
+            for i in range(n_input):
+                input_digest = self.file_cacher.put_file_from_path(
+                    os.path.join(self.path, "input", "input%d.txt" % i),
+                    "Input %d for task %s" % (i, task.name))
+                output_digest = self.file_cacher.put_file_from_path(
+                    os.path.join(self.path, "output", "output%d.txt" % i),
+                    "Output %d for task %s" % (i, task.name))
+                test_codename = "%03d" % i
+                args["testcases"] += [
+                    Testcase(test_codename, True, input_digest, output_digest)]
+                if args["task_type"] == "OutputOnly":
                     task.attachments.set(
                         Attachment("input_%s.txt" % test_codename, input_digest))
+                elif args["task_type"] == "BatchAndOutput":
+                    if output_codenames is not None and test_codename in output_codenames:
+                        task.attachments.set(
+                            Attachment("input_%s.txt" % test_codename, input_digest))
+        else:
+            testcases_dir = None
+
+            for zip_name in ["tests.zip", "testcases.zip"]:
+                zip_path = os.path.join(self.path, zip_name)
+                if os.path.exists(zip_path):
+                    testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
+                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                        zip_ref.extractall(testcases_temp_dir)
+                    testcases_dir = testcases_temp_dir
+                    logger.info("Extracted testcases from %s", zip_name)
+                    break
+
+            if testcases_dir is None:
+                testcases_folder = find_first_existing_dir(
+                    self.path, ["tests", "testcases"])
+                if testcases_folder is not None:
+                    testcases_dir = os.path.join(self.path, testcases_folder)
+
+            if testcases_dir is not None:
+                input_template = load(conf, None, "input_template")
+                if input_template is None:
+                    input_template = "input.*"
+                output_template = load(conf, None, "output_template")
+                if output_template is None:
+                    output_template = "output.*"
+
+                paired_testcases = pair_testcases_from_directory(
+                    testcases_dir, input_template, output_template)
+
+                if n_input == 0 and not os.path.exists(os.path.join(self.path, "gen", "GEN")):
+                    n_input = len(paired_testcases)
+                    logger.info("Discovered %d testcases from templates", n_input)
+
+                if len(paired_testcases) != n_input:
+                    logger.critical(
+                        "Testcase count mismatch: found %d testcases but expected %d",
+                        len(paired_testcases), n_input)
+                    if testcases_temp_dir:
+                        import shutil
+                        shutil.rmtree(testcases_temp_dir)
+                    sys.exit(1)
+
+                # Load testcases
+                for codename, (input_path, output_path) in paired_testcases.items():
+                    input_digest = self.file_cacher.put_file_from_path(
+                        input_path,
+                        "Input %s for task %s" % (codename, task.name))
+                    output_digest = self.file_cacher.put_file_from_path(
+                        output_path,
+                        "Output %s for task %s" % (codename, task.name))
+                    args["testcases"] += [
+                        Testcase(codename, True, input_digest, output_digest)]
+                    if args["task_type"] == "OutputOnly":
+                        task.attachments.set(
+                            Attachment("input_%s.txt" % codename, input_digest))
+                    elif args["task_type"] == \
+                            "BatchAndOutput":
+                        if output_codenames is not None and codename in output_codenames:
+                            task.attachments.set(
+                                Attachment("input_%s.txt" % codename, input_digest))
+
+                if testcases_temp_dir:
+                    import shutil
+                    shutil.rmtree(testcases_temp_dir)
+            else:
+                logger.critical(
+                    "No testcases found. Expected input/output folders or "
+                    "tests/testcases folder/zip.")
+                sys.exit(1)
 
         public_testcases = load(conf, None, ["public_testcases", "risultati"],
                                 conv=lambda x: "" if x is None else x)
@@ -1052,34 +1194,57 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         itime = getmtime(os.path.join(self.path, ".itime"))
 
         # Generate a task's list of files
-        # Testcases
         files = []
-        for filename in os.listdir(os.path.join(self.path, "input")):
-            files.append(os.path.join(self.path, "input", filename))
 
-        for filename in os.listdir(os.path.join(self.path, "output")):
-            files.append(os.path.join(self.path, "output", filename))
+        # Testcases (legacy input/output folders)
+        if os.path.exists(os.path.join(self.path, "input")):
+            for filename in os.listdir(os.path.join(self.path, "input")):
+                files.append(os.path.join(self.path, "input", filename))
+        if os.path.exists(os.path.join(self.path, "output")):
+            for filename in os.listdir(os.path.join(self.path, "output")):
+                files.append(os.path.join(self.path, "output", filename))
 
-        # Attachments
-        if os.path.exists(os.path.join(self.path, "att")):
-            for filename in os.listdir(os.path.join(self.path, "att")):
-                files.append(os.path.join(self.path, "att", filename))
+        # Testcases (new tests/testcases folders and zips)
+        for testcases_name in ["tests", "testcases"]:
+            testcases_path = os.path.join(self.path, testcases_name)
+            if os.path.isdir(testcases_path):
+                for filename in os.listdir(testcases_path):
+                    files.append(os.path.join(testcases_path, filename))
+            zip_path = os.path.join(self.path, testcases_name + ".zip")
+            if os.path.exists(zip_path):
+                files.append(zip_path)
+
+        # Attachments (all variants)
+        for att_name in ["att", "attachements", "Attachements"]:
+            att_path = os.path.join(self.path, att_name)
+            if os.path.exists(att_path):
+                for filename in os.listdir(att_path):
+                    files.append(os.path.join(att_path, filename))
 
         # Score file
         files.append(os.path.join(self.path, "gen", "GEN"))
 
-        # Statement
-        files.append(os.path.join(self.path, "statement", "statement.pdf"))
-        files.append(os.path.join(self.path, "testo", "testo.pdf"))
-        for lang in LANGUAGE_MAP:
-            files.append(os.path.join(self.path, "statement", "%s.pdf" % lang))
-            files.append(os.path.join(self.path, "testo", "%s.pdf" % lang))
+        # Statement (all variants)
+        for statement_name in ["statement", "statements", "Statement", "Statements", "testo"]:
+            statement_path = os.path.join(self.path, statement_name)
+            files.append(os.path.join(statement_path, "statement.pdf"))
+            files.append(os.path.join(statement_path, "testo.pdf"))
+            for lang in LANGUAGE_MAP:
+                files.append(os.path.join(statement_path, "%s.pdf" % lang))
 
-        # Managers
+        # Managers (legacy check/cor folders)
         files.append(os.path.join(self.path, "check", "checker"))
         files.append(os.path.join(self.path, "cor", "correttore"))
         files.append(os.path.join(self.path, "check", "manager"))
         files.append(os.path.join(self.path, "cor", "manager"))
+
+        # Managers (new managers folder)
+        for managers_name in ["managers", "Managers"]:
+            managers_path = os.path.join(self.path, managers_name)
+            if os.path.isdir(managers_path):
+                for filename in os.listdir(managers_path):
+                    files.append(os.path.join(managers_path, filename))
+
         if not conf.get('output_only', False) and \
                 os.path.isdir(os.path.join(self.path, "sol")):
             for lang in LANGUAGES:
