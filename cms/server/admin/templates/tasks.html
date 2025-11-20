@@ -6,6 +6,10 @@
   <h1>Tasks list</h1>
 </div>
 
+<div style="margin-bottom: 10px;">
+  <a href="{{ url("tasks", "import") }}" class="button">Import Task from ZIP</a>
+</div>
+
 <form action="{{ url("tasks") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Edit selected task:

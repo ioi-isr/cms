@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Import Task</h1>
+</div>
+
+<form enctype="multipart/form-data" action="{{ url("tasks", "import") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  
+  <h2>Upload Task Archive</h2>
+  <p>Upload a zip file containing the task data in a supported format (Italian YAML, Polygon, TPS).</p>
+  
+  <div style="margin: 20px 0;">
+    <label for="task_file"><strong>Task Archive (ZIP):</strong></label><br/>
+    <input type="file" name="task_file" id="task_file" accept=".zip" required/><br/>
+  </div>
+  
+  <h2>Import Options</h2>
+  
+  <div style="margin: 10px 0;">
+    <label>
+      <input type="checkbox" name="update" value="true"/>
+      Update existing task (if task with same name exists)
+    </label>
+  </div>
+  
+  <div style="margin: 10px 0;">
+    <label>
+      <input type="checkbox" name="no_statement" value="true"/>
+      Do not import task statement
+    </label>
+  </div>
+  
+  <div style="margin: 10px 0;">
+    <label for="contest_id"><strong>Attach to Contest (optional):</strong></label><br/>
+    <select name="contest_id" id="contest_id">
+      <option value="">-- No Contest --</option>
+      {% for contest in contest_list %}
+      <option value="{{ contest.id }}">{{ contest.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  
+  <div style="margin: 10px 0;">
+    <label for="loader"><strong>Loader (optional, autodetect if empty):</strong></label><br/>
+    <select name="loader" id="loader">
+      <option value="">-- Autodetect --</option>
+      <option value="italy_yaml">Italian YAML</option>
+      <option value="polygon">Polygon</option>
+      <option value="tps">TPS</option>
+    </select>
+  </div>
+  
+  <div style="margin: 20px 0;">
+    <input type="submit" value="Import Task">
+    <input type="button" value="Cancel" onclick="window.location.href='{{ url("tasks") }}'">
+  </div>
+</form>
+
+<div style="margin-top: 30px; padding: 10px; background-color: #f0f0f0; border: 1px solid #ccc;">
+  <h3>Supported Formats</h3>
+  <ul>
+    <li><strong>Italian YAML:</strong> Task directory with task.yaml file</li>
+    <li><strong>Polygon:</strong> Codeforces Polygon XML format</li>
+    <li><strong>TPS:</strong> TPS format</li>
+  </ul>
+  <p>The zip file should contain the task directory structure. If the zip contains a single top-level directory, that directory will be used as the task root.</p>
+</div>
+
+{% endblock core %}
