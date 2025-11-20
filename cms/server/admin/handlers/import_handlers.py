@@ -30,6 +30,7 @@ from cmscommon.datetime import make_datetime
 from cmscontrib.ImportTask import TaskImporter
 from cmscontrib.ImportContest import ContestImporter
 from cmscontrib.loaders import choose_loader
+from cmscontrib.loaders.base_loader import LoaderValidationError
 
 from .base import BaseHandler, SimpleHandler, require_permission
 
@@ -71,6 +72,8 @@ def _run_import_with_error_capture(import_func, logger_names):
         else:
             error_msg = None
         return success, error_msg
+    except LoaderValidationError as e:
+        return False, str(e)
     finally:
         for log in loggers:
             log.removeHandler(capture_handler)

@@ -50,7 +50,8 @@ from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
 from cmscommon.crypto import build_password
 from cmscontrib import touch
-from .base_loader import ContestLoader, TaskLoader, UserLoader, TeamLoader, LANGUAGE_MAP
+from .base_loader import ContestLoader, TaskLoader, UserLoader, TeamLoader, \
+    LANGUAGE_MAP, LoaderValidationError
 
 
 logger = logging.getLogger(__name__)
@@ -74,10 +75,9 @@ def find_first_existing_dir(base_path, folder_names):
             found_folders.append(folder_name)
 
     if len(found_folders) > 1:
-        logger.critical(
+        raise LoaderValidationError(
             "Multiple alternative folders found: %s. "
-            "Please keep only one.", ", ".join(found_folders))
-        sys.exit(1)
+            "Please keep only one." % ", ".join(found_folders))
 
     return found_folders[0] if found_folders else None
 
@@ -93,11 +93,10 @@ def pair_testcases_from_directory(directory, input_template, output_template):
 
     """
     if input_template.count('*') != 1 or output_template.count('*') != 1:
-        logger.critical(
+        raise LoaderValidationError(
             "Templates must have exactly one '*' placeholder. "
-            "Got input_template='%s', output_template='%s'",
-            input_template, output_template)
-        sys.exit(1)
+            "Got input_template='%s', output_template='%s'" % 
+            (input_template, output_template))
 
     input_re = re.compile(re.escape(input_template).replace("\\*", "(.*)") + "$")
     output_re = re.compile(re.escape(output_template).replace("\\*", "(.*)") + "$")
@@ -127,8 +126,7 @@ def pair_testcases_from_directory(directory, input_template, output_template):
             error_msg.append("Missing outputs for: %s" % ", ".join(sorted(missing_outputs)))
         if missing_inputs:
             error_msg.append("Missing inputs for: %s" % ", ".join(sorted(missing_inputs)))
-        logger.critical("Testcase pairing failed. %s", "; ".join(error_msg))
-        sys.exit(1)
+        raise LoaderValidationError("Testcase pairing failed. %s" % "; ".join(error_msg))
 
     return {codename: (inputs[codename], outputs[codename])
             for codename in sorted(inputs.keys())}
@@ -563,8 +561,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 ["statement", "statements", "Statement", "Statements", "testo"])
 
             if statement is None:
-                logger.critical("Statement folder not found.")
-                sys.exit(1)
+                raise LoaderValidationError("Statement folder not found.")
 
             single_statement_path = os.path.join(
                 self.path, statement, "%s.pdf" % statement)
@@ -597,9 +594,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     primary_language: single_statement_path}
 
             if primary_language not in statements_to_import.keys():
-                logger.critical(
+                raise LoaderValidationError(
                     "Couldn't find statement for primary language %s, aborting." % primary_language)
-                sys.exit(1)
 
             args["statements"] = dict()
             for lang_code, statement_path in statements_to_import.items():
@@ -1070,13 +1066,12 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     logger.info("Discovered %d testcases from templates", n_input)
 
                 if len(paired_testcases) != n_input:
-                    logger.critical(
-                        "Testcase count mismatch: found %d testcases but expected %d",
-                        len(paired_testcases), n_input)
                     if testcases_temp_dir:
                         import shutil
                         shutil.rmtree(testcases_temp_dir)
-                    sys.exit(1)
+                    raise LoaderValidationError(
+                        "Testcase count mismatch: found %d testcases but expected %d" %
+                        (len(paired_testcases), n_input))
 
                 # Load testcases
                 for codename, (input_path, output_path) in paired_testcases.items():
@@ -1101,10 +1096,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     import shutil
                     shutil.rmtree(testcases_temp_dir)
             else:
-                logger.critical(
+                raise LoaderValidationError(
                     "No testcases found. Expected input/output folders or "
                     "tests/testcases folder/zip.")
-                sys.exit(1)
 
         public_testcases = load(conf, None, ["public_testcases", "risultati"],
                                 conv=lambda x: "" if x is None else x)
@@ -1135,8 +1129,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         contest_yaml = os.path.join(self.path, "contest.yaml")
 
         if not os.path.exists(contest_yaml):
-            logger.critical("File missing: \"contest.yaml\"")
-            sys.exit(1)
+            raise LoaderValidationError("File missing: \"contest.yaml\"")
 
         # If there is no .itime file, we assume that the contest has changed
         if not os.path.exists(os.path.join(self.path, ".itime_contest")):
@@ -1149,10 +1142,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             return True
 
         if os.path.exists(os.path.join(self.path, ".import_error_contest")):
-            logger.warning("Last attempt to import contest %s failed, I'm not "
-                           "trying again. After fixing the error, delete the "
-                           "file .import_error_contest", name)
-            sys.exit(1)
+            raise LoaderValidationError(
+                "Last attempt to import contest %s failed. "
+                "After fixing the error, delete the file .import_error_contest" % name)
 
         return False
 
@@ -1176,8 +1168,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         if (not os.path.exists(os.path.join(self.path, "task.yaml"))) and \
            (not os.path.exists(os.path.join(self.path, "..", name + ".yaml"))):
-            logger.critical("File missing: \"task.yaml\"")
-            sys.exit(1)
+            raise LoaderValidationError("File missing: \"task.yaml\"")
 
         # We first look for the yaml file inside the task folder,
         # and eventually fallback to a yaml file in its parent folder.
@@ -1267,9 +1258,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     return True
 
         if os.path.exists(os.path.join(self.path, ".import_error")):
-            logger.warning("Last attempt to import task %s failed, I'm not "
-                           "trying again. After fixing the error, delete the "
-                           "file .import_error", name)
-            sys.exit(1)
+            raise LoaderValidationError(
+                "Last attempt to import task %s failed. "
+                "After fixing the error, delete the file .import_error" % name)
 
         return False
