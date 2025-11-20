@@ -26,7 +26,10 @@
 import logging
 import os
 import os.path
+import re
 import sys
+import tempfile
+import zipfile
 from datetime import datetime, timedelta, timezone
 from copy import deepcopy
 
@@ -36,7 +39,12 @@ from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
     FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED, FEEDBACK_LEVEL_OI_RESTRICTED
 from cms.db import Contest, User, Task, Statement, Attachment, Team, Dataset, \
     Manager, Testcase
-from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS
+from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
+    filename_to_language
+from cms.grading.language import CompiledLanguage
+from cms.grading.tasktypes import get_task_type_class
+from cms.grading.tasktypes.util import create_sandbox
+from cms.grading.steps.compilation import compilation_step
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
 from cmscommon.crypto import build_password
@@ -45,6 +53,158 @@ from .base_loader import ContestLoader, TaskLoader, UserLoader, TeamLoader, LANG
 
 
 logger = logging.getLogger(__name__)
+
+
+def find_first_existing_dir(base_path, folder_names):
+    """Find the first existing directory from a list of alternatives.
+    
+    base_path: the base directory to search in.
+    folder_names: list of folder names to try.
+    
+    return: the name of the first existing folder, or None if none exist.
+    
+    Raises a critical error if multiple folders exist.
+    
+    """
+    found_folders = []
+    for folder_name in folder_names:
+        folder_path = os.path.join(base_path, folder_name)
+        if os.path.exists(folder_path):
+            found_folders.append(folder_name)
+    
+    if len(found_folders) > 1:
+        logger.critical(
+            "Multiple alternative folders found: %s. "
+            "Please keep only one.", ", ".join(found_folders))
+        sys.exit(1)
+    
+    return found_folders[0] if found_folders else None
+
+
+def pair_testcases_from_directory(directory, input_template, output_template):
+    """Pair input and output files from a directory using templates.
+    
+    directory: path to directory containing testcase files.
+    input_template: template for input files (e.g., "input.*").
+    output_template: template for output files (e.g., "output.*").
+    
+    return: dict mapping codename to (input_path, output_path) tuples.
+    
+    """
+    if input_template.count('*') != 1 or output_template.count('*') != 1:
+        logger.critical(
+            "Templates must have exactly one '*' placeholder. "
+            "Got input_template='%s', output_template='%s'",
+            input_template, output_template)
+        sys.exit(1)
+    
+    input_re = re.compile(re.escape(input_template).replace("\\*", "(.*)") + "$")
+    output_re = re.compile(re.escape(output_template).replace("\\*", "(.*)") + "$")
+    
+    inputs = {}
+    outputs = {}
+    
+    for filename in os.listdir(directory):
+        input_match = input_re.match(filename)
+        if input_match:
+            codename = input_match.group(1)
+            inputs[codename] = os.path.join(directory, filename)
+        
+        output_match = output_re.match(filename)
+        if output_match:
+            codename = output_match.group(1)
+            outputs[codename] = os.path.join(directory, filename)
+    
+    input_codenames = set(inputs.keys())
+    output_codenames = set(outputs.keys())
+    
+    if input_codenames != output_codenames:
+        missing_outputs = input_codenames - output_codenames
+        missing_inputs = output_codenames - input_codenames
+        error_msg = []
+        if missing_outputs:
+            error_msg.append("Missing outputs for: %s" % ", ".join(sorted(missing_outputs)))
+        if missing_inputs:
+            error_msg.append("Missing inputs for: %s" % ", ".join(sorted(missing_inputs)))
+        logger.critical("Testcase pairing failed. %s", "; ".join(error_msg))
+        sys.exit(1)
+    
+    return {codename: (inputs[codename], outputs[codename])
+            for codename in sorted(inputs.keys())}
+
+
+def compile_manager_source(file_cacher, source_path, source_filename,
+                           compiled_filename, task_name):
+    """Compile a manager source file (checker.cpp or manager.cpp).
+    
+    file_cacher: FileCacher instance for storing files.
+    source_path: path to the source file.
+    source_filename: name of the source file.
+    compiled_filename: name for the compiled binary.
+    task_name: name of the task (for logging).
+    
+    return: tuple (source_digest, compiled_digest) or None if compilation fails.
+    
+    """
+    with open(source_path, 'rb') as f:
+        source_body = f.read()
+    
+    try:
+        language = filename_to_language(source_filename)
+    except Exception:
+        logger.warning(
+            "Could not detect language for %s, skipping compilation",
+            source_filename)
+        return None
+    
+    if not isinstance(language, CompiledLanguage):
+        logger.warning(
+            "%s is not a compiled language, skipping compilation",
+            source_filename)
+        return None
+    
+    sandbox = None
+    try:
+        sandbox = create_sandbox(file_cacher, name="loader_compile")
+        sandbox.create_file_from_string(source_filename, source_body)
+        
+        commands = language.get_compilation_commands(
+            [source_filename], compiled_filename, for_evaluation=True)
+        
+        box_success, compilation_success, text, stats = \
+            compilation_step(sandbox, commands)
+        
+        if not box_success:
+            logger.error(
+                "Sandbox error during compilation of %s for task %s",
+                source_filename, task_name)
+            return None
+        
+        if not compilation_success:
+            stdout = stats.get("stdout", "") if stats else ""
+            stderr = stats.get("stderr", "") if stats else ""
+            logger.error(
+                "Compilation failed for %s in task %s.\nStdout:\n%s\nStderr:\n%s",
+                source_filename, task_name, stdout, stderr)
+            return None
+        
+        compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
+        
+        source_digest = file_cacher.put_file_content(
+            source_body, "Manager source %s for task %s" % (source_filename, task_name))
+        compiled_digest = file_cacher.put_file_content(
+            compiled_bytes, "Compiled manager %s for task %s" % (compiled_filename, task_name))
+        
+        return (source_digest, compiled_digest)
+        
+    except Exception as error:
+        logger.error(
+            "Error compiling %s for task %s: %s",
+            source_filename, task_name, error)
+        return None
+    finally:
+        if sandbox:
+            sandbox.cleanup(delete=True)
 
 
 # Patch PyYAML to make it load all strings as unicode instead of str
@@ -392,21 +552,14 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         logger.info("Loading parameters for task %s.", name)
 
         if get_statement:
-            # The language of testo.pdf / statement.pdf, defaulting to 'it'
+            # The language of testo.pdf / statement.pdf, defaulting to 'he'
             primary_language = load(conf, None, "primary_language")
             if primary_language is None:
-                primary_language = "it"
+                primary_language = "he"
 
-            statement = None
-            for localized_statement in ["statement", "testo"]:
-                if os.path.exists(os.path.join(self.path, localized_statement)):
-                    # Ensure that only one folder exists: either testo/ or statement/
-                    if statement is not None:
-                        logger.critical(
-                            "Both testo/ and statement/ are present. This is likely an error."
-                        )
-                        sys.exit(1)
-                    statement = localized_statement
+            statement = find_first_existing_dir(
+                self.path,
+                ["statement", "statements", "Statement", "Statements", "testo"])
 
             if statement is None:
                 logger.critical("Statement folder not found.")
@@ -522,10 +675,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Attachments
         args["attachments"] = dict()
-        if os.path.exists(os.path.join(self.path, "att")):
-            for filename in os.listdir(os.path.join(self.path, "att")):
+        attachments_folder = find_first_existing_dir(
+            self.path, ["att", "attachements", "Attachements"])
+        if attachments_folder is not None:
+            for filename in os.listdir(
+                    os.path.join(self.path, attachments_folder)):
                 digest = self.file_cacher.put_file_from_path(
-                    os.path.join(self.path, "att", filename),
+                    os.path.join(self.path, attachments_folder, filename),
                     "Attachment %s for task %s" % (filename, name))
                 args["attachments"][filename] = Attachment(filename, digest)
 
@@ -546,8 +702,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Builds the parameters that depend on the task type
         args["managers"] = []
-        infile_param = conf.get("infile", "input.txt")
-        outfile_param = conf.get("outfile", "output.txt")
+        infile_param = conf.get("infile", "")
+        outfile_param = conf.get("outfile", "")
 
         # If there is sol/grader.%l for some language %l, then,
         # presuming that the task type is Batch, we retrieve graders
@@ -798,7 +954,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 "Output %d for task %s" % (i, task.name))
             test_codename = "%03d" % i
             args["testcases"] += [
-                Testcase(test_codename, False, input_digest, output_digest)]
+                Testcase(test_codename, True, input_digest, output_digest)]
             add_attachment = False
             if args["task_type"] == "OutputOnly":
                 task.attachments.set(
@@ -814,6 +970,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             for t in args["testcases"]:
                 t.public = True
         elif len(public_testcases) > 0:
+            for t in args["testcases"]:
+                t.public = False
             for x in public_testcases.split(","):
                 args["testcases"][int(x.strip())].public = True
         args["testcases"] = dict((tc.codename, tc) for tc in args["testcases"])
