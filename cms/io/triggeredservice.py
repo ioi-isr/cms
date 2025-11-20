@@ -347,9 +347,12 @@ class TriggeredService(Service, typing.Generic[QueueItemT, ExecutorT]):
                 logger.error("Unexpected error when searching for missed "
                              "operations.", exc_info=True)
 
-            self._sweeper_event.wait(max(self._sweeper_start +
-                                         self._sweeper_timeout -
-                                         time.monotonic(), 0))
+            if self._sweeper_timeout is None:
+                self._sweeper_event.wait()
+            else:
+                self._sweeper_event.wait(max(self._sweeper_start +
+                                             self._sweeper_timeout -
+                                             time.monotonic(), 0))
 
     def _sweep(self):
         """Check for missed operations."""
