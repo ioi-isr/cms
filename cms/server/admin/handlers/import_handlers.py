@@ -116,6 +116,9 @@ class ImportTaskHandler(
         loader_name = self.get_argument("loader", None)
         if loader_name == "":
             loader_name = None
+        
+        input_template = self.get_argument("input_template", "").strip()
+        output_template = self.get_argument("output_template", "").strip()
 
         temp_dir = None
         try:
@@ -137,6 +140,27 @@ class ImportTaskHandler(
                 task_path = os.path.join(extract_dir, contents[0])
             else:
                 task_path = extract_dir
+
+            if input_template or output_template:
+                import yaml
+                task_yaml_path = os.path.join(task_path, "task.yaml")
+                if os.path.exists(task_yaml_path):
+                    try:
+                        with open(task_yaml_path, 'r', encoding='utf-8') as f:
+                            task_config = yaml.safe_load(f)
+                        
+                        if task_config is None:
+                            task_config = {}
+                        
+                        if input_template and 'input_template' not in task_config:
+                            task_config['input_template'] = input_template
+                        if output_template and 'output_template' not in task_config:
+                            task_config['output_template'] = output_template
+                        
+                        with open(task_yaml_path, 'w', encoding='utf-8') as f:
+                            yaml.dump(task_config, f, default_flow_style=False, allow_unicode=True)
+                    except Exception as e:
+                        logger.warning("Failed to inject templates into task.yaml: %s", e)
 
             def error_callback(msg):
                 raise ValueError(msg)
