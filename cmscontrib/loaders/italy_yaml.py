@@ -647,10 +647,19 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     )
                 statements_to_import = multi_statement_paths
             else:
+                if single_statement_path is None:
+                    statement_dir = os.path.join(self.path, statement)
+                    pdf_files = [f for f in os.listdir(statement_dir) 
+                                if f.endswith('.pdf') and os.path.isfile(os.path.join(statement_dir, f))]
+                    
+                    if len(pdf_files) == 1:
+                        single_statement_path = os.path.join(statement_dir, pdf_files[0])
+                        logger.info("Auto-detected single PDF file as statement: %s", pdf_files[0])
+                
                 statements_to_import = {
                     primary_language: single_statement_path}
 
-            if primary_language not in statements_to_import.keys():
+            if primary_language not in statements_to_import.keys() or statements_to_import[primary_language] is None:
                 raise LoaderValidationError(
                     "Couldn't find statement for primary language %s, aborting." % primary_language)
 
