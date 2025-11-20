@@ -82,6 +82,63 @@ def find_first_existing_dir(base_path, folder_names):
     return found_folders[0] if found_folders else None
 
 
+def detect_testcase_sources(task_path):
+    """Detect and validate testcase sources in a task directory.
+    
+    task_path: path to the task directory.
+    
+    return: tuple (source_type, source_path) where source_type is one of:
+        'legacy' - legacy input/output folders
+        'zip' - tests.zip or testcases.zip
+        'folder' - tests or testcases folder
+        None - no testcase source found
+    
+    Raises LoaderValidationError if multiple conflicting sources are found.
+    """
+    has_legacy = (os.path.exists(os.path.join(task_path, "input")) and
+                  os.path.exists(os.path.join(task_path, "output")))
+    
+    zip_sources = []
+    for zip_name in ["tests.zip", "testcases.zip"]:
+        zip_path = os.path.join(task_path, zip_name)
+        if os.path.exists(zip_path):
+            zip_sources.append((zip_name, zip_path))
+    
+    folder_sources = []
+    for folder_name in ["tests", "testcases"]:
+        folder_path = os.path.join(task_path, folder_name)
+        if os.path.isdir(folder_path):
+            folder_sources.append((folder_name, folder_path))
+    
+    if len(zip_sources) > 1:
+        raise LoaderValidationError(
+            "Multiple testcase zip files found: %s. Please keep only one." %
+            ", ".join([name for name, _ in zip_sources]))
+    
+    if len(folder_sources) > 1:
+        raise LoaderValidationError(
+            "Multiple testcase folders found: %s. Please keep only one." %
+            ", ".join([name for name, _ in folder_sources]))
+    
+    if len(zip_sources) > 0 and len(folder_sources) > 0:
+        raise LoaderValidationError(
+            "Both testcase zip (%s) and folder (%s) found. Please keep only one." %
+            (zip_sources[0][0], folder_sources[0][0]))
+    
+    if has_legacy:
+        if zip_sources or folder_sources:
+            logger.warning(
+                "Both legacy (input/output) and new-style testcase sources found. "
+                "Using legacy input/output folders.")
+        return ('legacy', task_path)
+    elif zip_sources:
+        return ('zip', zip_sources[0][1])
+    elif folder_sources:
+        return ('folder', folder_sources[0][1])
+    else:
+        return (None, None)
+
+
 def pair_testcases_from_directory(directory, input_template, output_template):
     """Pair input and output files from a directory using templates.
 
@@ -1009,11 +1066,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         args["testcases"] = []
         testcases_temp_dir = None
 
-        # Check if legacy input/output folders exist (backward compatibility)
-        has_legacy_folders = (os.path.exists(os.path.join(self.path, "input")) and
-                             os.path.exists(os.path.join(self.path, "output")))
+        source_type, source_path = detect_testcase_sources(self.path)
 
-        if has_legacy_folders:
+        if source_type == 'legacy':
+            # Legacy input/output folders
             for i in range(n_input):
                 input_digest = self.file_cacher.put_file_from_path(
                     os.path.join(self.path, "input", "input%d.txt" % i),
@@ -1031,74 +1087,66 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     if output_codenames is not None and test_codename in output_codenames:
                         task.attachments.set(
                             Attachment("input_%s.txt" % test_codename, input_digest))
-        else:
+        elif source_type in ('zip', 'folder'):
             testcases_dir = None
+            
+            if source_type == 'zip':
+                testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
+                with zipfile.ZipFile(source_path, 'r') as zip_ref:
+                    zip_ref.extractall(testcases_temp_dir)
+                testcases_dir = testcases_temp_dir
+                logger.info("Extracted testcases from %s", os.path.basename(source_path))
+            else:
+                testcases_dir = source_path
 
-            for zip_name in ["tests.zip", "testcases.zip"]:
-                zip_path = os.path.join(self.path, zip_name)
-                if os.path.exists(zip_path):
-                    testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
-                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                        zip_ref.extractall(testcases_temp_dir)
-                    testcases_dir = testcases_temp_dir
-                    logger.info("Extracted testcases from %s", zip_name)
-                    break
+            input_template = load(conf, None, "input_template")
+            if input_template is None:
+                input_template = "input.*"
+            output_template = load(conf, None, "output_template")
+            if output_template is None:
+                output_template = "output.*"
 
-            if testcases_dir is None:
-                testcases_folder = find_first_existing_dir(
-                    self.path, ["tests", "testcases"])
-                if testcases_folder is not None:
-                    testcases_dir = os.path.join(self.path, testcases_folder)
+            paired_testcases = pair_testcases_from_directory(
+                testcases_dir, input_template, output_template)
 
-            if testcases_dir is not None:
-                input_template = load(conf, None, "input_template")
-                if input_template is None:
-                    input_template = "input.*"
-                output_template = load(conf, None, "output_template")
-                if output_template is None:
-                    output_template = "output.*"
+            if n_input == 0 and not os.path.exists(os.path.join(self.path, "gen", "GEN")):
+                n_input = len(paired_testcases)
+                logger.info("Discovered %d testcases from templates", n_input)
 
-                paired_testcases = pair_testcases_from_directory(
-                    testcases_dir, input_template, output_template)
-
-                if n_input == 0 and not os.path.exists(os.path.join(self.path, "gen", "GEN")):
-                    n_input = len(paired_testcases)
-                    logger.info("Discovered %d testcases from templates", n_input)
-
-                if len(paired_testcases) != n_input:
-                    if testcases_temp_dir:
-                        import shutil
-                        shutil.rmtree(testcases_temp_dir)
-                    raise LoaderValidationError(
-                        "Testcase count mismatch: found %d testcases but expected %d" %
-                        (len(paired_testcases), n_input))
-
-                # Load testcases
-                for codename, (input_path, output_path) in paired_testcases.items():
-                    input_digest = self.file_cacher.put_file_from_path(
-                        input_path,
-                        "Input %s for task %s" % (codename, task.name))
-                    output_digest = self.file_cacher.put_file_from_path(
-                        output_path,
-                        "Output %s for task %s" % (codename, task.name))
-                    args["testcases"] += [
-                        Testcase(codename, True, input_digest, output_digest)]
-                    if args["task_type"] == "OutputOnly":
-                        task.attachments.set(
-                            Attachment("input_%s.txt" % codename, input_digest))
-                    elif args["task_type"] == \
-                            "BatchAndOutput":
-                        if output_codenames is not None and codename in output_codenames:
-                            task.attachments.set(
-                                Attachment("input_%s.txt" % codename, input_digest))
-
+            if len(paired_testcases) != n_input:
                 if testcases_temp_dir:
                     import shutil
                     shutil.rmtree(testcases_temp_dir)
-            else:
                 raise LoaderValidationError(
-                    "No testcases found. Expected input/output folders or "
-                    "tests/testcases folder/zip.")
+                    "Testcase count mismatch: found %d testcases but expected %d" %
+                    (len(paired_testcases), n_input))
+
+            # Load testcases
+            for codename, (input_path, output_path) in paired_testcases.items():
+                input_digest = self.file_cacher.put_file_from_path(
+                    input_path,
+                    "Input %s for task %s" % (codename, task.name))
+                output_digest = self.file_cacher.put_file_from_path(
+                    output_path,
+                    "Output %s for task %s" % (codename, task.name))
+                args["testcases"] += [
+                    Testcase(codename, True, input_digest, output_digest)]
+                if args["task_type"] == "OutputOnly":
+                    task.attachments.set(
+                        Attachment("input_%s.txt" % codename, input_digest))
+                elif args["task_type"] == "BatchAndOutput":
+                    if output_codenames is not None and codename in output_codenames:
+                        task.attachments.set(
+                            Attachment("input_%s.txt" % codename, input_digest))
+
+            if testcases_temp_dir:
+                import shutil
+                shutil.rmtree(testcases_temp_dir)
+        else:
+            # No testcase source found
+            raise LoaderValidationError(
+                "No testcases found. Expected input/output folders or "
+                "tests/testcases folder/zip.")
 
         public_testcases = load(conf, None, ["public_testcases", "risultati"],
                                 conv=lambda x: "" if x is None else x)
