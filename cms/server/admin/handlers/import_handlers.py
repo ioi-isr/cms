@@ -30,6 +30,7 @@ from contextlib import contextmanager
 from cmscommon.datetime import make_datetime
 from cmscontrib.ImportTask import TaskImporter
 from cmscontrib.ImportContest import ContestImporter
+from cmscontrib.importing import ImportDataError
 from cmscontrib.loaders import choose_loader
 from cmscontrib.loaders.base_loader import LoaderValidationError
 
@@ -37,47 +38,6 @@ from .base import BaseHandler, SimpleHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
-
-
-class _ErrorCaptureHandler(logging.Handler):
-    """Logging handler that captures error messages."""
-
-    def __init__(self):
-        super().__init__(level=logging.ERROR)
-        self.messages = []
-
-    def emit(self, record):
-        self.messages.append(record.getMessage())
-
-
-def _run_import_with_error_capture(import_func, logger_names):
-    """Run an import function and capture any error log messages.
-
-    import_func: callable that returns True on success, False on failure.
-    logger_names: list of logger names to capture errors from.
-
-    return: tuple (success, error_message) where error_message is None
-        if successful or the last captured error message if failed.
-
-    """
-    capture_handler = _ErrorCaptureHandler()
-    loggers = [logging.getLogger(name) for name in logger_names]
-
-    for log in loggers:
-        log.addHandler(capture_handler)
-
-    try:
-        success = import_func()
-        if not success and capture_handler.messages:
-            error_msg = capture_handler.messages[-1]
-        else:
-            error_msg = None
-        return success, error_msg
-    except LoaderValidationError as e:
-        return False, str(e)
-    finally:
-        for log in loggers:
-            log.removeHandler(capture_handler)
 
 
 @contextmanager
@@ -194,7 +154,8 @@ class ImportTaskHandler(
                     contest_id=contest_id,
                     prefix=None,
                     override_name=None,
-                    loader_class=loader_class
+                    loader_class=loader_class,
+                    raise_import_errors=True
                 )
 
                 if hasattr(importer.loader, 'set_notifier'):
@@ -202,29 +163,25 @@ class ImportTaskHandler(
                         self.service.add_notification(make_datetime(), title, text)
                     importer.loader.set_notifier(notify)
 
-                success, error_detail = _run_import_with_error_capture(
-                    lambda: importer.do_import(),
-                    ["cmscontrib.ImportTask", "cmscontrib.importing",
-                     "cmscontrib.loaders", "cmscontrib.loaders.italy_yaml"]
-                )
-
-                if success:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Task imported successfully",
-                        "")
-                    self.redirect(self.url("tasks"))
-                else:
-                    if error_detail:
-                        error_msg = error_detail
+                try:
+                    success = importer.do_import()
+                    if success:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Task imported successfully",
+                            "")
+                        self.redirect(self.url("tasks"))
                     else:
-                        error_msg = ("Import failed. Ensure the archive "
-                                     "contains a supported format. If the task "
-                                     "already exists, use the Update option.")
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Task import failed",
+                            "Import failed. Please check the logs for details.")
+                        self.redirect(fallback_page)
+                except (LoaderValidationError, ImportDataError) as e:
                     self.service.add_notification(
                         make_datetime(),
                         "Task import failed",
-                        error_msg)
+                        str(e))
                     self.redirect(fallback_page)
 
         except Exception as error:
@@ -290,33 +247,34 @@ class ImportContestHandler(
                     update_tasks=update_tasks,
                     no_statements=no_statements,
                     delete_stale_participations=False,
-                    loader_class=loader_class
+                    loader_class=loader_class,
+                    raise_import_errors=True
                 )
 
-                success, error_detail = _run_import_with_error_capture(
-                    lambda: importer.do_import(),
-                    ["cmscontrib.ImportContest", "cmscontrib.importing",
-                     "cmscontrib.loaders", "cmscontrib.loaders.italy_yaml"]
-                )
+                if hasattr(importer.loader, 'set_notifier'):
+                    def notify(title, text):
+                        self.service.add_notification(make_datetime(), title, text)
+                    importer.loader.set_notifier(notify)
 
-                if success:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Contest imported successfully",
-                        "")
-                    self.redirect(self.url("contests"))
-                else:
-                    if error_detail:
-                        error_msg = error_detail
+                try:
+                    success = importer.do_import()
+                    if success:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Contest imported successfully",
+                            "")
+                        self.redirect(self.url("contests"))
                     else:
-                        error_msg = ("Import failed. Ensure the archive "
-                                     "contains a supported format. If the "
-                                     "contest already exists, use the Update "
-                                     "Contest option.")
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Contest import failed",
+                            "Import failed. Please check the logs for details.")
+                        self.redirect(fallback_page)
+                except (LoaderValidationError, ImportDataError) as e:
                     self.service.add_notification(
                         make_datetime(),
                         "Contest import failed",
-                        error_msg)
+                        str(e))
                     self.redirect(fallback_page)
 
         except Exception as error:
