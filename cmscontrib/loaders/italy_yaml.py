@@ -50,7 +50,10 @@ from cms.grading.steps.compilation import compilation_step
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
 from cmscommon.crypto import build_password
-from cmscommon.importers import compile_template_regex
+from cmscommon.testcases import (
+    compile_template_regex,
+    pair_testcases_in_directory,
+)
 from cmscontrib import touch
 from .base_loader import ContestLoader, TaskLoader, UserLoader, TeamLoader, \
     LANGUAGE_MAP, LoaderValidationError
@@ -159,57 +162,6 @@ def detect_testcase_sources(task_path):
         return ('folder', folder_sources[0][1])
     else:
         return (None, None)
-
-
-def pair_testcases_from_directory(directory, input_template, output_template):
-    """Pair input and output files from a directory using templates.
-
-    directory: path to directory containing testcase files.
-    input_template: template for input files (e.g., "input.*").
-    output_template: template for output files (e.g., "output.*").
-
-    return: dict mapping codename to (input_path, output_path) tuples.
-
-    """
-    try:
-        input_re = compile_template_regex(input_template)
-        output_re = compile_template_regex(output_template)
-    except ValueError as e:
-        error_msg = str(e)
-        logger.error(error_msg)
-        raise LoaderValidationError(error_msg)
-
-    inputs = {}
-    outputs = {}
-
-    for filename in os.listdir(directory):
-        input_match = input_re.match(filename)
-        if input_match:
-            codename = input_match.group(1)
-            inputs[codename] = os.path.join(directory, filename)
-
-        output_match = output_re.match(filename)
-        if output_match:
-            codename = output_match.group(1)
-            outputs[codename] = os.path.join(directory, filename)
-
-    input_codenames = set(inputs.keys())
-    output_codenames = set(outputs.keys())
-
-    if input_codenames != output_codenames:
-        missing_outputs = input_codenames - output_codenames
-        missing_inputs = output_codenames - input_codenames
-        error_msg = []
-        if missing_outputs:
-            error_msg.append("Missing outputs for: %s" % ", ".join(sorted(missing_outputs)))
-        if missing_inputs:
-            error_msg.append("Missing inputs for: %s" % ", ".join(sorted(missing_inputs)))
-        error_message = "Testcase pairing failed. %s" % "; ".join(error_msg)
-        logger.error(error_message)
-        raise LoaderValidationError(error_message)
-
-    return {codename: (inputs[codename], outputs[codename])
-            for codename in sorted(inputs.keys())}
 
 
 def compile_manager_source(file_cacher, source_path, source_filename,
@@ -1154,8 +1106,15 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             if output_template is None:
                 output_template = "output.*"
 
-            paired_testcases = pair_testcases_from_directory(
-                testcases_dir, input_template, output_template)
+            try:
+                input_re = compile_template_regex(input_template)
+                output_re = compile_template_regex(output_template)
+                paired_testcases = pair_testcases_in_directory(
+                    testcases_dir, input_re, output_re)
+            except ValueError as e:
+                error_msg = str(e)
+                logger.error(error_msg)
+                raise LoaderValidationError(error_msg)
 
             if n_input == 0 and not os.path.exists(os.path.join(self.path, "gen", "GEN")):
                 n_input = len(paired_testcases)
