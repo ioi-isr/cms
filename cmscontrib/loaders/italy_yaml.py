@@ -44,7 +44,8 @@ from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
     filename_to_language
 from cms.grading.language import CompiledLanguage
 from cms.grading.tasktypes import get_task_type_class
-from cms.grading.tasktypes.util import create_sandbox
+from cms.grading.tasktypes.util import create_sandbox, \
+    get_allowed_manager_basenames, compile_manager_bytes
 from cms.grading.steps.compilation import compilation_step
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
@@ -212,7 +213,7 @@ def pair_testcases_from_directory(directory, input_template, output_template):
 
 
 def compile_manager_source(file_cacher, source_path, source_filename,
-                           compiled_filename, task_name):
+                           compiled_filename, task_name, notify=None):
     """Compile a manager source file (checker.cpp or manager.cpp).
 
     file_cacher: FileCacher instance for storing files.
@@ -220,6 +221,7 @@ def compile_manager_source(file_cacher, source_path, source_filename,
     source_filename: name of the source file.
     compiled_filename: name for the compiled binary.
     task_name: name of the task (for logging).
+    notify: optional callback(title: str, text: str) to report errors.
 
     return: tuple (source_digest, compiled_digest) or None if compilation fails.
 
@@ -227,62 +229,25 @@ def compile_manager_source(file_cacher, source_path, source_filename,
     with open(source_path, 'rb') as f:
         source_body = f.read()
 
-    try:
-        language = filename_to_language(source_filename)
-    except Exception:
-        logger.warning(
-            "Could not detect language for %s, skipping compilation",
-            source_filename)
+    success, compiled_bytes, stats = compile_manager_bytes(
+        file_cacher,
+        source_filename,
+        source_body,
+        compiled_filename,
+        sandbox_name="loader_compile",
+        for_evaluation=True,
+        notify=notify
+    )
+
+    if not success:
         return None
 
-    if not isinstance(language, CompiledLanguage):
-        logger.warning(
-            "%s is not a compiled language, skipping compilation",
-            source_filename)
-        return None
+    source_digest = file_cacher.put_file_content(
+        source_body, "Manager source %s for task %s" % (source_filename, task_name))
+    compiled_digest = file_cacher.put_file_content(
+        compiled_bytes, "Compiled manager %s for task %s" % (compiled_filename, task_name))
 
-    sandbox = None
-    try:
-        sandbox = create_sandbox(file_cacher, name="loader_compile")
-        sandbox.create_file_from_string(source_filename, source_body)
-
-        commands = language.get_compilation_commands(
-            [source_filename], compiled_filename, for_evaluation=True)
-
-        box_success, compilation_success, text, stats = \
-            compilation_step(sandbox, commands)
-
-        if not box_success:
-            logger.error(
-                "Sandbox error during compilation of %s for task %s",
-                source_filename, task_name)
-            return None
-
-        if not compilation_success:
-            stdout = stats.get("stdout", "") if stats else ""
-            stderr = stats.get("stderr", "") if stats else ""
-            logger.error(
-                "Compilation failed for %s in task %s.\nStdout:\n%s\nStderr:\n%s",
-                source_filename, task_name, stdout, stderr)
-            return None
-
-        compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
-
-        source_digest = file_cacher.put_file_content(
-            source_body, "Manager source %s for task %s" % (source_filename, task_name))
-        compiled_digest = file_cacher.put_file_content(
-            compiled_bytes, "Compiled manager %s for task %s" % (compiled_filename, task_name))
-
-        return (source_digest, compiled_digest)
-
-    except Exception as error:
-        logger.error(
-            "Error compiling %s for task %s: %s",
-            source_filename, task_name, error)
-        return None
-    finally:
-        if sandbox:
-            sandbox.cleanup(delete=True)
+    return (source_digest, compiled_digest)
 
 
 # Patch PyYAML to make it load all strings as unicode instead of str
@@ -387,6 +352,32 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
     short_name = 'italy_yaml'
     description = 'Italian YAML-based format'
 
+    def __init__(self, path, file_cacher):
+        super().__init__(path, file_cacher)
+        self._notifier = None
+
+    def set_notifier(self, notify):
+        """Set a notification callback for reporting errors to the admin UI.
+
+        notify: callable(title: str, text: str) that adds a notification.
+
+        """
+        self._notifier = notify
+
+    def _notify(self, title, text):
+        """Internal helper to send notifications if a notifier is set.
+
+        If no notifier is set, just logs the error instead.
+
+        title: notification title.
+        text: notification text.
+
+        """
+        if self._notifier:
+            self._notifier(title, text)
+        else:
+            logger.error("%s: %s", title, text)
+
     @staticmethod
     def detect(path):
         """See docstring in class Loader."""
@@ -396,7 +387,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             os.path.exists(os.path.join(os.path.dirname(path), "contest.yaml"))
 
     def get_task_loader(self, taskname):
-        return YamlLoader(os.path.join(self.path, taskname), self.file_cacher)
+        loader = YamlLoader(os.path.join(self.path, taskname), self.file_cacher)
+        loader._notifier = self._notifier
+        return loader
 
     def get_contest(self):
         """See docstring in class ContestLoader."""
@@ -873,21 +866,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             managers_path = os.path.join(self.path, managers_folder)
 
             # Determine allowed compile basenames from task type
-            allowed_compile_basenames = set()
-            if "task_type" in conf:
-                try:
-                    tt_cls = get_task_type_class(conf["task_type"])
-                    if hasattr(tt_cls, "CHECKER_CODENAME"):
-                        allowed_compile_basenames.add(
-                            getattr(tt_cls, "CHECKER_CODENAME"))
-                    if hasattr(tt_cls, "MANAGER_FILENAME"):
-                        allowed_compile_basenames.add(
-                            getattr(tt_cls, "MANAGER_FILENAME"))
-                except Exception:
-                    pass
-
-            if not allowed_compile_basenames:
-                allowed_compile_basenames = {"checker", "manager"}
+            task_type = conf.get("task_type")
+            allowed_compile_basenames = get_allowed_manager_basenames(task_type)
 
             existing_manager_filenames = {m.filename for m in args["managers"]}
 
@@ -905,7 +885,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 if should_compile:
                     result = compile_manager_source(
                         self.file_cacher, file_path, filename,
-                        base_noext, task.name)
+                        base_noext, task.name, notify=self._notify)
 
                     if result is not None:
                         source_digest, compiled_digest = result
