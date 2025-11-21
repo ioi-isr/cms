@@ -31,6 +31,7 @@ from cms import utf8_decoder
 from cms.db import Contest, Dataset, SessionGen, Task
 from cms.db.filecacher import FileCacher
 from cmscommon.importers import import_testcases_from_zipfile
+from cmscommon.testcases import compile_template_regex
 
 
 logger = logging.getLogger(__name__)
@@ -73,10 +74,12 @@ def add_testcases(
         file_cacher = FileCacher()
 
         # Get input/output file names templates
-        input_re = re.compile(
-            re.escape(input_template).replace("\\*", "(.*)") + "$")
-        output_re = re.compile(
-            re.escape(output_template).replace("\\*", "(.*)") + "$")
+        try:
+            input_re = compile_template_regex(input_template)
+            output_re = compile_template_regex(output_template)
+        except ValueError as e:
+            logger.error(str(e))
+            return False
 
         try:
             successful_subject, successful_message = \
