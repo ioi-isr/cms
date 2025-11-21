@@ -32,6 +32,7 @@ compilation and the evaluation are contained in the task type class.
 import logging
 import os
 import shutil
+from typing import Callable, Optional
 
 from cms import config
 from cms.db.filecacher import FileCacher
@@ -49,7 +50,7 @@ logger = logging.getLogger(__name__)
 EVAL_USER_OUTPUT_FILENAME = "user_output.txt"
 
 
-def create_sandbox(file_cacher: FileCacher, name: str | None = None) -> Sandbox:
+def create_sandbox(file_cacher: FileCacher, name: Optional[str] = None) -> Sandbox:
     """Create a sandbox, and return it.
 
     file_cacher: a file cacher instance.
@@ -216,14 +217,14 @@ def check_manager_present(job: Job, codename: str) -> bool:
 def eval_output(
     file_cacher: FileCacher,
     job: Job,
-    checker_codename: str | None,
+    checker_codename: Optional[str],
     use_realprecision: bool = False,
-    realprecision_exponent: int | None = None,
-    user_output_path: str | None = None,
-    user_output_digest: str | None = None,
+    realprecision_exponent: Optional[int] = None,
+    user_output_path: Optional[str] = None,
+    user_output_digest: Optional[str] = None,
     user_output_filename: str = "",
-    extra_args: list[str] | None = None
-) -> tuple[bool, float | None, list[str] | None]:
+    extra_args: Optional[list[str]] = None
+) -> tuple[bool, Optional[float], Optional[list[str]]]:
     """Evaluate ("check") a user output using a white diff or a checker.
 
     file_cacher: file cacher to use to get files.
@@ -307,7 +308,7 @@ def eval_output(
         return True, outcome, text
 
 
-def get_allowed_manager_basenames(task_type: str | None) -> set[str]:
+def get_allowed_manager_basenames(task_type: Optional[str]) -> set[str]:
     """Get the set of manager basenames that should be auto-compiled.
 
     Uses the task type class to discover CHECKER_CODENAME and MANAGER_FILENAME
@@ -344,8 +345,8 @@ def compile_manager_bytes(
     output_basename: str,
     sandbox_name: str = "compile",
     for_evaluation: bool = True,
-    notify: callable | None = None
-) -> tuple[bool, bytes | None, dict | None]:
+    notify: Optional[Callable[[str, str], None]] = None
+) -> tuple[bool, Optional[bytes], Optional[dict]]:
     """Compile a manager source file and return the compiled bytes.
 
     This is a shared helper for compiling managers (checkers, graders, etc.)
