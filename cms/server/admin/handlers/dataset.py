@@ -46,10 +46,10 @@ import tornado.web
 from cms.db import Dataset, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
 from cms.grading.tasktypes import get_task_type_class
-from cms.grading.tasktypes.util import create_sandbox
+from cms.grading.tasktypes.util import create_sandbox, \
+    get_allowed_manager_basenames, compile_manager_bytes
 from cms.grading.languagemanager import filename_to_language
 from cms.grading.language import CompiledLanguage
-from cms.grading.steps.compilation import compilation_step
 from cms.grading.scoring import compute_changes_for_dataset
 from cmscommon.datetime import make_datetime
 from cmscommon.importers import import_testcases_from_zipfile, compile_template_regex
@@ -387,19 +387,7 @@ class AddManagerHandler(BaseHandler):
         # Decide which auto-compiled basenames are allowed for this task type.
         # Use TaskType constants to avoid hardcoding names and to avoid
         # compiling unintended files (e.g., manager.%l for TwoSteps).
-        allowed_compile_basenames: set[str] = set()
-        try:
-            tt_cls = get_task_type_class(dataset.task_type)
-            # Many task types (Batch, OutputOnly, TwoSteps, BatchAndOutput)
-            # define CHECKER_CODENAME = "checker"; only compile that.
-            if hasattr(tt_cls, "CHECKER_CODENAME"):
-                allowed_compile_basenames.add(getattr(tt_cls, "CHECKER_CODENAME"))
-            # Communication defines MANAGER_FILENAME = "manager"; allow that.
-            if hasattr(tt_cls, "MANAGER_FILENAME"):
-                allowed_compile_basenames.add(getattr(tt_cls, "MANAGER_FILENAME"))
-        except Exception:
-            # If anything goes wrong, fall back to not auto-compiling.
-            allowed_compile_basenames = set()
+        allowed_compile_basenames = get_allowed_manager_basenames(dataset.task_type)
         base_noext = os.path.splitext(os.path.basename(filename))[0]
 
         # compiled files (no extension) when a source file already exists.
@@ -434,52 +422,24 @@ class AddManagerHandler(BaseHandler):
         if (language is not None
                 and isinstance(language, CompiledLanguage)
                 and base_noext in allowed_compile_basenames):
-            safe_src = os.path.basename(filename)
             compiled_filename = base_noext
             
-            sandbox = None
-            try:
-                sandbox = create_sandbox(self.service.file_cacher, name="admin_compile")
-                
-                sandbox.create_file_from_string(safe_src, body)
-                
-                commands = language.get_compilation_commands(
-                    [safe_src], compiled_filename, for_evaluation=True)
-                
-                box_success, compilation_success, text, stats = \
-                    compilation_step(sandbox, commands)
-                
-                if not box_success:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Manager compilation failed",
-                        "Sandbox error during compilation. See logs for details.")
-                    self.redirect(fallback_page)
-                    return
-                
-                if not compilation_success:
-                    stdout = stats.get("stdout", "") if stats else ""
-                    stderr = stats.get("stderr", "") if stats else ""
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Manager compilation failed",
-                        ("Compilation failed. Command:%r\nStdout:\n%s\nStderr:\n%s" %
-                         (commands, stdout, stderr)))
-                    self.redirect(fallback_page)
-                    return
-                
-                compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
-                
-            except Exception as error:
-                self.service.add_notification(
-                    make_datetime(),
-                    "Manager compilation error",
-                    repr(error))
+            def notify(title, text):
+                self.service.add_notification(make_datetime(), title, text)
+            
+            success, compiled_bytes, stats = compile_manager_bytes(
+                self.service.file_cacher,
+                filename,
+                body,
+                compiled_filename,
+                sandbox_name="admin_compile",
+                for_evaluation=True,
+                notify=notify
+            )
+            
+            if not success:
                 self.redirect(fallback_page)
                 return
-            finally:
-                if sandbox:
-                    sandbox.cleanup(delete=True)
 
         # Store the appropriate content(s) into the file cache.
         stored_entries: list[tuple[str, str]] = []  # (filename, digest)

@@ -197,6 +197,11 @@ class ImportTaskHandler(
                     loader_class=loader_class
                 )
 
+                if hasattr(importer.loader, 'set_notifier'):
+                    def notify(title, text):
+                        self.service.add_notification(make_datetime(), title, text)
+                    importer.loader.set_notifier(notify)
+
                 success, error_detail = _run_import_with_error_capture(
                     lambda: importer.do_import(),
                     ["cmscontrib.ImportTask", "cmscontrib.importing",
