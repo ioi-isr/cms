@@ -71,6 +71,7 @@ class ContestImporter:
         no_statements: bool,
         delete_stale_participations: bool,
         loader_class: type[ContestLoader],
+        raise_import_errors: bool = False,
     ):
         self.yes = yes
         self.zero_time = zero_time
@@ -79,6 +80,7 @@ class ContestImporter:
         self.update_tasks = update_tasks
         self.no_statements = no_statements
         self.delete_stale_participations = delete_stale_participations
+        self.raise_import_errors = raise_import_errors
         self.file_cacher = FileCacher()
 
         self.loader = loader_class(os.path.abspath(path), self.file_cacher)
@@ -128,6 +130,8 @@ class ContestImporter:
                     self._participation_to_db(session, contest, p)
 
             except ImportDataError as e:
+                if self.raise_import_errors:
+                    raise
                 logger.error(str(e))
                 logger.info("Error while importing, no changes were made.")
                 return False
