@@ -40,6 +40,7 @@ from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
     FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED, FEEDBACK_LEVEL_OI_RESTRICTED
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
+from cms.grading.languagemanager import LANGUAGES
 from . import Codename, Filename, FilenameSchemaArray, Digest, Base, Contest
 
 import typing
@@ -292,7 +293,11 @@ class Task(Base):
             return self.allowed_languages
 
         # Otherwise, use contest language restrictions
-        return self.contest.languages if self.contest else None
+        return (
+            self.contest.languages
+            if self.contest
+            else [language.name for language in LANGUAGES]
+        )
 
     def set_default_output_only_submission_format(self) -> None:
         """
