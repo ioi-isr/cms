@@ -584,19 +584,19 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 self.path,
                 ["statement", "statements", "Statement", "Statements", "testo"])
 
-            if statement is None:
-                error_msg = "Statement folder not found."
-                logger.error(error_msg)
-                raise LoaderValidationError(error_msg)
+            statement_dir = (os.path.join(self.path, statement)
+                             if statement is not None else self.path)
 
-            single_statement_path = os.path.join(
-                self.path, statement, "%s.pdf" % statement)
-            if not os.path.exists(single_statement_path):
-                single_statement_path = None
+            single_statement_path = None
+            if statement is not None:
+                candidate_statement = os.path.join(
+                    statement_dir, "%s.pdf" % statement)
+                if os.path.exists(candidate_statement):
+                    single_statement_path = candidate_statement
 
             multi_statement_paths = {}
             for lang, lang_code in LANGUAGE_MAP.items():
-                path = os.path.join(self.path, statement, "%s.pdf" % lang)
+                path = os.path.join(statement_dir, "%s.pdf" % lang)
                 if os.path.exists(path):
                     multi_statement_paths[lang_code] = path
 
@@ -617,7 +617,6 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 statements_to_import = multi_statement_paths
             else:
                 if single_statement_path is None:
-                    statement_dir = os.path.join(self.path, statement)
                     pdf_files = [f for f in os.listdir(statement_dir) 
                                 if f.endswith('.pdf') and os.path.isfile(os.path.join(statement_dir, f))]
                     
@@ -625,6 +624,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                         single_statement_path = os.path.join(statement_dir, pdf_files[0])
                         logger.info("Auto-detected single PDF file as statement: %s", pdf_files[0])
                 
+                    if statement is None and single_statement_path is None:
+                        error_msg = "Statement folder not found."
+                        logger.error(error_msg)
+                        raise LoaderValidationError(error_msg)
+
                 statements_to_import = {
                     primary_language: single_statement_path}
 
