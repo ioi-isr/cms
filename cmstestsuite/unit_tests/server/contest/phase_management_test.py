@@ -181,69 +181,79 @@ class TestComputeActualPhase(unittest.TestCase):
 
     @staticmethod
     def test_traditional():
-        # Test "traditional" contests. There's not much variability, so
-        # we just test different delay_time/extra_time combinations.
+        # Test "traditional" contests with starting_time=None.
+        # Users who haven't started see phase -1 during contest window,
+        # then jump to +4 after (no analysis mode for non-participants).
         test("4", "12", None, None, None, None, "0", "0",
-             ("4", 0, "12"))
+             ("4", -1, "12"))
         test("4", "12", None, None, None, None, "0", "2",
-             ("4", 0, "14"))
+             ("4", -1, "14"))
         test("4", "12", None, None, None, None, "2", "0",
-             ("6", 0, "14"))
+             ("6", -1, "14"))
         test("4", "12", None, None, None, None, "2", "2",
-             ("6", 0, "16"))
+             ("6", -1, "16"))
         test("4", "8", None, None, None, None, "5", "0",
-             ("9", 0, "13"))
+             ("9", -1, "13"))
 
-        # Almost identical, with starting_time set to make sure it
-        # doesn't affect anything.
+        # Traditional contests with starting_time set.
+        # Now starting_time affects actual_start for traditional contests too.
+        # Phase -1 until actual_start, then phase 0 until contest end.
         test("4", "12", None, None, None, "7", "0", "0",
-             ("4", 0, "12"))
+             ("4", -1, "7", 0, "12"))
         test("4", "12", None, None, None, "7", "0", "2",
-             ("4", 0, "14"))
+             ("4", -1, "7", 0, "14"))
         test("4", "12", None, None, None, "7", "2", "0",
-             ("6", 0, "14"))
+             ("6", -1, "7", 0, "14"))
         test("4", "12", None, None, None, "7", "2", "2",
-             ("6", 0, "16"))
+             ("6", -1, "7", 0, "16"))
+        # starting_time=7 is before earliest_permitted_start=9, so actual_start=9
         test("4", "8", None, None, None, "7", "5", "0",
              ("9", 0, "13"))
 
-        # Test analysis mode. Almost identical to above
+        # Test analysis mode with starting_time=None.
+        # Users who haven't started see phase -1 during contest window,
+        # then jump to +4 after (no analysis mode for non-participants).
         test("4", "12", "17", "20", None, None, "0", "0",
-             ("4", 0, "12", 2, "17", 3, "20"))
+             ("4", -1, "12"))
         test("4", "12", "17", "20", None, None, "0", "2",
-             ("4", 0, "14", 2, "17", 3, "20"))
+             ("4", -1, "14"))
         test("4", "12", "17", "20", None, None, "2", "0",
-             ("6", 0, "14", 2, "17", 3, "20"))
+             ("6", -1, "14"))
         test("4", "12", "17", "20", None, None, "2", "2",
-             ("6", 0, "16", 2, "17", 3, "20"))
+             ("6", -1, "16"))
         test("4", "8", "17", "20", None, None, "5", "0",
-             ("9", 0, "13", 2, "17", 3, "20"))
+             ("9", -1, "13"))
+        # Test analysis mode with starting_time set.
+        # Phase -1 until actual_start, then phase 0, then analysis phases.
         test("4", "12", "17", "20", None, "7", "0", "0",
-             ("4", 0, "12", 2, "17", 3, "20"))
+             ("4", -1, "7", 0, "12", 2, "17", 3, "20"))
         test("4", "12", "17", "20", None, "7", "0", "2",
-             ("4", 0, "14", 2, "17", 3, "20"))
+             ("4", -1, "7", 0, "14", 2, "17", 3, "20"))
         test("4", "12", "17", "20", None, "7", "2", "0",
-             ("6", 0, "14", 2, "17", 3, "20"))
+             ("6", -1, "7", 0, "14", 2, "17", 3, "20"))
         test("4", "12", "17", "20", None, "7", "2", "2",
-             ("6", 0, "16", 2, "17", 3, "20"))
+             ("6", -1, "7", 0, "16", 2, "17", 3, "20"))
+        # starting_time=7 is before earliest_permitted_start=9, so actual_start=9
         test("4", "8", "17", "20", None, "7", "5", "0",
              ("9", 0, "13", 2, "17", 3, "20"))
 
-        # Test for overlapping of contest and analysis for this user
+        # Test for overlapping of contest and analysis for this user.
+        # With starting_time=None, users see phase -1 during contest window,
+        # then jump to +4 after (no analysis mode for non-participants).
         test("4", "12", "12", "20", None, None, "2", "0",
-             ("6", 0, "14", 3, "20"))
+             ("6", -1, "14"))
         test("4", "12", "12", "20", None, None, "0", "2",
-             ("4", 0, "14", 3, "20"))
+             ("4", -1, "14"))
         test("4", "12", "12", "20", None, None, "1", "1",
-             ("5", 0, "14", 3, "20"))
+             ("5", -1, "14"))
         test("4", "8", "8", "12", None, None, "0", "5",
-             ("4", 0, "13"))
+             ("4", -1, "13"))
         test("4", "8", "8", "12", None, None, "5", "0",
-             ("9", 0, "13"))
+             ("9", -1, "13"))
         test("4", "8", "8", "12", None, None, "9", "0",
-             ("13", 0, "17"))
+             ("13", -1, "17"))
         test("4", "8", "8", "16", None, None, "5", "1",
-             ("9", 0, "14", 3, "16"))
+             ("9", -1, "14"))
 
     @staticmethod
     def test_usaco_like():
@@ -332,14 +342,17 @@ class TestComputeActualPhase(unittest.TestCase):
              ("7", 0, "10", +1, "20", 2, "21", 3, "23"))
         test("6", "18", "21", "23", "6", "15", "1", "1",
              ("7", -1, "15", 0, "20", 2, "21", 3, "23"))
+        # USACO-like with analysis and unknown starting_time.
+        # Users who haven't started see phase -1 during contest window,
+        # then jump to +4 after (no analysis mode for non-participants).
         test("6", "18", "21", "23", "6", None, "0", "0",
-             ("6", -1, "18", 2, "21", 3, "23"))
+             ("6", -1, "18"))
         test("6", "18", "21", "23", "6", None, "0", "1",
-             ("6", -1, "19", 2, "21", 3, "23"))
+             ("6", -1, "19"))
         test("6", "18", "21", "23", "6", None, "1", "0",
-             ("7", -1, "19", 2, "21", 3, "23"))
+             ("7", -1, "19"))
         test("6", "18", "21", "23", "6", None, "1", "1",
-             ("7", -1, "20", 2, "21", 3, "23"))
+             ("7", -1, "20"))
         test("6", "18", "21", "23", "3", "2", "0", "0",
              ("6", 0, "6", +1, "18", 2, "21", 3, "23"))
         test("6", "18", "21", "23", "3", "2", "0", "1",
@@ -399,8 +412,11 @@ class TestComputeActualPhase(unittest.TestCase):
         test("6", "18", "12", "20", "6", "9", "0", "2",
              ("6", -1, "9", 0, "17", 3, "20"))
         
+        # USACO per-user analysis with unknown starting_time.
+        # Users who haven't started see phase -1 during contest window,
+        # then jump to +4 after (no analysis mode for non-participants).
         test("6", "18", "12", "20", "6", None, "0", "0",
-             ("6", -1, "18", 2, "20", 3, "20"))
+             ("6", -1, "18"))
 
 
 if __name__ == "__main__":
