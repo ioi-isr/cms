@@ -26,7 +26,7 @@ from cmstestsuite.unit_tests.databasemixin import DatabaseMixin
 from cms import config
 from cms.db import Submission, UserTest
 from cms.server.contest.submission import InvalidArchive, \
-    InvalidFilesOrLanguage, StorageFailed, UnacceptableSubmission, \
+    InvalidFilesOrLanguage, ReceivedFile, StorageFailed, UnacceptableSubmission, \
     accept_submission, TestingNotAllowed, UnacceptableUserTest, accept_user_test
 from cmscommon.datetime import make_datetime
 from cmscommon.digest import bytes_digest
@@ -82,7 +82,9 @@ class TestAcceptSubmission(DatabaseMixin, unittest.TestCase):
         self.tornado_files = sentinel.tornado_files
         self.language_name = sentinel.language_name
         self.official = True
-        self.received_files = []
+        # received_files must be non-empty for _extract_and_match_files to proceed
+        # and must have a filename attribute for the comment field
+        self.received_files = [ReceivedFile("foo.%l", "foo.mock.1", FOO_CONTENT)]
         self.files = {"foo.%l": FOO_CONTENT}
         # Multiple extensions, primary one doesn't start with a period.
         self.language = make_language("MockLanguage", ["mock.1", ".mock2"])
