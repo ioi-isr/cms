@@ -56,12 +56,10 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     statements_dir = os.path.join(export_dir, "statements")
     attachments_dir = os.path.join(export_dir, "attachments")
     managers_dir = os.path.join(export_dir, "managers")
-    tests_dir = os.path.join(export_dir, "tests")
 
     os.makedirs(statements_dir, exist_ok=True)
     os.makedirs(attachments_dir, exist_ok=True)
     os.makedirs(managers_dir, exist_ok=True)
-    os.makedirs(tests_dir, exist_ok=True)
 
     for lang_code, statement in task.statements.items():
         statement_path = os.path.join(statements_dir, f"{lang_code}.pdf")
@@ -71,22 +69,19 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
         attachment_path = os.path.join(attachments_dir, filename)
         file_cacher.get_file_to_path(attachment.digest, attachment_path)
 
-    testcases = sorted(dataset.testcases.values(), key=lambda tc: tc.codename)
-    for testcase in testcases:
-        input_path = os.path.join(tests_dir, f"input_{testcase.codename}.txt")
-        output_path = os.path.join(tests_dir, f"output_{testcase.codename}.txt")
-        file_cacher.get_file_to_path(testcase.input, input_path)
-        file_cacher.get_file_to_path(testcase.output, output_path)
+    input_template = "input_*.txt"
+    output_template = "output_*.txt"
+    input_template_py = input_template.replace("*", "%s")
+    output_template_py = output_template.replace("*", "%s")
 
     tests_zip_path = os.path.join(export_dir, "tests.zip")
+    testcases = sorted(dataset.testcases.values(), key=lambda tc: tc.codename)
     with zipfile.ZipFile(tests_zip_path, 'w', zipfile.ZIP_DEFLATED) as tests_zip:
         for testcase in testcases:
-            input_path = os.path.join(tests_dir, f"input_{testcase.codename}.txt")
-            output_path = os.path.join(tests_dir, f"output_{testcase.codename}.txt")
-            tests_zip.write(input_path, f"input_{testcase.codename}.txt")
-            tests_zip.write(output_path, f"output_{testcase.codename}.txt")
-
-    shutil.rmtree(tests_dir)
+            with tests_zip.open(input_template_py % testcase.codename, 'w') as fout:
+                file_cacher.get_file_to_fobj(testcase.input, fout)
+            with tests_zip.open(output_template_py % testcase.codename, 'w') as fout:
+                file_cacher.get_file_to_fobj(testcase.output, fout)
 
     for filename, manager in dataset.managers.items():
         manager_path = os.path.join(managers_dir, filename)
@@ -160,8 +155,8 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
 
     task_config['n_input'] = len(testcases)
 
-    task_config['input_template'] = 'input_*.txt'
-    task_config['output_template'] = 'output_*.txt'
+    task_config['input_template'] = input_template
+    task_config['output_template'] = output_template
 
     public_testcases = [tc.codename for tc in testcases if tc.public]
     if public_testcases:
