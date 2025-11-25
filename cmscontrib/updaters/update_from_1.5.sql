@@ -126,4 +126,7 @@ ALTER TABLE ONLY public.contests ADD CONSTRAINT contests_check1 CHECK (((per_use
 -- https://github.com/ioi-isr/cms/pull/35
 ALTER TABLE public.participations ADD COLUMN starting_ip_addresses character varying;
 
+-- https://github.com/ioi-isr/cms/pull/49
+ALTER TABLE ONLY public.contests ADD CONSTRAINT contests_check4 CHECK (stop <= analysis_stop);
+
 COMMIT;

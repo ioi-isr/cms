@@ -173,6 +173,7 @@ def compute_actual_phase(
                 assert contest_start + per_user_time <= analysis_start
             assert analysis_stop is not None
             assert analysis_start <= analysis_stop
+            assert contest_stop <= analysis_stop
             if timestamp < analysis_start:
                 current_phase_end = analysis_start
                 actual_phase = +2

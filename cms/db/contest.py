@@ -58,6 +58,7 @@ class Contest(Base):
         ),
         CheckConstraint("analysis_start <= analysis_stop"),
         CheckConstraint("token_gen_initial <= token_gen_max"),
+        CheckConstraint("stop <= analysis_stop"),
     )
 
     # Auto increment primary key.

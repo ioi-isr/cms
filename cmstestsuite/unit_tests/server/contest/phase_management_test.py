@@ -255,6 +255,23 @@ class TestComputeActualPhase(unittest.TestCase):
         test("4", "8", "8", "16", None, None, "5", "1",
              ("9", -1, "14"))
 
+        # Test for overlapping of contest and analysis with starting_time set.
+        # User's contest window overlaps with analysis mode.
+        # contest_start=4, contest_stop=12, analysis_start=12, analysis_stop=20
+        # starting_time=7, delay=2, extra=0 -> earliest=6, latest=14, actual_start=7, actual_stop=14
+        # User ends at 14, analysis starts at 12, so user goes directly to phase 3
+        test("4", "12", "12", "20", None, "7", "2", "0",
+             ("6", -1, "7", 0, "14", 3, "20"))
+        # contest_start=4, contest_stop=12, analysis_start=12, analysis_stop=20
+        # starting_time=7, delay=0, extra=2 -> earliest=4, latest=14, actual_start=7, actual_stop=14
+        test("4", "12", "12", "20", None, "7", "0", "2",
+             ("4", -1, "7", 0, "14", 3, "20"))
+        # Test where analysis_stop equals contest_stop (boundary case)
+        # contest_start=4, contest_stop=12, analysis_start=12, analysis_stop=12
+        # starting_time=7, delay=0, extra=0 -> actual_start=7, actual_stop=12
+        test("4", "12", "12", "12", None, "7", "0", "0",
+             ("4", -1, "7", 0, "12"))
+
     @staticmethod
     def test_usaco_like():
         # Test "USACO-like" contests, with known starting_time.
@@ -388,8 +405,9 @@ class TestComputeActualPhase(unittest.TestCase):
         test("6", "18", "13", "20", "6", "9", "1", "0",
              ("7", -1, "9", 0, "15", 3, "20"))
         
-        test("6", "18", "13", "14", "6", "9", "0", "0",
-             ("6", -1, "9", 0, "15"))
+        # Test where analysis_stop equals contest_stop (boundary case for new constraint)
+        test("6", "18", "13", "18", "6", "9", "0", "0",
+             ("6", -1, "9", 0, "15", 3, "18"))
         
         test("6", "18", "13", "20", "6", "6", "0", "0",
              ("6", 0, "12", +1, "13", 3, "20"))
