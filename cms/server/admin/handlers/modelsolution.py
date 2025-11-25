@@ -77,6 +77,13 @@ class AddModelSolutionHandler(BaseHandler):
 
             required_codenames = set(task.submission_format)
 
+            # Check if language is required (submission format contains .%l)
+            language_required = any(
+                e.endswith(".%l") for e in required_codenames)
+
+            # For output-only tasks, ignore any posted language
+            language_name = attrs.get("language") if language_required else None
+
             archive_size_limit = config.contest_web_server.max_submission_length * len(
                 required_codenames
             )
@@ -92,9 +99,9 @@ class AddModelSolutionHandler(BaseHandler):
             try:
                 files, language = match_files_and_language(
                     received_files,
-                    attrs.get("language"),
+                    language_name,
                     required_codenames,
-                    task.get_allowed_languages(),
+                    task.get_allowed_languages() if language_required else None,
                 )
             except InvalidFilesOrLanguage as err:
                 logger.info(f'Model solution rejected: {err}')
