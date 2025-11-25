@@ -78,6 +78,95 @@ class UnacceptableSubmission(Exception):
         return self.text % self.text_params
 
 
+from cms.grading.language import Language
+from .file_retrieval import ReceivedFile
+
+
+def _extract_and_match_files(
+    tornado_files: dict[str, list["HTTPFile"]],
+    task: Task,
+    language_name: str | None,
+) -> tuple[list[ReceivedFile], dict[str, bytes], Language | None]:
+    """Extract files from a Tornado request and match them to the submission format.
+
+    This is the shared file processing logic used by both accept_submission
+    (for contestant submissions) and the admin model solution handler.
+
+    tornado_files: the files from the HTTP request.
+    task: the task being submitted to.
+    language_name: the language declared by the user (None means auto-detect).
+
+    return: a tuple of (received_files, files dict, language).
+
+    raise (UnacceptableSubmission): if the files are invalid.
+
+    """
+    required_codenames = set(task.submission_format)
+
+    # To protect against zip bombs, we raise an error if the archive's contents
+    # are too big even before extracting everything. The largest "reasonable"
+    # archive size is with every submission file provided, and every file being
+    # the largest allowed. Since we don't yet know which files from the archive
+    # are used and which are extraneous, this size limit applies to the entire
+    # archive in total.
+    archive_size_limit = config.contest_web_server.max_submission_length * len(
+        required_codenames
+    )
+    # Honest users never need to submit more than required_codenames files, but
+    # we are a bit lenient to allow .DS_Store or other hidden files that might
+    # accidentally end up in an archive.
+    archive_max_files = 2 * len(required_codenames)
+
+    try:
+        received_files = extract_files_from_tornado(
+            tornado_files, archive_size_limit, archive_max_files
+        )
+    except InvalidArchive as e:
+        if e.too_big:
+            raise UnacceptableSubmission(
+                N_("Submission too big!"),
+                N_("Each source file must be at most %d bytes long."),
+                config.contest_web_server.max_submission_length)
+        if e.too_many_files:
+            raise UnacceptableSubmission(
+                N_("Submission too big!"),
+                N_("The submission should contain at most %d files."),
+                len(required_codenames))
+        else:
+            raise UnacceptableSubmission(
+                N_("Invalid archive format!"),
+                N_("The submitted archive could not be opened."))
+
+    if len(received_files) == 0:
+        raise UnacceptableSubmission(
+            N_("Invalid submission!"),
+            N_("No files were uploaded."))
+
+    try:
+        files, language = match_files_and_language(
+            received_files,
+            language_name,
+            required_codenames,
+            task.get_allowed_languages(),
+        )
+    except InvalidFilesOrLanguage as err:
+        logger.info(f'Submission rejected: {err}')
+        raise UnacceptableSubmission(
+            N_("Invalid submission format!"),
+            N_("Please select the correct files."))
+
+    if any(
+        len(content) > config.contest_web_server.max_submission_length
+        for content in files.values()
+    ):
+        raise UnacceptableSubmission(
+            N_("Submission too big!"),
+            N_("Each source file must be at most %d bytes long."),
+            config.contest_web_server.max_submission_length)
+
+    return received_files, files, language
+
+
 def accept_submission(
     sql_session: Session,
     file_cacher: FileCacher,
@@ -158,55 +247,12 @@ def accept_submission(
                 task.min_submission_interval.total_seconds())
 
     # Process the data we received and ensure it's valid.
+    # Use the shared helper for file extraction and matching.
+    received_files, files, language = _extract_and_match_files(
+        tornado_files, task, language_name)
 
+    # Handle partial submissions (reuse files from previous submission if allowed)
     required_codenames = set(task.submission_format)
-
-    # To protect against zip bombs, we raise an error if the archive's contents
-    # are too big even before extracting everything. The largest "reasonable"
-    # archive size is with every submission file provided, and every file being
-    # the largest allowed. Since we don't yet know which files from the archive
-    # are used and which are extraneous, this size limit applies to the entire
-    # archive in total.
-    archive_size_limit = config.contest_web_server.max_submission_length * len(
-        required_codenames
-    )
-    # Honest users never need to submit more than required_codenames files, but
-    # we are a bit lenient to allow .DS_Store or other hidden files that might
-    # accidentally end up in an archive.
-    archive_max_files = 2 * len(required_codenames)
-    try:
-        received_files = extract_files_from_tornado(
-            tornado_files, archive_size_limit, archive_max_files
-        )
-    except InvalidArchive as e:
-        if e.too_big:
-            raise UnacceptableSubmission(
-                N_("Submission too big!"),
-                N_("Each source file must be at most %d bytes long."),
-                config.contest_web_server.max_submission_length)
-        if e.too_many_files:
-            raise UnacceptableSubmission(
-                N_("Submission too big!"),
-                N_("The submission should contain at most %d files."),
-                len(required_codenames))
-        else:
-            raise UnacceptableSubmission(
-                N_("Invalid archive format!"),
-                N_("The submitted archive could not be opened."))
-
-    try:
-        files, language = match_files_and_language(
-            received_files,
-            language_name,
-            required_codenames,
-            task.get_allowed_languages(),
-        )
-    except InvalidFilesOrLanguage as err:
-        logger.info(f'Submission rejected: {err}')
-        raise UnacceptableSubmission(
-            N_("Invalid submission format!"),
-            N_("Please select the correct files."))
-
     digests: dict[str, str] = dict()
     missing_codenames = required_codenames.difference(files.keys())
     if len(missing_codenames) > 0:
@@ -219,15 +265,6 @@ def accept_submission(
             raise UnacceptableSubmission(
                 N_("Invalid submission format!"),
                 N_("Please select the correct files."))
-
-    if any(
-        len(content) > config.contest_web_server.max_submission_length
-        for content in files.values()
-    ):
-        raise UnacceptableSubmission(
-            N_("Submission too big!"),
-            N_("Each source file must be at most %d bytes long."),
-            config.contest_web_server.max_submission_length)
 
     # All checks done, submission accepted.
 

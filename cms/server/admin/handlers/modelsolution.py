@@ -21,13 +21,10 @@
 
 import logging
 
-from cms import config
 from cms.db import Dataset, Submission, File, ModelSolutionMeta, \
     get_or_create_model_solution_participation
-from cms.server.contest.submission.file_retrieval import \
-    extract_files_from_tornado, InvalidArchive
-from cms.server.contest.submission.file_matching import \
-    match_files_and_language, InvalidFilesOrLanguage
+from cms.server.contest.submission import UnacceptableSubmission
+from cms.server.contest.submission.workflow import _extract_and_match_files
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 
@@ -58,7 +55,6 @@ class AddModelSolutionHandler(BaseHandler):
         try:
             attrs = {}
             self.get_string(attrs, "description")
-            self.get_string(attrs, "language", empty=None)
 
             expected_score_min = self.get_argument(
                 "expected_score_min", "0.0")
@@ -75,37 +71,14 @@ class AddModelSolutionHandler(BaseHandler):
                 raise ValueError(
                     "Minimum score cannot be greater than maximum score")
 
-            required_codenames = set(task.submission_format)
-
-            # Check if language is required (submission format contains .%l)
-            language_required = any(
-                e.endswith(".%l") for e in required_codenames)
-
-            # For output-only tasks, ignore any posted language
-            language_name = attrs.get("language") if language_required else None
-
-            archive_size_limit = config.contest_web_server.max_submission_length * len(
-                required_codenames
-            )
-            archive_max_files = 2 * len(required_codenames)
-
+            # Use the shared submission file processing logic from accept_submission.
+            # This handles archive extraction, file matching, language detection, etc.
+            # For model solutions, we pass language_name=None to auto-detect.
             try:
-                received_files = extract_files_from_tornado(
-                    self.request.files, archive_size_limit, archive_max_files
-                )
-            except InvalidArchive:
-                raise ValueError("Invalid archive format")
-
-            try:
-                files, language = match_files_and_language(
-                    received_files,
-                    language_name,
-                    required_codenames,
-                    task.get_allowed_languages() if language_required else None,
-                )
-            except InvalidFilesOrLanguage as err:
-                logger.info(f'Model solution rejected: {err}')
-                raise ValueError("Invalid files or language")
+                received_files, files, language = _extract_and_match_files(
+                    self.request.files, task, language_name=None)
+            except UnacceptableSubmission as err:
+                raise ValueError(err.formatted_text)
 
             timestamp = make_datetime()
             digests = {}
