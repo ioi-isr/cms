@@ -107,6 +107,10 @@ from .task import (
     RemoveTaskHandler,
     DefaultSubmissionFormatHandler,
 )
+from .import_handlers import (
+    ImportTaskHandler,
+    ImportContestHandler,
+)
 from .user import \
     AddUserHandler, \
     UserHandler, \
@@ -145,6 +149,7 @@ HANDLERS = [
     (r"/contests", ContestListHandler),
     (r"/contests/([0-9]+)/remove", RemoveContestHandler),
     (r"/contests/add", AddContestHandler),
+    (r"/contests/import", ImportContestHandler),
     (r"/contest/([0-9]+)", ContestHandler),
     (r"/contest/([0-9]+)/overview", OverviewHandler),
     (r"/contest/([0-9]+)/resourceslist", ResourcesListHandler),
@@ -204,6 +209,7 @@ HANDLERS = [
     (r"/tasks", TaskListHandler),
     (r"/tasks/([0-9]+)/remove", RemoveTaskHandler),
     (r"/tasks/add", AddTaskHandler),
+    (r"/tasks/import", ImportTaskHandler),
     (r"/task/([0-9]+)", TaskHandler),
     (r"/task/([0-9]+)/submissions/download", DownloadTaskSubmissionsHandler),
     (r"/task/([0-9]+)/add_dataset", AddDatasetHandler),
