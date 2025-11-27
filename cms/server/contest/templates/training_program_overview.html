@@ -18,7 +18,7 @@
             <div style="font-size: 48px; font-weight: bold;">
                 {{ "%.1f"|format(percentage) }}%
             </div>
-            <div style="font-size: 14px; opacity: 0.8;">{% trans %}Completion{% endtrans %}</div>
+            <div style="margin-top: 15px; font-size: 14px; opacity: 0.8;">{% trans %}Completion{% endtrans %}</div>
         </div>
         <div style="flex: 2; min-width: 300px;">
             <div style="background: rgba(255,255,255,0.2); border-radius: 10px; height: 30px; overflow: hidden;">
@@ -96,10 +96,6 @@
     </tbody>
 </table>
 {% endif %}
-
-<p style="margin-top: 20px;">
-    <a href="{{ contest_url() }}" class="btn">{% trans %}Back to Contest Overview{% endtrans %}</a>
-</p>
 
 </div>
 

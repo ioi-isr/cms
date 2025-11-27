@@ -74,9 +74,18 @@ def N_(msgid):
 class MainHandler(ContestHandler):
     """Home page handler.
 
+    For training programs, redirect to the training program overview page
+    instead of the regular contest overview, but only if the user is logged in.
+    This prevents a redirect loop with the @authenticated decorator on
+    TrainingProgramOverviewHandler, which redirects unauthenticated users
+    back to get_login_url() (the contest root).
     """
     @multi_contest
     def get(self):
+        # If this is a training program and user is logged in, redirect to training overview
+        if self.training_program is not None and self.current_user is not None:
+            self.redirect(self.contest_url("training_overview"))
+            return
         self.render("overview.html", **self.r_params)
 
 

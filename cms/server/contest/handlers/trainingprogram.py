@@ -41,12 +41,14 @@ class TrainingProgramOverviewHandler(ContestHandler):
         participation: Participation = self.current_user
         contest = self.contest
 
-        # Check if this contest is a managing contest for a training program
-        training_program = contest.training_program
+        # Use self.training_program which was set by choose_contest() during routing.
+        # This is the canonical source of truth for whether we're accessing via a
+        # training program URL. Don't redirect to contest_url() as that would cause
+        # a redirect loop with MainHandler.
+        training_program = self.training_program
         if training_program is None:
-            # Not a training program, redirect to regular overview
-            self.redirect(self.contest_url())
-            return
+            # This URL only makes sense for training programs; return 404
+            raise tornado.web.HTTPError(404)
 
         # Calculate total score and max score
         total_score = 0.0
@@ -90,7 +92,6 @@ class TrainingProgramOverviewHandler(ContestHandler):
 
         self.render(
             "training_program_overview.html",
-            training_program=training_program,
             total_score=total_score,
             max_score=max_score,
             percentage=percentage,
