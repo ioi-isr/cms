@@ -126,6 +126,11 @@ from .folder import \
     FolderHandler, \
     AddFolderHandler, \
     RemoveFolderHandler
+from .trainingprogram import \
+    TrainingProgramListHandler, \
+    TrainingProgramHandler, \
+    AddTrainingProgramHandler, \
+    RemoveTrainingProgramHandler
 
 
 HANDLERS = [
@@ -246,6 +251,12 @@ HANDLERS = [
     (r"/folders/([0-9]+)/remove", RemoveFolderHandler),
     (r"/folders/add", AddFolderHandler),
     (r"/folder/([0-9]+)", FolderHandler),
+
+    # Training Programs
+    (r"/training_programs", TrainingProgramListHandler),
+    (r"/training_programs/([0-9]+)/remove", RemoveTrainingProgramHandler),
+    (r"/training_programs/add", AddTrainingProgramHandler),
+    (r"/training_program/([0-9]+)", TrainingProgramHandler),
 
     # Admins
 

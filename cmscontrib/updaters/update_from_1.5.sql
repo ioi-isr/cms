@@ -126,4 +126,39 @@ ALTER TABLE ONLY public.contests ADD CONSTRAINT contests_check1 CHECK (((per_use
 -- https://github.com/ioi-isr/cms/pull/35
 ALTER TABLE public.participations ADD COLUMN starting_ip_addresses character varying;
 
+-- Training programs table for organizing year-long training with multiple sessions
+CREATE TABLE public.training_programs (
+    id integer NOT NULL,
+    name public.codename NOT NULL,
+    description character varying NOT NULL,
+    managing_contest_id integer NOT NULL
+);
+
+CREATE SEQUENCE public.training_programs_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.training_programs_id_seq OWNED BY public.training_programs.id;
+
+ALTER TABLE ONLY public.training_programs
+    ALTER COLUMN id SET DEFAULT nextval('public.training_programs_id_seq'::regclass);
+
+ALTER TABLE ONLY public.training_programs
+    ADD CONSTRAINT training_programs_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.training_programs
+    ADD CONSTRAINT training_programs_name_key UNIQUE (name);
+
+ALTER TABLE ONLY public.training_programs
+    ADD CONSTRAINT training_programs_managing_contest_id_key UNIQUE (managing_contest_id);
+
+ALTER TABLE ONLY public.training_programs
+    ADD CONSTRAINT training_programs_managing_contest_id_fkey FOREIGN KEY (managing_contest_id) REFERENCES public.contests(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_training_programs_managing_contest_id ON public.training_programs USING btree (managing_contest_id);
+
 COMMIT;

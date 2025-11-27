@@ -1,0 +1,75 @@
+{% extends "contest.html" %}
+
+{% set page = "training_overview" %}
+
+{% block core %}
+
+<div class="span9">
+
+<div class="page-header">
+    <h1>{{ training_program.name }}</h1>
+</div>
+
+<div class="training-program-summary" style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+    <p style="font-size: 14px; color: #666; margin-bottom: 15px;">{{ training_program.description }}</p>
+    
+    <div style="display: flex; gap: 30px; align-items: center;">
+        <div style="text-align: center;">
+            <div style="font-size: 36px; font-weight: bold; color: {% if percentage >= 80 %}#28a745{% elif percentage >= 50 %}#ffc107{% else %}#dc3545{% endif %};">
+                {{ "%.1f"|format(total_score) }} / {{ "%.1f"|format(max_score) }}
+            </div>
+            <div style="font-size: 14px; color: #666;">{% trans %}Total Score{% endtrans %}</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 36px; font-weight: bold; color: {% if percentage >= 80 %}#28a745{% elif percentage >= 50 %}#ffc107{% else %}#dc3545{% endif %};">
+                {{ "%.1f"|format(percentage) }}%
+            </div>
+            <div style="font-size: 14px; color: #666;">{% trans %}Completion{% endtrans %}</div>
+        </div>
+    </div>
+</div>
+
+<h2>{% trans %}Task Archive{% endtrans %}</h2>
+
+{% if task_scores|length == 0 %}
+<p>{% trans %}No tasks available yet.{% endtrans %}</p>
+{% else %}
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>{% trans %}Task{% endtrans %}</th>
+            <th>{% trans %}Name{% endtrans %}</th>
+            <th>{% trans %}Your Score{% endtrans %}</th>
+            <th>{% trans %}Max Score{% endtrans %}</th>
+            <th>{% trans %}Status{% endtrans %}</th>
+        </tr>
+    </thead>
+    <tbody>
+{% for ts in task_scores %}
+        <tr>
+            <th><a href="{{ contest_url("tasks", ts.task.name, "description") }}">{{ ts.task.name }}</a></th>
+            <td>{{ ts.task.title }}</td>
+            <td>{{ "%.1f"|format(ts.score) }}</td>
+            <td>{{ "%.1f"|format(ts.max_score) }}</td>
+            <td>
+    {% if ts.score >= ts.max_score %}
+                <span style="color: #28a745; font-weight: bold;">{% trans %}Solved{% endtrans %}</span>
+    {% elif ts.score > 0 %}
+                <span style="color: #ffc107; font-weight: bold;">{% trans %}Partial{% endtrans %}</span>
+    {% else %}
+                <span style="color: #dc3545;">{% trans %}Not solved{% endtrans %}</span>
+    {% endif %}
+            </td>
+        </tr>
+{% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<p style="margin-top: 20px;">
+    <a href="{{ contest_url() }}" class="btn">{% trans %}Back to Contest Overview{% endtrans %}</a>
+</p>
+
+</div>
+
+{% endblock core %}

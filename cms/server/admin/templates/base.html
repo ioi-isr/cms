@@ -146,6 +146,22 @@ $(document).ready(init);
           {% endif %}
         </ul>
 
+        <h1><a class="menu_link" href="{{ url("training_programs") }}">Training Programs</a></h1>
+        <ul class="menu">
+          <li>
+            <a class="menu_link" href="{{ url("training_programs") }}">
+              (manage training programs...)
+            </a>
+          </li>
+          {% if admin.permission_all %}
+          <li class="menu_entry">
+            <a class="menu_link" href="{{ url("training_programs", "add") }}">
+              (create new training program...)
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+
         <h1><a class="menu_link" href="{{ url("tasks") }}">Tasks</a></h1>
         <ul class="menu">
           {% if task_list|length < 1 %}

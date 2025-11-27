@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training Program</h1>
+</div>
+
+<form action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program" style="display:inline;">
+  {{ xsrf_form_html|safe }}
+  <table class="sub_table">
+    <tr>
+      <td>Codename</td>
+      <td><strong>{{ training_program.name }}</strong></td>
+      <td class="hint">The codename cannot be changed after creation</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td><input type="text" name="description" value="{{ training_program.description }}"/></td>
+    </tr>
+    <tr>
+      <td>Managing Contest</td>
+      <td><a href="{{ url("contest", training_program.managing_contest.id) }}">{{ training_program.managing_contest.name }}</a></td>
+      <td class="hint">The contest that manages all submissions for this training program</td>
+    </tr>
+  </table>
+  <input type="submit" value="Update"/>
+</form>
+
+<form action="{{ url("training_programs") }}" method="POST" style="display:inline;">
+  {{ xsrf_form_html|safe }}
+  <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
+  <input type="submit" name="operation" value="Remove" style="float: right;"/>
+</form>
+
+<h2>Managing Contest Details</h2>
+<p>
+  To add users or tasks to this training program, manage them through the
+  <a href="{{ url("contest", training_program.managing_contest.id) }}">managing contest</a>.
+</p>
+
+<h3>Users ({{ training_program.managing_contest.participations|length }})</h3>
+<ul>
+  {% if training_program.managing_contest.participations|length == 0 %}
+    <li>(no users yet)</li>
+  {% else %}
+    {% for p in training_program.managing_contest.participations[:10] %}
+      <li><a href="{{ url("user", p.user.id) }}">{{ p.user.username }}</a> - {{ p.user.first_name }} {{ p.user.last_name }}</li>
+    {% endfor %}
+    {% if training_program.managing_contest.participations|length > 10 %}
+      <li>... and {{ training_program.managing_contest.participations|length - 10 }} more</li>
+    {% endif %}
+  {% endif %}
+</ul>
+
+<h3>Tasks ({{ training_program.managing_contest.tasks|length }})</h3>
+<ul>
+  {% if training_program.managing_contest.tasks|length == 0 %}
+    <li>(no tasks yet)</li>
+  {% else %}
+    {% for t in training_program.managing_contest.tasks[:10] %}
+      <li><a href="{{ url("task", t.id) }}">{{ t.name }}</a> - {{ t.title }}</li>
+    {% endfor %}
+    {% if training_program.managing_contest.tasks|length > 10 %}
+      <li>... and {{ training_program.managing_contest.tasks|length - 10 }} more</li>
+    {% endif %}
+  {% endif %}
+</ul>
+
+{% endblock core %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Remove Training Program</h1>
+</div>
+
+<p>
+  Are you sure you want to remove the training program <strong>{{ training_program.name }}</strong>?
+</p>
+
+<p class="warning">
+  <strong>Warning:</strong> This will also delete the managing contest
+  <strong>{{ training_program.managing_contest.name }}</strong> and all associated data:
+</p>
+
+<ul>
+  <li><strong>{{ participation_count }}</strong> participation(s)</li>
+  <li><strong>{{ submission_count }}</strong> submission(s)</li>
+  <li><strong>{{ task_count }}</strong> task(s)</li>
+</ul>
+
+<p class="warning">
+  <strong>This action cannot be undone!</strong>
+</p>
+
+<form id="remove_form" action="{{ url("training_programs", training_program.id, "remove") }}" method="POST" style="display:inline;">
+  {{ xsrf_form_html|safe }}
+  <input type="hidden" name="_method" value="DELETE"/>
+  <input type="submit" value="Remove" onclick="return confirm('Are you absolutely sure? This will delete all data associated with this training program.');"/>
+</form>
+
+<a href="{{ url("training_program", training_program.id) }}">Cancel</a>
+
+<script>
+document.getElementById("remove_form").addEventListener("submit", function(e) {
+  e.preventDefault();
+  var form = this;
+  var xhr = new XMLHttpRequest();
+  xhr.open("DELETE", form.action, true);
+  xhr.setRequestHeader("X-XSRFToken", "{{ handler.xsrf_token }}");
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      window.location.href = xhr.responseText || "{{ url("training_programs") }}";
+    }
+  };
+  xhr.send();
+});
+</script>
+
+{% endblock core %}
