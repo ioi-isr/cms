@@ -10,54 +10,85 @@
     <h1>{{ training_program.name }}</h1>
 </div>
 
-<div class="training-program-summary" style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-    <p style="font-size: 14px; color: #666; margin-bottom: 15px;">{{ training_program.description }}</p>
+<div class="training-program-summary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 25px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px; opacity: 0.9; margin-bottom: 20px;">{{ training_program.description }}</p>
     
-    <div style="display: flex; gap: 30px; align-items: center;">
-        <div style="text-align: center;">
-            <div style="font-size: 36px; font-weight: bold; color: {% if percentage >= 80 %}#28a745{% elif percentage >= 50 %}#ffc107{% else %}#dc3545{% endif %};">
-                {{ "%.1f"|format(total_score) }} / {{ "%.1f"|format(max_score) }}
-            </div>
-            <div style="font-size: 14px; color: #666;">{% trans %}Total Score{% endtrans %}</div>
-        </div>
-        <div style="text-align: center;">
-            <div style="font-size: 36px; font-weight: bold; color: {% if percentage >= 80 %}#28a745{% elif percentage >= 50 %}#ffc107{% else %}#dc3545{% endif %};">
+    <div style="display: flex; gap: 40px; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+            <div style="font-size: 48px; font-weight: bold;">
                 {{ "%.1f"|format(percentage) }}%
             </div>
-            <div style="font-size: 14px; color: #666;">{% trans %}Completion{% endtrans %}</div>
+            <div style="font-size: 14px; opacity: 0.8;">{% trans %}Completion{% endtrans %}</div>
+        </div>
+        <div style="flex: 2; min-width: 300px;">
+            <div style="background: rgba(255,255,255,0.2); border-radius: 10px; height: 30px; overflow: hidden;">
+                <div style="background: {% if percentage >= 80 %}#28a745{% elif percentage >= 50 %}#ffc107{% else %}#ff6b6b{% endif %}; height: 100%; width: {{ percentage }}%; transition: width 0.5s ease; border-radius: 10px;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; opacity: 0.8;">
+                <span>{{ "%.1f"|format(total_score) }} {% trans %}points{% endtrans %}</span>
+                <span>{{ "%.1f"|format(max_score) }} {% trans %}total{% endtrans %}</span>
+            </div>
         </div>
     </div>
 </div>
 
-<h2>{% trans %}Task Archive{% endtrans %}</h2>
+<div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+    <div style="background: #e8f5e9; border: 2px solid #28a745; border-radius: 8px; padding: 15px 20px; text-align: center; min-width: 120px;">
+        <div style="font-size: 28px; font-weight: bold; color: #28a745;" id="solved-count">0</div>
+        <div style="font-size: 13px; color: #2e7d32;">{% trans %}Solved{% endtrans %}</div>
+    </div>
+    <div style="background: #fff8e1; border: 2px solid #ffc107; border-radius: 8px; padding: 15px 20px; text-align: center; min-width: 120px;">
+        <div style="font-size: 28px; font-weight: bold; color: #f57c00;" id="partial-count">0</div>
+        <div style="font-size: 13px; color: #ef6c00;">{% trans %}Partial{% endtrans %}</div>
+    </div>
+    <div style="background: #ffebee; border: 2px solid #dc3545; border-radius: 8px; padding: 15px 20px; text-align: center; min-width: 120px;">
+        <div style="font-size: 28px; font-weight: bold; color: #dc3545;" id="unsolved-count">0</div>
+        <div style="font-size: 13px; color: #c62828;">{% trans %}Not Solved{% endtrans %}</div>
+    </div>
+</div>
+
+<h2 style="margin-bottom: 15px;">{% trans %}Task Archive{% endtrans %}</h2>
 
 {% if task_scores|length == 0 %}
 <p>{% trans %}No tasks available yet.{% endtrans %}</p>
 {% else %}
-<table class="table table-bordered table-striped">
+
+<div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+    <span style="font-weight: bold; margin-right: 10px;">{% trans %}Filter:{% endtrans %}</span>
+    <button class="btn btn-small filter-btn active" data-filter="all" onclick="filterTasks('all')">{% trans %}All{% endtrans %}</button>
+    <button class="btn btn-small btn-success filter-btn" data-filter="solved" onclick="filterTasks('solved')">{% trans %}Solved{% endtrans %}</button>
+    <button class="btn btn-small btn-warning filter-btn" data-filter="partial" onclick="filterTasks('partial')">{% trans %}Partial{% endtrans %}</button>
+    <button class="btn btn-small btn-danger filter-btn" data-filter="unsolved" onclick="filterTasks('unsolved')">{% trans %}Not Solved{% endtrans %}</button>
+</div>
+
+<table class="table table-bordered table-striped" id="task-table">
     <thead>
         <tr>
-            <th>{% trans %}Task{% endtrans %}</th>
+            <th style="cursor: pointer;" onclick="sortTable(0)">{% trans %}Task{% endtrans %} <span class="sort-icon"></span></th>
             <th>{% trans %}Name{% endtrans %}</th>
-            <th>{% trans %}Your Score{% endtrans %}</th>
-            <th>{% trans %}Max Score{% endtrans %}</th>
+            <th style="cursor: pointer;" onclick="sortTable(2)">{% trans %}Score{% endtrans %} <span class="sort-icon"></span></th>
             <th>{% trans %}Status{% endtrans %}</th>
         </tr>
     </thead>
     <tbody>
 {% for ts in task_scores %}
-        <tr>
-            <th><a href="{{ contest_url("tasks", ts.task.name, "description") }}">{{ ts.task.name }}</a></th>
+        <tr data-status="{% if ts.score >= ts.max_score %}solved{% elif ts.score > 0 %}partial{% else %}unsolved{% endif %}" data-score="{{ ts.score }}">
+            <td><a href="{{ contest_url("tasks", ts.task.name, "description") }}" style="font-weight: bold;">{{ ts.task.name }}</a></td>
             <td>{{ ts.task.title }}</td>
-            <td>{{ "%.1f"|format(ts.score) }}</td>
-            <td>{{ "%.1f"|format(ts.max_score) }}</td>
+            <td>
+    {% if ts.max_score == 100.0 %}
+                <span style="font-weight: bold;">{{ "%.0f"|format(ts.score) }}</span>
+    {% else %}
+                <span style="font-weight: bold;">{{ "%.1f"|format(ts.score) }}/{{ "%.0f"|format(ts.max_score) }}</span>
+    {% endif %}
+            </td>
             <td>
     {% if ts.score >= ts.max_score %}
-                <span style="color: #28a745; font-weight: bold;">{% trans %}Solved{% endtrans %}</span>
+                <span class="label label-success" style="font-size: 12px;">{% trans %}Solved{% endtrans %}</span>
     {% elif ts.score > 0 %}
-                <span style="color: #ffc107; font-weight: bold;">{% trans %}Partial{% endtrans %}</span>
+                <span class="label label-warning" style="font-size: 12px;">{% trans %}Partial{% endtrans %}</span>
     {% else %}
-                <span style="color: #dc3545;">{% trans %}Not solved{% endtrans %}</span>
+                <span class="label label-important" style="font-size: 12px;">{% trans %}Not Solved{% endtrans %}</span>
     {% endif %}
             </td>
         </tr>
@@ -71,5 +102,105 @@
 </p>
 
 </div>
+
+<style>
+.filter-btn {
+    transition: all 0.2s ease;
+}
+.filter-btn.active {
+    box-shadow: 0 0 0 2px #333;
+}
+.filter-btn:hover {
+    opacity: 0.8;
+}
+#task-table th[onclick]:hover {
+    background-color: #e9ecef;
+}
+.sort-icon::after {
+    content: '\2195';
+    margin-left: 5px;
+    opacity: 0.5;
+}
+.sort-asc .sort-icon::after {
+    content: '\2191';
+    opacity: 1;
+}
+.sort-desc .sort-icon::after {
+    content: '\2193';
+    opacity: 1;
+}
+</style>
+
+<script>
+(function() {
+    var solvedCount = 0, partialCount = 0, unsolvedCount = 0;
+    var rows = document.querySelectorAll('#task-table tbody tr');
+    rows.forEach(function(row) {
+        var status = row.getAttribute('data-status');
+        if (status === 'solved') solvedCount++;
+        else if (status === 'partial') partialCount++;
+        else unsolvedCount++;
+    });
+    document.getElementById('solved-count').textContent = solvedCount;
+    document.getElementById('partial-count').textContent = partialCount;
+    document.getElementById('unsolved-count').textContent = unsolvedCount;
+})();
+
+function filterTasks(filter) {
+    var rows = document.querySelectorAll('#task-table tbody tr');
+    rows.forEach(function(row) {
+        var status = row.getAttribute('data-status');
+        if (filter === 'all' || status === filter) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-filter') === filter) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+var sortDirection = {};
+function sortTable(columnIndex) {
+    var table = document.getElementById('task-table');
+    var tbody = table.querySelector('tbody');
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    var headers = table.querySelectorAll('th');
+    
+    sortDirection[columnIndex] = !sortDirection[columnIndex];
+    var ascending = sortDirection[columnIndex];
+    
+    headers.forEach(function(h, i) {
+        h.classList.remove('sort-asc', 'sort-desc');
+        if (i === columnIndex) {
+            h.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+        }
+    });
+    
+    rows.sort(function(a, b) {
+        var aVal, bVal;
+        if (columnIndex === 2) {
+            aVal = parseFloat(a.getAttribute('data-score')) || 0;
+            bVal = parseFloat(b.getAttribute('data-score')) || 0;
+        } else {
+            aVal = a.cells[columnIndex].textContent.trim().toLowerCase();
+            bVal = b.cells[columnIndex].textContent.trim().toLowerCase();
+        }
+        
+        if (aVal < bVal) return ascending ? -1 : 1;
+        if (aVal > bVal) return ascending ? 1 : -1;
+        return 0;
+    });
+    
+    rows.forEach(function(row) {
+        tbody.appendChild(row);
+    });
+}
+</script>
 
 {% endblock core %}
