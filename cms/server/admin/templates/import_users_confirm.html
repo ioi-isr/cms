@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block core %}
+
+<div class="core_title">
+  <h1>Import Users - Confirm</h1>
+</div>
+
+<form action="{{ url("users", "import", "confirm") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+
+  {% if new_users %}
+  <h2>New Users ({{ new_users|length }})</h2>
+  <p>The following users will be created:</p>
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Row</th>
+        <th>Username</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>E-mail</th>
+        <th>Timezone</th>
+        <th>Preferred Languages</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in new_users %}
+      <tr>
+        <td>{{ user.row }}</td>
+        <td>{{ user.username }}</td>
+        <td>{{ user.first_name }}</td>
+        <td>{{ user.last_name }}</td>
+        <td>{{ user.email or "" }}</td>
+        <td>{{ user.timezone or "" }}</td>
+        <td>{{ user.preferred_languages|join(", ") if user.preferred_languages else "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <input type="hidden" name="new_users" value="{{ new_users|tojson|forceescape }}"/>
+  {% endif %}
+
+  {% if existing_users %}
+  <h2>Existing Users ({{ existing_users|length }})</h2>
+  <p>The following usernames already exist. Select which users you want to update:</p>
+  <p>
+    <button type="button" onclick="document.querySelectorAll('input[name=update_user]').forEach(cb => cb.checked = true);">
+      Select All
+    </button>
+    <button type="button" onclick="document.querySelectorAll('input[name=update_user]').forEach(cb => cb.checked = false);">
+      Deselect All
+    </button>
+  </p>
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Update?</th>
+        <th>Row</th>
+        <th>Username</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>E-mail</th>
+        <th>Timezone</th>
+        <th>Preferred Languages</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in existing_users %}
+      <tr>
+        <td>
+          <input type="checkbox" name="update_user" value="{{ user.existing_id }}"/>
+        </td>
+        <td>{{ user.row }}</td>
+        <td>{{ user.username }}</td>
+        <td>
+          {{ user.first_name }}
+          {% if user.existing_first_name is defined and user.first_name != user.existing_first_name %}
+          <br/><small style="color: #666;">(was: {{ user.existing_first_name or "" }})</small>
+          {% endif %}
+        </td>
+        <td>
+          {{ user.last_name }}
+          {% if user.existing_last_name is defined and user.last_name != user.existing_last_name %}
+          <br/><small style="color: #666;">(was: {{ user.existing_last_name or "" }})</small>
+          {% endif %}
+        </td>
+        <td>
+          {{ user.email or "" }}
+          {% if user.existing_email is defined and user.email != user.existing_email %}
+          <br/><small style="color: #666;">(was: {{ user.existing_email or "" }})</small>
+          {% endif %}
+        </td>
+        <td>
+          {{ user.timezone or "" }}
+          {% if user.existing_timezone is defined and user.timezone != user.existing_timezone %}
+          <br/><small style="color: #666;">(was: {{ user.existing_timezone or "" }})</small>
+          {% endif %}
+        </td>
+        <td>{{ user.preferred_languages|join(", ") if user.preferred_languages else "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <input type="hidden" name="existing_users" value="{{ existing_users|tojson|forceescape }}"/>
+  {% endif %}
+
+  {% if failed_users %}
+  <h2 style="color: #d00;">Failed Users ({{ failed_users|length }})</h2>
+  <p>The following users could not be imported due to validation errors:</p>
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Row</th>
+        <th>Username</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Errors</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in failed_users %}
+      <tr>
+        <td>{{ user.row }}</td>
+        <td>{{ user.username }}</td>
+        <td>{{ user.first_name }}</td>
+        <td>{{ user.last_name }}</td>
+        <td style="color: #d00;">
+          <ul style="margin: 0; padding-left: 20px;">
+            {% for error in user.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if not new_users and not existing_users %}
+  <p>No valid users found to import.</p>
+  {% endif %}
+
+  <div style="margin-top: 20px;">
+    {% if new_users or existing_users %}
+    <input type="submit" value="Confirm Import"/>
+    {% endif %}
+    <a href="{{ url("users") }}">Cancel</a>
+  </div>
+</form>
+
+{% endblock core %}
