@@ -1,0 +1,254 @@
+#!/usr/bin/env python3
+
+# Contest Management System - http://cms-dev.github.io/
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Handlers for model solution management in AdminWebServer.
+
+"""
+
+import logging
+
+from cms.db import Dataset, Submission, File, ModelSolutionMeta, \
+    get_or_create_model_solution_participation
+from cms.server.contest.submission import UnacceptableSubmission
+from cms.server.contest.submission.workflow import _extract_and_match_files
+from cmscommon.datetime import make_datetime
+from .base import BaseHandler, require_permission
+
+
+logger = logging.getLogger(__name__)
+
+
+class AddModelSolutionHandler(BaseHandler):
+    """Handler for adding a new model solution to a dataset.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.render("add_model_solution.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        try:
+            attrs = {}
+            self.get_string(attrs, "description")
+
+            expected_score_min = self.get_argument(
+                "expected_score_min", "0.0")
+            expected_score_max = self.get_argument(
+                "expected_score_max", "100.0")
+
+            try:
+                expected_score_min = float(expected_score_min)
+                expected_score_max = float(expected_score_max)
+            except ValueError:
+                raise ValueError("Invalid score range values")
+
+            if expected_score_min > expected_score_max:
+                raise ValueError(
+                    "Minimum score cannot be greater than maximum score")
+
+            # Use the shared submission file processing logic from accept_submission.
+            # This handles archive extraction, file matching, language detection, etc.
+            # For model solutions, we pass language_name=None to auto-detect.
+            try:
+                received_files, files, language = _extract_and_match_files(
+                    self.request.files, task, language_name=None)
+            except UnacceptableSubmission as err:
+                raise ValueError(err.formatted_text)
+
+            timestamp = make_datetime()
+            digests = {}
+            for codename, content in files.items():
+                digest = self.service.file_cacher.put_file_content(
+                    content,
+                    "Model solution file %s sent by %s at %s." % (
+                        codename,
+                        self.current_user.username,
+                        timestamp))
+                digests[codename] = digest
+
+            participation = get_or_create_model_solution_participation(
+                self.sql_session)
+
+            opaque_id = Submission.generate_opaque_id(
+                self.sql_session, participation.id)
+            submission = Submission(
+                opaque_id=opaque_id,
+                timestamp=timestamp,
+                language=language.name if language is not None else None,
+                participation=participation,
+                task=task,
+                official=False
+            )
+            self.sql_session.add(submission)
+            self.sql_session.flush()
+
+            for codename, digest in digests.items():
+                self.sql_session.add(File(
+                    filename=codename,
+                    digest=digest,
+                    submission=submission))
+
+            meta = ModelSolutionMeta(
+                submission=submission,
+                dataset=dataset,
+                description=attrs["description"],
+                expected_score_min=expected_score_min,
+                expected_score_max=expected_score_max
+            )
+            self.sql_session.add(meta)
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(self.url("task", task.id))
+            return
+
+        if self.try_commit():
+            submission.get_result_or_create(dataset)
+            self.sql_session.commit()
+
+            self.service.add_notification(
+                make_datetime(),
+                "Model solution added",
+                "Model solution %s added to task %s" % (
+                    attrs["description"], task.name))
+
+            self.service.evaluation_service.new_submission(
+                submission_id=submission.id)
+
+        self.redirect(self.url("task", task.id))
+
+
+class ModelSolutionHandler(BaseHandler):
+    """Handler for viewing a model solution (redirects to submission view).
+
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, meta_id, dataset_id=None):
+        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
+        
+        if dataset_id is None:
+            dataset_id = meta.dataset_id
+        else:
+            dataset_id = int(dataset_id)
+        
+        self.redirect(self.url("submission", meta.submission_id, dataset_id))
+
+
+class EditModelSolutionHandler(BaseHandler):
+    """Handler for editing a model solution's metadata.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, meta_id):
+        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
+        task = meta.dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["meta"] = meta
+        self.render("edit_model_solution.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, meta_id):
+        fallback_page = self.url("model_solution", meta_id, "edit")
+        
+        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
+        task = meta.dataset.task
+
+        try:
+            attrs = {}
+            self.get_string(attrs, "description")
+            
+            expected_score_min = self.get_argument(
+                "expected_score_min", "0.0")
+            expected_score_max = self.get_argument(
+                "expected_score_max", "100.0")
+
+            try:
+                expected_score_min = float(expected_score_min)
+                expected_score_max = float(expected_score_max)
+            except ValueError:
+                raise ValueError("Invalid score range values")
+
+            if expected_score_min > expected_score_max:
+                raise ValueError(
+                    "Minimum score cannot be greater than maximum score")
+
+            meta.description = attrs["description"]
+            meta.expected_score_min = expected_score_min
+            meta.expected_score_max = expected_score_max
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid field(s)",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Model solution updated",
+                "Model solution updated for task %s" % task.name)
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class DeleteModelSolutionHandler(BaseHandler):
+    """Handler for deleting a model solution.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, meta_id):
+        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
+        task = meta.dataset.task
+        task_id = task.id
+        
+        submission = meta.submission
+        
+        self.sql_session.delete(meta)
+        
+        if self.try_commit():
+            self.sql_session.delete(submission)
+            self.sql_session.commit()
+            
+            self.service.add_notification(
+                make_datetime(),
+                "Model solution deleted",
+                "Model solution deleted from task %s" % task.name)
+        
+        self.write("./%d" % task_id)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, meta_id):
+        """Support DELETE method by delegating to POST."""
+        return self.post(meta_id)

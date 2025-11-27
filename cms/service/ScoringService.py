@@ -215,7 +215,8 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
             submission_results = \
                 get_submission_results(session, contest_id,
                                        participation_id, task_id,
-                                       submission_id, dataset_id).all()
+                                       submission_id, dataset_id,
+                                       include_model_solutions=True).all()
 
             for sr in submission_results:
                 if sr.scored():
@@ -233,3 +234,49 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
             self.enqueue(item, timestamp=timestamp)
 
         logger.info("Invalidated %d submission results.", len(temp_queue))
+
+    @rpc_method
+    def invalidate_model_solutions(
+        self,
+        dataset_id: int,
+    ):
+        """Invalidate (and re-score) all model solutions for a dataset.
+
+        This method invalidates only model solutions (not regular submissions)
+        for the specified dataset. It's similar to invalidate_submission but
+        explicitly filters to only model solutions via ModelSolutionMeta.
+
+        dataset_id: id of the dataset whose model solutions should be invalidated.
+
+        """
+        logger.info("Model solution invalidation request received for dataset %d.",
+                    dataset_id)
+
+        temp_queue = list()
+
+        with SessionGen() as session:
+            from cms.db import ModelSolutionMeta, SubmissionResult
+
+            submission_results = session.query(SubmissionResult).join(
+                Submission
+            ).join(
+                ModelSolutionMeta,
+                ModelSolutionMeta.submission_id == Submission.id
+            ).filter(
+                SubmissionResult.dataset_id == dataset_id,
+                ModelSolutionMeta.dataset_id == dataset_id
+            ).all()
+
+            for sr in submission_results:
+                if sr.scored():
+                    sr.invalidate_score()
+                    temp_queue.append((
+                        ScoringOperation(sr.submission_id, sr.dataset_id),
+                        sr.submission.timestamp))
+
+            session.commit()
+
+        for item, timestamp in temp_queue:
+            self.enqueue(item, timestamp=timestamp)
+
+        logger.info("Invalidated %d model solution results.", len(temp_queue))
