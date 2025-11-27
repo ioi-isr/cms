@@ -43,6 +43,12 @@
 <a href="{{ url("admins", "add") }}">Add a new admin</a>
 {% endif %}
 
+{% if admin.permission_messaging %}
+<hr/>
+
+<a href="{{ url("admins", "send_email") }}">Send email</a>
+{% endif %}
+
 <hr/>
 
 <ul>
