@@ -539,6 +539,9 @@ $(document).ready(function() {
 {% endif %}
          value="Update" />
   <input type="reset" value="Reset" />
+{% if admin.permission_all %}
+  <a href="{{ url("task", task.id, "export") }}"> ⇩ Export </a>
+{% endif %}
 </form>
 <form action="{{ url("tasks") }}" method="POST" style="display:inline;">
     {{ xsrf_form_html|safe }}
