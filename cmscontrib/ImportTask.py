@@ -67,6 +67,7 @@ class TaskImporter:
         no_statement: bool,
         contest_id: int | None,
         loader_class: type[TaskLoader],
+        raise_import_errors: bool = False,
     ):
         """Create the importer object for a task.
 
@@ -78,6 +79,8 @@ class TaskImporter:
         contest_id: if set, the new task will be tied to this
             contest; if not set, the task will not be tied to any contest, or
             if this was an update, will remain tied to the previous contest.
+        raise_import_errors: if True, re-raise ImportDataError instead of
+            logging and returning False (used by admin interface).
 
         """
         self.file_cacher = FileCacher()
@@ -86,6 +89,7 @@ class TaskImporter:
         self.update = update
         self.no_statement = no_statement
         self.contest_id = contest_id
+        self.raise_import_errors = raise_import_errors
         self.loader = loader_class(os.path.abspath(path), self.file_cacher)
 
     def do_import(self):
@@ -119,6 +123,8 @@ class TaskImporter:
                     session, contest, task, task_has_changed)
 
             except ImportDataError as e:
+                if self.raise_import_errors:
+                    raise
                 logger.error(str(e))
                 logger.info("Error while importing, no changes were made.")
                 return False

@@ -6,6 +6,10 @@
   <h1>Contests list</h1>
 </div>
 
+<div style="margin-bottom: 10px;">
+  <a href="{{ url("contests", "import") }}" class="button">Import Contest from ZIP</a>
+</div>
+
 <form action="{{ url("contests") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Edit selected contest:
