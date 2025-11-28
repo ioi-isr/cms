@@ -56,26 +56,33 @@
         <td>{{ u.first_name }}</td>
         <td>{{ u.last_name }}</td>
         <td>
-          <form action="{{ url("training_program", training_program.id, "student", u.id, "update_tags") }}" method="POST" style="display:inline;">
-            {{ xsrf_form_html|safe }}
-            <input type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}" 
-                   placeholder="e.g. beginner, python"
-                   style="width: 200px;"
-{% if not admin.permission_all %}
-                   disabled
-{% endif %}
-            />
-            <input type="submit" value="Update"
-{% if not admin.permission_all %}
-                   disabled
-{% endif %}
-            />
-          </form>
+          {{ student.student_tags|join(", ") }}
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </form>
+
+<h2>Update Student Tags</h2>
+{% for student in training_program.students|sort(attribute="participation.user.username") %}
+{% set u = student.participation.user %}
+<form action="{{ url("training_program", training_program.id, "student", u.id, "update_tags") }}" method="POST" style="margin-bottom: 5px;">
+  {{ xsrf_form_html|safe }}
+  <strong>{{ u.username }}:</strong>
+  <input type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}" 
+         placeholder="e.g. beginner, python"
+         style="width: 200px;"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+  />
+  <input type="submit" value="Update"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+  />
+</form>
+{% endfor %}
 
 {% endblock core %}

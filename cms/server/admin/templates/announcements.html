@@ -12,7 +12,7 @@
 {% if admin.permission_all or admin.permission_messaging %}
     <div class="notification communication">
       <div class="notification_msg">
-        <form method="post" action="{{ url("contest", contest.id, "announcements", "add") }}">
+        <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "add") }}{% endif %}">
           {{ xsrf_form_html|safe }}
           <div class="notification_subject">
             <label for="new_subject">Subject</label>
@@ -52,7 +52,7 @@
           </div>
           <a href="javascript:void(0);" onclick="utils.announcement_edit_toggle(event, this);">Edit</a>
           <div class="reply_question">
-            <form method="post" action="{{ url("contest", contest.id, "announcements", "edit", msg.id) }}" >
+            <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "edit", msg.id) }}{% endif %}" >
               {{ xsrf_form_html|safe }}
               <div class="notification_subject">
                 <label for="new_subject">Edit Announcement</label>

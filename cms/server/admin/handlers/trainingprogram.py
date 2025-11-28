@@ -532,22 +532,104 @@ class TrainingProgramRankingHandler(BaseHandler):
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str, format: str = "online"):
+        import csv
+        import io
+        from sqlalchemy.orm import joinedload
+        from cms.grading.scoring import task_score
+
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
 
-        self.contest = managing_contest
+        self.contest = (
+            self.sql_session.query(Contest)
+            .filter(Contest.id == managing_contest.id)
+            .options(joinedload("participations"))
+            .options(joinedload("participations.submissions"))
+            .options(joinedload("participations.submissions.token"))
+            .options(joinedload("participations.submissions.results"))
+            .first()
+        )
+
+        show_teams = False
+        for p in self.contest.participations:
+            show_teams = show_teams or p.team_id
+
+            p.scores = []
+            total_score = 0.0
+            partial = False
+            for task in self.contest.tasks:
+                t_score, t_partial = task_score(p, task, rounded=True)
+                p.scores.append((t_score, t_partial))
+                total_score += t_score
+                partial = partial or t_partial
+            total_score = round(total_score, self.contest.score_precision)
+            p.total_score = (total_score, partial)
+
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
+        self.r_params["contest"] = self.contest
+        self.r_params["show_teams"] = show_teams
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Participation.contest_id == self.contest.id)\
             .filter(Question.reply_timestamp.is_(None))\
             .filter(Question.ignored.is_(False))\
             .count()
 
-        from .contestranking import RankingHandler
-        RankingHandler.produce_ranking(self, managing_contest, format)
+        if format == "txt":
+            self.set_header("Content-Type", "text/plain")
+            self.set_header("Content-Disposition",
+                            "attachment; filename=\"ranking.txt\"")
+            self.render("ranking.txt", **self.r_params)
+        elif format == "csv":
+            self.set_header("Content-Type", "text/csv")
+            self.set_header("Content-Disposition",
+                            "attachment; filename=\"ranking.csv\"")
+
+            output = io.StringIO()
+            writer = csv.writer(output)
+
+            include_partial = True
+
+            row = ["Username", "User"]
+            if show_teams:
+                row.append("Team")
+            for task in self.contest.tasks:
+                row.append(task.name)
+                if include_partial:
+                    row.append("P")
+
+            row.append("Global")
+            if include_partial:
+                row.append("P")
+
+            writer.writerow(row)
+
+            for p in sorted(self.contest.participations,
+                            key=lambda p: p.total_score, reverse=True):
+                if p.hidden:
+                    continue
+
+                row = [p.user.username,
+                       "%s %s" % (p.user.first_name, p.user.last_name)]
+                if show_teams:
+                    row.append(p.team.name if p.team else "")
+                assert len(self.contest.tasks) == len(p.scores)
+                for t_score, t_partial in p.scores:
+                    row.append(t_score)
+                    if include_partial:
+                        row.append("*" if t_partial else "")
+
+                total_score, partial = p.total_score
+                row.append(total_score)
+                if include_partial:
+                    row.append("*" if partial else "")
+
+                writer.writerow(row)
+
+            self.finish(output.getvalue())
+        else:
+            self.render("ranking.html", **self.r_params)
 
 
 class TrainingProgramSubmissionsHandler(BaseHandler):
