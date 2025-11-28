@@ -134,13 +134,14 @@ from .trainingprogram import \
     TrainingProgramStudentsHandler, \
     AddTrainingProgramStudentHandler, \
     RemoveTrainingProgramStudentHandler, \
-    UpdateStudentTagsHandler, \
     TrainingProgramTasksHandler, \
     AddTrainingProgramTaskHandler, \
     TrainingProgramRankingHandler, \
     TrainingProgramSubmissionsHandler, \
     TrainingProgramAnnouncementsHandler, \
-    TrainingProgramQuestionsHandler
+    TrainingProgramQuestionsHandler, \
+    StudentHandler, \
+    ManagingContestRedirectHandler
 
 
 HANDLERS = [
@@ -154,6 +155,9 @@ HANDLERS = [
     (r"/notifications", NotificationsHandler),
     (r"/file/([a-f0-9]+)/([a-zA-Z0-9_.-]+)", FileFromDigestHandler),
     (r"/render_markdown", MarkdownRenderHandler),
+
+    # Managing Contest Redirect (must be before Contest handlers)
+    (r"/contest/([0-9]+)(/.*)?", ManagingContestRedirectHandler),
 
     # Contest
 
@@ -272,7 +276,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/students", TrainingProgramStudentsHandler),
     (r"/training_program/([0-9]+)/students/add", AddTrainingProgramStudentHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/remove", RemoveTrainingProgramStudentHandler),
-    (r"/training_program/([0-9]+)/student/([0-9]+)/update_tags", UpdateStudentTagsHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/edit", StudentHandler),
     (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
     (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),
     (r"/training_program/([0-9]+)/ranking", TrainingProgramRankingHandler),

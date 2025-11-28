@@ -24,7 +24,7 @@ Each training program has a managing contest that handles all submissions.
 import tornado.web
 
 from cms.db import Contest, TrainingProgram, Participation, Submission, \
-    User, Task, Question, Announcement, Student
+    User, Task, Question, Announcement, Student, Team
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -322,34 +322,35 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
         self.write("../../students")
 
 
-class UpdateStudentTagsHandler(BaseHandler):
-    """Update student tags."""
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def post(self, training_program_id: str, user_id: str):
-        fallback_page = self.url("training_program", training_program_id, "students")
-
+class StudentHandler(BaseHandler):
+    """Shows and edits details of a single student in a training program.
+    
+    Similar to ParticipationHandler but includes student tags.
+    """
+    
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str, user_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
-        user = self.safe_get_item(User, user_id)
-
+        self.contest = managing_contest
+        
         participation: Participation | None = (
             self.sql_session.query(Participation)
-            .filter(Participation.user == user)
-            .filter(Participation.contest == managing_contest)
+            .filter(Participation.contest_id == managing_contest.id)
+            .filter(Participation.user_id == user_id)
             .first()
         )
-
+        
         if participation is None:
             raise tornado.web.HTTPError(404)
-
+        
         student: Student | None = (
             self.sql_session.query(Student)
             .filter(Student.participation == participation)
             .filter(Student.training_program == training_program)
             .first()
         )
-
+        
         if student is None:
             student = Student(
                 training_program=training_program,
@@ -357,19 +358,143 @@ class UpdateStudentTagsHandler(BaseHandler):
                 student_tags=[]
             )
             self.sql_session.add(student)
-
+            self.try_commit()
+        
+        submission_query = self.sql_session.query(Submission)\
+            .filter(Submission.participation == participation)
+        page = int(self.get_query_argument("page", "0"))
+        self.render_params_for_submissions(submission_query, page)
+        
+        self.r_params["training_program"] = training_program
+        self.r_params["participation"] = participation
+        self.r_params["student"] = student
+        self.r_params["selected_user"] = participation.user
+        self.r_params["teams"] = self.sql_session.query(Team).all()
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+        self.render("student.html", **self.r_params)
+    
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, user_id: str):
+        fallback_page = self.url("training_program", training_program_id, "student", user_id, "edit")
+        
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        self.contest = managing_contest
+        
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == managing_contest.id)
+            .filter(Participation.user_id == user_id)
+            .first()
+        )
+        
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+        
+        student: Student | None = (
+            self.sql_session.query(Student)
+            .filter(Student.participation == participation)
+            .filter(Student.training_program == training_program)
+            .first()
+        )
+        
+        if student is None:
+            student = Student(
+                training_program=training_program,
+                participation=participation,
+                student_tags=[]
+            )
+            self.sql_session.add(student)
+        
         try:
+            attrs = participation.get_attrs()
+            self.get_password(attrs, participation.password, True)
+            self.get_ip_networks(attrs, "ip")
+            self.get_datetime(attrs, "starting_time")
+            self.get_timedelta_sec(attrs, "delay_time")
+            self.get_timedelta_sec(attrs, "extra_time")
+            self.get_bool(attrs, "hidden")
+            self.get_bool(attrs, "unrestricted")
+            participation.set_attrs(attrs)
+            
+            self.get_string(attrs, "team")
+            team_code = attrs["team"]
+            if team_code:
+                team: Team | None = (
+                    self.sql_session.query(Team).filter(Team.code == team_code).first()
+                )
+                if team is None:
+                    raise ValueError(f"Team with code '{team_code}' does not exist")
+                participation.team = team
+            else:
+                participation.team = None
+            
             tags_str = self.get_argument("student_tags", "")
             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
             student.student_tags = tags
+            
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback_page)
             return
-
-        self.try_commit()
+        
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
         self.redirect(fallback_page)
+
+
+class ManagingContestRedirectHandler(BaseHandler):
+    """Redirect managing contest URLs to training program URLs.
+    
+    Managing contests (those with __ prefix) should not be accessed directly.
+    Instead, redirect to the equivalent training program URL.
+    """
+    
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id: str, remaining_path: str = None):
+        contest = self.safe_get_item(Contest, contest_id)
+        
+        if not contest.name.startswith("__"):
+            raise tornado.web.HTTPError(404)
+        
+        training_program: TrainingProgram | None = (
+            self.sql_session.query(TrainingProgram)
+            .filter(TrainingProgram.managing_contest_id == int(contest_id))
+            .first()
+        )
+        
+        if training_program is None:
+            raise tornado.web.HTTPError(404)
+        
+        if remaining_path is None:
+            self.redirect(self.url("training_program", training_program.id))
+            return
+        
+        url_mappings = {
+            "/users": "/students",
+            "/user/": "/student/",
+            "/tasks": "/tasks",
+            "/submissions": "/submissions",
+            "/announcements": "/announcements",
+            "/questions": "/questions",
+            "/ranking": "/ranking",
+        }
+        
+        for contest_suffix, tp_suffix in url_mappings.items():
+            if remaining_path.startswith(contest_suffix):
+                new_path = remaining_path.replace(contest_suffix, tp_suffix, 1)
+                if "/edit" not in new_path and tp_suffix == "/student/":
+                    new_path = new_path.rstrip("/") + "/edit"
+                self.redirect(self.url("training_program", training_program.id) + new_path)
+                return
+        
+        self.redirect(self.url("training_program", training_program.id))
 
 
 class TrainingProgramTasksHandler(BaseHandler):
