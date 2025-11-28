@@ -140,8 +140,7 @@ from .trainingprogram import \
     TrainingProgramSubmissionsHandler, \
     TrainingProgramAnnouncementsHandler, \
     TrainingProgramQuestionsHandler, \
-    StudentHandler, \
-    ManagingContestRedirectHandler
+    StudentHandler
 
 
 HANDLERS = [
@@ -155,9 +154,6 @@ HANDLERS = [
     (r"/notifications", NotificationsHandler),
     (r"/file/([a-f0-9]+)/([a-zA-Z0-9_.-]+)", FileFromDigestHandler),
     (r"/render_markdown", MarkdownRenderHandler),
-
-    # Managing Contest Redirect (must be before Contest handlers)
-    (r"/contest/([0-9]+)(/.*)?", ManagingContestRedirectHandler),
 
     # Contest
 

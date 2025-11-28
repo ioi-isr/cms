@@ -308,6 +308,41 @@ class BaseHandler(CommonRequestHandler):
         """
         super().prepare()
         self.contest = None
+        
+        import re
+        path = self.request.path
+        match = re.match(r'^/contest/(\d+)(/.*)?$', path)
+        if match:
+            contest_id = match.group(1)
+            remaining_path = match.group(2) or ""
+            
+            try:
+                contest = self.sql_session.query(Contest).filter(Contest.id == int(contest_id)).first()
+                if contest and contest.name.startswith("__"):
+                    training_program = self.sql_session.query(TrainingProgram)\
+                        .filter(TrainingProgram.managing_contest_id == int(contest_id))\
+                        .first()
+                    
+                    if training_program:
+                        url_mappings = {
+                            "/users": "/students",
+                            "/user/": "/student/",
+                        }
+                        
+                        new_path = remaining_path
+                        for contest_suffix, tp_suffix in url_mappings.items():
+                            if remaining_path.startswith(contest_suffix):
+                                new_path = remaining_path.replace(contest_suffix, tp_suffix, 1)
+                                if "/edit" not in new_path and tp_suffix == "/student/":
+                                    new_path = new_path.rstrip("/") + "/edit"
+                                break
+                        
+                        tp_url = self.url("training_program", training_program.id) + new_path
+                        self.redirect(tp_url)
+                        self._finished = True
+                        return
+            except Exception:
+                pass
 
     def render(self, template_name: str, **params):
         t = self.service.jinja2_environment.get_template(template_name)

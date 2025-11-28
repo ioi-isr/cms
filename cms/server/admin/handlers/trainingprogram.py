@@ -449,54 +449,6 @@ class StudentHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
-class ManagingContestRedirectHandler(BaseHandler):
-    """Redirect managing contest URLs to training program URLs.
-    
-    Managing contests (those with __ prefix) should not be accessed directly.
-    Instead, redirect to the equivalent training program URL.
-    """
-    
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id: str, remaining_path: str = None):
-        contest = self.safe_get_item(Contest, contest_id)
-        
-        if not contest.name.startswith("__"):
-            raise tornado.web.HTTPError(404)
-        
-        training_program: TrainingProgram | None = (
-            self.sql_session.query(TrainingProgram)
-            .filter(TrainingProgram.managing_contest_id == int(contest_id))
-            .first()
-        )
-        
-        if training_program is None:
-            raise tornado.web.HTTPError(404)
-        
-        if remaining_path is None:
-            self.redirect(self.url("training_program", training_program.id))
-            return
-        
-        url_mappings = {
-            "/users": "/students",
-            "/user/": "/student/",
-            "/tasks": "/tasks",
-            "/submissions": "/submissions",
-            "/announcements": "/announcements",
-            "/questions": "/questions",
-            "/ranking": "/ranking",
-        }
-        
-        for contest_suffix, tp_suffix in url_mappings.items():
-            if remaining_path.startswith(contest_suffix):
-                new_path = remaining_path.replace(contest_suffix, tp_suffix, 1)
-                if "/edit" not in new_path and tp_suffix == "/student/":
-                    new_path = new_path.rstrip("/") + "/edit"
-                self.redirect(self.url("training_program", training_program.id) + new_path)
-                return
-        
-        self.redirect(self.url("training_program", training_program.id))
-
-
 class TrainingProgramTasksHandler(BaseHandler):
     """Manage tasks in a training program."""
     REMOVE_FROM_PROGRAM = "Remove from training program"
