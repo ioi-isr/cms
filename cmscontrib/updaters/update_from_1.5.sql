@@ -188,12 +188,9 @@ ALTER TABLE ONLY public.students
 ALTER TABLE ONLY public.students
     ADD CONSTRAINT students_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.students
-    ADD CONSTRAINT students_participation_id_key UNIQUE (participation_id);
-
 CREATE INDEX ix_students_training_program_id ON public.students USING btree (training_program_id);
 
-CREATE INDEX ix_students_participation_id ON public.students USING btree (participation_id);
+CREATE UNIQUE INDEX ix_students_participation_id ON public.students USING btree (participation_id);
 
 ALTER TABLE ONLY public.students
     ALTER COLUMN student_tags DROP DEFAULT;
