@@ -40,6 +40,7 @@ except:
 import tornado.web
 
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
+from cms.grading.scoretypes import ScoreTypeGroup
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
 
@@ -119,6 +120,24 @@ class TaskHandler(BaseHandler):
             self.sql_session.query(Submission)\
                 .join(Task).filter(Task.id == task_id)\
                 .order_by(Submission.timestamp.desc()).all()
+        
+        testcase_subtasks = {}
+        for dataset in task.datasets:
+            try:
+                score_type_obj = dataset.score_type_object
+                if isinstance(score_type_obj, ScoreTypeGroup):
+                    targets = score_type_obj.retrieve_target_testcases()
+                    tc_to_subtasks = {}
+                    for subtask_idx, testcase_list in enumerate(targets):
+                        for tc_codename in testcase_list:
+                            if tc_codename not in tc_to_subtasks:
+                                tc_to_subtasks[tc_codename] = []
+                            tc_to_subtasks[tc_codename].append(subtask_idx)
+                    testcase_subtasks[dataset.id] = tc_to_subtasks
+            except Exception:
+                pass
+        
+        self.r_params["testcase_subtasks"] = testcase_subtasks
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
