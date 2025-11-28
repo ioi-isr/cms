@@ -130,7 +130,17 @@ from .trainingprogram import \
     TrainingProgramListHandler, \
     TrainingProgramHandler, \
     AddTrainingProgramHandler, \
-    RemoveTrainingProgramHandler
+    RemoveTrainingProgramHandler, \
+    TrainingProgramStudentsHandler, \
+    AddTrainingProgramStudentHandler, \
+    RemoveTrainingProgramStudentHandler, \
+    UpdateStudentTagsHandler, \
+    TrainingProgramTasksHandler, \
+    AddTrainingProgramTaskHandler, \
+    TrainingProgramRankingHandler, \
+    TrainingProgramSubmissionsHandler, \
+    TrainingProgramAnnouncementsHandler, \
+    TrainingProgramQuestionsHandler
 
 
 HANDLERS = [
@@ -257,6 +267,19 @@ HANDLERS = [
     (r"/training_programs/([0-9]+)/remove", RemoveTrainingProgramHandler),
     (r"/training_programs/add", AddTrainingProgramHandler),
     (r"/training_program/([0-9]+)", TrainingProgramHandler),
+
+    # Training Program tabs
+    (r"/training_program/([0-9]+)/students", TrainingProgramStudentsHandler),
+    (r"/training_program/([0-9]+)/students/add", AddTrainingProgramStudentHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/remove", RemoveTrainingProgramStudentHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/update_tags", UpdateStudentTagsHandler),
+    (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
+    (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),
+    (r"/training_program/([0-9]+)/ranking", TrainingProgramRankingHandler),
+    (r"/training_program/([0-9]+)/ranking/([a-z]+)", TrainingProgramRankingHandler),
+    (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
+    (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
+    (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
 
     # Admins
 

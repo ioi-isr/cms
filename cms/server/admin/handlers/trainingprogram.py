@@ -21,7 +21,10 @@ Training programs organize year-long training with multiple sessions.
 Each training program has a managing contest that handles all submissions.
 """
 
-from cms.db import Contest, TrainingProgram, Participation, Submission
+import tornado.web
+
+from cms.db import Contest, TrainingProgram, Participation, Submission, \
+    User, Task, Question, Announcement, Student
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -169,3 +172,478 @@ class RemoveTrainingProgramHandler(BaseHandler):
 
         self.try_commit()
         self.write("../../training_programs")
+
+
+class TrainingProgramStudentsHandler(BaseHandler):
+    """List and manage students in a training program."""
+    REMOVE_FROM_PROGRAM = "Remove from training program"
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        self.r_params["unassigned_users"] = \
+            self.sql_session.query(User)\
+                .filter(User.id.notin_(
+                    self.sql_session.query(Participation.user_id)
+                        .filter(Participation.contest == managing_contest)
+                        .all()))\
+                .filter(~User.username.like(r'\_\_%', escape='\\'))\
+                .all()
+
+        self.render("training_program_students.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        fallback_page = self.url("training_program", training_program_id, "students")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        try:
+            user_id = self.get_argument("user_id")
+            operation = self.get_argument("operation")
+            assert operation in (
+                self.REMOVE_FROM_PROGRAM,
+            ), "Please select a valid operation"
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if operation == self.REMOVE_FROM_PROGRAM:
+            asking_page = \
+                self.url("training_program", training_program_id, "student", user_id, "remove")
+            self.redirect(asking_page)
+            return
+
+        self.redirect(fallback_page)
+
+
+class AddTrainingProgramStudentHandler(BaseHandler):
+    """Add a student to a training program."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        fallback_page = self.url("training_program", training_program_id, "students")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        try:
+            user_id: str = self.get_argument("user_id")
+            assert user_id != "null", "Please select a valid user"
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        user = self.safe_get_item(User, user_id)
+
+        participation = Participation(contest=managing_contest, user=user)
+        self.sql_session.add(participation)
+        self.sql_session.flush()
+
+        student = Student(
+            training_program=training_program,
+            participation=participation,
+            student_tags=[]
+        )
+        self.sql_session.add(student)
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+
+        self.redirect(fallback_page)
+
+
+class RemoveTrainingProgramStudentHandler(BaseHandler):
+    """Confirm and remove a student from a training program."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, training_program_id: str, user_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        user = self.safe_get_item(User, user_id)
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest == managing_contest)
+            .filter(Participation.user == user)
+            .first()
+        )
+
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        submission_query = self.sql_session.query(Submission)\
+            .filter(Submission.participation == participation)
+        self.render_params_for_remove_confirmation(submission_query)
+
+        self.r_params["user"] = user
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = 0
+        self.render("training_program_student_remove.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, training_program_id: str, user_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        user = self.safe_get_item(User, user_id)
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.user == user)
+            .filter(Participation.contest == managing_contest)
+            .first()
+        )
+
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        self.sql_session.delete(participation)
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+
+        self.write("../../students")
+
+
+class UpdateStudentTagsHandler(BaseHandler):
+    """Update student tags."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, user_id: str):
+        fallback_page = self.url("training_program", training_program_id, "students")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        user = self.safe_get_item(User, user_id)
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.user == user)
+            .filter(Participation.contest == managing_contest)
+            .first()
+        )
+
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        student: Student | None = (
+            self.sql_session.query(Student)
+            .filter(Student.participation == participation)
+            .filter(Student.training_program == training_program)
+            .first()
+        )
+
+        if student is None:
+            student = Student(
+                training_program=training_program,
+                participation=participation,
+                student_tags=[]
+            )
+            self.sql_session.add(student)
+
+        try:
+            tags_str = self.get_argument("student_tags", "")
+            tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+            student.student_tags = tags
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        self.try_commit()
+        self.redirect(fallback_page)
+
+
+class TrainingProgramTasksHandler(BaseHandler):
+    """Manage tasks in a training program."""
+    REMOVE_FROM_PROGRAM = "Remove from training program"
+    MOVE_UP = "up by 1"
+    MOVE_DOWN = "down by 1"
+    MOVE_TOP = "to the top"
+    MOVE_BOTTOM = "to the bottom"
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        self.r_params["unassigned_tasks"] = \
+            self.sql_session.query(Task)\
+                .filter(Task.contest_id.is_(None))\
+                .all()
+
+        self.render("training_program_tasks.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        fallback_page = self.url("training_program", training_program_id, "tasks")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        try:
+            task_id: str = self.get_argument("task_id")
+            operation: str = self.get_argument("operation")
+            assert operation in (
+                self.REMOVE_FROM_PROGRAM,
+                self.MOVE_UP,
+                self.MOVE_DOWN,
+                self.MOVE_TOP,
+                self.MOVE_BOTTOM
+            ), "Please select a valid operation"
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        task = self.safe_get_item(Task, task_id)
+        task2 = None
+
+        task_num = task.num
+
+        if operation == self.REMOVE_FROM_PROGRAM:
+            task.contest = None
+            task.num = None
+
+            self.sql_session.flush()
+
+            for t in self.sql_session.query(Task)\
+                         .filter(Task.contest == managing_contest)\
+                         .filter(Task.num > task_num)\
+                         .order_by(Task.num)\
+                         .all():
+                t.num -= 1
+                self.sql_session.flush()
+
+        elif operation == self.MOVE_UP:
+            task2 = self.sql_session.query(Task)\
+                        .filter(Task.contest == managing_contest)\
+                        .filter(Task.num == task.num - 1)\
+                        .first()
+
+        elif operation == self.MOVE_DOWN:
+            task2 = self.sql_session.query(Task)\
+                        .filter(Task.contest == managing_contest)\
+                        .filter(Task.num == task.num + 1)\
+                        .first()
+
+        elif operation == self.MOVE_TOP:
+            task.num = None
+            self.sql_session.flush()
+
+            for t in self.sql_session.query(Task)\
+                         .filter(Task.contest == managing_contest)\
+                         .filter(Task.num < task_num)\
+                         .order_by(Task.num.desc())\
+                         .all():
+                t.num += 1
+                self.sql_session.flush()
+
+            task.num = 0
+
+        elif operation == self.MOVE_BOTTOM:
+            task.num = None
+            self.sql_session.flush()
+
+            for t in self.sql_session.query(Task)\
+                         .filter(Task.contest == managing_contest)\
+                         .filter(Task.num > task_num)\
+                         .order_by(Task.num)\
+                         .all():
+                t.num -= 1
+                self.sql_session.flush()
+
+            self.sql_session.flush()
+            task.num = len(managing_contest.tasks) - 1
+
+        if task2 is not None:
+            tmp_a, tmp_b = task.num, task2.num
+            task.num, task2.num = None, None
+            self.sql_session.flush()
+            task.num, task2.num = tmp_b, tmp_a
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+
+        self.redirect(fallback_page)
+
+
+class AddTrainingProgramTaskHandler(BaseHandler):
+    """Add a task to a training program."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        fallback_page = self.url("training_program", training_program_id, "tasks")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        try:
+            task_id: str = self.get_argument("task_id")
+            assert task_id != "null", "Please select a valid task"
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        task = self.safe_get_item(Task, task_id)
+
+        task.num = len(managing_contest.tasks)
+        task.contest = managing_contest
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+
+        self.redirect(fallback_page)
+
+
+class TrainingProgramRankingHandler(BaseHandler):
+    """Show ranking for a training program."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str, format: str = "online"):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.contest = managing_contest
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        from .contestranking import RankingHandler
+        RankingHandler.produce_ranking(self, managing_contest, format)
+
+
+class TrainingProgramSubmissionsHandler(BaseHandler):
+    """Show submissions for a training program."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.contest = managing_contest
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        query = self.sql_session.query(Submission).join(Task)\
+            .filter(Task.contest == managing_contest)
+        page = int(self.get_query_argument("page", "0"))
+        self.render_params_for_submissions(query, page)
+
+        self.render("contest_submissions.html", **self.r_params)
+
+
+class TrainingProgramAnnouncementsHandler(BaseHandler):
+    """Manage announcements for a training program."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.contest = managing_contest
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        self.render("announcements.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        subject = self.get_argument("subject", "")
+        text = self.get_argument("text", "")
+
+        if subject and text:
+            announcement = Announcement(
+                timestamp=make_datetime(),
+                subject=subject,
+                text=text,
+                contest=managing_contest,
+                admin=self.current_user
+            )
+            self.sql_session.add(announcement)
+            self.try_commit()
+
+        self.redirect(self.url("training_program", training_program_id, "announcements"))
+
+
+class TrainingProgramQuestionsHandler(BaseHandler):
+    """Manage questions for a training program."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.contest = managing_contest
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+
+        self.r_params["questions"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .order_by(Question.question_timestamp.desc())\
+            .order_by(Question.id).all()
+
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        self.render("questions.html", **self.r_params)

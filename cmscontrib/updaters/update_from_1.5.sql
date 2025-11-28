@@ -158,4 +158,44 @@ ALTER TABLE ONLY public.training_programs
 
 CREATE UNIQUE INDEX ix_training_programs_managing_contest_id ON public.training_programs USING btree (managing_contest_id);
 
+-- Students table for training program participation with tags
+CREATE TABLE public.students (
+    id integer NOT NULL,
+    training_program_id integer NOT NULL,
+    participation_id integer NOT NULL,
+    student_tags character varying[] NOT NULL DEFAULT '{}'
+);
+
+CREATE SEQUENCE public.students_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.students_id_seq OWNED BY public.students.id;
+
+ALTER TABLE ONLY public.students
+    ALTER COLUMN id SET DEFAULT nextval('public.students_id_seq'::regclass);
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_training_program_id_fkey FOREIGN KEY (training_program_id) REFERENCES public.training_programs(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_participation_id_key UNIQUE (participation_id);
+
+CREATE INDEX ix_students_training_program_id ON public.students USING btree (training_program_id);
+
+CREATE INDEX ix_students_participation_id ON public.students USING btree (participation_id);
+
+ALTER TABLE ONLY public.students
+    ALTER COLUMN student_tags DROP DEFAULT;
+
 COMMIT;

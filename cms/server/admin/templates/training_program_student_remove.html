@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Remove student</h1>
+</div>
+
+<p>
+  Are you sure you want to remove <strong>{{ user.username }}</strong> from the training program <strong>{{ training_program.name }}</strong>?
+</p>
+<p>
+  This will also remove the user's participation in the managing contest.
+</p>
+
+<form action="{{ url("training_program", training_program.id, "student", user.id, "remove") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <input type="submit" value="Remove student" />
+  <a href="{{ url("training_program", training_program.id, "students") }}">Cancel</a>
+</form>
+
+{% endblock core %}

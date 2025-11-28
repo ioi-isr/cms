@@ -53,7 +53,7 @@ __all__ = [
     # fsobject
     "FSObject", "LargeObject",
     # contest
-    "Contest", "Announcement", "ContestFolder", "TrainingProgram",
+    "Contest", "Announcement", "ContestFolder", "TrainingProgram", "Student",
     # user
     "User", "Team", "Participation", "Message", "Question", "DelayRequest",
     # admin
@@ -99,6 +99,7 @@ from .admin import Admin
 from .contest import Contest, Announcement
 from .contest_folder import ContestFolder
 from .training_program import TrainingProgram
+from .student import Student
 from .user import User, Team, Participation, Message, Question, DelayRequest
 from .task import Task, Statement, Attachment, Dataset, Manager, Testcase
 from .submission import Submission, File, Token, SubmissionResult, \
