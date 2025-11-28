@@ -129,4 +129,36 @@ ALTER TABLE public.participations ADD COLUMN starting_ip_addresses character var
 -- https://github.com/ioi-isr/cms/pull/49
 ALTER TABLE ONLY public.contests ADD CONSTRAINT contests_check4 CHECK (stop <= analysis_stop);
 
+-- https://github.com/ioi-isr/cms/pull/37
+CREATE TABLE public.statement_views (
+    id integer NOT NULL,
+    participation_id integer NOT NULL,
+    task_id integer NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL
+);
+
+CREATE SEQUENCE public.statement_views_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.statement_views_id_seq OWNED BY public.statement_views.id;
+
+ALTER TABLE ONLY public.statement_views ALTER COLUMN id SET DEFAULT nextval('public.statement_views_id_seq'::regclass);
+
+ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.statement_views ADD CONSTRAINT participation_task_unique UNIQUE (participation_id, task_id);
+
+CREATE INDEX ix_statement_views_participation_id ON public.statement_views USING btree (participation_id);
+
+CREATE INDEX ix_statement_views_task_id ON public.statement_views USING btree (task_id);
+
+ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
 COMMIT;

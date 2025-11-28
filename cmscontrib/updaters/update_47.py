@@ -22,7 +22,11 @@ Used by DumpImporter and DumpUpdater.
 This version adds the Attendance table but it doesn't require any data
 migration since it's a new table with no existing data.
 It also adds the starting_ip_addresses field to the Participation table
-for tracking IP addresses used during contest participation.
+for tracking IP addresses used during contest participation, and the
+StatementView table to track when contestants first view task statements.
+This is used to display indicators in the admin ranking table showing 
+which tasks have been opened by each contestant.
+No data migration is required since it's a new table with no existing data.
 
 """
 
