@@ -32,6 +32,7 @@ compilation and the evaluation are contained in the task type class.
 import logging
 import os
 import shutil
+from typing import Callable, Optional
 
 from cms import config
 from cms.db.filecacher import FileCacher
@@ -49,7 +50,7 @@ logger = logging.getLogger(__name__)
 EVAL_USER_OUTPUT_FILENAME = "user_output.txt"
 
 
-def create_sandbox(file_cacher: FileCacher, name: str | None = None) -> Sandbox:
+def create_sandbox(file_cacher: FileCacher, name: Optional[str] = None) -> Sandbox:
     """Create a sandbox, and return it.
 
     file_cacher: a file cacher instance.
@@ -216,14 +217,14 @@ def check_manager_present(job: Job, codename: str) -> bool:
 def eval_output(
     file_cacher: FileCacher,
     job: Job,
-    checker_codename: str | None,
+    checker_codename: Optional[str],
     use_realprecision: bool = False,
-    realprecision_exponent: int | None = None,
-    user_output_path: str | None = None,
-    user_output_digest: str | None = None,
+    realprecision_exponent: Optional[int] = None,
+    user_output_path: Optional[str] = None,
+    user_output_digest: Optional[str] = None,
     user_output_filename: str = "",
-    extra_args: list[str] | None = None
-) -> tuple[bool, float | None, list[str] | None]:
+    extra_args: Optional[list[str]] = None
+) -> tuple[bool, Optional[float], Optional[list[str]]]:
     """Evaluate ("check") a user output using a white diff or a checker.
 
     file_cacher: file cacher to use to get files.
