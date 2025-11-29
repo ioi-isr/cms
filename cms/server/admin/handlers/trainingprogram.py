@@ -87,9 +87,14 @@ class TrainingProgramHandler(BaseHandler):
 
         try:
             attrs = training_program.get_attrs()
+            self.get_string(attrs, "name")
             self.get_string(attrs, "description")
+
+            if not attrs["name"] or not attrs["name"].strip():
+                raise ValueError("Name is required")
+
             if not attrs["description"] or not attrs["description"].strip():
-                attrs["description"] = training_program.name
+                attrs["description"] = attrs["name"]
 
             training_program.set_attrs(attrs)
         except Exception as error:
