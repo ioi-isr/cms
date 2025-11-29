@@ -9,12 +9,17 @@
   {{ xsrf_form_html|safe }}
   <table class="sub_table">
     <tr>
-      <td>Codename</td>
-      <td><strong>{{ training_program.name }}</strong></td>
-      <td class="hint">The codename cannot be changed after creation</td>
+      <td>
+        <span class="info" title="A short name for the training program, preferably using only letters, numbers and underscores."></span>
+        Name
+      </td>
+      <td><input type="text" name="name" value="{{ training_program.name }}"/></td>
     </tr>
     <tr>
-      <td>Description</td>
+      <td>
+        <span class="info" title="The name of the training program as seen by users."></span>
+        Description
+      </td>
       <td><input type="text" name="description" value="{{ training_program.description }}"/></td>
     </tr>
   </table>
