@@ -87,11 +87,19 @@ class TrainingProgramHandler(BaseHandler):
 
         try:
             attrs = training_program.get_attrs()
+            self.get_string(attrs, "name")
             self.get_string(attrs, "description")
+
+            if not attrs["name"] or not attrs["name"].strip():
+                raise ValueError("Name is required")
+
             if not attrs["description"] or not attrs["description"].strip():
-                attrs["description"] = training_program.name
+                attrs["description"] = attrs["name"]
 
             training_program.set_attrs(attrs)
+
+            # Sync description to managing contest
+            training_program.managing_contest.description = attrs["description"]
         except Exception as error:
             self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback)
@@ -127,7 +135,7 @@ class AddTrainingProgramHandler(SimpleHandler("add_training_program.html", permi
             managing_contest_name = "__" + name
             managing_contest = Contest(
                 name=managing_contest_name,
-                description=f"Managing contest for training program: {name}",
+                description=description,
             )
             self.sql_session.add(managing_contest)
 
