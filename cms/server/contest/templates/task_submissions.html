@@ -185,6 +185,10 @@ $(document).ready(function () {
     <h1>{% trans name=task.title, short_name=task.name %}{{ name }} ({{ short_name }}) <small>submissions</small>{% endtrans %}</h1>
 </div>
 
+<div style="margin-bottom: 20px;">
+    <a href="{{ contest_url("tasks", task.name, "description") }}" class="btn btn-info">{% trans %}Go to statement{% endtrans %}</a>
+</div>
+
 {% if score_type is defined %}
     {% set two_task_scores = score_type.max_public_score > 0
         and score_type.max_public_score < score_type.max_score %}
