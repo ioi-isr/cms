@@ -5,6 +5,7 @@
   <h1>Remove Training Day</h1>
 </div>
 
+{% if admin.permission_all %}
 <p>
   Are you sure you want to remove the training day
   <strong>{{ training_day.contest.name }}</strong>
@@ -12,37 +13,20 @@
   <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>?
 </p>
 
-<p>
-  This will also delete the associated contest and all its data (tasks, submissions, etc.).
+<p class="warning">
+  <strong>Warning:</strong> This will also delete the associated contest and all its data (tasks, submissions, etc.).
 </p>
 
-<form id="delete_form" action="{{ url("training_program", training_program.id, "training_day", training_day.id, "remove") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  <input type="hidden" name="_method" value="DELETE"/>
-  <input type="submit" value="Remove training day"/>
-</form>
-
-<p>
-  <a href="{{ url("training_program", training_program.id, "training_days") }}">Cancel and go back</a>
+<p class="warning">
+  <strong>This action cannot be undone!</strong>
 </p>
 
-<script>
-document.getElementById("delete_form").addEventListener("submit", function(e) {
-    e.preventDefault();
-    var form = this;
-    var xhr = new XMLHttpRequest();
-    xhr.open("DELETE", form.action, true);
-    xhr.setRequestHeader("X-XSRFToken", "{{ xsrf_token }}");
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-            if (xhr.status === 200) {
-                window.location.href = xhr.responseText;
-            } else {
-                alert("Error removing training day");
-            }
-        }
-    };
-    xhr.send();
-});
-</script>
+<br>
+<a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "training_day", training_day.id, "remove") }}');" class="button-link">Yes, remove</a>
+<a href="{{ url("training_program", training_program.id, "training_days") }}" class="button-link">No, cancel</a>
+
+{% else %}
+You do not have permission to remove a training day.
+{% endif %}
+
 {% endblock core %}

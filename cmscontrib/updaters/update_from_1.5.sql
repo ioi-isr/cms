@@ -360,4 +360,7 @@ CREATE INDEX ix_training_days_training_program_id ON public.training_days USING 
 
 CREATE UNIQUE INDEX ix_training_days_contest_id ON public.training_days USING btree (contest_id);
 
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_training_program_id_position_key UNIQUE (training_program_id, "position");
+
 COMMIT;
