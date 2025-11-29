@@ -18,11 +18,24 @@
 {% endif %}
          value="Remove" />
 
+  <br>
+
+  Move selected training day:
+  <input type="submit" name="operation"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+         value="up by 1" />
+  <input type="submit" name="operation"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+         value="down by 1" />
+
   <table class="bordered">
     <thead>
       <tr>
         <th></th>
-        <th>Position</th>
         <th>Name</th>
         <th>Description</th>
       </tr>
@@ -33,13 +46,12 @@
         <td>
           <input type="radio" name="training_day_id" value="{{ td.id }}"/>
         </td>
-        <td>{{ td.position }}</td>
         <td><a href="{{ url("contest", td.contest.id) }}">{{ td.contest.name }}</a></td>
         <td>{{ td.contest.description }}</td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="4">(no training days yet)</td>
+        <td colspan="3">(no training days yet)</td>
       </tr>
       {% endfor %}
     </tbody>

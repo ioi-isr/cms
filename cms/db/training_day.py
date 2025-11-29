@@ -24,7 +24,7 @@ It wraps a Contest and includes its position within the training program.
 import typing
 
 from sqlalchemy.orm import relationship
-from sqlalchemy.schema import Column, ForeignKey
+from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
 from sqlalchemy.types import Integer
 
 from . import Base
@@ -40,6 +40,10 @@ class TrainingDay(Base):
     The position field determines the order of training days within the program.
     """
     __tablename__ = "training_days"
+    __table_args__ = (
+        UniqueConstraint("training_program_id", "position",
+                         name="training_days_training_program_id_position_key"),
+    )
 
     id: int = Column(Integer, primary_key=True)
 
