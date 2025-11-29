@@ -71,8 +71,11 @@ $(document).ready(init);
             Hello, <a href="{{ url("admins") }}">{{ admin.name }}</a>.
               <form class="inline" action="{{ url("logout") }}" method="POST">{{ xsrf_form_html|safe }}<input type="submit" value="Logout"></form>
           </div>
-          {% if contest is none %}
+          {% if contest is none and training_program is not defined %}
           <h1 class="parent">Administration</h1>
+          {% elif training_program is defined %}
+          <h1 class="parent"><a href="{{ url() }}">Administration</a></h1>
+          <h1 class="child">{{ training_program.name }}</h1>
           {% else %}
           <h1 class="parent"><a href="{{ url() }}">Administration</a></h1>
           <h1 class="child">{{ contest.name }}</h1>
@@ -86,7 +89,7 @@ $(document).ready(init);
         </div>
         {% endif %}
         <ul class="menu">
-        {% if contest is none %}
+        {% if contest is none or training_program is defined %}
           <li class="menu_entry"><a class="menu_link" href="{{ url() }}">Overview</a></li>
           <li class="menu_entry"><a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a></li>
         {% else %}
@@ -96,7 +99,7 @@ $(document).ready(init);
         </ul>
         <div class="hr"></div>
 
-        {% if contest is none %}
+        {% if contest is none and training_program is not defined %}
         <h1><a class="menu_link" href="{{ url("contests") }}">Contests</a></h1>
         <ul class="menu">
           {% if contest_list|length < 1 %}
@@ -144,6 +147,39 @@ $(document).ready(init);
             </a>
           </li>
           {% endif %}
+        </ul>
+
+        <h1><a class="menu_link" href="{{ url("training_programs") }}">Training Programs</a></h1>
+        <ul class="menu">
+          {% if training_program_list|length < 1 %}
+          <li class="menu_entry">
+            (no training programs available)
+          </li>
+          {% endif %}
+
+          {% for tp in training_program_list[:5] %}
+          <li class="menu_entry">
+            <a class="menu_link bold" href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">
+              {{ tp.name }}
+            </a>
+          </li>
+          {% endfor %}
+
+          {% if training_program_list|length > 5 %}
+          <li>
+            <a class="menu_link" href="{{ url("training_programs") }}">
+              (show more...)
+            </a>
+          </li>
+          {% endif %}
+
+{% if admin.permission_all %}
+          <li class="menu_entry">
+            <a class="menu_link" href="{{ url("training_programs", "add") }}">
+              (create new training program...)
+            </a>
+          </li>
+{% endif %}
         </ul>
 
         <h1><a class="menu_link" href="{{ url("tasks") }}">Tasks</a></h1>
@@ -232,6 +268,27 @@ $(document).ready(init);
           </li>
 {% endif %}
         </ul>
+        {% elif training_program is defined %}
+          <ul class="menu">
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id) }}">General</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "ranking") }}">Ranking</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a></li>
+            <li class="menu_entry">
+              <span id="unanswered_questions_tp" class="unread"
+                {% if unanswered == 0 %} style="display: none;" {% endif %}>
+                {{ unanswered }}
+              </span>
+              <a class="menu_link" href="{{ url("training_program", training_program.id, "questions") }}">Questions</a>
+            </li>
+          </ul>
+          <div class="hr"></div>
+          <div class="footer">
+            <span id="remaining_text"></span>
+            <span id="remaining_value"></span>
+          </div>
         {% else %}
           <ul class="menu">
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id) }}">General</a></li>

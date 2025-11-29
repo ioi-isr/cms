@@ -126,6 +126,22 @@ from .folder import \
     FolderHandler, \
     AddFolderHandler, \
     RemoveFolderHandler
+from .trainingprogram import \
+    TrainingProgramListHandler, \
+    TrainingProgramHandler, \
+    AddTrainingProgramHandler, \
+    RemoveTrainingProgramHandler, \
+    TrainingProgramStudentsHandler, \
+    AddTrainingProgramStudentHandler, \
+    RemoveTrainingProgramStudentHandler, \
+    TrainingProgramTasksHandler, \
+    AddTrainingProgramTaskHandler, \
+    TrainingProgramRankingHandler, \
+    TrainingProgramSubmissionsHandler, \
+    TrainingProgramAnnouncementsHandler, \
+    TrainingProgramAnnouncementHandler, \
+    TrainingProgramQuestionsHandler, \
+    StudentHandler
 
 
 HANDLERS = [
@@ -246,6 +262,26 @@ HANDLERS = [
     (r"/folders/([0-9]+)/remove", RemoveFolderHandler),
     (r"/folders/add", AddFolderHandler),
     (r"/folder/([0-9]+)", FolderHandler),
+
+    # Training Programs
+    (r"/training_programs", TrainingProgramListHandler),
+    (r"/training_programs/([0-9]+)/remove", RemoveTrainingProgramHandler),
+    (r"/training_programs/add", AddTrainingProgramHandler),
+    (r"/training_program/([0-9]+)", TrainingProgramHandler),
+
+    # Training Program tabs
+    (r"/training_program/([0-9]+)/students", TrainingProgramStudentsHandler),
+    (r"/training_program/([0-9]+)/students/add", AddTrainingProgramStudentHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/remove", RemoveTrainingProgramStudentHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/edit", StudentHandler),
+    (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
+    (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),
+    (r"/training_program/([0-9]+)/ranking", TrainingProgramRankingHandler),
+    (r"/training_program/([0-9]+)/ranking/([a-z]+)", TrainingProgramRankingHandler),
+    (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
+    (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
+    (r"/training_program/([0-9]+)/announcement/([0-9]+)", TrainingProgramAnnouncementHandler),
+    (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
 
     # Admins
 

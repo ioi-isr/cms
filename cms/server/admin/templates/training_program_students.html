@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Students list</h1>
+</div>
+
+{% include "fragments/overload_warning.html" %}
+
+<form action="{{ url("training_program", training_program.id, "students", "add") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  Add a new student:
+  <select name="user_id">
+    <option value="null" selected>Select a new user</option>
+    {% for u in unassigned_users %}
+    <option value="{{ u.id }}">
+      {{ u.username }}
+    </option>
+    {% endfor %}
+  </select>
+  <input type="submit"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+         value="Add student" />
+</form>
+
+<form action="{{ url("training_program", training_program.id, "students") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  Edit selected student:
+  <input type="submit"
+         name="operation"
+         value="Remove from training program"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+         />
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Username</th>
+        <th>First name</th>
+        <th>Last name</th>
+        <th>Student Tags</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in training_program.students|sort(attribute="participation.user.username") %}
+      {% set u = student.participation.user %}
+      <tr>
+        <td>
+          <input type="radio" name="user_id" value="{{ u.id }}"/>
+        </td>
+        <td><a href="{{ url("training_program", training_program.id, "student", u.id, "edit") }}">{{ u.username }}</a></td>
+        <td>{{ u.first_name }}</td>
+        <td>{{ u.last_name }}</td>
+        <td>
+          {{ student.student_tags|join(", ") }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</form>
+
+{% endblock core %}

@@ -59,7 +59,7 @@ class TaskDescriptionHandler(ContestHandler):
         participation = self.current_user
         
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
         
         task = self.get_task(task_name)
@@ -80,7 +80,7 @@ class TaskStatementViewHandler(FileHandler):
         participation = self.current_user
         
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
         
         task = self.get_task(task_name)
@@ -112,7 +112,7 @@ class TaskAttachmentViewHandler(FileHandler):
         participation = self.current_user
         
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
         
         task = self.get_task(task_name)
