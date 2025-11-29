@@ -160,6 +160,8 @@ class RemoveTrainingProgramHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = 0
 
         # Count related data that will be deleted
         self.r_params["participation_count"] = (
