@@ -47,7 +47,7 @@ import tornado.web
 from werkzeug.datastructures import LanguageAccept
 from werkzeug.http import parse_accept_header
 
-from cms.db import Contest
+from cms.db import Contest, TrainingProgram
 from cms.db.contest_folder import ContestFolder
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
 from cms.server import CommonRequestHandler
@@ -246,8 +246,10 @@ class ContestFolderBrowseHandler(BaseHandler):
         Excludes hidden folders and their descendants from the tree.
         """
         all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
-        all_contests = self.sql_session.query(Contest).order_by(Contest.name).all()
-        
+        all_contests = self.sql_session.query(Contest)\
+            .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
+            .order_by(Contest.name).all()
+
         folder_map = {}
         for folder in all_folders:
             folder_map[folder.id] = {
@@ -317,6 +319,7 @@ class ContestFolderBrowseHandler(BaseHandler):
             contests = (
                 self.sql_session.query(Contest)
                 .filter(Contest.folder_id.is_(None))
+                .filter(~Contest.name.like(r'\_\_%', escape='\\'))
                 .all()
             )
         else:
@@ -330,8 +333,19 @@ class ContestFolderBrowseHandler(BaseHandler):
             contests = (
                 self.sql_session.query(Contest)
                 .filter(Contest.folder == cur_folder)
+                .filter(~Contest.name.like(r'\_\_%', escape='\\'))
                 .all()
             )
+
+        # Query training programs (only at root level, not in folders)
+        if cur_folder is None:
+            training_programs = (
+                self.sql_session.query(TrainingProgram)
+                .order_by(TrainingProgram.name)
+                .all()
+            )
+        else:
+            training_programs = []
 
         # Build url helper for folder/contest entries
         def folder_href(f: ContestFolder) -> str:
@@ -342,6 +356,10 @@ class ContestFolderBrowseHandler(BaseHandler):
             # nested paths by capturing full path but resolve by last segment.
             return self.url(*[bf.name for bf in breadcrumbs], c.name)
 
+        def training_program_href(tp: TrainingProgram) -> str:
+            # Training programs are accessed by their name directly
+            return self.url(tp.name)
+
         folder_tree = self._build_folder_tree()
 
         self.render(
@@ -349,8 +367,10 @@ class ContestFolderBrowseHandler(BaseHandler):
             breadcrumbs=breadcrumbs,
             subfolders=subfolders,
             contests=contests,
+            training_programs=training_programs,
             folder_href=folder_href,
             contest_href=contest_href,
+            training_program_href=training_program_href,
             folder_tree=folder_tree,
             current_path=path or "",
             **self.r_params,

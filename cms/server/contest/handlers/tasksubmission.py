@@ -81,7 +81,7 @@ class SubmitHandler(ContestHandler):
         participation = self.current_user
 
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
 
         # Reject submission if the contest disallow unofficial submission outside of official window or analysis mode
@@ -136,7 +136,7 @@ class TaskSubmissionsHandler(ContestHandler):
         participation: Participation = self.current_user
 
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
 
         task = self.get_task(task_name)
@@ -253,7 +253,7 @@ class SubmissionStatusHandler(ContestHandler):
         participation = self.current_user
 
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
 
         task = self.get_task(task_name)
@@ -319,7 +319,7 @@ class SubmissionDetailsHandler(ContestHandler):
         participation = self.current_user
 
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
 
         task = self.get_task(task_name)
@@ -366,7 +366,7 @@ class SubmissionFileHandler(FileHandler):
         participation = self.current_user
 
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
 
         if not self.contest.submissions_download_allowed:
@@ -418,7 +418,7 @@ class UseTokenHandler(ContestHandler):
         participation = self.current_user
 
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
 
         task = self.get_task(task_name)
