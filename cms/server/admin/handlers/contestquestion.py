@@ -75,10 +75,6 @@ class QuestionActionHandler(BaseHandler, metaclass=ABCMeta):
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def post(self, contest_id, question_id):
         user_id = self.get_argument("user_id", None)
-        if user_id is not None:
-            ref = self.url("contest", contest_id, "user", user_id, "edit")
-        else:
-            ref = self.url("contest", contest_id, "questions")
 
         question = self.safe_get_item(Question, question_id)
         self.contest = self.safe_get_item(Contest, contest_id)
@@ -86,6 +82,18 @@ class QuestionActionHandler(BaseHandler, metaclass=ABCMeta):
         # Protect against URLs providing incompatible parameters.
         if self.contest is not question.participation.contest:
             raise tornado.web.HTTPError(404)
+
+        # Determine redirect URL after processing
+        if user_id is not None:
+            ref = self.url("contest", contest_id, "user", user_id, "edit")
+        else:
+            # If this is a managing contest for a training program,
+            # redirect back to the training program questions page
+            tp = getattr(self.contest, "training_program", None)
+            if tp is not None:
+                ref = self.url("training_program", tp.id, "questions")
+            else:
+                ref = self.url("contest", contest_id, "questions")
 
         self.process_question(question)
         self.redirect(ref)
