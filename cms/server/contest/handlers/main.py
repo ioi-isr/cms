@@ -91,9 +91,18 @@ class RegistrationError(Exception):
 class MainHandler(ContestHandler):
     """Home page handler.
 
+    For training programs, redirect to the training program overview page
+    instead of the regular contest overview, but only if the user is logged in.
+    This prevents a redirect loop with the @authenticated decorator on
+    TrainingProgramOverviewHandler, which redirects unauthenticated users
+    back to get_login_url() (the contest root).
     """
     @multi_contest
     def get(self):
+        # If this is a training program and user is logged in, redirect to training overview
+        if self.training_program is not None and self.current_user is not None:
+            self.redirect(self.contest_url("training_overview"))
+            return
         self.render("overview.html", **self.r_params)
 
 
@@ -483,14 +492,14 @@ def translate_text(source_text, source_lang, target_lang, supported_languages):
     """
     if not source_text:
         return None, N_("Please enter text to translate.")
-    
+
     supported_language_codes = set(supported_languages.keys())
     supported_language_codes |= {
         GOOGLE_TRANSLATE_CODE_MAP[lang]
         for lang in supported_languages
         if lang in GOOGLE_TRANSLATE_CODE_MAP
     }
-    
+
     allowed_source_codes = supported_language_codes | {'auto'}
     allowed_target_codes = supported_language_codes
 
@@ -502,7 +511,7 @@ def translate_text(source_text, source_lang, target_lang, supported_languages):
         return None, N_("Invalid target language.")
     if source_lang == target_lang and source_lang != 'auto':
         return None, N_("Source and target languages must be different.")
-    
+
     normalized_source = GOOGLE_TRANSLATE_CODE_MAP.get(source_lang, source_lang)
     normalized_target = GOOGLE_TRANSLATE_CODE_MAP.get(target_lang, target_lang)
 

@@ -47,11 +47,11 @@ import tornado.web
 from werkzeug.datastructures import LanguageAccept
 from werkzeug.http import parse_accept_header
 
-from cms.db import Contest
-from cms.server.util import exclude_internal_contests
+from cms.db import Contest, TrainingProgram
 from cms.db.contest_folder import ContestFolder
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
 from cms.server import CommonRequestHandler
+from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import utc as utc_tzinfo
 import typing
 
@@ -64,10 +64,10 @@ logger = logging.getLogger(__name__)
 
 def parse_ip_list(ip_string):
     """Parse a comma-separated string of IP addresses into a list.
-    
+
     Args:
         ip_string (str|None): Comma-separated IP addresses
-    
+
     Returns:
         list[str]: List of IP addresses, with whitespace stripped
     """
@@ -78,11 +78,11 @@ def parse_ip_list(ip_string):
 
 def add_ip_to_list(ip_string, new_ip):
     """Add an IP address to a comma-separated list if not already present.
-    
+
     Args:
         ip_string (str|None): Existing comma-separated IP addresses
         new_ip (str): New IP address to add
-    
+
     Returns:
         str: Updated comma-separated IP addresses
     """
@@ -240,10 +240,10 @@ class ContestFolderBrowseHandler(BaseHandler):
     Renders a listing of subfolders and contests under a given folder path.
     If no path is provided, lists root folders and contests without folder.
     """
-    
+
     def _build_folder_tree(self) -> dict:
         """Build complete folder tree with contests for client-side navigation.
-        
+
         Excludes hidden folders and their descendants from the tree.
         """
         all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
@@ -261,7 +261,7 @@ class ContestFolderBrowseHandler(BaseHandler):
                 "children": [],
                 "contests": []
             }
-        
+
         for contest in all_contests:
             contest_data = {
                 "name": contest.name,
@@ -273,17 +273,17 @@ class ContestFolderBrowseHandler(BaseHandler):
             elif not contest.folder_id:
                 folder_map.setdefault(None, {"children": [], "contests": []})
                 folder_map[None]["contests"].append(contest_data)
-        
+
         for folder in all_folders:
             if folder.parent_id and folder.parent_id in folder_map:
                 folder_map[folder.parent_id]["children"].append(folder_map[folder.id])
             elif not folder.parent_id:
                 folder_map.setdefault(None, {"children": [], "contests": []})
                 folder_map[None]["children"].append(folder_map[folder.id])
-        
+
         root = folder_map.get(None, {"children": [], "contests": []})
         return root
-    
+
     def get(self, path: str | None = None):
         self.r_params = self.render_params()
 
@@ -334,6 +334,16 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .filter(Contest.folder == cur_folder)
             ).all()
 
+        # Query training programs (only at root level, not in folders)
+        if cur_folder is None:
+            training_programs = (
+                self.sql_session.query(TrainingProgram)
+                .order_by(TrainingProgram.name)
+                .all()
+            )
+        else:
+            training_programs = []
+
         # Build url helper for folder/contest entries
         def folder_href(f: ContestFolder) -> str:
             return self.url("browse", *[bf.name for bf in breadcrumbs], f.name)
@@ -343,6 +353,10 @@ class ContestFolderBrowseHandler(BaseHandler):
             # nested paths by capturing full path but resolve by last segment.
             return self.url(*[bf.name for bf in breadcrumbs], c.name)
 
+        def training_program_href(tp: TrainingProgram) -> str:
+            # Training programs are accessed by their name directly
+            return self.url(tp.name)
+
         folder_tree = self._build_folder_tree()
 
         self.render(
@@ -350,8 +364,10 @@ class ContestFolderBrowseHandler(BaseHandler):
             breadcrumbs=breadcrumbs,
             subfolders=subfolders,
             contests=contests,
+            training_programs=training_programs,
             folder_href=folder_href,
             contest_href=contest_href,
+            training_program_href=training_program_href,
             folder_tree=folder_tree,
             current_path=path or "",
             **self.r_params,

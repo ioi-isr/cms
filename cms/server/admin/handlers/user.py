@@ -34,7 +34,7 @@ import re
 from sqlalchemy import and_, exists
 from cms.db import Contest, Participation, Submission, Team, User
 from cms.server.util import exclude_internal_contests
-from cmscommon.crypto import (parse_authentication, 
+from cmscommon.crypto import (parse_authentication,
                                hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
 
