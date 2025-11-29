@@ -52,7 +52,7 @@ from sqlalchemy.orm import Query, subqueryload
 
 from cms import __version__, config
 from cms.db import Admin, Contest, DelayRequest, Participation, Question, \
-    Submission, SubmissionResult, Task, Team, User, UserTest
+    Submission, SubmissionResult, Task, Team, TrainingProgram, User, UserTest
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
@@ -308,6 +308,49 @@ class BaseHandler(CommonRequestHandler):
         """
         super().prepare()
         self.contest = None
+        
+        import re
+        path = self.request.path
+        match = re.match(r'^/contest/(\d+)(/.*)?$', path)
+        if match:
+            contest_id = match.group(1)
+            remaining_path = match.group(2) or ""
+            
+            # Don't redirect question/announcement/message actions - they should use
+            # the contest handlers directly since questions/announcements
+            # belong to the managing contest, and messages use the contest user
+            if remaining_path.startswith("/question/") or \
+               remaining_path.startswith("/announcement/") or \
+               remaining_path.endswith("/message"):
+                return
+            
+            try:
+                contest = self.sql_session.query(Contest).filter(Contest.id == int(contest_id)).first()
+                if contest and contest.name.startswith("__"):
+                    training_program = self.sql_session.query(TrainingProgram)\
+                        .filter(TrainingProgram.managing_contest_id == int(contest_id))\
+                        .first()
+                    
+                    if training_program:
+                        url_mappings = {
+                            "/users": "/students",
+                            "/user/": "/student/",
+                        }
+                        
+                        new_path = remaining_path
+                        for contest_suffix, tp_suffix in url_mappings.items():
+                            if remaining_path.startswith(contest_suffix):
+                                new_path = remaining_path.replace(contest_suffix, tp_suffix, 1)
+                                if "/edit" not in new_path and tp_suffix == "/student/":
+                                    new_path = new_path.rstrip("/") + "/edit"
+                                break
+                        
+                        tp_url = self.url("training_program", training_program.id) + new_path
+                        self.redirect(tp_url)
+                        self._finished = True
+                        return
+            except Exception:
+                pass
 
     def render(self, template_name: str, **params):
         t = self.service.jinja2_environment.get_template(template_name)
@@ -325,6 +368,10 @@ class BaseHandler(CommonRequestHandler):
                                 else "v" + __version__[:3]
         params["timestamp"] = make_datetime()
         params["contest"] = self.contest
+        # If the contest is a managing contest for a training program,
+        # set training_program so the sidebar shows training program menu
+        if self.contest is not None and self.contest.training_program is not None:
+            params["training_program"] = self.contest.training_program
         params["url"] = self.url
         params["xsrf_form_html"] = self.xsrf_form_html()
         # FIXME These objects provide too broad an access: their usage
@@ -347,10 +394,22 @@ class BaseHandler(CommonRequestHandler):
                 .count()
         # TODO: not all pages require all these data.
         # TODO: use a better sorting method.
-        params["contest_list"] = self.sql_session.query(Contest).order_by(Contest.name).all()
-        params["task_list"] = self.sql_session.query(Task).order_by(Task.name).all()
-        params["user_list"] = self.sql_session.query(User).order_by(User.username).all()
-        params["team_list"] = self.sql_session.query(Team).order_by(Team.name).all()
+        params["contest_list"] = [
+            c for c in self.sql_session.query(Contest)
+            .order_by(Contest.name).all()
+            if not c.name.startswith("__")
+        ]
+        params["task_list"] = self.sql_session.query(Task)\
+            .order_by(Task.name).all()
+        params["user_list"] = [
+            u for u in self.sql_session.query(User)
+            .order_by(User.username).all()
+            if not u.username.startswith("__")
+        ]
+        params["team_list"] = self.sql_session.query(Team)\
+            .order_by(Team.name).all()
+        params["training_program_list"] = self.sql_session.query(TrainingProgram)\
+            .order_by(TrainingProgram.name).all()
         return params
 
     def write_error(self, status_code, **kwargs):

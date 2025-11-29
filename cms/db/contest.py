@@ -41,7 +41,7 @@ from . import Codename, Base, Admin
 from .contest_folder import ContestFolder
 import typing
 if typing.TYPE_CHECKING:
-    from . import Task, Participation
+    from . import Task, Participation, TrainingProgram
 
 
 class Contest(Base):
@@ -308,6 +308,14 @@ class Contest(Base):
         index=True,
     )
     folder: ContestFolder | None = relationship(ContestFolder, back_populates="contests")
+
+    # Optional training program that this contest manages.
+    # If set, this contest is the "managing contest" for a training program.
+    training_program: "TrainingProgram | None" = relationship(
+        "TrainingProgram",
+        back_populates="managing_contest",
+        uselist=False,
+    )
 
     def phase(self, timestamp: datetime) -> int:
         """Return: -1 if contest isn't started yet at time timestamp,

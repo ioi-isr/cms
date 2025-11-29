@@ -50,7 +50,7 @@ except:
 import tornado.web
 
 from cms import config, TOKEN_MODE_MIXED
-from cms.db import Contest, Submission, Task, UserTest, contest
+from cms.db import Contest, Submission, Task, TrainingProgram, UserTest, contest
 from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
@@ -79,6 +79,7 @@ class ContestHandler(BaseHandler):
         super().__init__(*args, **kwargs)
         self.contest_url: Url = None
         self.contest: Contest
+        self.training_program: TrainingProgram | None = None
         self.impersonated_by_admin = False
 
     def prepare(self):
@@ -95,7 +96,11 @@ class ContestHandler(BaseHandler):
         super().prepare()
 
         if self.is_multi_contest():
-            self.contest_url = self.url[self.contest.name]
+            # Use training program name for URL if accessing via training program
+            if self.training_program is not None:
+                self.contest_url = self.url[self.training_program.name]
+            else:
+                self.contest_url = self.url[self.contest.name]
         else:
             self.contest_url = self.url
 
@@ -109,7 +114,12 @@ class ContestHandler(BaseHandler):
         If a contest was specified as argument to CWS, fill
         self.contest with that; otherwise extract it from the URL path.
 
+        Training programs can also be accessed by their name, which will
+        resolve to their managing contest.
+
         """
+        self.training_program = None
+
         if self.is_multi_contest():
             # Choose contest name from last path segment to support nested folders
             # see: https://github.com/tornadoweb/tornado/issues/1673
@@ -120,11 +130,24 @@ class ContestHandler(BaseHandler):
             self.contest = self.sql_session.query(Contest)\
                 .filter(Contest.name == contest_name).first()
             if self.contest is None:
-                self.contest = Contest(
-                    name=contest_name, description=contest_name)
-                # render_params in this class assumes the contest is loaded,
-                # so we cannot call it without a fully defined contest. Luckily
-                # the one from the base class is enough to display a 404 page.
+                # Try to find a training program with this name
+                training_program = self.sql_session.query(TrainingProgram)\
+                    .filter(TrainingProgram.name == contest_name).first()
+                if training_program is not None:
+                    self.contest = training_program.managing_contest
+                    self.training_program = training_program
+                else:
+                    self.contest = Contest(
+                        name=contest_name, description=contest_name)
+                    # render_params in this class assumes the contest is loaded,
+                    # so we cannot call it without a fully defined contest. Luckily
+                    # the one from the base class is enough to display a 404 page.
+                    super().prepare()
+                    self.r_params = super().render_params()
+                    raise tornado.web.HTTPError(404)
+            if self.contest.name.startswith("__") and self.training_program is None:
+                # Block direct access to managing contests, but allow access
+                # via training program name
                 super().prepare()
                 self.r_params = super().render_params()
                 raise tornado.web.HTTPError(404)
@@ -132,6 +155,14 @@ class ContestHandler(BaseHandler):
             # Select the contest specified on the command line
             self.contest = Contest.get_from_id(
                 self.service.contest_id, self.sql_session)
+            if self.contest is not None:
+                # Check if this contest is a managing contest for a training program
+                if self.contest.training_program is not None:
+                    self.training_program = self.contest.training_program
+                elif self.contest.name.startswith("__"):
+                    super().prepare()
+                    self.r_params = super().render_params()
+                    raise tornado.web.HTTPError(404)
 
     def get_current_user(self) -> Participation | None:
         """Return the currently logged in participation.
@@ -198,6 +229,7 @@ class ContestHandler(BaseHandler):
         ret = super().render_params()
 
         ret["contest"] = self.contest
+        ret["training_program"] = self.training_program
 
         if self.contest_url is not None:
             ret["contest_url"] = self.contest_url
