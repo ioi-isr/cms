@@ -164,12 +164,34 @@
       {% for msg in participation.messages|reverse %}
       <div class="notification communication">
         <div class="notification_msg">
+          <div class="announcement_remove">
+            <a onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "user", selected_user.id, "message", msg.id) }}'); ">Remove</a>
+          </div>
           <div class="notification_timestamp">{{ msg.timestamp }}</div>
           <div class="notification_subject">{{ msg.subject }}</div>
           <div class="notification_text">{{ msg.text | markdown }}</div>
+          <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
+          <textarea class="announcement_raw_text" style="display:none;">{{ msg.text|e }}</textarea>
           <hr>
           <div class="notification_admin_owner">
             By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
+          </div>
+          <a href="javascript:void(0);" onclick="utils.announcement_edit_toggle(event, this);">Edit</a>
+          <div class="reply_question">
+            <form method="post" action="{{ url("contest", contest.id, "user", selected_user.id, "message", msg.id, "edit") }}" >
+              {{ xsrf_form_html|safe }}
+              <div class="notification_subject">
+                <label for="edit_subject">Edit Message</label>
+                <input type="text" name="subject" id="edit_subject" style="width: 100%">
+              </div>
+              <div class="notification_text">
+                <label for="text">Text</label>
+                {{ macro_markdown.markdown_input("text") }}
+              </div>
+              <input type="submit"
+                     value="Edit message" />
+              {{ macro_markdown.markdown_preview() }}
+            </form>
           </div>
         </div>
       </div>
