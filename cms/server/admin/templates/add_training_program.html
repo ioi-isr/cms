@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Add Training Program</h1>
+</div>
+
+<form action="{{ url("training_programs", "add") }}" method="POST" name="add_training_program" style="display:inline;">
+  {{ xsrf_form_html|safe }}
+  <table class="sub_table">
+    <tr>
+      <td>Name</td>
+      <td><input type="text" name="name" required/></td>
+      <td class="hint">A codename for the training program (e.g., "training2025"). A managing contest named "__name" will be created automatically.</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td><input type="text" name="description"/></td>
+      <td class="hint">Human-readable description (defaults to name if empty)</td>
+    </tr>
+  </table>
+  <input type="submit" name="operation" value="Create"/>
+  <input type="submit" name="operation" value="Create and add another"/>
+</form>
+
+{% endblock core %}

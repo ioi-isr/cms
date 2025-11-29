@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Remove Training Program</h1>
+</div>
+
+{% if admin.permission_all %}
+<p>
+  Are you sure you want to remove the training program <strong>{{ training_program.name }}</strong>?
+</p>
+
+<p class="warning">
+  <strong>Warning:</strong> This will also delete the managing contest and all associated data:
+</p>
+
+<ul>
+  <li><strong>{{ participation_count }}</strong> participation(s)</li>
+  <li><strong>{{ submission_count }}</strong> submission(s)</li>
+  <li><strong>{{ task_count }}</strong> task(s)</li>
+</ul>
+
+<p class="warning">
+  <strong>This action cannot be undone!</strong>
+</p>
+
+<br>
+<a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_programs", training_program.id, "remove") }}');" class="button-link">Yes, remove</a>
+<a href="{{ url("training_program", training_program.id) }}" class="button-link">No, cancel</a>
+
+{% else %}
+You do not have permission to remove a training program.
+{% endif %}
+
+{% endblock core %}
