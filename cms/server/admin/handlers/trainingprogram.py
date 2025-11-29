@@ -24,7 +24,7 @@ Each training program has a managing contest that handles all submissions.
 import tornado.web
 
 from cms.db import Contest, TrainingProgram, Participation, Submission, \
-    User, Task, Question, Announcement, Student, Team
+    User, Task, Question, Announcement, Student, Team, TrainingDay
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -916,3 +916,158 @@ class TrainingProgramQuestionsHandler(BaseHandler):
             .count()
 
         self.render("questions.html", **self.r_params)
+
+
+class TrainingProgramTrainingDaysHandler(BaseHandler):
+    """List and manage training days in a training program."""
+    REMOVE = "Remove"
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        self.render("training_program_training_days.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        fallback_page = self.url("training_program", training_program_id, "training_days")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        try:
+            training_day_id: str = self.get_argument("training_day_id")
+            operation: str = self.get_argument("operation")
+            assert operation in (
+                self.REMOVE,
+            ), "Please select a valid operation"
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if operation == self.REMOVE:
+            asking_page = self.url(
+                "training_program", training_program_id,
+                "training_day", training_day_id, "remove"
+            )
+            self.redirect(asking_page)
+            return
+
+        self.redirect(fallback_page)
+
+
+class AddTrainingDayHandler(BaseHandler):
+    """Add a new training day to a training program."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        self.render("add_training_day.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        fallback_page = self.url("training_program", training_program_id, "training_days", "add")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        try:
+            name = self.get_argument("name")
+            if not name or not name.strip():
+                raise ValueError("Name is required")
+
+            description = self.get_argument("description", "")
+            if not description or not description.strip():
+                description = name
+
+            contest = Contest(
+                name=name,
+                description=description,
+            )
+            self.sql_session.add(contest)
+            self.sql_session.flush()
+
+            position = len(training_program.training_days)
+            training_day = TrainingDay(
+                training_program=training_program,
+                contest=contest,
+                position=position,
+            )
+            self.sql_session.add(training_day)
+
+        except Exception as error:
+            self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            self.redirect(self.url("training_program", training_program_id, "training_days"))
+        else:
+            self.redirect(fallback_page)
+
+
+class RemoveTrainingDayHandler(BaseHandler):
+    """Confirm and remove a training day from a training program."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, training_program_id: str, training_day_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+        managing_contest = training_program.managing_contest
+
+        if training_day.training_program_id != training_program.id:
+            raise tornado.web.HTTPError(404)
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["training_day"] = training_day
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = 0
+
+        self.render("training_day_remove.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, training_program_id: str, training_day_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            raise tornado.web.HTTPError(404)
+
+        contest = training_day.contest
+        position = training_day.position
+
+        self.sql_session.delete(training_day)
+        self.sql_session.delete(contest)
+
+        self.sql_session.flush()
+
+        for td in training_program.training_days:
+            if td.position is not None and position is not None and td.position > position:
+                td.position -= 1
+
+        self.try_commit()
+        self.write("../../training_days")

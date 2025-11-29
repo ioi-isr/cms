@@ -41,7 +41,7 @@ from . import Codename, Base, Admin
 from .contest_folder import ContestFolder
 import typing
 if typing.TYPE_CHECKING:
-    from . import Task, Participation, TrainingProgram
+    from . import Task, Participation, TrainingProgram, TrainingDay
 
 
 class Contest(Base):
@@ -315,6 +315,14 @@ class Contest(Base):
     training_program: "TrainingProgram | None" = relationship(
         "TrainingProgram",
         back_populates="managing_contest",
+        uselist=False,
+    )
+
+    # Optional training day that this contest represents.
+    # If set, this contest is a training day within a training program.
+    training_day: "TrainingDay | None" = relationship(
+        "TrainingDay",
+        back_populates="contest",
         uselist=False,
     )
 
