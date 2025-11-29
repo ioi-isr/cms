@@ -60,12 +60,13 @@ class TrainingProgramOverviewHandler(ContestHandler):
                 if task.active_dataset else 100.0
             max_score += max_task_score
 
-            # Get best submission score for this task
+            # Get best submission score for this task (only official submissions)
             best_score = 0.0
             submissions = (
                 self.sql_session.query(Submission)
                 .filter(Submission.participation == participation)
                 .filter(Submission.task == task)
+                .filter(Submission.official.is_(True))
                 .all()
             )
 
