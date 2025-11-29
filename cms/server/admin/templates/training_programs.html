@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training Programs</h1>
+  <div class="tools">
+    <a class="button" href="{{ url("training_programs", "add") }}">Add training program</a>
+  </div>
+  <div class="clearer"></div>
+</div>
+
+<table class="entities_table">
+  <tr>
+    <th>Codename</th>
+    <th>Description</th>
+    <th>Managing Contest</th>
+    <th>Users</th>
+    <th>Tasks</th>
+    <th>Actions</th>
+  </tr>
+  {% for tp in training_programs %}
+  <tr>
+    <td><a class="bold" href="{{ url("training_program", tp.id) }}">{{ tp.name }}</a></td>
+    <td>{{ tp.description }}</td>
+    <td><a href="{{ url("contest", tp.managing_contest.id) }}">{{ tp.managing_contest.name }}</a></td>
+    <td>{{ tp.managing_contest.participations|length }}</td>
+    <td>{{ tp.managing_contest.tasks|length }}</td>
+    <td>
+      <a href="{{ url('training_programs', tp.id, 'remove') }}">Remove</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock core %}

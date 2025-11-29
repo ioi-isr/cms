@@ -204,5 +204,9 @@
     </div>
 {% endif %}
 
+<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+    <a href="{{ contest_url("tasks", task.name, "submissions") }}" class="btn btn-large btn-primary">{% trans %}Go to submissions{% endtrans %}</a>
+</div>
+
 </div>
 {% endblock core %}

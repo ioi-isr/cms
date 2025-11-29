@@ -53,7 +53,7 @@ __all__ = [
     # fsobject
     "FSObject", "LargeObject",
     # contest
-    "Contest", "Announcement", "ContestFolder",
+    "Contest", "Announcement", "ContestFolder", "TrainingProgram", "Student",
     # user
     "User", "Team", "Participation", "Message", "Question", "DelayRequest",
     # admin
@@ -87,7 +87,7 @@ __all__ = [
 
 # Instantiate or import these objects.
 
-version = 48
+version = 49
 
 engine = create_engine(config.database.url, echo=config.database.debug,
                        pool_timeout=60, pool_recycle=120)
@@ -104,6 +104,8 @@ from .fsobject import FSObject, LargeObject
 from .admin import Admin
 from .contest import Contest, Announcement
 from .contest_folder import ContestFolder
+from .training_program import TrainingProgram
+from .student import Student
 from .user import User, Team, Participation, Message, Question, DelayRequest
 from .task import Task, Statement, Attachment, Dataset, Manager, Testcase, \
     Generator, SubtaskValidator, SubtaskValidationResult

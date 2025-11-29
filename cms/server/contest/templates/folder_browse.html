@@ -24,6 +24,11 @@
                 <a href="{{ folder_href(f) }}" data-folder="{{ f.name }}">📁 {{ f.description }}</a>
             </li>
             {% endfor %}
+            {% for tp in training_programs|sort(attribute='name') %}
+            <li>
+                <a href="{{ training_program_href(tp) }}" style="color: #6f42c1;">🎓 {{ tp.description }}</a>
+            </li>
+            {% endfor %}
             {% for c in contests|sort(attribute='name') %}
             <li>
                 <a {% if c.stop < now %} style="color: #adadad" {% endif %} href="{{ contest_href(c) }}">{{ c.description }}</a>
