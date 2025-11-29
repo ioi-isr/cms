@@ -322,4 +322,6 @@ def update_contest(old_contest: Contest, new_contest: Contest, parent=None):
         Contest.folder: False,
         # Training program assignment is not handled by contest importers.
         Contest.training_program: False,
+        # Training day assignment is not handled by contest importers.
+        Contest.training_day: False,
     }, parent=parent)
