@@ -360,6 +360,10 @@ class BaseHandler(CommonRequestHandler):
                                 else "v" + __version__[:3]
         params["timestamp"] = make_datetime()
         params["contest"] = self.contest
+        # If the contest is a managing contest for a training program,
+        # set training_program so the sidebar shows training program menu
+        if self.contest is not None and self.contest.training_program is not None:
+            params["training_program"] = self.contest.training_program
         params["url"] = self.url
         params["xsrf_form_html"] = self.xsrf_form_html()
         # FIXME These objects provide too broad an access: their usage
