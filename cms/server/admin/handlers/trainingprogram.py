@@ -31,7 +31,12 @@ from .base import BaseHandler, SimpleHandler, require_permission
 
 
 class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
-    """List all training programs."""
+    """List all training programs.
+
+    GET returns the list of all training programs.
+    POST handles operations on a specific training program (e.g., removing).
+    """
+    REMOVE = "Remove"
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self):
@@ -42,6 +47,20 @@ class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
             .all()
         )
         self.render("training_programs.html", **self.r_params)
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def post(self):
+        training_program_id: str = self.get_argument("training_program_id")
+        operation: str = self.get_argument("operation")
+
+        if operation == self.REMOVE:
+            asking_page = self.url("training_programs", training_program_id, "remove")
+            self.redirect(asking_page)
+        else:
+            self.service.add_notification(
+                make_datetime(), "Invalid operation %s" % operation, ""
+            )
+            self.redirect(self.url("training_programs"))
 
 
 class TrainingProgramHandler(BaseHandler):
