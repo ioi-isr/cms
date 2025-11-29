@@ -89,7 +89,7 @@ $(document).ready(init);
         </div>
         {% endif %}
         <ul class="menu">
-        {% if contest is none %}
+        {% if contest is none or training_program is defined %}
           <li class="menu_entry"><a class="menu_link" href="{{ url() }}">Overview</a></li>
           <li class="menu_entry"><a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a></li>
         {% else %}

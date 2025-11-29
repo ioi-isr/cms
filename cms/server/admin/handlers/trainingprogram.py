@@ -69,8 +69,15 @@ class TrainingProgramHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
         self.render("training_program.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
