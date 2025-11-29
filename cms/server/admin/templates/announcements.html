@@ -39,7 +39,11 @@
       <div class="notification communication">
         <div class="notification_msg">
           <div class="announcement_remove">
+            {% if training_program is defined %}
+            <a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}'); ">Remove</a>
+            {% else %}
             <a onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}'); ">Remove</a>
+            {% endif %}
           </div>
           <div class="notification_timestamp">{{ msg.timestamp }}</div>
           <div class="notification_subject">{{ msg.subject }}</div>
@@ -54,6 +58,9 @@
           <div class="reply_question">
             <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "edit", msg.id) }}{% endif %}" >
               {{ xsrf_form_html|safe }}
+              {% if training_program is defined %}
+              <input type="hidden" name="announcement_id" value="{{ msg.id }}">
+              {% endif %}
               <div class="notification_subject">
                 <label for="new_subject">Edit Announcement</label>
                 <input type="text" name="subject" id="new_subject" style="width: 100%" list="task_names_list" autocomplete="off">

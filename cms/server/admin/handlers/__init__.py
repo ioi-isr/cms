@@ -139,6 +139,7 @@ from .trainingprogram import \
     TrainingProgramRankingHandler, \
     TrainingProgramSubmissionsHandler, \
     TrainingProgramAnnouncementsHandler, \
+    TrainingProgramAnnouncementHandler, \
     TrainingProgramQuestionsHandler, \
     StudentHandler
 
@@ -279,6 +280,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/ranking/([a-z]+)", TrainingProgramRankingHandler),
     (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
     (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
+    (r"/training_program/([0-9]+)/announcement/([0-9]+)", TrainingProgramAnnouncementHandler),
     (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
 
     # Admins

@@ -801,19 +801,48 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
 
         subject = self.get_argument("subject", "")
         text = self.get_argument("text", "")
+        announcement_id = self.get_argument("announcement_id", None)
 
         if subject and text:
-            announcement = Announcement(
-                timestamp=make_datetime(),
-                subject=subject,
-                text=text,
-                contest=managing_contest,
-                admin=self.current_user
-            )
-            self.sql_session.add(announcement)
+            if announcement_id is not None:
+                # Edit existing announcement
+                announcement = self.safe_get_item(Announcement, announcement_id)
+                if announcement.contest_id != managing_contest.id:
+                    raise tornado.web.HTTPError(404)
+                announcement.subject = subject
+                announcement.text = text
+            else:
+                # Add new announcement
+                announcement = Announcement(
+                    timestamp=make_datetime(),
+                    subject=subject,
+                    text=text,
+                    contest=managing_contest,
+                    admin=self.current_user
+                )
+                self.sql_session.add(announcement)
             self.try_commit()
 
         self.redirect(self.url("training_program", training_program_id, "announcements"))
+
+
+class TrainingProgramAnnouncementHandler(BaseHandler):
+    """Delete an announcement from a training program."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, training_program_id: str, ann_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        announcement = self.safe_get_item(Announcement, ann_id)
+        if announcement.contest_id != managing_contest.id:
+            raise tornado.web.HTTPError(404)
+
+        self.sql_session.delete(announcement)
+        self.try_commit()
+
+        # Return relative path for ajax_delete
+        self.write("../announcements")
 
 
 class TrainingProgramQuestionsHandler(BaseHandler):

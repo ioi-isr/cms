@@ -316,6 +316,13 @@ class BaseHandler(CommonRequestHandler):
             contest_id = match.group(1)
             remaining_path = match.group(2) or ""
             
+            # Don't redirect question/announcement actions - they should use
+            # the contest handlers directly since questions/announcements
+            # belong to the managing contest
+            if remaining_path.startswith("/question/") or \
+               remaining_path.startswith("/announcement/"):
+                return
+            
             try:
                 contest = self.sql_session.query(Contest).filter(Contest.id == int(contest_id)).first()
                 if contest and contest.name.startswith("__"):
