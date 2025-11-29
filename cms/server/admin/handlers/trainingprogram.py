@@ -794,7 +794,7 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
 
         self.render("announcements.html", **self.r_params)
 
-    @require_permission(BaseHandler.PERMISSION_ALL)
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def post(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
@@ -829,7 +829,7 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
 class TrainingProgramAnnouncementHandler(BaseHandler):
     """Delete an announcement from a training program."""
 
-    @require_permission(BaseHandler.PERMISSION_ALL)
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def delete(self, training_program_id: str, ann_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
