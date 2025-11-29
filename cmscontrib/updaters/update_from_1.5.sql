@@ -230,4 +230,38 @@ CREATE UNIQUE INDEX ix_students_participation_id ON public.students USING btree 
 ALTER TABLE ONLY public.students
     ALTER COLUMN student_tags DROP DEFAULT;
 
+-- Training days table for organizing training days within a training program
+CREATE TABLE public.training_days (
+    id integer NOT NULL,
+    training_program_id integer NOT NULL,
+    contest_id integer NOT NULL,
+    "position" integer
+);
+
+CREATE SEQUENCE public.training_days_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.training_days_id_seq OWNED BY public.training_days.id;
+
+ALTER TABLE ONLY public.training_days
+    ALTER COLUMN id SET DEFAULT nextval('public.training_days_id_seq'::regclass);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_training_program_id_fkey FOREIGN KEY (training_program_id) REFERENCES public.training_programs(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_contest_id_fkey FOREIGN KEY (contest_id) REFERENCES public.contests(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_training_days_training_program_id ON public.training_days USING btree (training_program_id);
+
+CREATE UNIQUE INDEX ix_training_days_contest_id ON public.training_days USING btree (contest_id);
+
 COMMIT;
