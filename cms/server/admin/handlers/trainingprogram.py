@@ -342,6 +342,15 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
         if participation is None:
             raise tornado.web.HTTPError(404)
 
+        # Delete the Student record first (it has a NOT NULL FK to participation)
+        student: Student | None = (
+            self.sql_session.query(Student)
+            .filter(Student.participation == participation)
+            .first()
+        )
+        if student is not None:
+            self.sql_session.delete(student)
+
         self.sql_session.delete(participation)
 
         if self.try_commit():
