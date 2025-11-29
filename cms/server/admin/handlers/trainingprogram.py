@@ -842,7 +842,9 @@ class TrainingProgramAnnouncementHandler(BaseHandler):
         self.try_commit()
 
         # Return relative path for ajax_delete
-        self.write("../announcements")
+        # Note: This is resolved relative to the current page URL (announcements list),
+        # not the delete URL, so we just need "announcements" not "../announcements"
+        self.write("announcements")
 
 
 class TrainingProgramQuestionsHandler(BaseHandler):

@@ -316,11 +316,12 @@ class BaseHandler(CommonRequestHandler):
             contest_id = match.group(1)
             remaining_path = match.group(2) or ""
             
-            # Don't redirect question/announcement actions - they should use
+            # Don't redirect question/announcement/message actions - they should use
             # the contest handlers directly since questions/announcements
-            # belong to the managing contest
+            # belong to the managing contest, and messages use the contest user
             if remaining_path.startswith("/question/") or \
-               remaining_path.startswith("/announcement/"):
+               remaining_path.startswith("/announcement/") or \
+               remaining_path.endswith("/message"):
                 return
             
             try:
