@@ -921,6 +921,8 @@ class TrainingProgramQuestionsHandler(BaseHandler):
 class TrainingProgramTrainingDaysHandler(BaseHandler):
     """List and manage training days in a training program."""
     REMOVE = "Remove"
+    MOVE_UP = "up by 1"
+    MOVE_DOWN = "down by 1"
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
@@ -950,10 +952,20 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
             operation: str = self.get_argument("operation")
             assert operation in (
                 self.REMOVE,
+                self.MOVE_UP,
+                self.MOVE_DOWN,
             ), "Please select a valid operation"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            self.service.add_notification(
+                make_datetime(), "Invalid training day", "Training day does not belong to this program")
             self.redirect(fallback_page)
             return
 
@@ -965,6 +977,31 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
             self.redirect(asking_page)
             return
 
+        elif operation == self.MOVE_UP:
+            training_day2 = self.sql_session.query(TrainingDay)\
+                .filter(TrainingDay.training_program == training_program)\
+                .filter(TrainingDay.position == training_day.position - 1)\
+                .first()
+
+            if training_day2 is not None:
+                tmp_a, tmp_b = training_day.position, training_day2.position
+                training_day.position, training_day2.position = None, None
+                self.sql_session.flush()
+                training_day.position, training_day2.position = tmp_b, tmp_a
+
+        elif operation == self.MOVE_DOWN:
+            training_day2 = self.sql_session.query(TrainingDay)\
+                .filter(TrainingDay.training_program == training_program)\
+                .filter(TrainingDay.position == training_day.position + 1)\
+                .first()
+
+            if training_day2 is not None:
+                tmp_a, tmp_b = training_day.position, training_day2.position
+                training_day.position, training_day2.position = None, None
+                self.sql_session.flush()
+                training_day.position, training_day2.position = tmp_b, tmp_a
+
+        self.try_commit()
         self.redirect(fallback_page)
 
 
