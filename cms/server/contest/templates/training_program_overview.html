@@ -68,6 +68,7 @@
             <th>{% trans %}Name{% endtrans %}</th>
             <th style="cursor: pointer;" onclick="sortTable(2)">{% trans %}Score{% endtrans %} <span class="sort-icon"></span></th>
             <th>{% trans %}Status{% endtrans %}</th>
+            <th>{% trans %}Submit{% endtrans %}</th>
         </tr>
     </thead>
     <tbody>
@@ -90,6 +91,9 @@
     {% else %}
                 <span class="label label-important" style="font-size: 12px;">{% trans %}Not Solved{% endtrans %}</span>
     {% endif %}
+            </td>
+            <td>
+                <a href="{{ contest_url("tasks", ts.task.name, "submissions") }}" class="btn btn-small btn-primary">{% trans %}Submit{% endtrans %}</a>
             </td>
         </tr>
 {% endfor %}
