@@ -140,7 +140,10 @@ from .trainingprogram import \
     TrainingProgramSubmissionsHandler, \
     TrainingProgramAnnouncementsHandler, \
     TrainingProgramQuestionsHandler, \
-    StudentHandler
+    StudentHandler, \
+    TrainingProgramTrainingDaysHandler, \
+    AddTrainingDayHandler, \
+    RemoveTrainingDayHandler
 
 
 HANDLERS = [
@@ -280,6 +283,9 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
     (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
     (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
+    (r"/training_program/([0-9]+)/training_days", TrainingProgramTrainingDaysHandler),
+    (r"/training_program/([0-9]+)/training_days/add", AddTrainingDayHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/remove", RemoveTrainingDayHandler),
 
     # Admins
 
