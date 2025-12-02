@@ -86,7 +86,7 @@ class Contest(Base):
     languages: list[str] = Column(
         ARRAY(String),
         nullable=False,
-        default=["C++ / g++"])
+        default=["C++20 / g++"])
 
     # Whether contestants allowed to download their submissions.
     submissions_download_allowed: bool = Column(

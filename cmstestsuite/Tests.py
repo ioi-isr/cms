@@ -47,7 +47,7 @@ from cmstestsuite.Test import CheckMemoryLimit, Test, CheckOverallScore, CheckCo
 LANG_CPP = "C++11 / g++"
 LANG_CPP14 = "C++14 / g++"
 LANG_CPP17 = "C++17 / g++"
-LANG_CPP20 = "C++ / g++"
+LANG_CPP20 = "C++20 / g++"
 LANG_C = "C11 / gcc"
 LANG_HS = "Haskell / ghc"
 LANG_JAVA = "Java / JDK"

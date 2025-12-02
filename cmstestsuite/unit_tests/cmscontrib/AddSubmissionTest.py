@@ -41,7 +41,7 @@ _DIGEST_3 = bytes_digest(_CONTENT_3)
 _FILENAME_1 = "file.cpp"
 _FILENAME_2 = "file"
 _FILENAME_3 = "file.py"
-_LANGUAGE_1 = "C++ / g++"
+_LANGUAGE_1 = "C++20 / g++"
 _LANGUAGE_1_ALT = "C++17 / g++"
 
 

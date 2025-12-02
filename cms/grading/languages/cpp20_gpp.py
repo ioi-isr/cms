@@ -33,7 +33,7 @@ class Cpp20Gpp(CompiledLanguage):
     @property
     def name(self):
         """See Language.name."""
-        return "C++ / g++"
+        return "C++20 / g++"
 
     @property
     def source_extensions(self):
