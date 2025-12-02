@@ -744,6 +744,36 @@ class DeleteTestcaseHandler(BaseHandler):
         self.write("./%d" % task_id)
 
 
+class DeleteAllTestcasesHandler(BaseHandler):
+    """Delete all testcases from a dataset.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        task_id = task.id
+
+        # Delete all testcases
+        for testcase in list(dataset.testcases.values()):
+            self.sql_session.delete(testcase)
+
+        # Clear the testcases dict for OutputOnly tasks
+        if dataset.active and dataset.task_type == "OutputOnly":
+            dataset.testcases.clear()
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
+
+        if self.try_commit():
+            # max_score and/or extra_headers might have changed.
+            self.service.proxy_service.reinitialize()
+        self.write("./%d" % task_id)
+
+
 class DownloadTestcasesHandler(BaseHandler):
     """Download all testcases in a zip file.
 
