@@ -360,21 +360,25 @@ class AddAttachmentHandler(BaseHandler):
 
         task = self.safe_get_item(Task, task_id)
 
-        attachment = self.request.files["attachment"][0]
+        attachments = self.request.files["attachment"]
         task_name = task.name
         self.sql_session.close()
 
-        try:
-            digest = self.service.file_cacher.put_file_content(
-                attachment["body"],
-                "Task attachment for %s" % task_name)
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(),
-                "Attachment storage failed",
-                repr(error))
-            self.redirect(fallback_page)
-            return
+        # Store all attachments in file cacher
+        stored_attachments = []
+        for attachment in attachments:
+            try:
+                digest = self.service.file_cacher.put_file_content(
+                    attachment["body"],
+                    "Task attachment for %s" % task_name)
+                stored_attachments.append((attachment["filename"], digest))
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Attachment storage failed",
+                    repr(error))
+                self.redirect(fallback_page)
+                return
 
         # TODO verify that there's no other Attachment with that filename
         # otherwise we'd trigger an IntegrityError for constraint violation
@@ -382,8 +386,9 @@ class AddAttachmentHandler(BaseHandler):
         self.sql_session = Session()
         task = self.safe_get_item(Task, task_id)
 
-        attachment = Attachment(attachment["filename"], digest, task=task)
-        self.sql_session.add(attachment)
+        for filename, digest in stored_attachments:
+            attachment = Attachment(filename, digest, task=task)
+            self.sql_session.add(attachment)
 
         if self.try_commit():
             self.redirect(self.url("task", task_id))
