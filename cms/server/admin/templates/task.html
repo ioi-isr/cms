@@ -674,7 +674,7 @@ $(document).ready(function() {
 {% endif %}
       <a href="{{ url("dataset", dataset.id, "testcases", "download") }}">Download all testcases</a>
 {% if admin.permission_all %}
-      <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "testcases", "delete_all") }}');">Delete all testcases</a>
+      <a onclick="if (confirm('Are you sure you want to delete all testcases from this dataset?')) { CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "testcases", "delete_all") }}'); }">Delete all testcases</a>
 {% endif %}
       <table class="bordered" style="text-align:center">
         <thead>
