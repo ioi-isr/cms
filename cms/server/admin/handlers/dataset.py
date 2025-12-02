@@ -378,11 +378,8 @@ class AddManagerHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        manager = self.request.files["manager"][0]
+        managers = self.request.files["manager"]
         task_name = task.name
-
-        filename = manager["filename"]
-        body = manager["body"]
 
         # Decide which auto-compiled basenames are allowed for this task type.
         # Use TaskType constants to avoid hardcoding names and to avoid
@@ -400,112 +397,122 @@ class AddManagerHandler(BaseHandler):
         except Exception:
             # If anything goes wrong, fall back to not auto-compiling.
             allowed_compile_basenames = set()
-        base_noext = os.path.splitext(os.path.basename(filename))[0]
 
-        # compiled files (no extension) when a source file already exists.
-        has_extension = "." in os.path.basename(filename)
-        if (base_noext in allowed_compile_basenames and not has_extension):
-            for existing_filename in dataset.managers.keys():
-                existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
-                existing_has_ext = "." in os.path.basename(existing_filename)
-                if existing_base == base_noext and existing_has_ext:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Cannot upload compiled manager",
-                        ("A source file '%s' already exists for '%s'. "
-                         "Compiled files are auto-generated from source. "
-                         "Please upload the source file instead, or delete "
-                         "the existing source first." %
-                         (existing_filename, base_noext)))
-                    self.redirect(fallback_page)
-                    return
+        # Check all files for compiled file conflicts before processing
+        for manager in managers:
+            filename = manager["filename"]
+            base_noext = os.path.splitext(os.path.basename(filename))[0]
+
+            # compiled files (no extension) when a source file already exists.
+            has_extension = "." in os.path.basename(filename)
+            if (base_noext in allowed_compile_basenames and not has_extension):
+                for existing_filename in dataset.managers.keys():
+                    existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
+                    existing_has_ext = "." in os.path.basename(existing_filename)
+                    if existing_base == base_noext and existing_has_ext:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Cannot upload compiled manager",
+                            ("A source file '%s' already exists for '%s'. "
+                             "Compiled files are auto-generated from source. "
+                             "Please upload the source file instead, or delete "
+                             "the existing source first." %
+                             (existing_filename, base_noext)))
+                        self.redirect(fallback_page)
+                        return
 
         self.sql_session.close()
 
-        # If a source file for a known compiled language is uploaded,
-        # compile it into an executable manager.
-        compiled_filename = None
-        compiled_bytes = None
-        try:
-            language = filename_to_language(filename)
-        except Exception:
-            language = None
+        # Process each manager file
+        all_stored_entries: list[tuple[str, str]] = []  # (filename, digest)
+        for manager in managers:
+            filename = manager["filename"]
+            body = manager["body"]
+            base_noext = os.path.splitext(os.path.basename(filename))[0]
 
-        if (language is not None
-                and isinstance(language, CompiledLanguage)
-                and base_noext in allowed_compile_basenames):
-            safe_src = os.path.basename(filename)
-            compiled_filename = base_noext
-            
-            sandbox = None
+            # If a source file for a known compiled language is uploaded,
+            # compile it into an executable manager.
+            compiled_filename = None
+            compiled_bytes = None
             try:
-                sandbox = create_sandbox(self.service.file_cacher, name="admin_compile")
-                
-                sandbox.create_file_from_string(safe_src, body)
-                
-                commands = language.get_compilation_commands(
-                    [safe_src], compiled_filename, for_evaluation=True)
-                
-                box_success, compilation_success, text, stats = \
-                    compilation_step(sandbox, commands)
-                
-                if not box_success:
+                language = filename_to_language(filename)
+            except Exception:
+                language = None
+
+            if (language is not None
+                    and isinstance(language, CompiledLanguage)
+                    and base_noext in allowed_compile_basenames):
+                safe_src = os.path.basename(filename)
+                compiled_filename = base_noext
+
+                sandbox = None
+                try:
+                    sandbox = create_sandbox(self.service.file_cacher, name="admin_compile")
+
+                    sandbox.create_file_from_string(safe_src, body)
+
+                    commands = language.get_compilation_commands(
+                        [safe_src], compiled_filename, for_evaluation=True)
+
+                    box_success, compilation_success, text, stats = \
+                        compilation_step(sandbox, commands)
+
+                    if not box_success:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Manager compilation failed",
+                            "Sandbox error during compilation for '%s'. See logs for details." % filename)
+                        self.redirect(fallback_page)
+                        return
+
+                    if not compilation_success:
+                        stdout = stats.get("stdout", "") if stats else ""
+                        stderr = stats.get("stderr", "") if stats else ""
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Manager compilation failed",
+                            ("Compilation failed for '%s'. Command:%r\nStdout:\n%s\nStderr:\n%s" %
+                             (filename, commands, stdout, stderr)))
+                        self.redirect(fallback_page)
+                        return
+
+                    compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
+
+                except Exception as error:
                     self.service.add_notification(
                         make_datetime(),
-                        "Manager compilation failed",
-                        "Sandbox error during compilation. See logs for details.")
+                        "Manager compilation error",
+                        "Error compiling '%s': %s" % (filename, repr(error)))
                     self.redirect(fallback_page)
                     return
-                
-                if not compilation_success:
-                    stdout = stats.get("stdout", "") if stats else ""
-                    stderr = stats.get("stderr", "") if stats else ""
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Manager compilation failed",
-                        ("Compilation failed. Command:%r\nStdout:\n%s\nStderr:\n%s" %
-                         (commands, stdout, stderr)))
-                    self.redirect(fallback_page)
-                    return
-                
-                compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
-                
+                finally:
+                    if sandbox:
+                        sandbox.cleanup(delete=True)
+
+            # Store the appropriate content(s) into the file cache.
+            try:
+                # Always store the original upload.
+                orig_digest = self.service.file_cacher.put_file_content(
+                    body, "Task manager for %s" % task_name)
+                all_stored_entries.append((filename, orig_digest))
+                # If compilation happened, also store compiled executable.
+                if compiled_bytes is not None and compiled_filename is not None:
+                    comp_digest = self.service.file_cacher.put_file_content(
+                        compiled_bytes, "Compiled task manager for %s" % task_name)
+                    all_stored_entries.append((compiled_filename, comp_digest))
             except Exception as error:
                 self.service.add_notification(
                     make_datetime(),
-                    "Manager compilation error",
-                    repr(error))
+                    "Manager storage failed",
+                    "Error storing '%s': %s" % (filename, repr(error)))
                 self.redirect(fallback_page)
                 return
-            finally:
-                if sandbox:
-                    sandbox.cleanup(delete=True)
-
-        # Store the appropriate content(s) into the file cache.
-        stored_entries: list[tuple[str, str]] = []  # (filename, digest)
-        try:
-            # Always store the original upload.
-            orig_digest = self.service.file_cacher.put_file_content(
-                body, "Task manager for %s" % task_name)
-            stored_entries.append((filename, orig_digest))
-            # If compilation happened, also store compiled executable.
-            if compiled_bytes is not None and compiled_filename is not None:
-                comp_digest = self.service.file_cacher.put_file_content(
-                    compiled_bytes, "Compiled task manager for %s" % task_name)
-                stored_entries.append((compiled_filename, comp_digest))
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(),
-                "Manager storage failed",
-                repr(error))
-            self.redirect(fallback_page)
-            return
 
         self.sql_session = Session()
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        for fname, dig in stored_entries:
+        for fname, dig in all_stored_entries:
             existing_manager = dataset.managers.get(fname)
             if existing_manager is not None:
                 existing_manager.digest = dig
