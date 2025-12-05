@@ -57,7 +57,8 @@ import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
 from cms.server import CommonRequestHandler, FileHandlerMixin
-from cmscommon.crypto import hash_password, parse_authentication
+from cmscommon.crypto import hash_password, parse_authentication, \
+    validate_password_strength
 from cmscommon.datetime import make_datetime
 if typing.TYPE_CHECKING:
     from cms.server.admin import AdminWebServer
@@ -528,7 +529,13 @@ class BaseHandler(CommonRequestHandler):
         dest["score_type"] = name
         dest["score_type_parameters"] = params
 
-    def get_password(self, dest: dict, old_password: str | None, allow_unset: bool):
+    def get_password(
+        self,
+        dest: dict,
+        old_password: str | None,
+        allow_unset: bool,
+        user_inputs: list[str] | None = None
+    ):
         """Parse a (possibly hashed) password.
 
         Parse the value of the password and the method that should be
@@ -541,6 +548,9 @@ class BaseHandler(CommonRequestHandler):
             "<method>:" prefix.
         allow_unset: whether the password is allowed to be left unset,
             which is represented as a value of None in dest.
+        user_inputs: optional list of strings to check password against
+            (e.g., username, email). Passwords similar to these are
+            penalized during strength validation.
 
         """
         # The admin leaving the password field empty could mean one of
@@ -567,6 +577,8 @@ class BaseHandler(CommonRequestHandler):
 
         # If a password is given, we use that.
         if len(password) > 0:
+            # Validate password strength before hashing
+            validate_password_strength(password, user_inputs)
             dest["password"] = hash_password(password, method)
         # If the password was set and was hashed, and the admin kept
         # the method unchanged and didn't specify anything, they must

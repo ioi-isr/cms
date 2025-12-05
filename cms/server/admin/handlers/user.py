@@ -66,7 +66,13 @@ class UserHandler(BaseHandler):
             self.get_string(attrs, "last_name")
             self.get_string(attrs, "username", empty=None)
 
-            self.get_password(attrs, user.password, False)
+            # Build user_inputs for password strength validation
+            user_inputs = []
+            if attrs.get("username"):
+                user_inputs.append(attrs["username"])
+            if attrs.get("email"):
+                user_inputs.append(attrs["email"])
+            self.get_password(attrs, user.password, False, user_inputs)
 
             self.get_string(attrs, "email", empty=None)
             self.get_string_list(attrs, "preferred_languages")
@@ -294,12 +300,16 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
             self.get_string(attrs, "last_name")
             self.get_string(attrs, "username", empty=None)
 
-            self.get_password(attrs, None, False)
-
             self.get_string(attrs, "email", empty=None)
 
             assert attrs.get("username") is not None, \
                 "No username specified."
+
+            # Build user_inputs for password strength validation
+            user_inputs = [attrs["username"]]
+            if attrs.get("email"):
+                user_inputs.append(attrs["email"])
+            self.get_password(attrs, None, False, user_inputs)
 
             self.get_string(attrs, "timezone", empty=None)
 

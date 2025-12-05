@@ -56,7 +56,8 @@ from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
-from cmscommon.crypto import hash_password, validate_password
+from cmscommon.crypto import hash_password, validate_password, \
+    validate_password_strength, WeakPasswordError
 from cmscommon.datetime import make_datetime, make_timestamp
 from .contest import ContestHandler, api_login_required
 from ..phase_management import actual_phase_required
@@ -157,6 +158,15 @@ class RegistrationHandler(ContestHandler):
                     <= self.MAX_INPUT_LENGTH:
                 raise ValueError()
         except (tornado.web.MissingArgumentError, ValueError):
+            raise tornado.web.HTTPError(400)
+
+        # Validate password strength
+        try:
+            user_inputs = [username]
+            if email:
+                user_inputs.append(email)
+            validate_password_strength(password, user_inputs)
+        except WeakPasswordError:
             raise tornado.web.HTTPError(400)
 
         # Override password with its hash

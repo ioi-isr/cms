@@ -30,6 +30,7 @@ from string import ascii_lowercase
 import bcrypt
 from Cryptodome import Random
 from Cryptodome.Cipher import AES
+from zxcvbn import zxcvbn
 
 from cmscommon.binary import bin_to_hex, hex_to_bin, bin_to_b64, b64_to_bin
 
@@ -44,7 +45,55 @@ __all__ = [
 
     "validate_password", "build_password", "hash_password",
     "parse_authentication",
+
+    "WeakPasswordError", "validate_password_strength",
     ]
+
+
+# Minimum password strength score required (0-4 scale from zxcvbn)
+# 0 = too guessable, 1 = very guessable, 2 = somewhat guessable,
+# 3 = safely unguessable, 4 = very unguessable
+MIN_PASSWORD_SCORE = 3
+
+
+class WeakPasswordError(ValueError):
+    """Exception raised when a password does not meet strength requirements."""
+
+    def __init__(self, message: str, suggestions: list[str] | None = None):
+        super().__init__(message)
+        self.suggestions = suggestions or []
+
+
+def validate_password_strength(password: str, user_inputs: list[str] | None = None) -> None:
+    """Validate that a password meets minimum strength requirements.
+
+    Uses the zxcvbn library to evaluate password strength based on
+    realistic attack scenarios.
+
+    password: the password to validate.
+    user_inputs: optional list of strings to check against (e.g., username,
+        email). Passwords similar to these are penalized.
+
+    raise (WeakPasswordError): if the password is too weak.
+
+    """
+    inputs = user_inputs or []
+
+    result = zxcvbn(password, user_inputs=inputs)
+    score = result["score"]
+
+    if score < MIN_PASSWORD_SCORE:
+        feedback = result.get("feedback", {})
+        warning = feedback.get("warning", "")
+        suggestions = feedback.get("suggestions", [])
+
+        message_parts = ["Password is too weak."]
+        if warning:
+            message_parts.append(warning + ".")
+        if suggestions:
+            message_parts.append("Suggestions: " + " ".join(suggestions))
+
+        raise WeakPasswordError(" ".join(message_parts), suggestions)
 
 
 _RANDOM = Random.new()
