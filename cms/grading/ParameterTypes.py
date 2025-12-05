@@ -150,6 +150,41 @@ class ParameterTypeInt(ParameterType):
         return int(value)
 
 
+class ParameterTypeOptionalInt(ParameterType):
+    """Type for an optional integer parameter with a default value."""
+
+    TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
+<input type="text"
+       name="{{ prefix ~ parameter.short_name }}"
+       value="{{ previous_value if previous_value is not none else '' }}" />
+""")
+
+    def __init__(self, name: str, short_name: str, description: str, default: int):
+        """Initialization.
+        
+        default: the default value to use when the parameter is missing or empty.
+        """
+        super().__init__(name, short_name, description)
+        self.default = default
+
+    def validate(self, value):
+        if not isinstance(value, int):
+            raise ValueError("Invalid value for int parameter %s" % self.name)
+
+    def parse_string(self, value):
+        if value == "" or value is None:
+            return self.default
+        return int(value)
+
+    def parse_handler(self, handler: "RequestHandler", prefix: str) -> int:
+        """Parse the parameter from the handler, returning default if missing."""
+        try:
+            value = handler.get_argument(prefix + self.short_name)
+            return self.parse_string(value)
+        except Exception:
+            return self.default
+
+
 class ParameterTypeChoice(ParameterType):
     """Type for a parameter giving a choice among a finite number of items."""
 

@@ -55,7 +55,7 @@ from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
 from cmscommon.datetime import get_timezone
-from .base import BaseHandler
+from .base import BaseHandler, add_ip_to_list
 from ..phase_management import compute_actual_phase
 
 
@@ -111,9 +111,10 @@ class ContestHandler(BaseHandler):
 
         """
         if self.is_multi_contest():
-            # Choose the contest found in the path argument
+            # Choose contest name from last path segment to support nested folders
             # see: https://github.com/tornadoweb/tornado/issues/1673
-            contest_name = self.path_args[0]
+            raw_path = self.path_args[0]
+            contest_name = raw_path.split('/')[-1]
 
             # Select the correct contest or return an error
             self.contest = self.sql_session.query(Contest)\
@@ -227,6 +228,15 @@ class ContestHandler(BaseHandler):
 
             if ret["actual_phase"] == 0:
                 ret["phase"] = 0
+
+                if participation.starting_time is not None:
+                    client_ip = self.request.remote_ip
+                    new_ip_list = add_ip_to_list(
+                        participation.starting_ip_addresses, client_ip
+                    )
+                    if new_ip_list != participation.starting_ip_addresses:
+                        participation.starting_ip_addresses = new_ip_list
+                        self.sql_session.commit()
 
             # set the timezone used to format timestamps
             ret["timezone"] = get_timezone(participation.user, self.contest)

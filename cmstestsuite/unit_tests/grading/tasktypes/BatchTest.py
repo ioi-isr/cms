@@ -334,6 +334,77 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
         self.assertEqual(job.text, text)
         self.assertEqual(job.plus, stats)
 
+    def test_stdio_realprecision_success(self):
+        tt, job = self.prepare(["alone", ["", ""], "realprecision"], {"foo": EXE_FOO})
+        sandbox = self.expect_sandbox()
+
+        tt.evaluate(job, self.file_cacher)
+
+        # Sandbox created with the correct file cacher and name.
+        self.Sandbox.assert_called_once_with(self.file_cacher, name="evaluate")
+        # We need input (with the default filename for redirection) and
+        # executable copied in the sandbox.
+        sandbox.create_file_from_storage.assert_has_calls([
+            call("foo", "digest of foo", executable=True),
+            call("input.txt", "digest of input"),
+        ], any_order=True)
+        self.assertEqual(sandbox.create_file_from_storage.call_count, 2)
+        # Evaluation step called with the right arguments, in particular
+        # redirects, and no (other) writable files.
+        self.evaluation_step.assert_called_once_with(
+            sandbox,
+            fake_evaluation_commands(EVALUATION_COMMAND_1, "foo", "foo"),
+            2.5, 123 * 1024 * 1024,
+            writable_files=[],
+            stdin_redirect="input.txt",
+            stdout_redirect="output.txt",
+            multiprocess=True)
+        # Check eval_output was called correctly.
+        self.eval_output.assert_called_once_with(
+            self.file_cacher, job, None,
+            use_realprecision=True, realprecision_exponent=6,
+            user_output_path="/path/0/output.txt",
+            user_output_filename="", extra_args=None)
+        # Results put in job and sandbox deleted.
+        self.assertResultsInJob(job)
+        sandbox.cleanup.assert_called_once_with(delete=True)
+
+    def test_fileio_realprecision_success(self):
+        tt, job = self.prepare(["alone", ["myin", "myout"], "realprecision"],
+                               {"foo": EXE_FOO})
+        sandbox = self.expect_sandbox()
+
+        tt.evaluate(job, self.file_cacher)
+
+        # Sandbox created with the correct file cacher and name.
+        self.Sandbox.assert_called_once_with(self.file_cacher, name="evaluate")
+        # We need input (with the filename specified in the parameters) and
+        # executable copied in the sandbox.
+        sandbox.create_file_from_storage.assert_has_calls([
+            call("foo", "digest of foo", executable=True),
+            call("myin", "digest of input"),
+        ], any_order=True)
+        self.assertEqual(sandbox.create_file_from_storage.call_count, 2)
+        # Evaluation step called with the right arguments, in particular
+        # the specified output is writable.
+        self.evaluation_step.assert_called_once_with(
+            sandbox,
+            fake_evaluation_commands(EVALUATION_COMMAND_1, "foo", "foo"),
+            2.5, 123 * 1024 * 1024,
+            writable_files=["myout"],
+            stdin_redirect=None,
+            stdout_redirect=None,
+            multiprocess=True)
+        # Check eval_output was called correctly.
+        self.eval_output.assert_called_once_with(
+            self.file_cacher, job, None, use_realprecision=True,
+            realprecision_exponent=6,
+            user_output_path="/path/0/myout",
+            user_output_filename="myout", extra_args=None)
+        # Results put in job and sandbox deleted.
+        self.assertResultsInJob(job)
+        sandbox.cleanup.assert_called_once_with(delete=True)
+
     def test_stdio_diff_success(self):
         tt, job = self.prepare(["alone", ["", ""], "diff"], {"foo": EXE_FOO})
         sandbox = self.expect_sandbox()
@@ -362,7 +433,9 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
         # Check eval_output was called correctly.
         self.eval_output.assert_called_once_with(
             self.file_cacher, job, None,
-            user_output_path="/path/0/output.txt", user_output_filename="", extra_args=None)
+            use_realprecision=False, realprecision_exponent=6,
+            user_output_path="/path/0/output.txt",
+            user_output_filename="", extra_args=None)
         # Results put in job and sandbox deleted.
         self.assertResultsInJob(job)
         sandbox.cleanup.assert_called_once_with(delete=True)
@@ -482,7 +555,9 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
             multiprocess=True)
         # Check eval_output was called correctly.
         self.eval_output.assert_called_once_with(
-            self.file_cacher, job, None, user_output_path="/path/0/myout",
+            self.file_cacher, job, None, use_realprecision=False,
+            realprecision_exponent=6,
+            user_output_path="/path/0/myout",
             user_output_filename="myout", extra_args=None)
         # Results put in job and sandbox deleted.
         self.assertResultsInJob(job)
@@ -498,7 +573,9 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
         # We only perform checks for the final eval step (checker).
         self.eval_output.assert_called_once_with(
             self.file_cacher, job, "checker",
-            user_output_path="/path/0/output.txt", user_output_filename="", extra_args=None)
+            use_realprecision=False, realprecision_exponent=6,
+            user_output_path="/path/0/output.txt",
+            user_output_filename="", extra_args=None)
         # Results put in job and sandbox deleted.
         self.assertResultsInJob(job)
         sandbox.cleanup.assert_called_once_with(delete=True)
@@ -513,6 +590,7 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
         # We only perform checks for the final eval step (checker).
         self.eval_output.assert_called_once_with(
             self.file_cacher, job, "checker",
+            use_realprecision=False, realprecision_exponent=6,
             user_output_path="/path/0/myout",
             user_output_filename="myout", extra_args=None)
         # Results put in job and sandbox deleted.

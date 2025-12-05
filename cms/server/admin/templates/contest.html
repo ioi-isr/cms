@@ -28,6 +28,20 @@
     </tr>
     <tr>
       <td>
+        <span class="info" title="Folder that contains this contest. Leave as (root) for top-level."></span>
+        Folder
+      </td>
+      <td>
+        <select name="folder_id">
+          <option value="none">(root)</option>
+          {% for f in all_folders %}
+            <option value="{{ f.id }}" {{ 'selected' if contest.folder is not none and contest.folder.id == f.id else '' }}>{{ f.description }}</option>
+          {% endfor %}
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>
         <span class="info" title="The list of languages that contestants can use, or empty for allowing any language.
                                   Example: 'en,ja' (without quotes)."></span>
         Allowed localizations

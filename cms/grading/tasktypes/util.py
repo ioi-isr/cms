@@ -40,7 +40,7 @@ from cms.grading.Job import CompilationJob, EvaluationJob, Job
 from cms.grading.Sandbox import Sandbox
 from cms.grading.language import Language
 from cms.grading.steps import EVALUATION_MESSAGES, checker_step, \
-    white_diff_fobj_step
+    white_diff_fobj_step, realprecision_diff_fobj_step, _DEFAULT_EXP
 
 
 logger = logging.getLogger(__name__)
@@ -217,6 +217,8 @@ def eval_output(
     file_cacher: FileCacher,
     job: Job,
     checker_codename: str | None,
+    use_realprecision: bool = False,
+    realprecision_exponent: int | None = None,
     user_output_path: str | None = None,
     user_output_digest: str | None = None,
     user_output_filename: str = "",
@@ -227,7 +229,10 @@ def eval_output(
     file_cacher: file cacher to use to get files.
     job: the job triggering this checker run.
     checker_codename: codename of the checker amongst the manager,
-        or None to use white diff.
+        or None to use white diff / real number precision.
+    use_realprecision: whether we should use real precision comparator.
+    realprecision_exponent: exponent X for tolerance 1e-X when using real
+        precision comparison; defaults to 6 (1e-6) if None.
     user_output_path: full path of the user output file, None if
         using the digest (exactly one must be non-None).
     user_output_digest: digest of the user output file, None if
@@ -244,6 +249,10 @@ def eval_output(
     if (user_output_path is None) == (user_output_digest is None):
         raise ValueError(
             "Exactly one of user_output_{path,digest} should be None.")
+    
+    if use_realprecision and realprecision_exponent is None:
+        realprecision_exponent = 6
+        logger.warning("Real precision exponent is None, defaulting to 6")
 
     if user_output_path is not None:
         # If a path was passed, it might not exist. First, check it does. We
@@ -289,6 +298,10 @@ def eval_output(
             user_output_fobj = file_cacher.get_file(user_output_digest)
         with user_output_fobj:
             with file_cacher.get_file(job.output) as correct_output_fobj:
-                outcome, text = white_diff_fobj_step(
-                    user_output_fobj, correct_output_fobj)
+                if use_realprecision:
+                    outcome, text = realprecision_diff_fobj_step(
+                        user_output_fobj, correct_output_fobj, realprecision_exponent)
+                else:
+                    outcome, text = white_diff_fobj_step(
+                        user_output_fobj, correct_output_fobj)
         return True, outcome, text

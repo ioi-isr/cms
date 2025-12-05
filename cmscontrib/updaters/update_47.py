@@ -19,8 +19,10 @@
 
 Used by DumpImporter and DumpUpdater.
 
-This version adds the DelayRequest table but doesn't require any data
+This version adds the Attendance table but it doesn't require any data
 migration since it's a new table with no existing data.
+It also adds the starting_ip_addresses field to the Participation table
+for tracking IP addresses used during contest participation.
 
 """
 
@@ -32,4 +34,10 @@ class Updater:
         self.objs = data
 
     def run(self):
+        for k, v in self.objs.items():
+            if k.startswith("_"):
+                continue
+            if v["_class"] == "Participation":
+                v["starting_ip_addresses"] = None
+
         return self.objs

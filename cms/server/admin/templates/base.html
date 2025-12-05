@@ -130,6 +130,22 @@ $(document).ready(init);
 {% endif %}
         </ul>
 
+        <h1><a class="menu_link" href="{{ url("folders") }}">Folders</a></h1>
+        <ul class="menu">
+          <li>
+            <a class="menu_link" href="{{ url("folders") }}">
+              (manage folders...)
+            </a>
+          </li>
+          {% if admin.permission_all %}
+          <li class="menu_entry">
+            <a class="menu_link" href="{{ url("folders", "add") }}">
+              (create new folder...)
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+
         <h1><a class="menu_link" href="{{ url("tasks") }}">Tasks</a></h1>
         <ul class="menu">
           {% if task_list|length < 1 %}
@@ -237,7 +253,7 @@ $(document).ready(init);
                 {% if unanswered_delay_requests == 0 %} style="display: none;" {% endif %}>
                 {{ unanswered_delay_requests }}
               </span>
-              <a class="menu_link" href="{{ url("contest", contest.id, "delays_and_extra_times") }}">Delays and Extra Times</a>
+              <a class="menu_link" href="{{ url("contest", contest.id, "delays_and_extra_times") }}">Attendance</a>
             </li>
           </ul>
           <div class="hr"></div>
