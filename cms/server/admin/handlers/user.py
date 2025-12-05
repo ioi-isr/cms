@@ -28,6 +28,7 @@
 """
 
 from cms.db import Contest, Participation, Submission, Team, User
+from cmscommon.crypto import validate_password_strength
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -65,16 +66,21 @@ class UserHandler(BaseHandler):
             self.get_string(attrs, "first_name")
             self.get_string(attrs, "last_name")
             self.get_string(attrs, "username", empty=None)
-
-            # Build user_inputs for password strength validation
-            user_inputs = []
-            if attrs.get("username"):
-                user_inputs.append(attrs["username"])
-            if attrs.get("email"):
-                user_inputs.append(attrs["email"])
-            self.get_password(attrs, user.password, False, user_inputs)
-
             self.get_string(attrs, "email", empty=None)
+
+            # Validate password strength unless explicitly bypassed
+            # (e.g., for imports or tests)
+            password = self.get_argument("password", "")
+            allow_weak = self.get_argument("allow_weak_password", None)
+            if len(password) > 0 and allow_weak is None:
+                user_inputs = []
+                if attrs.get("username"):
+                    user_inputs.append(attrs["username"])
+                if attrs.get("email"):
+                    user_inputs.append(attrs["email"])
+                validate_password_strength(password, user_inputs)
+
+            self.get_password(attrs, user.password, False)
             self.get_string_list(attrs, "preferred_languages")
             self.get_string(attrs, "timezone", empty=None)
 
@@ -305,11 +311,17 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
             assert attrs.get("username") is not None, \
                 "No username specified."
 
-            # Build user_inputs for password strength validation
-            user_inputs = [attrs["username"]]
-            if attrs.get("email"):
-                user_inputs.append(attrs["email"])
-            self.get_password(attrs, None, False, user_inputs)
+            # Validate password strength unless explicitly bypassed
+            # (e.g., for imports or tests)
+            password = self.get_argument("password", "")
+            allow_weak = self.get_argument("allow_weak_password", None)
+            if len(password) > 0 and allow_weak is None:
+                user_inputs = [attrs["username"]]
+                if attrs.get("email"):
+                    user_inputs.append(attrs["email"])
+                validate_password_strength(password, user_inputs)
+
+            self.get_password(attrs, None, False)
 
             self.get_string(attrs, "timezone", empty=None)
 
