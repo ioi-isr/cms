@@ -51,6 +51,9 @@ dependencies = [
 
     # Only for cmsTelegramBot
     "python-telegram-bot>=21.9,<21.12", # https://pypi.org/project/python-telegram-bot
+
+    # For password strength validation
+    "zxcvbn>=4.4,<5.0",               # https://github.com/dwolfhub/zxcvbn-python
 ]
 
 [project.urls]

@@ -23,6 +23,8 @@
 
 import logging
 
+from zxcvbn import zxcvbn
+
 from cms.db import Admin
 from cmscommon.crypto import hash_password
 from cmscommon.datetime import make_datetime
@@ -30,6 +32,50 @@ from .base import BaseHandler, SimpleHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+# Minimum password strength score required for admin passwords (0-4 scale)
+# 0 = too guessable, 1 = very guessable, 2 = somewhat guessable,
+# 3 = safely unguessable, 4 = very unguessable
+MIN_PASSWORD_SCORE = 3
+
+
+class WeakPasswordError(ValueError):
+    """Exception raised when a password does not meet strength requirements."""
+
+    def __init__(self, message: str, suggestions: list[str] | None = None):
+        super().__init__(message)
+        self.suggestions = suggestions or []
+
+
+def validate_password_strength(password: str, username: str | None = None) -> None:
+    """Validate that a password meets minimum strength requirements.
+
+    password: the password to validate.
+    username: optional username to check against (passwords similar to
+        username are penalized).
+
+    raise (WeakPasswordError): if the password is too weak.
+
+    """
+    user_inputs = []
+    if username:
+        user_inputs.append(username)
+
+    result = zxcvbn(password, user_inputs=user_inputs)
+    score = result["score"]
+
+    if score < MIN_PASSWORD_SCORE:
+        feedback = result.get("feedback", {})
+        warning = feedback.get("warning", "")
+        suggestions = feedback.get("suggestions", [])
+
+        message_parts = ["Password is too weak."]
+        if warning:
+            message_parts.append(warning + ".")
+        if suggestions:
+            message_parts.append("Suggestions: " + " ".join(suggestions))
+
+        raise WeakPasswordError(" ".join(message_parts), suggestions)
 
 
 def _admin_attrs(handler: BaseHandler) -> dict:
@@ -52,6 +98,8 @@ def _admin_attrs(handler: BaseHandler) -> dict:
     # Get the password and translate it to an authentication, if present.
     handler.get_string(attrs, "password", empty=None)
     if attrs['password'] is not None:
+        # Validate password strength before hashing
+        validate_password_strength(attrs["password"], attrs.get("username"))
         attrs["authentication"] = hash_password(attrs["password"])
     del attrs["password"]
 
