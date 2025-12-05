@@ -4,7 +4,25 @@
     {{ contest.description }}
 {% endblock title %}
 
+{% block js %}
+<script src="{{ url('static', 'js', 'zxcvbn.js') }}"></script>
+{% endblock js %}
+
 {% block body %}
+
+<style>
+.password-strength-bar {
+    height: 5px;
+    margin-top: 5px;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+.password-strength-bar.strength-0 { background-color: #dc3545; width: 20%; }
+.password-strength-bar.strength-1 { background-color: #dc3545; width: 40%; }
+.password-strength-bar.strength-2 { background-color: #ffc107; width: 60%; }
+.password-strength-bar.strength-3 { background-color: #28a745; width: 80%; }
+.password-strength-bar.strength-4 { background-color: #28a745; width: 100%; }
+</style>
 
 <script>
 const registerFields = [
@@ -26,6 +44,49 @@ function clearErrors() {
 
 $(document).ready(function() {
     const passwordHelp = $("#password-input span.help-block").text();
+
+    // Password strength indicator
+    const strengthMessages = [
+        "{% trans %}Very weak{% endtrans %}",
+        "{% trans %}Weak{% endtrans %}",
+        "{% trans %}Fair{% endtrans %}",
+        "{% trans %}Strong{% endtrans %}",
+        "{% trans %}Very strong{% endtrans %}",
+    ];
+
+    $("#password").on("input", function() {
+        const pwd = $(this).val();
+        const $helpBlock = $("#password-input span.help-block");
+        const $strengthBar = $("#password-strength-bar");
+
+        if (!pwd) {
+            $helpBlock.text(passwordHelp);
+            $strengthBar.removeClass("strength-0 strength-1 strength-2 strength-3 strength-4").hide();
+            $("#password-input").removeClass("error");
+            return;
+        }
+
+        if (typeof zxcvbn === "function") {
+            const username = $("#username").val();
+            const email = $("#email").val();
+            const result = zxcvbn(pwd, [username, email].filter(Boolean));
+            const score = result.score;
+            const label = strengthMessages[score] || "";
+
+            $helpBlock.text("{% trans %}Password strength:{% endtrans %} " + label);
+            $strengthBar
+                .removeClass("strength-0 strength-1 strength-2 strength-3 strength-4")
+                .addClass("strength-" + score)
+                .show();
+
+            // Show warning if password is too weak (score < 3)
+            if (score < 3) {
+                $("#password-input").addClass("error");
+            } else {
+                $("#password-input").removeClass("error");
+            }
+        }
+    });
 
     $("#register-pill").click(function(e) {
         clearErrors();
@@ -95,6 +156,43 @@ $(document).ready(function() {
                     $("#password-input").addClass("error");
                     $("#password-input span.help-block").text("{% trans %}The password is not correct.{% endtrans %}");
                     $("#password").focus();
+                } else if (data.status === 400) {
+                    // Validation error - parse JSON response
+                    let payload = {};
+                    try {
+                        payload = data.responseJSON || JSON.parse(data.responseText || "{}");
+                    } catch (e) {}
+
+                    if (payload.code === "weak_password") {
+                        $("#password-input").addClass("error");
+                        $("#password-input span.help-block").text("{% trans %}Your password is too weak. Try using a longer phrase with a mix of letters, numbers, and symbols.{% endtrans %}");
+                        $("#password").focus();
+                    } else if (payload.code === "invalid_username_chars") {
+                        $("#username-input").addClass("error");
+                        $("#username-input span.help-block").text("{% trans %}Username may only contain letters, digits, underscores, and hyphens.{% endtrans %}");
+                        $("#username").focus();
+                    } else if (payload.code === "invalid_username_length") {
+                        $("#username-input").addClass("error");
+                        $("#username-input span.help-block").text("{% trans %}Username must be between 1 and {{ MAX_INPUT_LENGTH }} characters.{% endtrans %}");
+                        $("#username").focus();
+                    } else if (payload.code === "invalid_password_length") {
+                        $("#password-input").addClass("error");
+                        $("#password-input span.help-block").text("{% trans %}Password must be between {{ MIN_PASSWORD_LENGTH }} and {{ MAX_INPUT_LENGTH }} characters.{% endtrans %}");
+                        $("#password").focus();
+                    } else if (payload.code === "invalid_first_name") {
+                        $("#first_name").closest(".control-group").addClass("error");
+                        $("#first_name").focus();
+                    } else if (payload.code === "invalid_last_name") {
+                        $("#last_name").closest(".control-group").addClass("error");
+                        $("#last_name").focus();
+                    } else if (payload.code === "invalid_team") {
+                        $("#team").closest(".control-group").addClass("error");
+                        $("#team").focus();
+                    } else {
+                        // Generic fallback for missing_field or unknown errors
+                        $("#password-input").addClass("error");
+                        $("#password-input span.help-block").text("{% trans %}Some of the registration data is invalid. Please check all fields.{% endtrans %}");
+                    }
                 }
             }).always(function() {
                 $("#submit-button-loading").hide();
@@ -171,6 +269,7 @@ $(document).ready(function() {
                         <label class="control-label" for="password">{% trans %}Password{% endtrans %}</label>
                         <div class="controls">
                             <input required minlength="{{ MIN_PASSWORD_LENGTH }}" maxlength="{{ MAX_INPUT_LENGTH }}" type="password" class="input-xlarge" name="password" id="password" autocomplete="new-password">
+                            <div id="password-strength-bar" class="password-strength-bar" style="display: none;"></div>
                             <span class="help-block">
                                 {% trans min_length=MIN_PASSWORD_LENGTH %}
                                 Must be one character or more.
