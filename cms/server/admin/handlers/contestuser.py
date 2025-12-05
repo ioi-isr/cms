@@ -41,6 +41,7 @@ except:
 import tornado.web
 
 from cms.db import Contest, Message, Participation, Submission, User, Team
+from cmscommon.crypto import validate_password_strength
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 
@@ -221,6 +222,14 @@ class ParticipationHandler(BaseHandler):
 
         try:
             attrs = participation.get_attrs()
+
+            # Validate password strength if a new password is provided
+            password = self.get_argument("password", "")
+            if len(password) > 0:
+                user_inputs = [participation.user.username]
+                if participation.user.email:
+                    user_inputs.append(participation.user.email)
+                validate_password_strength(password, user_inputs)
 
             self.get_password(attrs, participation.password, True)
 
