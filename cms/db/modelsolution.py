@@ -24,6 +24,7 @@ metadata stored in ModelSolutionMeta.
 
 """
 
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
 from sqlalchemy.types import Integer, Float, Unicode
@@ -83,6 +84,13 @@ class ModelSolutionMeta(Base):
         nullable=False,
         default=100.0)
 
+    subtask_expected_scores = Column(
+        JSONB,
+        nullable=True,
+        default=None,
+        doc="Expected score ranges per subtask. Format: "
+            '{"0": {"min": 0, "max": 10}, "1": {"min": 0, "max": 20}, ...}')
+
     def is_score_in_range(self) -> bool | None:
         """Check if the submission's score is within the expected range.
         
@@ -92,6 +100,66 @@ class ModelSolutionMeta(Base):
         if result is None or result.score is None:
             return None
         return self.expected_score_min <= result.score <= self.expected_score_max
+
+    def get_subtask_score_status(self, subtask_idx: int) -> str | None:
+        """Check if a subtask's score is within the expected range.
+        
+        subtask_idx: the index of the subtask to check
+        
+        return: "in_range" if score is in expected range,
+                "out_of_range" if score is outside expected range,
+                "not_configured" if no expected range was set for this subtask,
+                None if not scored yet
+        """
+        result = self.submission.get_result(self.dataset)
+        if result is None or result.score_details is None:
+            return None
+        
+        subtask_key = str(subtask_idx)
+        if self.subtask_expected_scores is None or \
+                subtask_key not in self.subtask_expected_scores:
+            return "not_configured"
+        
+        expected = self.subtask_expected_scores[subtask_key]
+        expected_min = expected.get("min", 0)
+        expected_max = expected.get("max", 0)
+        
+        score_details = result.score_details
+        if not isinstance(score_details, list):
+            return None
+        
+        for st in score_details:
+            if st.get("idx") == subtask_idx:
+                actual_score = st.get("score")
+                if actual_score is None:
+                    return None
+                if expected_min <= actual_score <= expected_max:
+                    return "in_range"
+                else:
+                    return "out_of_range"
+        
+        return None
+
+    def get_subtask_actual_score(self, subtask_idx: int) -> float | None:
+        """Get the actual score for a subtask.
+        
+        subtask_idx: the index of the subtask
+        
+        return: the actual score, or None if not scored yet
+        """
+        result = self.submission.get_result(self.dataset)
+        if result is None or result.score_details is None:
+            return None
+        
+        score_details = result.score_details
+        if not isinstance(score_details, list):
+            return None
+        
+        for st in score_details:
+            if st.get("idx") == subtask_idx:
+                return st.get("score")
+        
+        return None
 
 
 def get_or_create_model_solution_participation(session: Session):
