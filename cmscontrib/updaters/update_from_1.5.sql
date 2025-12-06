@@ -163,4 +163,7 @@ ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_d
 
 ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.submissions(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+-- Add subtask expected scores column to model_solution_meta
+ALTER TABLE public.model_solution_meta ADD COLUMN subtask_expected_scores jsonb;
+
 COMMIT;
