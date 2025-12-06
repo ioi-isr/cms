@@ -52,6 +52,9 @@ class AddContestHandler(
 
             self.get_string(attrs, "name", empty=None)
             assert attrs.get("name") is not None, "No contest name specified."
+            assert not attrs.get("name").startswith("__"), \
+                "Contest name cannot start with '__' " \
+                "(reserved for system contests)."
             attrs["description"] = attrs["name"]
 
             # Create the contest.
@@ -97,6 +100,9 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_string(attrs, "description")
 
             assert attrs.get("name") is not None, "No contest name specified."
+            assert not attrs.get("name").startswith("__"), \
+                "Contest name cannot start with '__' " \
+                "(reserved for system contests)."
 
             allowed_localizations: str = self.get_argument("allowed_localizations", "")
             if allowed_localizations:
