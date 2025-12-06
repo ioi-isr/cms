@@ -496,7 +496,16 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
             {% if dataset.id in testcase_subtasks %}
             <td>
               {% if codename in testcase_subtasks[dataset.id] %}
-                {{ testcase_subtasks[dataset.id][codename]|join(", ") }}
+                {% set subtask_indices = testcase_subtasks[dataset.id][codename] %}
+                {% set display_names = [] %}
+                {% for idx in subtask_indices %}
+                  {% if dataset.id in subtask_names and idx in subtask_names[dataset.id] %}
+                    {% set _ = display_names.append(subtask_names[dataset.id][idx]) %}
+                  {% else %}
+                    {% set _ = display_names.append(idx) %}
+                  {% endif %}
+                {% endfor %}
+                {{ display_names|join(", ") }}
               {% else %}
                 -
               {% endif %}
