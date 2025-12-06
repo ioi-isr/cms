@@ -44,6 +44,33 @@
       <td>Expected Score Max:</td>
       <td><input type="number" step="0.01" name="expected_score_max" value="100.0" required /></td>
     </tr>
+{% if subtasks %}
+    <tr>
+      <td colspan="2"><strong>Expected Subtask Scores:</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <table class="bordered" style="text-align:center; margin-top: 5px;">
+          <thead>
+            <tr>
+              <th>Subtask</th>
+              <th>Expected Min</th>
+              <th>Expected Max</th>
+            </tr>
+          </thead>
+          <tbody>
+{% for st in subtasks if st.max_score > 0 %}
+            <tr>
+              <td>{{ st.display_name }}</td>
+              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_min" value="0" style="width: 80px;" /></td>
+              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_max" value="{{ st.max_score }}" style="width: 80px;" /></td>
+            </tr>
+{% endfor %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+{% endif %}
 {% for filename in task.submission_format %}
     <tr>
       <td>{{ filename }}:</td>
@@ -73,6 +100,33 @@
       <td>Expected Score Max:</td>
       <td><input type="number" step="0.01" name="expected_score_max" value="100.0" required /></td>
     </tr>
+{% if subtasks %}
+    <tr>
+      <td colspan="2"><strong>Expected Subtask Scores:</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <table class="bordered" style="text-align:center; margin-top: 5px;">
+          <thead>
+            <tr>
+              <th>Subtask</th>
+              <th>Expected Min</th>
+              <th>Expected Max</th>
+            </tr>
+          </thead>
+          <tbody>
+{% for st in subtasks if st.max_score > 0 %}
+            <tr>
+              <td>{{ st.display_name }}</td>
+              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_min" value="0" style="width: 80px;" /></td>
+              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_max" value="{{ st.max_score }}" style="width: 80px;" /></td>
+            </tr>
+{% endfor %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+{% endif %}
     <tr>
       <td>submission.zip:</td>
       <td><input type="file" name="submission" required /></td>
