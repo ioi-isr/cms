@@ -325,6 +325,9 @@
 {% endif %}
          >
   <input type="reset" value="Reset">
+{% if admin.permission_all %}
+  <a href="{{ url("contest", contest.id, "export") }}"> ⇩ Export </a>
+{% endif %}
 </form>
 <form action="{{ url("contests") }}" method="POST" style="display:inline;">
     {{ xsrf_form_html|safe }}
