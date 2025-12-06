@@ -502,6 +502,9 @@ $(document).ready(function() {
             <th>#</th>
             <th>Codename</th>
             <th>Public</th>
+            {% if dataset.id in testcase_subtasks %}
+            <th>Subtasks</th>
+            {% endif %}
             <th>Input</th>
             <th>Output</th>
             <th>Ops</th>
@@ -515,6 +518,24 @@ $(document).ready(function() {
             <td style="font-weight:bold;">
               <input type="checkbox" name="testcase_{{ testcase.id }}_public" {% if testcase.public %}checked{% endif %} />
             </td>
+            {% if dataset.id in testcase_subtasks %}
+            <td>
+              {% if codename in testcase_subtasks[dataset.id] %}
+                {% set subtask_indices = testcase_subtasks[dataset.id][codename] %}
+                {% set display_names = [] %}
+                {% for idx in subtask_indices %}
+                  {% if dataset.id in subtask_names and idx in subtask_names[dataset.id] %}
+                    {% set _ = display_names.append(subtask_names[dataset.id][idx]) %}
+                  {% else %}
+                    {% set _ = display_names.append(idx) %}
+                  {% endif %}
+                {% endfor %}
+                {{ display_names|join(", ") }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            {% endif %}
             <td>
               <a href="javascript:void(0);" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')">Show input</a>
             </td>
