@@ -288,6 +288,12 @@ class Participation(Base):
         passive_deletes=True,
         back_populates="participation")
 
+    statement_views: list["StatementView"] = relationship(
+        "StatementView",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="participation")
+
 
 class Message(Base):
     """Class to store a private message from the managers to the
