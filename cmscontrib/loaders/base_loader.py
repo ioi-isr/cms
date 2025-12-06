@@ -24,6 +24,17 @@ from cms.db.filecacher import FileCacher
 from cms.db.task import Task
 from cms.db.user import Team, User
 
+
+class LoaderValidationError(Exception):
+    """Exception raised when loader encounters validation errors.
+    
+    This exception carries user-facing error messages that should be
+    displayed to administrators via notifications rather than causing
+    system crashes.
+    """
+    pass
+
+
 LANGUAGE_MAP = {
     'afrikaans': 'af',
     'arabic': 'ar',
