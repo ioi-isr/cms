@@ -720,6 +720,59 @@ window.filterTestcases = function(dataset_id) {
           {% endif %}
         </tbody>
       </table>
+
+{% if dataset.id in subtask_info and dataset.model_solution_metas|length > 0 %}
+      <h5 style="margin-top: 20px;">Subtask Score Validation</h5>
+      <table class="bordered" style="text-align:center">
+        <thead>
+          <tr>
+            <th>Model Solution</th>
+{% for st in subtask_info[dataset.id] %}
+            <th>{{ st.display_name }}</th>
+{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+{% for meta in dataset.model_solution_metas %}
+{% set msr = meta.submission.get_result(dataset) %}
+{% if msr and msr.scored() %}
+          <tr>
+            <td><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></td>
+{% for st in subtask_info[dataset.id] %}
+{% if st.max_score == 0 %}
+{% set outcomes = meta.get_subtask_testcase_outcomes(st.idx) %}
+            <td>
+{% if outcomes %}
+              <span style="font-family: monospace;">{{ outcomes|safe }}</span>
+{% else %}
+              <span style="color: gray;">N/A</span>
+{% endif %}
+            </td>
+{% else %}
+{% set status = meta.get_subtask_score_status(st.idx) %}
+{% set actual = meta.get_subtask_actual_score(st.idx) %}
+{% set st_key = st.idx|string %}
+{% set expected_min = meta.subtask_expected_scores[st_key].min if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
+{% set expected_max = meta.subtask_expected_scores[st_key].max if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
+            <td>
+{% if status == "not_configured" %}
+              <span style="color: gray;">Not configured</span>
+{% elif status == "in_range" %}
+              <span style="color: green;">✓ {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+{% elif status == "out_of_range" %}
+              <span style="color: red;">✗ {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+{% else %}
+              <span style="color: gray;">N/A</span>
+{% endif %}
+            </td>
+{% endif %}
+{% endfor %}
+          </tr>
+{% endif %}
+{% endfor %}
+        </tbody>
+      </table>
+{% endif %}
       <div class="hr"></div>
     </div>
 

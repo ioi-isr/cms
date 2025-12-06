@@ -245,7 +245,8 @@ CREATE TABLE public.model_solution_meta (
     dataset_id integer NOT NULL,
     description character varying NOT NULL,
     expected_score_min double precision NOT NULL,
-    expected_score_max double precision NOT NULL
+    expected_score_max double precision NOT NULL,
+    subtask_expected_scores jsonb
 );
 
 CREATE SEQUENCE public.model_solution_meta_id_seq
