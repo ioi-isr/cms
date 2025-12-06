@@ -291,3 +291,70 @@ class MessageHandler(BaseHandler):
                         user.username, self.contest.name)
 
         self.redirect(self.url("contest", contest_id, "user", user_id, "edit"))
+
+
+class EditMessageHandler(BaseHandler):
+    """Called to edit a message sent to a specific user."""
+
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, contest_id: str, user_id: str, message_id: str):
+        message = self.safe_get_item(Message, message_id)
+        self.contest = self.safe_get_item(Contest, contest_id)
+        user = self.safe_get_item(User, user_id)
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest == self.contest)
+            .filter(Participation.user == user)
+            .first()
+        )
+
+        # Check that the participation is valid.
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        # Protect against URLs providing incompatible parameters.
+        if message.participation_id != participation.id:
+            raise tornado.web.HTTPError(404)
+
+        subject: str = self.get_argument("subject", "")
+        text: str = self.get_argument("text", "")
+        if len(subject) > 0:
+            message.subject = subject
+            message.text = text
+            self.try_commit()
+        else:
+            self.service.add_notification(
+                make_datetime(), "Subject is mandatory.", "")
+        self.redirect(self.url("contest", contest_id, "user", user_id, "edit"))
+
+
+class DeleteMessageHandler(BaseHandler):
+    """Called to remove a message sent to a specific user."""
+
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def delete(self, contest_id: str, user_id: str, message_id: str):
+        message = self.safe_get_item(Message, message_id)
+        self.contest = self.safe_get_item(Contest, contest_id)
+        user = self.safe_get_item(User, user_id)
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest == self.contest)
+            .filter(Participation.user == user)
+            .first()
+        )
+
+        # Check that the participation is valid.
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        # Protect against URLs providing incompatible parameters.
+        if message.participation_id != participation.id:
+            raise tornado.web.HTTPError(404)
+
+        self.sql_session.delete(message)
+        self.try_commit()
+
+        # Page to redirect to.
+        self.write("../../../../edit")
