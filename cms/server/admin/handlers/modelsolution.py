@@ -23,6 +23,7 @@ import logging
 
 from cms.db import Dataset, Submission, File, ModelSolutionMeta, \
     get_or_create_model_solution_participation
+from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.contest.submission import UnacceptableSubmission
 from cms.server.contest.submission.workflow import _extract_and_match_files
 from cmscommon.datetime import make_datetime
@@ -30,6 +31,34 @@ from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_subtask_info(dataset):
+    """Get subtask information from a dataset if it uses a group-based score type.
+    
+    dataset: the dataset to get subtask info from
+    
+    return: a list of dicts with subtask info, or None if not a group-based score type.
+            Each dict has: idx, name, max_score
+    """
+    try:
+        score_type_obj = dataset.score_type_object
+        if not isinstance(score_type_obj, ScoreTypeGroup):
+            return None
+        
+        subtasks = []
+        for idx, param in enumerate(score_type_obj.parameters):
+            max_score = param[0]
+            name = param[2] if len(param) >= 3 and param[2] else None
+            subtasks.append({
+                "idx": idx,
+                "name": name,
+                "display_name": name if name else f"Subtask {idx}",
+                "max_score": max_score
+            })
+        return subtasks
+    except Exception:
+        return None
 
 
 class AddModelSolutionHandler(BaseHandler):
@@ -45,6 +74,7 @@ class AddModelSolutionHandler(BaseHandler):
         self.r_params = self.render_params()
         self.r_params["task"] = task
         self.r_params["dataset"] = dataset
+        self.r_params["subtasks"] = get_subtask_info(dataset)
         self.render("add_model_solution.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -70,6 +100,33 @@ class AddModelSolutionHandler(BaseHandler):
             if expected_score_min > expected_score_max:
                 raise ValueError(
                     "Minimum score cannot be greater than maximum score")
+
+            subtask_expected_scores = None
+            subtasks = get_subtask_info(dataset)
+            if subtasks:
+                subtask_expected_scores = {}
+                for st in subtasks:
+                    if st["max_score"] == 0:
+                        continue
+                    idx = st["idx"]
+                    st_min = self.get_argument(
+                        f"subtask_{idx}_min", "0.0")
+                    st_max = self.get_argument(
+                        f"subtask_{idx}_max", str(st["max_score"]))
+                    try:
+                        st_min = float(st_min)
+                        st_max = float(st_max)
+                    except ValueError:
+                        raise ValueError(
+                            f"Invalid score range for subtask {idx}")
+                    if st_min > st_max:
+                        raise ValueError(
+                            f"Min score cannot be greater than max score "
+                            f"for subtask {idx}")
+                    subtask_expected_scores[str(idx)] = {
+                        "min": st_min,
+                        "max": st_max
+                    }
 
             # Use the shared submission file processing logic from accept_submission.
             # This handles archive extraction, file matching, language detection, etc.
@@ -118,7 +175,8 @@ class AddModelSolutionHandler(BaseHandler):
                 dataset=dataset,
                 description=attrs["description"],
                 expected_score_min=expected_score_min,
-                expected_score_max=expected_score_max
+                expected_score_max=expected_score_max,
+                subtask_expected_scores=subtask_expected_scores
             )
             self.sql_session.add(meta)
 
@@ -168,11 +226,13 @@ class EditModelSolutionHandler(BaseHandler):
     def get(self, meta_id):
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
         task = meta.dataset.task
+        dataset = meta.dataset
         self.contest = task.contest
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
         self.r_params["meta"] = meta
+        self.r_params["subtasks"] = get_subtask_info(dataset)
         self.render("edit_model_solution.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -181,6 +241,7 @@ class EditModelSolutionHandler(BaseHandler):
         
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
         task = meta.dataset.task
+        dataset = meta.dataset
 
         try:
             attrs = {}
@@ -201,9 +262,37 @@ class EditModelSolutionHandler(BaseHandler):
                 raise ValueError(
                     "Minimum score cannot be greater than maximum score")
 
+            subtask_expected_scores = None
+            subtasks = get_subtask_info(dataset)
+            if subtasks:
+                subtask_expected_scores = {}
+                for st in subtasks:
+                    if st["max_score"] == 0:
+                        continue
+                    idx = st["idx"]
+                    st_min = self.get_argument(
+                        f"subtask_{idx}_min", "0.0")
+                    st_max = self.get_argument(
+                        f"subtask_{idx}_max", str(st["max_score"]))
+                    try:
+                        st_min = float(st_min)
+                        st_max = float(st_max)
+                    except ValueError:
+                        raise ValueError(
+                            f"Invalid score range for subtask {idx}")
+                    if st_min > st_max:
+                        raise ValueError(
+                            f"Min score cannot be greater than max score "
+                            f"for subtask {idx}")
+                    subtask_expected_scores[str(idx)] = {
+                        "min": st_min,
+                        "max": st_max
+                    }
+
             meta.description = attrs["description"]
             meta.expected_score_min = expected_score_min
             meta.expected_score_max = expected_score_max
+            meta.subtask_expected_scores = subtask_expected_scores
 
         except Exception as error:
             self.service.add_notification(

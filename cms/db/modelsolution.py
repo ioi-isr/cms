@@ -24,6 +24,7 @@ metadata stored in ModelSolutionMeta.
 
 """
 
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
 from sqlalchemy.types import Integer, Float, Unicode
@@ -83,6 +84,13 @@ class ModelSolutionMeta(Base):
         nullable=False,
         default=100.0)
 
+    subtask_expected_scores = Column(
+        JSONB,
+        nullable=True,
+        default=None,
+        doc="Expected score ranges per subtask. Format: "
+            '{"0": {"min": 0, "max": 10}, "1": {"min": 0, "max": 20}, ...}')
+
     def is_score_in_range(self) -> bool | None:
         """Check if the submission's score is within the expected range.
         
@@ -92,6 +100,131 @@ class ModelSolutionMeta(Base):
         if result is None or result.score is None:
             return None
         return self.expected_score_min <= result.score <= self.expected_score_max
+
+    def get_subtask_score_status(self, subtask_idx: int) -> str | None:
+        """Check if a subtask's score is within the expected range.
+        
+        subtask_idx: the index of the subtask to check
+        
+        return: "in_range" if score is in expected range,
+                "out_of_range" if score is outside expected range,
+                "not_configured" if no expected range was set for this subtask,
+                None if not scored yet
+        """
+        result = self.submission.get_result(self.dataset)
+        if result is None or result.score_details is None:
+            return None
+        
+        subtask_key = str(subtask_idx)
+        if self.subtask_expected_scores is None or \
+                subtask_key not in self.subtask_expected_scores:
+            return "not_configured"
+        
+        expected = self.subtask_expected_scores[subtask_key]
+        expected_min = expected.get("min", 0)
+        expected_max = expected.get("max", 0)
+        
+        score_details = result.score_details
+        if not isinstance(score_details, list):
+            return None
+        
+        for st in score_details:
+            if st.get("idx") == subtask_idx:
+                actual_score = st.get("score")
+                if actual_score is None:
+                    return None
+                if expected_min <= actual_score <= expected_max:
+                    return "in_range"
+                else:
+                    return "out_of_range"
+        
+        return None
+
+    def get_subtask_actual_score(self, subtask_idx: int) -> float | None:
+        """Get the actual score for a subtask.
+        
+        subtask_idx: the index of the subtask
+        
+        return: the actual score, or None if not scored yet
+        """
+        result = self.submission.get_result(self.dataset)
+        if result is None or result.score_details is None:
+            return None
+        
+        score_details = result.score_details
+        if not isinstance(score_details, list):
+            return None
+        
+        for st in score_details:
+            if st.get("idx") == subtask_idx:
+                return st.get("score")
+        
+        return None
+
+    def get_subtask_testcase_outcomes(self, subtask_idx: int) -> str:
+        """Get testcase outcome symbols as HTML for a subtask (used for 0-point subtasks).
+        
+        For 0-point subtasks (like sample subtasks), we show individual testcase
+        outcomes instead of score ranges. Each testcase is represented by a colored symbol:
+        - green ✓ for correct (outcome == 1.0)
+        - red ✗ for wrong (outcome == 0.0)
+        - orange ◐ for partial (0.0 < outcome < 1.0)
+        - gray ? for not evaluated yet
+        
+        subtask_idx: the index of the subtask
+        
+        return: HTML string with colored symbols (e.g., "<span style='color:green'>✓</span>...")
+        """
+        from cms.grading.scoretypes import ScoreTypeGroup
+        
+        result = self.submission.get_result(self.dataset)
+        if result is None:
+            return ""
+        
+        try:
+            score_type_obj = self.dataset.score_type_object
+            if not isinstance(score_type_obj, ScoreTypeGroup):
+                return ""
+            
+            targets = score_type_obj.retrieve_target_testcases()
+            if subtask_idx >= len(targets):
+                return ""
+            
+            target_codenames = targets[subtask_idx]
+        except Exception:
+            return ""
+        
+        outcomes_by_codename = {}
+        for ev in result.evaluations:
+            outcomes_by_codename[ev.codename] = ev.outcome
+        
+        symbols = []
+        for codename in target_codenames:
+            outcome_str = outcomes_by_codename.get(codename)
+            symbols.append(self._outcome_to_colored_symbol(outcome_str))
+        
+        return "".join(symbols)
+
+    @staticmethod
+    def _outcome_to_colored_symbol(outcome_str: str | None) -> str:
+        """Convert an evaluation outcome string to a colored HTML symbol.
+        
+        outcome_str: the outcome as a string (e.g., "1.0", "0.0", "0.5")
+        
+        return: HTML span with colored symbol
+        """
+        if outcome_str is None:
+            return "<span style='color:gray'>?</span>"
+        try:
+            outcome = float(outcome_str)
+        except (ValueError, TypeError):
+            return "<span style='color:gray'>?</span>"
+        
+        if outcome >= 1.0:
+            return "<span style='color:green'>✓</span>"
+        if outcome <= 0.0:
+            return "<span style='color:red'>✗</span>"
+        return "<span style='color:orange'>◐</span>"
 
 
 def get_or_create_model_solution_participation(session: Session):
