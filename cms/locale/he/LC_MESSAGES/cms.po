@@ -433,6 +433,45 @@ msgstr "עדיין אין תשובה"
 msgid "Messages"
 msgstr "הודעות"
 
+msgid "Request Contest Delay"
+msgstr "בקשת דחיית אימון"
+
+msgid "Select the date and time when you want to start the contest"
+msgstr "בחרו את התאריך ואת השעה בהם אתם רוצים להתחיל את התחרות"
+
+msgid "Reason"
+msgstr "סיבה"
+
+msgid "Please explain why you need a delay"
+msgstr "אנא הסבירו מדוע הנכם זקוקים לדחייה"
+
+msgid "Submit Delay Request"
+msgstr "הגשת בקשת דחייה"
+
+msgid "Delay Request"
+msgstr "בקשת דחייה"
+
+msgid "Requested Start Time:"
+msgstr "זמן ההתחלה המבוקש:"
+
+msgid "Reason:"
+msgstr "סיבה:"
+
+msgid "Status:"
+msgstr "סטטוס:"
+
+msgid "Pending"
+msgstr "ממתינה"
+
+msgid "Approved"
+msgstr "אושרה"
+
+msgid "Rejected"
+msgstr "סורבה"
+
+msgid "Translation"
+msgstr "תרגום"
+
 #, python-format
 msgid "Automatic (%(lang)s)"
 msgstr "אוטומטית (%(lang)s)"
