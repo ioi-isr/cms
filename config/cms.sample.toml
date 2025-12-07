@@ -152,7 +152,7 @@ max_input_length = 5_000_000
 # Path to the documentation exposed by CWS. To show a documentation link
 # add a folder for each language with index.html inside. For example for
 # C++ add 'cpp/index.html', for Java 'java/index.html'.
-docs_path = "/usr/share/cms/docs"
+# docs_path = "/usr/share/cms/docs"
 
 # An authentication token that can be used by the administrator to
 # impersonate an arbitrary user and bypass submit restrictions.
