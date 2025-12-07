@@ -431,6 +431,45 @@ msgstr ""
 msgid "Messages"
 msgstr ""
 
+msgid "Request Contest Delay"
+msgstr ""
+
+msgid "Select the date and time when you want to start the contest"
+msgstr ""
+
+msgid "Reason"
+msgstr ""
+
+msgid "Please explain why you need a delay"
+msgstr ""
+
+msgid "Submit Delay Request"
+msgstr ""
+
+msgid "Delay Request"
+msgstr ""
+
+msgid "Requested Start Time:"
+msgstr ""
+
+msgid "Reason:"
+msgstr ""
+
+msgid "Status:"
+msgstr ""
+
+msgid "Pending"
+msgstr ""
+
+msgid "Approved"
+msgstr ""
+
+msgid "Rejected"
+msgstr ""
+
+msgid "Translation"
+msgstr ""
+
 #, python-format
 msgid "Automatic (%(lang)s)"
 msgstr ""
