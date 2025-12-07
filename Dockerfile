@@ -97,4 +97,17 @@ RUN <<EOF
     sed -i 's/127.0.0.1/0.0.0.0/' ../cms/etc/cms_ranking.toml
 EOF
 
+# Generate random secret key for both test and dev configs  
+RUN <<EOF  
+#!/bin/bash -ex  
+    # Generate random key using CMS's built-in function  
+    SECRET_KEY=$(python3 -c "from cmscommon.crypto import get_hex_random_key; print(get_hex_random_key())")  
+      
+    # Replace default secret key in test config  
+    sed -i "s/secret_key = \"8e045a51e4b102ea803c06f92841a1fb\"/secret_key = \"$SECRET_KEY\"/" ../cms/etc/cms-testdb.toml  
+      
+    # Replace default secret key in dev config  
+    sed -i "s/secret_key = \"8e045a51e4b102ea803c06f92841a1fb\"/secret_key = \"$SECRET_KEY\"/" ../cms/etc/cms-devdb.toml  
+EOF
+
 CMD ["/bin/bash"]
