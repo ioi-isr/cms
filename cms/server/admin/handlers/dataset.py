@@ -411,17 +411,19 @@ class AddManagerHandler(BaseHandler):
 
         self.sql_session.close()
 
-        # Process each manager file
-        all_stored_entries: list[tuple[str, str]] = []  # (filename, digest)
+        # Phase 1: Compile all files first, collecting results in memory.
+        # This ensures no files are stored in file_cacher if any compilation fails.
+        planned_entries: list[tuple[str, bytes]] = []  # (filename, content_bytes)
         for manager in managers:
             filename = manager["filename"]
             body = manager["body"]
             base_noext = os.path.splitext(os.path.basename(filename))[0]
 
+            # Always plan to store the original upload.
+            planned_entries.append((filename, body))
+
             # If a source file for a known compiled language is uploaded,
             # compile it into an executable manager.
-            compiled_filename = None
-            compiled_bytes = None
             try:
                 language = filename_to_language(filename)
             except Exception:
@@ -449,17 +451,17 @@ class AddManagerHandler(BaseHandler):
                     self.redirect(fallback_page)
                     return
 
-            # Store the appropriate content(s) into the file cache.
+                # Plan to store the compiled executable.
+                if compiled_bytes is not None:
+                    planned_entries.append((compiled_filename, compiled_bytes))
+
+        # Phase 2: All compilations succeeded, now store all files in file_cacher.
+        all_stored_entries: list[tuple[str, str]] = []  # (filename, digest)
+        for filename, content in planned_entries:
             try:
-                # Always store the original upload.
-                orig_digest = self.service.file_cacher.put_file_content(
-                    body, "Task manager for %s" % task_name)
-                all_stored_entries.append((filename, orig_digest))
-                # If compilation happened, also store compiled executable.
-                if compiled_bytes is not None and compiled_filename is not None:
-                    comp_digest = self.service.file_cacher.put_file_content(
-                        compiled_bytes, "Compiled task manager for %s" % task_name)
-                    all_stored_entries.append((compiled_filename, comp_digest))
+                digest = self.service.file_cacher.put_file_content(
+                    content, "Task manager for %s" % task_name)
+                all_stored_entries.append((filename, digest))
             except Exception as error:
                 self.service.add_notification(
                     make_datetime(),
@@ -468,6 +470,7 @@ class AddManagerHandler(BaseHandler):
                 self.redirect(fallback_page)
                 return
 
+        # Phase 3: Update database with all manager records.
         self.sql_session = Session()
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
