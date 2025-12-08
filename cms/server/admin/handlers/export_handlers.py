@@ -283,7 +283,7 @@ class ExportTaskHandler(BaseHandler):
     """Handler for exporting a task to a zip file in YamlLoader format.
 
     """
-    @require_permission(BaseHandler.PERMISSION_ALL)
+    @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, task_id):
         task = self.safe_get_item(Task, task_id)
 
