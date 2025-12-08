@@ -159,6 +159,9 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
                 task_config['outfile'] = dataset.task_type_parameters[1][1]
                 if len(dataset.task_type_parameters) >= 4 and dataset.task_type_parameters[2] == "realprecision":
                     task_config['exponent'] = dataset.task_type_parameters[3]
+            elif dataset.task_type == "OutputOnly" and len(dataset.task_type_parameters) >= 2:
+                if dataset.task_type_parameters[0] == "realprecision":
+                    task_config['exponent'] = dataset.task_type_parameters[1]
             elif dataset.task_type == "Communication" and len(dataset.task_type_parameters) >= 3:
                 task_config['num_processes'] = dataset.task_type_parameters[0]
                 task_config['user_io'] = dataset.task_type_parameters[2]
