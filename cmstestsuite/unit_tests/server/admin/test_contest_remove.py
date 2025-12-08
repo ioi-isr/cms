@@ -4,6 +4,7 @@ import unittest
 from uuid import uuid4
 
 from cms.db import Contest, Task, SessionGen
+from cms.server.admin.handlers.contest import remove_contest_with_action
 from sqlalchemy import func
 
 
@@ -30,25 +31,11 @@ class TestContestRemoveWithTaskHandling(unittest.TestCase):
             session.add_all([task1, task2, task3])
             session.flush()
             
-            source_tasks = session.query(Task)\
-                .filter(Task.contest == source_contest)\
-                .order_by(Task.num)\
-                .all()
+            task1_name = task1.name
+            task2_name = task2.name
+            task3_name = task3.name
             
-            max_num = session.query(func.max(Task.num))\
-                .filter(Task.contest == target_contest)\
-                .scalar()
-            base_num = (max_num or -1) + 1
-            
-            for i, task in enumerate(source_tasks):
-                task.contest = None
-                task.num = None
-                session.flush()
-                task.contest = target_contest
-                task.num = base_num + i
-                session.flush()
-            
-            session.delete(source_contest)
+            remove_contest_with_action(session, source_contest, "move", target_contest)
             session.commit()
             
             moved_tasks = session.query(Task)\
@@ -57,9 +44,9 @@ class TestContestRemoveWithTaskHandling(unittest.TestCase):
                 .all()
             
             self.assertEqual(len(moved_tasks), 3)
-            self.assertEqual(moved_tasks[0].name, task1.name)
-            self.assertEqual(moved_tasks[1].name, task2.name)
-            self.assertEqual(moved_tasks[2].name, task3.name)
+            self.assertEqual(moved_tasks[0].name, task1_name)
+            self.assertEqual(moved_tasks[1].name, task2_name)
+            self.assertEqual(moved_tasks[2].name, task3_name)
             self.assertEqual(moved_tasks[0].num, 0)
             self.assertEqual(moved_tasks[1].num, 1)
             self.assertEqual(moved_tasks[2].num, 2)
@@ -78,16 +65,7 @@ class TestContestRemoveWithTaskHandling(unittest.TestCase):
             
             task_ids = [task1.id, task2.id]
             
-            tasks = session.query(Task)\
-                .filter(Task.contest == contest)\
-                .all()
-            
-            for task in tasks:
-                task.contest = None
-                task.num = None
-                session.flush()
-            
-            session.delete(contest)
+            remove_contest_with_action(session, contest, "detach", None)
             session.commit()
             
             detached_tasks = session.query(Task)\
@@ -114,7 +92,7 @@ class TestContestRemoveWithTaskHandling(unittest.TestCase):
             
             task_ids = [task1.id, task2.id]
             
-            session.delete(contest)
+            remove_contest_with_action(session, contest, "delete_all", None)
             session.commit()
             
             remaining_tasks = session.query(Task)\
@@ -124,7 +102,12 @@ class TestContestRemoveWithTaskHandling(unittest.TestCase):
             self.assertEqual(len(remaining_tasks), 0)
 
     def test_move_tasks_with_gaps_in_target_contest(self):
-        """Test moving tasks when target contest has gaps in num values."""
+        """Test moving tasks when target contest has gaps in num values.
+        
+        Gaps in num values can occur during imports or manual database edits.
+        This test verifies that the move logic correctly appends tasks after
+        the maximum num value, even when gaps exist in the target contest.
+        """
         with SessionGen() as session:
             source_contest = Contest(name=f"source_contest_{uid()}", description="Source")
             target_contest = Contest(name=f"target_contest_{uid()}", description="Target")
@@ -141,16 +124,9 @@ class TestContestRemoveWithTaskHandling(unittest.TestCase):
             session.add_all([target_task1, target_task2, source_task])
             session.flush()
             
-            max_num = session.query(func.max(Task.num))\
-                .filter(Task.contest == target_contest)\
-                .scalar()
-            base_num = (max_num or -1) + 1
+            source_task_name = source_task.name
             
-            source_task.contest = target_contest
-            source_task.num = base_num
-            session.flush()
-            
-            session.delete(source_contest)
+            remove_contest_with_action(session, source_contest, "move", target_contest)
             session.commit()
             
             all_tasks = session.query(Task)\
@@ -162,7 +138,7 @@ class TestContestRemoveWithTaskHandling(unittest.TestCase):
             self.assertEqual(all_tasks[0].num, 0)
             self.assertEqual(all_tasks[1].num, 5)
             self.assertEqual(all_tasks[2].num, 6)
-            self.assertEqual(all_tasks[2].name, source_task.name)
+            self.assertEqual(all_tasks[2].name, source_task_name)
 
 
 if __name__ == '__main__':
