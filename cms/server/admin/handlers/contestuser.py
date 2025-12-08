@@ -227,6 +227,10 @@ class ParticipationHandler(BaseHandler):
             password = self.get_argument("password", "")
             if len(password) > 0:
                 user_inputs = [participation.user.username]
+                if participation.user.first_name:
+                    user_inputs.append(participation.user.first_name)
+                if participation.user.last_name:
+                    user_inputs.append(participation.user.last_name)
                 if participation.user.email:
                     user_inputs.append(participation.user.email)
                 validate_password_strength(password, user_inputs)
