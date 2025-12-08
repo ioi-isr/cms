@@ -343,7 +343,7 @@ class ExportContestHandler(BaseHandler):
     """Handler for exporting a contest to a zip file in YamlLoader format.
 
     """
-    @require_permission(BaseHandler.PERMISSION_ALL)
+    @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
         contest = self.safe_get_item(Contest, contest_id)
 
