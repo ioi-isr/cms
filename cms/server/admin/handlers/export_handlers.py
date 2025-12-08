@@ -29,6 +29,8 @@ import zipfile
 import yaml
 
 from cms.db import Contest, Task
+from cms.grading.languagemanager import SOURCE_EXTS
+from cms.grading.tasktypes.util import get_allowed_manager_basenames
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -83,7 +85,19 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
             with tests_zip.open(output_template_py % testcase.codename, 'w') as fout:
                 file_cacher.get_file_to_fobj(testcase.output, fout)
 
+    allowed_basenames = get_allowed_manager_basenames(dataset.task_type)
+    manager_filenames = set(dataset.managers.keys())
+    source_basenames = set()
+    for filename in manager_filenames:
+        basename, ext = os.path.splitext(filename)
+        if ext in SOURCE_EXTS and basename in allowed_basenames:
+            source_basenames.add(basename)
+
     for filename, manager in dataset.managers.items():
+        basename, ext = os.path.splitext(filename)
+        if basename in allowed_basenames and basename in source_basenames:
+            if ext not in SOURCE_EXTS:
+                continue
         manager_path = os.path.join(managers_dir, filename)
         file_cacher.get_file_to_path(manager.digest, manager_path)
 
@@ -145,8 +159,9 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
                 task_config['outfile'] = dataset.task_type_parameters[1][1]
                 if len(dataset.task_type_parameters) >= 4 and dataset.task_type_parameters[2] == "realprecision":
                     task_config['exponent'] = dataset.task_type_parameters[3]
-            elif dataset.task_type == "OutputOnly":
-                task_config['output_only'] = True
+            elif dataset.task_type == "Communication" and len(dataset.task_type_parameters) >= 3:
+                task_config['num_processes'] = dataset.task_type_parameters[0]
+                task_config['user_io'] = dataset.task_type_parameters[2]
 
     if dataset.score_type:
         task_config['score_type'] = dataset.score_type
