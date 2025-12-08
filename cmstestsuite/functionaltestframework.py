@@ -35,7 +35,7 @@ from cmstestsuite.web import Browser
 from cmstestsuite.web.AWSRequests import \
     AWSLoginRequest, AWSSubmissionViewRequest, AWSUserTestViewRequest
 from cmstestsuite.web.CWSRequests import \
-    CWSLoginRequest, SubmitRequest, SubmitUserTestRequest
+    CWSLoginRequest, StartRequest, SubmitRequest, SubmitUserTestRequest
 
 
 logger = logging.getLogger(__name__)
@@ -157,6 +157,32 @@ class FunctionalTestFramework:
     def admin_req(self, path, args=None, files=None):
         browser = self.get_aws_browser()
         return browser.do_request(self.AWS_BASE_URL + '/' + path, args, files)
+
+    def admin_delete(self, path):
+        browser = self.get_aws_browser()
+        return browser.do_delete(self.AWS_BASE_URL + '/' + path)
+
+    def add_folder(self, name: str, description: str, parent_id: int | None = None) -> int:
+        args = {"name": name, "description": description}
+        if parent_id is not None:
+            args["parent_id"] = str(parent_id)
+        resp = self.admin_req('folders/add', args=args)
+        if not resp.url or not resp.url.endswith('/folders'):
+            raise TestException("Unable to create folder.")
+        m = re.search(r'<a class="bold" href="[^"]*/folder/(\d+)">\s*' + re.escape(name) + r'\s*</a>', resp.text)
+        if not m:
+            raise TestException("Unable to find created folder ID.")
+        return int(m.group(1))
+
+    def set_contest_folder(self, contest_id: int, folder_id: int | None):
+        args = {}
+        args["folder_id"] = str(folder_id) if folder_id is not None else "none"
+        self.admin_req(f'contest/{contest_id}', args=args)
+
+    def delete_folder(self, folder_id: int):
+        resp = self.admin_delete(f'folders/{folder_id}/remove')
+        if resp.status_code not in [200, 302]:
+            raise TestException("Unable to delete folder.")
 
     def get_tasks(self) -> dict[str, dict[str, str]]:
         """Return the existing tasks
@@ -315,11 +341,25 @@ class FunctionalTestFramework:
         """Inform the framework of an existing user"""
         self.created_users[user_id] = kwargs
 
+    def cws_start(self, user_id):
+        """Press the start button for a user.
+        
+        This is required before submitting or viewing tasks in regular contests.
+        Silently succeeds if the user has already started or if starting is not
+        allowed (wrong phase).
+        """
+        browser = self.get_cws_browser(user_id)
+        sr = StartRequest(browser, base_url=self.CWS_BASE_URL)
+        sr.execute()
+
     def cws_submit(self, task_id, user_id,
                    submission_format, filenames, language):
         task = (task_id, self.created_tasks[task_id]['name'])
 
         browser = self.get_cws_browser(user_id)
+        
+        self.cws_start(user_id)
+        
         sr = SubmitRequest(browser, task, base_url=self.CWS_BASE_URL,
                            submission_format=submission_format,
                            filenames=filenames, language=language)

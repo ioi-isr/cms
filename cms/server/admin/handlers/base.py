@@ -51,8 +51,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, subqueryload
 
 from cms import __version__, config
-from cms.db import Admin, Contest, Participation, Question, Submission, \
-    SubmissionResult, Task, Team, User, UserTest
+from cms.db import Admin, Contest, DelayRequest, Participation, Question, \
+    Submission, SubmissionResult, Task, Team, User, UserTest
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
@@ -339,6 +339,11 @@ class BaseHandler(CommonRequestHandler):
                 .filter(Participation.contest_id == self.contest.id)\
                 .filter(Question.reply_timestamp.is_(None))\
                 .filter(Question.ignored.is_(False))\
+                .count()
+            params["unanswered_delay_requests"] = self.sql_session.query(DelayRequest)\
+                .join(Participation)\
+                .filter(Participation.contest_id == self.contest.id)\
+                .filter(DelayRequest.status == 'pending')\
                 .count()
         # TODO: not all pages require all these data.
         # TODO: use a better sorting method.

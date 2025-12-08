@@ -6,6 +6,7 @@ function showTaskTypeOption(dataset_id) {
     var selector = $("select[name=task_type_" + dataset_id + "]")[0];
     $(".TaskTypeOptions_" + dataset_id + ":visible").hide("fast");
     $("#TaskType" + selector.options[selector.selectedIndex].value + "Options_" + dataset_id).show("fast")
+    updateRealPrecOptions(dataset_id);
 };
 
 {% for dataset in task.datasets %}
@@ -14,6 +15,30 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
     showTaskTypeOption({{ dataset.id }});
 });
 {% endfor %}
+
+function updateRealPrecOptions(dataset_id) {
+  var visible = $(".TaskTypeOptions_" + dataset_id + ":visible");
+  visible.each(function() {
+    var table = $(this);
+    var evalSelect = table.find("select[name$='_output_eval']");
+    if (evalSelect.length == 0) return;
+    var val = evalSelect.val();
+    var row = table.find("tr.param_row[data-param-short='realprec_exp']");
+    if (val === 'realprecision') {
+      row.show();
+    } else {
+      row.hide();
+    }
+  });
+}
+
+$(document).ready(function() {
+  {% for dataset in task.datasets %}
+  $(".TaskTypeOptions_{{ dataset.id }} select[name$='_output_eval']").change(function(){
+    updateRealPrecOptions({{ dataset.id }});
+  });
+  {% endfor %}
+});
 
 {% endblock js_init %}
 
@@ -84,7 +109,7 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
             <tbody>
             {% for statement in task.statements.values() %}
               <tr>
-                <td><a href="{{ url("file", statement.digest, "statement.pdf") }}">Statement for language "{{ statement.language }}"</a></td>
+                <td><a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}">Statement for language "{{ statement.language }}"</a></td>
                 <td>
                   <label>
                     <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} />
@@ -393,7 +418,7 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
             {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
               {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
               {% set parameter_value = parameters[i] if dataset.task_type == task_type_name and parameters is not none and i < parameters|length else none %}
-              <tr>
+              <tr class="param_row" data-param-short="{{ param_def.short_name }}">
                 <td>{{ param_def.name }}</td>
                 <td>
                   {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value)|safe }}
@@ -477,6 +502,9 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
             <th>#</th>
             <th>Codename</th>
             <th>Public</th>
+            {% if dataset.id in testcase_subtasks %}
+            <th>Subtasks</th>
+            {% endif %}
             <th>Input</th>
             <th>Output</th>
             <th>Ops</th>
@@ -490,6 +518,24 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
             <td style="font-weight:bold;">
               <input type="checkbox" name="testcase_{{ testcase.id }}_public" {% if testcase.public %}checked{% endif %} />
             </td>
+            {% if dataset.id in testcase_subtasks %}
+            <td>
+              {% if codename in testcase_subtasks[dataset.id] %}
+                {% set subtask_indices = testcase_subtasks[dataset.id][codename] %}
+                {% set display_names = [] %}
+                {% for idx in subtask_indices %}
+                  {% if dataset.id in subtask_names and idx in subtask_names[dataset.id] %}
+                    {% set _ = display_names.append(subtask_names[dataset.id][idx]) %}
+                  {% else %}
+                    {% set _ = display_names.append(idx) %}
+                  {% endif %}
+                {% endfor %}
+                {{ display_names|join(", ") }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            {% endif %}
             <td>
               <a href="javascript:void(0);" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')">Show input</a>
             </td>

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}
+    {% trans %}Choose a contest{% endtrans %}
+{% endblock title %}
+{% block body %}
+    <div class="hero-unit contest-list">
+        <h3>{% trans %}Choose a contest{% endtrans %}</h3>
+
+        <p id="breadcrumb-nav">
+            <a href="{{ url("browse") }}" data-path="">/</a>
+            {% if breadcrumbs and breadcrumbs|length > 0 %}
+            {% for f in breadcrumbs %}
+              / {{ f.description }}
+            {% endfor %}
+            {% if breadcrumbs|length > 0 %}
+              &nbsp; <a href="{{ url("browse", *breadcrumbs[:-1]|map(attribute='name')) if breadcrumbs|length > 1 else url("browse") }}" data-path="{{ "/".join(breadcrumbs[:-1]|map(attribute='name')) if breadcrumbs|length > 1 else "" }}">(Up)</a>
+            {% endif %}
+            {% endif %}
+        </p>
+
+        <ul class="nav nav-list" id="folder-list">
+            {% for f in subfolders %}
+            <li>
+                <a href="{{ folder_href(f) }}" data-folder="{{ f.name }}">📁 {{ f.description }}</a>
+            </li>
+            {% endfor %}
+            {% for c in contests|sort(attribute='name') %}
+            <li>
+                <a {% if c.stop < now %} style="color: #adadad" {% endif %} href="{{ contest_href(c) }}">{{ c.description }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <script type="application/json" id="folder-tree-data">
+        {{ folder_tree|tojson }}
+    </script>
+
+    <script>
+    (function() {
+        var folderTree = JSON.parse(document.getElementById('folder-tree-data').textContent);
+        var currentPath = "{{ current_path }}";
+        var base = "{{ url("browse") }}";
+        var urlBase = ('/' + base.replace(/^\/+/, '')).replace(/\/+$/, '');
+        var now = new Date("{{ now.isoformat() }}");
+
+        function encodePathSegments(segments) {
+            return segments.map(function(s) { return encodeURIComponent(s); }).join('/');
+        }
+
+        function navigateToPath(path, options) {
+            options = options || {};
+            var fromPopstate = options.fromPopstate || false;
+            var segments = path ? path.split('/').filter(function(s) { return s; }) : [];
+            var current = folderTree;
+            var breadcrumbs = [];
+
+            for (var i = 0; i < segments.length; i++) {
+                var seg = segments[i];
+                var found = false;
+                for (var j = 0; j < current.children.length; j++) {
+                    if (current.children[j].name === seg) {
+                        breadcrumbs.push(current.children[j]);
+                        current = current.children[j];
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return;
+                }
+            }
+
+            var breadcrumbNav = document.getElementById('breadcrumb-nav');
+            while (breadcrumbNav.firstChild) {
+                breadcrumbNav.removeChild(breadcrumbNav.firstChild);
+            }
+            
+            var rootLink = document.createElement('a');
+            rootLink.href = urlBase;
+            rootLink.setAttribute('data-path', '');
+            rootLink.textContent = '/';
+            breadcrumbNav.appendChild(rootLink);
+            
+            if (breadcrumbs.length > 0) {
+                for (var i = 0; i < breadcrumbs.length; i++) {
+                    breadcrumbNav.appendChild(document.createTextNode(' / '));
+                    var descText = document.createTextNode(breadcrumbs[i].description);
+                    breadcrumbNav.appendChild(descText);
+                }
+                
+                var upSegments = segments.slice(0, -1);
+                var upPath = upSegments.join('/');
+                var upUrl = upSegments.length > 0 ? urlBase + '/' + encodePathSegments(upSegments) : urlBase;
+                
+                breadcrumbNav.appendChild(document.createTextNode(' \u00A0 '));
+                var upLink = document.createElement('a');
+                upLink.href = upUrl;
+                upLink.setAttribute('data-path', upPath);
+                upLink.textContent = '(Up)';
+                breadcrumbNav.appendChild(upLink);
+            }
+
+            var folderList = document.getElementById('folder-list');
+            while (folderList.firstChild) {
+                folderList.removeChild(folderList.firstChild);
+            }
+
+            current.children.sort(function(a, b) {
+                return a.name.localeCompare(b.name);
+            });
+
+            for (var i = 0; i < current.children.length; i++) {
+                var folder = current.children[i];
+                var folderSegments = segments.concat([folder.name]);
+                var folderPath = encodePathSegments(folderSegments);
+                var li = document.createElement('li');
+                var a = document.createElement('a');
+                a.href = urlBase + '/' + folderPath;
+                a.setAttribute('data-folder', folder.name);
+                a.textContent = '📁 ' + folder.description;
+                li.appendChild(a);
+                folderList.appendChild(li);
+            }
+
+            current.contests.sort(function(a, b) {
+                return a.name.localeCompare(b.name);
+            });
+
+            for (var i = 0; i < current.contests.length; i++) {
+                var contest = current.contests[i];
+                var contestSegments = segments.concat([contest.name]);
+                var contestPath = encodePathSegments(contestSegments);
+                var li = document.createElement('li');
+                var a = document.createElement('a');
+                a.href = '/' + contestPath;
+                a.textContent = contest.description;
+                
+                if (contest.stop && new Date(contest.stop) < now) {
+                    a.style.color = '#adadad';
+                }
+                
+                li.appendChild(a);
+                folderList.appendChild(li);
+            }
+
+            currentPath = path;
+            if (window.history && window.history.pushState && !fromPopstate) {
+                var newUrl = path ? urlBase + '/' + encodePathSegments(segments) : urlBase;
+                window.history.pushState({path: path}, '', newUrl);
+            }
+        }
+
+        document.getElementById('folder-list').addEventListener('click', function(e) {
+            var link = e.target.closest('a[data-folder]');
+            if (!link) return;
+            e.preventDefault();
+            var folderName = link.getAttribute('data-folder');
+            var newPath = currentPath ? currentPath + '/' + folderName : folderName;
+            navigateToPath(newPath);
+        });
+
+        document.getElementById('breadcrumb-nav').addEventListener('click', function(e) {
+            var link = e.target.closest('a[data-path]');
+            if (!link) return;
+            e.preventDefault();
+            navigateToPath(link.getAttribute('data-path'));
+        });
+
+        if (window.history && window.history.pushState) {
+            window.addEventListener('popstate', function(e) {
+                if (e.state && e.state.path !== undefined) {
+                    navigateToPath(e.state.path, {fromPopstate: true});
+                }
+            });
+        }
+    })();
+    </script>
+{% endblock body %}

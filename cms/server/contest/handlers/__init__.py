@@ -52,6 +52,8 @@ from .main import \
 from .communication import \
     CommunicationHandler, \
     QuestionHandler
+from .delayrequest import \
+    DelayRequestHandler
 from .api import \
     ApiLoginHandler, \
     ApiSubmissionListHandler, \
@@ -101,6 +103,7 @@ HANDLERS = [
 
     (r"/communication", CommunicationHandler),
     (r"/question", QuestionHandler),
+    (r"/delay_request", DelayRequestHandler),
 
     # API
     (r"/api/login", ApiLoginHandler),

@@ -1045,6 +1045,54 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         return True
 
     @rpc_method
+    def set_workers_count(self, count: int) -> bool:
+        """Enable workers 0 to count-1 and disable the rest.
+
+        count: the number of workers to enable (workers 0 to count-1).
+
+        returns: True if everything went well.
+
+        """
+        logger.info("Received request to set active workers count to %s.", count)
+        
+        pool = self.get_executor().pool
+        total_workers = len(pool)
+        
+        if count < 0 or count > total_workers:
+            logger.warning("Invalid worker count %s (total workers: %s).", 
+                         count, total_workers)
+            return False
+        
+        lost_operations = []
+        
+        for shard in range(total_workers):
+            current_status = pool._operations.get(shard)
+            
+            if shard < count:
+                if current_status == WorkerPool.WORKER_DISABLED:
+                    try:
+                        pool.enable_worker(shard)
+                        logger.info("Enabled worker %s.", shard)
+                    except ValueError as e:
+                        logger.warning("Failed to enable worker %s: %s", shard, e)
+            else:
+                if current_status != WorkerPool.WORKER_DISABLED:
+                    try:
+                        ops = pool.disable_worker(shard)
+                        lost_operations.extend(ops)
+                        logger.info("Disabled worker %s.", shard)
+                    except ValueError as e:
+                        logger.warning("Failed to disable worker %s: %s", shard, e)
+        
+        for operation in lost_operations:
+            logger.info("Operation %s put again in the queue because "
+                       "the worker was disabled.", operation)
+            priority, timestamp = operation.side_data
+            self.enqueue(operation, priority, timestamp)
+        
+        return True
+
+    @rpc_method
     def queue_status(self) -> list[QueueEntryDict]:
         """Return the status of the queue.
 

@@ -46,6 +46,25 @@ class CWSLoginRequest(LoginRequest):
         return True
 
 
+class StartRequest(GenericRequest):
+    """Press the start button in CWS.
+
+    """
+
+    def __init__(self, browser, base_url=None):
+        GenericRequest.__init__(self, browser, base_url)
+        self.url = "%s/start" % self.base_url
+        self.data = {}
+
+    def describe(self):
+        return "press start button"
+
+    def test_success(self):
+        if not GenericRequest.test_success(self):
+            return False
+        return True
+
+
 class HomepageRequest(GenericRequest):
     """Load the main page of CWS.
 

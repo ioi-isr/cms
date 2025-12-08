@@ -28,8 +28,10 @@
 
 """
 
+from datetime import timedelta
+
 from cms import ServiceCoord, get_service_shards, get_service_address
-from cms.db import Contest, Participation, Submission, Task
+from cms.db import Contest, Participation, Submission, Task, ContestFolder
 from cmscommon.datetime import make_datetime
 from sqlalchemy import func
 
@@ -117,9 +119,22 @@ class AddContestHandler(
 
 
 class ContestHandler(SimpleContestHandler("contest.html")):
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id: str):
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        self.r_params = self.render_params()
+        self.r_params["all_folders"] = (
+            self.sql_session.query(ContestFolder)
+            .order_by(ContestFolder.name)
+            .all()
+        )
+        self.render("contest.html", **self.r_params)
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, contest_id: str):
         contest = self.safe_get_item(Contest, contest_id)
+
+        old_start = contest.start
 
         try:
             attrs = contest.get_attrs()
@@ -174,8 +189,23 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_datetime(attrs, "analysis_start")
             self.get_datetime(attrs, "analysis_stop")
 
-            # Update the contest.
+            # Update the contest first
             contest.set_attrs(attrs)
+
+            # Folder assignment (relationship)
+            folder_id_str = self.get_argument("folder_id", None)
+            if folder_id_str is None or folder_id_str == "" or folder_id_str == "none":
+                contest.folder = None
+            else:
+                contest.folder = self.safe_get_item(ContestFolder, int(folder_id_str))
+
+            new_start = attrs.get("start")
+            if new_start is not None and new_start != old_start:
+                time_diff = old_start - new_start
+                for participation in contest.participations:
+                    if participation.delay_time > timedelta():
+                        new_delay = participation.delay_time + time_diff
+                        participation.delay_time = max(new_delay, timedelta())
 
         except Exception as error:
             self.service.add_notification(

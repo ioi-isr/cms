@@ -43,6 +43,15 @@ from .contestquestion import \
     QuestionReplyHandler, \
     QuestionIgnoreHandler, \
     QuestionClaimHandler
+from .contestdelayrequest import \
+    DelaysAndExtraTimesHandler, \
+    DelayRequestApproveHandler, \
+    DelayRequestRejectHandler, \
+    RemoveDelayAndExtraTimeHandler, \
+    ExportDelaysAndExtraTimesHandler, \
+    RemoveAllDelaysAndExtraTimesHandler, \
+    EraseAllStartTimesHandler, \
+    ResetAllIPAddressesHandler
 from .contestranking import \
     RankingHandler
 from .contestsubmission import \
@@ -82,6 +91,10 @@ from .submission import \
     SubmissionOfficialStatusHandler, \
     SubmissionFileHandler, \
     SubmissionDiffHandler
+from .submissiondownload import \
+    DownloadTaskSubmissionsHandler, \
+    DownloadUserContestSubmissionsHandler, \
+    DownloadContestSubmissionsHandler
 from .task import (
     AddTaskHandler,
     TaskHandler,
@@ -108,6 +121,11 @@ from .user import \
 from .usertest import \
     UserTestHandler, \
     UserTestFileHandler
+from .folder import \
+    FolderListHandler, \
+    FolderHandler, \
+    AddFolderHandler, \
+    RemoveFolderHandler
 
 
 HANDLERS = [
@@ -147,6 +165,8 @@ HANDLERS = [
     # Contest's submissions / user tests
 
     (r"/contest/([0-9]+)/submissions", ContestSubmissionsHandler),
+    (r"/contest/([0-9]+)/submissions/download", DownloadContestSubmissionsHandler),
+    (r"/contest/([0-9]+)/user/([0-9]+)/submissions/download", DownloadUserContestSubmissionsHandler),
     (r"/contest/([0-9]+)/user_tests", ContestUserTestsHandler),
 
     # Contest's announcements
@@ -163,6 +183,17 @@ HANDLERS = [
     (r"/contest/([0-9]+)/question/([0-9]+)/ignore", QuestionIgnoreHandler),
     (r"/contest/([0-9]+)/question/([0-9]+)/claim", QuestionClaimHandler),
 
+    # Contest's delay requests and extra times
+
+    (r"/contest/([0-9]+)/delays_and_extra_times", DelaysAndExtraTimesHandler),
+    (r"/contest/([0-9]+)/delays_and_extra_times/export", ExportDelaysAndExtraTimesHandler),
+    (r"/contest/([0-9]+)/delays_and_extra_times/remove_all", RemoveAllDelaysAndExtraTimesHandler),
+    (r"/contest/([0-9]+)/delays_and_extra_times/erase_start_times", EraseAllStartTimesHandler),
+    (r"/contest/([0-9]+)/delays_and_extra_times/reset_ip_addresses", ResetAllIPAddressesHandler),
+    (r"/contest/([0-9]+)/delay_request/([0-9]+)/approve", DelayRequestApproveHandler),
+    (r"/contest/([0-9]+)/delay_request/([0-9]+)/reject", DelayRequestRejectHandler),
+    (r"/contest/([0-9]+)/participation/([0-9]+)/remove_delay_and_extra_time", RemoveDelayAndExtraTimeHandler),
+
     # Contest's ranking
 
     (r"/contest/([0-9]+)/ranking", RankingHandler),
@@ -174,6 +205,7 @@ HANDLERS = [
     (r"/tasks/([0-9]+)/remove", RemoveTaskHandler),
     (r"/tasks/add", AddTaskHandler),
     (r"/task/([0-9]+)", TaskHandler),
+    (r"/task/([0-9]+)/submissions/download", DownloadTaskSubmissionsHandler),
     (r"/task/([0-9]+)/add_dataset", AddDatasetHandler),
     (r"/task/([0-9]+)/statements/add", AddStatementHandler),
     (r"/task/([0-9]+)/statement/([0-9]+)", StatementHandler),
@@ -208,6 +240,12 @@ HANDLERS = [
     (r"/team/([0-9]+)", TeamHandler),
     (r"/user/([0-9]+)/add_participation", AddParticipationHandler),
     (r"/user/([0-9]+)/edit_participation", EditParticipationHandler),
+
+    # Folders
+    (r"/folders", FolderListHandler),
+    (r"/folders/([0-9]+)/remove", RemoveFolderHandler),
+    (r"/folders/add", AddFolderHandler),
+    (r"/folder/([0-9]+)", FolderHandler),
 
     # Admins
 

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Remove Folder</h1>
+  </div>
+
+{% if admin.permission_all %}
+<p>
+  Are you sure you want to remove folder <strong>{{ folder.description }}</strong>?
+  <br>
+  Subfolders will be moved under the parent of this folder (or to root if none). Contests in this folder ({{ contest_count }}) will be moved under the same parent (or to root if none).
+  <br>
+  This operation cannot be undone.
+</p>
+<br>
+<a onclick="CMS.AWSUtils.ajax_delete('{{ url("folders", folder.id, "remove") }}');" class="button-link">Yes, remove</a>
+<a href="{{ url("folders") }}" class="button-link">No</a>
+
+{% else %}
+You do not have permission to remove a folder.
+{% endif %}
+
+{% endblock core %}

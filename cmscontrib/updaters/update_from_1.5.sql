@@ -1,3 +1,43 @@
+-- Add contest_folders table and folder_id on contests
+CREATE TABLE public.contest_folders (
+    id integer NOT NULL,
+    name public.codename NOT NULL,
+    description character varying NOT NULL,
+    parent_id integer,
+    hidden boolean NOT NULL DEFAULT false
+);
+
+CREATE SEQUENCE public.contest_folders_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.contest_folders_id_seq OWNED BY public.contest_folders.id;
+
+ALTER TABLE ONLY public.contest_folders
+    ALTER COLUMN id SET DEFAULT nextval('public.contest_folders_id_seq'::regclass);
+
+ALTER TABLE ONLY public.contest_folders
+    ADD CONSTRAINT contest_folders_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.contest_folders
+    ADD CONSTRAINT contest_folders_name_key UNIQUE (name);
+
+ALTER TABLE ONLY public.contest_folders
+    ADD CONSTRAINT contest_folders_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.contest_folders(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+CREATE INDEX ix_contest_folders_parent_id ON public.contest_folders USING btree (parent_id);
+
+ALTER TABLE ONLY public.contest_folders
+    ALTER COLUMN hidden DROP DEFAULT;
+
+ALTER TABLE public.contests ADD COLUMN folder_id integer;
+ALTER TABLE ONLY public.contests
+    ADD CONSTRAINT contests_folder_id_fkey FOREIGN KEY (folder_id) REFERENCES public.contest_folders(id) ON UPDATE CASCADE ON DELETE SET NULL;
+CREATE INDEX ix_contests_folder_id ON public.contests (folder_id);
 BEGIN;
 
 -- https://github.com/cms-dev/cms/pull/1378
@@ -44,5 +84,46 @@ ALTER TABLE user_test_results DROP COLUMN evaluation_sandbox;
 
 -- https://github.com/cms-dev/cms/pull/1486
 ALTER TABLE public.tasks ADD COLUMN allowed_languages varchar[];
+
+-- https://github.com/ioi-isr/cms/pull/22
+CREATE TABLE public.delay_requests (
+    id integer NOT NULL,
+    request_timestamp timestamp without time zone NOT NULL,
+    requested_start_time timestamp without time zone NOT NULL,
+    reason character varying NOT NULL,
+    status character varying NOT NULL,
+    processed_timestamp timestamp without time zone,
+    participation_id integer NOT NULL,
+    admin_id integer
+);
+
+CREATE SEQUENCE public.delay_requests_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.delay_requests_id_seq OWNED BY public.delay_requests.id;
+
+ALTER TABLE ONLY public.delay_requests ALTER COLUMN id SET DEFAULT nextval('public.delay_requests_id_seq'::regclass);
+
+ALTER TABLE ONLY public.delay_requests ADD CONSTRAINT delay_requests_pkey PRIMARY KEY (id);
+
+CREATE INDEX ix_delay_requests_participation_id ON public.delay_requests USING btree (participation_id);
+
+CREATE INDEX ix_delay_requests_admin_id ON public.delay_requests USING btree (admin_id);
+
+ALTER TABLE ONLY public.delay_requests ADD CONSTRAINT delay_requests_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.delay_requests ADD CONSTRAINT delay_requests_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.admins(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+-- https://github.com/ioi-isr/cms/pull/31
+ALTER TABLE ONLY public.contests DROP CONSTRAINT contests_check1;
+ALTER TABLE ONLY public.contests ADD CONSTRAINT contests_check1 CHECK (((per_user_time IS NULL) AND (stop <= analysis_start)) OR ((per_user_time IS NOT NULL) AND ((start + per_user_time) <= analysis_start)));
+
+-- https://github.com/ioi-isr/cms/pull/35
+ALTER TABLE public.participations ADD COLUMN starting_ip_addresses character varying;
 
 COMMIT;

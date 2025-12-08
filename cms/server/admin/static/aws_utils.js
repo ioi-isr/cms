@@ -209,6 +209,9 @@ CMS.AWSUtils.prototype.display_notification = function(type, timestamp,
     } else if (type == "new_question") {
         subject_string = $("<a>").text("New question: ")
             .prop("href", this.url("contest", contest_id, "questions"));
+    } else if (type == "new_delay_request") {
+        subject_string = $("<a>").text("New delay request: ")
+            .prop("href", this.url("contest", contest_id, "delays_and_extra_times"));
     }
 
     var self = this;

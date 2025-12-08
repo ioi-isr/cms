@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Folders</h1>
+  <div class="tools">
+    <a class="button" href="{{ url("folders", "add") }}">Add folder</a>
+  </div>
+  <div class="clearer"></div>
+</div>
+
+<table class="entities_table">
+  <tr>
+    <th>Codename</th>
+    <th>Description</th>
+    <th>Parent</th>
+    <th>Actions</th>
+  </tr>
+  {% for f in folders %}
+  <tr>
+    <td><a class="bold" href="{{ url("folder", f.id) }}">{{ f.name }}</a></td>
+    <td>{{ f.description }}</td>
+    <td>{{ f.parent.description if f.parent is not none else "(root)" }}</td>
+    <td>
+      <a href="{{ url('folders', f.id, 'remove') }}">Remove</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>Root (no folder)</h2>
+<ul>
+  {% if root_contests|length == 0 %}
+    <li>(no contests at root)</li>
+  {% else %}
+    {% for c in root_contests %}
+      <li><a href="{{ url("contest", c.id) }}">{{ c.description }}</a></li>
+    {% endfor %}
+  {% endif %}
+</ul>
+
+{% endblock core %}

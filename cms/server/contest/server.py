@@ -48,7 +48,7 @@ from cms.locale import get_translations
 from cms.server.contest.jinja2_toolbox import CWS_ENVIRONMENT
 from cmscommon.binary import hex_to_bin
 from .handlers import HANDLERS
-from .handlers.base import ContestListHandler
+from .handlers.base import ContestListHandler, ContestFolderBrowseHandler
 from .handlers.main import MainHandler
 
 
@@ -86,9 +86,14 @@ class ContestWebServer(WebService):
 
         if self.contest_id is None:
             HANDLERS.append((r"", MainHandler))
-            handlers = [(r'/', ContestListHandler)]
+            # Unprefixed routes
+            handlers = [
+                (r"/browse(?:/(.*))?", ContestFolderBrowseHandler),
+                (r"/", ContestListHandler),
+            ]
+            # Contest-prefixed routes; accept nested paths for folders
             for h in HANDLERS:
-                handlers.append((r'/([^/]+)' + h[0],) + h[1:])
+                handlers.append((r'/(.+?)' + h[0],) + h[1:])
         else:
             HANDLERS.append((r"/", MainHandler))
             handlers = HANDLERS

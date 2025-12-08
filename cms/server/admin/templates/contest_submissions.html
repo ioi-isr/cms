@@ -14,6 +14,8 @@
            admin.permission_all,
            url("contest", contest.id, "submissions"),
            contest_id=contest.id) }}
+    <br/>
+    <a href="{{ url("contest", contest.id, "submissions", "download") }}">Download all submissions</a>
   </p>
 
   {{ macro_submission.rows(
