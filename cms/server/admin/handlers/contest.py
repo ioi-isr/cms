@@ -300,7 +300,7 @@ class RemoveContestHandler(BaseHandler):
         contest = self.safe_get_item(Contest, contest_id)
         
         try:
-            action = self.get_argument("action", "delete_all")
+            action = self.get_argument("action", "detach")
             assert action in ["move", "detach", "delete_all"], \
                 "Invalid action specified"
             
