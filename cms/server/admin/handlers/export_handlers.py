@@ -154,11 +154,15 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     if dataset.task_type:
         task_config['task_type'] = dataset.task_type
         if dataset.task_type_parameters:
-            if dataset.task_type == "Batch" and len(dataset.task_type_parameters) >= 3:
+            if dataset.task_type in ("Batch", "BatchAndOutput") and len(dataset.task_type_parameters) >= 3:
                 task_config['infile'] = dataset.task_type_parameters[1][0]
                 task_config['outfile'] = dataset.task_type_parameters[1][1]
                 if len(dataset.task_type_parameters) >= 4 and dataset.task_type_parameters[2] == "realprecision":
                     task_config['exponent'] = dataset.task_type_parameters[3]
+                if dataset.task_type == "BatchAndOutput":
+                    output_only_testcases = dataset.task_type_parameters[-1]
+                    if output_only_testcases:
+                        task_config['output_only_testcases'] = output_only_testcases
             elif dataset.task_type == "OutputOnly" and len(dataset.task_type_parameters) >= 2:
                 if dataset.task_type_parameters[0] == "realprecision":
                     task_config['exponent'] = dataset.task_type_parameters[1]
