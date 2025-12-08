@@ -157,10 +157,10 @@ class ExportUsersHandler(BaseHandler):
                 password_type = "Plain text" if method == "plaintext" else "Hash"
                 password_value = payload
             except (ValueError, AttributeError):
-                password_type = "Hash"
+                password_type = "Unknown"
                 password_value = user.password
 
-            preferred_languages = ", ".join(user.preferred_languages) if user.preferred_languages else ""
+            preferred_languages = "; ".join(user.preferred_languages) if user.preferred_languages else ""
 
             writer.writerow([
                 user.first_name or "",
@@ -266,6 +266,9 @@ class ImportUsersHandler(BaseHandler):
             if not password:
                 errors.append("Password is required")
 
+            if password_type and password_type.lower() not in ["plain text", "hash"]:
+                errors.append(f"Invalid password type '{password_type}'. Must be 'Plain text' or 'Hash'")
+
             if errors:
                 failed_users.append({
                     "row": row_num,
@@ -276,7 +279,7 @@ class ImportUsersHandler(BaseHandler):
                 })
                 continue
 
-            preferred_languages = [lang.strip() for lang in preferred_languages_str.split(",") if lang.strip()]
+            preferred_languages = [lang.strip() for lang in re.split(r"[;,]", preferred_languages_str) if lang.strip()]
 
             if password_type.lower() == "plain text":
                 password_value = build_password(password, "plaintext")
