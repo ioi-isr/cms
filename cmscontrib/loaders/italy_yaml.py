@@ -666,7 +666,16 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
             args["primary_statements"] = [primary_language]
 
-        args["submission_format"] = ["%s.%%l" % name]
+        # Import submission_format if specified, otherwise use default
+        submission_format = conf.get("submission_format")
+        if submission_format is not None:
+            # Normalize to list if someone writes a scalar
+            if isinstance(submission_format, str):
+                args["submission_format"] = [submission_format]
+            else:
+                args["submission_format"] = submission_format
+        else:
+            args["submission_format"] = ["%s.%%l" % name]
 
         # Import the feedback level when explicitly set
         # (default behaviour is restricted)
@@ -683,6 +692,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             args["score_mode"] = SCORE_MODE_MAX_SUBTASK
         elif conf.get("score_mode", None) == SCORE_MODE_MAX_TOKENED_LAST:
             args["score_mode"] = SCORE_MODE_MAX_TOKENED_LAST
+
+        # Import allowed_languages if specified (for per-task language restrictions)
+        load(conf, args, "allowed_languages")
 
         # Use the new token settings format if detected.
         if "token_mode" in conf:
@@ -985,8 +997,12 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     input_value = total_value / n_input
                 args["score_type_parameters"] = input_value
 
-        # If output_only is set, then the task type is OutputOnly
-        if conf.get('output_only', False):
+        # Determine task type from config or legacy detection
+        configured_type = conf.get("task_type")
+        legacy_output_only = conf.get('output_only', False)
+        
+        # Helper to set up OutputOnly task type
+        def setup_output_only():
             args["task_type"] = "OutputOnly"
             args["time_limit"] = None
             args["memory_limit"] = None
@@ -995,92 +1011,149 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 args["task_type_parameters"].append(exponent if exponent is not None else 6)
             task.submission_format = \
                 ["output_%03d.txt" % i for i in range(n_input)]
-
-        # If there is check/manager (or equivalent), then the task
-        # type is Communication
-        else:
+        
+        # Helper to set up Communication task type
+        def setup_communication():
+            num_processes = load(conf, None, "num_processes")
+            if num_processes is None:
+                num_processes = 1
+            io_type = load(conf, None, "user_io")
+            if io_type is not None:
+                if io_type not in ["std_io", "fifo_io"]:
+                    logger.warning("user_io incorrect. Valid options "
+                                   "are 'std_io' and 'fifo_io'. "
+                                   "Ignored.")
+                    io_type = None
+            logger.info("Task type Communication")
+            args["task_type"] = "Communication"
+            args["task_type_parameters"] = \
+                [num_processes, "alone", io_type or "std_io"]
+            
+            # Look for manager in legacy locations or managers folder
+            manager_found = False
             paths = [os.path.join(self.path, "check", "manager"),
                      os.path.join(self.path, "cor", "manager")]
             for path in paths:
                 if os.path.exists(path):
-                    num_processes = load(conf, None, "num_processes")
-                    if num_processes is None:
-                        num_processes = 1
-                    io_type = load(conf, None, "user_io")
-                    if io_type is not None:
-                        if io_type not in ["std_io", "fifo_io"]:
-                            logger.warning("user_io incorrect. Valid options "
-                                           "are 'std_io' and 'fifo_io'. "
-                                           "Ignored.")
-                            io_type = None
-                    logger.info("Task type Communication")
-                    args["task_type"] = "Communication"
-                    args["task_type_parameters"] = \
-                        [num_processes, "alone", io_type or "std_io"]
                     digest = self.file_cacher.put_file_from_path(
                         path,
                         "Manager for task %s" % task.name)
                     args["managers"] += [
                         Manager("manager", digest)]
-                    for lang in LANGUAGES:
-                        stub_name = os.path.join(
-                            self.path, "sol", "stub%s" % lang.source_extension)
-                        if os.path.exists(stub_name):
-                            digest = self.file_cacher.put_file_from_path(
-                                stub_name,
-                                "Stub for task %s and language %s" % (
-                                    task.name, lang.name))
-                            args["task_type_parameters"] = \
-                                [num_processes, "stub", io_type or "fifo_io"]
-                            args["managers"] += [
-                                Manager(
-                                    "stub%s" % lang.source_extension, digest)]
-                        else:
-                            logger.warning("Stub for language %s not "
-                                           "found.", lang.name)
-                    for other_filename in os.listdir(os.path.join(self.path,
-                                                                  "sol")):
-                        if any(other_filename.endswith(header)
-                               for header in HEADER_EXTS):
-                            digest = self.file_cacher.put_file_from_path(
-                                os.path.join(self.path, "sol", other_filename),
-                                "Stub %s for task %s" % (other_filename,
-                                                         task.name))
-                            args["managers"] += [
-                                Manager(other_filename, digest)]
+                    manager_found = True
                     break
-
-            # Otherwise, the task type is Batch or BatchAndOutput
-            else:
-                args["task_type"] = "Batch"
-                args["task_type_parameters"] = [
-                    compilation_param,
-                    [infile_param, outfile_param],
-                    evaluation_param,
-                ]
-                
-                if evaluation_param == "realprecision":
-                    args["task_type_parameters"].append(exponent if exponent is not None else 6)
-
-                output_only_testcases = load(conf, None, "output_only_testcases",
-                                             conv=lambda x: "" if x is None else x)
-                output_optional_testcases = load(conf, None, "output_optional_testcases",
-                                             conv=lambda x: "" if x is None else x)
-                if len(output_only_testcases) > 0 or len(output_optional_testcases) > 0:
-                    args["task_type"] = "BatchAndOutput"
-                    output_only_codenames = set()
-                    if len(output_only_testcases) > 0:
-                        output_only_codenames = \
-                            {"%03d" % int(x.strip()) for x in output_only_testcases.split(',')}
-                        args["task_type_parameters"].append(','.join(output_only_codenames))
+            
+            # Check managers folder if not found in legacy locations
+            if not manager_found and managers_folder is not None:
+                manager_path = os.path.join(self.path, managers_folder, "manager")
+                if os.path.exists(manager_path):
+                    digest = self.file_cacher.put_file_from_path(
+                        manager_path,
+                        "Manager for task %s" % task.name)
+                    args["managers"] += [
+                        Manager("manager", digest)]
+                    manager_found = True
+            
+            if not manager_found:
+                logger.warning("Communication task but no manager found")
+            
+            # Load stubs and headers
+            if os.path.isdir(os.path.join(self.path, "sol")):
+                for lang in LANGUAGES:
+                    stub_name = os.path.join(
+                        self.path, "sol", "stub%s" % lang.source_extension)
+                    if os.path.exists(stub_name):
+                        digest = self.file_cacher.put_file_from_path(
+                            stub_name,
+                            "Stub for task %s and language %s" % (
+                                task.name, lang.name))
+                        args["task_type_parameters"] = \
+                            [num_processes, "stub", io_type or "fifo_io"]
+                        args["managers"] += [
+                            Manager(
+                                "stub%s" % lang.source_extension, digest)]
                     else:
-                        args["task_type_parameters"].append("")
-                    output_codenames = set()
-                    if len(output_optional_testcases) > 0:
-                        output_codenames = \
-                            {"%03d" % int(x.strip()) for x in output_optional_testcases.split(',')}
-                    output_codenames.update(output_only_codenames)
-                    task.submission_format.extend(["output_%s.txt" % s for s in sorted(output_codenames)])
+                        logger.warning("Stub for language %s not "
+                                       "found.", lang.name)
+                for other_filename in os.listdir(os.path.join(self.path, "sol")):
+                    if any(other_filename.endswith(header)
+                           for header in HEADER_EXTS):
+                        digest = self.file_cacher.put_file_from_path(
+                            os.path.join(self.path, "sol", other_filename),
+                            "Stub %s for task %s" % (other_filename,
+                                                     task.name))
+                        args["managers"] += [
+                            Manager(other_filename, digest)]
+        
+        # Helper to set up TwoSteps task type
+        def setup_twosteps():
+            logger.info("Task type TwoSteps")
+            args["task_type"] = "TwoSteps"
+            args["task_type_parameters"] = [evaluation_param]
+        
+        # Helper to set up Batch/BatchAndOutput task type
+        def setup_batch():
+            args["task_type"] = "Batch"
+            args["task_type_parameters"] = [
+                compilation_param,
+                [infile_param, outfile_param],
+                evaluation_param,
+            ]
+            
+            if evaluation_param == "realprecision":
+                args["task_type_parameters"].append(exponent if exponent is not None else 6)
+
+            output_only_testcases = load(conf, None, "output_only_testcases",
+                                         conv=lambda x: "" if x is None else x)
+            output_optional_testcases = load(conf, None, "output_optional_testcases",
+                                         conv=lambda x: "" if x is None else x)
+            if len(output_only_testcases) > 0 or len(output_optional_testcases) > 0:
+                args["task_type"] = "BatchAndOutput"
+                output_only_codenames = set()
+                if len(output_only_testcases) > 0:
+                    output_only_codenames = \
+                        {"%03d" % int(x.strip()) for x in output_only_testcases.split(',')}
+                    args["task_type_parameters"].append(','.join(output_only_codenames))
+                else:
+                    args["task_type_parameters"].append("")
+                output_codenames = set()
+                if len(output_optional_testcases) > 0:
+                    output_codenames = \
+                        {"%03d" % int(x.strip()) for x in output_optional_testcases.split(',')}
+                output_codenames.update(output_only_codenames)
+                task.submission_format.extend(["output_%s.txt" % s for s in sorted(output_codenames)])
+            # If task_type is explicitly BatchAndOutput but no output_only_testcases specified
+            elif configured_type == "BatchAndOutput":
+                args["task_type"] = "BatchAndOutput"
+                args["task_type_parameters"].append("")  # Empty output_only_testcases
+        
+        # Task type selection: use configured_type if present, otherwise use legacy detection
+        if configured_type == "OutputOnly":
+            setup_output_only()
+        elif configured_type == "Communication":
+            setup_communication()
+        elif configured_type == "TwoSteps":
+            setup_twosteps()
+        elif configured_type in ("Batch", "BatchAndOutput"):
+            setup_batch()
+        elif configured_type is None:
+            # Legacy detection: check output_only flag first
+            if legacy_output_only:
+                setup_output_only()
+            else:
+                # Check for Communication task via manager file presence
+                paths = [os.path.join(self.path, "check", "manager"),
+                         os.path.join(self.path, "cor", "manager")]
+                is_communication = any(os.path.exists(path) for path in paths)
+                if is_communication:
+                    setup_communication()
+                else:
+                    # Default to Batch/BatchAndOutput
+                    setup_batch()
+        else:
+            # Unknown task_type - log warning and default to Batch
+            logger.warning("Unknown task_type '%s', defaulting to Batch", configured_type)
+            setup_batch()
 
         args["testcases"] = []
         testcases_temp_dir = None
@@ -1302,14 +1375,15 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         files.append(os.path.join(self.path, "gen", "GEN"))
 
         # Statement (use find_first_existing_dir for consistency with get_task)
+        # Handles: statements folder with any PDF, or root directory if no statement folder
         statement_folder = find_first_existing_dir(
             self.path, ["statement", "statements", "Statement", "Statements", "testo"])
-        if statement_folder is not None:
-            statement_path = os.path.join(self.path, statement_folder)
-            files.append(os.path.join(statement_path, "statement.pdf"))
-            files.append(os.path.join(statement_path, "testo.pdf"))
-            for lang in LANGUAGE_MAP:
-                files.append(os.path.join(statement_path, "%s.pdf" % lang))
+        statement_dir = (os.path.join(self.path, statement_folder)
+                         if statement_folder is not None else self.path)
+        if os.path.isdir(statement_dir):
+            for filename in os.listdir(statement_dir):
+                if filename.lower().endswith(".pdf"):
+                    files.append(os.path.join(statement_dir, filename))
 
         # Managers (legacy check/cor folders)
         files.append(os.path.join(self.path, "check", "checker"))
@@ -1324,8 +1398,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 for filename in os.listdir(managers_path):
                     files.append(os.path.join(managers_path, filename))
 
-        if not conf.get('output_only', False) and \
-                os.path.isdir(os.path.join(self.path, "sol")):
+        # Check if task is OutputOnly (via task_type or legacy output_only field)
+        is_output_only = (conf.get('task_type') == "OutputOnly" or
+                          conf.get('output_only', False))
+        if not is_output_only and os.path.isdir(os.path.join(self.path, "sol")):
             for lang in LANGUAGES:
                 files.append(os.path.join(
                     self.path, "sol", "grader%s" % lang.source_extension))
