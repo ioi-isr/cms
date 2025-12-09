@@ -858,16 +858,34 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
             existing_manager_filenames = {m.filename for m in args["managers"]}
 
-            for filename in os.listdir(managers_path):
-                file_path = os.path.join(managers_path, filename)
-                if not os.path.isfile(file_path):
+            # Pre-scan to detect source/compiled collisions
+            # This ensures consistent behavior regardless of os.listdir order
+            managers_files = [f for f in os.listdir(managers_path)
+                              if os.path.isfile(os.path.join(managers_path, f))]
+            sources_by_base = {}
+            compiled_by_base = {}
+            source_extensions = ('.cpp', '.c', '.cc', '.cxx')
+            for filename in managers_files:
+                base_noext, ext = os.path.splitext(filename)
+                if base_noext not in allowed_compile_basenames:
                     continue
+                if ext in source_extensions:
+                    sources_by_base.setdefault(base_noext, []).append(filename)
+                else:
+                    compiled_by_base.setdefault(base_noext, []).append(filename)
 
-                base_noext = os.path.splitext(filename)[0]
+            # Basenames where both source and compiled exist - we'll compile from source
+            collision_bases = {b for b in allowed_compile_basenames
+                               if sources_by_base.get(b) and compiled_by_base.get(b)}
+            notified_collision_bases = set()
+
+            for filename in sorted(managers_files):  # Sort for deterministic order
+                file_path = os.path.join(managers_path, filename)
+                base_noext, ext = os.path.splitext(filename)
 
                 # Check if this is a source file that should be compiled
                 should_compile = (base_noext in allowed_compile_basenames and
-                                filename.endswith(('.cpp', '.c', '.cc', '.cxx')))
+                                  ext in source_extensions)
 
                 if should_compile:
                     result = compile_manager_source(
@@ -877,6 +895,15 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
                     if result is not None:
                         source_digest, compiled_digest = result
+
+                        # Emit warning if we're compiling over an existing compiled file
+                        if base_noext in collision_bases and base_noext not in notified_collision_bases:
+                            msg = ("Both source (%s) and compiled (%s) manager found in %s/. "
+                                   "Compiling from source and ignoring the existing compiled binary." %
+                                   (filename, base_noext, managers_folder))
+                            logger.warning(msg)
+                            self._notify("Manager conflict", msg)
+                            notified_collision_bases.add(base_noext)
 
                         if filename not in existing_manager_filenames:
                             args["managers"] += [Manager(filename, source_digest)]
@@ -893,6 +920,12 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                             "Failed to compile %s from managers folder, skipping",
                             filename)
                 else:
+                    # Skip compiled files when source exists for same basename
+                    if (base_noext in collision_bases and
+                        base_noext in allowed_compile_basenames):
+                        # This is a compiled file that will be replaced by compiled-from-source
+                        continue
+
                     if filename not in existing_manager_filenames:
                         digest = self.file_cacher.put_file_from_path(
                             file_path,
