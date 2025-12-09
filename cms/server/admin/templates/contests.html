@@ -6,9 +6,11 @@
   <h1>Contests list</h1>
 </div>
 
+{% if admin.permission_all %}
 <div style="margin-bottom: 10px;">
   <a href="{{ url("contests", "import") }}" class="button">Import Contest from ZIP</a>
 </div>
+{% endif %}
 
 <form action="{{ url("contests") }}" method="POST">
   {{ xsrf_form_html|safe }}

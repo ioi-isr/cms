@@ -152,9 +152,11 @@ def detect_testcase_sources(task_path):
     
     if has_legacy:
         if zip_sources or folder_sources:
-            logger.warning(
-                "Both legacy (input/output) and new-style testcase sources found. "
-                "Using legacy input/output folders.")
+            new_source = zip_sources[0][0] if zip_sources else folder_sources[0][0]
+            error_msg = ("Both legacy (input/output) and new-style testcase source (%s) found. "
+                         "Please keep only one." % new_source)
+            logger.error(error_msg)
+            raise LoaderValidationError(error_msg)
         return ('legacy', task_path)
     elif zip_sources:
         return ('zip', zip_sources[0][1])
@@ -165,7 +167,8 @@ def detect_testcase_sources(task_path):
 
 
 def compile_manager_source(file_cacher, source_path, source_filename,
-                           compiled_filename, task_name, notify=None):
+                           compiled_filename, task_name, notify=None,
+                           raise_on_error=False):
     """Compile a manager source file (checker.cpp or manager.cpp).
 
     file_cacher: FileCacher instance for storing files.
@@ -174,12 +177,23 @@ def compile_manager_source(file_cacher, source_path, source_filename,
     compiled_filename: name for the compiled binary.
     task_name: name of the task (for logging).
     notify: optional callback(title: str, text: str) to report errors.
+    raise_on_error: if True, raise LoaderValidationError on compilation failure.
 
-    return: tuple (source_digest, compiled_digest) or None if compilation fails.
+    return: tuple (source_digest, compiled_digest) or None if compilation fails
+            (and raise_on_error is False).
+
+    raise: LoaderValidationError if compilation fails and raise_on_error is True.
 
     """
     with open(source_path, 'rb') as f:
         source_body = f.read()
+
+    error_message = []
+    
+    def capture_error(title, text):
+        error_message.append("%s: %s" % (title, text))
+        if notify:
+            notify(title, text)
 
     success, compiled_bytes, stats = compile_manager_bytes(
         file_cacher,
@@ -188,10 +202,15 @@ def compile_manager_source(file_cacher, source_path, source_filename,
         compiled_filename,
         sandbox_name="loader_compile",
         for_evaluation=True,
-        notify=notify
+        notify=capture_error
     )
 
     if not success:
+        if raise_on_error:
+            msg = error_message[0] if error_message else (
+                "Failed to compile %s. Make sure isolate sandbox is properly "
+                "configured and accessible." % source_filename)
+            raise LoaderValidationError(msg)
         return None
 
     source_digest = file_cacher.put_file_content(
@@ -841,7 +860,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 if should_compile:
                     result = compile_manager_source(
                         self.file_cacher, file_path, filename,
-                        base_noext, task.name, notify=self._notify)
+                        base_noext, task.name, notify=self._notify,
+                        raise_on_error=(self._notifier is None))
 
                     if result is not None:
                         source_digest, compiled_digest = result
@@ -1202,10 +1222,14 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         if getmtime(contest_yaml) > itime:
             return True
 
-        if os.path.exists(os.path.join(self.path, ".import_error_contest")):
-            raise LoaderValidationError(
-                "Last attempt to import contest %s failed. "
-                "After fixing the error, delete the file .import_error_contest" % name)
+        # Only check for error sentinel file in CLI mode (when no notifier is set).
+        # In admin UI mode, the archive is unpacked to a temp directory, so this
+        # file cannot be accessed by the user and shouldn't persist across uploads.
+        if self._notifier is None:
+            if os.path.exists(os.path.join(self.path, ".import_error_contest")):
+                raise LoaderValidationError(
+                    "Last attempt to import contest %s failed. "
+                    "After fixing the error, delete the file .import_error_contest" % name)
 
         return False
 
@@ -1266,19 +1290,22 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             if os.path.exists(zip_path):
                 files.append(zip_path)
 
-        # Attachments (all variants)
-        for att_name in ["att", "attachements", "Attachements"]:
-            att_path = os.path.join(self.path, att_name)
-            if os.path.exists(att_path):
-                for filename in os.listdir(att_path):
-                    files.append(os.path.join(att_path, filename))
+        # Attachments (use find_first_existing_dir for consistency with get_task)
+        att_folder = find_first_existing_dir(
+            self.path, ["att", "attachements", "Attachements"])
+        if att_folder is not None:
+            att_path = os.path.join(self.path, att_folder)
+            for filename in os.listdir(att_path):
+                files.append(os.path.join(att_path, filename))
 
         # Score file
         files.append(os.path.join(self.path, "gen", "GEN"))
 
-        # Statement (all variants)
-        for statement_name in ["statement", "statements", "Statement", "Statements", "testo"]:
-            statement_path = os.path.join(self.path, statement_name)
+        # Statement (use find_first_existing_dir for consistency with get_task)
+        statement_folder = find_first_existing_dir(
+            self.path, ["statement", "statements", "Statement", "Statements", "testo"])
+        if statement_folder is not None:
+            statement_path = os.path.join(self.path, statement_folder)
             files.append(os.path.join(statement_path, "statement.pdf"))
             files.append(os.path.join(statement_path, "testo.pdf"))
             for lang in LANGUAGE_MAP:
@@ -1318,9 +1345,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 if getmtime(fname) > itime:
                     return True
 
-        if os.path.exists(os.path.join(self.path, ".import_error")):
-            raise LoaderValidationError(
-                "Last attempt to import task %s failed. "
-                "After fixing the error, delete the file .import_error" % name)
+        # Only check for error sentinel file in CLI mode (when no notifier is set).
+        # In admin UI mode, the archive is unpacked to a temp directory, so this
+        # file cannot be accessed by the user and shouldn't persist across uploads.
+        if self._notifier is None:
+            if os.path.exists(os.path.join(self.path, ".import_error")):
+                raise LoaderValidationError(
+                    "Last attempt to import task %s failed. "
+                    "After fixing the error, delete the file .import_error" % name)
 
         return False
