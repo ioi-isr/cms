@@ -58,7 +58,8 @@ from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
-from cmscommon.crypto import hash_password, validate_password
+from cmscommon.crypto import hash_password, validate_password, \
+    validate_password_strength, WeakPasswordError
 from cmscommon.datetime import make_datetime, make_timestamp
 from .contest import ContestHandler, api_login_required
 from ..phase_management import actual_phase_required
@@ -71,6 +72,14 @@ logger = logging.getLogger(__name__)
 # Dummy function to mark translatable strings.
 def N_(msgid):
     return msgid
+
+
+class RegistrationError(Exception):
+    """Exception raised for registration validation errors."""
+
+    def __init__(self, code: str, field: str | None = None):
+        self.code = code
+        self.field = field
 
 
 class MainHandler(ContestHandler):
@@ -100,30 +109,35 @@ class RegistrationHandler(ContestHandler):
 
         create_new_user = self.get_argument("new_user") == "true"
 
-        # Get or create user
-        if create_new_user:
-            user = self._create_user()
-        else:
-            user = self._get_user()
+        try:
+            # Get or create user
+            if create_new_user:
+                user = self._create_user()
+            else:
+                user = self._get_user()
 
-            # Check if the participation exists
-            contest = self.contest
-            tot_participants = self.sql_session.query(Participation)\
-                                   .filter(Participation.user == user)\
-                                   .filter(Participation.contest == contest)\
-                                   .count()
-            if tot_participants > 0:
-                raise tornado.web.HTTPError(409)
+                # Check if the participation exists
+                contest = self.contest
+                tot_participants = self.sql_session.query(Participation)\
+                                       .filter(Participation.user == user)\
+                                       .filter(Participation.contest == contest)\
+                                       .count()
+                if tot_participants > 0:
+                    raise tornado.web.HTTPError(409)
 
-        # Create participation
-        team = self._get_team()
-        participation = Participation(user=user, contest=self.contest,
-                                      team=team)
-        self.sql_session.add(participation)
+            # Create participation
+            team = self._get_team()
+            participation = Participation(user=user, contest=self.contest,
+                                          team=team)
+            self.sql_session.add(participation)
 
-        self.sql_session.commit()
+            self.sql_session.commit()
 
-        self.finish(user.username)
+            self.finish(user.username)
+        except RegistrationError as e:
+            self.set_status(400)
+            self.set_header("Content-Type", "application/json")
+            self.write(json.dumps({"code": e.code, "field": e.field}))
 
     @multi_contest
     def get(self):
@@ -146,20 +160,38 @@ class RegistrationHandler(ContestHandler):
             email = self.get_argument("email")
             if len(email) == 0:
                 email = None
+        except tornado.web.MissingArgumentError:
+            raise RegistrationError("missing_field")
 
-            if not 1 <= len(first_name) <= self.MAX_INPUT_LENGTH:
-                raise ValueError()
-            if not 1 <= len(last_name) <= self.MAX_INPUT_LENGTH:
-                raise ValueError()
-            if not 1 <= len(username) <= self.MAX_INPUT_LENGTH:
-                raise ValueError()
-            if not re.match(r"^[A-Za-z0-9_-]+$", username):
-                raise ValueError()
-            if not self.MIN_PASSWORD_LENGTH <= len(password) \
-                    <= self.MAX_INPUT_LENGTH:
-                raise ValueError()
-        except (tornado.web.MissingArgumentError, ValueError):
-            raise tornado.web.HTTPError(400)
+        # Validate first name
+        if not 1 <= len(first_name) <= self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_first_name", "first_name")
+
+        # Validate last name
+        if not 1 <= len(last_name) <= self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_last_name", "last_name")
+
+        # Validate username length
+        if not 1 <= len(username) <= self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_username_length", "username")
+
+        # Validate username characters
+        if not re.match(r"^[A-Za-z0-9_-]+$", username):
+            raise RegistrationError("invalid_username_chars", "username")
+
+        # Validate password length
+        if not self.MIN_PASSWORD_LENGTH <= len(password) \
+                <= self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_password_length", "password")
+
+        # Validate password strength
+        try:
+            user_inputs = [username]
+            if email:
+                user_inputs.append(email)
+            validate_password_strength(password, user_inputs)
+        except WeakPasswordError:
+            raise RegistrationError("weak_password", "password")
 
         # Override password with its hash
         password = hash_password(password)
@@ -205,7 +237,7 @@ class RegistrationHandler(ContestHandler):
                         Team.code == team_code).one()
                 )
             except (tornado.web.MissingArgumentError, NoResultFound):
-                raise tornado.web.HTTPError(400)
+                raise RegistrationError("invalid_team", "team")
         else:
             team = None
 

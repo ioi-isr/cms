@@ -315,6 +315,8 @@ class FunctionalTestFramework:
                        files=files, args=args)
 
     def add_user(self, **kwargs):
+        # Bypass password strength validation for test users
+        kwargs["allow_weak_password"] = "1"
         r = self.admin_req('users/add', args=kwargs)
         g = re.search(r'/user/([0-9]+)$', r.url)
         if g:
