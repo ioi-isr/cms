@@ -19,9 +19,16 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
       {{ req.request_timestamp|format_datetime }}
     </div>
     <div class="notification_subject">
+      {% if user_id is none %}
+      <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }}
+      {% else %}
       <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}
+      {% endif %}
     </div>
     <div class="notification_text">
+      {% if user_id is none %}
+      <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
+      {% endif %}
       <strong>Reason:</strong> {{ req.reason }}<br>
       {% if req.status != 'pending' %}
         <strong>Status:</strong> {{ req.status }}
@@ -31,6 +38,8 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
         {% if req.admin %}
           <br><strong>Processed by:</strong> {{ req.admin.name }}
         {% endif %}
+      {% else %}
+        <strong>Current Delay:</strong> {{ req.participation.delay_time.total_seconds()|int }} seconds<br>
       {% endif %}
     </div>
     {% if show_buttons and req.status == 'pending' and (admin.permission_all or admin.permission_messaging) %}
