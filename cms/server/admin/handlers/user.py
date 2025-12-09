@@ -32,7 +32,8 @@ import io
 import re
 
 from cms.db import Contest, Participation, Submission, Team, User
-from cmscommon.crypto import parse_authentication, build_password, validate_password_strength
+from cmscommon.crypto import (parse_authentication, build_password, 
+                               hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -282,7 +283,7 @@ class ImportUsersHandler(BaseHandler):
             preferred_languages = [lang.strip() for lang in re.split(r"[;,]", preferred_languages_str) if lang.strip()]
 
             if password_type.lower() == "plain text":
-                password_value = build_password(password, "plaintext")
+                password_value = hash_password(password, "bcrypt")
             else:
                 if password.startswith("bcrypt:"):
                     password_value = password
