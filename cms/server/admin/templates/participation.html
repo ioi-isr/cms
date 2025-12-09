@@ -137,6 +137,42 @@
 </div>
 
 
+<h2 id="title_delay_requests" class="toggling_on">Delay Requests</h2>
+<div id="delay_requests">
+  {% if participation.delay_requests != [] %}
+  <div class="notifications">
+    {% for req in participation.delay_requests|reverse %}
+    <div class="notification {% if req.status == 'approved' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
+      <div class="notification_msg">
+        <div class="notification_timestamp">
+          {{ req.request_timestamp }}
+        </div>
+        <div class="notification_subject">
+          <strong>Requested Start Time:</strong> {{ req.requested_start_time }}
+        </div>
+        <div class="notification_text">
+          <strong>Reason:</strong> {{ req.reason }}<br>
+          <strong>Status:</strong> {{ req.status }}
+          {% if req.processed_timestamp %}
+          <br><strong>Processed:</strong> {{ req.processed_timestamp }}
+          {% endif %}
+          {% if req.admin %}
+          <br><strong>Processed by:</strong> {{ req.admin.name }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  No delay requests.
+
+  {% endif %}
+  <div class="hr"></div>
+</div>
+
+
 <h2 id="title_messages" class="toggling_on">Messages</h2>
 <div id="messages">
 

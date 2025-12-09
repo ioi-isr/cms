@@ -65,6 +65,16 @@ tr.finished .status-badge {
 tr.missed .status-badge {
   background-color: #dc3545; /* Red */
 }
+
+/* Subtle link styling for usernames in the table */
+.username-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.username-link:hover {
+  text-decoration: underline;
+}
 </style>
 
 <div class="core_title">
@@ -86,7 +96,7 @@ tr.missed .status-badge {
           {{ req.request_timestamp|format_datetime }}
         </div>
         <div class="notification_subject">
-          <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }} ({{ req.participation.user.username }})
+          <strong>User:</strong> <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" class="username-link">{{ req.participation.user.first_name }} {{ req.participation.user.last_name }} ({{ req.participation.user.username }})</a>
         </div>
         <div class="notification_text">
           <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
@@ -157,9 +167,9 @@ tr.missed .status-badge {
     {% set participation = item.participation %}
     <tr class="{{ item.status_class }}">
       <td>
-        {{ participation.user.first_name }} {{ participation.user.last_name }}
+        <a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}" class="username-link">{{ participation.user.first_name }} {{ participation.user.last_name }}</a>
       </td>
-      <td>{{ participation.user.username }}</td>
+      <td><a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}" class="username-link">{{ participation.user.username }}</a></td>
       <td>{{ participation.delay_time.total_seconds()|int }}</td>
       <td>
         {% if participation.delay_time.total_seconds() > 0 %}
@@ -238,7 +248,7 @@ tr.missed .status-badge {
           {{ req.request_timestamp|format_datetime }}
         </div>
         <div class="notification_subject">
-          <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }} ({{ req.participation.user.username }})
+          <strong>User:</strong> <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" class="username-link">{{ req.participation.user.first_name }} {{ req.participation.user.last_name }} ({{ req.participation.user.username }})</a>
         </div>
         <div class="notification_text">
           <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
