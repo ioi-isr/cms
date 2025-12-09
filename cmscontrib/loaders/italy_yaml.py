@@ -1033,6 +1033,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         configured_type = conf.get("task_type")
         legacy_output_only = conf.get('output_only', False)
         
+        # Track output codenames for BatchAndOutput tasks (set by setup_batch)
+        output_codenames = None
+        
         # Helper to set up OutputOnly task type
         def setup_output_only():
             args["task_type"] = "OutputOnly"
@@ -1125,6 +1128,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         
         # Helper to set up Batch/BatchAndOutput task type
         def setup_batch():
+            nonlocal output_codenames
             args["task_type"] = "Batch"
             args["task_type_parameters"] = [
                 compilation_param,
