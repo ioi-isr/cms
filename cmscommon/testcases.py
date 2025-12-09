@@ -48,7 +48,7 @@ def compile_template_regex(template: str) -> Pattern:
         raise ValueError(
             "Template must have exactly one '*' placeholder, got: %s" % template)
     
-    return re.compile(re.escape(template).replace("\\*", "(.*)") + "$")
+    return re.compile(re.escape(template).replace("\\*", "(.+)") + "$")
 
 
 def pair_names(
