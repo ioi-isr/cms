@@ -560,6 +560,7 @@ $(document).ready(function() {
 {% endif %}
          value="Update" />
   <input type="reset" value="Reset" />
+  <a href="{{ url("task", task.id, "export") }}"> ⇩ Export </a>
 </form>
 <form action="{{ url("tasks") }}" method="POST" style="display:inline;">
     {{ xsrf_form_html|safe }}
