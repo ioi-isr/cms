@@ -305,3 +305,33 @@ def eval_output(
                     outcome, text = white_diff_fobj_step(
                         user_output_fobj, correct_output_fobj)
         return True, outcome, text
+
+
+def get_allowed_manager_basenames(task_type: str | None) -> set[str]:
+    """Get the set of manager basenames that should be auto-compiled.
+
+    Uses the task type class to discover CHECKER_CODENAME and MANAGER_FILENAME
+    attributes, falling back to a default set if the task type is unknown.
+
+    task_type: the task type name (e.g., "Batch", "Communication"), or None.
+
+    return: set of allowed manager basenames (e.g., {"checker", "manager"}).
+
+    """
+    from cms.grading.tasktypes import get_task_type_class
+
+    allowed_basenames = set()
+    if task_type:
+        try:
+            tt_cls = get_task_type_class(task_type)
+            if hasattr(tt_cls, "CHECKER_CODENAME"):
+                allowed_basenames.add(getattr(tt_cls, "CHECKER_CODENAME"))
+            if hasattr(tt_cls, "MANAGER_FILENAME"):
+                allowed_basenames.add(getattr(tt_cls, "MANAGER_FILENAME"))
+        except Exception:
+            pass
+
+    if not allowed_basenames:
+        allowed_basenames = {"checker", "manager"}
+
+    return allowed_basenames

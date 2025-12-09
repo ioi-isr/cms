@@ -50,9 +50,15 @@ _FIXED_DEC_PATTERN = rb'[+-]?(?:\d+(?:\.\d*)?|\.\d+)'
 _DEFAULT_EXP = 6
 
 def _compare_real_pair(a: float, b: float, eps: float) -> bool:
-    """Return True if a and b match within absolute/relative tolerance."""
+    """Return True if a and b match within absolute/relative tolerance.
+    
+    The tolerance is computed relative to the correct output (b) only,
+    not the user output (a). This prevents a malicious or buggy user
+    output (e.g., inf) from inflating the tolerance and causing incorrect
+    answers to be accepted.
+    """
     diff = abs(a - b)
-    tol = eps * max(1.0, abs(a), abs(b))
+    tol = eps * max(1.0, abs(b))
     return diff <= tol
 
 

@@ -64,6 +64,7 @@ from .contestuser import \
     ContestUsersHandler, \
     RemoveParticipationHandler, \
     AddContestUserHandler, \
+    BulkAddContestUsersHandler, \
     ParticipationHandler, \
     MessageHandler
 from .dataset import \
@@ -126,6 +127,9 @@ from .folder import \
     FolderHandler, \
     AddFolderHandler, \
     RemoveFolderHandler
+from .export_handlers import \
+    ExportTaskHandler, \
+    ExportContestHandler
 
 
 HANDLERS = [
@@ -146,6 +150,7 @@ HANDLERS = [
     (r"/contests/([0-9]+)/remove", RemoveContestHandler),
     (r"/contests/add", AddContestHandler),
     (r"/contest/([0-9]+)", ContestHandler),
+    (r"/contest/([0-9]+)/export", ExportContestHandler),
     (r"/contest/([0-9]+)/overview", OverviewHandler),
     (r"/contest/([0-9]+)/resourceslist", ResourcesListHandler),
 
@@ -153,6 +158,7 @@ HANDLERS = [
 
     (r"/contest/([0-9]+)/users", ContestUsersHandler),
     (r"/contest/([0-9]+)/users/add", AddContestUserHandler),
+    (r"/contest/([0-9]+)/users/bulk_add", BulkAddContestUsersHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/remove", RemoveParticipationHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/edit", ParticipationHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/message", MessageHandler),
@@ -205,6 +211,7 @@ HANDLERS = [
     (r"/tasks/([0-9]+)/remove", RemoveTaskHandler),
     (r"/tasks/add", AddTaskHandler),
     (r"/task/([0-9]+)", TaskHandler),
+    (r"/task/([0-9]+)/export", ExportTaskHandler),
     (r"/task/([0-9]+)/submissions/download", DownloadTaskSubmissionsHandler),
     (r"/task/([0-9]+)/add_dataset", AddDatasetHandler),
     (r"/task/([0-9]+)/statements/add", AddStatementHandler),

@@ -36,6 +36,8 @@ import re
 
 import collections
 
+from deep_translator import GoogleTranslator
+
 from cms.db.contest import Contest
 
 try:
@@ -441,4 +443,99 @@ class DocumentationHandler(ContestHandler):
                     COMPILATION_MESSAGES=COMPILATION_MESSAGES,
                     EVALUATION_MESSAGES=EVALUATION_MESSAGES,
                     language_docs=language_docs,
+                    **self.r_params)
+
+
+GOOGLE_TRANSLATE_CODE_MAP = {
+    'en': 'en',
+    'he': 'iw',
+    'iw': 'iw',
+    'ru': 'ru',
+    'ar': 'ar',
+    'auto': 'auto'
+}
+
+
+def translate_text(source_text, source_lang, target_lang, supported_languages):
+    """Translate text from source language to target language.
+
+    Returns a tuple of (translation_result, error_message).
+    If successful, translation_result is the translated text and error_message is None.
+    If failed, translation_result is None and error_message contains the error.
+
+    """
+    if not source_text:
+        return None, N_("Please enter text to translate.")
+    
+    supported_language_codes = set(supported_languages.keys())
+    supported_language_codes |= {
+        GOOGLE_TRANSLATE_CODE_MAP[lang]
+        for lang in supported_languages
+        if lang in GOOGLE_TRANSLATE_CODE_MAP
+    }
+    
+    allowed_source_codes = supported_language_codes | {'auto'}
+    allowed_target_codes = supported_language_codes
+
+    if source_lang not in allowed_source_codes:
+        return None, N_("Invalid source language.")
+    if target_lang == 'auto':
+        return None, N_("Cannot use auto-detect as target language.")
+    if target_lang not in allowed_target_codes:
+        return None, N_("Invalid target language.")
+    if source_lang == target_lang and source_lang != 'auto':
+        return None, N_("Source and target languages must be different.")
+    
+    normalized_source = GOOGLE_TRANSLATE_CODE_MAP.get(source_lang, source_lang)
+    normalized_target = GOOGLE_TRANSLATE_CODE_MAP.get(target_lang, target_lang)
+
+    try:
+        translator = GoogleTranslator(source=normalized_source, target=normalized_target)
+        translation_result = translator.translate(source_text)
+        return translation_result, None
+    except Exception as e:
+        logger.error("Translation error: %s", str(e))
+        return None, N_("Translation failed. Please try again.")
+
+
+class TranslationHandler(ContestHandler):
+    """Handles text translation for contestants.
+
+    """
+    SUPPORTED_LANGUAGES = {
+        'en': 'English',
+        'he': 'Hebrew',
+        'ru': 'Russian',
+        'ar': 'Arabic'
+    }
+
+    @tornado.web.authenticated
+    @multi_contest
+    def get(self):
+        self.render("translation.html",
+                    supported_languages=self.SUPPORTED_LANGUAGES,
+                    error_message=None,
+                    source_text="",
+                    source_lang="auto",
+                    target_lang="",
+                    translation_result=None,
+                    **self.r_params)
+
+    @tornado.web.authenticated
+    @multi_contest
+    def post(self):
+        source_text = self.get_argument("source_text", "")
+        source_lang = self.get_argument("source_lang", "")
+        target_lang = self.get_argument("target_lang", "")
+
+        translation_result, error_message = translate_text(
+            source_text, source_lang, target_lang, self.SUPPORTED_LANGUAGES)
+
+        self.render("translation.html",
+                    supported_languages=self.SUPPORTED_LANGUAGES,
+                    source_text=source_text,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    translation_result=translation_result,
+                    error_message=error_message,
                     **self.r_params)
