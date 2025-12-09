@@ -866,6 +866,52 @@ CMS.AWSUtils.ajax_post = function(url) {
 
 
 /**
+ * Initialize password strength indicator for a password field.
+ * Uses zxcvbn library to calculate password strength and displays
+ * a colored bar with text feedback.
+ *
+ * fieldSelector (string): jQuery selector for the password input field.
+ * barSelector (string): jQuery selector for the strength bar element.
+ * textSelector (string): jQuery selector for the strength text element.
+ */
+CMS.AWSUtils.initPasswordStrength = function(fieldSelector, barSelector, textSelector) {
+    var strengthMessages = ["Very weak", "Weak", "Fair", "Strong", "Very strong"];
+    var strengthColors = ["#dc3545", "#dc3545", "#ffc107", "#28a745", "#28a745"];
+    var strengthWidths = ["20%", "40%", "60%", "80%", "100%"];
+
+    var $field = $(fieldSelector);
+    if (!$field.length) {
+        return;
+    }
+
+    var $bar = $(barSelector);
+    var $text = $(textSelector);
+
+    $field.on("input", function() {
+        var pwd = $(this).val();
+
+        if (!pwd) {
+            $bar.hide();
+            $text.text("");
+            return;
+        }
+
+        if (typeof zxcvbn === "function") {
+            var result = zxcvbn(pwd);
+            var score = result.score;
+
+            $bar.css({
+                "background-color": strengthColors[score],
+                "width": strengthWidths[score]
+            }).show();
+            $text.text("Password strength: " + strengthMessages[score]);
+            $text.css("color", strengthColors[score]);
+        }
+    });
+};
+
+
+/**
  * Used by templates/macro/question.html.
  * Toggles visibility of the question reply box.
  */
