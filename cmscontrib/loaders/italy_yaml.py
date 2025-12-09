@@ -41,7 +41,7 @@ from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
 from cms.db import Contest, User, Task, Statement, Attachment, Team, Dataset, \
     Manager, Testcase
 from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
-    filename_to_language
+    SOURCE_EXTS, filename_to_language
 from cms.grading.language import CompiledLanguage
 from cms.grading.tasktypes import get_task_type_class
 from cms.grading.tasktypes.util import create_sandbox, \
@@ -864,12 +864,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                               if os.path.isfile(os.path.join(managers_path, f))]
             sources_by_base = {}
             compiled_by_base = {}
-            source_extensions = ('.cpp', '.c', '.cc', '.cxx')
             for filename in managers_files:
                 base_noext, ext = os.path.splitext(filename)
                 if base_noext not in allowed_compile_basenames:
                     continue
-                if ext in source_extensions:
+                if ext in SOURCE_EXTS:
                     sources_by_base.setdefault(base_noext, []).append(filename)
                 else:
                     compiled_by_base.setdefault(base_noext, []).append(filename)
@@ -885,7 +884,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
                 # Check if this is a source file that should be compiled
                 should_compile = (base_noext in allowed_compile_basenames and
-                                  ext in source_extensions)
+                                  ext in SOURCE_EXTS)
 
                 if should_compile:
                     result = compile_manager_source(
