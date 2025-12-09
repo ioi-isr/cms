@@ -3,6 +3,7 @@
 {% extends "base.html" %}
 {% import 'macro/submission.html' as macro_submission %}
 {% import 'macro/question.html' as macro_question with context %}
+{% import 'macro/delay_request.html' as macro_delay_request with context %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
 
 {% block core %}
@@ -142,26 +143,7 @@
   {% if participation.delay_requests != [] %}
   <div class="notifications">
     {% for req in participation.delay_requests|reverse %}
-    <div class="notification {% if req.status == 'approved' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
-      <div class="notification_msg">
-        <div class="notification_timestamp">
-          {{ req.request_timestamp }}
-        </div>
-        <div class="notification_subject">
-          <strong>Requested Start Time:</strong> {{ req.requested_start_time }}
-        </div>
-        <div class="notification_text">
-          <strong>Reason:</strong> {{ req.reason }}<br>
-          <strong>Status:</strong> {{ req.status }}
-          {% if req.processed_timestamp %}
-          <br><strong>Processed:</strong> {{ req.processed_timestamp }}
-          {% endif %}
-          {% if req.admin %}
-          <br><strong>Processed by:</strong> {{ req.admin.name }}
-          {% endif %}
-        </div>
-      </div>
-    </div>
+      {{ macro_delay_request.delay_request(req, selected_user.id) }}
     {% endfor %}
   </div>
 
