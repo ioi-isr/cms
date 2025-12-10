@@ -110,7 +110,6 @@ from .task import (
 )
 from .import_handlers import (
     ImportTaskHandler,
-    ImportTaskModelSolutionsHandler,
     ImportContestHandler,
 )
 from .user import \
@@ -225,7 +224,6 @@ HANDLERS = [
     (r"/tasks/([0-9]+)/remove", RemoveTaskHandler),
     (r"/tasks/add", AddTaskHandler),
     (r"/tasks/import", ImportTaskHandler),
-    (r"/tasks/import/model_solutions", ImportTaskModelSolutionsHandler),
     (r"/task/([0-9]+)", TaskHandler),
     (r"/task/([0-9]+)/export", ExportTaskHandler),
     (r"/task/([0-9]+)/submissions/download", DownloadTaskSubmissionsHandler),
