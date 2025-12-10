@@ -92,6 +92,11 @@ class TaskImporter:
         self.contest_id = contest_id
         self.raise_import_errors = raise_import_errors
         self.loader = loader_class(os.path.abspath(path), self.file_cacher)
+        
+        # Track imported task and model solutions that need configuration
+        # (used by admin interface to redirect to configuration page)
+        self.imported_task_id: int | None = None
+        self.model_solution_meta_ids_missing_metadata: list[int] = []
 
     def do_import(self):
         """Get the task from the TaskLoader and store it."""
@@ -141,6 +146,8 @@ class TaskImporter:
 
             session.commit()
             task_id = task.id
+            # Store the imported task ID for admin interface redirect
+            self.imported_task_id = task_id
 
         logger.info("Import finished (new task id: %s).", task_id)
         return True
@@ -222,6 +229,9 @@ class TaskImporter:
             # (same logic as the admin handler)
             digests = dict(sol_data["files"])  # filename -> digest
 
+            # Check if this solution has metadata (explicit scores in task.yaml)
+            has_metadata = sol_data.get("has_metadata", False)
+            
             submission, meta = create_model_solution(
                 session,
                 task=task,
@@ -235,6 +245,14 @@ class TaskImporter:
                 expected_score_max=sol_data.get("expected_score_max", 100.0),
                 subtask_expected_scores=sol_data.get("subtask_expected_scores"),
             )
+            
+            # Track model solutions that were imported with defaults
+            # (no metadata in task.yaml) so admin can configure them
+            if not has_metadata:
+                # Flush to get the meta ID
+                session.flush()
+                self.model_solution_meta_ids_missing_metadata.append(meta.id)
+            
             imported_count += 1
 
         if imported_count > 0:

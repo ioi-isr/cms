@@ -171,11 +171,28 @@ class ImportTaskHandler(
                 try:
                     success = importer.do_import()
                     if success:
-                        self.service.add_notification(
-                            make_datetime(),
-                            "Task imported successfully",
-                            "")
-                        self.redirect(self.url("tasks"))
+                        # Check if there are model solutions that need configuration
+                        pending_ids = getattr(
+                            importer, "model_solution_meta_ids_missing_metadata", [])
+                        task_id = getattr(importer, "imported_task_id", None)
+                        
+                        if pending_ids and task_id is not None:
+                            # Redirect to configuration page for model solutions
+                            # that were imported with defaults
+                            ids_str = ",".join(str(i) for i in pending_ids)
+                            self.service.add_notification(
+                                make_datetime(),
+                                "Task imported",
+                                "Some model solutions need configuration.")
+                            self.redirect(self.url(
+                                "task", task_id, "model_solutions", "configure"
+                            ) + f"?ids={ids_str}")
+                        else:
+                            self.service.add_notification(
+                                make_datetime(),
+                                "Task imported successfully",
+                                "")
+                            self.redirect(self.url("tasks"))
                     else:
                         self.service.add_notification(
                             make_datetime(),
