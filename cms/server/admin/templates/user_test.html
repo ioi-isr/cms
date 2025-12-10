@@ -86,7 +86,7 @@
       </tr>
       <tr>
         <td>Compilation sandbox</td>
-        <td>{{ utr.compilation_sandbox_paths|join(" ") }}</td>
+        <td>{% if utr.compilation_sandbox_paths %}{{ utr.compilation_sandbox_paths|join(" ") }}{% else %}N/A{% endif %}</td>
       </tr>
       <tr>
         <td>Failures during evaluation</td>
@@ -95,7 +95,7 @@
         {% if utr.evaluated() %}
         <tr>
           <td>Evaluation sandbox</td>
-          <td>{{ utr.evaluation_sandbox_paths|join(" ") }}</td>
+          <td>{% if utr.evaluation_sandbox_paths %}{{ utr.evaluation_sandbox_paths|join(" ") }}{% else %}N/A{% endif %}</td>
         </tr>
         {% endif %}
       {% endif %}

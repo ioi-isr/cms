@@ -22,7 +22,7 @@
 import logging
 
 from cms.db import Dataset, Submission, File, ModelSolutionMeta, \
-    get_or_create_model_solution_participation
+    get_or_create_model_solution_participation, create_model_solution
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.contest.submission import UnacceptableSubmission
 from cms.server.contest.submission.workflow import _extract_and_match_files
@@ -84,7 +84,18 @@ class AddModelSolutionHandler(BaseHandler):
 
         try:
             attrs = {}
+            self.get_string(attrs, "name")
             self.get_string(attrs, "description")
+
+            # Validate name is a valid identifier (alphanumeric + underscore)
+            name = attrs.get("name", "").strip()
+            if not name:
+                raise ValueError("Name is required")
+            # Only reject characters that are problematic for filenames
+            invalid_chars = set('/\\*?<>|:"')
+            if any(c in invalid_chars for c in name):
+                raise ValueError(
+                    "Name cannot contain: / \\ * ? < > | : \"")
 
             expected_score_min = self.get_argument(
                 "expected_score_min", "0.0")
@@ -130,10 +141,14 @@ class AddModelSolutionHandler(BaseHandler):
 
             # Use the shared submission file processing logic from accept_submission.
             # This handles archive extraction, file matching, language detection, etc.
-            # For model solutions, we pass language_name=None to auto-detect.
+            # Read language from form if provided (for tasks with language-dependent
+            # submission formats). If not provided, auto-detect.
+            language_name = self.get_argument("language", None)
+            if language_name == "":
+                language_name = None
             try:
                 received_files, files, language = _extract_and_match_files(
-                    self.request.files, task, language_name=None)
+                    self.request.files, task, language_name=language_name)
             except UnacceptableSubmission as err:
                 raise ValueError(err.formatted_text)
 
@@ -151,34 +166,19 @@ class AddModelSolutionHandler(BaseHandler):
             participation = get_or_create_model_solution_participation(
                 self.sql_session)
 
-            opaque_id = Submission.generate_opaque_id(
-                self.sql_session, participation.id)
-            submission = Submission(
-                opaque_id=opaque_id,
-                timestamp=timestamp,
-                language=language.name if language is not None else None,
-                participation=participation,
+            submission, meta = create_model_solution(
+                self.sql_session,
                 task=task,
-                official=False
-            )
-            self.sql_session.add(submission)
-            self.sql_session.flush()
-
-            for codename, digest in digests.items():
-                self.sql_session.add(File(
-                    filename=codename,
-                    digest=digest,
-                    submission=submission))
-
-            meta = ModelSolutionMeta(
-                submission=submission,
                 dataset=dataset,
+                participation=participation,
+                digests=digests,
+                language_name=language.name if language is not None else None,
+                name=name,
                 description=attrs["description"],
                 expected_score_min=expected_score_min,
                 expected_score_max=expected_score_max,
-                subtask_expected_scores=subtask_expected_scores
+                subtask_expected_scores=subtask_expected_scores,
             )
-            self.sql_session.add(meta)
 
         except Exception as error:
             self.service.add_notification(
@@ -341,3 +341,149 @@ class DeleteModelSolutionHandler(BaseHandler):
     def delete(self, meta_id):
         """Support DELETE method by delegating to POST."""
         return self.post(meta_id)
+
+
+class ConfigureImportedModelSolutionsHandler(BaseHandler):
+    """Handler for configuring model solutions after import.
+
+    This handler allows bulk configuration of expected score ranges for
+    model solutions that were imported without metadata. It operates on
+    existing ModelSolutionMeta rows in the database.
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, task_id):
+        from cms.db import Task
+        task = self.safe_get_item(Task, task_id)
+        dataset = task.active_dataset
+        self.contest = task.contest
+
+        # Get model solution IDs from query string, or show all that need config
+        ids_str = self.get_argument("ids", "")
+        if ids_str:
+            meta_ids = [int(x) for x in ids_str.split(",") if x.strip()]
+            model_solutions = [
+                meta for meta in dataset.model_solution_metas
+                if meta.id in meta_ids
+            ]
+        else:
+            # Show all model solutions that might need configuration
+            # (those with default values or missing subtask scores)
+            model_solutions = list(dataset.model_solution_metas)
+
+        # Convert to template-friendly format
+        solutions_data = []
+        for meta in model_solutions:
+            # Determine if this solution needs configuration
+            # (has default values or missing subtask scores)
+            needs_config = (
+                meta.expected_score_min == 0.0 and
+                meta.expected_score_max == 100.0 and
+                meta.subtask_expected_scores is None
+            )
+            solutions_data.append({
+                "id": meta.id,
+                "name": meta.name,
+                "description": meta.description or "",
+                "language": meta.submission.language if meta.submission else None,
+                "expected_score_min": meta.expected_score_min,
+                "expected_score_max": meta.expected_score_max,
+                "subtask_expected_scores": meta.subtask_expected_scores,
+                "needs_config": needs_config,
+            })
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.r_params["model_solutions"] = solutions_data
+        self.r_params["subtasks"] = get_subtask_info(dataset)
+        self.render("configure_model_solutions.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, task_id):
+        from cms.db import Task
+        task = self.safe_get_item(Task, task_id)
+        dataset = task.active_dataset
+        fallback_page = self.url("task", task_id, "model_solutions", "configure")
+
+        try:
+            # Get all model solution metas for this dataset
+            metas_by_id = {meta.id: meta for meta in dataset.model_solution_metas}
+            subtasks = get_subtask_info(dataset)
+
+            # Parse form data for each model solution
+            updated_count = 0
+            for meta_id, meta in metas_by_id.items():
+                # Check if this meta has form data
+                description = self.get_argument(f"sol_{meta_id}_description", None)
+                if description is None:
+                    continue  # No form data for this solution
+
+                score_min_str = self.get_argument(
+                    f"sol_{meta_id}_score_min", "0.0")
+                score_max_str = self.get_argument(
+                    f"sol_{meta_id}_score_max", "100.0")
+
+                try:
+                    score_min = float(score_min_str)
+                    score_max = float(score_max_str)
+                except ValueError:
+                    raise ValueError(
+                        f"Invalid score range for solution {meta.name}")
+
+                if score_min > score_max:
+                    raise ValueError(
+                        f"Min score cannot be greater than max score "
+                        f"for solution {meta.name}")
+
+                # Parse subtask scores if present
+                subtask_scores = None
+                if subtasks:
+                    subtask_scores = {}
+                    for st in subtasks:
+                        if st["max_score"] == 0:
+                            continue
+                        idx = st["idx"]
+                        st_min = self.get_argument(
+                            f"sol_{meta_id}_st_{idx}_min", None)
+                        st_max = self.get_argument(
+                            f"sol_{meta_id}_st_{idx}_max", None)
+                        if st_min is not None and st_max is not None:
+                            try:
+                                st_min = float(st_min)
+                                st_max = float(st_max)
+                            except ValueError:
+                                raise ValueError(
+                                    f"Invalid score range for subtask {idx} "
+                                    f"of solution {meta.name}")
+                            if st_min > st_max:
+                                raise ValueError(
+                                    f"Min score cannot be greater than max "
+                                    f"for subtask {idx} of solution {meta.name}")
+                            subtask_scores[str(idx)] = {
+                                "min": st_min,
+                                "max": st_max
+                            }
+
+                # Update the meta
+                meta.description = description
+                meta.expected_score_min = score_min
+                meta.expected_score_max = score_max
+                meta.subtask_expected_scores = subtask_scores
+                updated_count += 1
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid field(s)",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Model solutions configured",
+                f"Updated {updated_count} model solution(s) for task {task.name}")
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)

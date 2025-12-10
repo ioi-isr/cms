@@ -38,10 +38,15 @@ class ModelSolutionMeta(Base):
     Model solutions are implemented as regular Submissions owned by a
     special hidden system Participation. This table stores the additional
     metadata like description and expected score range.
+    
+    The 'name' field is a short identifier used for export/import and must
+    be unique per dataset. It should be a simple ASCII slug like 'intended',
+    'bruteforce', 'slow_solution', etc.
     """
     __tablename__ = 'model_solution_meta'
     __table_args__ = (
         UniqueConstraint('submission_id', 'dataset_id'),
+        UniqueConstraint('dataset_id', 'name'),
     )
 
     id: int = Column(
@@ -68,6 +73,12 @@ class ModelSolutionMeta(Base):
     dataset = relationship(
         'Dataset',
         back_populates="model_solution_metas")
+
+    name: str = Column(
+        Unicode,
+        nullable=False,
+        doc="Short identifier for export/import (e.g., 'intended', 'bruteforce'). "
+            "Must be unique per dataset and valid as a filename.")
 
     description: str = Column(
         Unicode,
@@ -225,6 +236,77 @@ class ModelSolutionMeta(Base):
         if outcome <= 0.0:
             return "<span style='color:red'>✗</span>"
         return "<span style='color:orange'>◐</span>"
+
+
+def create_model_solution(
+    session: Session,
+    *,
+    task,
+    dataset,
+    participation,
+    digests: dict[str, str],
+    language_name: str | None,
+    name: str,
+    description: str,
+    expected_score_min: float = 0.0,
+    expected_score_max: float = 100.0,
+    subtask_expected_scores: dict | None = None,
+):
+    """Create a model solution submission with metadata.
+    
+    This is the shared logic for creating model solutions, used by both
+    the admin handler and the task importer.
+    
+    session: database session
+    task: Task object
+    dataset: Dataset object
+    participation: the model solution participation (from get_or_create_model_solution_participation)
+    digests: dict mapping filename to file digest
+    language_name: the language name (e.g., "C++17 / g++"), or None
+    name: short identifier for the model solution
+    description: human-readable description
+    expected_score_min: minimum expected score
+    expected_score_max: maximum expected score
+    subtask_expected_scores: optional dict of subtask score ranges
+    
+    return: tuple of (submission, meta)
+    """
+    from cmscommon.datetime import make_datetime
+    from .submission import Submission, File
+    
+    timestamp = make_datetime()
+    opaque_id = Submission.generate_opaque_id(session, participation.id)
+    
+    submission = Submission(
+        opaque_id=opaque_id,
+        timestamp=timestamp,
+        language=language_name,
+        participation=participation,
+        task=task,
+        official=False,
+    )
+    session.add(submission)
+    session.flush()
+    
+    for codename, digest in digests.items():
+        session.add(File(
+            filename=codename,
+            digest=digest,
+            submission=submission,
+        ))
+    
+    meta = ModelSolutionMeta(
+        submission=submission,
+        dataset=dataset,
+        name=name,
+        description=description,
+        expected_score_min=expected_score_min,
+        expected_score_max=expected_score_max,
+        subtask_expected_scores=subtask_expected_scores,
+    )
+    session.add(meta)
+    
+    return submission, meta
 
 
 def get_or_create_model_solution_participation(session: Session):

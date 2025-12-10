@@ -163,8 +163,10 @@
                 {{- sr.compilation_sandbox_paths[loop.index0] -}}
               </a>
             {% endfor %}
-          {% else %}
+          {% elif sr.compilation_sandbox_paths %}
             {{ sr.compilation_sandbox_paths|join(" ") }}
+          {% else %}
+            N/A
           {% endif %}
 
           <button onclick="cmsrpc_request(
@@ -297,8 +299,10 @@
                   {{- ev.evaluation_sandbox_paths[loop.index0] -}}
                 </a>
               {% endfor %}
-            {% else %}
+            {% elif ev.evaluation_sandbox_paths %}
               {{ ev.evaluation_sandbox_paths|join(" ") }}
+            {% else %}
+              N/A
             {% endif %}
 
             <button
