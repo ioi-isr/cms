@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Configure Model Solutions</h1>
+</div>
+
+<p>The following model solutions were found in the task archive but are missing metadata in task.yaml.
+Please configure the expected score ranges for each solution before importing.</p>
+
+<form action="{{ url("tasks", "import", "model_solutions") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <input type="hidden" name="import_token" value="{{ import_token }}" />
+  <input type="hidden" name="update" value="{{ 'true' if update else '' }}" />
+  <input type="hidden" name="no_statement" value="{{ 'true' if no_statement else '' }}" />
+  <input type="hidden" name="contest_id" value="{{ contest_id or '' }}" />
+  <input type="hidden" name="loader" value="{{ loader_name or '' }}" />
+  <input type="hidden" name="input_template" value="{{ input_template or '' }}" />
+  <input type="hidden" name="output_template" value="{{ output_template or '' }}" />
+
+  <table class="bordered" style="margin: 20px 0;">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Language</th>
+        <th>Files</th>
+        <th>Description</th>
+        <th>Expected Score Min</th>
+        <th>Expected Score Max</th>
+        <th>Has Metadata</th>
+      </tr>
+    </thead>
+    <tbody>
+{% for sol in model_solutions %}
+      <tr{% if not sol.has_metadata %} style="background-color: #fff3cd;"{% endif %}>
+        <td>
+          <strong>{{ sol.name }}</strong>
+          <input type="hidden" name="sol_{{ loop.index0 }}_name" value="{{ sol.name }}" />
+        </td>
+        <td>{{ sol.language or 'auto-detect' }}</td>
+        <td>{{ sol.files|length }} file(s)</td>
+{% if sol.has_metadata %}
+        <td>{{ sol.description }}</td>
+        <td>{{ sol.expected_score_min if sol.expected_score_min is not none else '0.0' }}</td>
+        <td>{{ sol.expected_score_max if sol.expected_score_max is not none else '100.0' }}</td>
+        <td style="color: green;">Yes</td>
+{% else %}
+        <td>
+          <input type="text" name="sol_{{ loop.index0 }}_description" value="" placeholder="Optional description" style="width: 200px;" />
+        </td>
+        <td>
+          <input type="number" step="0.01" name="sol_{{ loop.index0 }}_score_min" value="0.0" style="width: 80px;" />
+        </td>
+        <td>
+          <input type="number" step="0.01" name="sol_{{ loop.index0 }}_score_max" value="100.0" style="width: 80px;" />
+        </td>
+        <td style="color: orange;">No</td>
+{% endif %}
+      </tr>
+{% endfor %}
+    </tbody>
+  </table>
+
+{% if subtasks %}
+  <h2>Subtask Expected Scores</h2>
+  <p>Configure expected scores per subtask for solutions without metadata:</p>
+  
+  <table class="bordered" style="margin: 20px 0;">
+    <thead>
+      <tr>
+        <th>Solution</th>
+{% for st in subtasks if st.max_score > 0 %}
+        <th colspan="2">{{ st.display_name }} (max {{ st.max_score }})</th>
+{% endfor %}
+      </tr>
+      <tr>
+        <th></th>
+{% for st in subtasks if st.max_score > 0 %}
+        <th>Min</th>
+        <th>Max</th>
+{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+{% for sol in model_solutions if not sol.has_metadata %}
+      {% set sol_i = loop.index0 %}
+      <tr>
+        <td><strong>{{ sol.name }}</strong></td>
+{% for st in subtasks if st.max_score > 0 %}
+        <td>
+          <input type="number" step="0.01" name="sol_{{ sol_i }}_st_{{ st.idx }}_min" value="0" style="width: 60px;" />
+        </td>
+        <td>
+          <input type="number" step="0.01" name="sol_{{ sol_i }}_st_{{ st.idx }}_max" value="{{ st.max_score }}" style="width: 60px;" />
+        </td>
+{% endfor %}
+      </tr>
+{% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+
+  <div style="margin: 20px 0;">
+    <input type="submit" value="Import Task with Model Solutions">
+    <input type="button" value="Cancel" onclick="window.location.href='{{ url("tasks", "import") }}'">
+  </div>
+</form>
+
+<div style="margin-top: 20px; padding: 10px; background-color: #e7f3ff; border: 1px solid #b6d4fe;">
+  <strong>Note:</strong> Solutions highlighted in yellow are missing metadata in task.yaml.
+  You can configure their expected score ranges here, or they will be imported with default values (0.0 - 100.0).
+</div>
+
+{% endblock core %}

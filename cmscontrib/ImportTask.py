@@ -42,7 +42,8 @@ import sys
 from cms import utf8_decoder
 from cms.db.contest import Contest
 from cms.db.session import Session
-from cms.db import SessionGen, Task
+from cms.db import SessionGen, Task, \
+    get_or_create_model_solution_participation, create_model_solution
 from cms.db.filecacher import FileCacher
 from cmscontrib.importing import ImportDataError, contest_from_db, update_task
 from cmscontrib.loaders import choose_loader, build_epilog
@@ -122,6 +123,15 @@ class TaskImporter:
                 task = self._task_to_db(
                     session, contest, task, task_has_changed)
 
+                # Import model solutions if present
+                dataset = task.active_dataset
+                if dataset is not None and \
+                        hasattr(dataset, '_model_solutions_import_data') and \
+                        dataset._model_solutions_import_data:
+                    self._import_model_solutions(
+                        session, task, dataset,
+                        dataset._model_solutions_import_data)
+
             except ImportDataError as e:
                 if self.raise_import_errors:
                     raise
@@ -174,6 +184,61 @@ class TaskImporter:
             logger.info("Task \"%s\" data has not changed.", task.name)
 
         return task
+
+    def _import_model_solutions(
+        self, session: Session, task: Task, dataset, model_solutions_data: list
+    ):
+        """Import model solutions from parsed data.
+
+        session: SQLAlchemy session.
+        task: Task object (already in database).
+        dataset: Dataset object (already in database).
+        model_solutions_data: list of model solution data dicts from loader.
+
+        """
+        # Get or create the model solution participation
+        participation = get_or_create_model_solution_participation(session)
+
+        # Check for existing model solutions with same names
+        existing_names = {
+            meta.name for meta in dataset.model_solution_metas
+        }
+
+        imported_count = 0
+        for sol_data in model_solutions_data:
+            name = sol_data["name"]
+
+            if name in existing_names:
+                logger.info(
+                    "Model solution '%s' already exists, skipping", name)
+                continue
+
+            # Get language from loader data (already detected from original filenames)
+            # Note: We don't try to detect from sol_data["files"].keys() because
+            # those are codenames like "solution.%l", not actual filenames
+            language = sol_data.get("language")
+
+            # Use the shared helper to create the model solution
+            # (same logic as the admin handler)
+            digests = dict(sol_data["files"])  # filename -> digest
+
+            submission, meta = create_model_solution(
+                session,
+                task=task,
+                dataset=dataset,
+                participation=participation,
+                digests=digests,
+                language_name=language,
+                name=name,
+                description=sol_data.get("description", ""),
+                expected_score_min=sol_data.get("expected_score_min", 0.0),
+                expected_score_max=sol_data.get("expected_score_max", 100.0),
+                subtask_expected_scores=sol_data.get("subtask_expected_scores"),
+            )
+            imported_count += 1
+
+        if imported_count > 0:
+            logger.info("Imported %d model solution(s)", imported_count)
 
 
 def main():

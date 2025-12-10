@@ -22,7 +22,7 @@
 import logging
 
 from cms.db import Dataset, Submission, File, ModelSolutionMeta, \
-    get_or_create_model_solution_participation
+    get_or_create_model_solution_participation, create_model_solution
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.contest.submission import UnacceptableSubmission
 from cms.server.contest.submission.workflow import _extract_and_match_files
@@ -84,7 +84,18 @@ class AddModelSolutionHandler(BaseHandler):
 
         try:
             attrs = {}
+            self.get_string(attrs, "name")
             self.get_string(attrs, "description")
+
+            # Validate name is a valid identifier (alphanumeric + underscore)
+            name = attrs.get("name", "").strip()
+            if not name:
+                raise ValueError("Name is required")
+            # Only reject characters that are problematic for filenames
+            invalid_chars = set('/\\*?<>|:"')
+            if any(c in invalid_chars for c in name):
+                raise ValueError(
+                    "Name cannot contain: / \\ * ? < > | : \"")
 
             expected_score_min = self.get_argument(
                 "expected_score_min", "0.0")
@@ -130,10 +141,14 @@ class AddModelSolutionHandler(BaseHandler):
 
             # Use the shared submission file processing logic from accept_submission.
             # This handles archive extraction, file matching, language detection, etc.
-            # For model solutions, we pass language_name=None to auto-detect.
+            # Read language from form if provided (for tasks with language-dependent
+            # submission formats). If not provided, auto-detect.
+            language_name = self.get_argument("language", None)
+            if language_name == "":
+                language_name = None
             try:
                 received_files, files, language = _extract_and_match_files(
-                    self.request.files, task, language_name=None)
+                    self.request.files, task, language_name=language_name)
             except UnacceptableSubmission as err:
                 raise ValueError(err.formatted_text)
 
@@ -151,34 +166,19 @@ class AddModelSolutionHandler(BaseHandler):
             participation = get_or_create_model_solution_participation(
                 self.sql_session)
 
-            opaque_id = Submission.generate_opaque_id(
-                self.sql_session, participation.id)
-            submission = Submission(
-                opaque_id=opaque_id,
-                timestamp=timestamp,
-                language=language.name if language is not None else None,
-                participation=participation,
+            submission, meta = create_model_solution(
+                self.sql_session,
                 task=task,
-                official=False
-            )
-            self.sql_session.add(submission)
-            self.sql_session.flush()
-
-            for codename, digest in digests.items():
-                self.sql_session.add(File(
-                    filename=codename,
-                    digest=digest,
-                    submission=submission))
-
-            meta = ModelSolutionMeta(
-                submission=submission,
                 dataset=dataset,
+                participation=participation,
+                digests=digests,
+                language_name=language.name if language is not None else None,
+                name=name,
                 description=attrs["description"],
                 expected_score_min=expected_score_min,
                 expected_score_max=expected_score_max,
-                subtask_expected_scores=subtask_expected_scores
+                subtask_expected_scores=subtask_expected_scores,
             )
-            self.sql_session.add(meta)
 
         except Exception as error:
             self.service.add_notification(

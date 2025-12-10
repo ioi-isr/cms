@@ -166,4 +166,12 @@ ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_s
 -- Add subtask expected scores column to model_solution_meta
 ALTER TABLE public.model_solution_meta ADD COLUMN subtask_expected_scores jsonb;
 
+-- Add name column to model_solution_meta for export/import functionality
+ALTER TABLE public.model_solution_meta ADD COLUMN name character varying;
+-- Set default names for existing model solutions based on their id
+UPDATE public.model_solution_meta SET name = 'solution_' || id WHERE name IS NULL;
+ALTER TABLE public.model_solution_meta ALTER COLUMN name SET NOT NULL;
+-- Add unique constraint for (dataset_id, name)
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_dataset_id_name_key UNIQUE (dataset_id, name);
+
 COMMIT;
