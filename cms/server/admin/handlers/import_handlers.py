@@ -27,6 +27,8 @@ import tempfile
 import zipfile
 from contextlib import contextmanager
 
+import yaml
+
 from cmscommon.datetime import make_datetime
 from cmscommon.zip import safe_extract_zip
 from cmscontrib.ImportTask import TaskImporter
@@ -159,10 +161,39 @@ def _handle_import_error(handler, error, entity_type, fallback_page,
     handler.redirect(fallback_page)
 
 
+def _inject_templates_into_yaml(task_path, input_template, output_template):
+    """Inject input/output templates into task.yaml if not already present."""
+    if not input_template and not output_template:
+        return
+
+    task_yaml_path = os.path.join(task_path, "task.yaml")
+    if not os.path.exists(task_yaml_path):
+        return
+
+    try:
+        with open(task_yaml_path, "r", encoding="utf-8") as f:
+            task_config = yaml.safe_load(f) or {}
+
+        if input_template and "input_template" not in task_config:
+            task_config["input_template"] = input_template
+        if output_template and "output_template" not in task_config:
+            task_config["output_template"] = output_template
+
+        with open(task_yaml_path, "w", encoding="utf-8") as f:
+            yaml.dump(task_config, f, default_flow_style=False,
+                      allow_unicode=True)
+    except Exception as e:
+        logger.warning("Failed to inject templates into task.yaml: %s", e)
+
+
 class ImportTaskHandler(
         SimpleHandler("import_task.html", permission_all=True)):
     """Handler for importing a task from a zip file.
 
+    Model solutions found in the task archive are imported with default
+    expected score ranges (0-100) if no metadata is provided in task.yaml.
+    Admins can configure the expected ranges after import via the model
+    solutions configuration page.
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
@@ -182,42 +213,16 @@ class ImportTaskHandler(
         loader_name = self.get_argument("loader", None)
         if loader_name == "":
             loader_name = None
-        
+
         input_template = self.get_argument("input_template", "").strip()
         output_template = self.get_argument("output_template", "").strip()
 
         try:
             with _extract_uploaded_zip(
                     task_file, "cms_import_task_", "task.zip") as task_path:
-                if input_template or output_template:
-                    import yaml
-                    task_yaml_path = os.path.join(task_path, "task.yaml")
-                    if os.path.exists(task_yaml_path):
-                        try:
-                            with open(task_yaml_path, "r",
-                                      encoding="utf-8") as f:
-                                task_config = yaml.safe_load(f)
-
-                            if task_config is None:
-                                task_config = {}
-
-                            if input_template and \
-                                    "input_template" not in task_config:
-                                task_config["input_template"] = input_template
-                            if output_template and \
-                                    "output_template" not in task_config:
-                                task_config["output_template"] = (
-                                    output_template)
-
-                            with open(task_yaml_path, "w",
-                                      encoding="utf-8") as f:
-                                yaml.dump(
-                                    task_config, f, default_flow_style=False,
-                                    allow_unicode=True)
-                        except Exception as e:
-                            logger.warning(
-                                "Failed to inject templates into task.yaml: %s",
-                                e)
+                # Inject templates if provided
+                _inject_templates_into_yaml(
+                    task_path, input_template, output_template)
 
                 def error_callback(msg):
                     raise ValueError(msg)
@@ -243,6 +248,35 @@ class ImportTaskHandler(
                     _handle_import_result(
                         self, success, "Task",
                         self.url("tasks"), fallback_page)
+                    if success:
+                        # Check if there are model solutions that need configuration
+                        pending_ids = getattr(
+                            importer, "model_solution_meta_ids_missing_metadata", [])
+                        task_id = getattr(importer, "imported_task_id", None)
+                        
+                        if pending_ids and task_id is not None:
+                            # Redirect to configuration page for model solutions
+                            # that were imported with defaults
+                            ids_str = ",".join(str(i) for i in pending_ids)
+                            self.service.add_notification(
+                                make_datetime(),
+                                "Task imported",
+                                "Some model solutions need configuration.")
+                            self.redirect(self.url(
+                                "task", task_id, "model_solutions", "configure"
+                            ) + f"?ids={ids_str}")
+                        else:
+                            self.service.add_notification(
+                                make_datetime(),
+                                "Task imported successfully",
+                                "")
+                            self.redirect(self.url("tasks"))
+                    else:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Task import failed",
+                            "Import failed. Please check the logs for details.")
+                        self.redirect(fallback_page)
                 except (LoaderValidationError, ImportDataError) as e:
                     _handle_import_error(self, e, "Task", fallback_page)
 

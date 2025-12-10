@@ -243,6 +243,7 @@ CREATE TABLE public.model_solution_meta (
     id integer NOT NULL,
     submission_id integer NOT NULL,
     dataset_id integer NOT NULL,
+    name character varying NOT NULL,
     description character varying NOT NULL,
     expected_score_min double precision NOT NULL,
     expected_score_max double precision NOT NULL,
@@ -264,6 +265,8 @@ ALTER TABLE ONLY public.model_solution_meta ALTER COLUMN id SET DEFAULT nextval(
 ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_submission_id_dataset_id_key UNIQUE (submission_id, dataset_id);
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_dataset_id_name_key UNIQUE (dataset_id, name);
 
 CREATE INDEX ix_model_solution_meta_dataset_id ON public.model_solution_meta USING btree (dataset_id);
 

@@ -137,7 +137,8 @@ from .modelsolution import \
     AddModelSolutionHandler, \
     ModelSolutionHandler, \
     EditModelSolutionHandler, \
-    DeleteModelSolutionHandler
+    DeleteModelSolutionHandler, \
+    ConfigureImportedModelSolutionsHandler
 from .folder import \
     FolderListHandler, \
     FolderHandler, \
@@ -303,6 +304,7 @@ HANDLERS = [
     (r"/model_solution/([0-9]+)(?:/([0-9]+))?", ModelSolutionHandler),
     (r"/model_solution/([0-9]+)/edit", EditModelSolutionHandler),
     (r"/model_solution/([0-9]+)/delete", DeleteModelSolutionHandler),
+    (r"/task/([0-9]+)/model_solutions/configure", ConfigureImportedModelSolutionsHandler),
 
     # The following prefixes are handled by WSGI middlewares:
     # * /rpc, defined in cms/io/web_service.py

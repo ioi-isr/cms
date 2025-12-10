@@ -29,7 +29,7 @@ import zipfile
 import yaml
 
 from cms.db import Contest, Task
-from cms.grading.languagemanager import SOURCE_EXTS
+from cms.grading.languagemanager import SOURCE_EXTS, get_language
 from cms.grading.tasktypes.util import get_allowed_manager_basenames
 from cmscommon.datetime import make_datetime
 
@@ -37,6 +37,27 @@ from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def _expand_codename_with_language(filename: str, language_name: str | None) -> str:
+    """Expand %l placeholder in filename to actual source extension.
+
+    filename: the filename, possibly ending with .%l
+    language_name: the language name (e.g., "C++17 / g++"), or None
+
+    return: the filename with .%l replaced by the actual extension,
+            or the original filename if no expansion is possible.
+    """
+    if not filename.endswith(".%l") or not language_name:
+        return filename
+    try:
+        language_obj = get_language(language_name)
+    except KeyError:
+        return filename
+    extension = language_obj.source_extension
+    if not extension:
+        return filename
+    return filename[:-3] + extension
 
 
 def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
@@ -48,16 +69,18 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     export_dir: Directory to export to
 
     Creates the following structure:
-    - task.yaml: Task configuration
+    - task.yaml: Task configuration (including model_solutions section)
     - statements/: Statement PDFs
     - attachments/: Task attachments
     - tests.zip: Testcases (input/output pairs)
     - managers/: Manager files (checker, grader, etc.)
+    - solutions/: Model solution source files (one subdirectory per solution)
     """
 
     statements_dir = os.path.join(export_dir, "statements")
     attachments_dir = os.path.join(export_dir, "attachments")
     managers_dir = os.path.join(export_dir, "managers")
+    solutions_dir = os.path.join(export_dir, "solutions")
 
     os.makedirs(statements_dir, exist_ok=True)
     os.makedirs(attachments_dir, exist_ok=True)
@@ -201,6 +224,46 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
         else:
             # Use codenames directly - the import side handles both codenames and indices
             task_config['public_testcases'] = ','.join(public_testcases)
+
+    # Export model solutions
+    if dataset.model_solution_metas:
+        os.makedirs(solutions_dir, exist_ok=True)
+        model_solutions_config = []
+
+        for meta in dataset.model_solution_metas:
+            submission = meta.submission
+            solution_config = {
+                'name': meta.name,
+                'description': meta.description,
+                'expected_score_min': meta.expected_score_min,
+                'expected_score_max': meta.expected_score_max,
+            }
+
+            if submission.language:
+                solution_config['language'] = submission.language
+
+            if meta.subtask_expected_scores:
+                solution_config['subtask_expected_scores'] = meta.subtask_expected_scores
+
+            # Export solution files
+            files_list = []
+            solution_subdir = os.path.join(solutions_dir, meta.name)
+            os.makedirs(solution_subdir, exist_ok=True)
+
+            for file_obj in submission.files.values():
+                # Expand %l placeholder to actual source extension
+                filename = _expand_codename_with_language(
+                    file_obj.filename, submission.language)
+
+                file_path = os.path.join(solution_subdir, filename)
+                file_cacher.get_file_to_path(file_obj.digest, file_path)
+                files_list.append(filename)
+
+            solution_config['files'] = files_list
+            model_solutions_config.append(solution_config)
+
+        if model_solutions_config:
+            task_config['model_solutions'] = model_solutions_config
 
     task_yaml_path = os.path.join(export_dir, "task.yaml")
     with open(task_yaml_path, 'w', encoding='utf-8') as f:
