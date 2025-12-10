@@ -75,7 +75,7 @@ def find_first_existing_dir(base_path, folder_names):
     """
     found_folders = []
     found_paths = []
-    
+
     for folder_name in folder_names:
         folder_path = os.path.join(base_path, folder_name)
         if os.path.isdir(folder_path):
@@ -90,7 +90,7 @@ def find_first_existing_dir(base_path, folder_names):
                     if os.path.realpath(folder_path) == os.path.realpath(existing_path):
                         is_duplicate = True
                         break
-            
+
             if not is_duplicate:
                 found_folders.append(folder_name)
                 found_paths.append(folder_path)
@@ -106,50 +106,50 @@ def find_first_existing_dir(base_path, folder_names):
 
 def detect_testcase_sources(task_path):
     """Detect and validate testcase sources in a task directory.
-    
+
     task_path: path to the task directory.
-    
+
     return: tuple (source_type, source_path) where source_type is one of:
         'legacy' - legacy input/output folders
         'zip' - tests.zip or testcases.zip
         'folder' - tests or testcases folder
         None - no testcase source found
-    
+
     Raises LoaderValidationError if multiple conflicting sources are found.
     """
     has_legacy = (os.path.exists(os.path.join(task_path, "input")) and
                   os.path.exists(os.path.join(task_path, "output")))
-    
+
     zip_sources = []
     for zip_name in ["tests.zip", "testcases.zip"]:
         zip_path = os.path.join(task_path, zip_name)
         if os.path.exists(zip_path):
             zip_sources.append((zip_name, zip_path))
-    
+
     folder_sources = []
     for folder_name in ["tests", "testcases"]:
         folder_path = os.path.join(task_path, folder_name)
         if os.path.isdir(folder_path):
             folder_sources.append((folder_name, folder_path))
-    
+
     if len(zip_sources) > 1:
         error_msg = ("Multiple testcase zip files found: %s. Please keep only one." %
                      ", ".join([name for name, _ in zip_sources]))
         logger.error(error_msg)
         raise LoaderValidationError(error_msg)
-    
+
     if len(folder_sources) > 1:
         error_msg = ("Multiple testcase folders found: %s. Please keep only one." %
                      ", ".join([name for name, _ in folder_sources]))
         logger.error(error_msg)
         raise LoaderValidationError(error_msg)
-    
+
     if len(zip_sources) > 0 and len(folder_sources) > 0:
         error_msg = ("Both testcase zip (%s) and folder (%s) found. Please keep only one." %
                      (zip_sources[0][0], folder_sources[0][0]))
         logger.error(error_msg)
         raise LoaderValidationError(error_msg)
-    
+
     if has_legacy:
         if zip_sources or folder_sources:
             new_source = zip_sources[0][0] if zip_sources else folder_sources[0][0]
@@ -189,7 +189,7 @@ def compile_manager_source(file_cacher, source_path, source_filename,
         source_body = f.read()
 
     error_message = []
-    
+
     def capture_error(title, text):
         error_message.append("%s: %s" % (title, text))
         if notify:
@@ -308,6 +308,49 @@ def parse_datetime(val):
 
 def make_timedelta(t):
     return timedelta(seconds=t)
+
+
+def _convert_filename_to_codename(filename: str, submission_format: list[str]) -> str:
+    """Convert a disk filename to its codename format for submission files.
+
+    When model solutions are exported, filenames like "solution.%l" are expanded
+    to actual extensions like "solution.cpp". During import, we need to convert
+    them back to the codename format so that the submission files match the
+    task's submission_format.
+
+    filename: the disk filename (e.g., "solution.cpp")
+    submission_format: the task's submission format (e.g., ["solution.%l"])
+
+    return: the codename if a match is found (e.g., "solution.%l"),
+            otherwise the original filename.
+
+    """
+    base, ext = os.path.splitext(filename)
+
+    # First pass: try exact base matching
+    for codename in submission_format:
+        if codename.endswith(".%l"):
+            # This is a language-dependent codename
+            codename_base = codename[:-3]  # Remove .%l
+            if base == codename_base and ext in SOURCE_EXTS:
+                return codename
+        else:
+            # Fixed filename, must match exactly
+            if filename == codename:
+                return codename
+
+    # Second pass: for single-file tasks with one %l codename, be lenient
+    # This handles cases where the exported filename base doesn't match the
+    # codename base (e.g., file "solution.cpp" but submission_format is
+    # ["task_name.%l"]). If there's only one possible codename and the file
+    # has a valid source extension, use that codename.
+    if len(submission_format) == 1 and ext in SOURCE_EXTS:
+        single_codename = submission_format[0]
+        if single_codename.endswith(".%l"):
+            return single_codename
+
+    # No match found, return original filename
+    return filename
 
 
 class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
@@ -636,13 +679,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 statements_to_import = multi_statement_paths
             else:
                 if single_statement_path is None:
-                    pdf_files = [f for f in os.listdir(statement_dir) 
+                    pdf_files = [f for f in os.listdir(statement_dir)
                                 if f.endswith('.pdf') and os.path.isfile(os.path.join(statement_dir, f))]
-                    
+
                     if len(pdf_files) == 1:
                         single_statement_path = os.path.join(statement_dir, pdf_files[0])
                         logger.info("Auto-detected single PDF file as statement: %s", pdf_files[0])
-                
+
                     if statement is None and single_statement_path is None:
                         error_msg = "Statement folder not found."
                         logger.error(error_msg)
@@ -862,7 +905,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 error_msg = "exponent must be an integer, got: %s" % exponent
                 logger.error(error_msg)
                 raise LoaderValidationError(error_msg)
-            
+
             if evaluation_param == "comparator":
                 logger.warning(
                     "Both checker and exponent specified. Checker takes precedence, "
@@ -1055,10 +1098,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         # Determine task type from config or legacy detection
         configured_type = conf.get("task_type")
         legacy_output_only = conf.get('output_only', False)
-        
+
         # Track output codenames for BatchAndOutput tasks (set by setup_batch)
         output_codenames = None
-        
+
         # Helper to set up OutputOnly task type
         def setup_output_only():
             args["task_type"] = "OutputOnly"
@@ -1069,7 +1112,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 args["task_type_parameters"].append(exponent if exponent is not None else 6)
             task.submission_format = \
                 ["output_%03d.txt" % i for i in range(n_input)]
-        
+
         # Helper to set up Communication task type
         def setup_communication():
             num_processes = load(conf, None, "num_processes")
@@ -1124,7 +1167,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                         Manager("manager", digest)]
                     manager_found = True
                     break
-            
+
             # Check managers folder if not found in legacy locations
             if not manager_found and managers_folder is not None:
                 manager_path = os.path.join(self.path, managers_folder, "manager")
@@ -1135,10 +1178,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     args["managers"] += [
                         Manager("manager", digest)]
                     manager_found = True
-            
+
             if not manager_found:
                 logger.warning("Communication task but no manager found")
-            
+
             # Load stubs and headers
             if os.path.isdir(os.path.join(self.path, "sol")):
                 for lang in LANGUAGES:
@@ -1164,13 +1207,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                                                      task.name))
                         args["managers"] += [
                             Manager(other_filename, digest)]
-        
+
         # Helper to set up TwoSteps task type
         def setup_twosteps():
             logger.info("Task type TwoSteps")
             args["task_type"] = "TwoSteps"
             args["task_type_parameters"] = [evaluation_param]
-        
+
         # Helper to set up Batch/BatchAndOutput task type
         def setup_batch():
             nonlocal output_codenames
@@ -1180,7 +1223,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 [infile_param, outfile_param],
                 evaluation_param,
             ]
-            
+
             if evaluation_param == "realprecision":
                 args["task_type_parameters"].append(exponent if exponent is not None else 6)
 
@@ -1207,7 +1250,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             elif configured_type == "BatchAndOutput":
                 args["task_type"] = "BatchAndOutput"
                 args["task_type_parameters"].append("")  # Empty output_only_testcases
-        
+
         # Task type selection: use configured_type if present, otherwise use legacy detection
         if configured_type == "OutputOnly":
             setup_output_only()
@@ -1262,12 +1305,12 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                             Attachment("input_%s.txt" % test_codename, input_digest))
         elif source_type in ('zip', 'folder'):
             testcases_dir = None
-            
+
             if source_type == 'zip':
                 testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
                 with zipfile.ZipFile(source_path, 'r') as zip_ref:
                     zip_ref.extractall(testcases_temp_dir)
-                
+
                 contents = os.listdir(testcases_temp_dir)
                 if len(contents) == 1 and os.path.isdir(os.path.join(testcases_temp_dir, contents[0])):
                     testcases_dir = os.path.join(testcases_temp_dir, contents[0])
@@ -1377,12 +1420,281 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         dataset = Dataset(**args)
         task.active_dataset = dataset
 
+        # Parse model solutions from task.yaml if present
+        # Store the data on the dataset for later processing by the importer
+        model_solutions_data = self._parse_model_solutions(conf, task.name)
+        if model_solutions_data:
+            # Store as a temporary attribute for the importer to process
+            dataset._model_solutions_import_data = model_solutions_data
+
         # Import was successful
         os.remove(os.path.join(self.path, ".import_error"))
 
         logger.info("Task parameters loaded.")
 
         return task
+
+    def _parse_model_solutions(self, conf, task_name):
+        """Parse model solutions from task.yaml and solutions/ folder.
+
+        conf: the task configuration dictionary.
+        task_name: name of the task (for logging).
+
+        return: list of model solution data dicts, each containing:
+            - name: solution name (identifier)
+            - description: human-readable description
+            - language: programming language (optional)
+            - files: dict of codename -> digest
+            - expected_score_min: minimum expected score (optional)
+            - expected_score_max: maximum expected score (optional)
+            - subtask_expected_scores: dict of subtask scores (optional)
+            - has_metadata: True if metadata was found in task.yaml
+
+        Supports two import formats (can be mixed for single-file tasks):
+        1. Subdirectory format: solutions/{name}/ contains all files
+        2. Flat file format (single-file tasks only): solutions/ contains
+           source files directly, filename (without extension) becomes name
+        """
+        # Get submission_format, using the same default as get_task()
+        submission_format = conf.get("submission_format")
+        if submission_format is None:
+            # Default to task_name.%l if not specified
+            submission_format = ["%s.%%l" % task_name]
+        elif isinstance(submission_format, str):
+            # Normalize scalar to list
+            submission_format = [submission_format]
+        is_single_file_task = len(submission_format) == 1
+
+        # Find solutions directory (supports alternative names)
+        solutions_folder = find_first_existing_dir(
+            self.path, ["solutions", "Solutions", "solution", "Solution"])
+        solutions_dir = (os.path.join(self.path, solutions_folder)
+                         if solutions_folder is not None else None)
+
+        model_solutions_yaml = conf.get("model_solutions", []) or []
+
+        if not model_solutions_yaml and not solutions_dir:
+            return []
+
+        # Phase 1: Discover all model solutions from filesystem
+        fs_solutions = self._discover_model_solutions_from_fs(
+            solutions_dir, submission_format, is_single_file_task, task_name)
+
+        # Phase 2: Parse YAML metadata
+        yaml_meta_by_name = {}
+        for sol_conf in model_solutions_yaml:
+            name = sol_conf.get("name")
+            if not name:
+                logger.warning("Model solution missing 'name' field, skipping")
+                continue
+            yaml_meta_by_name[name] = {
+                "description": sol_conf.get("description", ""),
+                "language": sol_conf.get("language"),
+                "expected_score_min": sol_conf.get("expected_score_min"),
+                "expected_score_max": sol_conf.get("expected_score_max"),
+                "subtask_expected_scores": sol_conf.get("subtask_expected_scores"),
+            }
+
+        # Phase 3: Merge filesystem discoveries with YAML metadata
+        result = []
+        for name in sorted(fs_solutions.keys()):
+            fs_info = fs_solutions[name]
+            meta = yaml_meta_by_name.get(name)
+
+            if not fs_info["files"]:
+                logger.warning(
+                    "Model solution '%s' has no files in solutions folder", name)
+                continue
+
+            # Use YAML metadata if available, otherwise use defaults
+            sol_data = {
+                "name": name,
+                "description": meta["description"] if meta else "",
+                "language": (meta.get("language") if meta and meta.get("language")
+                             else fs_info["language"]),
+                "subtask_expected_scores": (meta.get("subtask_expected_scores")
+                                            if meta else None),
+                "files": fs_info["files"],
+                "has_metadata": meta is not None,
+            }
+            if meta:
+                sol_data["expected_score_min"] = meta.get("expected_score_min")
+                sol_data["expected_score_max"] = meta.get("expected_score_max")
+            
+            result.append(sol_data)
+
+        # Warn about YAML entries with no matching filesystem solution
+        for name in yaml_meta_by_name:
+            if name not in fs_solutions:
+                logger.warning(
+                    "Model solution '%s' is defined in task.yaml but has no "
+                    "files in solutions folder", name)
+
+        if result:
+            logger.info("Found %d model solution(s) to import", len(result))
+
+        return result
+
+    def _discover_model_solutions_from_fs(
+            self, solutions_dir, submission_format, is_single_file_task, task_name):
+        """Discover model solutions from the filesystem.
+
+        Scans the solutions directory for both subdirectories (always valid)
+        and flat source files (only valid for single-file tasks).
+
+        solutions_dir: path to the solutions directory (or None if not found).
+        submission_format: the task's submission format list.
+        is_single_file_task: True if the task has only one submission file.
+        task_name: name of the task (for logging).
+
+        return: dict mapping solution name to {"files": {codename: digest},
+                "language": detected_language_or_None}
+
+        """
+        solutions = {}  # name -> {"files": {}, "language": None}
+
+        if not solutions_dir or not os.path.isdir(solutions_dir):
+            return solutions
+
+        for entry in sorted(os.listdir(solutions_dir)):
+            path = os.path.join(solutions_dir, entry)
+
+            if os.path.isdir(path):
+                # Subdirectory represents a model solution
+                name = entry
+                if not self._is_valid_solution_name(name):
+                    continue
+                files, lang = self._load_solution_files_from_dir(
+                    name, path, submission_format, task_name)
+                if files:
+                    self._merge_solution_entry(solutions, name, files, lang)
+                else:
+                    logger.warning(
+                        "Model solution directory '%s' is empty, skipping", name)
+
+            elif os.path.isfile(path):
+                # Flat file: only allowed for single-file tasks
+                if not is_single_file_task:
+                    continue
+
+                # Only accept source files (ignore README, etc.)
+                if filename_to_language(entry) is None:
+                    continue
+
+                base, ext = os.path.splitext(entry)
+                if not self._is_valid_solution_name(base):
+                    continue
+
+                files, lang = self._load_solution_file(
+                    base, path, entry, submission_format, task_name)
+                self._merge_solution_entry(solutions, base, files, lang)
+
+        return solutions
+
+    def _is_valid_solution_name(self, name):
+        """Check if a solution name is valid.
+
+        name: the solution name to validate.
+
+        return: True if valid, False otherwise (logs a warning).
+
+        """
+        invalid_chars = set('/\\*?<>|:"')
+        if any(c in invalid_chars for c in name):
+            logger.warning(
+                "Skipping model solution '%s': name contains invalid "
+                "characters (/ \\ * ? < > | : \")", name)
+            return False
+        return True
+
+    def _load_solution_files_from_dir(
+            self, name, dir_path, submission_format, task_name):
+        """Load all files from a model solution subdirectory.
+
+        name: the solution name.
+        dir_path: path to the solution subdirectory.
+        submission_format: the task's submission format list.
+        task_name: name of the task (for logging).
+
+        return: tuple (files_dict, detected_language) where files_dict maps
+                codename to digest, and detected_language is the first
+                detected language or None.
+
+        """
+        files = {}
+        language = None
+
+        for filename in os.listdir(dir_path):
+            file_path = os.path.join(dir_path, filename)
+            if not os.path.isfile(file_path):
+                continue
+
+            digest = self.file_cacher.put_file_from_path(
+                file_path,
+                "Model solution %s file %s for task %s" %
+                (name, filename, task_name))
+
+            # Convert disk filename to codename format
+            codename = _convert_filename_to_codename(filename, submission_format)
+            files[codename] = digest
+
+            # Detect language from original filename if not yet set
+            if language is None:
+                detected = filename_to_language(filename)
+                if detected is not None:
+                    language = detected.name
+
+        return files, language
+
+    def _load_solution_file(
+            self, base, file_path, filename, submission_format, task_name):
+        """Load a single flat file as a model solution.
+
+        base: the solution name (filename without extension).
+        file_path: full path to the file.
+        filename: the filename (with extension).
+        submission_format: the task's submission format list.
+        task_name: name of the task (for logging).
+
+        return: tuple (files_dict, detected_language) where files_dict maps
+                codename to digest.
+
+        """
+        digest = self.file_cacher.put_file_from_path(
+            file_path,
+            "Model solution %s file %s for task %s" %
+            (base, filename, task_name))
+
+        codename = _convert_filename_to_codename(filename, submission_format)
+        files = {codename: digest}
+
+        detected = filename_to_language(filename)
+        language = detected.name if detected else None
+
+        return files, language
+
+    def _merge_solution_entry(self, solutions, name, files, language):
+        """Merge a solution entry into the solutions dict.
+
+        If a solution with the same name already exists, merge the files
+        and log a warning. This handles the case where both a subdirectory
+        and a flat file exist with the same base name.
+
+        solutions: the solutions dict to update.
+        name: the solution name.
+        files: dict of codename -> digest.
+        language: detected language or None.
+
+        """
+        if name in solutions and solutions[name]["files"]:
+            logger.warning(
+                "Multiple definitions for model solution '%s' in solutions "
+                "folder; merging files (subdirectories take precedence)", name)
+
+        entry = solutions.setdefault(name, {"files": {}, "language": None})
+        entry["files"].update(files)
+        if entry["language"] is None:
+            entry["language"] = language
 
     def contest_has_changed(self):
         """See docstring in class ContestLoader."""
