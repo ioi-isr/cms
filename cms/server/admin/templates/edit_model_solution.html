@@ -8,6 +8,11 @@
   {{ xsrf_form_html|safe }}
   <table>
     <tr>
+      <td>Name:</td>
+      <td><strong>{{ meta.name }}</strong></td>
+      <td style="font-size: 0.9em; color: #666;">(cannot be changed after creation)</td>
+    </tr>
+    <tr>
       <td>Description:</td>
       <td><input type="text" name="description" value="{{ meta.description }}" required /></td>
     </tr>
