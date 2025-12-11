@@ -284,6 +284,7 @@ def update_dataset(old_dataset: Dataset, new_dataset: Dataset, parent=None):
         # We need to copy this temporary attribute so it's available
         # on the DB dataset after update_task completes.
         Dataset.model_solution_metas: False,
+        Dataset.generators: False,
     }, parent=parent)
 
     # Copy temporary import data attribute from new_dataset to old_dataset.
