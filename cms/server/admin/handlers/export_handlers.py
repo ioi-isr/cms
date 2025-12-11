@@ -158,19 +158,30 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
         task_config['task_type'] = dataset.task_type
         if dataset.task_type_parameters:
             if dataset.task_type in ("Batch", "BatchAndOutput") and len(dataset.task_type_parameters) >= 3:
+                # Export compilation parameter (alone/grader)
+                task_config['compilation'] = dataset.task_type_parameters[0]
                 task_config['infile'] = dataset.task_type_parameters[1][0]
                 task_config['outfile'] = dataset.task_type_parameters[1][1]
+                # Export output_eval parameter (diff/comparator/realprecision)
+                task_config['output_eval'] = dataset.task_type_parameters[2]
                 if len(dataset.task_type_parameters) >= 4 and dataset.task_type_parameters[2] == "realprecision":
                     task_config['exponent'] = dataset.task_type_parameters[3]
                 if dataset.task_type == "BatchAndOutput":
                     output_only_testcases = dataset.task_type_parameters[-1]
                     if output_only_testcases:
                         task_config['output_only_testcases'] = output_only_testcases
-            elif dataset.task_type == "OutputOnly" and len(dataset.task_type_parameters) >= 2:
-                if dataset.task_type_parameters[0] == "realprecision":
+            elif dataset.task_type == "OutputOnly" and len(dataset.task_type_parameters) >= 1:
+                # Export output_eval parameter for OutputOnly
+                task_config['output_eval'] = dataset.task_type_parameters[0]
+                if len(dataset.task_type_parameters) >= 2 and dataset.task_type_parameters[0] == "realprecision":
                     task_config['exponent'] = dataset.task_type_parameters[1]
+            elif dataset.task_type == "TwoSteps" and len(dataset.task_type_parameters) >= 1:
+                # Export output_eval parameter for TwoSteps
+                task_config['output_eval'] = dataset.task_type_parameters[0]
             elif dataset.task_type == "Communication" and len(dataset.task_type_parameters) >= 3:
                 task_config['num_processes'] = dataset.task_type_parameters[0]
+                # Export compilation parameter for Communication (alone/stub)
+                task_config['compilation'] = dataset.task_type_parameters[1]
                 task_config['user_io'] = dataset.task_type_parameters[2]
 
     if dataset.score_type:

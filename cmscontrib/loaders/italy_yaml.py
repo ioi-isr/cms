@@ -773,6 +773,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         infile_param = conf.get("infile", "")
         outfile_param = conf.get("outfile", "")
 
+        # Check if compilation and output_eval are explicitly specified in task.yaml
+        # These take precedence over file-based detection
+        explicit_compilation = conf.get("compilation")
+        explicit_output_eval = conf.get("output_eval")
+
         # If there is sol/grader.%l for some language %l, then,
         # presuming that the task type is Batch, we retrieve graders
         # in the form sol/grader.%l
@@ -806,13 +811,22 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                         "Manager %s for task %s" % (other_filename, task.name))
                     args["managers"] += [
                         Manager(other_filename, digest)]
-            compilation_param = "grader"
+
+        # Use explicit compilation parameter if specified, otherwise detect from files
+        if explicit_compilation is not None:
+            if explicit_compilation in ("alone", "grader", "stub"):
+                compilation_param = explicit_compilation
+            else:
+                logger.warning("Invalid compilation value '%s', using file-based detection",
+                               explicit_compilation)
+                compilation_param = "grader" if graders else "alone"
         else:
-            compilation_param = "alone"
+            compilation_param = "grader" if graders else "alone"
 
         # If there is check/checker (or equivalent), then, presuming
         # that the task type is Batch or OutputOnly, we retrieve the
         # comparator
+        checker_found = False
         paths = [os.path.join(self.path, "check", "checker"),
                  os.path.join(self.path, "cor", "correttore")]
         for path in paths:
@@ -822,10 +836,19 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     "Manager for task %s" % task.name)
                 args["managers"] += [
                     Manager("checker", digest)]
-                evaluation_param = "comparator"
+                checker_found = True
                 break
+
+        # Use explicit output_eval parameter if specified, otherwise detect from files
+        if explicit_output_eval is not None:
+            if explicit_output_eval in ("diff", "comparator", "realprecision"):
+                evaluation_param = explicit_output_eval
+            else:
+                logger.warning("Invalid output_eval value '%s', using file-based detection",
+                               explicit_output_eval)
+                evaluation_param = "comparator" if checker_found else "diff"
         else:
-            evaluation_param = "diff"
+            evaluation_param = "comparator" if checker_found else "diff"
         
         exponent = load(conf, None, "exponent")
         if exponent is not None:
@@ -1061,8 +1084,32 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     io_type = None
             logger.info("Task type Communication")
             args["task_type"] = "Communication"
+            
+            # Detect if stubs exist for file-based compilation detection
+            stubs_found = False
+            if os.path.isdir(os.path.join(self.path, "sol")):
+                for lang in LANGUAGES:
+                    stub_name = os.path.join(
+                        self.path, "sol", "stub%s" % lang.source_extension)
+                    if os.path.exists(stub_name):
+                        stubs_found = True
+                        break
+            
+            # Determine compilation parameter: use explicit if specified, otherwise detect
+            if explicit_compilation is not None:
+                if explicit_compilation in ("alone", "stub"):
+                    comm_compilation = explicit_compilation
+                else:
+                    logger.warning("Invalid compilation value '%s' for Communication task, "
+                                   "using file-based detection", explicit_compilation)
+                    comm_compilation = "stub" if stubs_found else "alone"
+            else:
+                comm_compilation = "stub" if stubs_found else "alone"
+            
+            # Determine default io_type based on compilation
+            default_io = "fifo_io" if comm_compilation == "stub" else "std_io"
             args["task_type_parameters"] = \
-                [num_processes, "alone", io_type or "std_io"]
+                [num_processes, comm_compilation, io_type or default_io]
             
             # Look for manager in legacy locations or managers folder
             manager_found = False
@@ -1102,12 +1149,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                             stub_name,
                             "Stub for task %s and language %s" % (
                                 task.name, lang.name))
-                        args["task_type_parameters"] = \
-                            [num_processes, "stub", io_type or "fifo_io"]
                         args["managers"] += [
                             Manager(
                                 "stub%s" % lang.source_extension, digest)]
-                    else:
+                    elif comm_compilation == "stub":
                         logger.warning("Stub for language %s not "
                                        "found.", lang.name)
                 for other_filename in os.listdir(os.path.join(self.path, "sol")):
