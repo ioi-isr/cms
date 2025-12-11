@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Generate testcases</h1>
+</div>
+<form action="{{ url("dataset", dataset.id, "generator", generator.id, "generate") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>Generator:</td>
+      <td>{{ generator.filename }}</td>
+    </tr>
+    <tr>
+      <td>Input template:</td>
+      <td>{{ generator.input_filename_template }}</td>
+    </tr>
+    <tr>
+      <td>Output template:</td>
+      <td>{{ generator.output_filename_template }}</td>
+    </tr>
+    <tr>
+      <td>Override existing testcases:</td>
+      <td>
+        <input type="checkbox" name="overwrite" checked>
+      </td>
+    </tr>
+    <tr>
+      <td>Make testcases public:</td>
+      <td>
+        <input type="checkbox" name="public" checked>
+      </td>
+    </tr>
+  </table>
+  <input type="submit" value="Generate">
+  <a href="{{ url("task", task.id) }}">Cancel</a>
+</form>
+{% endblock core %}

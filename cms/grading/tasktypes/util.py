@@ -397,8 +397,9 @@ def compile_manager_bytes(
         safe_src = os.path.basename(source_filename)
         sandbox.create_file_from_string(safe_src, source_bytes)
         
+        executable_filename = output_basename + language.executable_extension
         commands = language.get_compilation_commands(
-            [safe_src], output_basename, for_evaluation=for_evaluation)
+            [safe_src], executable_filename, for_evaluation=for_evaluation)
         
         box_success, compilation_success, _text, stats = \
             compilation_step(sandbox, commands)
@@ -428,7 +429,25 @@ def compile_manager_bytes(
                 notify("Manager compilation failed", error_details)
             return False, None, stats
         
-        compiled_bytes = sandbox.get_file_to_string(output_basename, maxlen=None)
+        if not sandbox.file_exists(executable_filename):
+            stdout = stats.get("stdout", "") if stats else ""
+            stderr = stats.get("stderr", "") if stats else ""
+            
+            error_details = (
+                f"Compilation of {source_filename} did not produce "
+                f"expected output file '{executable_filename}'.\n"
+            )
+            if stdout:
+                error_details += f"Stdout:\n{stdout}\n"
+            if stderr:
+                error_details += f"Stderr:\n{stderr}"
+            
+            logger.error(error_details)
+            if notify:
+                notify("Manager compilation failed", error_details)
+            return False, None, stats
+        
+        compiled_bytes = sandbox.get_file_to_string(executable_filename, maxlen=None)       
     except Exception as error:
         msg = f"Error compiling {source_filename}: {error}"
         logger.error(msg, exc_info=True)

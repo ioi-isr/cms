@@ -295,4 +295,35 @@ ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_details
 -- to contestants instead of leaving them stuck in "Evaluating..." state.
 ALTER TYPE public.evaluation_outcome ADD VALUE 'fail';
 
+-- Add generators table for testcase generation
+CREATE TABLE public.generators (
+    id integer NOT NULL,
+    dataset_id integer NOT NULL,
+    filename public.filename NOT NULL,
+    digest public.digest NOT NULL,
+    executable_digest public.digest,
+    input_filename_template character varying NOT NULL,
+    output_filename_template character varying NOT NULL
+);
+
+CREATE SEQUENCE public.generators_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.generators_id_seq OWNED BY public.generators.id;
+
+ALTER TABLE ONLY public.generators ALTER COLUMN id SET DEFAULT nextval('public.generators_id_seq'::regclass);
+
+ALTER TABLE ONLY public.generators ADD CONSTRAINT generators_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.generators ADD CONSTRAINT generators_dataset_id_filename_key UNIQUE (dataset_id, filename);
+
+CREATE INDEX ix_generators_dataset_id ON public.generators USING btree (dataset_id);
+
+ALTER TABLE ONLY public.generators ADD CONSTRAINT generators_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES public.datasets(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
 COMMIT;
