@@ -1441,13 +1441,15 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 "description": meta["description"] if meta else "",
                 "language": (meta.get("language") if meta and meta.get("language")
                              else fs_info["language"]),
-                "expected_score_min": meta.get("expected_score_min") if meta else None,
-                "expected_score_max": meta.get("expected_score_max") if meta else None,
                 "subtask_expected_scores": (meta.get("subtask_expected_scores")
                                             if meta else None),
                 "files": fs_info["files"],
                 "has_metadata": meta is not None,
             }
+            if meta:
+                sol_data["expected_score_min"] = meta.get("expected_score_min")
+                sol_data["expected_score_max"] = meta.get("expected_score_max")
+            
             result.append(sol_data)
 
         # Warn about YAML entries with no matching filesystem solution
