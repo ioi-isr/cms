@@ -40,6 +40,55 @@ $(document).ready(function() {
   {% endfor %}
 });
 
+window.toggleMultipleDeleteMode = function(dataset_id) {
+  var cells = $(".multi_delete_col_" + dataset_id);
+  var deleteButton = $("#delete_selected_" + dataset_id);
+  var toggleLink = $("#toggle_multi_delete_" + dataset_id);
+  var currentlyVisible = cells.first().is(":visible");
+  if (currentlyVisible) {
+    cells.hide();
+    deleteButton.hide();
+    toggleLink.text("Delete multiple testcases");
+    $(".multi_delete_checkbox_" + dataset_id).prop("checked", false);
+  } else {
+    cells.show();
+    deleteButton.show();
+    toggleLink.text("Cancel multiple delete");
+  }
+};
+
+window.toggleSelectAllTestcases = function(dataset_id, masterCheckbox) {
+  $(".multi_delete_checkbox_" + dataset_id).prop("checked", masterCheckbox.checked);
+};
+
+window.deleteSelectedTestcases = function(dataset_id, url) {
+  var checkboxes = $(".multi_delete_checkbox_" + dataset_id + ":checked");
+  if (checkboxes.length === 0) {
+    alert("No testcases selected.");
+    return;
+  }
+  if (!confirm("Are you sure you want to delete the selected testcases from this dataset?")) {
+    return;
+  }
+
+  var data = [];
+  checkboxes.each(function() {
+    data.push("testcase_id=" + encodeURIComponent($(this).val()));
+  });
+
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: data.join("&"),
+    headers: {"X-XSRFToken": get_cookie("_xsrf")},
+    success: function(redirect_url) {
+      if (redirect_url) {
+        window.location.replace(redirect_url);
+      }
+    }
+  });
+};
+
 {% endblock js_init %}
 
 {% block core %}
@@ -497,11 +546,15 @@ $(document).ready(function() {
 {% endif %}
       <a href="{{ url("dataset", dataset.id, "testcases", "download") }}">Download all testcases</a>
 {% if admin.permission_all %}
-      <a onclick="if (confirm('Are you sure you want to delete all testcases from this dataset?')) { CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "testcases", "delete_all") }}'); }">Delete all testcases</a>
+      <a href="javascript:void(0);" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Delete multiple testcases</a>
+      <a href="javascript:void(0);" id="delete_selected_{{ dataset.id }}" style="display:none;" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete selected testcases</a>
 {% endif %}
       <table class="bordered" style="text-align:center">
         <thead>
           <tr>
+            <th class="multi_delete_col_{{ dataset.id }}" style="display:none;">
+              <input type="checkbox" onclick="toggleSelectAllTestcases({{ dataset.id }}, this)">
+            </th>
             <th>#</th>
             <th>Codename</th>
             <th>Public</th>
@@ -516,6 +569,9 @@ $(document).ready(function() {
         <tbody>
           {% for codename, testcase in dataset.testcases|dictsort(by="key") %}
           <tr>
+            <td class="multi_delete_col_{{ dataset.id }}" style="display:none;">
+              <input type="checkbox" class="multi_delete_checkbox_{{ dataset.id }}" value="{{ testcase.id }}">
+            </td>
             <td style="font-weight:bold;">{{ loop.index }}</td>
             <td>{{ codename }}</td>
             <td style="font-weight:bold;">
