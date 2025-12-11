@@ -43,7 +43,7 @@ except:
 
 import tornado.web
 
-from cms.db import Dataset, Manager, Message, Participation, \
+from cms.db import Dataset, Generator, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
 from cms.grading.tasktypes import get_task_type_class
 from cms.grading.tasktypes.util import create_sandbox, \
@@ -57,6 +57,16 @@ from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def validate_template(template: str, name: str) -> str | None:
+    """Validate a filename template contains exactly one '*'.
+
+    Return an error message if invalid, None if valid.
+    """
+    if template.count('*') != 1:
+        return "%s template must contain exactly one '*'." % name.capitalize()
+    return None
 
 
 class DatasetSubmissionsHandler(BaseHandler):
@@ -788,11 +798,14 @@ class DownloadTestcasesHandler(BaseHandler):
         output_template: str = self.get_argument("output_template", "output.*")
 
         # Template validations
-        if input_template.count('*') != 1 or output_template.count('*') != 1:
+        error = validate_template(input_template, "input")
+        if error is None:
+            error = validate_template(output_template, "output")
+        if error is not None:
             self.service.add_notification(
                 make_datetime(),
                 "Invalid template format",
-                "You must have exactly one '*' in input/output template.")
+                error)
             self.redirect(fallback_page)
             return
 
@@ -818,3 +831,408 @@ class DownloadTestcasesHandler(BaseHandler):
                         "attachment; filename=\"%s\"" % zip_filename)
 
         self.write(temp_file.getvalue())
+
+
+class AddGeneratorHandler(BaseHandler):
+    """Add a generator to a dataset.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.render("add_generator.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        fallback_page = self.url("dataset", dataset_id, "generators", "add")
+
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        task_name = task.name
+
+        generator_file = self.request.files.get("generator")
+        if not generator_file:
+            self.service.add_notification(
+                make_datetime(),
+                "No generator file",
+                "Please upload a generator source file.")
+            self.redirect(fallback_page)
+            return
+
+        generator_file = generator_file[0]
+        filename = generator_file["filename"]
+        body = generator_file["body"]
+
+        input_filename_template = self.get_argument(
+            "input_filename_template", "input.*").strip()
+        output_filename_template = self.get_argument(
+            "output_filename_template", "output.*").strip()
+
+        error = validate_template(input_filename_template, "input")
+        if error is None:
+            error = validate_template(output_filename_template, "output")
+        if error is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid template",
+                error)
+            self.redirect(fallback_page)
+            return
+
+        try:
+            language = filename_to_language(filename)
+        except Exception:
+            language = None
+
+        if language is None:
+            self.service.add_notification(
+                make_datetime(),
+                "Unknown language",
+                "Could not detect language for file '%s'." % filename)
+            self.redirect(fallback_page)
+            return
+
+        if not isinstance(language, CompiledLanguage):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid language",
+                "Generator must be a compiled language, not '%s'." %
+                language.name)
+            self.redirect(fallback_page)
+            return
+
+        self.sql_session.close()
+
+        compiled_filename = "generator"
+
+        def notify(title, text):
+            self.service.add_notification(make_datetime(), title, text)
+
+        success, compiled_bytes, stats = compile_manager_bytes(
+            self.service.file_cacher,
+            filename,
+            body,
+            compiled_filename,
+            sandbox_name="admin_compile",
+            for_evaluation=True,
+            notify=notify
+        )
+
+        if not success:
+            self.redirect(fallback_page)
+            return
+
+        try:
+            source_digest = self.service.file_cacher.put_file_content(
+                body, "Generator source for %s" % task_name)
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator storage failed",
+                "Error storing source: %s" % repr(error))
+            self.redirect(fallback_page)
+            return
+
+        executable_digest = None
+        if compiled_bytes is not None:
+            try:
+                executable_digest = self.service.file_cacher.put_file_content(
+                    compiled_bytes, "Compiled generator for %s" % task_name)
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Generator storage failed",
+                    "Error storing executable: %s" % repr(error))
+                self.redirect(fallback_page)
+                return
+
+        self.sql_session = Session()
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        existing_generator = dataset.generators.get(filename)
+        if existing_generator is not None:
+            existing_generator.digest = source_digest
+            existing_generator.executable_digest = executable_digest
+            existing_generator.input_filename_template = input_filename_template
+            existing_generator.output_filename_template = output_filename_template
+        else:
+            generator = Generator(
+                filename=filename,
+                digest=source_digest,
+                executable_digest=executable_digest,
+                input_filename_template=input_filename_template,
+                output_filename_template=output_filename_template,
+                dataset=dataset)
+            self.sql_session.add(generator)
+
+        if self.try_commit():
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class EditGeneratorHandler(BaseHandler):
+    """Edit a generator's filename templates.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id, generator_id):
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.r_params["generator"] = generator
+        self.render("edit_generator.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, generator_id):
+        fallback_page = self.url("dataset", dataset_id, "generator",
+                                 generator_id, "edit")
+
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task = dataset.task
+
+        input_filename_template = self.get_argument(
+            "input_filename_template", "input.*").strip()
+        output_filename_template = self.get_argument(
+            "output_filename_template", "output.*").strip()
+
+        error = validate_template(input_filename_template, "input")
+        if error is None:
+            error = validate_template(output_filename_template, "output")
+        if error is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid template",
+                error)
+            self.redirect(fallback_page)
+            return
+
+        generator.input_filename_template = input_filename_template
+        generator.output_filename_template = output_filename_template
+
+        if self.try_commit():
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class DeleteGeneratorHandler(BaseHandler):
+    """Delete a generator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, dataset_id, generator_id):
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task_id = dataset.task_id
+        self.sql_session.delete(generator)
+
+        if self.try_commit():
+            self.write("./%d" % task_id)
+
+
+class GenerateTestcasesHandler(BaseHandler):
+    """Generate testcases using a generator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id, generator_id):
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        if generator.executable_digest is None:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator not compiled",
+                "The generator has not been compiled successfully.")
+            self.redirect(self.url("task", dataset.task.id))
+            return
+
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.r_params["generator"] = generator
+        self.render("generate_testcases.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, generator_id):
+        fallback_page = self.url("dataset", dataset_id, "generator",
+                                 generator_id, "generate")
+
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        if generator.executable_digest is None:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator not compiled",
+                "The generator has not been compiled successfully.")
+            self.redirect(self.url("task", dataset.task.id))
+            return
+
+        task = dataset.task
+
+        overwrite = self.get_argument("overwrite", "") == "on"
+        public = self.get_argument("public", "") == "on"
+
+        input_template = generator.input_filename_template
+        output_template = generator.output_filename_template
+
+        self.sql_session.close()
+
+        try:
+            language = filename_to_language(generator.filename)
+        except Exception:
+            language = None
+
+        exe_name = "generator"
+        if language is not None and isinstance(language, CompiledLanguage):
+            exe_name += language.executable_extension
+
+        sandbox = None
+        try:
+            sandbox = create_sandbox(self.service.file_cacher,
+                                     name="admin_generate")
+
+            sandbox.create_file_from_storage(exe_name,
+                                             generator.executable_digest,
+                                             executable=True)
+
+            cmd = ["./" + exe_name]
+            if language is not None:
+                try:
+                    cmds = language.get_evaluation_commands(exe_name)
+                    if cmds:
+                        cmd = cmds[0]
+                except Exception:
+                    pass
+
+            # Set stdout/stderr files so they are created during execution
+            sandbox.stdout_file = "stdout.txt"
+            sandbox.stderr_file = "stderr.txt"
+
+            box_success = sandbox.execute_without_std(cmd, wait=True)
+
+            # Read stdout/stderr (best-effort, may not exist)
+            stdout = ""
+            stderr = ""
+            try:
+                stdout = sandbox.get_file_to_string("stdout.txt", maxlen=65536)
+            except FileNotFoundError:
+                pass
+            try:
+                stderr = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
+            except FileNotFoundError:
+                pass
+
+            if not box_success:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Generator execution failed",
+                    "Sandbox error during execution.\nStdout:\n%s\nStderr:\n%s"
+                    % (stdout, stderr))
+                self.redirect(fallback_page)
+                return
+
+            exit_status = sandbox.get_exit_status()
+            if exit_status != sandbox.EXIT_OK:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Generator execution failed",
+                    "Exit status: %s\nStdout:\n%s\nStderr:\n%s" %
+                    (exit_status, stdout, stderr))
+                self.redirect(fallback_page)
+                return
+
+            input_re = compile_template_regex(input_template)
+            output_re = compile_template_regex(output_template)
+
+            temp_zip = io.BytesIO()
+            with zipfile.ZipFile(temp_zip, "w") as zf:
+                sandbox_home = sandbox.relative_path("")
+                for root, dirs, files in os.walk(sandbox_home):
+                    for filename in files:
+                        if filename in [exe_name, "stdout.txt", "stderr.txt"]:
+                            continue
+                        rel_path = os.path.relpath(
+                            os.path.join(root, filename), sandbox_home)
+                        content = sandbox.get_file_to_string(rel_path, maxlen=None)
+                        zf.writestr(rel_path, content)
+
+            temp_zip.seek(0)
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator execution error",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+        finally:
+            if sandbox:
+                sandbox.cleanup(delete=True)
+
+        self.sql_session = Session()
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        try:
+            successful_subject, successful_text = import_testcases_from_zipfile(
+                self.sql_session,
+                self.service.file_cacher,
+                dataset,
+                temp_zip,
+                input_re,
+                output_re,
+                overwrite,
+                public)
+            self.service.add_notification(
+                make_datetime(),
+                successful_subject,
+                successful_text)
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Testcase import failed",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
