@@ -1,10 +1,29 @@
 {% extends "base.html" %}
+{% macro task_html(status) -%}
+    {%- if not status.has_submissions -%}
+        {%- if not status.has_opened -%}
+            <span class="indicator">🙈</span><span class="score-only">{{ status.score }}{% if status.partial %}*{% endif %}</span>
+        {%- else -%}
+            <span class="indicator">💤</span><span class="score-only">{{ status.score }}{% if status.partial %}*{% endif %}</span>
+        {%- endif -%}
+    {%- elif not status.has_opened -%}
+        <span class="indicator">⚠️</span>{{ status.score }}{% if status.partial %}*{% endif %}<span class="indicator">🙈⚠️</span>
+    {%- else -%}
+        {{ status.score }}{% if status.partial %}*{% endif %}
+    {%- endif -%}
+{%- endmacro %}
 
 {% block core %}
+<style>
+  #ranking-table .score-only { display: none; }
+  #ranking-table.hide-indicators .indicator { display: none; }
+  #ranking-table.hide-indicators .score-only { display: inline; }
+</style>
 <div class="core_title">
   <h1>Ranking</h1>
 </div>
 Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>, <a href="{{ url("contest", contest.id, "ranking", "txt") }}">text</a>.
+<label style="margin-left: 20px;"><input type="checkbox" id="show-indicators" checked> Show indicators</label>
 <table id="ranking-table" class="bordered">
   <thead>
     <tr>
@@ -21,7 +40,7 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
   </thead>
   <tbody>
     {# This template assumes participations have two fields in addition to those in the DB: #}
-    {# - scores: a list of pairs (score, is score partial) for each task; #}
+    {# - task_statuses: the per-task status info for rendering; #}
     {# - total_score: the total score for the contest. #}
     {% for p in contest.participations %}
       {% if not p.hidden %}
@@ -35,8 +54,8 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
         <td></td>
         {% endif %}
       {% endif %}
-      {% for t_score, t_partial in p.scores %}
-      <td {%- if t_partial %} class="partial" {%- endif -%}>{{ t_score }}</td>
+      {% for status in p.task_statuses %}
+      <td>{{ task_html(status) }}</td>
       {% endfor %}
       {% set total_score, partial = p.total_score %}
       <td {%- if partial %} class="partial" {%- endif -%}>{{ total_score }}</td>
@@ -48,6 +67,14 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
 <script>
   $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#ranking-table"), true, -1);
+    
+    $("#show-indicators").on("change", function() {
+      if (this.checked) {
+        $("#ranking-table").removeClass("hide-indicators");
+      } else {
+        $("#ranking-table").addClass("hide-indicators");
+      }
+    });
   })
 </script>
 {% endblock core %}
