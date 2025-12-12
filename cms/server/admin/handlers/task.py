@@ -123,6 +123,7 @@ class TaskHandler(BaseHandler):
         
         testcase_subtasks = {}
         subtask_names = {}
+        subtask_info = {}
         for dataset in task.datasets:
             try:
                 score_type_obj = dataset.score_type_object
@@ -136,19 +137,31 @@ class TaskHandler(BaseHandler):
                             tc_to_subtasks[tc_codename].append(subtask_idx)
                     testcase_subtasks[dataset.id] = tc_to_subtasks
                     
-                    # Extract subtask names from score type parameters
+                    # Extract subtask names and info from score type parameters
                     # Parameters format: [[score, pattern, optional_name], ...]
                     names = {}
+                    subtasks = []
                     for idx, param in enumerate(score_type_obj.parameters):
-                        if len(param) >= 3 and param[2]:
-                            names[idx] = param[2]
+                        max_score = param[0]
+                        name = param[2] if len(param) >= 3 and param[2] else None
+                        if name:
+                            names[idx] = name
+                        subtasks.append({
+                            "idx": idx,
+                            "name": name,
+                            "display_name": name if name else f"Subtask {idx}",
+                            "max_score": max_score
+                        })
                     if names:
                         subtask_names[dataset.id] = names
+                    if subtasks:
+                        subtask_info[dataset.id] = subtasks
             except Exception:
                 pass
         
         self.r_params["testcase_subtasks"] = testcase_subtasks
         self.r_params["subtask_names"] = subtask_names
+        self.r_params["subtask_info"] = subtask_info
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

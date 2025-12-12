@@ -129,6 +129,12 @@ from .user import \
 from .usertest import \
     UserTestHandler, \
     UserTestFileHandler
+from .modelsolution import \
+    AddModelSolutionHandler, \
+    ModelSolutionHandler, \
+    EditModelSolutionHandler, \
+    DeleteModelSolutionHandler, \
+    ConfigureImportedModelSolutionsHandler
 from .folder import \
     FolderListHandler, \
     FolderHandler, \
@@ -284,6 +290,13 @@ HANDLERS = [
 
     (r"/user_test/([0-9]+)(?:/([0-9]+))?", UserTestHandler),
     (r"/user_test_file/([0-9]+)", UserTestFileHandler),
+
+
+    (r"/dataset/([0-9]+)/model_solutions/add", AddModelSolutionHandler),
+    (r"/model_solution/([0-9]+)(?:/([0-9]+))?", ModelSolutionHandler),
+    (r"/model_solution/([0-9]+)/edit", EditModelSolutionHandler),
+    (r"/model_solution/([0-9]+)/delete", DeleteModelSolutionHandler),
+    (r"/task/([0-9]+)/model_solutions/configure", ConfigureImportedModelSolutionsHandler),
 
     # The following prefixes are handled by WSGI middlewares:
     # * /rpc, defined in cms/io/web_service.py
