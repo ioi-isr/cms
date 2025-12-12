@@ -199,11 +199,8 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
         if len(public_testcases) == len(testcases):
             task_config['public_testcases'] = 'all'
         else:
-            try:
-                public_indices = [int(tc) for tc in public_testcases]
-                task_config['public_testcases'] = ','.join(map(str, public_indices))
-            except ValueError:
-                task_config['public_testcases'] = ','.join(public_testcases)
+            # Use codenames directly - the import side handles both codenames and indices
+            task_config['public_testcases'] = ','.join(public_testcases)
 
     task_yaml_path = os.path.join(export_dir, "task.yaml")
     with open(task_yaml_path, 'w', encoding='utf-8') as f:
