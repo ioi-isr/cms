@@ -278,8 +278,19 @@ def update_dataset(old_dataset: Dataset, new_dataset: Dataset, parent=None):
         # Relationships to update (all others).
         Dataset.managers: True,
         Dataset.testcases: True,
+        # Model solutions are handled separately by ImportTask
+        # via _model_solutions_import_data.
+        # We need to copy this temporary attribute so it's available
+        # on the DB dataset after update_task completes.
         Dataset.model_solution_metas: False,
     }, parent=parent)
+
+    # Copy temporary import data attribute from new_dataset to old_dataset.
+    # This is set by the loader and used by ImportTask._import_model_solutions
+    # after update_task completes.
+    if hasattr(new_dataset, '_model_solutions_import_data'):
+        old_dataset._model_solutions_import_data = \
+            new_dataset._model_solutions_import_data
 
 
 def update_task(old_task: Task, new_task: Task, parent=None, get_statements=True):
