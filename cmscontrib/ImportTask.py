@@ -42,10 +42,10 @@ import sys
 from cms import utf8_decoder
 from cms.db.contest import Contest
 from cms.db.session import Session
-from cms.db import SessionGen, Task, \
-    get_or_create_model_solution_participation, create_model_solution
+from cms.db import SessionGen, Task
 from cms.db.filecacher import FileCacher
-from cmscontrib.importing import ImportDataError, contest_from_db, update_task
+from cmscontrib.importing import ImportDataError, contest_from_db, update_task, \
+    import_model_solutions
 from cmscontrib.loaders import choose_loader, build_epilog
 from cmscontrib.loaders.base_loader import TaskLoader
 from cmscontrib.AddSubmission import maybe_send_notification
@@ -136,7 +136,7 @@ class TaskImporter:
                 if dataset is not None and \
                         hasattr(dataset, '_model_solutions_import_data') and \
                         dataset._model_solutions_import_data:
-                    self._import_model_solutions(
+                    self._import_model_solutions_for_task(
                         session, task, dataset,
                         dataset._model_solutions_import_data)
 
@@ -206,10 +206,10 @@ class TaskImporter:
 
         return task
 
-    def _import_model_solutions(
+    def _import_model_solutions_for_task(
         self, session: Session, task: Task, dataset, model_solutions_data: list
     ):
-        """Import model solutions from parsed data.
+        """Import model solutions from parsed data using the shared helper.
 
         session: SQLAlchemy session.
         task: Task object (already in database).
@@ -217,89 +217,14 @@ class TaskImporter:
         model_solutions_data: list of model solution data dicts from loader.
 
         """
-        # Get or create the model solution participation
-        participation = get_or_create_model_solution_participation(session)
-
-        # Build a mapping of existing model solutions by name
-        existing_metas = {
-            meta.name: meta for meta in dataset.model_solution_metas
-        }
-
-        imported_count = 0
-        updated_count = 0
-        for sol_data in model_solutions_data:
-            name = sol_data["name"]
-
-            # Get language from loader data (already detected from original filenames)
-            # Note: We don't try to detect from sol_data["files"].keys() because
-            # those are codenames like "solution.%l", not actual filenames
-            language = sol_data.get("language")
-
-            # Use the shared helper to create the model solution
-            # (same logic as the admin handler)
-            digests = dict(sol_data["files"])  # filename -> digest
-
-            # Check if this solution has metadata (explicit scores in task.yaml)
-            has_metadata = sol_data.get("has_metadata", False)
-
-            if name in existing_metas:
-                # Delete existing model solution and recreate with new data.
-                # This is the simplest approach since updating submission files
-                # in place is complex. The delete-and-recreate approach ensures
-                # the new code is properly evaluated.
-                old_meta = existing_metas[name]
-                old_submission = old_meta.submission
-
-                # Remove from the dataset's list first
-                dataset.model_solution_metas.remove(old_meta)
-
-                # Delete the meta and submission
-                session.delete(old_meta)
-                session.delete(old_submission)
-                session.flush()
-
-                logger.info("Updating model solution '%s'", name)
-                updated_count += 1
-            else:
-                imported_count += 1
-
-            submission, meta = create_model_solution(
-                session,
-                task=task,
-                dataset=dataset,
-                participation=participation,
-                digests=digests,
-                language_name=language,
-                name=name,
-                description=sol_data.get("description", ""),
-                expected_score_min=sol_data.get("expected_score_min", 0.0),
-                expected_score_max=sol_data.get("expected_score_max", 100.0),
-                subtask_expected_scores=sol_data.get("subtask_expected_scores"),
-            )
-
-            # Flush to get the submission and meta IDs
-            session.flush()
-
-            # Create SubmissionResult for the dataset (same as admin handler)
-            # This ensures imported model solutions are structurally identical
-            # to those created via the admin UI
-            submission.get_result_or_create(dataset)
-
-            # Track submission ID for triggering evaluation after commit
-            self._imported_model_solution_submission_ids.append(submission.id)
-
-            # Track model solutions that were imported with defaults
-            # (no metadata in task.yaml) so admin can configure them
-            if not has_metadata:
-                self.model_solution_meta_ids_missing_metadata.append(meta.id)
-
-            # Update existing_metas to prevent duplicates within the same import
-            existing_metas[name] = meta
-
-        if imported_count > 0:
-            logger.info("Imported %d model solution(s)", imported_count)
-        if updated_count > 0:
-            logger.info("Updated %d model solution(s)", updated_count)
+        import_model_solutions(
+            session,
+            task,
+            dataset,
+            model_solutions_data,
+            track_missing_meta_ids=self.model_solution_meta_ids_missing_metadata,
+            track_submission_ids=self._imported_model_solution_submission_ids,
+        )
 
 
 def main():
