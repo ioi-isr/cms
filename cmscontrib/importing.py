@@ -31,7 +31,8 @@ from cms.db.session import Session
 
 __all__ = [
     "contest_from_db", "task_from_db",
-    "update_contest", "update_task"
+    "update_contest", "update_task",
+    "import_model_solutions"
 ]
 
 
@@ -330,3 +331,115 @@ def update_contest(old_contest: Contest, new_contest: Contest, parent=None):
         # Folder assignment is not handled by contest importers.
         Contest.folder: False,
     }, parent=parent)
+
+
+def import_model_solutions(
+    session: Session,
+    task: Task,
+    dataset: Dataset,
+    model_solutions_data: list,
+    track_missing_meta_ids: list | None = None,
+    track_submission_ids: list | None = None,
+):
+    """Import model solutions from parsed data.
+
+    This is a shared helper used by both ImportTask and ImportContest.
+
+    session: SQLAlchemy session.
+    task: Task object (already in database).
+    dataset: Dataset object (already in database).
+    model_solutions_data: list of model solution data dicts from loader,
+        each containing: name, description, language, files, expected_score_min,
+        expected_score_max, subtask_expected_scores, has_metadata.
+    track_missing_meta_ids: optional list to append meta IDs for solutions
+        that were imported without explicit metadata (for admin UI redirect).
+    track_submission_ids: optional list to append submission IDs for
+        triggering evaluation after commit.
+
+    """
+    import logging
+    from cms.db import get_or_create_model_solution_participation, create_model_solution
+
+    logger = logging.getLogger(__name__)
+
+    # Get or create the model solution participation
+    participation = get_or_create_model_solution_participation(session)
+
+    # Build a mapping of existing model solutions by name
+    existing_metas = {
+        meta.name: meta for meta in dataset.model_solution_metas
+    }
+
+    imported_count = 0
+    updated_count = 0
+    for sol_data in model_solutions_data:
+        name = sol_data["name"]
+
+        # Get language from loader data (already detected from original filenames)
+        language = sol_data.get("language")
+
+        # Use the shared helper to create the model solution
+        digests = dict(sol_data["files"])  # filename -> digest
+
+        # Check if this solution has metadata (explicit scores in task.yaml)
+        has_metadata = sol_data.get("has_metadata", False)
+
+        if name in existing_metas:
+            # Delete existing model solution and recreate with new data.
+            # This is the simplest approach since updating submission files
+            # in place is complex. The delete-and-recreate approach ensures
+            # the new code is properly evaluated.
+            old_meta = existing_metas[name]
+            old_submission = old_meta.submission
+
+            # Remove from the dataset's list first
+            dataset.model_solution_metas.remove(old_meta)
+
+            # Delete the meta and submission
+            session.delete(old_meta)
+            session.delete(old_submission)
+            session.flush()
+
+            logger.info("Updating model solution '%s'", name)
+            updated_count += 1
+        else:
+            imported_count += 1
+
+        submission, meta = create_model_solution(
+            session,
+            task=task,
+            dataset=dataset,
+            participation=participation,
+            digests=digests,
+            language_name=language,
+            name=name,
+            description=sol_data.get("description", ""),
+            expected_score_min=sol_data.get("expected_score_min", 0.0),
+            expected_score_max=sol_data.get("expected_score_max", 100.0),
+            subtask_expected_scores=sol_data.get("subtask_expected_scores"),
+        )
+
+        # Flush to get the submission and meta IDs
+        session.flush()
+
+        # Create SubmissionResult for the dataset (same as admin handler)
+        # This ensures imported model solutions are structurally identical
+        # to those created via the admin UI
+        submission.get_result_or_create(dataset)
+
+        # Track submission ID for triggering evaluation after commit
+        if track_submission_ids is not None:
+            track_submission_ids.append(submission.id)
+
+        # Track model solutions that were imported with defaults
+        # (no metadata in task.yaml) so admin can configure them
+        if not has_metadata and track_missing_meta_ids is not None:
+            track_missing_meta_ids.append(meta.id)
+
+        # Update existing_metas to prevent duplicates within the same import
+        existing_metas[name] = meta
+
+    if imported_count > 0:
+        logger.info("Imported %d model solution(s)", imported_count)
+    if updated_count > 0:
+        logger.info("Updated %d model solution(s)", updated_count)
