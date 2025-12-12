@@ -1868,6 +1868,16 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 for filename in os.listdir(managers_path):
                     files.append(os.path.join(managers_path, filename))
 
+        # Model solutions (supports subdirectory format with multiple files)
+        solutions_folder = find_first_existing_dir(
+            self.path, ["solutions", "Solutions", "solution", "Solution"])
+        if solutions_folder is not None:
+            solutions_path = os.path.join(self.path, solutions_folder)
+            if os.path.isdir(solutions_path):
+                for root, dirs, filenames in os.walk(solutions_path):
+                    for fname in filenames:
+                        files.append(os.path.join(root, fname))
+
         # Check if task is OutputOnly (via task_type or legacy output_only field)
         is_output_only = (conf.get('task_type') == "OutputOnly" or
                           conf.get('output_only', False))
