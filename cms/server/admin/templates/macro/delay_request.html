@@ -38,8 +38,6 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
         {% if req.admin %}
           <br><strong>Processed by:</strong> {{ req.admin.name }}
         {% endif %}
-      {% else %}
-        <strong>Current Delay:</strong> {{ req.participation.delay_time.total_seconds()|int }} seconds<br>
       {% endif %}
     </div>
     {% if show_buttons and req.status == 'pending' and (admin.permission_all or admin.permission_messaging) %}

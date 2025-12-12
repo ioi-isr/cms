@@ -79,7 +79,12 @@ from .dataset import \
     AddTestcaseHandler, \
     AddTestcasesHandler, \
     DeleteTestcaseHandler, \
-    DownloadTestcasesHandler
+    DeleteSelectedTestcasesHandler, \
+    DownloadTestcasesHandler, \
+    AddGeneratorHandler, \
+    EditGeneratorHandler, \
+    DeleteGeneratorHandler, \
+    GenerateTestcasesHandler
 from .main import \
     LoginHandler, \
     LogoutHandler, \
@@ -248,7 +253,12 @@ HANDLERS = [
     (r"/dataset/([0-9]+)/testcases/add", AddTestcaseHandler),
     (r"/dataset/([0-9]+)/testcases/add_multiple", AddTestcasesHandler),
     (r"/dataset/([0-9]+)/testcase/([0-9]+)/delete", DeleteTestcaseHandler),
+    (r"/dataset/([0-9]+)/testcases/delete_selected", DeleteSelectedTestcasesHandler),
     (r"/dataset/([0-9]+)/testcases/download", DownloadTestcasesHandler),
+    (r"/dataset/([0-9]+)/generators/add", AddGeneratorHandler),
+    (r"/dataset/([0-9]+)/generator/([0-9]+)/edit", EditGeneratorHandler),
+    (r"/dataset/([0-9]+)/generator/([0-9]+)/delete", DeleteGeneratorHandler),
+    (r"/dataset/([0-9]+)/generator/([0-9]+)/generate", GenerateTestcasesHandler),
 
     # Users/Teams
 

@@ -60,6 +60,7 @@ __all__ = [
     "Admin",
     # task
     "Task", "Statement", "Attachment", "Dataset", "Manager", "Testcase",
+    "Generator",
     # submission
     "Submission", "File", "Token", "SubmissionResult", "Executable",
     "Evaluation",
@@ -101,7 +102,8 @@ from .admin import Admin
 from .contest import Contest, Announcement
 from .contest_folder import ContestFolder
 from .user import User, Team, Participation, Message, Question, DelayRequest
-from .task import Task, Statement, Attachment, Dataset, Manager, Testcase
+from .task import Task, Statement, Attachment, Dataset, Manager, Testcase, \
+    Generator
 from .submission import Submission, File, Token, SubmissionResult, \
     Executable, Evaluation
 from .usertest import UserTest, UserTestFile, UserTestManager, \
