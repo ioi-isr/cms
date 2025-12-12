@@ -71,6 +71,7 @@ __all__ = [
     "create_model_solution",
     # printjob
     "PrintJob",
+    "StatementView",
     # init
     "init_db",
     # drop
@@ -111,6 +112,7 @@ from .usertest import UserTest, UserTestFile, UserTestManager, \
 from .modelsolution import ModelSolutionMeta, \
     get_or_create_model_solution_participation, create_model_solution
 from .printjob import PrintJob
+from .statementview import StatementView
 
 from .init import init_db
 from .drop import drop_db

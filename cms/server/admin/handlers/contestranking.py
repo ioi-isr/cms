@@ -28,12 +28,18 @@
 
 import csv
 import io
+from collections import namedtuple
 
 from sqlalchemy.orm import joinedload
 
-from cms.db import Contest
+from cms.db import Contest, StatementView
 from cms.grading.scoring import task_score
 from .base import BaseHandler, require_permission
+
+
+TaskStatus = namedtuple(
+    "TaskStatus", ["score", "partial", "has_submissions", "has_opened"]
+)
 
 
 class RankingHandler(BaseHandler):
@@ -54,20 +60,37 @@ class RankingHandler(BaseHandler):
             .options(joinedload("participations.submissions"))
             .options(joinedload("participations.submissions.token"))
             .options(joinedload("participations.submissions.results"))
+            .options(joinedload("participations.statement_views"))
             .first()
         )
+
+        statement_views_set = set()
+        for p in self.contest.participations:
+            for sv in p.statement_views:
+                statement_views_set.add((sv.participation_id, sv.task_id))
 
         # Preprocess participations: get data about teams, scores
         show_teams = False
         for p in self.contest.participations:
             show_teams = show_teams or p.team_id
 
-            p.scores = []
+            p.task_statuses = []  # status per task for rendering/export
             total_score = 0.0
             partial = False
             for task in self.contest.tasks:
                 t_score, t_partial = task_score(p, task, rounded=True)
-                p.scores.append((t_score, t_partial))
+                
+                has_submissions = any(s.task_id == task.id and s.official 
+                                     for s in p.submissions)
+                has_opened = (p.id, task.id) in statement_views_set
+                p.task_statuses.append(
+                    TaskStatus(
+                        score=t_score,
+                        partial=t_partial,
+                        has_submissions=has_submissions,
+                        has_opened=has_opened,
+                    )
+                )
                 total_score += t_score
                 partial = partial or t_partial
             total_score = round(total_score, self.contest.score_precision)
@@ -75,15 +98,21 @@ class RankingHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["show_teams"] = show_teams
+        
+        date_str = self.contest.start.strftime("%Y%m%d")
+        contest_name = self.contest.name.replace(" ", "_")
+        
         if format == "txt":
+            filename = f"{date_str}_{contest_name}_ranking.txt"
             self.set_header("Content-Type", "text/plain")
             self.set_header("Content-Disposition",
-                            "attachment; filename=\"ranking.txt\"")
+                            f"attachment; filename=\"{filename}\"")
             self.render("ranking.txt", **self.r_params)
         elif format == "csv":
+            filename = f"{date_str}_{contest_name}_ranking.csv"
             self.set_header("Content-Type", "text/csv")
             self.set_header("Content-Disposition",
-                            "attachment; filename=\"ranking.csv\"")
+                            f"attachment; filename=\"{filename}\"")
 
             output = io.StringIO()  # untested
             writer = csv.writer(output)
@@ -115,19 +144,28 @@ class RankingHandler(BaseHandler):
                        "%s %s" % (p.user.first_name, p.user.last_name)]
                 if show_teams:
                     row.append(p.team.name if p.team else "")
-                assert len(contest.tasks) == len(p.scores)
-                for t_score, t_partial in p.scores:  # Custom field, see above
-                    row.append(t_score)
+                assert len(contest.tasks) == len(p.task_statuses)
+                for status in p.task_statuses:
+                    row.append(status.score)
                     if include_partial:
-                        row.append("*" if t_partial else "")
+                        row.append(self._status_indicator(status))
 
-                total_score, partial = p.total_score  # Custom field, see above
+                total_score, partial = p.total_score
                 row.append(total_score)
                 if include_partial:
                     row.append("*" if partial else "")
 
-                writer.writerow(row)  # untested
+                writer.writerow(row)
 
             self.finish(output.getvalue())
         else:
             self.render("ranking.html", **self.r_params)
+
+    @staticmethod
+    def _status_indicator(status: TaskStatus) -> str:
+        star = "*" if status.partial else ""
+        if not status.has_submissions:
+            return "X" if not status.has_opened else "-"
+        if not status.has_opened:
+            return "!" + star
+        return star

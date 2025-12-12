@@ -352,6 +352,7 @@ def update_task(old_task: Task, new_task: Task, parent=None, get_statements=True
         Task.active_dataset: False,
         Task.submissions: False,
         Task.user_tests: False,
+        Task.statement_views: False,
         # Relationships to update.
         Task.statements: get_statements,
         Task.datasets: update_datasets_fn,
