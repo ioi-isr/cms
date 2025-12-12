@@ -1343,8 +1343,34 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         elif len(public_testcases) > 0:
             for t in args["testcases"]:
                 t.public = False
-            for x in public_testcases.split(","):
-                args["testcases"][int(x.strip())].public = True
+
+            # Parse tokens - support both codenames (new) and indices (legacy)
+            tokens = [tok.strip() for tok in public_testcases.split(",")
+                      if tok.strip()]
+            # Build codename lookup while testcases is still a list
+            tc_by_codename = {tc.codename: tc for tc in args["testcases"]}
+
+            for tok in tokens:
+                # First try to match by codename
+                tc = tc_by_codename.get(tok)
+                if tc is not None:
+                    tc.public = True
+                    continue
+
+                # Fallback: try to interpret as index (for legacy configs)
+                try:
+                    idx = int(tok)
+                except ValueError:
+                    logger.warning(
+                        "Invalid public_testcases token '%s', ignoring", tok)
+                    continue
+
+                if 0 <= idx < len(args["testcases"]):
+                    args["testcases"][idx].public = True
+                else:
+                    logger.warning(
+                        "public_testcases index %s out of range", tok)
+
         args["testcases"] = dict((tc.codename, tc) for tc in args["testcases"])
         args["managers"] = dict((mg.filename, mg) for mg in args["managers"])
 
