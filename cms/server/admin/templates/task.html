@@ -616,7 +616,7 @@ window.updateMultiDeleteMaster = function(dataset_id) {
             <td>{{ subtask.display_name }}</td>
             <td>
               {% if validator %}
-                <a href="{{ url("file", validator.digest, validator.filename) }}">{{ validator.filename }}</a>
+                <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
                 {% if validator.executable_digest is none %}
                   <span style="color: red;">(compilation failed)</span>
                 {% endif %}
