@@ -87,7 +87,11 @@ from .dataset import \
     AddGeneratorHandler, \
     EditGeneratorHandler, \
     DeleteGeneratorHandler, \
-    GenerateTestcasesHandler
+    GenerateTestcasesHandler, \
+    AddSubtaskValidatorHandler, \
+    DeleteSubtaskValidatorHandler, \
+    RunSubtaskValidationHandler, \
+    SubtaskValidatorDetailsHandler
 from .main import \
     LoginHandler, \
     LogoutHandler, \
@@ -268,6 +272,12 @@ HANDLERS = [
     (r"/dataset/([0-9]+)/generator/([0-9]+)/edit", EditGeneratorHandler),
     (r"/dataset/([0-9]+)/generator/([0-9]+)/delete", DeleteGeneratorHandler),
     (r"/dataset/([0-9]+)/generator/([0-9]+)/generate", GenerateTestcasesHandler),
+
+    # Subtask validators
+    (r"/dataset/([0-9]+)/subtask/([0-9]+)/validator/add", AddSubtaskValidatorHandler),
+    (r"/dataset/([0-9]+)/validator/([0-9]+)/delete", DeleteSubtaskValidatorHandler),
+    (r"/dataset/([0-9]+)/validator/([0-9]+)/run", RunSubtaskValidationHandler),
+    (r"/dataset/([0-9]+)/validator/([0-9]+)/details", SubtaskValidatorDetailsHandler),
 
     # Users/Teams
 
