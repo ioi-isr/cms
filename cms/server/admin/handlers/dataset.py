@@ -1239,6 +1239,85 @@ class GenerateTestcasesHandler(BaseHandler):
             self.redirect(fallback_page)
 
 
+def run_validator_on_testcases(handler, validator, dataset, testcases):
+    """Run a validator against testcases and return validation results.
+
+    Returns a list of dicts with testcase_id, passed, stderr keys,
+    or None if an error occurred.
+    """
+    try:
+        language = filename_to_language(validator.filename)
+    except Exception:
+        language = None
+
+    exe_name = "validator"
+    if language is not None and isinstance(language, CompiledLanguage):
+        exe_name += language.executable_extension
+
+    validation_results = []
+    sandbox = None
+
+    try:
+        for testcase in testcases:
+            sandbox = create_sandbox(handler.service.file_cacher,
+                                     name="admin_validate")
+
+            sandbox.create_file_from_storage(exe_name,
+                                             validator.executable_digest,
+                                             executable=True)
+            sandbox.create_file_from_storage("input.txt",
+                                             testcase.input)
+            sandbox.create_file_from_storage("output.txt",
+                                             testcase.output)
+
+            cmd = ["./" + exe_name, "input.txt", "output.txt"]
+            if language is not None:
+                try:
+                    cmds = language.get_evaluation_commands(exe_name)
+                    if cmds:
+                        cmd = cmds[0] + ["input.txt", "output.txt"]
+                except Exception:
+                    pass
+
+            sandbox.stdout_file = "stdout.txt"
+            sandbox.stderr_file = "stderr.txt"
+
+            box_success = sandbox.execute_without_std(cmd, wait=True)
+
+            stderr = ""
+            try:
+                stderr = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
+            except FileNotFoundError:
+                pass
+
+            passed = False
+            if box_success:
+                exit_status = sandbox.get_exit_status()
+                if exit_status == sandbox.EXIT_OK:
+                    exit_code = sandbox.get_exit_code()
+                    passed = (exit_code == 0)
+
+            validation_results.append({
+                "testcase_id": testcase.id,
+                "passed": passed,
+                "stderr": stderr[:4096] if stderr else None
+            })
+
+            sandbox.cleanup(delete=True)
+            sandbox = None
+
+    except Exception as error:
+        handler.service.add_notification(
+            make_datetime(),
+            "Validation execution error",
+            repr(error))
+        if sandbox:
+            sandbox.cleanup(delete=True)
+        return None
+
+    return validation_results
+
+
 class AddSubtaskValidatorHandler(BaseHandler):
     """Add or replace a subtask validator.
 
@@ -1265,6 +1344,9 @@ class AddSubtaskValidatorHandler(BaseHandler):
         validator_file = validator_file[0]
         filename = validator_file["filename"]
         body = validator_file["body"]
+
+        # Get testcases before closing session
+        testcases = list(dataset.testcases.values())
 
         self.sql_session.close()
 
@@ -1324,6 +1406,7 @@ class AddSubtaskValidatorHandler(BaseHandler):
             existing_validator.executable_digest = executable_digest
             for result in existing_validator.validation_results:
                 self.sql_session.delete(result)
+            validator = existing_validator
         else:
             validator = SubtaskValidator(
                 dataset=dataset,
@@ -1334,12 +1417,69 @@ class AddSubtaskValidatorHandler(BaseHandler):
             )
             self.sql_session.add(validator)
 
-        if self.try_commit():
+        if not self.try_commit():
+            self.redirect(fallback_page)
+            return
+
+        # Auto-run validation if compilation succeeded
+        if executable_digest is None:
             self.service.add_notification(
                 make_datetime(),
                 "Validator uploaded",
-                "Validator for subtask %d uploaded successfully. "
-                "Run validation to check testcases." % subtask_index)
+                "Validator for subtask %d uploaded but compilation failed." % subtask_index)
+            self.redirect(self.url("task", task.id))
+            return
+
+        # Get validator ID for re-fetching after validation
+        validator_id = validator.id
+        self.sql_session.close()
+
+        # Create a temporary validator-like object for running validation
+        class ValidatorInfo:
+            pass
+        validator_info = ValidatorInfo()
+        validator_info.filename = filename
+        validator_info.executable_digest = executable_digest
+
+        validation_results = run_validator_on_testcases(
+            self, validator_info, dataset, testcases)
+
+        if validation_results is None:
+            self.redirect(fallback_page)
+            return
+
+        # Save validation results
+        self.sql_session = Session()
+        validator = self.safe_get_item(SubtaskValidator, validator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        # Build a mapping of testcase IDs to testcase objects
+        testcase_ids = [r["testcase_id"] for r in validation_results]
+        testcases_by_id = {tc.id: tc for tc in dataset.testcases.values()
+                          if tc.id in testcase_ids}
+
+        for result_data in validation_results:
+            testcase = testcases_by_id.get(result_data["testcase_id"])
+            if testcase is None:
+                continue
+            result = SubtaskValidationResult(
+                validator=validator,
+                testcase=testcase,
+                passed=result_data["passed"],
+                stderr=result_data["stderr"]
+            )
+            self.sql_session.add(result)
+
+        passed_count = sum(1 for r in validation_results if r["passed"])
+        failed_count = len(validation_results) - passed_count
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Validator uploaded and validated",
+                "Validator for subtask %d: %d passed, %d failed." %
+                (subtask_index, passed_count, failed_count))
             self.redirect(self.url("task", task.id))
         else:
             self.redirect(fallback_page)
@@ -1392,74 +1532,10 @@ class RunSubtaskValidationHandler(BaseHandler):
 
         self.sql_session.close()
 
-        try:
-            language = filename_to_language(validator.filename)
-        except Exception:
-            language = None
+        validation_results = run_validator_on_testcases(
+            self, validator, dataset, testcases)
 
-        exe_name = "validator"
-        if language is not None and isinstance(language, CompiledLanguage):
-            exe_name += language.executable_extension
-
-        validation_results = []
-        sandbox = None
-
-        try:
-            for testcase in testcases:
-                sandbox = create_sandbox(self.service.file_cacher,
-                                         name="admin_validate")
-
-                sandbox.create_file_from_storage(exe_name,
-                                                 validator.executable_digest,
-                                                 executable=True)
-                sandbox.create_file_from_storage("input.txt",
-                                                 testcase.input)
-                sandbox.create_file_from_storage("output.txt",
-                                                 testcase.output)
-
-                cmd = ["./" + exe_name, "input.txt", "output.txt"]
-                if language is not None:
-                    try:
-                        cmds = language.get_evaluation_commands(exe_name)
-                        if cmds:
-                            cmd = cmds[0] + ["input.txt", "output.txt"]
-                    except Exception:
-                        pass
-
-                sandbox.stdout_file = "stdout.txt"
-                sandbox.stderr_file = "stderr.txt"
-
-                box_success = sandbox.execute_without_std(cmd, wait=True)
-
-                stderr = ""
-                try:
-                    stderr = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
-                except FileNotFoundError:
-                    pass
-
-                passed = False
-                if box_success:
-                    exit_status = sandbox.get_exit_status()
-                    if exit_status == sandbox.EXIT_OK:
-                        exit_code = sandbox.get_exit_code()
-                        passed = (exit_code == 0)
-
-                validation_results.append({
-                    "testcase_id": testcase.id,
-                    "passed": passed,
-                    "stderr": stderr[:4096] if stderr else None
-                })
-
-                sandbox.cleanup(delete=True)
-                sandbox = None
-
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(),
-                "Validation execution error",
-                repr(error))
-            if sandbox:
-                sandbox.cleanup(delete=True)
+        if validation_results is None:
             self.redirect(fallback_page)
             return
 
