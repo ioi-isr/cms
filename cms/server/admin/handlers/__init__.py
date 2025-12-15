@@ -87,7 +87,6 @@ from .dataset import \
     GenerateTestcasesHandler, \
     AddSubtaskValidatorHandler, \
     DeleteSubtaskValidatorHandler, \
-    RunSubtaskValidationHandler, \
     SubtaskValidatorDetailsHandler, \
     RerunSubtaskValidatorsHandler
 from .main import \
@@ -268,7 +267,6 @@ HANDLERS = [
     # Subtask validators
     (r"/dataset/([0-9]+)/subtask/([0-9]+)/validator/add", AddSubtaskValidatorHandler),
     (r"/dataset/([0-9]+)/validator/([0-9]+)/delete", DeleteSubtaskValidatorHandler),
-    (r"/dataset/([0-9]+)/validator/([0-9]+)/run", RunSubtaskValidationHandler),
     (r"/dataset/([0-9]+)/validator/([0-9]+)/details", SubtaskValidatorDetailsHandler),
     (r"/dataset/([0-9]+)/validators/rerun", RerunSubtaskValidatorsHandler),
 
