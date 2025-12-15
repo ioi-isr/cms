@@ -60,7 +60,7 @@ __all__ = [
     "Admin",
     # task
     "Task", "Statement", "Attachment", "Dataset", "Manager", "Testcase",
-    "Generator",
+    "Generator", "SubtaskValidator", "SubtaskValidationResult",
     # submission
     "Submission", "File", "Token", "SubmissionResult", "Executable",
     "Evaluation",
@@ -84,7 +84,7 @@ __all__ = [
 
 # Instantiate or import these objects.
 
-version = 48
+version = 49
 
 engine = create_engine(config.database.url, echo=config.database.debug,
                        pool_timeout=60, pool_recycle=120)
@@ -103,7 +103,7 @@ from .contest import Contest, Announcement
 from .contest_folder import ContestFolder
 from .user import User, Team, Participation, Message, Question, DelayRequest
 from .task import Task, Statement, Attachment, Dataset, Manager, Testcase, \
-    Generator
+    Generator, SubtaskValidator, SubtaskValidationResult
 from .submission import Submission, File, Token, SubmissionResult, \
     Executable, Evaluation
 from .usertest import UserTest, UserTestFile, UserTestManager, \

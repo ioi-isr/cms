@@ -44,7 +44,8 @@ except:
 import tornado.web
 
 from cms.db import Dataset, Generator, Manager, Message, Participation, \
-    Session, Submission, Task, Testcase
+    Session, Submission, SubtaskValidationResult, SubtaskValidator, Task, \
+    Testcase
 from cms.grading.tasktypes import get_task_type_class
 from cms.grading.tasktypes.util import create_sandbox, \
     get_allowed_manager_basenames, compile_manager_bytes
@@ -1236,3 +1237,315 @@ class GenerateTestcasesHandler(BaseHandler):
             self.redirect(self.url("task", task.id))
         else:
             self.redirect(fallback_page)
+
+
+class AddSubtaskValidatorHandler(BaseHandler):
+    """Add or replace a subtask validator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, subtask_index):
+        fallback_page = self.url("task", "0")
+
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
+        subtask_index = int(subtask_index)
+
+        validator_file = self.request.files.get("validator")
+        if not validator_file:
+            self.service.add_notification(
+                make_datetime(),
+                "No validator file provided",
+                "Please upload a validator source file.")
+            self.redirect(fallback_page)
+            return
+
+        validator_file = validator_file[0]
+        filename = validator_file["filename"]
+        body = validator_file["body"]
+
+        self.sql_session.close()
+
+        try:
+            language = filename_to_language(filename)
+        except Exception:
+            language = None
+
+        if language is None or not isinstance(language, CompiledLanguage):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid validator file",
+                "Validator must be a compilable source file.")
+            self.redirect(fallback_page)
+            return
+
+        def notify(title, text):
+            self.service.add_notification(make_datetime(), title, text)
+
+        success, compiled_bytes, stats = compile_manager_bytes(
+            self.service.file_cacher,
+            filename,
+            body,
+            "validator",
+            sandbox_name="admin_compile_validator",
+            for_evaluation=True,
+            notify=notify
+        )
+
+        if not success:
+            self.redirect(fallback_page)
+            return
+
+        try:
+            source_digest = self.service.file_cacher.put_file_content(
+                body, "Subtask validator source for %s" % task.name)
+            executable_digest = None
+            if compiled_bytes is not None:
+                executable_digest = self.service.file_cacher.put_file_content(
+                    compiled_bytes, "Subtask validator executable for %s" % task.name)
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Validator storage failed",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+
+        self.sql_session = Session()
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        existing_validator = dataset.subtask_validators.get(subtask_index)
+        if existing_validator is not None:
+            existing_validator.filename = filename
+            existing_validator.digest = source_digest
+            existing_validator.executable_digest = executable_digest
+            for result in existing_validator.validation_results:
+                self.sql_session.delete(result)
+        else:
+            validator = SubtaskValidator(
+                dataset=dataset,
+                subtask_index=subtask_index,
+                filename=filename,
+                digest=source_digest,
+                executable_digest=executable_digest
+            )
+            self.sql_session.add(validator)
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Validator uploaded",
+                "Validator for subtask %d uploaded successfully. "
+                "Run validation to check testcases." % subtask_index)
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class DeleteSubtaskValidatorHandler(BaseHandler):
+    """Delete a subtask validator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, dataset_id, validator_id):
+        validator = self.safe_get_item(SubtaskValidator, validator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if validator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task_id = dataset.task_id
+        self.sql_session.delete(validator)
+
+        if self.try_commit():
+            self.write("./%d" % task_id)
+
+
+class RunSubtaskValidationHandler(BaseHandler):
+    """Run validation for a subtask validator against all testcases.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, validator_id):
+        validator = self.safe_get_item(SubtaskValidator, validator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if validator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
+        if validator.executable_digest is None:
+            self.service.add_notification(
+                make_datetime(),
+                "Validator not compiled",
+                "The validator has not been compiled successfully.")
+            self.redirect(fallback_page)
+            return
+
+        testcases = list(dataset.testcases.values())
+        validator_id_local = validator.id
+
+        self.sql_session.close()
+
+        try:
+            language = filename_to_language(validator.filename)
+        except Exception:
+            language = None
+
+        exe_name = "validator"
+        if language is not None and isinstance(language, CompiledLanguage):
+            exe_name += language.executable_extension
+
+        validation_results = []
+        sandbox = None
+
+        try:
+            for testcase in testcases:
+                sandbox = create_sandbox(self.service.file_cacher,
+                                         name="admin_validate")
+
+                sandbox.create_file_from_storage(exe_name,
+                                                 validator.executable_digest,
+                                                 executable=True)
+                sandbox.create_file_from_storage("input.txt",
+                                                 testcase.input)
+                sandbox.create_file_from_storage("output.txt",
+                                                 testcase.output)
+
+                cmd = ["./" + exe_name, "input.txt", "output.txt"]
+                if language is not None:
+                    try:
+                        cmds = language.get_evaluation_commands(exe_name)
+                        if cmds:
+                            cmd = cmds[0] + ["input.txt", "output.txt"]
+                    except Exception:
+                        pass
+
+                sandbox.stdout_file = "stdout.txt"
+                sandbox.stderr_file = "stderr.txt"
+
+                box_success = sandbox.execute_without_std(cmd, wait=True)
+
+                stderr = ""
+                try:
+                    stderr = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
+                except FileNotFoundError:
+                    pass
+
+                passed = False
+                if box_success:
+                    exit_status = sandbox.get_exit_status()
+                    if exit_status == sandbox.EXIT_OK:
+                        exit_code = sandbox.get_exit_code()
+                        passed = (exit_code == 0)
+
+                validation_results.append({
+                    "testcase_id": testcase.id,
+                    "passed": passed,
+                    "stderr": stderr[:4096] if stderr else None
+                })
+
+                sandbox.cleanup(delete=True)
+                sandbox = None
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Validation execution error",
+                repr(error))
+            if sandbox:
+                sandbox.cleanup(delete=True)
+            self.redirect(fallback_page)
+            return
+
+        self.sql_session = Session()
+        validator = self.safe_get_item(SubtaskValidator, validator_id_local)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        for result in validator.validation_results:
+            self.sql_session.delete(result)
+        self.sql_session.flush()
+
+        for result_data in validation_results:
+            result = SubtaskValidationResult(
+                validator=validator,
+                testcase_id=result_data["testcase_id"],
+                passed=result_data["passed"],
+                stderr=result_data["stderr"]
+            )
+            self.sql_session.add(result)
+
+        passed_count = sum(1 for r in validation_results if r["passed"])
+        failed_count = len(validation_results) - passed_count
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Validation complete",
+                "Validated %d testcases: %d passed, %d failed." %
+                (len(validation_results), passed_count, failed_count))
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class SubtaskValidatorDetailsHandler(BaseHandler):
+    """Show validation details for a subtask validator.
+
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, dataset_id, validator_id):
+        validator = self.safe_get_item(SubtaskValidator, validator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if validator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task = dataset.task
+        self.contest = task.contest
+
+        from cms.grading.scoretypes.ScoreTypeGroup import ScoreTypeGroup
+
+        subtask_testcases = []
+        other_testcases = []
+
+        try:
+            score_type_obj = dataset.score_type_object
+            if isinstance(score_type_obj, ScoreTypeGroup):
+                targets = score_type_obj.retrieve_target_testcases()
+                if validator.subtask_index < len(targets):
+                    subtask_tc_codenames = set(targets[validator.subtask_index])
+                else:
+                    subtask_tc_codenames = set()
+            else:
+                subtask_tc_codenames = set()
+        except Exception:
+            subtask_tc_codenames = set()
+
+        results_by_testcase = {r.testcase_id: r for r in validator.validation_results}
+
+        for codename, testcase in sorted(dataset.testcases.items()):
+            result = results_by_testcase.get(testcase.id)
+            tc_info = {
+                "codename": codename,
+                "testcase": testcase,
+                "result": result
+            }
+            if codename in subtask_tc_codenames:
+                subtask_testcases.append(tc_info)
+            else:
+                other_testcases.append(tc_info)
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.r_params["validator"] = validator
+        self.r_params["subtask_testcases"] = subtask_testcases
+        self.r_params["other_testcases"] = other_testcases
+        self.render("subtask_validator_details.html", **self.r_params)

@@ -559,6 +559,118 @@ window.updateMultiDeleteMaster = function(dataset_id) {
           <td><textarea name="score_type_parameters_{{ dataset.id }}">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea></td>
         </tr>
       </table>
+
+      {% if subtask_info.get(dataset.id) %}
+      <h4>Subtask Validators</h4>
+      <p>Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid.</p>
+      <table class="bordered">
+        <thead>
+          <tr>
+            <th>Subtask</th>
+            <th>Validator</th>
+            <th>Tests</th>
+            <th>Validation Status</th>
+            <th>Additional Tests Passed</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for subtask in subtask_info[dataset.id] %}
+          {% set validator = dataset.subtask_validators.get(subtask.idx) %}
+          {% set subtask_tc_count = 0 %}
+          {% set other_tc_count = 0 %}
+          {% set subtask_passed = 0 %}
+          {% set subtask_failed = 0 %}
+          {% set other_passed = 0 %}
+          {% if testcase_subtasks.get(dataset.id) %}
+            {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
+              {% if subtask.idx in tc_subtasks %}
+                {% set subtask_tc_count = subtask_tc_count + 1 %}
+              {% else %}
+                {% set other_tc_count = other_tc_count + 1 %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if validator and validator.validation_results %}
+            {% set results_by_tc = {} %}
+            {% for r in validator.validation_results %}
+              {% set _ = results_by_tc.update({r.testcase.codename: r}) %}
+            {% endfor %}
+            {% if testcase_subtasks.get(dataset.id) %}
+              {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
+                {% if subtask.idx in tc_subtasks %}
+                  {% if results_by_tc.get(tc_codename) and results_by_tc[tc_codename].passed %}
+                    {% set subtask_passed = subtask_passed + 1 %}
+                  {% else %}
+                    {% set subtask_failed = subtask_failed + 1 %}
+                  {% endif %}
+                {% else %}
+                  {% if results_by_tc.get(tc_codename) and results_by_tc[tc_codename].passed %}
+                    {% set other_passed = other_passed + 1 %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endif %}
+          <tr>
+            <td>{{ subtask.display_name }}</td>
+            <td>
+              {% if validator %}
+                <a href="{{ url("file", validator.digest, validator.filename) }}">{{ validator.filename }}</a>
+                {% if validator.executable_digest is none %}
+                  <span style="color: red;">(compilation failed)</span>
+                {% endif %}
+              {% else %}
+                <em>No validator</em>
+              {% endif %}
+            </td>
+            <td>{{ subtask_tc_count }}</td>
+            <td>
+              {% if validator and validator.validation_results|length > 0 %}
+                {% if subtask_failed == 0 %}
+                  <span style="color: green;">All {{ subtask_passed }} passed</span>
+                {% else %}
+                  <span style="color: red;">{{ subtask_failed }} failed</span> / {{ subtask_passed + subtask_failed }}
+                {% endif %}
+                [<a href="{{ url("dataset", dataset.id, "validator", validator.id, "details") }}">details</a>]
+              {% elif validator %}
+                <em>Not validated</em>
+                [<a href="{{ url("dataset", dataset.id, "validator", validator.id, "details") }}">details</a>]
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if validator and validator.validation_results|length > 0 %}
+                {{ other_passed }} / {{ other_tc_count }}
+              {% elif validator %}
+                <em>Not validated</em>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if admin.permission_all %}
+              <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx, "validator", "add") }}" enctype="multipart/form-data" style="display: inline;">
+                {{ xsrf_form_html|safe }}
+                <input type="file" name="validator" style="width: 150px;" />
+                <button type="submit">{% if validator %}Replace{% else %}Add{% endif %}</button>
+              </form>
+              {% if validator %}
+                <form method="POST" action="{{ url("dataset", dataset.id, "validator", validator.id, "run") }}" style="display: inline;">
+                  {{ xsrf_form_html|safe }}
+                  <button type="submit">Run</button>
+                </form>
+                <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">Delete</a>
+              {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
       <div class="hr"></div>
     </div>
 
