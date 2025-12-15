@@ -284,6 +284,9 @@ def update_dataset(old_dataset: Dataset, new_dataset: Dataset, parent=None):
         # via _model_solutions_import_data because they require creating
         # Submission objects and triggering evaluation.
         Dataset.model_solution_metas: False,
+        # Subtask validators are not imported from task loaders,
+        # they are managed via the admin interface.
+        Dataset.subtask_validators: False,
     }, parent=parent)
 
     # Copy temporary import data attribute from new_dataset to old_dataset.
