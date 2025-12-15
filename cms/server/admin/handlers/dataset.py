@@ -1360,7 +1360,8 @@ def run_validator_on_testcases(handler, validator, dataset, testcases):
 
             stderr = ""
             try:
-                stderr = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
+                stderr_bytes = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
+                stderr = stderr_bytes.decode("utf-8", errors="replace")
             except FileNotFoundError:
                 pass
 
@@ -1707,3 +1708,111 @@ class SubtaskValidatorDetailsHandler(BaseHandler):
         self.r_params["subtask_testcases"] = subtask_testcases
         self.r_params["other_testcases"] = other_testcases
         self.render("subtask_validator_details.html", **self.r_params)
+
+
+class RerunSubtaskValidatorsHandler(BaseHandler):
+    """Rerun all subtask validators for a dataset.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
+        validators = list(dataset.subtask_validators.values())
+        if not validators:
+            self.service.add_notification(
+                make_datetime(),
+                "No validators",
+                "No subtask validators found for this dataset.")
+            self.redirect(fallback_page)
+            return
+
+        testcases = list(dataset.testcases.values())
+
+        validator_data = []
+        for v in validators:
+            if v.executable_digest is not None:
+                validator_data.append({
+                    "id": v.id,
+                    "filename": v.filename,
+                    "executable_digest": v.executable_digest,
+                    "subtask_index": v.subtask_index
+                })
+
+        if not validator_data:
+            self.service.add_notification(
+                make_datetime(),
+                "No compiled validators",
+                "No validators have been compiled successfully.")
+            self.redirect(fallback_page)
+            return
+
+        self.sql_session.close()
+
+        all_results = {}
+        for vdata in validator_data:
+            class ValidatorInfo:
+                pass
+            validator_info = ValidatorInfo()
+            validator_info.filename = vdata["filename"]
+            validator_info.executable_digest = vdata["executable_digest"]
+
+            validation_results = run_validator_on_testcases(
+                self, validator_info, dataset, testcases)
+
+            if validation_results is not None:
+                all_results[vdata["id"]] = validation_results
+
+        self.sql_session = Session()
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        total_passed = 0
+        total_failed = 0
+        validators_run = 0
+
+        for validator_id, validation_results in all_results.items():
+            validator = self.safe_get_item(SubtaskValidator, validator_id)
+
+            for result in validator.validation_results:
+                self.sql_session.delete(result)
+            self.sql_session.flush()
+
+            testcase_ids = [r["testcase_id"] for r in validation_results]
+            testcases_by_id = {tc.id: tc for tc in dataset.testcases.values()
+                              if tc.id in testcase_ids}
+
+            for result_data in validation_results:
+                testcase = testcases_by_id.get(result_data["testcase_id"])
+                if testcase is None:
+                    continue
+                result = SubtaskValidationResult(
+                    validator=validator,
+                    testcase=testcase,
+                    passed=result_data["passed"],
+                    stderr=result_data["stderr"]
+                )
+                self.sql_session.add(result)
+
+            passed_count = sum(1 for r in validation_results if r["passed"])
+            failed_count = len(validation_results) - passed_count
+            total_passed += passed_count
+            total_failed += failed_count
+            validators_run += 1
+
+        skipped = len(validator_data) - validators_run
+
+        if self.try_commit():
+            msg = "Reran %d validators: %d passed, %d failed." % (
+                validators_run, total_passed, total_failed)
+            if skipped > 0:
+                msg += " %d validators skipped due to errors." % skipped
+            self.service.add_notification(
+                make_datetime(),
+                "Validation complete",
+                msg)
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
