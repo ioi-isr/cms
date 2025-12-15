@@ -110,11 +110,5 @@
 <div class="hr"></div>
 <p>
   <a href="{{ url("task", task.id) }}">Back to task</a>
-  {% if admin.permission_all %}
-  | <form method="POST" action="{{ url("dataset", dataset.id, "validator", validator.id, "run") }}" style="display: inline;">
-      {{ xsrf_form_html|safe }}
-      <button type="submit">Run Validation</button>
-    </form>
-  {% endif %}
 </p>
 {% endblock core %}
