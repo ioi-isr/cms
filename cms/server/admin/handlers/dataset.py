@@ -1472,10 +1472,18 @@ class RunSubtaskValidationHandler(BaseHandler):
             self.sql_session.delete(result)
         self.sql_session.flush()
 
+        # Build a mapping of testcase IDs to testcase objects
+        testcase_ids = [r["testcase_id"] for r in validation_results]
+        testcases_by_id = {tc.id: tc for tc in dataset.testcases.values()
+                          if tc.id in testcase_ids}
+
         for result_data in validation_results:
+            testcase = testcases_by_id.get(result_data["testcase_id"])
+            if testcase is None:
+                continue
             result = SubtaskValidationResult(
                 validator=validator,
-                testcase_id=result_data["testcase_id"],
+                testcase=testcase,
                 passed=result_data["passed"],
                 stderr=result_data["stderr"]
             )
@@ -1510,7 +1518,7 @@ class SubtaskValidatorDetailsHandler(BaseHandler):
         task = dataset.task
         self.contest = task.contest
 
-        from cms.grading.scoretypes.ScoreTypeGroup import ScoreTypeGroup
+        from cms.grading.scoretypes import ScoreTypeGroup
 
         subtask_testcases = []
         other_testcases = []
