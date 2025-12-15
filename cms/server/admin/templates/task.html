@@ -689,10 +689,8 @@ window.filterTestcases = function(dataset_id) {
             <td>{{ subtask.display_name }}</td>
             <td>
               {% if admin.permission_all %}
-              <form id="validator_form_{{ dataset.id }}_{{ subtask.idx }}" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx|string, "validator", "add") }}" enctype="multipart/form-data" style="display: inline;">
-                {{ xsrf_form_html|safe }}
-                <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" onchange="this.form.submit();" />
-              </form>
+              {# File input uses form attribute to associate with validator form placed outside the main task form #}
+              <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
               {% endif %}
               {% if validator %}
                 <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
@@ -1058,6 +1056,20 @@ window.filterTestcases = function(dataset_id) {
   <input type="reset" value="Reset" />
   <a href="{{ url("task", task.id, "export") }}"> ⇩ Export </a>
 </form>
+
+{# Validator upload forms - placed outside the main task form to avoid nested form issues #}
+{% if admin.permission_all %}
+{% for dataset in task.datasets %}
+{% if subtask_info.get(dataset.id) %}
+{% for subtask in subtask_info[dataset.id] %}
+<form id="validator_form_{{ dataset.id }}_{{ subtask.idx }}" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx|string, "validator", "add") }}" enctype="multipart/form-data" style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
 <form action="{{ url("tasks") }}" method="POST" style="display:inline;">
     {{ xsrf_form_html|safe }}
     <input type="hidden" name="task_id" value="{{ task.id }}"/>
