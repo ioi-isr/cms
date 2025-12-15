@@ -649,23 +649,18 @@ window.filterTestcases = function(dataset_id) {
             <th>Tests</th>
             <th>Validation Status</th>
             <th>Additional Tests Passed</th>
-            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for subtask in subtask_info[dataset.id] %}
           {% set validator = dataset.subtask_validators.get(subtask.idx) %}
-          {% set subtask_tc_count = 0 %}
-          {% set other_tc_count = 0 %}
-          {% set subtask_passed = 0 %}
-          {% set subtask_failed = 0 %}
-          {% set other_passed = 0 %}
+          {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, other_passed=0) %}
           {% if testcase_subtasks.get(dataset.id) %}
             {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
               {% if subtask.idx in tc_subtasks %}
-                {% set subtask_tc_count = subtask_tc_count + 1 %}
+                {% set ns.subtask_tc_count = ns.subtask_tc_count + 1 %}
               {% else %}
-                {% set other_tc_count = other_tc_count + 1 %}
+                {% set ns.other_tc_count = ns.other_tc_count + 1 %}
               {% endif %}
             {% endfor %}
           {% endif %}
@@ -678,13 +673,13 @@ window.filterTestcases = function(dataset_id) {
               {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
                 {% if subtask.idx in tc_subtasks %}
                   {% if results_by_tc.get(tc_codename) and results_by_tc[tc_codename].passed %}
-                    {% set subtask_passed = subtask_passed + 1 %}
+                    {% set ns.subtask_passed = ns.subtask_passed + 1 %}
                   {% else %}
-                    {% set subtask_failed = subtask_failed + 1 %}
+                    {% set ns.subtask_failed = ns.subtask_failed + 1 %}
                   {% endif %}
                 {% else %}
                   {% if results_by_tc.get(tc_codename) and results_by_tc[tc_codename].passed %}
-                    {% set other_passed = other_passed + 1 %}
+                    {% set ns.other_passed = ns.other_passed + 1 %}
                   {% endif %}
                 {% endif %}
               {% endfor %}
@@ -693,22 +688,36 @@ window.filterTestcases = function(dataset_id) {
           <tr>
             <td>{{ subtask.display_name }}</td>
             <td>
+              {% if admin.permission_all %}
+              <form id="validator_form_{{ dataset.id }}_{{ subtask.idx }}" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx|string, "validator", "add") }}" enctype="multipart/form-data" style="display: inline;">
+                {{ xsrf_form_html|safe }}
+                <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" onchange="this.form.submit();" />
+              </form>
+              {% endif %}
               {% if validator %}
                 <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
                 {% if validator.executable_digest is none %}
                   <span style="color: red;">(compilation failed)</span>
                 {% endif %}
+                {% if admin.permission_all %}
+                [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">replace</a>]
+                [<a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>]
+                {% endif %}
               {% else %}
-                <em>No validator</em>
+                {% if admin.permission_all %}
+                [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">add</a>]
+                {% else %}
+                -
+                {% endif %}
               {% endif %}
             </td>
-            <td>{{ subtask_tc_count }}</td>
+            <td>{{ ns.subtask_tc_count }}</td>
             <td>
               {% if validator and validator.validation_results|length > 0 %}
-                {% if subtask_failed == 0 %}
-                  <span style="color: green;">All {{ subtask_passed }} passed</span>
+                {% if ns.subtask_failed == 0 %}
+                  <span style="color: green;">All {{ ns.subtask_passed }} passed</span>
                 {% else %}
-                  <span style="color: red;">{{ subtask_failed }} failed</span> / {{ subtask_passed + subtask_failed }}
+                  <span style="color: red;">{{ ns.subtask_failed }} failed</span> / {{ ns.subtask_passed + ns.subtask_failed }}
                 {% endif %}
                 [<a href="{{ url("dataset", dataset.id, "validator", validator.id, "details") }}">details</a>]
               {% elif validator %}
@@ -720,27 +729,11 @@ window.filterTestcases = function(dataset_id) {
             </td>
             <td>
               {% if validator and validator.validation_results|length > 0 %}
-                {{ other_passed }} / {{ other_tc_count }}
+                {{ ns.other_passed }} / {{ ns.other_tc_count }}
               {% elif validator %}
                 <em>Not validated</em>
               {% else %}
                 -
-              {% endif %}
-            </td>
-            <td>
-              {% if admin.permission_all %}
-              <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx, "validator", "add") }}" enctype="multipart/form-data" style="display: inline;">
-                {{ xsrf_form_html|safe }}
-                <input type="file" name="validator" style="width: 150px;" />
-                <button type="submit">{% if validator %}Replace{% else %}Add{% endif %}</button>
-              </form>
-              {% if validator %}
-                <form method="POST" action="{{ url("dataset", dataset.id, "validator", validator.id, "run") }}" style="display: inline;">
-                  {{ xsrf_form_html|safe }}
-                  <button type="submit">Run</button>
-                </form>
-                <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">Delete</a>
-              {% endif %}
               {% endif %}
             </td>
           </tr>
