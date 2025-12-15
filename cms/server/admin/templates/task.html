@@ -639,7 +639,14 @@ window.filterTestcases = function(dataset_id) {
       </table>
 
       {% if subtask_info.get(dataset.id) %}
-      <h4>Subtask Validators</h4>
+      <h4>Subtask Validators
+      {% if admin.permission_all %}
+      {% set has_validators = dataset.subtask_validators|length > 0 %}
+      {% if has_validators %}
+      [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
+      {% endif %}
+      {% endif %}
+      </h4>
       <p>Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid.</p>
       <table class="bordered">
         <thead>
@@ -1066,6 +1073,9 @@ window.filterTestcases = function(dataset_id) {
   {{ xsrf_form_html|safe }}
 </form>
 {% endfor %}
+<form id="rerun_validators_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "validators", "rerun") }}" style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
 {% endif %}
 {% endfor %}
 {% endif %}
