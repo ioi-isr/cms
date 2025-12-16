@@ -654,14 +654,13 @@ window.filterTestcases = function(dataset_id) {
             <th>Subtask</th>
             <th>Validator</th>
             <th>Tests</th>
-            <th>Validation Status</th>
             <th>Additional Tests Passed</th>
           </tr>
         </thead>
         <tbody>
           {% for subtask in subtask_info[dataset.id] %}
           {% set validator = dataset.subtask_validators.get(subtask.idx) %}
-          {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, other_passed=0) %}
+          {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, subtask_not_validated=0, other_passed=0) %}
           {% if testcase_subtasks.get(dataset.id) %}
             {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
               {% if subtask.idx in tc_subtasks %}
@@ -679,10 +678,14 @@ window.filterTestcases = function(dataset_id) {
             {% if testcase_subtasks.get(dataset.id) %}
               {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
                 {% if subtask.idx in tc_subtasks %}
-                  {% if results_by_tc.get(tc_codename) and results_by_tc[tc_codename].passed %}
-                    {% set ns.subtask_passed = ns.subtask_passed + 1 %}
+                  {% if results_by_tc.get(tc_codename) %}
+                    {% if results_by_tc[tc_codename].passed %}
+                      {% set ns.subtask_passed = ns.subtask_passed + 1 %}
+                    {% else %}
+                      {% set ns.subtask_failed = ns.subtask_failed + 1 %}
+                    {% endif %}
                   {% else %}
-                    {% set ns.subtask_failed = ns.subtask_failed + 1 %}
+                    {% set ns.subtask_not_validated = ns.subtask_not_validated + 1 %}
                   {% endif %}
                 {% else %}
                   {% if results_by_tc.get(tc_codename) and results_by_tc[tc_codename].passed %}
@@ -716,21 +719,20 @@ window.filterTestcases = function(dataset_id) {
                 {% endif %}
               {% endif %}
             </td>
-            <td>{{ ns.subtask_tc_count }}</td>
             <td>
+              {{ ns.subtask_tc_count }}
               {% if validator and validator.validation_results|length > 0 %}
-                {% if ns.subtask_failed == 0 %}
-                  <span style="color: green;">All {{ ns.subtask_passed }} passed</span>
+                ({% if ns.subtask_failed == 0 and ns.subtask_not_validated == 0 %}
+                  <span style="color: green;">all {{ ns.subtask_passed }} passed</span>
                 {% else %}
-                  <span style="color: red;">{{ ns.subtask_failed }} failed</span> / {{ ns.subtask_passed + ns.subtask_failed }}
-                {% endif %}
-                [<a href="{{ url("dataset", dataset.id, "validator", validator.id, "details") }}">details</a>]
+                  {% if ns.subtask_passed > 0 %}<span style="color: green;">{{ ns.subtask_passed }} passed</span>{% endif %}
+                  {% if ns.subtask_failed > 0 %}{% if ns.subtask_passed > 0 %}, {% endif %}<span style="color: red;">{{ ns.subtask_failed }} failed</span>{% endif %}
+                  {% if ns.subtask_not_validated > 0 %}{% if ns.subtask_passed > 0 or ns.subtask_failed > 0 %}, {% endif %}<span style="color: gray;">{{ ns.subtask_not_validated }} not validated</span>{% endif %}
+                {% endif %})
               {% elif validator %}
-                <em>Not validated</em>
-                [<a href="{{ url("dataset", dataset.id, "validator", validator.id, "details") }}">details</a>]
-              {% else %}
-                -
+                (<em>not validated</em>)
               {% endif %}
+              [<a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}">details</a>]
             </td>
             <td>
               {% if validator and validator.validation_results|length > 0 %}
