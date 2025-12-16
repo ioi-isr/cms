@@ -639,15 +639,41 @@ window.filterTestcases = function(dataset_id) {
       </table>
 
       {% if subtask_info.get(dataset.id) %}
+      {% set ds_ns = namespace(total_not_validated=0, has_validators=false) %}
+      {% for subtask in subtask_info[dataset.id] %}
+        {% set validator = dataset.subtask_validators.get(subtask.idx) %}
+        {% if validator %}
+          {% set ds_ns.has_validators = true %}
+          {% if validator.validation_results %}
+            {% set results_codenames = [] %}
+            {% for r in validator.validation_results %}
+              {% set _ = results_codenames.append(r.testcase.codename) %}
+            {% endfor %}
+            {% if testcase_subtasks.get(dataset.id) %}
+              {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
+                {% if subtask.idx in tc_subtasks and tc_codename not in results_codenames %}
+                  {% set ds_ns.total_not_validated = ds_ns.total_not_validated + 1 %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% else %}
+            {% if testcase_subtasks.get(dataset.id) %}
+              {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
+                {% if subtask.idx in tc_subtasks %}
+                  {% set ds_ns.total_not_validated = ds_ns.total_not_validated + 1 %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
       <h4>Subtask Validators
-      {% if admin.permission_all %}
-      {% set has_validators = dataset.subtask_validators|length > 0 %}
-      {% if has_validators %}
-      [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
-      {% endif %}
-      {% endif %}
       </h4>
       <p>Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid.</p>
+      {% if ds_ns.total_not_validated > 0 %}
+      <p style="color: orange;"><strong>Warning:</strong> {{ ds_ns.total_not_validated }} testcase(s) have not been validated. Click "rerun validators" to validate them.</p>
+      [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
+      {% endif %}
       <table class="bordered">
         <thead>
           <tr>
