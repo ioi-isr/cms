@@ -34,6 +34,7 @@ import re
 import zipfile
 
 import collections
+import gevent
 
 try:
     collections.MutableMapping
@@ -58,6 +59,10 @@ from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+# Track running validation jobs by dataset_id
+# Each entry contains: {"status": "running"|"completed"|"error", "progress": str, "result": str}
+_running_validations: dict[int, dict] = {}
 
 
 def validate_template(template: str, name: str) -> str | None:
@@ -1563,15 +1568,187 @@ class SubtaskDetailsHandler(BaseHandler):
         self.render("subtask_details.html", **self.r_params)
 
 
+def _run_validators_background(service, file_cacher, dataset_id, validator_data, testcase_data):
+    """Background task to run validators with incremental commits.
+
+    This function runs in a gevent greenlet and commits results per validator,
+    so partial progress is saved even if the task is interrupted.
+    """
+    global _running_validations
+
+    total_passed = 0
+    total_failed = 0
+    validators_run = 0
+    errors = []
+
+    try:
+        for i, vdata in enumerate(validator_data):
+            _running_validations[dataset_id]["progress"] = \
+                "Running validator %d/%d (subtask %d)..." % (
+                    i + 1, len(validator_data), vdata["subtask_index"])
+
+            class ValidatorInfo:
+                pass
+            validator_info = ValidatorInfo()
+            validator_info.filename = vdata["filename"]
+            validator_info.executable_digest = vdata["executable_digest"]
+
+            validation_results = []
+            sandbox = None
+
+            try:
+                language = filename_to_language(validator_info.filename)
+            except Exception:
+                language = None
+
+            exe_name = "validator"
+            if language is not None and isinstance(language, CompiledLanguage):
+                exe_name += language.executable_extension
+
+            try:
+                for tc_data in testcase_data:
+                    sandbox = create_sandbox(file_cacher, name="admin_validate")
+
+                    sandbox.create_file_from_storage(
+                        exe_name, validator_info.executable_digest, executable=True)
+                    sandbox.create_file_from_storage("input.txt", tc_data["input"])
+                    sandbox.create_file_from_storage("output.txt", tc_data["output"])
+
+                    cmd = ["./" + exe_name, "input.txt", "output.txt"]
+                    if language is not None:
+                        try:
+                            cmds = language.get_evaluation_commands(exe_name)
+                            if cmds:
+                                cmd = cmds[0] + ["input.txt", "output.txt"]
+                        except Exception:
+                            pass
+
+                    sandbox.stdout_file = "stdout.txt"
+                    sandbox.stderr_file = "stderr.txt"
+
+                    box_success = sandbox.execute_without_std(cmd, wait=True)
+
+                    stderr = ""
+                    try:
+                        stderr_bytes = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
+                        stderr = stderr_bytes.decode("utf-8", errors="replace")
+                    except FileNotFoundError:
+                        pass
+
+                    passed = False
+                    if box_success:
+                        exit_status = sandbox.get_exit_status()
+                        if exit_status == sandbox.EXIT_OK:
+                            exit_code = sandbox.get_exit_code()
+                            passed = (exit_code == 0)
+
+                    validation_results.append({
+                        "testcase_id": tc_data["id"],
+                        "passed": passed,
+                        "stderr": stderr[:4096] if stderr else None
+                    })
+
+                    sandbox.cleanup(delete=True)
+                    sandbox = None
+
+            except Exception as error:
+                logger.error("Validation execution error for validator %d: %s",
+                             vdata["id"], repr(error))
+                errors.append("Validator %d: %s" % (vdata["subtask_index"], repr(error)))
+                if sandbox:
+                    sandbox.cleanup(delete=True)
+                continue
+
+            sql_session = Session()
+            try:
+                validator = sql_session.query(SubtaskValidator).get(vdata["id"])
+                if validator is None:
+                    continue
+
+                dataset = sql_session.query(Dataset).get(dataset_id)
+                if dataset is None:
+                    continue
+
+                for result in validator.validation_results:
+                    sql_session.delete(result)
+                sql_session.flush()
+
+                testcase_ids = [r["testcase_id"] for r in validation_results]
+                testcases_by_id = {tc.id: tc for tc in dataset.testcases.values()
+                                  if tc.id in testcase_ids}
+
+                for result_data in validation_results:
+                    testcase = testcases_by_id.get(result_data["testcase_id"])
+                    if testcase is None:
+                        continue
+                    result = SubtaskValidationResult(
+                        validator=validator,
+                        testcase=testcase,
+                        passed=result_data["passed"],
+                        stderr=result_data["stderr"]
+                    )
+                    sql_session.add(result)
+
+                sql_session.commit()
+
+                passed_count = sum(1 for r in validation_results if r["passed"])
+                failed_count = len(validation_results) - passed_count
+                total_passed += passed_count
+                total_failed += failed_count
+                validators_run += 1
+
+            except Exception as error:
+                logger.error("Database error for validator %d: %s",
+                             vdata["id"], repr(error))
+                errors.append("Validator %d DB error: %s" % (vdata["subtask_index"], repr(error)))
+                sql_session.rollback()
+            finally:
+                sql_session.close()
+
+        msg = "Reran %d validators: %d passed, %d failed." % (
+            validators_run, total_passed, total_failed)
+        if errors:
+            msg += " Errors: " + "; ".join(errors)
+
+        _running_validations[dataset_id]["status"] = "completed"
+        _running_validations[dataset_id]["result"] = msg
+        _running_validations[dataset_id]["progress"] = "Completed"
+
+        service.add_notification(make_datetime(), "Validation complete", msg)
+
+    except Exception as error:
+        logger.error("Background validation failed: %s", repr(error))
+        _running_validations[dataset_id]["status"] = "error"
+        _running_validations[dataset_id]["result"] = repr(error)
+        _running_validations[dataset_id]["progress"] = "Error"
+        service.add_notification(
+            make_datetime(), "Validation error",
+            "Background validation failed: %s" % repr(error))
+
+
 class RerunSubtaskValidatorsHandler(BaseHandler):
     """Rerun all subtask validators for a dataset.
 
+    Runs validators in a background greenlet with incremental commits,
+    so the page can be reloaded without losing progress.
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
+        dataset_id = int(dataset_id)
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
         fallback_page = self.url("task", task.id)
+
+        if dataset_id in _running_validations:
+            status = _running_validations[dataset_id].get("status")
+            if status == "running":
+                self.service.add_notification(
+                    make_datetime(),
+                    "Validation in progress",
+                    "Validators are already running for this dataset. " +
+                    _running_validations[dataset_id].get("progress", ""))
+                self.redirect(fallback_page)
+                return
 
         validators = list(dataset.subtask_validators.values())
         if not validators:
@@ -1581,8 +1758,6 @@ class RerunSubtaskValidatorsHandler(BaseHandler):
                 "No subtask validators found for this dataset.")
             self.redirect(fallback_page)
             return
-
-        testcases = list(dataset.testcases.values())
 
         validator_data = []
         for v in validators:
@@ -1602,70 +1777,33 @@ class RerunSubtaskValidatorsHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        self.sql_session.close()
+        testcase_data = []
+        for tc in dataset.testcases.values():
+            testcase_data.append({
+                "id": tc.id,
+                "input": tc.input,
+                "output": tc.output
+            })
 
-        all_results = {}
-        for vdata in validator_data:
-            class ValidatorInfo:
-                pass
-            validator_info = ValidatorInfo()
-            validator_info.filename = vdata["filename"]
-            validator_info.executable_digest = vdata["executable_digest"]
+        _running_validations[dataset_id] = {
+            "status": "running",
+            "progress": "Starting validation...",
+            "result": None
+        }
 
-            validation_results = run_validator_on_testcases(
-                self, validator_info, dataset, testcases)
+        gevent.spawn(
+            _run_validators_background,
+            self.service,
+            self.service.file_cacher,
+            dataset_id,
+            validator_data,
+            testcase_data
+        )
 
-            if validation_results is not None:
-                all_results[vdata["id"]] = validation_results
-
-        self.sql_session = Session()
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-
-        total_passed = 0
-        total_failed = 0
-        validators_run = 0
-
-        for validator_id, validation_results in all_results.items():
-            validator = self.safe_get_item(SubtaskValidator, validator_id)
-
-            for result in validator.validation_results:
-                self.sql_session.delete(result)
-            self.sql_session.flush()
-
-            testcase_ids = [r["testcase_id"] for r in validation_results]
-            testcases_by_id = {tc.id: tc for tc in dataset.testcases.values()
-                              if tc.id in testcase_ids}
-
-            for result_data in validation_results:
-                testcase = testcases_by_id.get(result_data["testcase_id"])
-                if testcase is None:
-                    continue
-                result = SubtaskValidationResult(
-                    validator=validator,
-                    testcase=testcase,
-                    passed=result_data["passed"],
-                    stderr=result_data["stderr"]
-                )
-                self.sql_session.add(result)
-
-            passed_count = sum(1 for r in validation_results if r["passed"])
-            failed_count = len(validation_results) - passed_count
-            total_passed += passed_count
-            total_failed += failed_count
-            validators_run += 1
-
-        skipped = len(validator_data) - validators_run
-
-        if self.try_commit():
-            msg = "Reran %d validators: %d passed, %d failed." % (
-                validators_run, total_passed, total_failed)
-            if skipped > 0:
-                msg += " %d validators skipped due to errors." % skipped
-            self.service.add_notification(
-                make_datetime(),
-                "Validation complete",
-                msg)
-            self.redirect(self.url("task", task.id))
-        else:
-            self.redirect(fallback_page)
+        self.service.add_notification(
+            make_datetime(),
+            "Validation started",
+            "Running %d validators on %d testcases in background. "
+            "You can safely navigate away - progress will be saved." % (
+                len(validator_data), len(testcase_data)))
+        self.redirect(self.url("task", task.id))
