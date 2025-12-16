@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }} Tests</h1>
+</div>
+
+<h2>Subtask {{ subtask_index }} Details</h2>
+<table>
+  <tr>
+    <td>Validator:</td>
+    <td>
+      {% if validator %}
+        <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
+        {% if validator.executable_digest %}
+          <span style="color: green;">(compiled)</span>
+        {% else %}
+          <span style="color: red;">(compilation failed)</span>
+        {% endif %}
+      {% else %}
+        <em>No validator uploaded</em>
+      {% endif %}
+    </td>
+  </tr>
+  <tr>
+    <td>Testcases in subtask:</td>
+    <td>{{ subtask_testcases|length }}</td>
+  </tr>
+  <tr>
+    <td>Additional testcases:</td>
+    <td>{{ other_testcases|length }}</td>
+  </tr>
+</table>
+
+<h3>Subtask Testcases</h3>
+{% if subtask_testcases|length == 0 %}
+<p>No testcases in this subtask.</p>
+{% else %}
+<table class="bordered">
+  <thead>
+    <tr>
+      <th>Codename</th>
+      <th>Input</th>
+      <th>Output</th>
+      {% if validator %}
+      <th>Status</th>
+      <th>Stderr</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for tc_info in subtask_testcases %}
+    <tr>
+      <td>{{ tc_info.codename }}</td>
+      <td>
+        <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
+      </td>
+      <td>
+        <a href="javascript:void(0);" onclick="utils.show_file('output_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename)) }}')">Show output</a>
+      </td>
+      {% if validator %}
+      <td>
+        {% if tc_info.result %}
+          {% if tc_info.result.passed %}
+            <span style="color: green;">Passed</span>
+          {% else %}
+            <span style="color: red;">Failed</span>
+          {% endif %}
+        {% else %}
+          <span style="color: gray;">Not validated</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if tc_info.result and tc_info.result.stderr %}
+          {{ tc_info.result.stderr }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h3>Additional Testcases (not in subtask)</h3>
+{% if other_testcases|length == 0 %}
+<p>No additional testcases.</p>
+{% else %}
+<table class="bordered">
+  <thead>
+    <tr>
+      <th>Codename</th>
+      <th>Input</th>
+      <th>Output</th>
+      {% if validator %}
+      <th>Status</th>
+      <th>Stderr</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for tc_info in other_testcases %}
+    <tr>
+      <td>{{ tc_info.codename }}</td>
+      <td>
+        <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
+      </td>
+      <td>
+        <a href="javascript:void(0);" onclick="utils.show_file('output_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename)) }}')">Show output</a>
+      </td>
+      {% if validator %}
+      <td>
+        {% if tc_info.result %}
+          {% if tc_info.result.passed %}
+            <span style="color: green;">Passed</span>
+          {% else %}
+            <span style="color: red;">Failed</span>
+          {% endif %}
+        {% else %}
+          <span style="color: gray;">Not validated</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if tc_info.result and tc_info.result.stderr %}
+          {{ tc_info.result.stderr }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="hr"></div>
+<p>
+  <a href="{{ url("task", task.id) }}">Back to task</a>
+</p>
+{% endblock core %}
