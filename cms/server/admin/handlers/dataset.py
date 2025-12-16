@@ -1579,22 +1579,21 @@ class DeleteSubtaskValidatorHandler(BaseHandler):
             self.write("./%d" % task_id)
 
 
-class SubtaskValidatorDetailsHandler(BaseHandler):
-    """Show validation details for a subtask validator.
+class SubtaskDetailsHandler(BaseHandler):
+    """Show testcase details for a subtask, with optional validation results.
 
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, dataset_id, validator_id):
-        validator = self.safe_get_item(SubtaskValidator, validator_id)
+    def get(self, dataset_id, subtask_index):
         dataset = self.safe_get_item(Dataset, dataset_id)
-
-        if validator.dataset is not dataset:
-            raise tornado.web.HTTPError(404)
+        subtask_index = int(subtask_index)
 
         task = dataset.task
         self.contest = task.contest
 
         from cms.grading.scoretypes import ScoreTypeGroup
+
+        validator = dataset.subtask_validators.get(subtask_index)
 
         subtask_testcases = []
         other_testcases = []
@@ -1603,8 +1602,8 @@ class SubtaskValidatorDetailsHandler(BaseHandler):
             score_type_obj = dataset.score_type_object
             if isinstance(score_type_obj, ScoreTypeGroup):
                 targets = score_type_obj.retrieve_target_testcases()
-                if validator.subtask_index < len(targets):
-                    subtask_tc_codenames = set(targets[validator.subtask_index])
+                if subtask_index < len(targets):
+                    subtask_tc_codenames = set(targets[subtask_index])
                 else:
                     subtask_tc_codenames = set()
             else:
@@ -1612,7 +1611,9 @@ class SubtaskValidatorDetailsHandler(BaseHandler):
         except Exception:
             subtask_tc_codenames = set()
 
-        results_by_testcase = {r.testcase_id: r for r in validator.validation_results}
+        results_by_testcase = {}
+        if validator:
+            results_by_testcase = {r.testcase_id: r for r in validator.validation_results}
 
         for codename, testcase in sorted(dataset.testcases.items()):
             result = results_by_testcase.get(testcase.id)
@@ -1630,9 +1631,10 @@ class SubtaskValidatorDetailsHandler(BaseHandler):
         self.r_params["task"] = task
         self.r_params["dataset"] = dataset
         self.r_params["validator"] = validator
+        self.r_params["subtask_index"] = subtask_index
         self.r_params["subtask_testcases"] = subtask_testcases
         self.r_params["other_testcases"] = other_testcases
-        self.render("subtask_validator_details.html", **self.r_params)
+        self.render("subtask_details.html", **self.r_params)
 
 
 class RerunSubtaskValidatorsHandler(BaseHandler):
