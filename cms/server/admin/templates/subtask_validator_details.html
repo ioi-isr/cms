@@ -56,7 +56,7 @@
       </td>
       <td>
         {% if tc_info.result and tc_info.result.stderr %}
-          <pre style="max-width: 400px; overflow-x: auto; font-size: 0.9em;">{{ tc_info.result.stderr }}</pre>
+          <span style="font-family: monospace; font-size: 0.9em;">{{ tc_info.result.stderr }}</span>
         {% else %}
           -
         {% endif %}
@@ -96,7 +96,7 @@
       </td>
       <td>
         {% if tc_info.result and tc_info.result.stderr %}
-          <pre style="max-width: 400px; overflow-x: auto; font-size: 0.9em;">{{ tc_info.result.stderr }}</pre>
+          <span style="font-family: monospace; font-size: 0.9em;">{{ tc_info.result.stderr }}</span>
         {% else %}
           -
         {% endif %}
