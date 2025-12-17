@@ -161,10 +161,16 @@ class RegistrationHandler(ContestHandler):
             username = self.get_argument("username")
             password = self.get_argument("password")
             email = self.get_argument("email")
-            if len(email) == 0:
-                email = None
         except tornado.web.MissingArgumentError:
             raise RegistrationError("missing_field")
+
+        # Validate email - required and basic format check
+        if not email or len(email) == 0:
+            raise RegistrationError("missing_email", "email")
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            raise RegistrationError("invalid_email", "email")
+        if len(email) > self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_email", "email")
 
         # Validate first name
         if not 1 <= len(first_name) <= self.MAX_INPUT_LENGTH:

@@ -81,11 +81,19 @@
   {% if user.password_reset_token and user.password_reset_token_expires %}
   <div class="alert alert-info" style="padding: 10px; margin-bottom: 15px; background-color: #d9edf7; border: 1px solid #bce8f1; border-radius: 4px;">
     <strong>Active Password Reset Token</strong>
-    <p>A password reset link is active for this user. You can share this link manually if email delivery failed.</p>
+    <p>A password reset link is active for this user. Copy and share the reset URL below if email delivery failed.</p>
     <table>
       <tr>
-        <td><strong>Token:</strong></td>
-        <td><code>{{ user.password_reset_token }}</code></td>
+        <td><strong>Reset URL:</strong></td>
+        <td>
+          {% if participations|length > 0 %}
+          <code style="word-break: break-all;">/{{ participations[0].contest.name }}/password_reset_confirm/{{ user.password_reset_token }}</code>
+          <br><small>(Relative path - prepend your CWS server address, e.g., https://your-cws-server.com)</small>
+          {% else %}
+          <code style="word-break: break-all;">/password_reset_confirm/{{ user.password_reset_token }}</code>
+          <br><small>(Relative path - prepend your CWS server address)</small>
+          {% endif %}
+        </td>
       </tr>
       <tr>
         <td><strong>Expires:</strong></td>
