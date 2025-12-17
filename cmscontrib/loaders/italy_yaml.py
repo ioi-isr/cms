@@ -744,7 +744,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         # Attachments
         args["attachments"] = dict()
         attachments_folder = find_first_existing_dir(
-            self.path, ["att", "attachements", "Attachements"])
+            self.path, ["att", "attachements", "Attachements", "attachments", "Attachments"])
         if attachments_folder is not None:
             for filename in os.listdir(
                     os.path.join(self.path, attachments_folder)):
@@ -1472,7 +1472,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Attachments (use find_first_existing_dir for consistency with get_task)
         att_folder = find_first_existing_dir(
-            self.path, ["att", "attachements", "Attachements"])
+            self.path, ["att", "attachements", "Attachements", "attachments", "Attachments"])
         if att_folder is not None:
             att_path = os.path.join(self.path, att_folder)
             for filename in os.listdir(att_path):
