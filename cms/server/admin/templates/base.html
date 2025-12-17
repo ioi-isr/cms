@@ -15,6 +15,8 @@
     <link rel="stylesheet" type="text/css" href="{{ url("static", "jq", "jquery.jqplot.min.css") }}"/>
     <link rel="stylesheet" type="text/css" href="{{ url("static", "prism.css") }}">
     <script src="{{ url("static", "prism.js") }}" data-manual></script>
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "select2", "select2.min.css") }}">
+    <script src="{{ url("static", "select2", "select2.min.js") }}"></script>
 
     {% if contest is none %}
     <title>Admin</title>
@@ -50,6 +52,13 @@ function init()
     $(".diff-radio").change(utils.update_diff_ids);
 
     {% block js_init %}{% endblock js_init %}
+
+    // Initialize Select2 on searchable select elements
+    $('.searchable-select').select2({
+        placeholder: 'Search...',
+        allowClear: true,
+        width: '240px'
+    });
 }
 
 {% block js %}{% endblock js %}

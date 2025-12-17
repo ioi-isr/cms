@@ -12,7 +12,7 @@
 <form action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Add a new task:
-  <select name="task_id">
+  <select name="task_id" class="searchable-select">
     <option value="null" selected>Select a new task</option>
     {% for t in unassigned_tasks %}
     <option value="{{ t.id }}">
