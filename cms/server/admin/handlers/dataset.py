@@ -1761,6 +1761,168 @@ class RenameTestcaseHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
+class BatchRenameTestcasesHandler(BaseHandler):
+    """Batch rename testcases - add prefix or edit common prefix.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        fallback_page = self.url("task", task.id)
+
+        # Get the operation type and value
+        operation = self.get_argument("operation", "")
+        value = self.get_argument("value", "")
+
+        # Collect selected testcase IDs from the request
+        id_strings = self.get_arguments("testcase_id")
+
+        if not id_strings:
+            self.service.add_notification(
+                make_datetime(),
+                "No testcases selected",
+                "Please select at least one testcase.")
+            self.redirect(fallback_page)
+            return
+
+        if operation not in ("add_prefix", "edit_prefix"):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid operation",
+                "Unknown operation: %s" % operation)
+            self.redirect(fallback_page)
+            return
+
+        # Gather testcases
+        testcases = []
+        for id_str in id_strings:
+            try:
+                tid = int(id_str)
+            except ValueError:
+                raise tornado.web.HTTPError(400)
+            tc = self.safe_get_item(Testcase, tid)
+
+            # Protect against mixing datasets
+            if tc.dataset is not dataset:
+                raise tornado.web.HTTPError(400)
+
+            testcases.append(tc)
+
+        if operation == "add_prefix":
+            # Add prefix to all selected testcases
+            if not value:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid prefix",
+                    "Prefix cannot be empty.")
+                self.redirect(fallback_page)
+                return
+
+            # Check for conflicts first
+            new_codenames = {}
+            for tc in testcases:
+                new_codename = value + tc.codename
+                if new_codename in dataset.testcases and dataset.testcases[new_codename] not in testcases:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Codename conflict",
+                        "Adding prefix would create duplicate codename '%s'." % new_codename)
+                    self.redirect(fallback_page)
+                    return
+                if new_codename in new_codenames:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Codename conflict",
+                        "Adding prefix would create duplicate codename '%s'." % new_codename)
+                    self.redirect(fallback_page)
+                    return
+                new_codenames[tc.id] = new_codename
+
+            # Perform the rename
+            renamed_count = 0
+            for tc in testcases:
+                old_codename = tc.codename
+                new_codename = new_codenames[tc.id]
+                del dataset.testcases[old_codename]
+                tc.codename = new_codename
+                dataset.testcases[new_codename] = tc
+                renamed_count += 1
+
+            if self.try_commit():
+                self.service.add_notification(
+                    make_datetime(),
+                    "Testcases renamed",
+                    "Added prefix '%s' to %d testcases." % (value, renamed_count))
+
+        elif operation == "edit_prefix":
+            # Edit common prefix - find common prefix and replace it
+            old_prefix = self.get_argument("old_prefix", "")
+            new_prefix = value
+
+            if not old_prefix and not new_prefix:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid prefix",
+                    "Both old and new prefix cannot be empty.")
+                self.redirect(fallback_page)
+                return
+
+            # Check that all selected testcases have the old prefix
+            for tc in testcases:
+                if old_prefix and not tc.codename.startswith(old_prefix):
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Prefix mismatch",
+                        "Testcase '%s' does not have prefix '%s'." % (tc.codename, old_prefix))
+                    self.redirect(fallback_page)
+                    return
+
+            # Check for conflicts first
+            new_codenames = {}
+            for tc in testcases:
+                if old_prefix:
+                    new_codename = new_prefix + tc.codename[len(old_prefix):]
+                else:
+                    new_codename = new_prefix + tc.codename
+                if new_codename in dataset.testcases and dataset.testcases[new_codename] not in testcases:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Codename conflict",
+                        "Editing prefix would create duplicate codename '%s'." % new_codename)
+                    self.redirect(fallback_page)
+                    return
+                if new_codename in new_codenames:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Codename conflict",
+                        "Editing prefix would create duplicate codename '%s'." % new_codename)
+                    self.redirect(fallback_page)
+                    return
+                new_codenames[tc.id] = new_codename
+
+            # Perform the rename
+            renamed_count = 0
+            for tc in testcases:
+                old_codename = tc.codename
+                new_codename = new_codenames[tc.id]
+                if old_codename != new_codename:
+                    del dataset.testcases[old_codename]
+                    tc.codename = new_codename
+                    dataset.testcases[new_codename] = tc
+                    renamed_count += 1
+
+            if self.try_commit():
+                self.service.add_notification(
+                    make_datetime(),
+                    "Testcases renamed",
+                    "Changed prefix from '%s' to '%s' for %d testcases." % (
+                        old_prefix, new_prefix, renamed_count))
+
+        self.redirect(fallback_page)
+
+
 def _run_validators_background(service, file_cacher, dataset_id, validator_data, testcase_data):
     """Background task to run validators with incremental commits.
 
