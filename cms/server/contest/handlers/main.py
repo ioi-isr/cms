@@ -569,16 +569,30 @@ class PasswordResetRequestHandler(ContestHandler):
                         **self.r_params)
             return
 
+        # First try exact username match
         user = self.sql_session.query(User).filter(
-            (User.username == username_or_email) |
-            (User.email == username_or_email)
+            User.username == username_or_email
         ).first()
 
+        # If no username match, try email
         if user is None:
-            self.render("password_reset_request.html",
-                        error_message=N_("No user found with that username or email."),
-                        **self.r_params)
-            return
+            users_by_email = self.sql_session.query(User).filter(
+                User.email == username_or_email
+            ).all()
+
+            if len(users_by_email) == 0:
+                self.render("password_reset_request.html",
+                            error_message=N_("No user found with that username or email."),
+                            **self.r_params)
+                return
+
+            if len(users_by_email) > 1:
+                self.render("password_reset_request.html",
+                            error_message=N_("Multiple users share this email address. Please contact an administrator."),
+                            **self.r_params)
+                return
+
+            user = users_by_email[0]
 
         if not user.email:
             self.render("password_reset_request.html",
@@ -605,7 +619,6 @@ class PasswordResetRequestHandler(ContestHandler):
         else:
             self.render("password_reset_request.html",
                         error_message=N_("Failed to send reset email. Please contact an administrator."),
-                        reset_url=reset_url,
                         **self.r_params)
 
     def _send_reset_email(self, email: str, reset_url: str) -> bool:
@@ -725,14 +738,6 @@ class PasswordResetConfirmHandler(ContestHandler):
         user.password_reset_token_expires = None
 
         self.sql_session.commit()
-
-        self.service.add_notification(
-            "admin",
-            self.timestamp,
-            N_("Password Reset Pending"),
-            N_("User %s has requested a password reset and is awaiting approval.") % user.username,
-            "warning"
-        )
 
         self.render("password_reset_pending.html",
                     username=user.username,
