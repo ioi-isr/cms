@@ -88,6 +88,8 @@ from .dataset import \
     AddSubtaskValidatorHandler, \
     DeleteSubtaskValidatorHandler, \
     SubtaskDetailsHandler, \
+    UpdateSubtaskRegexHandler, \
+    RenameTestcaseHandler, \
     RerunSubtaskValidatorsHandler
 from .main import \
     LoginHandler, \
@@ -268,6 +270,8 @@ HANDLERS = [
     (r"/dataset/([0-9]+)/subtask/([0-9]+)/validator/add", AddSubtaskValidatorHandler),
     (r"/dataset/([0-9]+)/validator/([0-9]+)/delete", DeleteSubtaskValidatorHandler),
     (r"/dataset/([0-9]+)/subtask/([0-9]+)/details", SubtaskDetailsHandler),
+    (r"/dataset/([0-9]+)/subtask/([0-9]+)/regex", UpdateSubtaskRegexHandler),
+    (r"/dataset/([0-9]+)/testcase/([0-9]+)/rename", RenameTestcaseHandler),
     (r"/dataset/([0-9]+)/validators/rerun", RerunSubtaskValidatorsHandler),
 
     # Users/Teams

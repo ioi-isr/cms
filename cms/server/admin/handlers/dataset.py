@@ -1589,6 +1589,8 @@ class SubtaskDetailsHandler(BaseHandler):
         subtask_testcases = []
         other_testcases = []
         subtask_name = None
+        subtask_regex = None
+        uses_regex = False
 
         try:
             score_type_obj = dataset.score_type_object
@@ -1599,9 +1601,14 @@ class SubtaskDetailsHandler(BaseHandler):
                 else:
                     subtask_tc_codenames = set()
 
-                # Get subtask name from score type parameters
+                # Get subtask name and regex from score type parameters
                 if subtask_index < len(score_type_obj.parameters):
                     param = score_type_obj.parameters[subtask_index]
+                    if len(param) >= 2:
+                        # Check if the second parameter is a regex (string) or count (int)
+                        if isinstance(param[1], str):
+                            subtask_regex = param[1]
+                            uses_regex = True
                     if len(param) >= 3 and param[2]:
                         subtask_name = param[2]
             else:
@@ -1631,9 +1638,127 @@ class SubtaskDetailsHandler(BaseHandler):
         self.r_params["validator"] = validator
         self.r_params["subtask_index"] = subtask_index
         self.r_params["subtask_name"] = subtask_name
+        self.r_params["subtask_regex"] = subtask_regex
+        self.r_params["uses_regex"] = uses_regex
         self.r_params["subtask_testcases"] = subtask_testcases
         self.r_params["other_testcases"] = other_testcases
         self.render("subtask_details.html", **self.r_params)
+
+
+class UpdateSubtaskRegexHandler(BaseHandler):
+    """Update the regex pattern for a subtask in the score type parameters.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, subtask_index):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        subtask_index = int(subtask_index)
+        task = dataset.task
+
+        fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+
+        new_regex = self.get_argument("regex", "")
+        if not new_regex:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid regex",
+                "Regex pattern cannot be empty.")
+            self.redirect(fallback_page)
+            return
+
+        # Validate the regex
+        try:
+            re.compile(new_regex)
+        except re.error as e:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid regex",
+                "The regex pattern is invalid: %s" % str(e))
+            self.redirect(fallback_page)
+            return
+
+        # Update the score type parameters
+        params = dataset.score_type_parameters
+        if not isinstance(params, list) or subtask_index >= len(params):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid subtask",
+                "Subtask index %d is out of range." % subtask_index)
+            self.redirect(fallback_page)
+            return
+
+        # Check that the current parameter uses regex (string), not count (int)
+        if not isinstance(params[subtask_index][1], str):
+            self.service.add_notification(
+                make_datetime(),
+                "Cannot update regex",
+                "This subtask uses testcase count, not regex pattern.")
+            self.redirect(fallback_page)
+            return
+
+        # Create a new list to trigger SQLAlchemy change detection
+        new_params = [list(p) for p in params]
+        new_params[subtask_index][1] = new_regex
+        dataset.score_type_parameters = new_params
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Regex updated",
+                "Subtask %d regex updated to: %s" % (subtask_index, new_regex))
+        self.redirect(fallback_page)
+
+
+class RenameTestcaseHandler(BaseHandler):
+    """Rename a testcase's codename.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, testcase_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        testcase = self.safe_get_item(Testcase, testcase_id)
+        task = dataset.task
+
+        # Protect against URLs providing incompatible parameters.
+        if testcase.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        fallback_page = self.url("task", task.id)
+
+        new_codename = self.get_argument("new_codename", "").strip()
+        if not new_codename:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid codename",
+                "Codename cannot be empty.")
+            self.redirect(fallback_page)
+            return
+
+        old_codename = testcase.codename
+
+        # Check if the new codename already exists in this dataset
+        if new_codename != old_codename and new_codename in dataset.testcases:
+            self.service.add_notification(
+                make_datetime(),
+                "Codename already exists",
+                "A testcase with codename '%s' already exists in this dataset." % new_codename)
+            self.redirect(fallback_page)
+            return
+
+        # Update the codename
+        # First remove from the collection (keyed by old codename)
+        del dataset.testcases[old_codename]
+        # Update the codename
+        testcase.codename = new_codename
+        # Re-add to the collection (keyed by new codename)
+        dataset.testcases[new_codename] = testcase
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Testcase renamed",
+                "Testcase renamed from '%s' to '%s'." % (old_codename, new_codename))
+        self.redirect(fallback_page)
 
 
 def _run_validators_background(service, file_cacher, dataset_id, validator_data, testcase_data):

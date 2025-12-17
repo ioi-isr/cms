@@ -24,9 +24,33 @@ window.filterTestcases = function(tableId, filter) {
     }
   });
 };
+
+window.promptRename = function(datasetId, testcaseId, currentCodename) {
+  var newCodename = prompt('Enter new codename for testcase:', currentCodename);
+  if (newCodename && newCodename !== currentCodename) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/dataset/' + datasetId + '/testcase/' + testcaseId + '/rename';
+    
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'new_codename';
+    input.value = newCodename;
+    form.appendChild(input);
+    
+    var xsrf = document.createElement('input');
+    xsrf.type = 'hidden';
+    xsrf.name = '_xsrf';
+    xsrf.value = document.querySelector('input[name="_xsrf"]').value;
+    form.appendChild(xsrf);
+    
+    document.body.appendChild(form);
+    form.submit();
+  }
+};
 {% endblock js_init %}
 
-{% macro render_testcase_table(title, table_id, testcases, validator) %}
+{% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin) %}
 <h3>{{ title }}</h3>
 {% if testcases|length == 0 %}
 <p>No testcases in this section.</p>
@@ -51,6 +75,9 @@ window.filterTestcases = function(tableId, filter) {
         {% if validator %}
         <th>Status</th>
         <th>Stderr</th>
+        {% endif %}
+        {% if admin.permission_all %}
+        <th>Ops</th>
         {% endif %}
       </tr>
     </thead>
@@ -100,6 +127,11 @@ window.filterTestcases = function(tableId, filter) {
           {% endif %}
         </td>
         {% endif %}
+        {% if admin.permission_all %}
+        <td>
+          <a href="javascript:void(0);" onclick="promptRename('{{ dataset.id }}', '{{ tc_info.testcase.id }}', '{{ tc_info.codename }}')">rename</a>
+        </td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>
@@ -114,6 +146,12 @@ window.filterTestcases = function(tableId, filter) {
 </div>
 
 <h2>Subtask {{ subtask_index }}{% if subtask_name %} ({{ subtask_name }}){% endif %} Details</h2>
+
+{# Hidden form for XSRF token - used by JavaScript #}
+<form style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
+
 <table>
   <tr>
     <td>Validator:</td>
@@ -125,11 +163,42 @@ window.filterTestcases = function(tableId, filter) {
         {% else %}
           <span style="color: red;">(compilation failed)</span>
         {% endif %}
+        {% if admin.permission_all %}
+        <input id="validator_file_replace" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
+        [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_replace').click();">replace</a>]
+        [<a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>]
+        {% endif %}
       {% else %}
         <em>No validator uploaded</em>
+        {% if admin.permission_all %}
+        <input id="validator_file_add" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
+        [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_add').click();">add</a>]
+        {% endif %}
       {% endif %}
     </td>
   </tr>
+  {% if uses_regex %}
+  <tr>
+    <td>Regex pattern:</td>
+    <td>
+      <code>{{ subtask_regex }}</code>
+      {% if admin.permission_all %}
+      [<a href="javascript:void(0);" onclick="document.getElementById('regex_edit_row').style.display = 'table-row'; this.parentElement.parentElement.style.display = 'none';">edit</a>]
+      {% endif %}
+    </td>
+  </tr>
+  <tr id="regex_edit_row" style="display: none;">
+    <td>Regex pattern:</td>
+    <td>
+      <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "regex") }}" style="display: inline;">
+        {{ xsrf_form_html|safe }}
+        <input type="text" name="regex" value="{{ subtask_regex }}" size="40" />
+        <button type="submit">Save</button>
+        <button type="button" onclick="document.getElementById('regex_edit_row').style.display = 'none'; document.getElementById('regex_edit_row').previousElementSibling.style.display = 'table-row';">Cancel</button>
+      </form>
+    </td>
+  </tr>
+  {% endif %}
   <tr>
     <td>Testcases in subtask:</td>
     <td>{{ subtask_testcases|length }}</td>
@@ -140,9 +209,16 @@ window.filterTestcases = function(tableId, filter) {
   </tr>
 </table>
 
-{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator) }}
+{# Validator upload form placed outside the main content to avoid nesting issues #}
+{% if admin.permission_all %}
+<form id="validator_form" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "validator", "add") }}" enctype="multipart/form-data" style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
+{% endif %}
 
-{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator) }}
+{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin) }}
+
+{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin) }}
 
 <div class="hr"></div>
 <p>
