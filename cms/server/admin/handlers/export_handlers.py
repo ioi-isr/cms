@@ -298,14 +298,48 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
         os.makedirs(validators_dir, exist_ok=True)
         validators_config = []
 
-        for subtask_index, validator in dataset.subtask_validators.items():
-            # Export validator source file
-            validator_path = os.path.join(validators_dir, validator.filename)
+        # First pass: detect filename collisions
+        # Count how many validators use each filename
+        filename_counts = {}
+        for validator in dataset.subtask_validators.values():
+            filename_counts[validator.filename] = \
+                filename_counts.get(validator.filename, 0) + 1
+
+        # Track used export filenames to handle edge cases
+        used_export_filenames = set()
+
+        # Sort by subtask_index for stable, deterministic output
+        for subtask_index in sorted(dataset.subtask_validators.keys()):
+            validator = dataset.subtask_validators[subtask_index]
+            original_filename = validator.filename
+
+            # Determine export filename
+            if filename_counts[original_filename] > 1:
+                # Collision detected - add subtask index suffix
+                stem, ext = os.path.splitext(original_filename)
+                export_filename = f"{stem}_st{subtask_index}{ext}"
+            else:
+                # No collision - use original filename
+                export_filename = original_filename
+
+            # Handle edge case: export_filename already used (e.g., someone
+            # named their file "validator_st0.cpp" and there's a collision)
+            if export_filename in used_export_filenames:
+                stem, ext = os.path.splitext(original_filename)
+                counter = 1
+                while export_filename in used_export_filenames:
+                    export_filename = f"{stem}_st{subtask_index}_{counter}{ext}"
+                    counter += 1
+
+            used_export_filenames.add(export_filename)
+
+            # Export validator source file with the (possibly renamed) filename
+            validator_path = os.path.join(validators_dir, export_filename)
             file_cacher.get_file_to_path(validator.digest, validator_path)
 
-            # Add validator metadata to config
+            # Add validator metadata to config (use export filename, not original)
             validator_config = {
-                'filename': validator.filename,
+                'filename': export_filename,
                 'subtask_index': subtask_index,
             }
             validators_config.append(validator_config)
