@@ -241,6 +241,8 @@ CREATE TABLE public.subtask_validation_results (
     validator_id integer NOT NULL,
     testcase_id integer NOT NULL,
     passed boolean NOT NULL,
+    exit_status character varying,
+    exit_code integer,
     stderr character varying
 );
 
