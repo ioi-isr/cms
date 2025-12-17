@@ -287,6 +287,27 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
         if generators_config:
             task_config['generators'] = generators_config
 
+    # Export subtask validators
+    if dataset.subtask_validators:
+        validators_dir = os.path.join(export_dir, "validators")
+        os.makedirs(validators_dir, exist_ok=True)
+        validators_config = []
+
+        for subtask_index, validator in dataset.subtask_validators.items():
+            # Export validator source file
+            validator_path = os.path.join(validators_dir, validator.filename)
+            file_cacher.get_file_to_path(validator.digest, validator_path)
+
+            # Add validator metadata to config
+            validator_config = {
+                'filename': validator.filename,
+                'subtask_index': subtask_index,
+            }
+            validators_config.append(validator_config)
+
+        if validators_config:
+            task_config['validators'] = validators_config
+
     task_yaml_path = os.path.join(export_dir, "task.yaml")
     with open(task_yaml_path, 'w', encoding='utf-8') as f:
         yaml.dump(task_config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
