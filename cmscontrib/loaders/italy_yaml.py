@@ -37,7 +37,7 @@ from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
     FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED, \
     FEEDBACK_LEVEL_OI_RESTRICTED
 from cms.db import Contest, User, Task, Statement, Attachment, Team, Dataset, \
-    Manager, Testcase, Generator
+    Manager, Testcase, Generator, SubtaskValidator
 from cms.db.modelsolution import validate_model_solution_name
 from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
     SOURCE_EXTS, filename_to_language, get_language
@@ -1508,6 +1508,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             generator.dataset = dataset
             dataset.generators[filename] = generator
 
+        # Parse subtask validators from task.yaml and validators/ folder if present
+        # Attach directly to dataset (similar to generators)
+        validators = self._parse_validators(conf, task.name)
+        for subtask_index, validator in validators.items():
+            validator.dataset = dataset
+            dataset.subtask_validators[subtask_index] = validator
+
         # Import was successful
         os.remove(os.path.join(self.path, ".import_error"))
 
@@ -1764,6 +1771,196 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             logger.info("Found %d generator(s) to import", len(result))
 
         return result
+
+    def _parse_validators(self, conf, task_name):
+        """Parse subtask validators from task.yaml and validators/ folder.
+
+        conf: the task configuration dictionary.
+        task_name: name of the task (for logging).
+
+        return: dict mapping subtask_index to SubtaskValidator objects, ready to be
+            attached to dataset.subtask_validators.
+
+        Validators are discovered from the validators/ folder (or variants like
+        Validators/, validator/, Validator/). Metadata can be specified
+        in task.yaml under the 'validators' key, which should contain a list
+        of objects with 'filename' and 'subtask_index' fields.
+
+        If no metadata is provided in task.yaml, the subtask index is inferred
+        from the filename. The filename should contain a number that represents
+        the subtask index (0-indexed). For example:
+        - "validator_0.cpp" -> subtask 0
+        - "subtask1_validator.cpp" -> subtask 1
+        - "val2.cpp" -> subtask 2
+
+        Validators are compiled using compile_manager_bytes, similar to how
+        generators are compiled. If compilation fails, the validator is skipped.
+        """
+        # Find validators directory (supports alternative names)
+        validators_folder = find_first_existing_dir(
+            self.path, ["validators", "Validators", "validator", "Validator"])
+        validators_dir = (os.path.join(self.path, validators_folder)
+                          if validators_folder is not None else None)
+
+        validators_yaml = conf.get("validators", []) or []
+
+        if not validators_yaml and not validators_dir:
+            return {}
+
+        # Build a lookup from filename to YAML metadata
+        yaml_meta_by_filename = {}
+        for val_conf in validators_yaml:
+            filename = val_conf.get("filename")
+            if not filename:
+                logger.warning("Validator entry missing 'filename' field, skipping")
+                continue
+            subtask_index = val_conf.get("subtask_index")
+            if subtask_index is None:
+                logger.warning(
+                    "Validator entry for '%s' missing 'subtask_index' field, skipping",
+                    filename)
+                continue
+            yaml_meta_by_filename[filename] = {
+                "subtask_index": subtask_index,
+            }
+
+        result = {}
+
+        # Discover validators from filesystem
+        if validators_dir and os.path.isdir(validators_dir):
+            for filename in sorted(os.listdir(validators_dir)):
+                file_path = os.path.join(validators_dir, filename)
+                if not os.path.isfile(file_path):
+                    continue
+
+                # Check if it's a source file
+                _, ext = os.path.splitext(filename)
+                if ext not in SOURCE_EXTS:
+                    logger.warning(
+                        "Skipping non-source file '%s' in validators folder", filename)
+                    continue
+
+                # Check if it's a compiled language
+                try:
+                    language = filename_to_language(filename)
+                except Exception:
+                    language = None
+
+                if language is None:
+                    logger.warning(
+                        "Could not detect language for validator '%s', skipping",
+                        filename)
+                    continue
+
+                if not isinstance(language, CompiledLanguage):
+                    logger.warning(
+                        "Validator '%s' must be a compiled language, not '%s', "
+                        "skipping", filename, language.name)
+                    continue
+
+                # Get subtask index from YAML metadata or infer from filename
+                meta = yaml_meta_by_filename.get(filename)
+                if meta:
+                    subtask_index = meta["subtask_index"]
+                else:
+                    # Try to infer subtask index from filename
+                    subtask_index = self._infer_subtask_index_from_filename(filename)
+                    if subtask_index is None:
+                        logger.warning(
+                            "Could not determine subtask index for validator '%s'. "
+                            "Please specify it in task.yaml or use a filename with "
+                            "a number (e.g., validator_0.cpp)", filename)
+                        continue
+
+                # Check for duplicate subtask index
+                if subtask_index in result:
+                    logger.warning(
+                        "Duplicate validator for subtask %d: '%s' conflicts with '%s', "
+                        "skipping", subtask_index, filename,
+                        result[subtask_index].filename)
+                    continue
+
+                # Compile the validator using compile_manager_source pattern
+                with open(file_path, 'rb') as f:
+                    source_body = f.read()
+
+                compiled_filename = "validator"
+
+                error_messages = []
+
+                def capture_error(title, text):
+                    error_messages.append("%s: %s" % (title, text))
+                    self._notify(title, text)
+
+                success, compiled_bytes, stats = compile_manager_bytes(
+                    self.file_cacher,
+                    filename,
+                    source_body,
+                    compiled_filename,
+                    sandbox_name="loader_compile",
+                    for_evaluation=True,
+                    notify=capture_error
+                )
+
+                if not success or compiled_bytes is None:
+                    logger.warning(
+                        "Failed to compile validator '%s': %s",
+                        filename, error_messages[0] if error_messages else "unknown error")
+                    continue
+
+                # Store source and compiled executable
+                source_digest = self.file_cacher.put_file_content(
+                    source_body,
+                    "Validator source %s for task %s" % (filename, task_name))
+                executable_digest = self.file_cacher.put_file_content(
+                    compiled_bytes,
+                    "Compiled validator %s for task %s" % (filename, task_name))
+
+                # Create SubtaskValidator object directly
+                validator = SubtaskValidator(
+                    subtask_index=subtask_index,
+                    filename=filename,
+                    digest=source_digest,
+                    executable_digest=executable_digest,
+                )
+                result[subtask_index] = validator
+
+        # Warn about YAML entries with no matching filesystem file
+        if validators_dir and os.path.isdir(validators_dir):
+            fs_files = set(os.listdir(validators_dir))
+            for filename in yaml_meta_by_filename:
+                if filename not in fs_files:
+                    logger.warning(
+                        "Validator '%s' is defined in task.yaml but not found "
+                        "in validators folder", filename)
+
+        if result:
+            logger.info("Found %d validator(s) to import", len(result))
+
+        return result
+
+    def _infer_subtask_index_from_filename(self, filename):
+        """Try to infer subtask index from a validator filename.
+
+        filename: the validator filename (e.g., "validator_0.cpp")
+
+        return: the subtask index (int) or None if it cannot be inferred.
+
+        Looks for numbers in the filename and uses the first one found.
+        Examples:
+        - "validator_0.cpp" -> 0
+        - "subtask1_validator.cpp" -> 1
+        - "val2.cpp" -> 2
+        - "validator.cpp" -> None (no number found)
+        """
+        # Remove extension
+        base, _ = os.path.splitext(filename)
+
+        # Find all numbers in the filename
+        numbers = re.findall(r'\d+', base)
+        if numbers:
+            return int(numbers[0])
+        return None
 
     def _discover_model_solutions_from_fs(
             self, solutions_dir, submission_format, is_single_file_task, task_name):
@@ -2070,7 +2267,16 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 for filename in os.listdir(generators_path):
                     files.append(os.path.join(generators_path, filename))
 
-        # Check if task is OutputOnly (via task_type or legacy output_only field)
+        # Validators
+        validators_folder = find_first_existing_dir(
+            self.path, ["validators", "Validators", "validator", "Validator"])
+        if validators_folder is not None:
+            validators_path = os.path.join(self.path, validators_folder)
+            if os.path.isdir(validators_path):
+                for filename in os.listdir(validators_path):
+                    files.append(os.path.join(validators_path, filename))
+
+        # Check if task is OutputOnly(via task_type or legacy output_only field)
         is_output_only = (conf.get('task_type') == "OutputOnly" or
                           conf.get('output_only', False))
         if not is_output_only and os.path.isdir(os.path.join(self.path, "sol")):
