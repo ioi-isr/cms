@@ -662,10 +662,9 @@ window.updateMultiDeleteMaster = function(dataset_id) {
                 [<a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>]
                 {% endif %}
               {% else %}
+                <span style="color: red; font-weight: bold;">No validator</span>
                 {% if admin.permission_all %}
                 [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">add</a>]
-                {% else %}
-                -
                 {% endif %}
               {% endif %}
             </td>

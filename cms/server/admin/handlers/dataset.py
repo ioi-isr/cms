@@ -1723,7 +1723,12 @@ class RenameTestcaseHandler(BaseHandler):
         if testcase.dataset is not dataset:
             raise tornado.web.HTTPError(404)
 
-        fallback_page = self.url("task", task.id)
+        # Support redirect back to subtask details page if subtask_index is provided
+        subtask_index = self.get_argument("subtask_index", None)
+        if subtask_index is not None:
+            fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+        else:
+            fallback_page = self.url("task", task.id)
 
         new_codename = self.get_argument("new_codename", "").strip()
         if not new_codename:
@@ -1770,7 +1775,12 @@ class BatchRenameTestcasesHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        fallback_page = self.url("task", task.id)
+        # Support redirect back to subtask details page if subtask_index is provided
+        subtask_index = self.get_argument("subtask_index", None)
+        if subtask_index is not None:
+            fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+        else:
+            fallback_page = self.url("task", task.id)
 
         # Get the operation type and value
         operation = self.get_argument("operation", "")
