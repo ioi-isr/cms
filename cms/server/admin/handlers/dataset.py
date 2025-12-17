@@ -1258,7 +1258,10 @@ def _run_validator(file_cacher, filename, executable_digest, testcase_data):
         testcase_data: List of dicts with keys: id, input, output
 
     Returns:
-        List of dicts with keys: testcase_id, passed, stderr
+        List of dicts with keys: testcase_id, passed, exit_status, exit_code, stderr
+        - passed: True if validator ran successfully and returned exit code 0
+        - exit_status: Sandbox exit status ('ok', 'timeout', 'signal', etc.)
+        - exit_code: Exit code from validator (when exit_status is 'ok' or 'nonzero return')
         Raises Exception on error (caller handles notification/logging)
     """
     try:
@@ -1303,15 +1306,27 @@ def _run_validator(file_cacher, filename, executable_digest, testcase_data):
                 pass
 
             passed = False
+            exit_status = None
+            exit_code = None
+
             if box_success:
                 exit_status = sandbox.get_exit_status()
-                if exit_status == sandbox.EXIT_OK:
-                    exit_code = sandbox.get_exit_code()
-                    passed = (exit_code == 0)
+                exit_code = sandbox.get_exit_code()
+                # Passed only if validator ran to completion with exit code 0
+                if exit_status == sandbox.EXIT_OK and exit_code == 0:
+                    passed = True
+                elif exit_status == sandbox.EXIT_NONZERO_RETURN:
+                    # Validator ran to completion but returned non-zero (testcase failed)
+                    passed = False
+            else:
+                # Sandbox itself failed - this is an error condition
+                exit_status = "sandbox error"
 
             validation_results.append({
                 "testcase_id": tc_data["id"],
                 "passed": passed,
+                "exit_status": exit_status,
+                "exit_code": exit_code,
                 "stderr": stderr[:4096] if stderr else None
             })
 
@@ -1332,10 +1347,11 @@ def _store_validation_results(sql_session, validator, dataset, validation_result
         sql_session: SQLAlchemy session
         validator: SubtaskValidator instance
         dataset: Dataset instance
-        validation_results: List of dicts with keys: testcase_id, passed, stderr
+        validation_results: List of dicts with keys: testcase_id, passed,
+                           exit_status, exit_code, stderr
 
     Returns:
-        Tuple of (passed_count, failed_count)
+        Tuple of (passed_count, failed_count, error_count)
     """
     for result in validator.validation_results:
         sql_session.delete(result)
@@ -1353,13 +1369,26 @@ def _store_validation_results(sql_session, validator, dataset, validation_result
             validator=validator,
             testcase=testcase,
             passed=result_data["passed"],
+            exit_status=result_data.get("exit_status"),
+            exit_code=result_data.get("exit_code"),
             stderr=result_data["stderr"]
         )
         sql_session.add(result)
 
-    passed_count = sum(1 for r in validation_results if r["passed"])
-    failed_count = len(validation_results) - passed_count
-    return passed_count, failed_count
+    passed_count = 0
+    failed_count = 0
+    error_count = 0
+    for r in validation_results:
+        exit_status = r.get("exit_status")
+        if r["passed"]:
+            passed_count += 1
+        elif exit_status in ("ok", "nonzero return", None):
+            # Validator ran to completion but returned non-zero
+            failed_count += 1
+        else:
+            # Validator had an error (timeout, signal, sandbox error, etc.)
+            error_count += 1
+    return passed_count, failed_count, error_count
 
 
 class AddSubtaskValidatorHandler(BaseHandler):
@@ -1617,6 +1646,7 @@ def _run_validators_background(service, file_cacher, dataset_id, validator_data,
 
     total_passed = 0
     total_failed = 0
+    total_errors = 0
     validators_run = 0
     errors = []
 
@@ -1645,13 +1675,14 @@ def _run_validators_background(service, file_cacher, dataset_id, validator_data,
                 if dataset is None:
                     continue
 
-                passed_count, failed_count = _store_validation_results(
+                passed_count, failed_count, error_count = _store_validation_results(
                     sql_session, validator, dataset, validation_results)
 
                 sql_session.commit()
 
                 total_passed += passed_count
                 total_failed += failed_count
+                total_errors += error_count
                 validators_run += 1
 
             except Exception as error:
@@ -1662,8 +1693,11 @@ def _run_validators_background(service, file_cacher, dataset_id, validator_data,
             finally:
                 sql_session.close()
 
-        msg = "Reran %d validators: %d passed, %d failed." % (
+        msg = "Reran %d validators: %d passed, %d failed" % (
             validators_run, total_passed, total_failed)
+        if total_errors > 0:
+            msg += ", %d errors" % total_errors
+        msg += "."
         if errors:
             msg += " Errors: " + "; ".join(errors)
 

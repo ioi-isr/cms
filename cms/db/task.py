@@ -830,6 +830,18 @@ class SubtaskValidationResult(Base):
         Boolean,
         nullable=False)
 
+    # Sandbox exit status (e.g., 'ok', 'timeout', 'signal', 'sandbox error').
+    # Used to distinguish between validator failure (rejected testcase) and
+    # validator error (runtime error, timeout, etc.).
+    exit_status: str | None = Column(
+        Unicode,
+        nullable=True)
+
+    # Exit code from the validator (when exit_status is 'ok' or 'nonzero return').
+    exit_code: int | None = Column(
+        Integer,
+        nullable=True)
+
     # Standard error output from the validator (for debugging).
     stderr: str | None = Column(
         Unicode,
