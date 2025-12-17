@@ -23,6 +23,7 @@ window.filterTestcases = function(tableId, filter) {
       btn.style.textDecoration = 'none';
     }
   });
+  updateSelectAllState(tableId);
 };
 
 window.promptRename = function(datasetId, testcaseId, currentCodename) {
@@ -48,6 +49,200 @@ window.promptRename = function(datasetId, testcaseId, currentCodename) {
     form.submit();
   }
 };
+
+window.toggleSelectAll = function(tableId, masterCheckbox) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var rows = table.querySelectorAll('tbody tr[data-status]');
+  rows.forEach(function(row) {
+    if (row.style.display !== 'none') {
+      var checkbox = row.querySelector('.tc-select-checkbox');
+      if (checkbox) {
+        checkbox.checked = masterCheckbox.checked;
+      }
+    }
+  });
+  updateBatchActionsVisibility(tableId);
+};
+
+window.updateSelectAllState = function(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var masterCheckbox = table.querySelector('.select-all-checkbox');
+  if (!masterCheckbox) return;
+  
+  var visibleCheckboxes = [];
+  var rows = table.querySelectorAll('tbody tr[data-status]');
+  rows.forEach(function(row) {
+    if (row.style.display !== 'none') {
+      var checkbox = row.querySelector('.tc-select-checkbox');
+      if (checkbox) {
+        visibleCheckboxes.push(checkbox);
+      }
+    }
+  });
+  
+  if (visibleCheckboxes.length === 0) {
+    masterCheckbox.checked = false;
+    masterCheckbox.indeterminate = false;
+    return;
+  }
+  
+  var checkedCount = visibleCheckboxes.filter(function(cb) { return cb.checked; }).length;
+  masterCheckbox.checked = checkedCount === visibleCheckboxes.length;
+  masterCheckbox.indeterminate = checkedCount > 0 && checkedCount < visibleCheckboxes.length;
+  
+  updateBatchActionsVisibility(tableId);
+};
+
+window.updateBatchActionsVisibility = function(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var actionsDiv = document.getElementById(tableId + '_batch_actions');
+  if (!actionsDiv) return;
+  
+  var checkedBoxes = table.querySelectorAll('.tc-select-checkbox:checked');
+  actionsDiv.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
+  
+  var countSpan = actionsDiv.querySelector('.selected-count');
+  if (countSpan) {
+    countSpan.textContent = checkedBoxes.length;
+  }
+};
+
+window.getSelectedTestcaseIds = function(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return [];
+  var ids = [];
+  table.querySelectorAll('.tc-select-checkbox:checked').forEach(function(cb) {
+    ids.push(cb.value);
+  });
+  return ids;
+};
+
+window.getSelectedCodenames = function(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return [];
+  var codenames = [];
+  table.querySelectorAll('.tc-select-checkbox:checked').forEach(function(cb) {
+    codenames.push(cb.getAttribute('data-codename'));
+  });
+  return codenames;
+};
+
+window.findCommonPrefix = function(strings) {
+  if (strings.length === 0) return '';
+  if (strings.length === 1) return strings[0];
+  
+  var prefix = strings[0];
+  for (var i = 1; i < strings.length; i++) {
+    while (strings[i].indexOf(prefix) !== 0) {
+      prefix = prefix.substring(0, prefix.length - 1);
+      if (prefix === '') return '';
+    }
+  }
+  return prefix;
+};
+
+window.batchAddPrefix = function(datasetId, tableId, url) {
+  var ids = getSelectedTestcaseIds(tableId);
+  if (ids.length === 0) {
+    alert('No testcases selected.');
+    return;
+  }
+  
+  var prefix = prompt('Enter prefix to add to selected testcases:');
+  if (!prefix) return;
+  
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = url;
+  
+  ids.forEach(function(id) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'testcase_id';
+    input.value = id;
+    form.appendChild(input);
+  });
+  
+  var opInput = document.createElement('input');
+  opInput.type = 'hidden';
+  opInput.name = 'operation';
+  opInput.value = 'add_prefix';
+  form.appendChild(opInput);
+  
+  var valInput = document.createElement('input');
+  valInput.type = 'hidden';
+  valInput.name = 'value';
+  valInput.value = prefix;
+  form.appendChild(valInput);
+  
+  var xsrf = document.createElement('input');
+  xsrf.type = 'hidden';
+  xsrf.name = '_xsrf';
+  xsrf.value = document.querySelector('input[name="_xsrf"]').value;
+  form.appendChild(xsrf);
+  
+  document.body.appendChild(form);
+  form.submit();
+};
+
+window.batchEditPrefix = function(datasetId, tableId, url) {
+  var ids = getSelectedTestcaseIds(tableId);
+  if (ids.length === 0) {
+    alert('No testcases selected.');
+    return;
+  }
+  
+  var codenames = getSelectedCodenames(tableId);
+  var commonPrefix = findCommonPrefix(codenames);
+  
+  var oldPrefix = prompt('Enter the current prefix to replace (detected: "' + commonPrefix + '"):', commonPrefix);
+  if (oldPrefix === null) return;
+  
+  var newPrefix = prompt('Enter the new prefix:');
+  if (newPrefix === null) return;
+  
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = url;
+  
+  ids.forEach(function(id) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'testcase_id';
+    input.value = id;
+    form.appendChild(input);
+  });
+  
+  var opInput = document.createElement('input');
+  opInput.type = 'hidden';
+  opInput.name = 'operation';
+  opInput.value = 'edit_prefix';
+  form.appendChild(opInput);
+  
+  var oldPrefixInput = document.createElement('input');
+  oldPrefixInput.type = 'hidden';
+  oldPrefixInput.name = 'old_prefix';
+  oldPrefixInput.value = oldPrefix;
+  form.appendChild(oldPrefixInput);
+  
+  var valInput = document.createElement('input');
+  valInput.type = 'hidden';
+  valInput.name = 'value';
+  valInput.value = newPrefix;
+  form.appendChild(valInput);
+  
+  var xsrf = document.createElement('input');
+  xsrf.type = 'hidden';
+  xsrf.name = '_xsrf';
+  xsrf.value = document.querySelector('input[name="_xsrf"]').value;
+  form.appendChild(xsrf);
+  
+  document.body.appendChild(form);
+  form.submit();
+};
 {% endblock js_init %}
 
 {% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin) %}
@@ -69,6 +264,9 @@ window.promptRename = function(datasetId, testcaseId, currentCodename) {
   <table id="{{ table_id }}" class="bordered">
     <thead>
       <tr>
+        {% if admin.permission_all %}
+        <th><input type="checkbox" class="select-all-checkbox" onclick="toggleSelectAll('{{ table_id }}', this)" title="Select all visible testcases"></th>
+        {% endif %}
         <th>Codename</th>
         <th>Input</th>
         <th>Output</th>
@@ -98,6 +296,9 @@ window.promptRename = function(datasetId, testcaseId, currentCodename) {
         {% endif %}
       {% endif %}
       <tr data-status="{{ status }}">
+        {% if admin.permission_all %}
+        <td><input type="checkbox" class="tc-select-checkbox" value="{{ tc_info.testcase.id }}" data-codename="{{ tc_info.codename }}" onchange="updateSelectAllState('{{ table_id }}')"></td>
+        {% endif %}
         <td>{{ tc_info.codename }}</td>
         <td>
           <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
@@ -136,6 +337,13 @@ window.promptRename = function(datasetId, testcaseId, currentCodename) {
       {% endfor %}
     </tbody>
   </table>
+  {% if admin.permission_all %}
+  <div id="{{ table_id }}_batch_actions" style="display: none; margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 4px;">
+    <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
+    <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}')" style="margin-left: 10px;">Add prefix</a> |
+    <a href="javascript:void(0);" onclick="batchEditPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}')">Edit common prefix</a>
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 {% endmacro %}
