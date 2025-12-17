@@ -26,12 +26,77 @@ window.filterTestcases = function(tableId, filter) {
 };
 {% endblock js_init %}
 
+{% macro render_testcase_table(title, table_id, testcases, validator) %}
+<h3>{{ title }}</h3>
+{% if testcases|length == 0 %}
+<p>No testcases in this section.</p>
+{% else %}
+<div>
+  {% if validator %}
+  <p>
+    Filter:
+    <a href="javascript:void(0);" class="filter-btn" data-filter="all" onclick="filterTestcases('{{ table_id }}', 'all')" style="font-weight: bold; text-decoration: underline;">All</a> |
+    <a href="javascript:void(0);" class="filter-btn" data-filter="passed" onclick="filterTestcases('{{ table_id }}', 'passed')">Passed</a> |
+    <a href="javascript:void(0);" class="filter-btn" data-filter="failed" onclick="filterTestcases('{{ table_id }}', 'failed')">Failed</a> |
+    <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('{{ table_id }}', 'not_validated')">Not validated</a>
+  </p>
+  {% endif %}
+  <table id="{{ table_id }}" class="bordered">
+    <thead>
+      <tr>
+        <th>Codename</th>
+        <th>Input</th>
+        <th>Output</th>
+        {% if validator %}
+        <th>Status</th>
+        <th>Stderr</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for tc_info in testcases %}
+      <tr data-status="{% if validator %}{% if tc_info.result %}{% if tc_info.result.passed %}passed{% else %}failed{% endif %}{% else %}not_validated{% endif %}{% else %}none{% endif %}">
+        <td>{{ tc_info.codename }}</td>
+        <td>
+          <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
+        </td>
+        <td>
+          <a href="javascript:void(0);" onclick="utils.show_file('output_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename)) }}')">Show output</a>
+        </td>
+        {% if validator %}
+        <td>
+          {% if tc_info.result %}
+            {% if tc_info.result.passed %}
+              <span style="color: green;">Passed</span>
+            {% else %}
+              <span style="color: red;">Failed</span>
+            {% endif %}
+          {% else %}
+            <span style="color: gray;">Not validated</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if tc_info.result and tc_info.result.stderr %}
+            {{ tc_info.result.stderr }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endmacro %}
+
 {% block core %}
 <div class="core_title">
-  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }} Tests</h1>
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }}{% if subtask_name %}: {{ subtask_name }}{% endif %} Tests</h1>
 </div>
 
-<h2>Subtask {{ subtask_index }} Details</h2>
+<h2>Subtask {{ subtask_index }}{% if subtask_name %} ({{ subtask_name }}){% endif %} Details</h2>
 <table>
   <tr>
     <td>Validator:</td>
@@ -58,131 +123,9 @@ window.filterTestcases = function(tableId, filter) {
   </tr>
 </table>
 
-<h3>Subtask Testcases</h3>
-{% if subtask_testcases|length == 0 %}
-<p>No testcases in this subtask.</p>
-{% else %}
-<div>
-  {% if validator %}
-  <p>
-    Filter:
-    <a href="javascript:void(0);" class="filter-btn" data-filter="all" onclick="filterTestcases('subtask_table', 'all')" style="font-weight: bold; text-decoration: underline;">All</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="passed" onclick="filterTestcases('subtask_table', 'passed')">Passed</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="failed" onclick="filterTestcases('subtask_table', 'failed')">Failed</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('subtask_table', 'not_validated')">Not validated</a>
-  </p>
-  {% endif %}
-  <table id="subtask_table" class="bordered">
-    <thead>
-      <tr>
-        <th>Codename</th>
-        <th>Input</th>
-        <th>Output</th>
-        {% if validator %}
-        <th>Status</th>
-        <th>Stderr</th>
-        {% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for tc_info in subtask_testcases %}
-      <tr data-status="{% if validator %}{% if tc_info.result %}{% if tc_info.result.passed %}passed{% else %}failed{% endif %}{% else %}not_validated{% endif %}{% else %}none{% endif %}">
-        <td>{{ tc_info.codename }}</td>
-        <td>
-          <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
-        </td>
-        <td>
-          <a href="javascript:void(0);" onclick="utils.show_file('output_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename)) }}')">Show output</a>
-        </td>
-        {% if validator %}
-        <td>
-          {% if tc_info.result %}
-            {% if tc_info.result.passed %}
-              <span style="color: green;">Passed</span>
-            {% else %}
-              <span style="color: red;">Failed</span>
-            {% endif %}
-          {% else %}
-            <span style="color: gray;">Not validated</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if tc_info.result and tc_info.result.stderr %}
-            {{ tc_info.result.stderr }}
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        {% endif %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
+{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator) }}
 
-<h3>Additional Testcases (not in subtask)</h3>
-{% if other_testcases|length == 0 %}
-<p>No additional testcases.</p>
-{% else %}
-<div>
-  {% if validator %}
-  <p>
-    Filter:
-    <a href="javascript:void(0);" class="filter-btn" data-filter="all" onclick="filterTestcases('other_table', 'all')" style="font-weight: bold; text-decoration: underline;">All</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="passed" onclick="filterTestcases('other_table', 'passed')">Passed</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="failed" onclick="filterTestcases('other_table', 'failed')">Failed</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('other_table', 'not_validated')">Not validated</a>
-  </p>
-  {% endif %}
-  <table id="other_table" class="bordered">
-    <thead>
-      <tr>
-        <th>Codename</th>
-        <th>Input</th>
-        <th>Output</th>
-        {% if validator %}
-        <th>Status</th>
-        <th>Stderr</th>
-        {% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for tc_info in other_testcases %}
-      <tr data-status="{% if validator %}{% if tc_info.result %}{% if tc_info.result.passed %}passed{% else %}failed{% endif %}{% else %}not_validated{% endif %}{% else %}none{% endif %}">
-        <td>{{ tc_info.codename }}</td>
-        <td>
-          <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
-        </td>
-        <td>
-          <a href="javascript:void(0);" onclick="utils.show_file('output_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename)) }}')">Show output</a>
-        </td>
-        {% if validator %}
-        <td>
-          {% if tc_info.result %}
-            {% if tc_info.result.passed %}
-              <span style="color: green;">Passed</span>
-            {% else %}
-              <span style="color: red;">Failed</span>
-            {% endif %}
-          {% else %}
-            <span style="color: gray;">Not validated</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if tc_info.result and tc_info.result.stderr %}
-            {{ tc_info.result.stderr }}
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        {% endif %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
+{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator) }}
 
 <div class="hr"></div>
 <p>
