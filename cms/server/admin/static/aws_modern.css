@@ -313,8 +313,18 @@ a.button-link-danger:hover {
     background-color: var(--color-danger-light);
 }
 
-/* Form inputs */
-input,
+/* Form inputs - only style text-like inputs, not checkboxes/radios */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input:not([type]),
 textarea,
 select {
     padding: 0.5rem 0.75rem;
@@ -327,7 +337,17 @@ select {
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-input:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+input[type="tel"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="datetime-local"]:focus,
+input:not([type]):focus,
 textarea:focus,
 select:focus {
     outline: none;
@@ -335,13 +355,30 @@ select:focus {
     box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
-body.admin input,
+/* Checkbox and radio styling */
+input[type="checkbox"],
+input[type="radio"] {
+    accent-color: var(--color-primary);
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+}
+
+body.admin input[type="text"],
+body.admin input[type="password"],
+body.admin input[type="email"],
+body.admin input[type="number"],
+body.admin input:not([type]),
 body.admin textarea,
 body.admin select {
     border: 1px solid var(--color-border);
 }
 
-body.admin input:focus,
+body.admin input[type="text"]:focus,
+body.admin input[type="password"]:focus,
+body.admin input[type="email"]:focus,
+body.admin input[type="number"]:focus,
+body.admin input:not([type]):focus,
 body.admin textarea:focus,
 body.admin select:focus {
     border-color: var(--color-primary);
@@ -350,12 +387,18 @@ body.admin select:focus {
 
 /* Tables */
 table {
-    width: 100%;
+    width: auto;
+    max-width: 100%;
     background-color: var(--color-surface);
     border-radius: var(--radius-lg);
-    overflow: hidden;
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--color-border);
+}
+
+/* Override legacy td { width: 1px } rule */
+table td,
+table th {
+    width: auto;
 }
 
 table th {
@@ -365,8 +408,9 @@ table th {
     text-transform: uppercase;
     font-size: 0.75rem;
     letter-spacing: 0.05em;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
 }
 
 body.admin table th {
@@ -374,7 +418,7 @@ body.admin table th {
 }
 
 table td {
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
     border-bottom: 1px solid var(--color-border-light);
     vertical-align: middle;
