@@ -38,6 +38,7 @@ window.filterTestcases = function(tableId, filter) {
     <a href="javascript:void(0);" class="filter-btn" data-filter="all" onclick="filterTestcases('{{ table_id }}', 'all')" style="font-weight: bold; text-decoration: underline;">All</a> |
     <a href="javascript:void(0);" class="filter-btn" data-filter="passed" onclick="filterTestcases('{{ table_id }}', 'passed')">Passed</a> |
     <a href="javascript:void(0);" class="filter-btn" data-filter="failed" onclick="filterTestcases('{{ table_id }}', 'failed')">Failed</a> |
+    <a href="javascript:void(0);" class="filter-btn" data-filter="error" onclick="filterTestcases('{{ table_id }}', 'error')">Error</a> |
     <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('{{ table_id }}', 'not_validated')">Not validated</a>
   </p>
   {% endif %}
@@ -55,7 +56,21 @@ window.filterTestcases = function(tableId, filter) {
     </thead>
     <tbody>
       {% for tc_info in testcases %}
-      <tr data-status="{% if validator %}{% if tc_info.result %}{% if tc_info.result.passed %}passed{% else %}failed{% endif %}{% else %}not_validated{% endif %}{% else %}none{% endif %}">
+      {% set status = 'none' %}
+      {% if validator %}
+        {% if tc_info.result %}
+          {% if tc_info.result.passed %}
+            {% set status = 'passed' %}
+          {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
+            {% set status = 'failed' %}
+          {% else %}
+            {% set status = 'error' %}
+          {% endif %}
+        {% else %}
+          {% set status = 'not_validated' %}
+        {% endif %}
+      {% endif %}
+      <tr data-status="{{ status }}">
         <td>{{ tc_info.codename }}</td>
         <td>
           <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
@@ -68,8 +83,10 @@ window.filterTestcases = function(tableId, filter) {
           {% if tc_info.result %}
             {% if tc_info.result.passed %}
               <span style="color: green;">Passed</span>
-            {% else %}
+            {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
               <span style="color: red;">Failed</span>
+            {% else %}
+              <span style="color: orange;">Error ({{ tc_info.result.exit_status }})</span>
             {% endif %}
           {% else %}
             <span style="color: gray;">Not validated</span>
