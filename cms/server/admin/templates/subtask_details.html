@@ -26,7 +26,7 @@ window.filterTestcases = function(tableId, filter) {
   updateSelectAllState(tableId);
 };
 
-window.promptRename = function(datasetId, testcaseId, currentCodename) {
+window.promptRename = function(datasetId, testcaseId, currentCodename, subtaskIndex) {
   var newCodename = prompt('Enter new codename for testcase:', currentCodename);
   if (newCodename && newCodename !== currentCodename) {
     var form = document.createElement('form');
@@ -38,6 +38,15 @@ window.promptRename = function(datasetId, testcaseId, currentCodename) {
     input.name = 'new_codename';
     input.value = newCodename;
     form.appendChild(input);
+    
+    // Add subtask_index to redirect back to subtask details page
+    if (subtaskIndex !== undefined) {
+      var subtaskInput = document.createElement('input');
+      subtaskInput.type = 'hidden';
+      subtaskInput.name = 'subtask_index';
+      subtaskInput.value = subtaskIndex;
+      form.appendChild(subtaskInput);
+    }
     
     var xsrf = document.createElement('input');
     xsrf.type = 'hidden';
@@ -144,7 +153,7 @@ window.findCommonPrefix = function(strings) {
   return prefix;
 };
 
-window.batchAddPrefix = function(datasetId, tableId, url) {
+window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex) {
   var ids = getSelectedTestcaseIds(tableId);
   if (ids.length === 0) {
     alert('No testcases selected.');
@@ -178,6 +187,15 @@ window.batchAddPrefix = function(datasetId, tableId, url) {
   valInput.value = prefix;
   form.appendChild(valInput);
   
+  // Add subtask_index to redirect back to subtask details page
+  if (subtaskIndex !== undefined) {
+    var subtaskInput = document.createElement('input');
+    subtaskInput.type = 'hidden';
+    subtaskInput.name = 'subtask_index';
+    subtaskInput.value = subtaskIndex;
+    form.appendChild(subtaskInput);
+  }
+  
   var xsrf = document.createElement('input');
   xsrf.type = 'hidden';
   xsrf.name = '_xsrf';
@@ -188,7 +206,7 @@ window.batchAddPrefix = function(datasetId, tableId, url) {
   form.submit();
 };
 
-window.batchEditPrefix = function(datasetId, tableId, url) {
+window.batchEditPrefix = function(datasetId, tableId, url, subtaskIndex) {
   var ids = getSelectedTestcaseIds(tableId);
   if (ids.length === 0) {
     alert('No testcases selected.');
@@ -234,6 +252,15 @@ window.batchEditPrefix = function(datasetId, tableId, url) {
   valInput.value = newPrefix;
   form.appendChild(valInput);
   
+  // Add subtask_index to redirect back to subtask details page
+  if (subtaskIndex !== undefined) {
+    var subtaskInput = document.createElement('input');
+    subtaskInput.type = 'hidden';
+    subtaskInput.name = 'subtask_index';
+    subtaskInput.value = subtaskIndex;
+    form.appendChild(subtaskInput);
+  }
+  
   var xsrf = document.createElement('input');
   xsrf.type = 'hidden';
   xsrf.name = '_xsrf';
@@ -245,7 +272,7 @@ window.batchEditPrefix = function(datasetId, tableId, url) {
 };
 {% endblock js_init %}
 
-{% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin) %}
+{% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin, subtask_index) %}
 <h3>{{ title }}</h3>
 {% if testcases|length == 0 %}
 <p>No testcases in this section.</p>
@@ -330,7 +357,7 @@ window.batchEditPrefix = function(datasetId, tableId, url) {
         {% endif %}
         {% if admin.permission_all %}
         <td>
-          <a href="javascript:void(0);" onclick="promptRename('{{ dataset.id }}', '{{ tc_info.testcase.id }}', '{{ tc_info.codename }}')">rename</a>
+          <a href="javascript:void(0);" onclick="promptRename('{{ dataset.id }}', '{{ tc_info.testcase.id }}', '{{ tc_info.codename }}', '{{ subtask_index }}')">rename</a>
         </td>
         {% endif %}
       </tr>
@@ -340,8 +367,8 @@ window.batchEditPrefix = function(datasetId, tableId, url) {
   {% if admin.permission_all %}
   <div id="{{ table_id }}_batch_actions" style="display: none; margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 4px;">
     <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
-    <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}')" style="margin-left: 10px;">Add prefix</a> |
-    <a href="javascript:void(0);" onclick="batchEditPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}')">Edit common prefix</a>
+    <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}')" style="margin-left: 10px;">Add prefix</a> |
+    <a href="javascript:void(0);" onclick="batchEditPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}')">Edit common prefix</a>
   </div>
   {% endif %}
 </div>
@@ -424,9 +451,9 @@ window.batchEditPrefix = function(datasetId, tableId, url) {
 </form>
 {% endif %}
 
-{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin) }}
+{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin, subtask_index) }}
 
-{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin) }}
+{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin, subtask_index) }}
 
 <div class="hr"></div>
 <p>

@@ -128,16 +128,8 @@ class TaskHandler(BaseHandler):
             try:
                 score_type_obj = dataset.score_type_object
                 if isinstance(score_type_obj, ScoreTypeGroup):
-                    targets = score_type_obj.retrieve_target_testcases()
-                    tc_to_subtasks = {}
-                    for subtask_idx, testcase_list in enumerate(targets):
-                        for tc_codename in testcase_list:
-                            if tc_codename not in tc_to_subtasks:
-                                tc_to_subtasks[tc_codename] = []
-                            tc_to_subtasks[tc_codename].append(subtask_idx)
-                    testcase_subtasks[dataset.id] = tc_to_subtasks
-                    
-                    # Extract subtask names and info from score type parameters
+                    # Extract subtask names and info from score type parameters first
+                    # This should work even when there are no testcases
                     # Parameters format: [[score, pattern, optional_name], ...]
                     names = {}
                     subtasks = []
@@ -156,6 +148,23 @@ class TaskHandler(BaseHandler):
                         subtask_names[dataset.id] = names
                     if subtasks:
                         subtask_info[dataset.id] = subtasks
+                    
+                    # Now try to get testcase-to-subtask mapping
+                    # This may fail if there are no testcases, but subtask_info
+                    # should still be populated from above
+                    try:
+                        targets = score_type_obj.retrieve_target_testcases()
+                        tc_to_subtasks = {}
+                        for subtask_idx, testcase_list in enumerate(targets):
+                            for tc_codename in testcase_list:
+                                if tc_codename not in tc_to_subtasks:
+                                    tc_to_subtasks[tc_codename] = []
+                                tc_to_subtasks[tc_codename].append(subtask_idx)
+                        testcase_subtasks[dataset.id] = tc_to_subtasks
+                    except Exception:
+                        # If retrieve_target_testcases fails, just skip the mapping
+                        # but keep the subtask_info populated
+                        pass
             except Exception:
                 pass
         
