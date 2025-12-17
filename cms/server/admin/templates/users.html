@@ -6,6 +6,43 @@
   <h1>Users list</h1>
 </div>
 
+{% set pending_users = user_list|selectattr("password_reset_pending")|list %}
+{% if pending_users|length > 0 %}
+<div style="padding: 15px; margin-bottom: 15px; background-color: #fcf8e3; border: 1px solid #faebcc; border-radius: 4px;">
+  <h2 style="margin-top: 0; color: #8a6d3b;">Pending Password Resets ({{ pending_users|length }})</h2>
+  <p style="color: #8a6d3b;">The following users have submitted password reset requests awaiting approval:</p>
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>First name</th>
+        <th>Last name</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in pending_users|sort(attribute="username") %}
+      <tr>
+        <td><a href="{{ url("user", u.id) }}">{{ u.username }}</a></td>
+        <td>{{ u.first_name }}</td>
+        <td>{{ u.last_name }}</td>
+        <td>
+          <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;">
+            {{ xsrf_form_html|safe }}
+            <input type="submit" value="Approve" style="background-color: #5cb85c; color: white; border: none; padding: 3px 8px; cursor: pointer;" />
+          </form>
+          <form action="{{ url("user", u.id, "deny_password_reset") }}" method="POST" style="display:inline;">
+            {{ xsrf_form_html|safe }}
+            <input type="submit" value="Deny" style="background-color: #d9534f; color: white; border: none; padding: 3px 8px; cursor: pointer;" />
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <div style="margin-bottom: 10px;">
   <a href="{{ url("users", "export") }}" class="btn btn-primary">Export to CSV</a>
   <a href="{{ url("users", "import") }}" class="btn btn-primary">Import from CSV</a>
