@@ -1548,42 +1548,52 @@ class AddSubtaskValidatorHandler(BaseHandler):
             self.redirect(self.url("task", task.id))
             return
 
-        # Get validator ID for re-fetching after validation
-        validator_id = validator.id
+        # Run validation in background (non-blocking)
+        dataset_id_int = int(dataset_id)
 
-        # Convert testcases to dict format for _run_validator
+        if dataset_id_int in _running_validations:
+            status = _running_validations[dataset_id_int].get("status")
+            if status == "running":
+                self.service.add_notification(
+                    make_datetime(),
+                    "Validator uploaded",
+                    "Validator for subtask %d uploaded. Validation already running - "
+                    "will need to rerun validators after current run completes." % subtask_index)
+                self.redirect(self.url("task", task.id))
+                return
+
+        # Convert testcases to dict format for background validation
         testcase_data = [{"id": tc.id, "input": tc.input, "output": tc.output}
                          for tc in testcases]
 
-        self.sql_session.close()
+        validator_data = [{
+            "id": validator.id,
+            "filename": filename,
+            "executable_digest": executable_digest,
+            "subtask_index": subtask_index
+        }]
 
-        try:
-            validation_results = _run_validator(
-                self.service.file_cacher, filename, executable_digest, testcase_data)
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(), "Validation execution error", repr(error))
-            self.redirect(fallback_page)
-            return
+        _running_validations[dataset_id_int] = {
+            "status": "running",
+            "progress": "Starting validation...",
+            "result": None
+        }
 
-        # Save validation results
-        self.sql_session = Session()
-        validator = self.safe_get_item(SubtaskValidator, validator_id)
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
+        gevent.spawn(
+            _run_validators_background,
+            self.service,
+            self.service.file_cacher,
+            dataset_id_int,
+            validator_data,
+            testcase_data
+        )
 
-        passed_count, failed_count = _store_validation_results(
-            self.sql_session, validator, dataset, validation_results)
-
-        if self.try_commit():
-            self.service.add_notification(
-                make_datetime(),
-                "Validator uploaded and validated",
-                "Validator for subtask %d: %d passed, %d failed." %
-                (subtask_index, passed_count, failed_count))
-            self.redirect(self.url("task", task.id))
-        else:
-            self.redirect(fallback_page)
+        self.service.add_notification(
+            make_datetime(),
+            "Validator uploaded",
+            "Validator for subtask %d uploaded. Running validation on %d testcases "
+            "in background." % (subtask_index, len(testcase_data)))
+        self.redirect(self.url("task", task.id))
 
 
 class DeleteSubtaskValidatorHandler(BaseHandler):
