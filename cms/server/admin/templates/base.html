@@ -86,6 +86,13 @@ $(document).ready(init);
           {{ get_hex_random_key() }}
         </div>
         {% endif %}
+        {% if pending_password_resets > 0 %}
+        <div class="secret_notice" style="background-color: #fcf8e3; border-color: #faebcc;">
+          <a href="{{ url("users") }}" style="color: #8a6d3b;">
+            {{ pending_password_resets }} pending password reset{% if pending_password_resets > 1 %}s{% endif %}
+          </a>
+        </div>
+        {% endif %}
         <ul class="menu">
         {% if contest is none %}
           <li class="menu_entry"><a class="menu_link" href="{{ url() }}">Overview</a></li>
@@ -180,7 +187,13 @@ $(document).ready(init);
 {% endif %}
         </ul>
 
-        <h1><a class="menu_link" href="{{ url("users") }}">Users</a></h1>
+        <h1>
+          <span id="pending_password_resets" class="unread"
+            {% if pending_password_resets == 0 %} style="display: none;" {% endif %}>
+            {{ pending_password_resets }}
+          </span>
+          <a class="menu_link" href="{{ url("users") }}">Users</a>
+        </h1>
         <ul class="menu">
           {% if user_list|length == 0 %}
             <li class="menu_entry">

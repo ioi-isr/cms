@@ -351,6 +351,9 @@ class BaseHandler(CommonRequestHandler):
         params["task_list"] = self.sql_session.query(Task).order_by(Task.name).all()
         params["user_list"] = self.sql_session.query(User).order_by(User.username).all()
         params["team_list"] = self.sql_session.query(Team).order_by(Team.name).all()
+        params["pending_password_resets"] = self.sql_session.query(User)\
+            .filter(User.password_reset_pending.is_(True))\
+            .count()
         return params
 
     def write_error(self, status_code, **kwargs):
