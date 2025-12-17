@@ -61,6 +61,51 @@
 </div>
 
 
+<h2 id="title_password_reset" class="toggling_on">Password Reset</h2>
+<div id="password_reset">
+  {% if user.password_reset_pending %}
+  <div class="alert alert-warning" style="padding: 10px; margin-bottom: 15px; background-color: #fcf8e3; border: 1px solid #faebcc; border-radius: 4px;">
+    <strong>Pending Password Reset</strong>
+    <p>This user has submitted a password reset request that is awaiting approval.</p>
+    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;">
+      {{ xsrf_form_html|safe }}
+      <input type="submit" value="Approve Reset" class="btn btn-success" />
+    </form>
+    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;">
+      {{ xsrf_form_html|safe }}
+      <input type="submit" value="Deny Reset" class="btn btn-danger" />
+    </form>
+  </div>
+  {% endif %}
+
+  {% if user.password_reset_token and user.password_reset_token_expires %}
+  <div class="alert alert-info" style="padding: 10px; margin-bottom: 15px; background-color: #d9edf7; border: 1px solid #bce8f1; border-radius: 4px;">
+    <strong>Active Password Reset Token</strong>
+    <p>A password reset link is active for this user. You can share this link manually if email delivery failed.</p>
+    <table>
+      <tr>
+        <td><strong>Token:</strong></td>
+        <td><code>{{ user.password_reset_token }}</code></td>
+      </tr>
+      <tr>
+        <td><strong>Expires:</strong></td>
+        <td>{{ user.password_reset_token_expires }}</td>
+      </tr>
+    </table>
+    <p style="margin-top: 10px;">
+      <form action="{{ url("user", user.id, "clear_reset_token") }}" method="POST" style="display:inline;">
+        {{ xsrf_form_html|safe }}
+        <input type="submit" value="Clear Token" class="btn btn-warning" />
+      </form>
+    </p>
+  </div>
+  {% elif not user.password_reset_pending %}
+  <p>No active password reset token or pending reset for this user.</p>
+  {% endif %}
+  <div class="hr"></div>
+</div>
+
+
 <h2 id="title_general_info" class="toggling_on">General Information</h2>
 <div id="general_info">
   <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->

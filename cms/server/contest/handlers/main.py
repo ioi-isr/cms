@@ -33,6 +33,9 @@ import json
 import logging
 import os.path
 import re
+import smtplib
+from datetime import timedelta
+from email.mime.text import MIMEText
 
 import collections
 
@@ -59,7 +62,7 @@ from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
 from cmscommon.crypto import hash_password, validate_password, \
-    validate_password_strength, WeakPasswordError
+    validate_password_strength, WeakPasswordError, generate_random_password
 from cmscommon.datetime import make_datetime, make_timestamp
 from .contest import ContestHandler, api_login_required
 from ..phase_management import actual_phase_required
@@ -539,3 +542,218 @@ class TranslationHandler(ContestHandler):
                     translation_result=translation_result,
                     error_message=error_message,
                     **self.r_params)
+
+
+class PasswordResetRequestHandler(ContestHandler):
+    """Handler for requesting a password reset.
+
+    Accepts username/email from user, validates that the user exists and has
+    an email address, generates a secure token, and sends an email with the
+    reset link.
+
+    """
+
+    TOKEN_EXPIRATION_HOURS = 2
+
+    @multi_contest
+    def get(self):
+        self.render("password_reset_request.html", **self.r_params)
+
+    @multi_contest
+    def post(self):
+        username_or_email = self.get_argument("username_or_email", "")
+
+        if not username_or_email:
+            self.render("password_reset_request.html",
+                        error_message=N_("Please enter your username or email."),
+                        **self.r_params)
+            return
+
+        user = self.sql_session.query(User).filter(
+            (User.username == username_or_email) |
+            (User.email == username_or_email)
+        ).first()
+
+        if user is None:
+            self.render("password_reset_request.html",
+                        error_message=N_("No user found with that username or email."),
+                        **self.r_params)
+            return
+
+        if not user.email:
+            self.render("password_reset_request.html",
+                        error_message=N_("This user does not have an email address configured. Please contact an administrator."),
+                        **self.r_params)
+            return
+
+        token = generate_random_password()
+        user.password_reset_token = token
+        user.password_reset_token_expires = self.timestamp + timedelta(
+            hours=self.TOKEN_EXPIRATION_HOURS)
+
+        self.sql_session.commit()
+
+        reset_url = self.request.protocol + "://" + self.request.host + \
+            self.contest_url("password_reset_confirm", token)
+
+        email_sent = self._send_reset_email(user.email, reset_url)
+
+        if email_sent:
+            self.render("password_reset_request_sent.html",
+                        email=user.email,
+                        **self.r_params)
+        else:
+            self.render("password_reset_request.html",
+                        error_message=N_("Failed to send reset email. Please contact an administrator."),
+                        reset_url=reset_url,
+                        **self.r_params)
+
+    def _send_reset_email(self, email: str, reset_url: str) -> bool:
+        """Send password reset email via SMTP.
+
+        Returns True if email was sent successfully, False otherwise.
+        """
+        smtp_config = config.smtp
+        if not smtp_config.server or not smtp_config.sender_address:
+            logger.warning("SMTP not configured, cannot send password reset email")
+            return False
+
+        try:
+            msg = MIMEText(
+                f"You have requested a password reset.\n\n"
+                f"Click the following link to reset your password:\n{reset_url}\n\n"
+                f"This link will expire in {self.TOKEN_EXPIRATION_HOURS} hours.\n\n"
+                f"If you did not request this reset, please ignore this email."
+            )
+            msg["Subject"] = "Password Reset Request"
+            msg["From"] = smtp_config.sender_address
+            msg["To"] = email
+
+            if smtp_config.use_tls:
+                server = smtplib.SMTP(smtp_config.server, smtp_config.port)
+                server.starttls()
+            else:
+                server = smtplib.SMTP(smtp_config.server, smtp_config.port)
+
+            if smtp_config.username and smtp_config.password:
+                server.login(smtp_config.username, smtp_config.password)
+
+            server.sendmail(smtp_config.sender_address, [email], msg.as_string())
+            server.quit()
+            return True
+        except Exception as e:
+            logger.error("Failed to send password reset email: %s", str(e))
+            return False
+
+
+class PasswordResetConfirmHandler(ContestHandler):
+    """Handler for confirming a password reset.
+
+    Validates the token from the URL parameter, shows a password reset form,
+    and on submission stores the new password hash for admin approval.
+
+    """
+
+    MIN_PASSWORD_LENGTH = 6
+    MAX_INPUT_LENGTH = 50
+
+    @multi_contest
+    def get(self, token: str):
+        user = self._validate_token(token)
+        if user is None:
+            self.render("password_reset_invalid.html", **self.r_params)
+            return
+
+        self.render("password_reset_confirm.html",
+                    token=token,
+                    username=user.username,
+                    MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                    **self.r_params)
+
+    @multi_contest
+    def post(self, token: str):
+        user = self._validate_token(token)
+        if user is None:
+            self.render("password_reset_invalid.html", **self.r_params)
+            return
+
+        password = self.get_argument("password", "")
+        password_confirm = self.get_argument("password_confirm", "")
+
+        if not password:
+            self.render("password_reset_confirm.html",
+                        token=token,
+                        username=user.username,
+                        MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                        error_message=N_("Please enter a password."),
+                        **self.r_params)
+            return
+
+        if password != password_confirm:
+            self.render("password_reset_confirm.html",
+                        token=token,
+                        username=user.username,
+                        MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                        error_message=N_("Passwords do not match."),
+                        **self.r_params)
+            return
+
+        if not self.MIN_PASSWORD_LENGTH <= len(password) <= self.MAX_INPUT_LENGTH:
+            self.render("password_reset_confirm.html",
+                        token=token,
+                        username=user.username,
+                        MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                        error_message=N_("Password must be between %d and %d characters.") % (
+                            self.MIN_PASSWORD_LENGTH, self.MAX_INPUT_LENGTH),
+                        **self.r_params)
+            return
+
+        try:
+            validate_password_strength(password, [user.username])
+        except WeakPasswordError:
+            self.render("password_reset_confirm.html",
+                        token=token,
+                        username=user.username,
+                        MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                        error_message=N_("Password is too weak. Please choose a stronger password."),
+                        **self.r_params)
+            return
+
+        user.password_reset_new_hash = hash_password(password, method="bcrypt")
+        user.password_reset_pending = True
+        user.password_reset_token = None
+        user.password_reset_token_expires = None
+
+        self.sql_session.commit()
+
+        self.service.add_notification(
+            "admin",
+            self.timestamp,
+            N_("Password Reset Pending"),
+            N_("User %s has requested a password reset and is awaiting approval.") % user.username,
+            "warning"
+        )
+
+        self.render("password_reset_pending.html",
+                    username=user.username,
+                    **self.r_params)
+
+    def _validate_token(self, token: str) -> User | None:
+        """Validate the password reset token.
+
+        Returns the user if the token is valid and not expired, None otherwise.
+        """
+        user = self.sql_session.query(User).filter(
+            User.password_reset_token == token
+        ).first()
+
+        if user is None:
+            return None
+
+        if user.password_reset_token_expires is None:
+            return None
+
+        if user.password_reset_token_expires < self.timestamp:
+            return None
+
+        return user

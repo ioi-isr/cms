@@ -97,6 +97,28 @@ class User(Base):
         nullable=False,
         default=[])
 
+    # Password reset fields for the password reset flow.
+    # Token for password reset requests.
+    password_reset_token: str | None = Column(
+        Unicode,
+        nullable=True)
+
+    # Expiration time for the password reset token.
+    password_reset_token_expires: datetime | None = Column(
+        DateTime,
+        nullable=True)
+
+    # Whether a password reset is pending admin approval.
+    password_reset_pending: bool = Column(
+        Boolean,
+        nullable=False,
+        default=False)
+
+    # The new password hash waiting for admin approval.
+    password_reset_new_hash: str | None = Column(
+        Unicode,
+        nullable=True)
+
     # These one-to-many relationships are the reversed directions of
     # the ones defined in the "child" classes using foreign keys.
 

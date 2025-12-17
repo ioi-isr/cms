@@ -121,7 +121,10 @@ from .user import \
     AddTeamHandler, \
     TeamHandler, \
     TeamListHandler, \
-    RemoveTeamHandler
+    RemoveTeamHandler, \
+    ClearResetTokenHandler, \
+    ApprovePasswordResetHandler, \
+    DenyPasswordResetHandler
 from .usertest import \
     UserTestHandler, \
     UserTestFileHandler
@@ -253,6 +256,9 @@ HANDLERS = [
     (r"/team/([0-9]+)", TeamHandler),
     (r"/user/([0-9]+)/add_participation", AddParticipationHandler),
     (r"/user/([0-9]+)/edit_participation", EditParticipationHandler),
+    (r"/user/([0-9]+)/clear_reset_token", ClearResetTokenHandler),
+    (r"/user/([0-9]+)/approve_password_reset", ApprovePasswordResetHandler),
+    (r"/user/([0-9]+)/deny_password_reset", DenyPasswordResetHandler),
 
     # Folders
     (r"/folders", FolderListHandler),
