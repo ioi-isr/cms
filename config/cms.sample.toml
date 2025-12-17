@@ -223,11 +223,11 @@ listen_port = 8811
 # SMTP configuration for sending password reset emails.
 # If not configured, password reset emails cannot be sent automatically,
 # but admins can still manually share reset links from the admin interface.
-#[smtp]
-#server = "smtp.example.com"
-#port = 587
+[smtp]
+server = "mailout.biu.ac.il"
+port = 25
 #username = "your_smtp_username"
 #password = "your_smtp_password"
 #use_tls = true
-#sender_address = "noreply@example.com"
+sender_address = "no-reply@contest.biu.ac.il"
 
