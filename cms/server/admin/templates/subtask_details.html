@@ -153,7 +153,27 @@ window.findCommonPrefix = function(strings) {
   return prefix;
 };
 
-window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex) {
+window.findCommonSubstring = function(strings) {
+  if (strings.length === 0) return '';
+  if (strings.length === 1) return strings[0];
+  
+  // Find the longest common substring that appears in all strings
+  var shortest = strings.reduce(function(a, b) { return a.length <= b.length ? a : b; });
+  
+  // Try all substrings of the shortest string, starting from longest
+  for (var len = shortest.length; len > 0; len--) {
+    for (var start = 0; start <= shortest.length - len; start++) {
+      var candidate = shortest.substring(start, start + len);
+      var allContain = strings.every(function(s) { return s.indexOf(candidate) !== -1; });
+      if (allContain) {
+        return candidate;
+      }
+    }
+  }
+  return '';
+};
+
+window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRegex) {
   var ids = getSelectedTestcaseIds(tableId);
   if (ids.length === 0) {
     alert('No testcases selected.');
@@ -162,6 +182,12 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex) {
   
   var prefix = prompt('Enter prefix to add to selected testcases:');
   if (!prefix) return;
+  
+  // Ask if user wants to update the subtask regex
+  var updateRegex = false;
+  if (usesRegex === 'true') {
+    updateRegex = confirm('Do you also want to update the subtask regex to match testcases containing "' + prefix + '" as a substring?');
+  }
   
   var form = document.createElement('form');
   form.method = 'POST';
@@ -187,6 +213,15 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex) {
   valInput.value = prefix;
   form.appendChild(valInput);
   
+  // Add update_regex flag if user agreed
+  if (updateRegex) {
+    var regexInput = document.createElement('input');
+    regexInput.type = 'hidden';
+    regexInput.name = 'update_regex';
+    regexInput.value = 'true';
+    form.appendChild(regexInput);
+  }
+  
   // Add subtask_index to redirect back to subtask details page
   if (subtaskIndex !== undefined) {
     var subtaskInput = document.createElement('input');
@@ -206,7 +241,7 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex) {
   form.submit();
 };
 
-window.batchEditPrefix = function(datasetId, tableId, url, subtaskIndex) {
+window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
   var ids = getSelectedTestcaseIds(tableId);
   if (ids.length === 0) {
     alert('No testcases selected.');
@@ -214,13 +249,17 @@ window.batchEditPrefix = function(datasetId, tableId, url, subtaskIndex) {
   }
   
   var codenames = getSelectedCodenames(tableId);
-  var commonPrefix = findCommonPrefix(codenames);
+  var commonSubstring = findCommonSubstring(codenames);
   
-  var oldPrefix = prompt('Enter the current prefix to replace (detected: "' + commonPrefix + '"):', commonPrefix);
-  if (oldPrefix === null) return;
+  var substring = prompt('Enter the substring to remove from selected testcases (detected: "' + commonSubstring + '"):', commonSubstring);
+  if (substring === null || substring === '') return;
   
-  var newPrefix = prompt('Enter the new prefix:');
-  if (newPrefix === null) return;
+  // Verify all selected testcases contain the substring
+  var allContain = codenames.every(function(c) { return c.indexOf(substring) !== -1; });
+  if (!allContain) {
+    alert('Not all selected testcases contain the substring "' + substring + '".');
+    return;
+  }
   
   var form = document.createElement('form');
   form.method = 'POST';
@@ -237,19 +276,13 @@ window.batchEditPrefix = function(datasetId, tableId, url, subtaskIndex) {
   var opInput = document.createElement('input');
   opInput.type = 'hidden';
   opInput.name = 'operation';
-  opInput.value = 'edit_prefix';
+  opInput.value = 'remove_substring';
   form.appendChild(opInput);
-  
-  var oldPrefixInput = document.createElement('input');
-  oldPrefixInput.type = 'hidden';
-  oldPrefixInput.name = 'old_prefix';
-  oldPrefixInput.value = oldPrefix;
-  form.appendChild(oldPrefixInput);
   
   var valInput = document.createElement('input');
   valInput.type = 'hidden';
   valInput.name = 'value';
-  valInput.value = newPrefix;
+  valInput.value = substring;
   form.appendChild(valInput);
   
   // Add subtask_index to redirect back to subtask details page
@@ -272,7 +305,7 @@ window.batchEditPrefix = function(datasetId, tableId, url, subtaskIndex) {
 };
 {% endblock js_init %}
 
-{% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin, subtask_index) %}
+{% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin, subtask_index, uses_regex) %}
 <h3>{{ title }}</h3>
 {% if testcases|length == 0 %}
 <p>No testcases in this section.</p>
@@ -367,8 +400,8 @@ window.batchEditPrefix = function(datasetId, tableId, url, subtaskIndex) {
   {% if admin.permission_all %}
   <div id="{{ table_id }}_batch_actions" style="display: none; margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 4px;">
     <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
-    <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}')" style="margin-left: 10px;">Add prefix</a> |
-    <a href="javascript:void(0);" onclick="batchEditPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}')">Edit common prefix</a>
+    <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}', '{{ uses_regex|lower }}')" style="margin-left: 10px;">Add prefix</a> |
+    <a href="javascript:void(0);" onclick="batchRemoveSubstring('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}')">Remove common substring</a>
   </div>
   {% endif %}
 </div>
@@ -451,9 +484,9 @@ window.batchEditPrefix = function(datasetId, tableId, url, subtaskIndex) {
 </form>
 {% endif %}
 
-{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin, subtask_index) }}
+{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin, subtask_index, uses_regex) }}
 
-{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin, subtask_index) }}
+{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin, subtask_index, uses_regex) }}
 
 <div class="hr"></div>
 <p>
