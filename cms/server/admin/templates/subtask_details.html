@@ -139,20 +139,6 @@ window.getSelectedCodenames = function(tableId) {
   return codenames;
 };
 
-window.findCommonPrefix = function(strings) {
-  if (strings.length === 0) return '';
-  if (strings.length === 1) return strings[0];
-  
-  var prefix = strings[0];
-  for (var i = 1; i < strings.length; i++) {
-    while (strings[i].indexOf(prefix) !== 0) {
-      prefix = prefix.substring(0, prefix.length - 1);
-      if (prefix === '') return '';
-    }
-  }
-  return prefix;
-};
-
 window.findCommonSubstring = function(strings) {
   if (strings.length === 0) return '';
   if (strings.length === 1) return strings[0];
