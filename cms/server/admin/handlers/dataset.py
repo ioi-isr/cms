@@ -1684,12 +1684,12 @@ class SubtaskDetailsHandler(BaseHandler):
                         if isinstance(param[1], str):
                             subtask_regex = param[1]
                             uses_regex = True
-                            # Extract suggested prefix if regex is exactly (.*term.*)
+                            # Extract suggested prefix from regex patterns
                             import re
-                            match = re.match(r'^\.\*(.+)\.\*$', subtask_regex)
+                            match = re.search(r'\.\*(?P<term>[^|)]*?)\.\*', subtask_regex)
                             if match:
                                 # Unescape the term (in case it was escaped)
-                                suggested_prefix = re.sub(r'\\(.)', r'\1', match.group(1))
+                                suggested_prefix = re.sub(r'\\(.)', r'\1', match.group('term'))
                     if len(param) >= 3 and param[2]:
                         subtask_name = param[2]
             else:
@@ -1976,7 +1976,13 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 return
 
             # Build the new codename mapping
-            new_codenames = {tc.id: value + tc.codename for tc in testcases}
+            # Skip adding prefix if codename already starts with it
+            new_codenames = {}
+            for tc in testcases:
+                if tc.codename.startswith(value):
+                    new_codenames[tc.id] = tc.codename  # Keep original
+                else:
+                    new_codenames[tc.id] = value + tc.codename
 
             # Validate the mapping for conflicts
             is_valid, error_msg = _validate_codename_mapping(dataset, testcases, new_codenames)
