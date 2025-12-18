@@ -173,14 +173,15 @@ window.findCommonSubstring = function(strings) {
   return '';
 };
 
-window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRegex) {
+window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRegex, suggestedPrefix) {
   var ids = getSelectedTestcaseIds(tableId);
   if (ids.length === 0) {
     alert('No testcases selected.');
     return;
   }
   
-  var prefix = prompt('Enter prefix to add to selected testcases:');
+  var defaultPrefix = suggestedPrefix || '';
+  var prefix = prompt('Enter prefix to add to selected testcases:', defaultPrefix);
   if (!prefix) return;
   
   // Ask if user wants to update the subtask regex
@@ -305,7 +306,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 };
 {% endblock js_init %}
 
-{% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin, subtask_index, uses_regex) %}
+{% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) %}
 <h3>{{ title }}</h3>
 {% if testcases|length == 0 %}
 <p>No testcases in this section.</p>
@@ -400,7 +401,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
   {% if admin.permission_all %}
   <div id="{{ table_id }}_batch_actions" style="display: none; margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 4px;">
     <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
-    <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}', '{{ uses_regex|lower }}')" style="margin-left: 10px;">Add prefix</a> |
+    <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}', '{{ uses_regex|lower }}', '{{ suggested_prefix|default("", true) }}')" style="margin-left: 10px;">Add prefix</a> |
     <a href="javascript:void(0);" onclick="batchRemoveSubstring('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}')">Remove common substring</a>
   </div>
   {% endif %}
@@ -484,9 +485,9 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 </form>
 {% endif %}
 
-{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin, subtask_index, uses_regex) }}
+{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
 
-{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin, subtask_index, uses_regex) }}
+{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
 
 <div class="hr"></div>
 <p>
