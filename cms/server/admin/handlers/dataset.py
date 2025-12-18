@@ -1665,6 +1665,7 @@ class SubtaskDetailsHandler(BaseHandler):
         subtask_name = None
         subtask_regex = None
         uses_regex = False
+        suggested_prefix = None
 
         try:
             score_type_obj = dataset.score_type_object
@@ -1683,6 +1684,12 @@ class SubtaskDetailsHandler(BaseHandler):
                         if isinstance(param[1], str):
                             subtask_regex = param[1]
                             uses_regex = True
+                            # Extract suggested prefix if regex is exactly (.*term.*)
+                            import re
+                            match = re.match(r'^\.\*(.+)\.\*$', subtask_regex)
+                            if match:
+                                # Unescape the term (in case it was escaped)
+                                suggested_prefix = re.sub(r'\\(.)', r'\1', match.group(1))
                     if len(param) >= 3 and param[2]:
                         subtask_name = param[2]
             else:
@@ -1714,6 +1721,7 @@ class SubtaskDetailsHandler(BaseHandler):
         self.r_params["subtask_name"] = subtask_name
         self.r_params["subtask_regex"] = subtask_regex
         self.r_params["uses_regex"] = uses_regex
+        self.r_params["suggested_prefix"] = suggested_prefix
         self.r_params["subtask_testcases"] = subtask_testcases
         self.r_params["other_testcases"] = other_testcases
         self.render("subtask_details.html", **self.r_params)
@@ -1937,6 +1945,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
             # Check if user wants to update the subtask regex
             update_regex = self.get_argument("update_regex", "") == "true"
             regex_updated = False
+            regex_already_exists = False
             if update_regex and subtask_index is not None:
                 try:
                     subtask_idx = int(subtask_index)
@@ -1952,12 +1961,16 @@ class BatchRenameTestcasesHandler(BaseHandler):
                                 # Use .*prefix.* pattern to match substring
                                 import re
                                 new_term = ".*%s.*" % re.escape(value)
-                                # Combine with existing regex using |
-                                new_regex = "(%s)|(%s)" % (old_regex, new_term)
-                                param[1] = new_regex
-                                params[subtask_idx] = param
-                                dataset.score_type_parameters = params
-                                regex_updated = True
+                                # Check if the term already exists in the regex
+                                if new_term in old_regex:
+                                    regex_already_exists = True
+                                else:
+                                    # Combine with existing regex using |
+                                    new_regex = "(%s)|(%s)" % (old_regex, new_term)
+                                    param[1] = new_regex
+                                    params[subtask_idx] = param
+                                    dataset.score_type_parameters = params
+                                    regex_updated = True
                 except (ValueError, AttributeError, IndexError):
                     pass
 
@@ -1965,6 +1978,8 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 msg = "Added prefix '%s' to %d testcases." % (value, renamed_count)
                 if regex_updated:
                     msg += " Subtask regex updated to match testcases containing '%s'." % value
+                elif regex_already_exists:
+                    msg += " Regex term for '%s' already exists in the pattern." % value
                 self.service.add_notification(
                     make_datetime(),
                     "Testcases renamed",
