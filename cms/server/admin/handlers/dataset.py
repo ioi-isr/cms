@@ -1767,7 +1767,7 @@ class RenameTestcaseHandler(BaseHandler):
 
 
 class BatchRenameTestcasesHandler(BaseHandler):
-    """Batch rename testcases - add prefix or edit common prefix.
+    """Batch rename testcases - add prefix or remove common substring.
 
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -1797,7 +1797,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        if operation not in ("add_prefix", "edit_prefix"):
+        if operation not in ("add_prefix", "remove_substring"):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid operation",
@@ -1860,54 +1860,88 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 dataset.testcases[new_codename] = tc
                 renamed_count += 1
 
+            # Check if user wants to update the subtask regex
+            update_regex = self.get_argument("update_regex", "") == "true"
+            regex_updated = False
+            if update_regex and subtask_index is not None:
+                try:
+                    subtask_idx = int(subtask_index)
+                    score_type_obj = dataset.score_type_object
+                    if hasattr(score_type_obj, 'parameters'):
+                        params = list(score_type_obj.parameters)
+                        if 0 <= subtask_idx < len(params):
+                            param = list(params[subtask_idx])
+                            # Check if using regex (string pattern)
+                            if len(param) >= 2 and isinstance(param[1], str):
+                                old_regex = param[1]
+                                # Add a term to match testcases containing the prefix
+                                # Use .*prefix.* pattern to match substring
+                                import re
+                                new_term = ".*%s.*" % re.escape(value)
+                                # Combine with existing regex using |
+                                new_regex = "(%s)|(%s)" % (old_regex, new_term)
+                                param[1] = new_regex
+                                params[subtask_idx] = param
+                                dataset.score_type_parameters = params
+                                regex_updated = True
+                except (ValueError, AttributeError, IndexError):
+                    pass
+
             if self.try_commit():
+                msg = "Added prefix '%s' to %d testcases." % (value, renamed_count)
+                if regex_updated:
+                    msg += " Subtask regex updated to match testcases containing '%s'." % value
                 self.service.add_notification(
                     make_datetime(),
                     "Testcases renamed",
-                    "Added prefix '%s' to %d testcases." % (value, renamed_count))
+                    msg)
 
-        elif operation == "edit_prefix":
-            # Edit common prefix - find common prefix and replace it
-            old_prefix = self.get_argument("old_prefix", "")
-            new_prefix = value
+        elif operation == "remove_substring":
+            # Remove a common substring from all selected testcases
+            substring = value
 
-            if not old_prefix and not new_prefix:
+            if not substring:
                 self.service.add_notification(
                     make_datetime(),
-                    "Invalid prefix",
-                    "Both old and new prefix cannot be empty.")
+                    "Invalid substring",
+                    "Substring cannot be empty.")
                 self.redirect(fallback_page)
                 return
 
-            # Check that all selected testcases have the old prefix
+            # Check that all selected testcases contain the substring
             for tc in testcases:
-                if old_prefix and not tc.codename.startswith(old_prefix):
+                if substring not in tc.codename:
                     self.service.add_notification(
                         make_datetime(),
-                        "Prefix mismatch",
-                        "Testcase '%s' does not have prefix '%s'." % (tc.codename, old_prefix))
+                        "Substring not found",
+                        "Testcase '%s' does not contain substring '%s'." % (tc.codename, substring))
                     self.redirect(fallback_page)
                     return
 
             # Check for conflicts first
             new_codenames = {}
             for tc in testcases:
-                if old_prefix:
-                    new_codename = new_prefix + tc.codename[len(old_prefix):]
-                else:
-                    new_codename = new_prefix + tc.codename
+                # Remove first occurrence of substring
+                new_codename = tc.codename.replace(substring, "", 1)
+                if not new_codename:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Invalid result",
+                        "Removing substring from '%s' would result in empty codename." % tc.codename)
+                    self.redirect(fallback_page)
+                    return
                 if new_codename in dataset.testcases and dataset.testcases[new_codename] not in testcases:
                     self.service.add_notification(
                         make_datetime(),
                         "Codename conflict",
-                        "Editing prefix would create duplicate codename '%s'." % new_codename)
+                        "Removing substring would create duplicate codename '%s'." % new_codename)
                     self.redirect(fallback_page)
                     return
                 if new_codename in new_codenames:
                     self.service.add_notification(
                         make_datetime(),
                         "Codename conflict",
-                        "Editing prefix would create duplicate codename '%s'." % new_codename)
+                        "Removing substring would create duplicate codename '%s'." % new_codename)
                     self.redirect(fallback_page)
                     return
                 new_codenames[tc.id] = new_codename
@@ -1927,8 +1961,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 self.service.add_notification(
                     make_datetime(),
                     "Testcases renamed",
-                    "Changed prefix from '%s' to '%s' for %d testcases." % (
-                        old_prefix, new_prefix, renamed_count))
+                    "Removed substring '%s' from %d testcases." % (substring, renamed_count))
 
         self.redirect(fallback_page)
 
