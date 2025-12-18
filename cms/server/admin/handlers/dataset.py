@@ -1848,6 +1848,69 @@ class RenameTestcaseHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
+def _validate_codename_mapping(dataset, testcases, new_codenames):
+    """Validate that a codename mapping doesn't create conflicts.
+
+    Args:
+        dataset: The dataset containing the testcases
+        testcases: List of testcases being renamed
+        new_codenames: Dict mapping testcase.id to new codename
+
+    Returns:
+        (is_valid, error_message) tuple. If is_valid is True, error_message is None.
+    """
+    testcase_set = set(testcases)
+    seen_codenames = {}
+
+    for tc in testcases:
+        new_codename = new_codenames.get(tc.id)
+        if new_codename is None:
+            continue
+
+        # Check for duplicates within the mapping itself
+        if new_codename in seen_codenames:
+            return (False, "Renaming would create duplicate codename '%s'." % new_codename)
+        seen_codenames[new_codename] = tc
+
+        # Check for conflicts with existing testcases not in the selection
+        if new_codename in dataset.testcases:
+            existing_tc = dataset.testcases[new_codename]
+            if existing_tc not in testcase_set:
+                return (False, "Renaming would create duplicate codename '%s'." % new_codename)
+
+    return (True, None)
+
+
+def _apply_codename_mapping(dataset, testcases, new_codenames):
+    """Apply a codename mapping to testcases using two-phase approach.
+
+    This uses a two-phase approach to safely handle cases where a new codename
+    equals another selected testcase's old codename.
+
+    Args:
+        dataset: The dataset containing the testcases
+        testcases: List of testcases being renamed
+        new_codenames: Dict mapping testcase.id to new codename
+
+    Returns:
+        Number of testcases actually renamed (where codename changed)
+    """
+    # Phase 1: Remove all old codenames for testcases that are changing
+    changing_testcases = []
+    for tc in testcases:
+        new_codename = new_codenames.get(tc.id)
+        if new_codename is not None and tc.codename != new_codename:
+            del dataset.testcases[tc.codename]
+            changing_testcases.append((tc, new_codename))
+
+    # Phase 2: Update codenames and re-add to dataset
+    for tc, new_codename in changing_testcases:
+        tc.codename = new_codename
+        dataset.testcases[new_codename] = tc
+
+    return len(changing_testcases)
+
+
 class BatchRenameTestcasesHandler(BaseHandler):
     """Batch rename testcases - add prefix or remove common substring.
 
@@ -1912,35 +1975,21 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 self.redirect(fallback_page)
                 return
 
-            # Check for conflicts first
-            new_codenames = {}
-            for tc in testcases:
-                new_codename = value + tc.codename
-                if new_codename in dataset.testcases and dataset.testcases[new_codename] not in testcases:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Codename conflict",
-                        "Adding prefix would create duplicate codename '%s'." % new_codename)
-                    self.redirect(fallback_page)
-                    return
-                if new_codename in new_codenames:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Codename conflict",
-                        "Adding prefix would create duplicate codename '%s'." % new_codename)
-                    self.redirect(fallback_page)
-                    return
-                new_codenames[tc.id] = new_codename
+            # Build the new codename mapping
+            new_codenames = {tc.id: value + tc.codename for tc in testcases}
 
-            # Perform the rename
-            renamed_count = 0
-            for tc in testcases:
-                old_codename = tc.codename
-                new_codename = new_codenames[tc.id]
-                del dataset.testcases[old_codename]
-                tc.codename = new_codename
-                dataset.testcases[new_codename] = tc
-                renamed_count += 1
+            # Validate the mapping for conflicts
+            is_valid, error_msg = _validate_codename_mapping(dataset, testcases, new_codenames)
+            if not is_valid:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Codename conflict",
+                    error_msg)
+                self.redirect(fallback_page)
+                return
+
+            # Apply the rename using two-phase approach
+            renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
 
             # Check if user wants to update the subtask regex
             update_regex = self.get_argument("update_regex", "") == "true"
@@ -1997,7 +2046,8 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 self.redirect(fallback_page)
                 return
 
-            # Check that all selected testcases contain the substring
+            # Check that all selected testcases contain the substring and build mapping
+            new_codenames = {}
             for tc in testcases:
                 if substring not in tc.codename:
                     self.service.add_notification(
@@ -2006,10 +2056,6 @@ class BatchRenameTestcasesHandler(BaseHandler):
                         "Testcase '%s' does not contain substring '%s'." % (tc.codename, substring))
                     self.redirect(fallback_page)
                     return
-
-            # Check for conflicts first
-            new_codenames = {}
-            for tc in testcases:
                 # Remove first occurrence of substring
                 new_codename = tc.codename.replace(substring, "", 1)
                 if not new_codename:
@@ -2019,32 +2065,20 @@ class BatchRenameTestcasesHandler(BaseHandler):
                         "Removing substring from '%s' would result in empty codename." % tc.codename)
                     self.redirect(fallback_page)
                     return
-                if new_codename in dataset.testcases and dataset.testcases[new_codename] not in testcases:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Codename conflict",
-                        "Removing substring would create duplicate codename '%s'." % new_codename)
-                    self.redirect(fallback_page)
-                    return
-                if new_codename in new_codenames:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Codename conflict",
-                        "Removing substring would create duplicate codename '%s'." % new_codename)
-                    self.redirect(fallback_page)
-                    return
                 new_codenames[tc.id] = new_codename
 
-            # Perform the rename
-            renamed_count = 0
-            for tc in testcases:
-                old_codename = tc.codename
-                new_codename = new_codenames[tc.id]
-                if old_codename != new_codename:
-                    del dataset.testcases[old_codename]
-                    tc.codename = new_codename
-                    dataset.testcases[new_codename] = tc
-                    renamed_count += 1
+            # Validate the mapping for conflicts
+            is_valid, error_msg = _validate_codename_mapping(dataset, testcases, new_codenames)
+            if not is_valid:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Codename conflict",
+                    error_msg)
+                self.redirect(fallback_page)
+                return
+
+            # Apply the rename using two-phase approach
+            renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
 
             if self.try_commit():
                 self.service.add_notification(
