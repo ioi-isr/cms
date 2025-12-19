@@ -179,8 +179,11 @@ class RankingHandler(BaseHandler):
 class ScoreHistoryHandler(BaseHandler):
     """Returns the score history for a contest as JSON.
 
-    This endpoint provides score history data similar to RWS's /history
-    endpoint, which can be used to display score/rank progress over time.
+    This endpoint provides score history data in RWS format:
+    [[user_id, task_id, time, score], ...]
+
+    This matches the format expected by RWS's HistoryStore.js for
+    computing score and rank histories.
 
     """
     @require_permission(BaseHandler.AUTHENTICATED)
@@ -191,17 +194,18 @@ class ScoreHistoryHandler(BaseHandler):
             self.sql_session.query(ScoreHistory)
             .join(Participation)
             .filter(Participation.contest_id == contest_id)
+            .options(joinedload(ScoreHistory.participation).joinedload(Participation.user))
             .order_by(ScoreHistory.timestamp)
             .all()
         )
 
         result = [
-            {
-                "participation_id": h.participation_id,
-                "task_id": h.task_id,
-                "timestamp": h.timestamp.timestamp(),
-                "score": h.score,
-            }
+            [
+                str(h.participation.user_id),
+                str(h.task_id),
+                int(h.timestamp.timestamp()),
+                h.score,
+            ]
             for h in history
         ]
 
