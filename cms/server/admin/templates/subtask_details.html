@@ -456,6 +456,34 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     </td>
   </tr>
   {% endif %}
+  <tr id="name_display_row">
+    <td>Name:</td>
+    <td>
+      {% if subtask_name %}
+        <code>{{ subtask_name }}</code>
+      {% else %}
+        <em>No name set</em>
+      {% endif %}
+      {% if admin.permission_all %}
+        {% if subtask_name %}
+        [<a href="javascript:void(0);" onclick="document.getElementById('name_edit_row').style.display = 'table-row'; document.getElementById('name_display_row').style.display = 'none';">edit</a>]
+        {% else %}
+        [<a href="javascript:void(0);" onclick="document.getElementById('name_edit_row').style.display = 'table-row'; document.getElementById('name_display_row').style.display = 'none';">add</a>]
+        {% endif %}
+      {% endif %}
+    </td>
+  </tr>
+  <tr id="name_edit_row" style="display: none;">
+    <td>Name:</td>
+    <td>
+      <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "name") }}" style="display: inline;">
+        {{ xsrf_form_html|safe }}
+        <input type="text" name="name" value="{{ subtask_name or "" }}" size="40" />
+        <button type="submit">Save</button>
+        <button type="button" onclick="document.getElementById('name_edit_row').style.display = 'none'; document.getElementById('name_display_row').style.display = 'table-row';">Cancel</button>
+      </form>
+    </td>
+  </tr>
   <tr>
     <td>Testcases in subtask:</td>
     <td>{{ subtask_testcases|length }}</td>
