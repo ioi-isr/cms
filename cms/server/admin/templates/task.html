@@ -639,7 +639,9 @@ window.filterTestcases = function(dataset_id) {
       </table>
 
       {% if subtask_info.get(dataset.id) %}
-      {% set ds_ns = namespace(total_not_validated=0, has_validators=false) %}
+      {% set ds_ns = namespace(total_not_validated=0,
+                               has_validators=false,
+                               not_validated_codenames=[]) %}
       {% for subtask in subtask_info[dataset.id] %}
         {% set validator = dataset.subtask_validators.get(subtask.idx) %}
         {% if validator %}
@@ -649,24 +651,21 @@ window.filterTestcases = function(dataset_id) {
             {% for r in validator.validation_results %}
               {% set _ = results_codenames.append(r.testcase.codename) %}
             {% endfor %}
-            {% if testcase_subtasks.get(dataset.id) %}
-              {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
-                {% if subtask.idx in tc_subtasks and tc_codename not in results_codenames %}
-                  {% set ds_ns.total_not_validated = ds_ns.total_not_validated + 1 %}
-                {% endif %}
-              {% endfor %}
-            {% endif %}
+            {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+              {% if tc_codename not in results_codenames and tc_codename not in ds_ns.not_validated_codenames %}
+                {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
+              {% endif %}
+            {% endfor %}
           {% else %}
-            {% if testcase_subtasks.get(dataset.id) %}
-              {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
-                {% if subtask.idx in tc_subtasks %}
-                  {% set ds_ns.total_not_validated = ds_ns.total_not_validated + 1 %}
-                {% endif %}
-              {% endfor %}
-            {% endif %}
+            {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+              {% if tc_codename not in ds_ns.not_validated_codenames %}
+                {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
+              {% endif %}
+            {% endfor %}
           {% endif %}
         {% endif %}
       {% endfor %}
+      {% set ds_ns.total_not_validated = ds_ns.not_validated_codenames|length %}
       <h4>Subtask Validators<span class="info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid."></span>
       </h4>
       {% if ds_ns.total_not_validated > 0 %}
