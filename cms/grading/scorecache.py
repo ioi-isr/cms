@@ -206,8 +206,8 @@ def _get_or_create_cache_entry(
 
     if cache_entry is None:
         cache_entry = ParticipationTaskScore(
-            participation_id=participation.id,
-            task_id=task.id,
+            participation=participation,
+            task=task,
             score=0.0,
             partial=False,
             subtask_max_scores=None,
@@ -319,11 +319,11 @@ def _add_history_entry(
 ) -> None:
     """Add a history entry for a score change."""
     history_entry = ScoreHistory(
-        participation_id=participation.id,
-        task_id=task.id,
+        participation=participation,
+        task=task,
         timestamp=submission.timestamp,
         score=score,
-        submission_id=submission.id,
+        submission=submission,
     )
     session.add(history_entry)
 
