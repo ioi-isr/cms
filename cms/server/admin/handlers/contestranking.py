@@ -239,8 +239,14 @@ class ParticipationDetailHandler(BaseHandler):
         )
 
         task_history = {}
+        task_history_json = {}
         for task in self.contest.tasks:
             task_history[task.id] = {
+                "task_name": task.name,
+                "task_title": task.title,
+                "history": [],
+            }
+            task_history_json[task.id] = {
                 "task_name": task.name,
                 "task_title": task.title,
                 "history": [],
@@ -250,11 +256,15 @@ class ParticipationDetailHandler(BaseHandler):
             if h.task_id in task_history:
                 task_history[h.task_id]["history"].append({
                     "timestamp": h.timestamp,
-                    "timestamp_epoch": h.timestamp.timestamp(),
+                    "score": h.score,
+                })
+                task_history_json[h.task_id]["history"].append({
+                    "timestamp": h.timestamp.timestamp(),
                     "score": h.score,
                 })
 
         self.r_params = self.render_params()
         self.r_params["participation"] = participation
         self.r_params["task_history"] = task_history
+        self.r_params["task_history_json"] = task_history_json
         self.render("participation_detail.html", **self.r_params)
