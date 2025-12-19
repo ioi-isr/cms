@@ -1717,6 +1717,49 @@ class UpdateSubtaskRegexHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
+class UpdateSubtaskNameHandler(BaseHandler):
+    """Update the name for a subtask in the score type parameters."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, subtask_index):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        subtask_index = int(subtask_index)
+
+        fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+
+        new_name = self.get_argument("name", "").strip()
+        if not new_name:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid name",
+                "Subtask name cannot be empty.")
+            self.redirect(fallback_page)
+            return
+
+        params = dataset.score_type_parameters
+        if not isinstance(params, list) or subtask_index >= len(params):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid subtask",
+                "Subtask index %d is out of range." % subtask_index)
+            self.redirect(fallback_page)
+            return
+
+        # Create a new list to trigger SQLAlchemy change detection and ensure space for the name
+        new_params = [list(p) for p in params]
+        while len(new_params[subtask_index]) < 3:
+            new_params[subtask_index].append(None)
+        new_params[subtask_index][2] = new_name
+        dataset.score_type_parameters = new_params
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Subtask name updated",
+                "Subtask %d name set to: %s" % (subtask_index, new_name))
+        self.redirect(fallback_page)
+
+
 class RenameTestcaseHandler(BaseHandler):
     """Rename a testcase's codename.
 
