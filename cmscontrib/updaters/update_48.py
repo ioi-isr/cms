@@ -23,6 +23,21 @@ This version adds the last_evaluation_failure_* fields to SubmissionResult
 to store details about why evaluation attempts failed, helping admins
 diagnose issues with checkers or managers.
 
+It also adds the ModelSolutionMeta table for storing metadata about
+model solutions. Model solutions are implemented as regular Submissions
+owned by a special hidden system Participation, requiring only a small
+metadata table rather than parallel infrastructure.
+
+Additionally, it adds the generators table for storing test generators
+that can generate testcases programmatically.
+
+It also adds the SubtaskValidator and SubtaskValidationResult tables
+for storing subtask validators and their validation results. These allow
+admins to validate that testcases meet specific subtask requirements.
+
+Finally, it adds the source_digest and source_extension fields to Statement
+objects, allowing storage of source files (DOC/DOCX/TEX) alongside PDF statements.
+
 """
 
 
@@ -42,5 +57,8 @@ class Updater:
                 v["last_evaluation_failure_sandbox_paths"] = None
                 v["last_evaluation_failure_sandbox_digests"] = None
                 v["last_evaluation_failure_details"] = None
+            elif v["_class"] == "Statement":
+                v["source_digest"] = None
+                v["source_extension"] = None
 
         return self.objs

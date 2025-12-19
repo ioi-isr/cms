@@ -405,4 +405,8 @@ ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_valida
 
 ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_exit_code_check CHECK (((exit_code IS NULL) OR (exit_code >= 0)));
 
+-- Add source_digest and source_extension columns to statements table for storing source files (DOC/DOCX/TEX)
+ALTER TABLE public.statements ADD COLUMN source_digest public.digest;
+ALTER TABLE public.statements ADD COLUMN source_extension character varying;
+
 COMMIT;
