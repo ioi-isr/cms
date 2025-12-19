@@ -166,10 +166,10 @@ CREATE TABLE public.participation_task_scores (
     id integer NOT NULL,
     participation_id integer NOT NULL,
     task_id integer NOT NULL,
-    score double precision NOT NULL DEFAULT 0.0,
-    partial boolean NOT NULL DEFAULT false,
+    score double precision NOT NULL,
+    partial boolean NOT NULL,
     subtask_max_scores jsonb,
-    max_tokened_score double precision NOT NULL DEFAULT 0.0,
+    max_tokened_score double precision NOT NULL,
     last_submission_score double precision,
     last_update timestamp without time zone NOT NULL
 );
