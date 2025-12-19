@@ -1,151 +1,616 @@
 {% extends "base.html" %}
 
 {% block core %}
-<h1>
-  Score Progress for <a href="{{ url("user", participation.user.id) }}">{{ participation.user.username }}</a> in <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
-</h1>
+<style>
+#UserDetail {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
 
-<p>
-  <a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}">Back to participation</a>
-</p>
+#UserDetail_header {
+  display: flex;
+  min-height: 120px;
+  margin-bottom: 20px;
+}
 
-<h2>Score History by Task</h2>
+#UserDetail_summary {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 1.5em;
+  line-height: 1.5em;
+}
 
-{% for task_id, task_data in task_history.items() %}
-<div class="task_history">
-  <h3>{{ task_data.task_title }} ({{ task_data.task_name }})</h3>
-  {% if task_data.history %}
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th>Time</th>
-        <th>Score</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for entry in task_data.history %}
-      <tr>
-        <td>{{ entry.timestamp | format_datetime }}</td>
-        <td>{{ entry.score }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p>No score history for this task.</p>
-  {% endif %}
+#UserDetail_navigator {
+  flex: 1;
+  max-width: 450px;
+}
+
+#UserDetail_navigator table {
+  width: 100%;
+  table-layout: fixed;
+  border-spacing: 2px;
+  border-collapse: separate;
+}
+
+#UserDetail_navigator tr {
+  height: 28px;
+}
+
+#UserDetail_navigator col.name {
+  width: 55%;
+}
+
+#UserDetail_navigator col.score,
+#UserDetail_navigator col.rank {
+  width: 15%;
+}
+
+#UserDetail_navigator col.show {
+  width: 15%;
+}
+
+#UserDetail_navigator tr td.score,
+#UserDetail_navigator tr td.rank {
+  padding-left: 4px;
+  text-align: right;
+}
+
+#UserDetail_navigator tbody tr td.btn {
+  text-align: center;
+  border: 1px solid #999999;
+  box-shadow: 0 0 2px gray;
+  background-color: #EEEEEE;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+}
+
+#UserDetail_navigator tbody tr td.btn:hover {
+  background-color: #DDDDDD;
+}
+
+#UserDetail_navigator tbody tr td.btn:active {
+  background-color: #CCCCCC;
+}
+
+#UserDetail_navigator tbody tr.active td.btn {
+  background-color: #EEEEEE;
+  opacity: 0.4;
+  cursor: default;
+}
+
+#UserDetail_navigator tr.global {
+  background-color: #DDDDDD;
+}
+
+#UserDetail_navigator tr.task {
+  background-color: #FFFFFF;
+}
+
+#UserDetail_navigator tr.global td.name {
+  padding-left: 5px;
+  font-weight: bold;
+}
+
+#UserDetail_navigator tr.task td.name {
+  padding-left: 25px;
+}
+
+#UserDetail_title {
+  margin-top: 24px;
+  font-size: 1.5em;
+  line-height: 1.5em;
+  text-align: center;
+}
+
+#UserDetail_charts {
+  margin-top: 24px;
+  width: 100%;
+  text-align: center;
+}
+
+#UserDetail_charts canvas {
+  display: block;
+  margin: 10px auto;
+}
+
+#UserDetail_submissions {
+  margin-top: 24px;
+  width: 100%;
+}
+
+#UserDetail_submissions:empty {
+  margin-top: 0;
+}
+
+#UserDetail_submissions table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+#UserDetail_submissions td,
+#UserDetail_submissions th {
+  height: 28px;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+#UserDetail_submissions thead {
+  background-color: #DDDDDD;
+}
+
+#UserDetail_submissions tbody tr:nth-child(even) {
+  background-color: #EEEEEE;
+}
+
+#UserDetail_submissions tbody tr:nth-child(odd) {
+  background-color: #F8F8F8;
+}
+
+#UserDetail_submissions tbody td[colspan] {
+  text-align: center;
+  font-style: italic;
+}
+
+.back-link {
+  margin-bottom: 20px;
+}
+</style>
+
+<div id="UserDetail">
+  <div class="back-link">
+    <a href="{{ url("contest", contest.id, "ranking") }}">&larr; Back to Ranking</a>
+    |
+    <a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}">Edit Participation</a>
+  </div>
+
+  <div id="UserDetail_header">
+    <div id="UserDetail_summary">
+      <div>
+        <strong>{{ participation.user.first_name }} {{ participation.user.last_name }}</strong>
+      </div>
+      <div style="font-size: 0.8em; color: #666;">
+        {{ participation.user.username }}
+      </div>
+      {% if participation.team %}
+      <div style="font-size: 0.8em; margin-top: 10px;">
+        Team: {{ participation.team.name }}
+      </div>
+      {% endif %}
+    </div>
+    <div id="UserDetail_navigator">
+      <table>
+        <col class="name"/>
+        <col class="score"/>
+        <col class="rank"/>
+        <col class="show"/>
+        <thead>
+          <tr>
+            <td></td>
+            <td style="text-align: right;">Score</td>
+            <td style="text-align: right;">Rank</td>
+            <td></td>
+          </tr>
+        </thead>
+        <tbody id="UserDetail_scores">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="UserDetail_title"></div>
+
+  <div id="UserDetail_charts">
+    <div style="margin-bottom: 10px;"><strong>Score</strong></div>
+    <canvas id="UserDetail_score_chart" width="920" height="200"></canvas>
+    <div style="margin-top: 20px; margin-bottom: 10px;"><strong>Rank</strong></div>
+    <canvas id="UserDetail_rank_chart" width="920" height="200"></canvas>
+  </div>
+
+  <div id="UserDetail_submissions">
+  </div>
 </div>
-{% endfor %}
-
-<h2>Score History Charts</h2>
-
-{% for task in contest.tasks %}
-<div class="chart_container" style="margin-bottom: 30px;">
-  <h3>{{ task.title }} ({{ task.name }})</h3>
-  <canvas id="scoreCanvas_{{ task.id }}" width="700" height="200"></canvas>
-</div>
-{% endfor %}
-
-<h3>Total Score</h3>
-<canvas id="scoreCanvas_total" width="700" height="200"></canvas>
 
 <script src="{{ url("static", "js", "Chart.js") }}"></script>
 <script>
 (function() {
-  var taskHistoryJson = {{ task_history_json | tojson | safe }};
-  var contestStart = {{ contest.start.timestamp() }};
-  var contestEnd = {{ contest.stop.timestamp() }};
-  var tasks = {{ contest.tasks | map(attribute='id') | list | tojson | safe }};
-  var taskMaxScores = {
-    {% for task in contest.tasks %}
-    {{ task.id }}: {{ task.active_dataset.score_type_object.max_score if task.active_dataset else 100 }},
-    {% endfor %}
+  var userId = {{ user_id | tojson | safe }};
+  var userCount = {{ user_count }};
+  var usersData = {{ users_data | tojson | safe }};
+  var tasksData = {{ tasks_data | tojson | safe }};
+  var contestData = {{ contest_data | tojson | safe }};
+  var historyUrl = {{ history_url | tojson | safe }};
+  var submissionsUrl = {{ submissions_url | tojson | safe }};
+
+  var DataStore = {
+    users: usersData,
+    tasks: tasksData,
+    contests: {},
+    user_count: userCount,
+    global_max_score: contestData.max_score,
+    global_score_precision: contestData.score_precision,
+    contest_list: []
   };
-  var taskNames = {
-    {% for task in contest.tasks %}
-    {{ task.id }}: "{{ task.name }}",
-    {% endfor %}
+  DataStore.contests[contestData.key] = contestData;
+  DataStore.contest_list.push(contestData);
+
+  for (var t_id in tasksData) {
+    tasksData[t_id].contest = contestData.key;
+  }
+
+  var HistoryStore = {
+    history_t: [],
+    history_c: [],
+    history_g: []
   };
 
-  var intervals = [[contestStart, contestEnd]];
+  function round_to_str(value, ndigits) {
+    if (ndigits > 0) {
+      return value.toFixed(ndigits).replace(/\.?0+$/, "");
+    } else {
+      return value.toFixed(0);
+    }
+  }
 
-  for (var i = 0; i < tasks.length; i++) {
-    var taskId = tasks[i];
-    var canvas = document.getElementById('scoreCanvas_' + taskId);
-    if (!canvas) continue;
+  function format_time(seconds) {
+    var hours = Math.floor(seconds / 3600);
+    var minutes = Math.floor((seconds % 3600) / 60);
+    var secs = Math.floor(seconds % 60);
+    return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (secs < 10 ? "0" : "") + secs;
+  }
 
-    var taskData = taskHistoryJson[taskId];
-    var history = [];
-    if (taskData && taskData.history) {
-      for (var j = 0; j < taskData.history.length; j++) {
-        var entry = taskData.history[j];
-        history.push([entry.timestamp, entry.score, 0]);
+  function processHistory(data) {
+    var d = {};
+    for (var u_id in DataStore.users) {
+      d[u_id] = {};
+      for (var t_id in DataStore.tasks) {
+        d[u_id][t_id] = 0.0;
       }
     }
 
-    var maxScore = taskMaxScores[taskId] || 100;
-    Chart.draw_chart(
-      canvas,
-      0, maxScore,
-      0, 0,
-      intervals,
-      history,
-      [102, 102, 238],
-      [maxScore * 0.25, maxScore * 0.5, maxScore * 0.75]
-    );
+    HistoryStore.history_t = [];
+    HistoryStore.history_c = [];
+    HistoryStore.history_g = [];
+
+    for (var i = 0; i < data.length; i++) {
+      var user = data[i][0];
+      var task = data[i][1];
+      var time = data[i][2];
+      var score = data[i][3];
+
+      if (d[user]) {
+        d[user][task] = score;
+        HistoryStore.history_t.push([user, task, time, score]);
+
+        var contest_id = DataStore.tasks[task] ? DataStore.tasks[task].contest : contestData.key;
+        var tmp_score = 0.0;
+        for (var t_id in d[user]) {
+          if (DataStore.tasks[t_id] && DataStore.tasks[t_id].contest == contest_id) {
+            tmp_score += d[user][t_id];
+          }
+        }
+        HistoryStore.history_c.push([user, contest_id, time, tmp_score]);
+
+        tmp_score = 0.0;
+        for (var t_id in d[user]) {
+          tmp_score += d[user][t_id];
+        }
+        HistoryStore.history_g.push([user, time, tmp_score]);
+      }
+    }
   }
 
-  var totalCanvas = document.getElementById('scoreCanvas_total');
-  if (totalCanvas) {
-    var allHistory = [];
-    var currentScores = {};
-    for (var i = 0; i < tasks.length; i++) {
-      currentScores[tasks[i]] = 0;
+  function getScoreHistoryForTask(user_id, task_id) {
+    var result = [];
+    for (var i = 0; i < HistoryStore.history_t.length; i++) {
+      var entry = HistoryStore.history_t[i];
+      if (entry[0] == user_id && entry[1] == task_id) {
+        result.push([entry[2], entry[3], 0]);
+      }
     }
+    return result;
+  }
 
-    var allEvents = [];
-    for (var taskId in taskHistoryJson) {
-      var taskData = taskHistoryJson[taskId];
-      if (taskData && taskData.history) {
-        for (var j = 0; j < taskData.history.length; j++) {
-          var entry = taskData.history[j];
-          allEvents.push({
-            timestamp: entry.timestamp,
-            taskId: parseInt(taskId),
-            score: entry.score
-          });
+  function getScoreHistory(user_id) {
+    var result = [];
+    for (var i = 0; i < HistoryStore.history_g.length; i++) {
+      var entry = HistoryStore.history_g[i];
+      if (entry[0] == user_id) {
+        result.push([entry[1], entry[2], 0]);
+      }
+    }
+    return result;
+  }
+
+  function getRankHistoryForTask(user_id, task_id) {
+    var d = {};
+    for (var u_id in DataStore.users) {
+      d[u_id] = 0.0;
+    }
+    var above = 0;
+    var equal = DataStore.user_count;
+    var result = [];
+
+    for (var i = 0; i < HistoryStore.history_t.length; i++) {
+      var entry = HistoryStore.history_t[i];
+      var user = entry[0];
+      var task = entry[1];
+      var time = entry[2];
+      var score = entry[3];
+
+      if (task == task_id) {
+        if (user == user_id) {
+          d[user_id] = score;
+          var new_above = 0;
+          var new_equal = 0;
+          for (var s in d) {
+            if (d[s] > score) new_above++;
+            else if (d[s] == score) new_equal++;
+          }
+          if (new_above != above || new_equal != equal) {
+            above = new_above;
+            equal = new_equal;
+            result.push([time, above + 1, equal - 1]);
+          }
+        } else {
+          var changed = false;
+          if (d[user] <= d[user_id] && score > d[user_id]) {
+            above++;
+            changed = true;
+          } else if (d[user] > d[user_id] && score <= d[user_id]) {
+            above--;
+            changed = true;
+          }
+          if (d[user] == d[user_id]) {
+            equal--;
+            changed = true;
+          } else if (score == d[user_id]) {
+            equal++;
+            changed = true;
+          }
+          if (changed) {
+            result.push([time, above + 1, equal - 1]);
+          }
+          d[user] = score;
         }
       }
     }
-
-    allEvents.sort(function(a, b) { return a.timestamp - b.timestamp; });
-
-    for (var i = 0; i < allEvents.length; i++) {
-      var event = allEvents[i];
-      currentScores[event.taskId] = event.score;
-      var totalScore = 0;
-      for (var taskId in currentScores) {
-        totalScore += currentScores[taskId];
-      }
-      allHistory.push([event.timestamp, totalScore, 0]);
-    }
-
-    var totalMaxScore = 0;
-    for (var taskId in taskMaxScores) {
-      totalMaxScore += taskMaxScores[taskId];
-    }
-    if (totalMaxScore === 0) totalMaxScore = 100;
-
-    Chart.draw_chart(
-      totalCanvas,
-      0, totalMaxScore,
-      0, 0,
-      intervals,
-      allHistory,
-      [102, 102, 238],
-      [totalMaxScore * 0.25, totalMaxScore * 0.5, totalMaxScore * 0.75]
-    );
+    return result;
   }
+
+  function getRankHistory(user_id) {
+    var d = {};
+    for (var u_id in DataStore.users) {
+      d[u_id] = 0.0;
+    }
+    var above = 0;
+    var equal = DataStore.user_count;
+    var result = [];
+
+    for (var i = 0; i < HistoryStore.history_g.length; i++) {
+      var entry = HistoryStore.history_g[i];
+      var user = entry[0];
+      var time = entry[1];
+      var score = entry[2];
+
+      if (user == user_id) {
+        d[user_id] = score;
+        var new_above = 0;
+        var new_equal = 0;
+        for (var s in d) {
+          if (d[s] > score) new_above++;
+          else if (d[s] == score) new_equal++;
+        }
+        if (new_above != above || new_equal != equal) {
+          above = new_above;
+          equal = new_equal;
+          result.push([time, above + 1, equal - 1]);
+        }
+      } else {
+        var changed = false;
+        if (d[user] <= d[user_id] && score > d[user_id]) {
+          above++;
+          changed = true;
+        } else if (d[user] > d[user_id] && score <= d[user_id]) {
+          above--;
+          changed = true;
+        }
+        if (d[user] == d[user_id]) {
+          equal--;
+          changed = true;
+        } else if (score == d[user_id]) {
+          equal++;
+          changed = true;
+        }
+        if (changed) {
+          result.push([time, above + 1, equal - 1]);
+        }
+        d[user] = score;
+      }
+    }
+    return result;
+  }
+
+  var task_s = {};
+  var task_r = {};
+  var global_s = [];
+  var global_r = [];
+  var submissions = {};
+  var activeRow = null;
+
+  function buildNavigator() {
+    var tbody = document.getElementById('UserDetail_scores');
+    var html = '';
+
+    var globalScore = global_s.length > 0 ? global_s[global_s.length - 1][1] : 0;
+    var globalRank = global_r.length > 0 ? global_r[global_r.length - 1][1] : 1;
+
+    html += '<tr class="global" data-type="global">';
+    html += '<td class="name">Global</td>';
+    html += '<td class="score">' + round_to_str(globalScore, DataStore.global_score_precision) + '</td>';
+    html += '<td class="rank">' + globalRank + '</td>';
+    html += '<td class="btn"><a>Show</a></td>';
+    html += '</tr>';
+
+    for (var t_id in DataStore.tasks) {
+      var task = DataStore.tasks[t_id];
+      var taskScore = task_s[t_id] && task_s[t_id].length > 0 ? task_s[t_id][task_s[t_id].length - 1][1] : 0;
+      var taskRank = task_r[t_id] && task_r[t_id].length > 0 ? task_r[t_id][task_r[t_id].length - 1][1] : 1;
+
+      html += '<tr class="task" data-type="task" data-task="' + t_id + '">';
+      html += '<td class="name">' + task.name + '</td>';
+      html += '<td class="score">' + round_to_str(taskScore, task.score_precision) + '</td>';
+      html += '<td class="rank">' + taskRank + '</td>';
+      html += '<td class="btn"><a>Show</a></td>';
+      html += '</tr>';
+    }
+
+    tbody.innerHTML = html;
+
+    tbody.addEventListener('click', function(e) {
+      var btn = e.target.closest('td.btn');
+      if (!btn) return;
+
+      var row = btn.closest('tr');
+      if (activeRow) {
+        activeRow.classList.remove('active');
+      }
+      activeRow = row;
+      activeRow.classList.add('active');
+
+      var type = row.getAttribute('data-type');
+      if (type === 'global') {
+        showGlobal();
+      } else if (type === 'task') {
+        var taskId = row.getAttribute('data-task');
+        showTask(taskId);
+      }
+    });
+
+    var firstBtn = tbody.querySelector('td.btn');
+    if (firstBtn) {
+      firstBtn.click();
+    }
+  }
+
+  function drawCharts(ranges, max_score, history_s, history_r) {
+    var scoreCanvas = document.getElementById('UserDetail_score_chart');
+    var rankCanvas = document.getElementById('UserDetail_rank_chart');
+
+    Chart.draw_chart(scoreCanvas,
+      0, max_score, 0, 0,
+      ranges,
+      history_s,
+      [102, 102, 238],
+      [max_score * 0.25, max_score * 0.5, max_score * 0.75]);
+
+    Chart.draw_chart(rankCanvas,
+      userCount, 1, 1, userCount - 1,
+      ranges,
+      history_r,
+      [210, 50, 50],
+      [Math.ceil(userCount / 12), Math.ceil(userCount / 4), Math.floor(userCount / 2)]);
+  }
+
+  function showGlobal() {
+    document.getElementById('UserDetail_title').textContent = 'Global';
+    document.getElementById('UserDetail_submissions').innerHTML = '';
+
+    var intervals = [[contestData.begin, contestData.end]];
+    drawCharts(intervals, DataStore.global_max_score, global_s, global_r);
+  }
+
+  function showTask(taskId) {
+    var task = DataStore.tasks[taskId];
+    document.getElementById('UserDetail_title').textContent = task.name;
+
+    var intervals = [[contestData.begin, contestData.end]];
+    drawCharts(intervals, task.max_score, task_s[taskId] || [], task_r[taskId] || []);
+
+    renderSubmissionTable(taskId);
+  }
+
+  function renderSubmissionTable(taskId) {
+    var container = document.getElementById('UserDetail_submissions');
+    var task = DataStore.tasks[taskId];
+    var taskSubmissions = submissions[taskId] || [];
+
+    var html = '<table>';
+    html += '<thead><tr>';
+    html += '<th>Time</th>';
+    html += '<th>Score</th>';
+    html += '<th>Token</th>';
+    if (task.extra_headers && task.extra_headers.length > 0) {
+      for (var i = 0; i < task.extra_headers.length; i++) {
+        html += '<th>' + task.extra_headers[i] + '</th>';
+      }
+    }
+    html += '</tr></thead>';
+    html += '<tbody>';
+
+    if (taskSubmissions.length === 0) {
+      var colspan = 3 + (task.extra_headers ? task.extra_headers.length : 0);
+      html += '<tr><td colspan="' + colspan + '">no submissions</td></tr>';
+    } else {
+      for (var i = 0; i < taskSubmissions.length; i++) {
+        var sub = taskSubmissions[i];
+        var time = sub.time - contestData.begin;
+        html += '<tr>';
+        html += '<td>' + format_time(time) + '</td>';
+        html += '<td>' + round_to_str(sub.score, task.score_precision) + '</td>';
+        html += '<td>' + (sub.token ? 'Yes' : 'No') + '</td>';
+        if (sub.extra && sub.extra.length > 0) {
+          for (var j = 0; j < sub.extra.length; j++) {
+            html += '<td>' + round_to_str(parseFloat(sub.extra[j]), task.score_precision) + '</td>';
+          }
+        }
+        html += '</tr>';
+      }
+    }
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  function loadData() {
+    fetch(historyUrl)
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        processHistory(data);
+
+        for (var t_id in DataStore.tasks) {
+          task_s[t_id] = getScoreHistoryForTask(userId, t_id);
+          task_r[t_id] = getRankHistoryForTask(userId, t_id);
+        }
+        global_s = getScoreHistory(userId);
+        global_r = getRankHistory(userId);
+
+        return fetch(submissionsUrl);
+      })
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        for (var t_id in DataStore.tasks) {
+          submissions[t_id] = [];
+        }
+        for (var i = 0; i < data.length; i++) {
+          var sub = data[i];
+          if (submissions[sub.task]) {
+            submissions[sub.task].push(sub);
+          }
+        }
+
+        buildNavigator();
+      })
+      .catch(function(error) {
+        console.error('Error loading data:', error);
+        document.getElementById('UserDetail_title').textContent = 'Error loading data';
+      });
+  }
+
+  loadData();
 })();
 </script>
 

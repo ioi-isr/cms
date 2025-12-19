@@ -55,7 +55,8 @@ from .contestdelayrequest import \
 from .contestranking import \
     RankingHandler, \
     ScoreHistoryHandler, \
-    ParticipationDetailHandler
+    ParticipationDetailHandler, \
+    ParticipationSubmissionsHandler
 from .contestsubmission import \
     ContestSubmissionsHandler, \
     ContestUserTestsHandler
@@ -211,6 +212,7 @@ HANDLERS = [
     (r"/contest/([0-9]+)/ranking/history", ScoreHistoryHandler),
     (r"/contest/([0-9]+)/ranking/([a-z]+)", RankingHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/detail", ParticipationDetailHandler),
+    (r"/contest/([0-9]+)/user/([0-9]+)/submissions", ParticipationSubmissionsHandler),
 
     # Tasks
 
