@@ -44,7 +44,7 @@
 
 <script>
 (function() {
-  var taskHistory = {{ task_history | tojson | safe }};
+  var taskHistory = {{ task_history_json | tojson | safe }};
   var canvas = document.getElementById('scoreCanvas');
   var ctx = canvas.getContext('2d');
   
@@ -61,7 +61,7 @@
     
     for (var i = 0; i < task.history.length; i++) {
       allPoints.push({
-        timestamp: task.history[i].timestamp_epoch,
+        timestamp: task.history[i].timestamp,
         score: task.history[i].score,
         taskId: taskId,
         taskName: task.task_name
@@ -108,7 +108,7 @@
     var prevX = null, prevY = null;
     for (var i = 0; i < task.history.length; i++) {
       var point = task.history[i];
-      var x = padding + ((point.timestamp_epoch - minTime) / (maxTime - minTime || 1)) * chartWidth;
+      var x = padding + ((point.timestamp - minTime) / (maxTime - minTime || 1)) * chartWidth;
       var y = canvas.height - padding - (point.score / maxScore) * chartHeight;
       
       // Draw point
