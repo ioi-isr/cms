@@ -47,6 +47,7 @@ if typing.TYPE_CHECKING:
     from cms.grading.scoretypes import ScoreType
     from cms.grading.tasktypes import TaskType
     from . import Submission, UserTest
+    from .scorecache import ParticipationTaskScore
 
 
 class Task(Base):
@@ -281,6 +282,12 @@ class Task(Base):
 
     statement_views: list["StatementView"] = relationship(
         "StatementView",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="task")
+
+    participation_scores: list["ParticipationTaskScore"] = relationship(
+        "ParticipationTaskScore",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="task")

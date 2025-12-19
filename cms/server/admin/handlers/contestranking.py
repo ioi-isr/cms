@@ -28,12 +28,14 @@
 
 import csv
 import io
+import json
 from collections import namedtuple
 
+import tornado.web
 from sqlalchemy.orm import joinedload
 
-from cms.db import Contest, StatementView
-from cms.grading.scoring import task_score
+from cms.db import Contest, Participation, ScoreHistory
+from cms.grading.scorecache import get_cached_score
 from .base import BaseHandler, require_permission
 
 
@@ -78,9 +80,12 @@ class RankingHandler(BaseHandler):
             total_score = 0.0
             partial = False
             for task in self.contest.tasks:
-                t_score, t_partial = task_score(p, task, rounded=True)
-                
-                has_submissions = any(s.task_id == task.id and s.official 
+                t_score, t_partial = get_cached_score(
+                    self.sql_session, p, task
+                )
+                t_score = round(t_score, task.score_precision)
+
+                has_submissions = any(s.task_id == task.id and s.official
                                      for s in p.submissions)
                 has_opened = (p.id, task.id) in statement_views_set
                 p.task_statuses.append(
@@ -169,3 +174,86 @@ class RankingHandler(BaseHandler):
         if not status.has_opened:
             return "!" + star
         return star
+
+
+class ScoreHistoryHandler(BaseHandler):
+    """Returns the score history for a contest as JSON.
+
+    This endpoint provides score history data similar to RWS's /history
+    endpoint, which can be used to display score/rank progress over time.
+
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id):
+        self.safe_get_item(Contest, contest_id)
+
+        history = (
+            self.sql_session.query(ScoreHistory)
+            .join(Participation)
+            .filter(Participation.contest_id == contest_id)
+            .order_by(ScoreHistory.timestamp)
+            .all()
+        )
+
+        result = [
+            {
+                "participation_id": h.participation_id,
+                "task_id": h.task_id,
+                "timestamp": h.timestamp.timestamp(),
+                "score": h.score,
+            }
+            for h in history
+        ]
+
+        self.set_header("Content-Type", "application/json")
+        self.write(json.dumps(result))
+
+
+class ParticipationDetailHandler(BaseHandler):
+    """Shows detailed score/rank progress for a participation.
+
+    This handler provides a user detail view similar to RWS's UserDetail,
+    showing score and rank progress over time for a specific participation.
+
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id, participation_id):
+        self.safe_get_item(Contest, contest_id)
+
+        participation = self.safe_get_item(Participation, participation_id)
+        if participation.contest_id != int(contest_id):
+            raise tornado.web.HTTPError(404, "Participation not in contest")
+
+        contest = (
+            self.sql_session.query(Contest)
+            .filter(Contest.id == contest_id)
+            .options(joinedload("tasks"))
+            .first()
+        )
+
+        history = (
+            self.sql_session.query(ScoreHistory)
+            .filter(ScoreHistory.participation_id == participation_id)
+            .order_by(ScoreHistory.timestamp)
+            .all()
+        )
+
+        task_history = {}
+        for task in contest.tasks:
+            task_history[task.id] = {
+                "task_name": task.name,
+                "task_title": task.title,
+                "history": [],
+            }
+
+        for h in history:
+            if h.task_id in task_history:
+                task_history[h.task_id]["history"].append({
+                    "timestamp": h.timestamp.timestamp(),
+                    "score": h.score,
+                })
+
+        self.r_params = self.render_params()
+        self.r_params["participation"] = participation
+        self.r_params["task_history"] = task_history
+        self.render("participation_detail.html", **self.r_params)
