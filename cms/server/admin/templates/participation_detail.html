@@ -58,7 +58,7 @@
   var tasks = {{ contest.tasks | map(attribute='id') | list | tojson | safe }};
   var taskMaxScores = {
     {% for task in contest.tasks %}
-    {{ task.id }}: {{ task.max_score }},
+    {{ task.id }}: {{ task.active_dataset.score_type_object.max_score if task.active_dataset else 100 }},
     {% endfor %}
   };
   var taskNames = {
