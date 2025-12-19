@@ -185,19 +185,27 @@ class ScoreHistoryHandler(BaseHandler):
     This matches the format expected by RWS's HistoryStore.js for
     computing score and rank histories.
 
+    By default, excludes hidden participations to match ranking page behavior.
+    Use ?include_hidden=1 to include hidden participations.
+
     """
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
         self.safe_get_item(Contest, contest_id)
 
-        history = (
+        include_hidden = self.get_argument("include_hidden", "0") == "1"
+
+        query = (
             self.sql_session.query(ScoreHistory)
             .join(Participation)
             .filter(Participation.contest_id == contest_id)
             .options(joinedload(ScoreHistory.participation).joinedload(Participation.user))
-            .order_by(ScoreHistory.timestamp)
-            .all()
         )
+
+        if not include_hidden:
+            query = query.filter(Participation.hidden.is_(False))
+
+        history = query.order_by(ScoreHistory.timestamp).all()
 
         result = [
             [
@@ -218,57 +226,143 @@ class ParticipationDetailHandler(BaseHandler):
 
     This handler provides a user detail view similar to RWS's UserDetail,
     showing score and rank progress over time for a specific participation.
+    It includes global and per-task score/rank charts, a navigator table,
+    and a submission table for each task.
 
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id, participation_id):
+    def get(self, contest_id, user_id):
         self.contest = (
             self.sql_session.query(Contest)
             .filter(Contest.id == contest_id)
             .options(joinedload("tasks"))
+            .options(joinedload("tasks.active_dataset"))
+            .options(joinedload("participations"))
+            .options(joinedload("participations.user"))
             .first()
         )
         if self.contest is None:
             raise tornado.web.HTTPError(404, "Contest not found")
 
-        participation = self.safe_get_item(Participation, participation_id)
-        if participation.contest_id != int(contest_id):
-            raise tornado.web.HTTPError(404, "Participation not in contest")
-
-        history = (
-            self.sql_session.query(ScoreHistory)
-            .filter(ScoreHistory.participation_id == participation_id)
-            .order_by(ScoreHistory.timestamp)
-            .all()
+        participation = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == contest_id)
+            .filter(Participation.user_id == user_id)
+            .first()
         )
+        if participation is None:
+            raise tornado.web.HTTPError(404, "Participation not found")
 
-        task_history = {}
-        task_history_json = {}
+        visible_participations = [
+            p for p in self.contest.participations if not p.hidden
+        ]
+        user_count = len(visible_participations)
+
+        users_data = {}
+        for p in visible_participations:
+            users_data[str(p.user_id)] = {
+                "f_name": p.user.first_name or "",
+                "l_name": p.user.last_name or "",
+            }
+
+        tasks_data = {}
+        total_max_score = 0.0
         for task in self.contest.tasks:
-            task_history[task.id] = {
-                "task_name": task.name,
-                "task_title": task.title,
-                "history": [],
+            max_score = 100.0
+            if task.active_dataset:
+                try:
+                    max_score = task.active_dataset.score_type_object.max_score
+                except Exception:
+                    pass
+            tasks_data[str(task.id)] = {
+                "key": str(task.id),
+                "name": task.title,
+                "short_name": task.name,
+                "contest": str(self.contest.id),
+                "max_score": max_score,
+                "score_precision": task.score_precision,
+                "extra_headers": [],
             }
-            task_history_json[task.id] = {
-                "task_name": task.name,
-                "task_title": task.title,
-                "history": [],
-            }
+            total_max_score += max_score
 
-        for h in history:
-            if h.task_id in task_history:
-                task_history[h.task_id]["history"].append({
-                    "timestamp": h.timestamp,
-                    "score": h.score,
-                })
-                task_history_json[h.task_id]["history"].append({
-                    "timestamp": h.timestamp.timestamp(),
-                    "score": h.score,
-                })
+        contest_data = {
+            "key": str(self.contest.id),
+            "name": self.contest.name,
+            "begin": int(self.contest.start.timestamp()),
+            "end": int(self.contest.stop.timestamp()),
+            "max_score": total_max_score,
+            "score_precision": self.contest.score_precision,
+        }
 
         self.r_params = self.render_params()
         self.r_params["participation"] = participation
-        self.r_params["task_history"] = task_history
-        self.r_params["task_history_json"] = task_history_json
+        self.r_params["user_id"] = str(user_id)
+        self.r_params["user_count"] = user_count
+        self.r_params["users_data"] = users_data
+        self.r_params["tasks_data"] = tasks_data
+        self.r_params["contest_data"] = contest_data
+        self.r_params["history_url"] = self.url(
+            "contest", contest_id, "ranking", "history"
+        )
+        self.r_params["submissions_url"] = self.url(
+            "contest", contest_id, "user", user_id, "submissions"
+        )
         self.render("participation_detail.html", **self.r_params)
+
+
+class ParticipationSubmissionsHandler(BaseHandler):
+    """Returns submissions for a participation as JSON in RWS format.
+
+    This endpoint provides submission data in the format expected by
+    RWS's UserDetail.js for displaying the submission table.
+
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id, user_id):
+        from cms.db import Submission
+
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        participation = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == contest_id)
+            .filter(Participation.user_id == user_id)
+            .first()
+        )
+        if participation is None:
+            raise tornado.web.HTTPError(404, "Participation not found")
+
+        submissions = (
+            self.sql_session.query(Submission)
+            .filter(Submission.participation_id == participation.id)
+            .filter(Submission.official.is_(True))
+            .options(joinedload(Submission.token))
+            .options(joinedload(Submission.results))
+            .order_by(Submission.timestamp)
+            .all()
+        )
+
+        result = []
+        for s in submissions:
+            sr = s.get_result(self.contest.tasks[0].active_dataset if self.contest.tasks else None)
+            score = 0.0
+            if sr is not None and sr.score is not None:
+                score = sr.score
+
+            for task in self.contest.tasks:
+                if task.id == s.task_id:
+                    sr = s.get_result(task.active_dataset)
+                    if sr is not None and sr.score is not None:
+                        score = sr.score
+                    break
+
+            result.append({
+                "task": str(s.task_id),
+                "time": int(s.timestamp.timestamp()),
+                "score": score,
+                "token": s.token is not None,
+                "extra": [],
+            })
+
+        self.set_header("Content-Type", "application/json")
+        self.write(json.dumps(result))
