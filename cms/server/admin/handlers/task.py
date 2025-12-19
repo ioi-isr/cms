@@ -302,6 +302,13 @@ class AddStatementHandler(BaseHandler):
                 "The language code can be any string.")
             self.redirect(fallback_page)
             return
+        if "statement" not in self.request.files or len(self.request.files["statement"]) == 0:
+            self.service.add_notification(
+                make_datetime(),
+                "No statement file provided",
+                "A PDF statement file is required.")
+            self.redirect(fallback_page)
+            return
         statement = self.request.files["statement"][0]
         if not statement["filename"].endswith(".pdf"):
             self.service.add_notification(
@@ -314,12 +321,17 @@ class AddStatementHandler(BaseHandler):
         # Check for optional source file (DOC/DOCX/TEX)
         source_file = None
         source_digest = None
+        source_extension = None
         if "source" in self.request.files and len(self.request.files["source"]) > 0:
             source_file = self.request.files["source"][0]
             source_filename = source_file["filename"].lower()
-            if not (source_filename.endswith(".doc") or
-                    source_filename.endswith(".docx") or
-                    source_filename.endswith(".tex")):
+            if source_filename.endswith(".docx"):
+                source_extension = ".docx"
+            elif source_filename.endswith(".doc"):
+                source_extension = ".doc"
+            elif source_filename.endswith(".tex"):
+                source_extension = ".tex"
+            else:
                 self.service.add_notification(
                     make_datetime(),
                     "Invalid source file",
@@ -363,7 +375,8 @@ class AddStatementHandler(BaseHandler):
         task = self.safe_get_item(Task, task_id)
         self.contest = task.contest
 
-        statement = Statement(language, digest, task=task, source_digest=source_digest)
+        statement = Statement(language, digest, task=task, source_digest=source_digest,
+                               source_extension=source_extension)
         self.sql_session.add(statement)
 
         if self.try_commit():

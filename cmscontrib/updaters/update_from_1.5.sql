@@ -302,7 +302,8 @@ ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participa
 
 ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
--- Add source_digest column to statements table for storing source files (DOC/DOCX/TEX)
+-- Add source_digest and source_extension columns to statements table for storing source files (DOC/DOCX/TEX)
 ALTER TABLE public.statements ADD COLUMN source_digest public.digest;
+ALTER TABLE public.statements ADD COLUMN source_extension character varying;
 
 COMMIT;

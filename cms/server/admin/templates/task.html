@@ -187,7 +187,7 @@ window.updateMultiDeleteMaster = function(dataset_id) {
                 <td>
                   <a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}">Statement for language "{{ statement.language }}"</a>
                   {% if statement.source_digest %}
-                  [<a href="{{ url("file", statement.source_digest, task.name + "_" + statement.language + "_source") }}">source</a>]
+                  [<a href="{{ url("file", statement.source_digest, task.name + "_" + statement.language + (statement.source_extension or "_source")) }}">source</a>]
                   {% endif %}
                 </td>
                 <td>

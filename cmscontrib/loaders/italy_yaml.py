@@ -707,6 +707,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 )
                 # Look for source file with same base name (.doc, .docx, .tex)
                 source_digest = None
+                source_extension = None
                 if statement_path is not None:
                     base_path = statement_path[:-4]  # Remove .pdf extension
                     for ext in [".doc", ".docx", ".tex"]:
@@ -716,9 +717,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                                 source_path,
                                 "Statement source for task %s (lang: %s)" % (name, lang_code),
                             )
+                            source_extension = ext
                             logger.info("Found source file for statement: %s", source_path)
                             break
-                args["statements"][lang_code] = Statement(lang_code, digest, source_digest=source_digest)
+                args["statements"][lang_code] = Statement(lang_code, digest, source_digest=source_digest,
+                                                          source_extension=source_extension)
 
             args["primary_statements"] = [primary_language]
 

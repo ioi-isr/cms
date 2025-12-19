@@ -19,8 +19,8 @@
 
 Used by DumpImporter and DumpUpdater.
 
-This version adds the source_digest field to Statement objects,
-allowing storage of source files (DOC/DOCX/TEX) alongside PDF statements.
+This version adds the source_digest and source_extension fields to Statement
+objects, allowing storage of source files (DOC/DOCX/TEX) alongside PDF statements.
 
 """
 
@@ -37,5 +37,6 @@ class Updater:
                 continue
             if v["_class"] == "Statement":
                 v["source_digest"] = None
+                v["source_extension"] = None
 
         return self.objs
