@@ -342,19 +342,18 @@ class ParticipationSubmissionsHandler(BaseHandler):
             .all()
         )
 
+        dataset_by_task_id = {
+            task.id: task.active_dataset for task in self.contest.tasks
+        }
+
         result = []
         for s in submissions:
-            sr = s.get_result(self.contest.tasks[0].active_dataset if self.contest.tasks else None)
             score = 0.0
-            if sr is not None and sr.score is not None:
-                score = sr.score
-
-            for task in self.contest.tasks:
-                if task.id == s.task_id:
-                    sr = s.get_result(task.active_dataset)
-                    if sr is not None and sr.score is not None:
-                        score = sr.score
-                    break
+            dataset = dataset_by_task_id.get(s.task_id)
+            if dataset is not None:
+                sr = s.get_result(dataset)
+                if sr is not None and sr.score is not None:
+                    score = sr.score
 
             result.append({
                 "task": str(s.task_id),
