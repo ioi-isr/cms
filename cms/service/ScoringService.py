@@ -29,6 +29,7 @@ import logging
 
 from cms import ServiceCoord, config
 from cms.db import SessionGen, Submission, Dataset, get_submission_results
+from cms.grading.scorecache import update_score_cache, invalidate_score_cache
 from cms.io import Executor, TriggeredService, rpc_method
 from cms.io.priorityqueue import QueueEntry
 from cmscommon.datetime import make_datetime
@@ -103,6 +104,10 @@ class ScoringExecutor(Executor[ScoringOperation]):
 
             if submission_result.scored_at is None:
                 submission_result.scored_at = make_datetime()
+
+            # Update score cache for AWS ranking.
+            if dataset is submission.task.active_dataset:
+                update_score_cache(session, submission)
 
             # Store it.
             session.commit()
@@ -226,6 +231,14 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
                     temp_queue.append((
                         ScoringOperation(sr.submission_id, sr.dataset_id),
                         sr.submission.timestamp))
+
+            # Invalidate score cache for affected participation/task pairs.
+            invalidate_score_cache(
+                session,
+                participation_id=participation_id,
+                task_id=task_id,
+                contest_id=contest_id,
+            )
 
             session.commit()
 

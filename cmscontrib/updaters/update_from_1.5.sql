@@ -161,4 +161,79 @@ ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participa
 
 ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+-- Score cache for AWS ranking performance
+CREATE TABLE public.participation_task_scores (
+    id integer NOT NULL,
+    participation_id integer NOT NULL,
+    task_id integer NOT NULL,
+    score double precision NOT NULL DEFAULT 0.0,
+    partial boolean NOT NULL DEFAULT false,
+    subtask_max_scores jsonb,
+    max_tokened_score double precision NOT NULL DEFAULT 0.0,
+    last_submission_score double precision,
+    last_update timestamp without time zone NOT NULL
+);
+
+CREATE SEQUENCE public.participation_task_scores_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.participation_task_scores_id_seq OWNED BY public.participation_task_scores.id;
+
+ALTER TABLE ONLY public.participation_task_scores ALTER COLUMN id SET DEFAULT nextval('public.participation_task_scores_id_seq'::regclass);
+
+ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_participation_id_task_id_key UNIQUE (participation_id, task_id);
+
+CREATE INDEX ix_participation_task_scores_participation_id ON public.participation_task_scores USING btree (participation_id);
+
+CREATE INDEX ix_participation_task_scores_task_id ON public.participation_task_scores USING btree (task_id);
+
+ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+-- Score history for user detail view
+CREATE TABLE public.score_history (
+    id integer NOT NULL,
+    participation_id integer NOT NULL,
+    task_id integer NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL,
+    score double precision NOT NULL,
+    submission_id integer NOT NULL
+);
+
+CREATE SEQUENCE public.score_history_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.score_history_id_seq OWNED BY public.score_history.id;
+
+ALTER TABLE ONLY public.score_history ALTER COLUMN id SET DEFAULT nextval('public.score_history_id_seq'::regclass);
+
+ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_pkey PRIMARY KEY (id);
+
+CREATE INDEX ix_score_history_participation_id ON public.score_history USING btree (participation_id);
+
+CREATE INDEX ix_score_history_task_id ON public.score_history USING btree (task_id);
+
+CREATE INDEX ix_score_history_timestamp ON public.score_history USING btree ("timestamp");
+
+CREATE INDEX ix_score_history_submission_id ON public.score_history USING btree (submission_id);
+
+ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.submissions(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
 COMMIT;
