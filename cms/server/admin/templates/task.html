@@ -589,14 +589,13 @@ window.updateMultiDeleteMaster = function(dataset_id) {
           {% endif %}
         {% endif %}
       {% endfor %}
-      <h4>Subtask Validators
+      <h4>Subtask Validators<span class="info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid."></span>
       </h4>
-      <p>Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid.</p>
       {% if ds_ns.total_not_validated > 0 %}
       <p style="color: orange;"><strong>Warning:</strong> {{ ds_ns.total_not_validated }} testcase(s) have not been validated. Click "rerun validators" to validate them.</p>
       [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
       {% endif %}
-      <table class="bordered">
+      <table class="bordered subtask-validators">
         <thead>
           <tr>
             <th>Subtask</th>
@@ -705,13 +704,12 @@ window.updateMultiDeleteMaster = function(dataset_id) {
 
   <!-- Model Solutions for this dataset -->
 
-  <h4 id="title_model_solutions_{{ dataset.id }}" class="toggling_on">Model Solutions
+  <h4 id="title_model_solutions_{{ dataset.id }}" class="toggling_on">Model Solutions<span class="info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly."></span>
 {% if admin.permission_all %}
     [<a href="{{ url("dataset", dataset.id, "model_solutions", "add") }}">add</a>]
 {% endif %}
   </h4>
     <div id="model_solutions_{{ dataset.id }}" class="task_dataset_model_solutions">
-      <p>Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.</p>
 {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
       <p>
         <strong>Reevaluate all model solutions:</strong>
