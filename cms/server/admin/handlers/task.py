@@ -334,16 +334,13 @@ class AddStatementHandler(BaseHandler):
                 "The language code can be any string.")
             self.redirect(fallback_page)
             return
-
-        # Check if a file was uploaded
-        if "statement" not in self.request.files:
+        if "statement" not in self.request.files or len(self.request.files["statement"]) == 0:
             self.service.add_notification(
                 make_datetime(),
-                "No file selected",
-                "Please select a PDF file to upload.")
+                "No statement file provided",
+                "A PDF statement file is required.")
             self.redirect(fallback_page)
             return
-
         statement = self.request.files["statement"][0]
 
         # Check for empty file
@@ -361,6 +358,28 @@ class AddStatementHandler(BaseHandler):
                 "The task statement must be a .pdf file.")
             self.redirect(fallback_page)
             return
+
+        # Check for optional source file (DOC/DOCX/TEX)
+        source_file = None
+        source_digest = None
+        source_extension = None
+        if "source" in self.request.files and len(self.request.files["source"]) > 0:
+            source_file = self.request.files["source"][0]
+            source_filename = source_file["filename"].lower()
+            if source_filename.endswith(".docx"):
+                source_extension = ".docx"
+            elif source_filename.endswith(".doc"):
+                source_extension = ".doc"
+            elif source_filename.endswith(".tex"):
+                source_extension = ".tex"
+            else:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid source file",
+                    "The source file must be a .doc, .docx, or .tex file.")
+                self.redirect(fallback_page)
+                return
+
         task_name = task.name
         self.sql_session.close()
 
@@ -376,6 +395,20 @@ class AddStatementHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
+        # Store source file if provided
+        if source_file is not None:
+            try:
+                source_digest = self.service.file_cacher.put_file_content(
+                    source_file["body"],
+                    "Statement source for task %s (lang: %s)" % (task_name, language))
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Source file storage failed",
+                    repr(error))
+                self.redirect(fallback_page)
+                return
+
         # TODO verify that there's no other Statement with that language
         # otherwise we'd trigger an IntegrityError for constraint violation
 
@@ -383,7 +416,8 @@ class AddStatementHandler(BaseHandler):
         task = self.safe_get_item(Task, task_id)
         self.contest = task.contest
 
-        statement = Statement(language, digest, task=task)
+        statement = Statement(language, digest, task=task, source_digest=source_digest,
+                               source_extension=source_extension)
         self.sql_session.add(statement)
 
         if self.try_commit():
