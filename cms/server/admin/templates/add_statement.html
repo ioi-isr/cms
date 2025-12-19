@@ -7,7 +7,8 @@
 <form enctype="multipart/form-data" action="{{ url("task", task.id, "statements", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Language code: <input type="text" name="language"/><br/>
-  <input type="file" name="statement"/><br/>
+  Statement (PDF): <input type="file" name="statement" accept=".pdf"/><br/>
+  Source file (optional, DOC/DOCX/TEX): <input type="file" name="source" accept=".doc,.docx,.tex"/><br/>
   <input type="submit" value="Upload">
   <input type="Reset" >
 </form>

@@ -346,6 +346,9 @@ def enumerate_files(
 
     task_q = contest_q.join(Contest.tasks)
     queries.append(task_q.join(Task.statements).with_entities(Statement.digest))
+    queries.append(task_q.join(Task.statements)
+                   .filter(Statement.source_digest != None)
+                   .with_entities(Statement.source_digest))
     queries.append(task_q.join(Task.attachments)
                    .with_entities(Attachment.digest))
 
