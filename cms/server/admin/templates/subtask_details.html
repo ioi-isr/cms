@@ -293,106 +293,108 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% endblock js_init %}
 
 {% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) %}
-<h3>{{ title }}</h3>
-{% if testcases|length == 0 %}
-<p>No testcases in this section.</p>
-{% else %}
-<div>
-  {% if validator %}
-  <p>
-    Filter:
-    <a href="javascript:void(0);" class="filter-btn" data-filter="all" onclick="filterTestcases('{{ table_id }}', 'all')" style="font-weight: bold; text-decoration: underline;">All</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="passed" onclick="filterTestcases('{{ table_id }}', 'passed')">Passed</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="failed" onclick="filterTestcases('{{ table_id }}', 'failed')">Failed</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="error" onclick="filterTestcases('{{ table_id }}', 'error')">Error</a> |
-    <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('{{ table_id }}', 'not_validated')">Not validated</a>
-  </p>
-  {% endif %}
-  <table id="{{ table_id }}" class="bordered">
-    <thead>
-      <tr>
-        {% if admin.permission_all %}
-        <th><input type="checkbox" class="select-all-checkbox" onclick="toggleSelectAll('{{ table_id }}', this)" title="Select all visible testcases"></th>
-        {% endif %}
-        <th>Codename</th>
-        <th>Input</th>
-        <th>Output</th>
-        {% if validator %}
-        <th>Status</th>
-        <th>Stderr</th>
-        {% endif %}
-        {% if admin.permission_all %}
-        <th>Ops</th>
-        {% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for tc_info in testcases %}
-      {% set status = 'none' %}
-      {% if validator %}
-        {% if tc_info.result %}
-          {% if tc_info.result.passed %}
-            {% set status = 'passed' %}
-          {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
-            {% set status = 'failed' %}
-          {% else %}
-            {% set status = 'error' %}
+<div class="subtask-table-card">
+  <h3 class="subtask-section-title">{{ title }}</h3>
+  {% if testcases|length == 0 %}
+  <p class="muted">No testcases in this section.</p>
+  {% else %}
+  <div>
+    {% if validator %}
+    <p class="filter-row">
+      <span class="muted">Filter:</span>
+      <a href="javascript:void(0);" class="filter-btn" data-filter="all" onclick="filterTestcases('{{ table_id }}', 'all')" style="font-weight: bold; text-decoration: underline;">All</a> |
+      <a href="javascript:void(0);" class="filter-btn" data-filter="passed" onclick="filterTestcases('{{ table_id }}', 'passed')">Passed</a> |
+      <a href="javascript:void(0);" class="filter-btn" data-filter="failed" onclick="filterTestcases('{{ table_id }}', 'failed')">Failed</a> |
+      <a href="javascript:void(0);" class="filter-btn" data-filter="error" onclick="filterTestcases('{{ table_id }}', 'error')">Error</a> |
+      <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('{{ table_id }}', 'not_validated')">Not validated</a>
+    </p>
+    {% endif %}
+    <table id="{{ table_id }}" class="bordered">
+      <thead>
+        <tr>
+          {% if admin.permission_all %}
+          <th><input type="checkbox" class="select-all-checkbox" onclick="toggleSelectAll('{{ table_id }}', this)" title="Select all visible testcases"></th>
           {% endif %}
-        {% else %}
-          {% set status = 'not_validated' %}
-        {% endif %}
-      {% endif %}
-      <tr data-status="{{ status }}">
-        {% if admin.permission_all %}
-        <td><input type="checkbox" class="tc-select-checkbox" value="{{ tc_info.testcase.id }}" data-codename="{{ tc_info.codename }}" onchange="updateSelectAllState('{{ table_id }}')"></td>
-        {% endif %}
-        <td>{{ tc_info.codename }}</td>
-        <td>
-          <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
-        </td>
-        <td>
-          <a href="javascript:void(0);" onclick="utils.show_file('output_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename)) }}')">Show output</a>
-        </td>
+          <th>Codename</th>
+          <th>Input</th>
+          <th>Output</th>
+          {% if validator %}
+          <th>Status</th>
+          <th>Stderr</th>
+          {% endif %}
+          {% if admin.permission_all %}
+          <th>Ops</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for tc_info in testcases %}
+        {% set status = 'none' %}
         {% if validator %}
-        <td>
           {% if tc_info.result %}
             {% if tc_info.result.passed %}
-              <span style="color: green;">Passed</span>
+              {% set status = 'passed' %}
             {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
-              <span style="color: red;">Failed</span>
+              {% set status = 'failed' %}
             {% else %}
-              <span style="color: orange;">Error ({{ tc_info.result.exit_status }})</span>
+              {% set status = 'error' %}
             {% endif %}
           {% else %}
-            <span style="color: gray;">Not validated</span>
+            {% set status = 'not_validated' %}
           {% endif %}
-        </td>
-        <td>
-          {% if tc_info.result and tc_info.result.stderr %}
-            {{ tc_info.result.stderr }}
-          {% else %}
-            -
+        {% endif %}
+        <tr data-status="{{ status }}">
+          {% if admin.permission_all %}
+          <td><input type="checkbox" class="tc-select-checkbox" value="{{ tc_info.testcase.id }}" data-codename="{{ tc_info.codename }}" onchange="updateSelectAllState('{{ table_id }}')"></td>
           {% endif %}
-        </td>
-        {% endif %}
-        {% if admin.permission_all %}
-        <td>
-          <a href="javascript:void(0);" onclick="promptRename('{{ dataset.id }}', '{{ tc_info.testcase.id }}', '{{ tc_info.codename }}', '{{ subtask_index }}')">rename</a>
-        </td>
-        {% endif %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% if admin.permission_all %}
-  <div id="{{ table_id }}_batch_actions" style="display: none; margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 4px;">
-    <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
-    <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}', '{{ uses_regex|lower }}', '{{ suggested_prefix|default("", true) }}')" style="margin-left: 10px;">Add prefix</a> |
-    <a href="javascript:void(0);" onclick="batchRemoveSubstring('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}')">Remove common substring</a>
+          <td>{{ tc_info.codename }}</td>
+          <td>
+            <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
+          </td>
+          <td>
+            <a href="javascript:void(0);" onclick="utils.show_file('output_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename)) }}')">Show output</a>
+          </td>
+          {% if validator %}
+          <td>
+            {% if tc_info.result %}
+              {% if tc_info.result.passed %}
+                <span style="color: green;">Passed</span>
+              {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
+                <span style="color: red;">Failed</span>
+              {% else %}
+                <span style="color: orange;">Error ({{ tc_info.result.exit_status }})</span>
+              {% endif %}
+            {% else %}
+              <span style="color: gray;">Not validated</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if tc_info.result and tc_info.result.stderr %}
+              {{ tc_info.result.stderr }}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          {% endif %}
+          {% if admin.permission_all %}
+          <td>
+            <a href="javascript:void(0);" onclick="promptRename('{{ dataset.id }}', '{{ tc_info.testcase.id }}', '{{ tc_info.codename }}', '{{ subtask_index }}')">rename</a>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if admin.permission_all %}
+    <div id="{{ table_id }}_batch_actions" class="batch-actions">
+      <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
+      <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}', '{{ uses_regex|lower }}', '{{ suggested_prefix|default("", true) }}')" style="margin-left: 10px;">Add prefix</a> |
+      <a href="javascript:void(0);" onclick="batchRemoveSubstring('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}')">Remove common substring</a>
+    </div>
+    {% endif %}
   </div>
   {% endif %}
 </div>
-{% endif %}
 {% endmacro %}
 
 {% block core %}
@@ -472,6 +474,8 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% endif %}
 
 {{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
+
+<div class="subtask-section-divider"></div>
 
 {{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
 
