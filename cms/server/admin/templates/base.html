@@ -22,8 +22,49 @@
     <title>Admin: {{ contest.description }}</title>
     {% endif %}
 
-    <script>
+<script>
 <!--
+function applyColorMode(mode) {
+    var bodyEl = document.body;
+    if (!bodyEl) {
+        return;
+    }
+    if (mode === 'light') {
+        bodyEl.classList.add('light-mode');
+    } else {
+        bodyEl.classList.remove('light-mode');
+    }
+    var toggle = document.getElementById('mode_toggle');
+    var toggleLabel = document.getElementById('mode_toggle_label');
+    if (toggle) {
+        toggle.checked = (mode === 'light');
+    }
+    if (toggleLabel) {
+        toggleLabel.textContent = mode === 'light' ? 'Light' : 'Dark';
+    }
+}
+
+function initThemeToggle() {
+    var stored = null;
+    try {
+        stored = localStorage.getItem('adminColorMode');
+    } catch (e) {
+        stored = null;
+    }
+    var initial = stored === 'light' ? 'light' : 'dark';
+    applyColorMode(initial);
+
+    $("#mode_toggle").on("change", function() {
+        var nextMode = this.checked ? "light" : "dark";
+        try {
+            localStorage.setItem('adminColorMode', nextMode);
+        } catch (e) {
+            /* ignore storage errors */
+        }
+        applyColorMode(nextMode);
+    });
+}
+
 function init()
 {
     {% if contest is none %}
@@ -49,6 +90,8 @@ function init()
 
     $(".diff-radio").change(utils.update_diff_ids);
 
+    initThemeToggle();
+
     {% block js_init %}{% endblock js_init %}
 }
 
@@ -69,8 +112,17 @@ $(document).ready(init);
 {% else %}
         <div id="sidebar_header">
           <div class="login_notice">
-            Hello, <a href="{{ url("admins") }}">{{ admin.name }}</a>.
+            <div class="login_identity">
+              Hello, <a href="{{ url("admins") }}">{{ admin.name }}</a>.
               <form class="inline" action="{{ url("logout") }}" method="POST">{{ xsrf_form_html|safe }}<input type="submit" value="Logout"></form>
+            </div>
+            <label class="mode-toggle" id="mode_toggle_wrapper">
+              <input id="mode_toggle" type="checkbox" aria-label="Toggle light mode">
+              <span class="mode-toggle-track">
+                <span class="mode-toggle-thumb"></span>
+              </span>
+              <span class="mode-toggle-text" id="mode_toggle_label">Light</span>
+            </label>
           </div>
           {% if contest is none %}
           <h1 class="parent">Administration</h1>
