@@ -218,18 +218,18 @@ class ParticipationDetailHandler(BaseHandler):
     """
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id, participation_id):
-        self.safe_get_item(Contest, contest_id)
-
-        participation = self.safe_get_item(Participation, participation_id)
-        if participation.contest_id != int(contest_id):
-            raise tornado.web.HTTPError(404, "Participation not in contest")
-
-        contest = (
+        self.contest = (
             self.sql_session.query(Contest)
             .filter(Contest.id == contest_id)
             .options(joinedload("tasks"))
             .first()
         )
+        if self.contest is None:
+            raise tornado.web.HTTPError(404, "Contest not found")
+
+        participation = self.safe_get_item(Participation, participation_id)
+        if participation.contest_id != int(contest_id):
+            raise tornado.web.HTTPError(404, "Participation not in contest")
 
         history = (
             self.sql_session.query(ScoreHistory)
@@ -239,7 +239,7 @@ class ParticipationDetailHandler(BaseHandler):
         )
 
         task_history = {}
-        for task in contest.tasks:
+        for task in self.contest.tasks:
             task_history[task.id] = {
                 "task_name": task.name,
                 "task_title": task.title,
@@ -249,7 +249,8 @@ class ParticipationDetailHandler(BaseHandler):
         for h in history:
             if h.task_id in task_history:
                 task_history[h.task_id]["history"].append({
-                    "timestamp": h.timestamp.timestamp(),
+                    "timestamp": h.timestamp,
+                    "timestamp_epoch": h.timestamp.timestamp(),
                     "score": h.score,
                 })
 
