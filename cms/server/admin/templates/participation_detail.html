@@ -37,109 +37,114 @@
 </div>
 {% endfor %}
 
-<h2>Score History Chart</h2>
-<div id="score_chart">
-  <canvas id="scoreCanvas" width="800" height="400"></canvas>
-</div>
+<h2>Score History Charts</h2>
 
+{% for task in contest.tasks %}
+<div class="chart_container" style="margin-bottom: 30px;">
+  <h3>{{ task.title }} ({{ task.name }})</h3>
+  <canvas id="scoreCanvas_{{ task.id }}" width="700" height="200"></canvas>
+</div>
+{% endfor %}
+
+<h3>Total Score</h3>
+<canvas id="scoreCanvas_total" width="700" height="200"></canvas>
+
+<script src="{{ url("static", "js", "Chart.js") }}"></script>
 <script>
 (function() {
-  var taskHistory = {{ task_history_json | tojson | safe }};
-  var canvas = document.getElementById('scoreCanvas');
-  var ctx = canvas.getContext('2d');
-  
-  // Collect all data points
-  var allPoints = [];
-  var colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
-  var colorIndex = 0;
-  var taskColors = {};
-  
-  for (var taskId in taskHistory) {
-    var task = taskHistory[taskId];
-    taskColors[taskId] = colors[colorIndex % colors.length];
-    colorIndex++;
-    
-    for (var i = 0; i < task.history.length; i++) {
-      allPoints.push({
-        timestamp: task.history[i].timestamp,
-        score: task.history[i].score,
-        taskId: taskId,
-        taskName: task.task_name
-      });
-    }
-  }
-  
-  if (allPoints.length === 0) {
-    ctx.font = '16px Arial';
-    ctx.fillText('No score history available', 10, 50);
-    return;
-  }
-  
-  // Sort by timestamp
-  allPoints.sort(function(a, b) { return a.timestamp - b.timestamp; });
-  
-  // Find min/max
-  var minTime = allPoints[0].timestamp;
-  var maxTime = allPoints[allPoints.length - 1].timestamp;
-  var maxScore = 0;
-  for (var i = 0; i < allPoints.length; i++) {
-    if (allPoints[i].score > maxScore) maxScore = allPoints[i].score;
-  }
-  if (maxScore === 0) maxScore = 100;
-  
-  // Draw axes
-  var padding = 50;
-  var chartWidth = canvas.width - padding * 2;
-  var chartHeight = canvas.height - padding * 2;
-  
-  ctx.beginPath();
-  ctx.moveTo(padding, padding);
-  ctx.lineTo(padding, canvas.height - padding);
-  ctx.lineTo(canvas.width - padding, canvas.height - padding);
-  ctx.stroke();
-  
-  // Draw points and lines for each task
-  for (var taskId in taskHistory) {
-    var task = taskHistory[taskId];
-    var color = taskColors[taskId];
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    
-    var prevX = null, prevY = null;
-    for (var i = 0; i < task.history.length; i++) {
-      var point = task.history[i];
-      var x = padding + ((point.timestamp - minTime) / (maxTime - minTime || 1)) * chartWidth;
-      var y = canvas.height - padding - (point.score / maxScore) * chartHeight;
-      
-      // Draw point
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // Draw line from previous point
-      if (prevX !== null) {
-        ctx.beginPath();
-        ctx.moveTo(prevX, prevY);
-        ctx.lineTo(x, y);
-        ctx.stroke();
+  var taskHistoryJson = {{ task_history_json | tojson | safe }};
+  var contestStart = {{ contest.start.timestamp() }};
+  var contestEnd = {{ contest.stop.timestamp() }};
+  var tasks = {{ contest.tasks | map(attribute='id') | list | tojson | safe }};
+  var taskMaxScores = {
+    {% for task in contest.tasks %}
+    {{ task.id }}: {{ task.max_score }},
+    {% endfor %}
+  };
+  var taskNames = {
+    {% for task in contest.tasks %}
+    {{ task.id }}: "{{ task.name }}",
+    {% endfor %}
+  };
+
+  var intervals = [[contestStart, contestEnd]];
+
+  for (var i = 0; i < tasks.length; i++) {
+    var taskId = tasks[i];
+    var canvas = document.getElementById('scoreCanvas_' + taskId);
+    if (!canvas) continue;
+
+    var taskData = taskHistoryJson[taskId];
+    var history = [];
+    if (taskData && taskData.history) {
+      for (var j = 0; j < taskData.history.length; j++) {
+        var entry = taskData.history[j];
+        history.push([entry.timestamp, entry.score, 0]);
       }
-      
-      prevX = x;
-      prevY = y;
     }
+
+    var maxScore = taskMaxScores[taskId] || 100;
+    Chart.draw_chart(
+      canvas,
+      0, maxScore,
+      0, 0,
+      intervals,
+      history,
+      [102, 102, 238],
+      [maxScore * 0.25, maxScore * 0.5, maxScore * 0.75]
+    );
   }
-  
-  // Draw legend
-  var legendY = padding;
-  for (var taskId in taskHistory) {
-    var task = taskHistory[taskId];
-    var color = taskColors[taskId];
-    ctx.fillStyle = color;
-    ctx.fillRect(canvas.width - padding + 10, legendY, 15, 15);
-    ctx.fillStyle = '#000';
-    ctx.font = '12px Arial';
-    ctx.fillText(task.task_name, canvas.width - padding + 30, legendY + 12);
-    legendY += 20;
+
+  var totalCanvas = document.getElementById('scoreCanvas_total');
+  if (totalCanvas) {
+    var allHistory = [];
+    var currentScores = {};
+    for (var i = 0; i < tasks.length; i++) {
+      currentScores[tasks[i]] = 0;
+    }
+
+    var allEvents = [];
+    for (var taskId in taskHistoryJson) {
+      var taskData = taskHistoryJson[taskId];
+      if (taskData && taskData.history) {
+        for (var j = 0; j < taskData.history.length; j++) {
+          var entry = taskData.history[j];
+          allEvents.push({
+            timestamp: entry.timestamp,
+            taskId: parseInt(taskId),
+            score: entry.score
+          });
+        }
+      }
+    }
+
+    allEvents.sort(function(a, b) { return a.timestamp - b.timestamp; });
+
+    for (var i = 0; i < allEvents.length; i++) {
+      var event = allEvents[i];
+      currentScores[event.taskId] = event.score;
+      var totalScore = 0;
+      for (var taskId in currentScores) {
+        totalScore += currentScores[taskId];
+      }
+      allHistory.push([event.timestamp, totalScore, 0]);
+    }
+
+    var totalMaxScore = 0;
+    for (var taskId in taskMaxScores) {
+      totalMaxScore += taskMaxScores[taskId];
+    }
+    if (totalMaxScore === 0) totalMaxScore = 100;
+
+    Chart.draw_chart(
+      totalCanvas,
+      0, totalMaxScore,
+      0, 0,
+      intervals,
+      allHistory,
+      [102, 102, 238],
+      [totalMaxScore * 0.25, totalMaxScore * 0.5, totalMaxScore * 0.75]
+    );
   }
 })();
 </script>

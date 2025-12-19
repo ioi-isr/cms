@@ -93,7 +93,9 @@ def invalidate_score_cache(
     """Invalidate and rebuild the score cache for the given scope.
 
     This function deletes cached scores and history entries for the
-    specified scope, then rebuilds them from scratch.
+    specified scope, then rebuilds them from scratch. Unlike simply
+    deleting, this ensures history is preserved by recomputing it
+    from the submission data under the current scoring parameters.
 
     session: the database session.
     participation_id: if specified, only invalidate for this participation.
@@ -101,34 +103,47 @@ def invalidate_score_cache(
     contest_id: if specified, only invalidate for this contest.
 
     """
-    query = session.query(ParticipationTaskScore)
+    from cms.db import Contest
 
-    if participation_id is not None:
-        query = query.filter(
-            ParticipationTaskScore.participation_id == participation_id
-        )
-    if task_id is not None:
-        query = query.filter(ParticipationTaskScore.task_id == task_id)
-    if contest_id is not None:
-        query = query.join(Participation).filter(
-            Participation.contest_id == contest_id
-        )
+    participations_to_rebuild: list[tuple[Participation, Task]] = []
 
-    query.delete(synchronize_session=False)
+    if participation_id is not None and task_id is not None:
+        participation = session.query(Participation).get(participation_id)
+        task = session.query(Task).get(task_id)
+        if participation is not None and task is not None:
+            participations_to_rebuild.append((participation, task))
+    elif participation_id is not None:
+        participation = session.query(Participation).get(participation_id)
+        if participation is not None:
+            for task in participation.contest.tasks:
+                participations_to_rebuild.append((participation, task))
+    elif task_id is not None:
+        task = session.query(Task).get(task_id)
+        if task is not None:
+            contest = task.contest
+            for participation in contest.participations:
+                participations_to_rebuild.append((participation, task))
+    elif contest_id is not None:
+        contest = session.query(Contest).get(contest_id)
+        if contest is not None:
+            for participation in contest.participations:
+                for task in contest.tasks:
+                    participations_to_rebuild.append((participation, task))
 
-    history_query = session.query(ScoreHistory)
-    if participation_id is not None:
-        history_query = history_query.filter(
-            ScoreHistory.participation_id == participation_id
-        )
-    if task_id is not None:
-        history_query = history_query.filter(ScoreHistory.task_id == task_id)
-    if contest_id is not None:
-        history_query = history_query.join(Participation).filter(
-            Participation.contest_id == contest_id
-        )
+    for participation, task in participations_to_rebuild:
+        session.query(ParticipationTaskScore).filter(
+            ParticipationTaskScore.participation_id == participation.id,
+            ParticipationTaskScore.task_id == task.id,
+        ).delete(synchronize_session=False)
 
-    history_query.delete(synchronize_session=False)
+        session.query(ScoreHistory).filter(
+            ScoreHistory.participation_id == participation.id,
+            ScoreHistory.task_id == task.id,
+        ).delete(synchronize_session=False)
+
+        cache_entry = _get_or_create_cache_entry(session, participation, task)
+        _update_cache_entry_from_submissions(session, cache_entry, participation, task)
+        _rebuild_history(session, participation, task)
 
 
 def rebuild_score_cache(
