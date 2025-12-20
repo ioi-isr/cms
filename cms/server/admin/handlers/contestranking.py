@@ -37,7 +37,7 @@ from sqlalchemy.orm import joinedload
 
 from cms.db import Contest, Participation, ParticipationTaskScore, ScoreHistory, \
     Submission, SubmissionResult, Task
-from cms.grading.scorecache import rebuild_score_history
+from cms.grading.scorecache import get_cached_score, rebuild_score_history
 from .base import BaseHandler, require_permission
 
 
@@ -70,19 +70,8 @@ class RankingHandler(BaseHandler):
             .first()
         )
 
-        # Get participation IDs for bulk queries
+        # Get participation IDs for the SQL aggregation query
         participation_ids = [p.id for p in self.contest.participations]
-
-        # Bulk fetch cached scores for all participation/task pairs
-        cached_scores = (
-            self.sql_session.query(ParticipationTaskScore)
-            .filter(ParticipationTaskScore.participation_id.in_(participation_ids))
-            .all()
-        ) if participation_ids else []
-        score_by_pt = {
-            (c.participation_id, c.task_id): c.score
-            for c in cached_scores
-        }
 
         # SQL aggregation to compute has_submissions and t_partial for all
         # participation/task pairs in a single query. This replaces the O(P*T*S)
@@ -150,8 +139,7 @@ class RankingHandler(BaseHandler):
             total_score = 0.0
             partial = False
             for task in self.contest.tasks:
-                # Get cached score, defaulting to 0.0 if not cached
-                t_score = score_by_pt.get((p.id, task.id), 0.0)
+                t_score = get_cached_score(self.sql_session, p, task)
                 t_score = round(t_score, task.score_precision)
 
                 # Get has_submissions and t_partial from SQL aggregation
