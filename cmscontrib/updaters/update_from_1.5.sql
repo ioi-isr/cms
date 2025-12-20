@@ -167,7 +167,6 @@ CREATE TABLE public.participation_task_scores (
     participation_id integer NOT NULL,
     task_id integer NOT NULL,
     score double precision NOT NULL,
-    partial boolean NOT NULL,
     subtask_max_scores jsonb,
     max_tokened_score double precision NOT NULL,
     last_submission_score double precision,

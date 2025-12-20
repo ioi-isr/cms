@@ -74,11 +74,6 @@ class ParticipationTaskScore(Base):
         nullable=False,
         default=0.0)
 
-    partial: bool = Column(
-        Boolean,
-        nullable=False,
-        default=False)
-
     subtask_max_scores: dict | None = Column(
         JSONB,
         nullable=True)
