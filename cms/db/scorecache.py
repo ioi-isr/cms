@@ -92,6 +92,15 @@ class ParticipationTaskScore(Base):
         Float,
         nullable=True)
 
+    last_submission_timestamp: datetime | None = Column(
+        DateTime,
+        nullable=True)
+
+    history_valid: bool = Column(
+        Boolean,
+        nullable=False,
+        default=True)
+
     last_update: datetime = Column(
         DateTime,
         nullable=False)
