@@ -211,16 +211,16 @@ class TestRebuildScoreCache(ScoreCacheMixin, unittest.TestCase):
             self.at(1),
             30.0,
             score_details=[
-                {"idx": "1", "max_score": 50, "score_fraction": 0.6},
-                {"idx": "2", "max_score": 50, "score_fraction": 0.0},
+                {"idx": "1", "max_score": 50, "score_fraction": 0.6, "score": 30.0},
+                {"idx": "2", "max_score": 50, "score_fraction": 0.0, "score": 0.0},
             ],
         )
         self.add_scored_submission(
             self.at(2),
             25.0,
             score_details=[
-                {"idx": "1", "max_score": 50, "score_fraction": 0.0},
-                {"idx": "2", "max_score": 50, "score_fraction": 0.5},
+                {"idx": "1", "max_score": 50, "score_fraction": 0.0, "score": 0.0},
+                {"idx": "2", "max_score": 50, "score_fraction": 0.5, "score": 25.0},
             ],
         )
         self.session.flush()
@@ -408,8 +408,8 @@ class TestUpdateScoreCache(ScoreCacheMixin, unittest.TestCase):
             self.at(1),
             30.0,
             score_details=[
-                {"idx": "1", "max_score": 50, "score_fraction": 0.6},
-                {"idx": "2", "max_score": 50, "score_fraction": 0.0},
+                {"idx": "1", "max_score": 50, "score_fraction": 0.6, "score": 30.0},
+                {"idx": "2", "max_score": 50, "score_fraction": 0.0, "score": 0.0},
             ],
         )
         self.session.flush()
@@ -421,8 +421,8 @@ class TestUpdateScoreCache(ScoreCacheMixin, unittest.TestCase):
             self.at(2),
             25.0,
             score_details=[
-                {"idx": "1", "max_score": 50, "score_fraction": 0.0},
-                {"idx": "2", "max_score": 50, "score_fraction": 0.5},
+                {"idx": "1", "max_score": 50, "score_fraction": 0.0, "score": 0.0},
+                {"idx": "2", "max_score": 50, "score_fraction": 0.5, "score": 25.0},
             ],
         )
         self.session.flush()
