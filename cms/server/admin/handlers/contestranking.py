@@ -269,9 +269,12 @@ class ParticipationDetailHandler(BaseHandler):
         total_max_score = 0.0
         for task in self.contest.tasks:
             max_score = 100.0
+            extra_headers = []
             if task.active_dataset:
                 try:
-                    max_score = task.active_dataset.score_type_object.max_score
+                    score_type = task.active_dataset.score_type_object
+                    max_score = score_type.max_score
+                    extra_headers = score_type.ranking_headers
                 except Exception:
                     pass
             tasks_data[str(task.id)] = {
@@ -281,7 +284,7 @@ class ParticipationDetailHandler(BaseHandler):
                 "contest": str(self.contest.id),
                 "max_score": max_score,
                 "score_precision": task.score_precision,
-                "extra_headers": [],
+                "extra_headers": extra_headers,
             }
             total_max_score += max_score
 
@@ -349,18 +352,21 @@ class ParticipationSubmissionsHandler(BaseHandler):
         result = []
         for s in submissions:
             score = 0.0
+            extra = []
             dataset = dataset_by_task_id.get(s.task_id)
             if dataset is not None:
                 sr = s.get_result(dataset)
                 if sr is not None and sr.score is not None:
                     score = sr.score
+                    if sr.ranking_score_details is not None:
+                        extra = sr.ranking_score_details
 
             result.append({
                 "task": str(s.task_id),
                 "time": int(s.timestamp.timestamp()),
                 "score": score,
                 "token": s.token is not None,
-                "extra": [],
+                "extra": extra,
             })
 
         self.set_header("Content-Type", "application/json")
