@@ -58,6 +58,8 @@ class RankingHandler(BaseHandler):
         self.contest: Contest = (
             self.sql_session.query(Contest)
             .filter(Contest.id == contest_id)
+            .options(joinedload("tasks"))
+            .options(joinedload("tasks.active_dataset"))
             .options(joinedload("participations"))
             .options(joinedload("participations.submissions"))
             .options(joinedload("participations.submissions.token"))
@@ -65,6 +67,11 @@ class RankingHandler(BaseHandler):
             .options(joinedload("participations.statement_views"))
             .first()
         )
+
+        # Build a map of active_dataset_id per task once to avoid lazy loads
+        active_dataset_id_by_task = {
+            task.id: task.active_dataset_id for task in self.contest.tasks
+        }
 
         statement_views_set = set()
         for p in self.contest.participations:
@@ -80,13 +87,25 @@ class RankingHandler(BaseHandler):
             total_score = 0.0
             partial = False
             for task in self.contest.tasks:
-                t_score, t_partial = get_cached_score(
-                    self.sql_session, p, task
-                )
+                t_score = get_cached_score(self.sql_session, p, task)
                 t_score = round(t_score, task.score_precision)
 
-                has_submissions = any(s.task_id == task.id and s.official
-                                     for s in p.submissions)
+                # Compute has_submissions and partial from already-loaded data
+                has_submissions = False
+                t_partial = False
+                dataset_id = active_dataset_id_by_task.get(task.id)
+                for s in p.submissions:
+                    if s.task_id == task.id and s.official:
+                        has_submissions = True
+                        if dataset_id is not None and not t_partial:
+                            # Find result for active dataset in already-loaded results
+                            sr = next(
+                                (r for r in s.results if r.dataset_id == dataset_id),
+                                None
+                            )
+                            if sr is None or not sr.scored():
+                                t_partial = True
+
                 has_opened = (p.id, task.id) in statement_views_set
                 p.task_statuses.append(
                     TaskStatus(

@@ -234,7 +234,7 @@ def get_cached_score(
     session: Session,
     participation: Participation,
     task: Task,
-) -> tuple[float, bool]:
+) -> float:
     """Get the cached score for a participation/task pair.
 
     If no cache entry exists, creates one and computes the score.
@@ -243,8 +243,7 @@ def get_cached_score(
     participation: the participation.
     task: the task.
 
-    returns: tuple of (score, partial) where partial is True if not all
-        submissions have been scored.
+    return: the cached score.
 
     """
     cache_entry = session.query(ParticipationTaskScore).filter(
@@ -255,7 +254,7 @@ def get_cached_score(
     if cache_entry is None:
         cache_entry = rebuild_score_cache(session, participation, task)
 
-    return cache_entry.score, cache_entry.partial
+    return cache_entry.score
 
 
 def _get_or_create_cache_entry(
@@ -274,7 +273,6 @@ def _get_or_create_cache_entry(
             participation=participation,
             task=task,
             score=0.0,
-            partial=False,
             subtask_max_scores=None,
             max_tokened_score=0.0,
             last_submission_score=None,
@@ -309,7 +307,6 @@ def _get_or_create_cache_entry_locked(
             participation=participation,
             task=task,
             score=0.0,
-            partial=False,
             subtask_max_scores=None,
             max_tokened_score=0.0,
             last_submission_score=None,
@@ -396,11 +393,6 @@ def _update_cache_entry_incremental(
         new_score = max(cache_entry.score or 0.0, score)
         cache_entry.score = round(new_score, task.score_precision)
 
-    # Mark as not partial since we just processed a scored submission
-    # Note: This is optimistic - we assume if we're processing a submission,
-    # most submissions are scored. A full rebuild will set this correctly.
-    cache_entry.partial = False
-
 
 def _update_cache_entry_from_submissions(
     session: Session,
@@ -418,7 +410,6 @@ def _update_cache_entry_from_submissions(
 
     if len(submissions) == 0:
         cache_entry.score = 0.0
-        cache_entry.partial = False
         cache_entry.subtask_max_scores = None
         cache_entry.max_tokened_score = 0.0
         cache_entry.last_submission_score = None
@@ -429,7 +420,6 @@ def _update_cache_entry_from_submissions(
 
     submissions_sorted = sorted(submissions, key=lambda s: s.timestamp)
 
-    partial = False
     subtask_max_scores: dict[str, float] = {}
     max_score = 0.0
     max_tokened_score = 0.0
@@ -439,14 +429,12 @@ def _update_cache_entry_from_submissions(
     for s in submissions_sorted:
         sr = s.get_result(dataset)
         if sr is None or not sr.scored():
-            partial = True
             continue
 
         score = sr.score
         score_details = sr.score_details
 
         if score is None:
-            partial = True
             continue
 
         max_score = max(max_score, score)
@@ -489,7 +477,6 @@ def _update_cache_entry_from_submissions(
     final_score = round(final_score, task.score_precision)
 
     cache_entry.score = final_score
-    cache_entry.partial = partial
     cache_entry.subtask_max_scores = subtask_max_scores if subtask_max_scores else None
     cache_entry.max_tokened_score = max_tokened_score
     cache_entry.last_submission_score = last_submission_score
