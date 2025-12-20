@@ -32,6 +32,7 @@ import difflib
 
 from cms.db import Dataset, File, Submission
 from cms.grading.languagemanager import safe_get_lang_filename
+from cms.grading.scorecache import invalidate_score_cache
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, FileHandler, require_permission
 
@@ -211,6 +212,13 @@ class SubmissionOfficialStatusHandler(BaseHandler):
                         submission.participation.user.username,
                         submission.participation.contest.name,
                         "official" if should_make_official else "unofficial")
+            # Invalidate the score cache for this participation/task since
+            # the official status affects which submissions count for ranking
+            invalidate_score_cache(
+                self.sql_session,
+                participation_id=submission.participation_id,
+                task_id=submission.task_id,
+            )
 
         if dataset_id is None:
             self.redirect(self.url("submission", submission_id))
