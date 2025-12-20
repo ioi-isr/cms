@@ -51,11 +51,13 @@ def update_score_cache(
     session: Session,
     submission: Submission,
 ) -> None:
-    """Update the score cache after a submission is scored.
+    """Update the score cache incrementally after a submission is scored.
 
     This function updates the cached score for the participation/task
-    pair of the given submission. It also adds a history entry if the
-    score changed.
+    pair of the given submission using O(1) incremental updates instead
+    of recomputing from all submissions.
+
+    Uses row-level locking to ensure concurrent updates are serialized.
 
     session: the database session.
     submission: the submission that was just scored.
@@ -72,12 +74,28 @@ def update_score_cache(
     if submission_result is None or not submission_result.scored():
         return
 
-    cache_entry = _get_or_create_cache_entry(session, participation, task)
+    score = submission_result.score
+    if score is None:
+        return
+
+    # Lock the cache row to serialize concurrent updates
+    cache_entry = _get_or_create_cache_entry_locked(session, participation, task)
     old_score = cache_entry.score
 
-    _update_cache_entry_from_submissions(session, cache_entry, participation, task)
+    # Incremental update based on score mode
+    _update_cache_entry_incremental(
+        cache_entry, task, submission, submission_result
+    )
 
-    if cache_entry.score != old_score:
+    # Mark history as invalid if submission arrived out of order
+    if (cache_entry.last_submission_timestamp is not None and
+            submission.timestamp < cache_entry.last_submission_timestamp):
+        cache_entry.history_valid = False
+
+    cache_entry.last_update = datetime.utcnow()
+
+    # Only add history entry if score changed and history is still valid
+    if cache_entry.score != old_score and cache_entry.history_valid:
         _add_history_entry(
             session, participation, task, submission,
             cache_entry.score
@@ -90,12 +108,16 @@ def invalidate_score_cache(
     task_id: int | None = None,
     contest_id: int | None = None,
 ) -> None:
-    """Invalidate and rebuild the score cache for the given scope.
+    """Invalidate the score cache for the given scope.
 
     This function deletes cached scores and history entries for the
-    specified scope, then rebuilds them from scratch. Unlike simply
-    deleting, this ensures history is preserved by recomputing it
-    from the submission data under the current scoring parameters.
+    specified scope. The cache will be lazily rebuilt when accessed
+    via get_cached_score(), or incrementally updated as submissions
+    are re-scored.
+
+    This is more efficient than rebuilding immediately during mass
+    invalidation, since the cache would just be rebuilt with partial
+    data (most submissions are unscored at invalidation time).
 
     session: the database session.
     participation_id: if specified, only invalidate for this participation.
@@ -103,35 +125,43 @@ def invalidate_score_cache(
     contest_id: if specified, only invalidate for this contest.
 
     """
-    from cms.db import Contest
-
-    participations_to_rebuild: list[tuple[Participation, Task]] = []
-
+    # Build filter conditions based on scope
     if participation_id is not None and task_id is not None:
-        participation = session.query(Participation).get(participation_id)
-        task = session.query(Task).get(task_id)
-        if participation is not None and task is not None:
-            participations_to_rebuild.append((participation, task))
+        session.query(ParticipationTaskScore).filter(
+            ParticipationTaskScore.participation_id == participation_id,
+            ParticipationTaskScore.task_id == task_id,
+        ).delete(synchronize_session=False)
+        session.query(ScoreHistory).filter(
+            ScoreHistory.participation_id == participation_id,
+            ScoreHistory.task_id == task_id,
+        ).delete(synchronize_session=False)
     elif participation_id is not None:
-        participation = session.query(Participation).get(participation_id)
-        if participation is not None:
-            for task in participation.contest.tasks:
-                participations_to_rebuild.append((participation, task))
+        session.query(ParticipationTaskScore).filter(
+            ParticipationTaskScore.participation_id == participation_id,
+        ).delete(synchronize_session=False)
+        session.query(ScoreHistory).filter(
+            ScoreHistory.participation_id == participation_id,
+        ).delete(synchronize_session=False)
     elif task_id is not None:
-        task = session.query(Task).get(task_id)
-        if task is not None:
-            contest = task.contest
-            for participation in contest.participations:
-                participations_to_rebuild.append((participation, task))
+        session.query(ParticipationTaskScore).filter(
+            ParticipationTaskScore.task_id == task_id,
+        ).delete(synchronize_session=False)
+        session.query(ScoreHistory).filter(
+            ScoreHistory.task_id == task_id,
+        ).delete(synchronize_session=False)
     elif contest_id is not None:
+        # Delete all cache entries for participations in this contest
+        from cms.db import Contest
         contest = session.query(Contest).get(contest_id)
         if contest is not None:
-            for participation in contest.participations:
-                for task in contest.tasks:
-                    participations_to_rebuild.append((participation, task))
-
-    for participation, task in participations_to_rebuild:
-        rebuild_score_cache(session, participation, task)
+            participation_ids = [p.id for p in contest.participations]
+            if participation_ids:
+                session.query(ParticipationTaskScore).filter(
+                    ParticipationTaskScore.participation_id.in_(participation_ids),
+                ).delete(synchronize_session=False)
+                session.query(ScoreHistory).filter(
+                    ScoreHistory.participation_id.in_(participation_ids),
+                ).delete(synchronize_session=False)
 
 
 def rebuild_score_cache(
@@ -216,11 +246,125 @@ def _get_or_create_cache_entry(
             subtask_max_scores=None,
             max_tokened_score=0.0,
             last_submission_score=None,
+            last_submission_timestamp=None,
+            history_valid=True,
             last_update=datetime.utcnow(),
         )
         session.add(cache_entry)
 
     return cache_entry
+
+
+def _get_or_create_cache_entry_locked(
+    session: Session,
+    participation: Participation,
+    task: Task,
+) -> ParticipationTaskScore:
+    """Get or create a cache entry with row-level locking for concurrency.
+
+    Uses SELECT ... FOR UPDATE to serialize concurrent updates to the
+    same participation/task pair.
+    """
+    # Try to get existing entry with lock
+    cache_entry = session.query(ParticipationTaskScore).filter(
+        ParticipationTaskScore.participation_id == participation.id,
+        ParticipationTaskScore.task_id == task.id,
+    ).with_for_update().first()
+
+    if cache_entry is None:
+        # Create new entry
+        cache_entry = ParticipationTaskScore(
+            participation=participation,
+            task=task,
+            score=0.0,
+            partial=False,
+            subtask_max_scores=None,
+            max_tokened_score=0.0,
+            last_submission_score=None,
+            last_submission_timestamp=None,
+            history_valid=True,
+            last_update=datetime.utcnow(),
+        )
+        session.add(cache_entry)
+        # Flush to get the row into the database so we can lock it
+        session.flush()
+
+    return cache_entry
+
+
+def _update_cache_entry_incremental(
+    cache_entry: ParticipationTaskScore,
+    task: Task,
+    submission: Submission,
+    submission_result,
+) -> None:
+    """Update cache entry incrementally based on a single submission.
+
+    This is O(1) for SCORE_MODE_MAX and O(subtasks) for SCORE_MODE_MAX_SUBTASK,
+    much faster than recomputing from all submissions.
+    """
+    score = submission_result.score
+    score_details = submission_result.score_details
+
+    # Update max_tokened_score if this submission is tokened
+    if submission.tokened():
+        cache_entry.max_tokened_score = max(
+            cache_entry.max_tokened_score or 0.0, score
+        )
+
+    # Update last_submission_score/timestamp if this is the latest submission
+    if (cache_entry.last_submission_timestamp is None or
+            submission.timestamp >= cache_entry.last_submission_timestamp):
+        cache_entry.last_submission_score = score
+        cache_entry.last_submission_timestamp = submission.timestamp
+
+    # Update score based on score mode
+    if task.score_mode == SCORE_MODE_MAX:
+        # Simple max - just compare with current score
+        new_score = max(cache_entry.score or 0.0, score)
+        cache_entry.score = round(new_score, task.score_precision)
+
+    elif task.score_mode == SCORE_MODE_MAX_SUBTASK:
+        # Update per-subtask max scores
+        subtask_max_scores = dict(cache_entry.subtask_max_scores or {})
+
+        if not (score_details == [] and score == 0.0):
+            try:
+                subtask_scores = dict(
+                    (subtask["idx"], subtask["score"])
+                    for subtask in score_details
+                )
+            except Exception:
+                subtask_scores = None
+
+            if subtask_scores is None or len(subtask_scores) == 0:
+                subtask_scores = {1: score}
+
+            for idx, st_score in subtask_scores.items():
+                subtask_max_scores[idx] = max(
+                    subtask_max_scores.get(idx, 0.0), st_score
+                )
+
+        cache_entry.subtask_max_scores = subtask_max_scores if subtask_max_scores else None
+        new_score = sum(subtask_max_scores.values()) if subtask_max_scores else 0.0
+        cache_entry.score = round(new_score, task.score_precision)
+
+    elif task.score_mode == SCORE_MODE_MAX_TOKENED_LAST:
+        # Score is max of last submission score and max tokened score
+        last_score = cache_entry.last_submission_score or 0.0
+        tokened_score = cache_entry.max_tokened_score or 0.0
+        new_score = max(last_score, tokened_score)
+        cache_entry.score = round(new_score, task.score_precision)
+
+    else:
+        # Default to max mode
+        new_score = max(cache_entry.score or 0.0, score)
+        cache_entry.score = round(new_score, task.score_precision)
+
+    # Mark as not partial since we just processed a scored submission
+    # Note: This is optimistic - we assume if we're processing a submission,
+    # most submissions are scored. A full rebuild will set this correctly.
+    cache_entry.partial = False
 
 
 def _update_cache_entry_from_submissions(
@@ -243,6 +387,8 @@ def _update_cache_entry_from_submissions(
         cache_entry.subtask_max_scores = None
         cache_entry.max_tokened_score = 0.0
         cache_entry.last_submission_score = None
+        cache_entry.last_submission_timestamp = None
+        cache_entry.history_valid = True
         cache_entry.last_update = datetime.utcnow()
         return
 
@@ -253,6 +399,7 @@ def _update_cache_entry_from_submissions(
     max_score = 0.0
     max_tokened_score = 0.0
     last_submission_score = None
+    last_submission_timestamp = None
 
     for s in submissions_sorted:
         sr = s.get_result(dataset)
@@ -269,6 +416,7 @@ def _update_cache_entry_from_submissions(
 
         max_score = max(max_score, score)
         last_submission_score = score
+        last_submission_timestamp = s.timestamp
 
         if s.tokened():
             max_tokened_score = max(max_tokened_score, score)
@@ -310,6 +458,8 @@ def _update_cache_entry_from_submissions(
     cache_entry.subtask_max_scores = subtask_max_scores if subtask_max_scores else None
     cache_entry.max_tokened_score = max_tokened_score
     cache_entry.last_submission_score = last_submission_score
+    cache_entry.last_submission_timestamp = last_submission_timestamp
+    cache_entry.history_valid = True
     cache_entry.last_update = datetime.utcnow()
 
 
