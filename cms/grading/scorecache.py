@@ -23,7 +23,6 @@ up ranking page loading.
 
 """
 
-import logging
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -34,9 +33,6 @@ from cms.db import (
 from cmscommon.constants import (
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
 )
-
-
-logger = logging.getLogger(__name__)
 
 
 __all__ = [
