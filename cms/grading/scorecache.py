@@ -39,6 +39,7 @@ __all__ = [
     "update_score_cache",
     "invalidate_score_cache",
     "rebuild_score_cache",
+    "rebuild_score_history",
     "get_cached_score",
 ]
 
@@ -194,6 +195,41 @@ def rebuild_score_cache(
     return cache_entry
 
 
+def rebuild_score_history(
+    session: Session,
+    participation: Participation,
+    task: Task,
+) -> None:
+    """Rebuild only the score history for a participation/task pair.
+
+    This function rebuilds the history without recalculating the cached
+    score. Use this when history_valid is False but the score itself
+    is still correct (e.g., when submissions arrived out of order).
+
+    session: the database session.
+    participation: the participation.
+    task: the task.
+
+    """
+    # Delete existing history entries
+    session.query(ScoreHistory).filter(
+        ScoreHistory.participation_id == participation.id,
+        ScoreHistory.task_id == task.id,
+    ).delete(synchronize_session=False)
+
+    # Rebuild history from submissions
+    _rebuild_history(session, participation, task)
+
+    # Mark history as valid
+    cache_entry = session.query(ParticipationTaskScore).filter(
+        ParticipationTaskScore.participation_id == participation.id,
+        ParticipationTaskScore.task_id == task.id,
+    ).first()
+
+    if cache_entry is not None:
+        cache_entry.history_valid = True
+
+
 def get_cached_score(
     session: Session,
     participation: Participation,
@@ -322,19 +358,22 @@ def _update_cache_entry_incremental(
 
     elif task.score_mode == SCORE_MODE_MAX_SUBTASK:
         # Update per-subtask max scores
-        subtask_max_scores = dict(cache_entry.subtask_max_scores or {})
+        # Normalize keys to strings since JSONB stores keys as strings
+        subtask_max_scores = {
+            str(k): v for k, v in (cache_entry.subtask_max_scores or {}).items()
+        }
 
         if not (score_details == [] and score == 0.0):
             try:
                 subtask_scores = dict(
-                    (subtask["idx"], subtask["score"])
+                    (str(subtask["idx"]), subtask["score"])
                     for subtask in score_details
                 )
             except Exception:
                 subtask_scores = None
 
             if subtask_scores is None or len(subtask_scores) == 0:
-                subtask_scores = {1: score}
+                subtask_scores = {"1": score}
 
             for idx, st_score in subtask_scores.items():
                 subtask_max_scores[idx] = max(
@@ -391,7 +430,7 @@ def _update_cache_entry_from_submissions(
     submissions_sorted = sorted(submissions, key=lambda s: s.timestamp)
 
     partial = False
-    subtask_max_scores: dict[int, float] = {}
+    subtask_max_scores: dict[str, float] = {}
     max_score = 0.0
     max_tokened_score = 0.0
     last_submission_score = None
@@ -423,14 +462,14 @@ def _update_cache_entry_from_submissions(
 
             try:
                 subtask_scores = dict(
-                    (subtask["idx"], subtask["score"])
+                    (str(subtask["idx"]), subtask["score"])
                     for subtask in score_details
                 )
             except Exception:
                 subtask_scores = None
 
             if subtask_scores is None or len(subtask_scores) == 0:
-                subtask_scores = {1: score}
+                subtask_scores = {"1": score}
 
             for idx, st_score in subtask_scores.items():
                 subtask_max_scores[idx] = max(
@@ -495,7 +534,7 @@ def _rebuild_history(
 
     submissions_sorted = sorted(submissions, key=lambda s: s.timestamp)
 
-    subtask_max_scores: dict[int, float] = {}
+    subtask_max_scores: dict[str, float] = {}
     max_score = 0.0
     max_tokened_score = 0.0
     last_submission_score = None
@@ -524,14 +563,14 @@ def _rebuild_history(
 
             try:
                 subtask_scores = dict(
-                    (subtask["idx"], subtask["score"])
+                    (str(subtask["idx"]), subtask["score"])
                     for subtask in score_details
                 )
             except Exception:
                 subtask_scores = None
 
             if subtask_scores is None or len(subtask_scores) == 0:
-                subtask_scores = {1: score}
+                subtask_scores = {"1": score}
 
             for idx, st_score in subtask_scores.items():
                 subtask_max_scores[idx] = max(

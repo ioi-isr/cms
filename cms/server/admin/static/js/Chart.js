@@ -1,1 +1,1 @@
-../../../../cmsranking/static/Chart.js
+../../../../../cmsranking/static/Chart.js
