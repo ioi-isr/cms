@@ -34,8 +34,8 @@ from collections import namedtuple
 import tornado.web
 from sqlalchemy.orm import joinedload
 
-from cms.db import Contest, Participation, ScoreHistory
-from cms.grading.scorecache import get_cached_score
+from cms.db import Contest, Participation, ParticipationTaskScore, ScoreHistory
+from cms.grading.scorecache import get_cached_score, rebuild_score_cache
 from .base import BaseHandler, require_permission
 
 
@@ -188,12 +188,37 @@ class ScoreHistoryHandler(BaseHandler):
     By default, excludes hidden participations to match ranking page behavior.
     Use ?include_hidden=1 to include hidden participations.
 
+    Before returning history data, this handler checks for any cache entries
+    with history_valid=False and rebuilds their history to ensure correctness.
+
     """
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
-        self.safe_get_item(Contest, contest_id)
+        contest = self.safe_get_item(Contest, contest_id)
 
         include_hidden = self.get_argument("include_hidden", "0") == "1"
+
+        # Check for any invalid history entries and rebuild them
+        # We need to rebuild all invalid entries for the contest since
+        # rank computation uses the full contest history stream
+        invalid_entries = (
+            self.sql_session.query(ParticipationTaskScore)
+            .join(Participation)
+            .filter(Participation.contest_id == contest_id)
+            .filter(ParticipationTaskScore.history_valid.is_(False))
+            .options(joinedload(ParticipationTaskScore.participation))
+            .options(joinedload(ParticipationTaskScore.task))
+            .all()
+        )
+
+        for entry in invalid_entries:
+            rebuild_score_cache(
+                self.sql_session, entry.participation, entry.task
+            )
+
+        # Commit the rebuilt history before querying
+        if invalid_entries:
+            self.sql_session.commit()
 
         query = (
             self.sql_session.query(ScoreHistory)
