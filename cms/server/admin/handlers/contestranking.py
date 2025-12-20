@@ -35,7 +35,7 @@ import tornado.web
 from sqlalchemy.orm import joinedload
 
 from cms.db import Contest, Participation, ParticipationTaskScore, ScoreHistory
-from cms.grading.scorecache import get_cached_score, rebuild_score_cache
+from cms.grading.scorecache import get_cached_score, rebuild_score_history
 from .base import BaseHandler, require_permission
 
 
@@ -212,7 +212,7 @@ class ScoreHistoryHandler(BaseHandler):
         )
 
         for entry in invalid_entries:
-            rebuild_score_cache(
+            rebuild_score_history(
                 self.sql_session, entry.participation, entry.task
             )
 
