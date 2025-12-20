@@ -2,10 +2,18 @@
 
 {% block core %}
 <style>
+#UserDetail_bg {
+  display: block;
+}
+
 #UserDetail {
   max-width: 960px;
   margin: 0 auto;
   padding: 20px;
+}
+
+#UserDetail_close {
+  display: none;
 }
 
 #UserDetail_header {
@@ -20,6 +28,11 @@
   flex-direction: column;
   font-size: 1.5em;
   line-height: 1.5em;
+}
+
+#UserDetail_face,
+#UserDetail_flag {
+  display: none;
 }
 
 #UserDetail_navigator {
@@ -81,7 +94,8 @@
   cursor: default;
 }
 
-#UserDetail_navigator tr.global {
+#UserDetail_navigator tr.global,
+#UserDetail_navigator tr.contest {
   background-color: #DDDDDD;
 }
 
@@ -89,7 +103,8 @@
   background-color: #FFFFFF;
 }
 
-#UserDetail_navigator tr.global td.name {
+#UserDetail_navigator tr.global td.name,
+#UserDetail_navigator tr.contest td.name {
   padding-left: 5px;
   font-weight: bold;
 }
@@ -160,457 +175,240 @@
 }
 </style>
 
-<div id="UserDetail">
-  <div class="back-link">
-    <a href="{{ url("contest", contest.id, "ranking") }}">&larr; Back to Ranking</a>
-    |
-    <a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}">Edit Participation</a>
-  </div>
+<div class="back-link">
+  <a href="{{ url("contest", contest.id, "ranking") }}">&larr; Back to Ranking</a>
+  |
+  <a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}">Edit Participation</a>
+</div>
 
-  <div id="UserDetail_header">
-    <div id="UserDetail_summary">
-      <div>
-        <strong>{{ participation.user.first_name }} {{ participation.user.last_name }}</strong>
+<div id="UserDetail_bg">
+  <div id="UserDetail">
+    <img id="UserDetail_close" src="" alt="Close"/>
+    <div id="UserDetail_header">
+      <div id="UserDetail_summary">
+        <div>
+          <span id="UserDetail_f_name">{{ participation.user.first_name }}</span>
+          <span id="UserDetail_l_name">{{ participation.user.last_name }}</span>
+        </div>
+        <div style="font-size: 0.6em; color: #666;">
+          {{ participation.user.username }}
+        </div>
+        <img id="UserDetail_face" src="" alt="Face"/>
+        <div id="UserDetail_spacer"></div>
+        <div id="UserDetail_team">{% if participation.team %}{{ participation.team.name }}{% endif %}</div>
+        <img id="UserDetail_flag" src="" alt="Flag"/>
       </div>
-      <div style="font-size: 0.8em; color: #666;">
-        {{ participation.user.username }}
+      <div id="UserDetail_navigator">
+        <table>
+          <col class="name"/>
+          <col class="score"/>
+          <col class="rank"/>
+          <col class="show"/>
+          <thead>
+            <tr>
+              <td></td>
+              <td style="text-align: right;">Score</td>
+              <td style="text-align: right;">Rank</td>
+              <td></td>
+            </tr>
+          </thead>
+          <tbody id="UserDetail_scores">
+          </tbody>
+        </table>
       </div>
-      {% if participation.team %}
-      <div style="font-size: 0.8em; margin-top: 10px;">
-        Team: {{ participation.team.name }}
-      </div>
-      {% endif %}
     </div>
-    <div id="UserDetail_navigator">
-      <table>
-        <col class="name"/>
-        <col class="score"/>
-        <col class="rank"/>
-        <col class="show"/>
-        <thead>
-          <tr>
-            <td></td>
-            <td style="text-align: right;">Score</td>
-            <td style="text-align: right;">Rank</td>
-            <td></td>
-          </tr>
-        </thead>
-        <tbody id="UserDetail_scores">
-        </tbody>
-      </table>
+
+    <div id="UserDetail_title"></div>
+
+    <div id="UserDetail_charts">
+      <div style="margin-bottom: 10px;"><strong>Score</strong></div>
+      <canvas id="UserDetail_score_chart" width="920" height="200"></canvas>
+      <div style="margin-top: 20px; margin-bottom: 10px;"><strong>Rank</strong></div>
+      <canvas id="UserDetail_rank_chart" width="920" height="200"></canvas>
     </div>
-  </div>
 
-  <div id="UserDetail_title"></div>
-
-  <div id="UserDetail_charts">
-    <div style="margin-bottom: 10px;"><strong>Score</strong></div>
-    <canvas id="UserDetail_score_chart" width="920" height="200"></canvas>
-    <div style="margin-top: 20px; margin-bottom: 10px;"><strong>Rank</strong></div>
-    <canvas id="UserDetail_rank_chart" width="920" height="200"></canvas>
-  </div>
-
-  <div id="UserDetail_submissions">
+    <div id="UserDetail_submissions">
+    </div>
   </div>
 </div>
 
-<script src="{{ url("static", "js", "Chart.js") }}"></script>
 <script>
-(function() {
-  var userId = {{ user_id | tojson | safe }};
-  var userCount = {{ user_count }};
+// Shims for RWS JS files - these must be defined before loading the RWS scripts
+
+// format_time from TimeView.js
+function format_time(time, full) {
+  var h = Math.floor(time / 3600);
+  var m = Math.floor((time % 3600) / 60);
+  var s = Math.floor(time % 60);
+  h = full && h < 10 ? "0" + h : "" + h;
+  m = m < 10 ? "0" + m : "" + m;
+  s = s < 10 ? "0" + s : "" + s;
+  return (h + ":" + m + ":" + s);
+}
+
+// round_to_str from DataStore.js
+function round_to_str(value, ndigits) {
+  if (ndigits > 0) {
+    return value.toFixed(ndigits).replace(/\.?0+$/, "");
+  } else {
+    return value.toFixed(0);
+  }
+}
+
+// Config shim - provides URL functions that HistoryStore and UserDetail need
+var Config = new function() {
+  var self = this;
+  self.get_history_url = function() {
+    return {{ history_url | tojson | safe }};
+  };
+  self.get_submissions_url = function(user_id) {
+    return {{ submissions_url | tojson | safe }};
+  };
+  self.get_face_url = function(user_id) {
+    return "";
+  };
+  self.get_flag_url = function(team_id) {
+    return "";
+  };
+};
+
+// DataStore shim - provides the data structure that HistoryStore and UserDetail need
+var DataStore = new function() {
+  var self = this;
+
   var usersData = {{ users_data | tojson | safe }};
   var tasksData = {{ tasks_data | tojson | safe }};
   var contestData = {{ contest_data | tojson | safe }};
-  var historyUrl = {{ history_url | tojson | safe }};
-  var submissionsUrl = {{ submissions_url | tojson | safe }};
 
-  var DataStore = {
-    users: usersData,
-    tasks: tasksData,
-    contests: {},
-    user_count: userCount,
-    global_max_score: contestData.max_score,
-    global_score_precision: contestData.score_precision,
-    contest_list: []
-  };
-  DataStore.contests[contestData.key] = contestData;
-  DataStore.contest_list.push(contestData);
-
+  // Set up contest reference for tasks and build tasks array for contest
+  var tasksList = [];
   for (var t_id in tasksData) {
     tasksData[t_id].contest = contestData.key;
+    tasksData[t_id].key = t_id;
+    tasksList.push(tasksData[t_id]);
   }
+  contestData.tasks = tasksList;
 
-  var HistoryStore = {
-    history_t: [],
-    history_c: [],
-    history_g: []
-  };
+  self.users = usersData;
+  self.tasks = tasksData;
+  self.teams = {};
+  self.contests = {};
+  self.contests[contestData.key] = contestData;
+  self.contest_list = [contestData];
 
-  function round_to_str(value, ndigits) {
-    if (ndigits > 0) {
-      return value.toFixed(ndigits).replace(/\.?0+$/, "");
-    } else {
-      return value.toFixed(0);
-    }
-  }
+  self.user_count = {{ user_count }};
+  self.global_max_score = contestData.max_score;
+  self.global_score_precision = contestData.score_precision;
+};
+</script>
 
-  function format_time(seconds) {
-    var hours = Math.floor(seconds / 3600);
-    var minutes = Math.floor((seconds % 3600) / 60);
-    var secs = Math.floor(seconds % 60);
-    return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (secs < 10 ? "0" : "") + secs;
-  }
+<script src="{{ url("static", "js", "Chart.js") }}"></script>
+<script src="{{ url("static", "js", "HistoryStore.js") }}"></script>
+<script src="{{ url("static", "js", "UserDetail.js") }}"></script>
 
-  function processHistory(data) {
-    var d = {};
-    for (var u_id in DataStore.users) {
-      d[u_id] = {};
-      for (var t_id in DataStore.tasks) {
-        d[u_id][t_id] = 0.0;
+<script>
+(function() {
+  var userId = {{ user_id | tojson | safe }};
+
+  // Initialize HistoryStore
+  HistoryStore.init();
+
+  // Override UserDetail behaviors for embedded page (not modal)
+  var originalInit = UserDetail.init;
+  UserDetail.init = function() {
+    // Set up DOM references like the original init
+    UserDetail.f_name_label = $('#UserDetail_f_name');
+    UserDetail.l_name_label = $('#UserDetail_l_name');
+    UserDetail.team_label = $('#UserDetail_team');
+    UserDetail.flag_image = $('#UserDetail_flag');
+    UserDetail.face_image = $('#UserDetail_face');
+    UserDetail.title_label = $('#UserDetail_title');
+    UserDetail.navigator = $('#UserDetail_navigator table tbody');
+    UserDetail.submission_table = $('#UserDetail_submissions');
+    UserDetail.score_chart = $('#UserDetail_score_chart')[0];
+    UserDetail.rank_chart = $('#UserDetail_rank_chart')[0];
+
+    // Set up click handler for navigator
+    UserDetail.navigator.on("click", "td.btn", function() {
+      if (UserDetail.active !== null) {
+        UserDetail.active.removeClass("active");
       }
-    }
+      UserDetail.active = $(this).parent();
+      UserDetail.active.addClass("active");
 
-    HistoryStore.history_t = [];
-    HistoryStore.history_c = [];
-    HistoryStore.history_g = [];
-
-    for (var i = 0; i < data.length; i++) {
-      var user = data[i][0];
-      var task = data[i][1];
-      var time = data[i][2];
-      var score = data[i][3];
-
-      if (d[user]) {
-        d[user][task] = score;
-        HistoryStore.history_t.push([user, task, time, score]);
-
-        var contest_id = DataStore.tasks[task] ? DataStore.tasks[task].contest : contestData.key;
-        var tmp_score = 0.0;
-        for (var t_id in d[user]) {
-          if (DataStore.tasks[t_id] && DataStore.tasks[t_id].contest == contest_id) {
-            tmp_score += d[user][t_id];
-          }
-        }
-        HistoryStore.history_c.push([user, contest_id, time, tmp_score]);
-
-        tmp_score = 0.0;
-        for (var t_id in d[user]) {
-          tmp_score += d[user][t_id];
-        }
-        HistoryStore.history_g.push([user, time, tmp_score]);
-      }
-    }
-  }
-
-  function getScoreHistoryForTask(user_id, task_id) {
-    var result = [];
-    for (var i = 0; i < HistoryStore.history_t.length; i++) {
-      var entry = HistoryStore.history_t[i];
-      if (entry[0] == user_id && entry[1] == task_id) {
-        result.push([entry[2], entry[3], 0]);
-      }
-    }
-    return result;
-  }
-
-  function getScoreHistory(user_id) {
-    var result = [];
-    for (var i = 0; i < HistoryStore.history_g.length; i++) {
-      var entry = HistoryStore.history_g[i];
-      if (entry[0] == user_id) {
-        result.push([entry[1], entry[2], 0]);
-      }
-    }
-    return result;
-  }
-
-  function getRankHistoryForTask(user_id, task_id) {
-    var d = {};
-    for (var u_id in DataStore.users) {
-      d[u_id] = 0.0;
-    }
-    var above = 0;
-    var equal = DataStore.user_count;
-    var result = [];
-
-    for (var i = 0; i < HistoryStore.history_t.length; i++) {
-      var entry = HistoryStore.history_t[i];
-      var user = entry[0];
-      var task = entry[1];
-      var time = entry[2];
-      var score = entry[3];
-
-      if (task == task_id) {
-        if (user == user_id) {
-          d[user_id] = score;
-          var new_above = 0;
-          var new_equal = 0;
-          for (var s in d) {
-            if (d[s] > score) new_above++;
-            else if (d[s] == score) new_equal++;
-          }
-          if (new_above != above || new_equal != equal) {
-            above = new_above;
-            equal = new_equal;
-            result.push([time, above + 1, equal - 1]);
-          }
-        } else {
-          var changed = false;
-          if (d[user] <= d[user_id] && score > d[user_id]) {
-            above++;
-            changed = true;
-          } else if (d[user] > d[user_id] && score <= d[user_id]) {
-            above--;
-            changed = true;
-          }
-          if (d[user] == d[user_id]) {
-            equal--;
-            changed = true;
-          } else if (score == d[user_id]) {
-            equal++;
-            changed = true;
-          }
-          if (changed) {
-            result.push([time, above + 1, equal - 1]);
-          }
-          d[user] = score;
-        }
-      }
-    }
-    return result;
-  }
-
-  function getRankHistory(user_id) {
-    var d = {};
-    for (var u_id in DataStore.users) {
-      d[u_id] = 0.0;
-    }
-    var above = 0;
-    var equal = DataStore.user_count;
-    var result = [];
-
-    for (var i = 0; i < HistoryStore.history_g.length; i++) {
-      var entry = HistoryStore.history_g[i];
-      var user = entry[0];
-      var time = entry[1];
-      var score = entry[2];
-
-      if (user == user_id) {
-        d[user_id] = score;
-        var new_above = 0;
-        var new_equal = 0;
-        for (var s in d) {
-          if (d[s] > score) new_above++;
-          else if (d[s] == score) new_equal++;
-        }
-        if (new_above != above || new_equal != equal) {
-          above = new_above;
-          equal = new_equal;
-          result.push([time, above + 1, equal - 1]);
-        }
-      } else {
-        var changed = false;
-        if (d[user] <= d[user_id] && score > d[user_id]) {
-          above++;
-          changed = true;
-        } else if (d[user] > d[user_id] && score <= d[user_id]) {
-          above--;
-          changed = true;
-        }
-        if (d[user] == d[user_id]) {
-          equal--;
-          changed = true;
-        } else if (score == d[user_id]) {
-          equal++;
-          changed = true;
-        }
-        if (changed) {
-          result.push([time, above + 1, equal - 1]);
-        }
-        d[user] = score;
-      }
-    }
-    return result;
-  }
-
-  var task_s = {};
-  var task_r = {};
-  var global_s = [];
-  var global_r = [];
-  var submissions = {};
-  var activeRow = null;
-
-  function buildNavigator() {
-    var tbody = document.getElementById('UserDetail_scores');
-    var html = '';
-
-    var globalScore = global_s.length > 0 ? global_s[global_s.length - 1][1] : 0;
-    var globalRank = global_r.length > 0 ? global_r[global_r.length - 1][1] : 1;
-
-    html += '<tr class="global" data-type="global">';
-    html += '<td class="name">Global</td>';
-    html += '<td class="score">' + round_to_str(globalScore, DataStore.global_score_precision) + '</td>';
-    html += '<td class="rank">' + globalRank + '</td>';
-    html += '<td class="btn"><a>Show</a></td>';
-    html += '</tr>';
-
-    for (var t_id in DataStore.tasks) {
-      var task = DataStore.tasks[t_id];
-      var taskScore = task_s[t_id] && task_s[t_id].length > 0 ? task_s[t_id][task_s[t_id].length - 1][1] : 0;
-      var taskRank = task_r[t_id] && task_r[t_id].length > 0 ? task_r[t_id][task_r[t_id].length - 1][1] : 1;
-
-      html += '<tr class="task" data-type="task" data-task="' + t_id + '">';
-      html += '<td class="name">' + task.name + '</td>';
-      html += '<td class="score">' + round_to_str(taskScore, task.score_precision) + '</td>';
-      html += '<td class="rank">' + taskRank + '</td>';
-      html += '<td class="btn"><a>Show</a></td>';
-      html += '</tr>';
-    }
-
-    tbody.innerHTML = html;
-
-    tbody.addEventListener('click', function(e) {
-      var btn = e.target.closest('td.btn');
-      if (!btn) return;
-
-      var row = btn.closest('tr');
-      if (activeRow) {
-        activeRow.classList.remove('active');
-      }
-      activeRow = row;
-      activeRow.classList.add('active');
-
-      var type = row.getAttribute('data-type');
-      if (type === 'global') {
-        showGlobal();
-      } else if (type === 'task') {
-        var taskId = row.getAttribute('data-task');
-        showTask(taskId);
+      if (UserDetail.active.hasClass('global')) {
+        UserDetail.show_global();
+      } else if (UserDetail.active.hasClass('contest')) {
+        UserDetail.show_contest(UserDetail.active.attr('data-contest'));
+      } else if (UserDetail.active.hasClass('task')) {
+        UserDetail.show_task(UserDetail.active.attr('data-task'));
       }
     });
+  };
 
-    var firstBtn = tbody.querySelector('td.btn');
-    if (firstBtn) {
-      firstBtn.click();
-    }
-  }
+  // Override show to skip modal/hash behavior
+  UserDetail.show = function(user_id) {
+    UserDetail.user_id = user_id;
+    UserDetail.user = DataStore.users[user_id];
+    UserDetail.data_fetched = 0;
 
-  function drawCharts(ranges, max_score, history_s, history_r) {
-    var scoreCanvas = document.getElementById('UserDetail_score_chart');
-    var rankCanvas = document.getElementById('UserDetail_rank_chart');
+    HistoryStore.request_update(UserDetail.history_callback);
 
-    Chart.draw_chart(scoreCanvas,
-      0, max_score, 0, 0,
-      ranges,
-      history_s,
-      [102, 102, 238],
-      [max_score * 0.25, max_score * 0.5, max_score * 0.75]);
-
-    Chart.draw_chart(rankCanvas,
-      userCount, 1, 1, userCount - 1,
-      ranges,
-      history_r,
-      [210, 50, 50],
-      [Math.ceil(userCount / 12), Math.ceil(userCount / 4), Math.floor(userCount / 2)]);
-  }
-
-  function showGlobal() {
-    document.getElementById('UserDetail_title').textContent = 'Global';
-    document.getElementById('UserDetail_submissions').innerHTML = '';
-
-    var intervals = [[contestData.begin, contestData.end]];
-    drawCharts(intervals, DataStore.global_max_score, global_s, global_r);
-  }
-
-  function showTask(taskId) {
-    var task = DataStore.tasks[taskId];
-    document.getElementById('UserDetail_title').textContent = task.name;
-
-    var intervals = [[contestData.begin, contestData.end]];
-    drawCharts(intervals, task.max_score, task_s[taskId] || [], task_r[taskId] || []);
-
-    renderSubmissionTable(taskId);
-  }
-
-  function renderSubmissionTable(taskId) {
-    var container = document.getElementById('UserDetail_submissions');
-    var task = DataStore.tasks[taskId];
-    var taskSubmissions = submissions[taskId] || [];
-
-    var html = '<table>';
-    html += '<thead><tr>';
-    html += '<th>Time</th>';
-    html += '<th>Score</th>';
-    html += '<th>Token</th>';
-    if (task.extra_headers && task.extra_headers.length > 0) {
-      for (var i = 0; i < task.extra_headers.length; i++) {
-        html += '<th>' + task.extra_headers[i] + '</th>';
+    $.ajax({
+      url: Config.get_submissions_url(UserDetail.user_id),
+      dataType: "json",
+      success: UserDetail.submissions_callback,
+      error: function() {
+        console.error("Error while getting the submissions for " + UserDetail.user_id);
       }
-    }
-    html += '</tr></thead>';
-    html += '<tbody>';
+    });
+  };
 
-    if (taskSubmissions.length === 0) {
-      var colspan = 3 + (task.extra_headers ? task.extra_headers.length : 0);
-      html += '<tr><td colspan="' + colspan + '">no submissions</td></tr>';
-    } else {
-      for (var i = 0; i < taskSubmissions.length; i++) {
-        var sub = taskSubmissions[i];
-        var time = sub.time - contestData.begin;
-        html += '<tr>';
-        html += '<td>' + format_time(time) + '</td>';
-        html += '<td>' + round_to_str(sub.score, task.score_precision) + '</td>';
-        html += '<td>' + (sub.token ? 'Yes' : 'No') + '</td>';
-        if (sub.extra && sub.extra.length > 0) {
-          for (var j = 0; j < sub.extra.length; j++) {
-            html += '<td>' + round_to_str(parseFloat(sub.extra[j]), task.score_precision) + '</td>';
-          }
+  // Override do_show to skip modal open and name/face updates (already in HTML)
+  var originalDoShow = UserDetail.do_show;
+  UserDetail.do_show = function() {
+    if (UserDetail.data_fetched == 2) {
+      // Build navigator HTML (reuse original logic)
+      var s = "<tr class=\"global\"> \
+                  <td class=\"name\">Global</td> \
+                  <td class=\"score\">" + (UserDetail.global_s.length > 0 ? round_to_str(UserDetail.global_s[UserDetail.global_s.length-1][1], DataStore.global_score_precision) : 0) + "</td> \
+                  <td class=\"rank\">" + (UserDetail.global_r.length > 0 ? UserDetail.global_r[UserDetail.global_r.length-1][1] : 1) + "</td> \
+                  <td class=\"btn\"><a>Show</a></td> \
+              </tr>";
+
+      var contests = DataStore.contest_list;
+      for (var i in contests) {
+        var contest = contests[i];
+        var c_id = contest["key"];
+
+        var tasks = contest["tasks"];
+        for (var j in tasks) {
+          var task = tasks[j];
+          var t_id = task["key"];
+
+          s += "<tr class=\"task\" data-task=\"" + t_id +"\"> \
+                   <td class=\"name\">" + task['name'] + "</td> \
+                   <td class=\"score\">" + (UserDetail.task_s[t_id].length > 0 ? round_to_str(UserDetail.task_s[t_id][UserDetail.task_s[t_id].length-1][1], task["score_precision"]) : 0) + "</td> \
+                   <td class=\"rank\">" + (UserDetail.task_r[t_id].length > 0 ? UserDetail.task_r[t_id][UserDetail.task_r[t_id].length-1][1] : 1) + "</td> \
+                   <td class=\"btn\"><a>Show</a></td> \
+                </tr>"
         }
-        html += '</tr>';
       }
+
+      UserDetail.navigator.html(s);
+      UserDetail.active = null;
+
+      // Click the first button to show global view
+      $('tr.global td.btn', UserDetail.navigator).click();
     }
+  };
 
-    html += '</tbody></table>';
-    container.innerHTML = html;
-  }
+  // Override hide to do nothing (we're not a modal)
+  UserDetail.hide = function() {};
 
-  function loadData() {
-    fetch(historyUrl)
-      .then(function(response) { return response.json(); })
-      .then(function(data) {
-        processHistory(data);
-
-        for (var t_id in DataStore.tasks) {
-          task_s[t_id] = getScoreHistoryForTask(userId, t_id);
-          task_r[t_id] = getRankHistoryForTask(userId, t_id);
-        }
-        global_s = getScoreHistory(userId);
-        global_r = getRankHistory(userId);
-
-        return fetch(submissionsUrl);
-      })
-      .then(function(response) { return response.json(); })
-      .then(function(data) {
-        for (var t_id in DataStore.tasks) {
-          submissions[t_id] = [];
-        }
-        for (var i = 0; i < data.length; i++) {
-          var sub = data[i];
-          if (submissions[sub.task]) {
-            submissions[sub.task].push(sub);
-          }
-        }
-
-        buildNavigator();
-      })
-      .catch(function(error) {
-        console.error('Error loading data:', error);
-        document.getElementById('UserDetail_title').textContent = 'Error loading data';
-      });
-  }
-
-  loadData();
+  // Initialize and show
+  UserDetail.init();
+  UserDetail.show(userId);
 })();
 </script>
 
