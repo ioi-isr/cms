@@ -131,19 +131,7 @@ def invalidate_score_cache(
                     participations_to_rebuild.append((participation, task))
 
     for participation, task in participations_to_rebuild:
-        session.query(ParticipationTaskScore).filter(
-            ParticipationTaskScore.participation_id == participation.id,
-            ParticipationTaskScore.task_id == task.id,
-        ).delete(synchronize_session=False)
-
-        session.query(ScoreHistory).filter(
-            ScoreHistory.participation_id == participation.id,
-            ScoreHistory.task_id == task.id,
-        ).delete(synchronize_session=False)
-
-        cache_entry = _get_or_create_cache_entry(session, participation, task)
-        _update_cache_entry_from_submissions(session, cache_entry, participation, task)
-        _rebuild_history(session, participation, task)
+        rebuild_score_cache(session, participation, task)
 
 
 def rebuild_score_cache(
