@@ -25,10 +25,12 @@ up ranking page loading.
 
 from datetime import datetime
 
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from cms.db import (
-    Participation, Task, Submission, ParticipationTaskScore, ScoreHistory
+    Participation, Task, Submission, SubmissionResult,
+    ParticipationTaskScore, ScoreHistory
 )
 from cmscommon.constants import (
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
@@ -41,6 +43,7 @@ __all__ = [
     "rebuild_score_cache",
     "rebuild_score_history",
     "get_cached_score",
+    "get_cached_score_entry",
 ]
 
 
@@ -88,6 +91,10 @@ def update_score_cache(
     if (cache_entry.last_submission_timestamp is not None and
             submission.timestamp < cache_entry.last_submission_timestamp):
         cache_entry.history_valid = False
+
+    # Update has_submissions and partial flags
+    cache_entry.has_submissions = True
+    cache_entry.partial = _compute_partial_from_db(session, participation, task)
 
     cache_entry.last_update = datetime.utcnow()
 
@@ -246,6 +253,27 @@ def get_cached_score(
     return: the cached score.
 
     """
+    cache_entry = get_cached_score_entry(session, participation, task)
+    return cache_entry.score
+
+
+def get_cached_score_entry(
+    session: Session,
+    participation: Participation,
+    task: Task,
+) -> ParticipationTaskScore:
+    """Get the cached score entry for a participation/task pair.
+
+    If no cache entry exists, creates one and computes the score.
+    This returns the full cache entry including has_submissions and partial.
+
+    session: the database session.
+    participation: the participation.
+    task: the task.
+
+    return: the cached score entry.
+
+    """
     cache_entry = session.query(ParticipationTaskScore).filter(
         ParticipationTaskScore.participation_id == participation.id,
         ParticipationTaskScore.task_id == task.id,
@@ -254,7 +282,7 @@ def get_cached_score(
     if cache_entry is None:
         cache_entry = rebuild_score_cache(session, participation, task)
 
-    return cache_entry.score
+    return cache_entry
 
 
 def _get_or_create_cache_entry(
@@ -278,6 +306,8 @@ def _get_or_create_cache_entry(
             last_submission_score=None,
             last_submission_timestamp=None,
             history_valid=True,
+            has_submissions=False,
+            partial=False,
             last_update=datetime.utcnow(),
         )
         session.add(cache_entry)
@@ -312,6 +342,8 @@ def _get_or_create_cache_entry_locked(
             last_submission_score=None,
             last_submission_timestamp=None,
             history_valid=True,
+            has_submissions=False,
+            partial=False,
             last_update=datetime.utcnow(),
         )
         session.add(cache_entry)
@@ -408,6 +440,8 @@ def _update_cache_entry_from_submissions(
     submissions = [s for s in participation.submissions
                    if s.task is task and s.official]
 
+    has_submissions = len(submissions) > 0
+
     if len(submissions) == 0:
         cache_entry.score = 0.0
         cache_entry.subtask_max_scores = None
@@ -415,6 +449,8 @@ def _update_cache_entry_from_submissions(
         cache_entry.last_submission_score = None
         cache_entry.last_submission_timestamp = None
         cache_entry.history_valid = True
+        cache_entry.has_submissions = False
+        cache_entry.partial = False
         cache_entry.last_update = datetime.utcnow()
         return
 
@@ -482,6 +518,8 @@ def _update_cache_entry_from_submissions(
     cache_entry.last_submission_score = last_submission_score
     cache_entry.last_submission_timestamp = last_submission_timestamp
     cache_entry.history_valid = True
+    cache_entry.has_submissions = has_submissions
+    cache_entry.partial = _compute_partial_from_db(session, participation, task)
     cache_entry.last_update = datetime.utcnow()
 
 
@@ -579,3 +617,54 @@ def _rebuild_history(
         if new_score != current_score:
             _add_history_entry(session, participation, task, s, new_score)
             current_score = new_score
+
+
+def _compute_partial_from_db(
+    session: Session,
+    participation: Participation,
+    task: Task,
+) -> bool:
+    """Compute whether there are pending (unscored) submissions.
+
+    A submission is "pending" when:
+    - It is an official submission for the task
+    - The task has an active dataset
+    - The submission result for the active dataset is missing OR not scored
+
+    session: the database session.
+    participation: the participation.
+    task: the task.
+
+    return: True if there are pending submissions, False otherwise.
+
+    """
+    dataset = task.active_dataset
+    if dataset is None:
+        return False
+
+    pending_exists = session.query(
+        session.query(Submission)
+        .outerjoin(
+            SubmissionResult,
+            and_(
+                SubmissionResult.submission_id == Submission.id,
+                SubmissionResult.dataset_id == dataset.id
+            )
+        )
+        .filter(Submission.participation_id == participation.id)
+        .filter(Submission.task_id == task.id)
+        .filter(Submission.official.is_(True))
+        .filter(
+            or_(
+                SubmissionResult.submission_id.is_(None),
+                SubmissionResult.score.is_(None),
+                SubmissionResult.score_details.is_(None),
+                SubmissionResult.public_score.is_(None),
+                SubmissionResult.public_score_details.is_(None),
+                SubmissionResult.ranking_score_details.is_(None),
+            )
+        )
+        .exists()
+    ).scalar()
+
+    return pending_exists or False
