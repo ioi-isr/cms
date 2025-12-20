@@ -32,10 +32,12 @@ import json
 from collections import namedtuple
 
 import tornado.web
+from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import joinedload
 
-from cms.db import Contest, Participation, ParticipationTaskScore, ScoreHistory
-from cms.grading.scorecache import get_cached_score, rebuild_score_history
+from cms.db import Contest, Participation, ParticipationTaskScore, ScoreHistory, \
+    Submission, SubmissionResult, Task
+from cms.grading.scorecache import rebuild_score_history
 from .base import BaseHandler, require_permission
 
 
@@ -53,25 +55,86 @@ class RankingHandler(BaseHandler):
         # This validates the contest id.
         self.safe_get_item(Contest, contest_id)
 
-        # This massive joined load gets all the information which we will need
-        # to generating the rankings.
+        # Load contest with tasks, participations, and statement views.
+        # We no longer need to joinedload submissions/results since we use
+        # SQL aggregation to compute has_submissions and t_partial.
         self.contest: Contest = (
             self.sql_session.query(Contest)
             .filter(Contest.id == contest_id)
             .options(joinedload("tasks"))
             .options(joinedload("tasks.active_dataset"))
             .options(joinedload("participations"))
-            .options(joinedload("participations.submissions"))
-            .options(joinedload("participations.submissions.token"))
-            .options(joinedload("participations.submissions.results"))
+            .options(joinedload("participations.user"))
+            .options(joinedload("participations.team"))
             .options(joinedload("participations.statement_views"))
             .first()
         )
 
-        # Build a map of active_dataset_id per task once to avoid lazy loads
-        active_dataset_id_by_task = {
-            task.id: task.active_dataset_id for task in self.contest.tasks
+        # Get participation IDs for bulk queries
+        participation_ids = [p.id for p in self.contest.participations]
+
+        # Bulk fetch cached scores for all participation/task pairs
+        cached_scores = (
+            self.sql_session.query(ParticipationTaskScore)
+            .filter(ParticipationTaskScore.participation_id.in_(participation_ids))
+            .all()
+        ) if participation_ids else []
+        score_by_pt = {
+            (c.participation_id, c.task_id): c.score
+            for c in cached_scores
         }
+
+        # SQL aggregation to compute has_submissions and t_partial for all
+        # participation/task pairs in a single query. This replaces the O(P*T*S)
+        # Python iteration with a single SQL query.
+        #
+        # t_partial is True when:
+        # - There is an official submission for the task
+        # - The task has an active dataset
+        # - The submission result for the active dataset is missing OR not scored
+        #
+        # scored() checks: score, score_details, public_score, public_score_details,
+        # ranking_score_details are all NOT NULL
+        partial_flags_query = (
+            self.sql_session.query(
+                Submission.participation_id,
+                Submission.task_id,
+                func.bool_or(
+                    and_(
+                        Task.active_dataset_id.isnot(None),
+                        or_(
+                            SubmissionResult.submission_id.is_(None),
+                            SubmissionResult.score.is_(None),
+                            SubmissionResult.score_details.is_(None),
+                            SubmissionResult.public_score.is_(None),
+                            SubmissionResult.public_score_details.is_(None),
+                            SubmissionResult.ranking_score_details.is_(None),
+                        )
+                    )
+                ).label('t_partial')
+            )
+            .join(Task, Submission.task_id == Task.id)
+            .outerjoin(
+                SubmissionResult,
+                and_(
+                    SubmissionResult.submission_id == Submission.id,
+                    SubmissionResult.dataset_id == Task.active_dataset_id
+                )
+            )
+            .filter(Submission.participation_id.in_(participation_ids))
+            .filter(Submission.official.is_(True))
+            .group_by(Submission.participation_id, Submission.task_id)
+        ) if participation_ids else []
+
+        # Build lookup dict: (participation_id, task_id) -> (has_submissions, t_partial)
+        # If a key exists, has_submissions is True (we only query official submissions)
+        partial_by_pt = {}
+        if participation_ids:
+            for row in partial_flags_query.all():
+                partial_by_pt[(row.participation_id, row.task_id)] = (
+                    True,  # has_submissions is always True if row exists
+                    row.t_partial or False  # Handle None from bool_or
+                )
 
         statement_views_set = set()
         for p in self.contest.participations:
@@ -87,24 +150,14 @@ class RankingHandler(BaseHandler):
             total_score = 0.0
             partial = False
             for task in self.contest.tasks:
-                t_score = get_cached_score(self.sql_session, p, task)
+                # Get cached score, defaulting to 0.0 if not cached
+                t_score = score_by_pt.get((p.id, task.id), 0.0)
                 t_score = round(t_score, task.score_precision)
 
-                # Compute has_submissions and partial from already-loaded data
-                has_submissions = False
-                t_partial = False
-                dataset_id = active_dataset_id_by_task.get(task.id)
-                for s in p.submissions:
-                    if s.task_id == task.id and s.official:
-                        has_submissions = True
-                        if dataset_id is not None and not t_partial:
-                            # Find result for active dataset in already-loaded results
-                            sr = next(
-                                (r for r in s.results if r.dataset_id == dataset_id),
-                                None
-                            )
-                            if sr is None or not sr.scored():
-                                t_partial = True
+                # Get has_submissions and t_partial from SQL aggregation
+                has_submissions, t_partial = partial_by_pt.get(
+                    (p.id, task.id), (False, False)
+                )
 
                 has_opened = (p.id, task.id) in statement_views_set
                 p.task_statuses.append(
@@ -122,10 +175,10 @@ class RankingHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["show_teams"] = show_teams
-        
+
         date_str = self.contest.start.strftime("%Y%m%d")
         contest_name = self.contest.name.replace(" ", "_")
-        
+
         if format == "txt":
             filename = f"{date_str}_{contest_name}_ranking.txt"
             self.set_header("Content-Type", "text/plain")
