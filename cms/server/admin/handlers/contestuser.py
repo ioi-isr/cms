@@ -41,6 +41,7 @@ except:
 import tornado.web
 
 from cms.db import Contest, Message, Participation, Submission, User, Team
+from cmscommon.crypto import validate_password_strength
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 
@@ -57,6 +58,7 @@ class ContestUsersHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["contest"] = self.contest
+        self.r_params["bulk_add_results"] = None
         self.r_params["unassigned_users"] = \
             self.sql_session.query(User)\
                 .filter(User.id.notin_(
@@ -174,6 +176,88 @@ class AddContestUserHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
+class BulkAddContestUsersHandler(BaseHandler):
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id):
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        try:
+            if "users_file" not in self.request.files:
+                raise ValueError("No file uploaded")
+
+            file_data = self.request.files["users_file"][0]
+            file_content = file_data["body"].decode("utf-8")
+
+            usernames = file_content.split()
+
+            if not usernames:
+                raise ValueError("File is empty or contains no usernames")
+
+            results = []
+            users_added = 0
+
+            for username in usernames:
+                username = username.strip()
+                if not username:
+                    continue
+
+                user = self.sql_session.query(User).filter(
+                    User.username == username).first()
+
+                if user is None:
+                    results.append({
+                        "username": username,
+                        "status": "not_found",
+                        "message": "Username does not exist in the system"
+                    })
+                else:
+                    existing_participation = (
+                        self.sql_session.query(Participation)
+                        .filter(Participation.contest == self.contest)
+                        .filter(Participation.user == user)
+                        .first()
+                    )
+
+                    if existing_participation is not None:
+                        results.append({
+                            "username": username,
+                            "status": "already_exists",
+                            "message": "User is already in the contest"
+                        })
+                    else:
+                        participation = Participation(
+                            contest=self.contest, user=user)
+                        self.sql_session.add(participation)
+                        results.append({
+                            "username": username,
+                            "status": "success",
+                            "message": "Successfully added to contest"
+                        })
+                        users_added += 1
+
+            if self.try_commit():
+                if users_added > 0:
+                    self.service.proxy_service.reinitialize()
+
+            self.r_params = self.render_params()
+            self.r_params["contest"] = self.contest
+            self.r_params["bulk_add_results"] = results
+            self.r_params["users_added"] = users_added
+            self.r_params["unassigned_users"] = \
+                self.sql_session.query(User)\
+                    .filter(User.id.notin_(
+                        self.sql_session.query(Participation.user_id)
+                            .filter(Participation.contest == self.contest)
+                            .all()))\
+                    .all()
+            self.render("contest_users.html", **self.r_params)
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Error processing file", repr(error))
+            self.redirect(self.url("contest", contest_id, "users"))
+
+
 class ParticipationHandler(BaseHandler):
     """Shows the details of a single user in a contest: submissions,
     questions, messages (and allows to send the latters).
@@ -222,6 +306,18 @@ class ParticipationHandler(BaseHandler):
 
         try:
             attrs = participation.get_attrs()
+
+            # Validate password strength if a new password is provided
+            password = self.get_argument("password", "")
+            if len(password) > 0:
+                user_inputs = [participation.user.username]
+                if participation.user.first_name:
+                    user_inputs.append(participation.user.first_name)
+                if participation.user.last_name:
+                    user_inputs.append(participation.user.last_name)
+                if participation.user.email:
+                    user_inputs.append(participation.user.email)
+                validate_password_strength(password, user_inputs)
 
             self.get_password(attrs, participation.password, True)
 

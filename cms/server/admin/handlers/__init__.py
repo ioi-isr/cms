@@ -64,6 +64,7 @@ from .contestuser import \
     ContestUsersHandler, \
     RemoveParticipationHandler, \
     AddContestUserHandler, \
+    BulkAddContestUsersHandler, \
     ParticipationHandler, \
     MessageHandler
 from .dataset import \
@@ -111,6 +112,9 @@ from .user import \
     AddUserHandler, \
     UserHandler, \
     UserListHandler, \
+    ExportUsersHandler, \
+    ImportUsersHandler, \
+    ImportUsersConfirmHandler, \
     RemoveUserHandler, \
     AddParticipationHandler, \
     EditParticipationHandler, \
@@ -126,6 +130,9 @@ from .folder import \
     FolderHandler, \
     AddFolderHandler, \
     RemoveFolderHandler
+from .export_handlers import \
+    ExportTaskHandler, \
+    ExportContestHandler
 from .trainingprogram import \
     TrainingProgramListHandler, \
     TrainingProgramHandler, \
@@ -162,6 +169,7 @@ HANDLERS = [
     (r"/contests/([0-9]+)/remove", RemoveContestHandler),
     (r"/contests/add", AddContestHandler),
     (r"/contest/([0-9]+)", ContestHandler),
+    (r"/contest/([0-9]+)/export", ExportContestHandler),
     (r"/contest/([0-9]+)/overview", OverviewHandler),
     (r"/contest/([0-9]+)/resourceslist", ResourcesListHandler),
 
@@ -169,6 +177,7 @@ HANDLERS = [
 
     (r"/contest/([0-9]+)/users", ContestUsersHandler),
     (r"/contest/([0-9]+)/users/add", AddContestUserHandler),
+    (r"/contest/([0-9]+)/users/bulk_add", BulkAddContestUsersHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/remove", RemoveParticipationHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/edit", ParticipationHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/message", MessageHandler),
@@ -221,6 +230,7 @@ HANDLERS = [
     (r"/tasks/([0-9]+)/remove", RemoveTaskHandler),
     (r"/tasks/add", AddTaskHandler),
     (r"/task/([0-9]+)", TaskHandler),
+    (r"/task/([0-9]+)/export", ExportTaskHandler),
     (r"/task/([0-9]+)/submissions/download", DownloadTaskSubmissionsHandler),
     (r"/task/([0-9]+)/add_dataset", AddDatasetHandler),
     (r"/task/([0-9]+)/statements/add", AddStatementHandler),
@@ -247,6 +257,9 @@ HANDLERS = [
     # Users/Teams
 
     (r"/users", UserListHandler),
+    (r"/users/export", ExportUsersHandler),
+    (r"/users/import", ImportUsersHandler),
+    (r"/users/import/confirm", ImportUsersConfirmHandler),
     (r"/users/([0-9]+)/remove", RemoveUserHandler),
     (r"/teams", TeamListHandler),
     (r"/teams/([0-9]+)/remove", RemoveTeamHandler),

@@ -279,6 +279,12 @@ class Task(Base):
         passive_deletes=True,
         back_populates="task")
 
+    statement_views: list["StatementView"] = relationship(
+        "StatementView",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="task")
+
     def get_allowed_languages(self) -> list[str] | None:
         """Get the list of allowed languages for this task.
 

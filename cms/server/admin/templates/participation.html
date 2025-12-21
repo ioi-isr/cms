@@ -3,6 +3,7 @@
 {% extends "base.html" %}
 {% import 'macro/submission.html' as macro_submission %}
 {% import 'macro/question.html' as macro_question with context %}
+{% import 'macro/delay_request.html' as macro_delay_request with context %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
 
 {% block core %}
@@ -131,6 +132,23 @@
 
   {% else %}
   No questions.
+
+  {% endif %}
+  <div class="hr"></div>
+</div>
+
+
+<h2 id="title_delay_requests" class="toggling_on">Delay Requests</h2>
+<div id="delay_requests">
+  {% if participation.delay_requests != [] %}
+  <div class="notifications">
+    {% for req in participation.delay_requests|reverse %}
+      {{ macro_delay_request.delay_request(req, selected_user.id) }}
+    {% endfor %}
+  </div>
+
+  {% else %}
+  No delay requests.
 
   {% endif %}
   <div class="hr"></div>

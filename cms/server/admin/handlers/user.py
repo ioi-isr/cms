@@ -27,7 +27,13 @@
 
 """
 
+import csv
+import io
+import re
+
 from cms.db import Contest, Participation, Submission, Team, User
+from cmscommon.crypto import (parse_authentication, build_password, 
+                               hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -66,10 +72,21 @@ class UserHandler(BaseHandler):
             self.get_string(attrs, "first_name")
             self.get_string(attrs, "last_name")
             self.get_string(attrs, "username", empty=None)
+            self.get_string(attrs, "email", empty=None)
+
+            # Validate password strength unless explicitly bypassed
+            # (e.g., for imports or tests)
+            password = self.get_argument("password", "")
+            allow_weak = self.get_argument("allow_weak_password", None)
+            if len(password) > 0 and allow_weak is None:
+                user_inputs = []
+                if attrs.get("username"):
+                    user_inputs.append(attrs["username"])
+                if attrs.get("email"):
+                    user_inputs.append(attrs["email"])
+                validate_password_strength(password, user_inputs)
 
             self.get_password(attrs, user.password, False)
-
-            self.get_string(attrs, "email", empty=None)
             self.get_string_list(attrs, "preferred_languages")
             self.get_string(attrs, "timezone", empty=None)
 
@@ -113,6 +130,269 @@ class UserListHandler(SimpleHandler("users.html")):
             self.service.add_notification(
                 make_datetime(), "Invalid operation %s" % operation, "")
             self.redirect(self.url("contests"))
+
+
+class ExportUsersHandler(BaseHandler):
+    """Export all users to a CSV file.
+
+    """
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self):
+        users = self.sql_session.query(User).order_by(User.username).all()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        writer.writerow([
+            "First name",
+            "Last name",
+            "Username",
+            "Password",
+            "Plain text / Hash",
+            "E-mail",
+            "Timezone",
+            "Preferred languages"
+        ])
+
+        for user in users:
+            try:
+                method, payload = parse_authentication(user.password)
+                password_type = "Plain text" if method == "plaintext" else "Hash"
+                password_value = payload
+            except (ValueError, AttributeError):
+                password_type = "Unknown"
+                password_value = user.password
+
+            preferred_languages = "; ".join(user.preferred_languages) if user.preferred_languages else ""
+
+            writer.writerow([
+                user.first_name or "",
+                user.last_name or "",
+                user.username or "",
+                password_value or "",
+                password_type,
+                user.email or "",
+                user.timezone or "",
+                preferred_languages
+            ])
+
+        self.set_header("Content-Type", "text/csv")
+        self.set_header("Content-Disposition", "attachment; filename=users.csv")
+        self.write(output.getvalue())
+
+
+class ImportUsersHandler(BaseHandler):
+    """Import users from a CSV file.
+
+    GET shows the upload form.
+    POST processes the CSV and shows results with conflicts.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self):
+        self.r_params = self.render_params()
+        self.render("import_users.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self):
+        fallback_page = self.url("users", "import")
+
+        if "csv_file" not in self.request.files:
+            self.service.add_notification(
+                make_datetime(), "No file uploaded", "Please select a CSV file to upload.")
+            self.redirect(fallback_page)
+            return
+
+        csv_file = self.request.files["csv_file"][0]
+        filename = csv_file["filename"]
+
+        if not filename.lower().endswith('.csv'):
+            self.service.add_notification(
+                make_datetime(), "Invalid file type", "Only CSV files are accepted.")
+            self.redirect(fallback_page)
+            return
+
+        try:
+            content = csv_file["body"].decode("utf-8")
+        except UnicodeDecodeError:
+            self.service.add_notification(
+                make_datetime(), "Invalid file encoding", "CSV file must be UTF-8 encoded.")
+            self.redirect(fallback_page)
+            return
+
+        reader = csv.DictReader(io.StringIO(content))
+
+        expected_headers = {
+            "First name", "Last name", "Username", "Password",
+            "Plain text / Hash", "E-mail", "Timezone", "Preferred languages"
+        }
+
+        if not reader.fieldnames or not expected_headers.issubset(set(reader.fieldnames)):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid CSV format",
+                f"CSV must have headers: {', '.join(expected_headers)}")
+            self.redirect(fallback_page)
+            return
+
+        new_users = []
+        failed_users = []
+        existing_users = []
+        row_num = 1
+
+        username_pattern = re.compile(r'^[A-Za-z0-9_-]+$')
+
+        for row in reader:
+            row_num += 1
+            errors = []
+
+            username = row.get("Username", "").strip()
+            first_name = row.get("First name", "").strip()
+            last_name = row.get("Last name", "").strip()
+            password = row.get("Password", "").strip()
+            password_type = row.get("Plain text / Hash", "").strip()
+            email = row.get("E-mail", "").strip()
+            timezone = row.get("Timezone", "").strip()
+            preferred_languages_str = row.get("Preferred languages", "").strip()
+
+            if not username:
+                errors.append("Username is required")
+            elif not username_pattern.match(username):
+                errors.append("Username must contain only letters, numbers, hyphens, and underscores")
+
+            if not first_name:
+                errors.append("First name is required")
+
+            if not last_name:
+                errors.append("Last name is required")
+
+            if not password:
+                errors.append("Password is required")
+
+            if password_type and password_type.lower() not in ["plain text", "hash"]:
+                errors.append(f"Invalid password type '{password_type}'. Must be 'Plain text' or 'Hash'")
+
+            if errors:
+                failed_users.append({
+                    "row": row_num,
+                    "username": username,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "errors": errors
+                })
+                continue
+
+            preferred_languages = [lang.strip() for lang in re.split(r"[;,]", preferred_languages_str) if lang.strip()]
+
+            if password_type.lower() == "plain text":
+                password_value = hash_password(password, "bcrypt")
+            else:
+                if password.startswith("bcrypt:"):
+                    password_value = password
+                else:
+                    password_value = f"bcrypt:{password}"
+
+            existing_user = self.sql_session.query(User).filter(User.username == username).first()
+
+            user_data = {
+                "username": username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "password": password_value,
+                "email": email if email else None,
+                "timezone": timezone if timezone else None,
+                "preferred_languages": preferred_languages,
+                "row": row_num
+            }
+
+            if existing_user:
+                user_data["existing_id"] = existing_user.id
+                user_data["existing_first_name"] = existing_user.first_name
+                user_data["existing_last_name"] = existing_user.last_name
+                user_data["existing_email"] = existing_user.email
+                user_data["existing_timezone"] = existing_user.timezone
+                existing_users.append(user_data)
+            else:
+                new_users.append(user_data)
+
+        self.r_params = self.render_params()
+        self.r_params["new_users"] = new_users
+        self.r_params["failed_users"] = failed_users
+        self.r_params["existing_users"] = existing_users
+        self.render("import_users_confirm.html", **self.r_params)
+
+
+class ImportUsersConfirmHandler(BaseHandler):
+    """Confirm and execute the user import.
+
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self):
+        import json
+
+        new_users_json = self.get_argument("new_users", "[]")
+        existing_users_json = self.get_argument("existing_users", "[]")
+
+        try:
+            new_users = json.loads(new_users_json)
+            existing_users = json.loads(existing_users_json)
+        except json.JSONDecodeError:
+            self.service.add_notification(
+                make_datetime(), "Invalid data", "Failed to parse user data.")
+            self.redirect(self.url("users"))
+            return
+
+        created_count = 0
+        updated_count = 0
+        errors = []
+
+        for user_data in new_users:
+            try:
+                user = User(
+                    username=user_data["username"],
+                    first_name=user_data["first_name"],
+                    last_name=user_data["last_name"],
+                    password=user_data["password"],
+                    email=user_data.get("email"),
+                    timezone=user_data.get("timezone"),
+                    preferred_languages=user_data.get("preferred_languages", [])
+                )
+                self.sql_session.add(user)
+                created_count += 1
+            except Exception as error:
+                errors.append(f"Failed to create user {user_data['username']}: {str(error)}")
+
+        update_user_ids = self.get_arguments("update_user")
+
+        for user_data in existing_users:
+            user_id = str(user_data["existing_id"])
+            if user_id in update_user_ids:
+                try:
+                    user = self.sql_session.query(User).filter(User.id == user_data["existing_id"]).first()
+                    if user:
+                        user.first_name = user_data["first_name"]
+                        user.last_name = user_data["last_name"]
+                        user.password = user_data["password"]
+                        user.email = user_data.get("email")
+                        user.timezone = user_data.get("timezone")
+                        user.preferred_languages = user_data.get("preferred_languages", [])
+                        updated_count += 1
+                except Exception as error:
+                    errors.append(f"Failed to update user {user_data['username']}: {str(error)}")
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+            message = f"Successfully created {created_count} user(s) and updated {updated_count} user(s)."
+            if errors:
+                message += f" Errors: {'; '.join(errors)}"
+            self.service.add_notification(make_datetime(), "Import completed", message)
+        else:
+            self.service.add_notification(
+                make_datetime(), "Import failed", "Failed to commit changes to database.")
+
+        self.redirect(self.url("users"))
 
 
 class TeamListHandler(SimpleHandler("teams.html")):
@@ -297,14 +577,24 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
             self.get_string(attrs, "last_name")
             self.get_string(attrs, "username", empty=None)
 
-            self.get_password(attrs, None, False)
-
             self.get_string(attrs, "email", empty=None)
 
             assert attrs.get("username") is not None, \
                 "No username specified."
             assert not attrs.get("username").startswith("__"), \
                 "Username cannot start with '__' (reserved for system users)."
+
+            # Validate password strength unless explicitly bypassed
+            # (e.g., for imports or tests)
+            password = self.get_argument("password", "")
+            allow_weak = self.get_argument("allow_weak_password", None)
+            if len(password) > 0 and allow_weak is None:
+                user_inputs = [attrs["username"]]
+                if attrs.get("email"):
+                    user_inputs.append(attrs["email"])
+                validate_password_strength(password, user_inputs)
+
+            self.get_password(attrs, None, False)
 
             self.get_string(attrs, "timezone", empty=None)
 

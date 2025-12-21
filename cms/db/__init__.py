@@ -68,6 +68,7 @@ __all__ = [
     "UserTestExecutable",
     # printjob
     "PrintJob",
+    "StatementView",
     # init
     "init_db",
     # drop
@@ -107,6 +108,7 @@ from .submission import Submission, File, Token, SubmissionResult, \
 from .usertest import UserTest, UserTestFile, UserTestManager, \
     UserTestResult, UserTestExecutable
 from .printjob import PrintJob
+from .statementview import StatementView
 
 from .init import init_db
 from .drop import drop_db

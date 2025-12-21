@@ -32,6 +32,7 @@ try:
 except:
     collections.MutableMapping = collections.abc.MutableMapping
 
+from sqlalchemy import not_
 import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation
@@ -99,6 +100,7 @@ class DelaysAndExtraTimesHandler(BaseHandler):
         
         participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
+            .filter(not_(Participation.hidden))\
             .order_by(Participation.id)\
             .all()
         
@@ -232,6 +234,7 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
 
         participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
+            .filter(not_(Participation.hidden))\
             .order_by(Participation.id)\
             .all()
 

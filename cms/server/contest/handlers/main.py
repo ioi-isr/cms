@@ -36,6 +36,8 @@ import re
 
 import collections
 
+from deep_translator import GoogleTranslator
+
 from cms.db.contest import Contest
 
 try:
@@ -56,7 +58,8 @@ from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
-from cmscommon.crypto import hash_password, validate_password
+from cmscommon.crypto import hash_password, validate_password, \
+    validate_password_strength, WeakPasswordError
 from cmscommon.datetime import make_datetime, make_timestamp
 from .contest import ContestHandler, api_login_required
 from ..phase_management import actual_phase_required
@@ -69,6 +72,14 @@ logger = logging.getLogger(__name__)
 # Dummy function to mark translatable strings.
 def N_(msgid):
     return msgid
+
+
+class RegistrationError(Exception):
+    """Exception raised for registration validation errors."""
+
+    def __init__(self, code: str, field: str | None = None):
+        self.code = code
+        self.field = field
 
 
 class MainHandler(ContestHandler):
@@ -107,30 +118,35 @@ class RegistrationHandler(ContestHandler):
 
         create_new_user = self.get_argument("new_user") == "true"
 
-        # Get or create user
-        if create_new_user:
-            user = self._create_user()
-        else:
-            user = self._get_user()
+        try:
+            # Get or create user
+            if create_new_user:
+                user = self._create_user()
+            else:
+                user = self._get_user()
 
-            # Check if the participation exists
-            contest = self.contest
-            tot_participants = self.sql_session.query(Participation)\
-                                   .filter(Participation.user == user)\
-                                   .filter(Participation.contest == contest)\
-                                   .count()
-            if tot_participants > 0:
-                raise tornado.web.HTTPError(409)
+                # Check if the participation exists
+                contest = self.contest
+                tot_participants = self.sql_session.query(Participation)\
+                                       .filter(Participation.user == user)\
+                                       .filter(Participation.contest == contest)\
+                                       .count()
+                if tot_participants > 0:
+                    raise tornado.web.HTTPError(409)
 
-        # Create participation
-        team = self._get_team()
-        participation = Participation(user=user, contest=self.contest,
-                                      team=team)
-        self.sql_session.add(participation)
+            # Create participation
+            team = self._get_team()
+            participation = Participation(user=user, contest=self.contest,
+                                          team=team)
+            self.sql_session.add(participation)
 
-        self.sql_session.commit()
+            self.sql_session.commit()
 
-        self.finish(user.username)
+            self.finish(user.username)
+        except RegistrationError as e:
+            self.set_status(400)
+            self.set_header("Content-Type", "application/json")
+            self.write(json.dumps({"code": e.code, "field": e.field}))
 
     @multi_contest
     def get(self):
@@ -153,22 +169,41 @@ class RegistrationHandler(ContestHandler):
             email = self.get_argument("email")
             if len(email) == 0:
                 email = None
+        except tornado.web.MissingArgumentError:
+            raise RegistrationError("missing_field")
 
-            if not 1 <= len(first_name) <= self.MAX_INPUT_LENGTH:
-                raise ValueError()
-            if not 1 <= len(last_name) <= self.MAX_INPUT_LENGTH:
-                raise ValueError()
-            if not 1 <= len(username) <= self.MAX_INPUT_LENGTH:
-                raise ValueError()
-            if not re.match(r"^[A-Za-z0-9_-]+$", username):
-                raise ValueError()
-            if username.startswith("__"):
-                raise ValueError()
-            if not self.MIN_PASSWORD_LENGTH <= len(password) \
-                    <= self.MAX_INPUT_LENGTH:
-                raise ValueError()
-        except (tornado.web.MissingArgumentError, ValueError):
-            raise tornado.web.HTTPError(400)
+        # Validate first name
+        if not 1 <= len(first_name) <= self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_first_name", "first_name")
+
+        # Validate last name
+        if not 1 <= len(last_name) <= self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_last_name", "last_name")
+
+        # Validate username length
+        if not 1 <= len(username) <= self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_username_length", "username")
+
+        # Validate username characters
+        if not re.match(r"^[A-Za-z0-9_-]+$", username):
+            raise RegistrationError("invalid_username_chars", "username")
+
+        if username.startswith("__"):
+            raise RegistrationError("invalid_username_start", "username")
+
+        # Validate password length
+        if not self.MIN_PASSWORD_LENGTH <= len(password) \
+                <= self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_password_length", "password")
+
+        # Validate password strength
+        try:
+            user_inputs = [username]
+            if email:
+                user_inputs.append(email)
+            validate_password_strength(password, user_inputs)
+        except WeakPasswordError:
+            raise RegistrationError("weak_password", "password")
 
         # Override password with its hash
         password = hash_password(password)
@@ -214,7 +249,7 @@ class RegistrationHandler(ContestHandler):
                         Team.code == team_code).one()
                 )
             except (tornado.web.MissingArgumentError, NoResultFound):
-                raise tornado.web.HTTPError(400)
+                raise RegistrationError("invalid_team", "team")
         else:
             team = None
 
@@ -420,4 +455,99 @@ class DocumentationHandler(ContestHandler):
                     COMPILATION_MESSAGES=COMPILATION_MESSAGES,
                     EVALUATION_MESSAGES=EVALUATION_MESSAGES,
                     language_docs=language_docs,
+                    **self.r_params)
+
+
+GOOGLE_TRANSLATE_CODE_MAP = {
+    'en': 'en',
+    'he': 'iw',
+    'iw': 'iw',
+    'ru': 'ru',
+    'ar': 'ar',
+    'auto': 'auto'
+}
+
+
+def translate_text(source_text, source_lang, target_lang, supported_languages):
+    """Translate text from source language to target language.
+
+    Returns a tuple of (translation_result, error_message).
+    If successful, translation_result is the translated text and error_message is None.
+    If failed, translation_result is None and error_message contains the error.
+
+    """
+    if not source_text:
+        return None, N_("Please enter text to translate.")
+    
+    supported_language_codes = set(supported_languages.keys())
+    supported_language_codes |= {
+        GOOGLE_TRANSLATE_CODE_MAP[lang]
+        for lang in supported_languages
+        if lang in GOOGLE_TRANSLATE_CODE_MAP
+    }
+    
+    allowed_source_codes = supported_language_codes | {'auto'}
+    allowed_target_codes = supported_language_codes
+
+    if source_lang not in allowed_source_codes:
+        return None, N_("Invalid source language.")
+    if target_lang == 'auto':
+        return None, N_("Cannot use auto-detect as target language.")
+    if target_lang not in allowed_target_codes:
+        return None, N_("Invalid target language.")
+    if source_lang == target_lang and source_lang != 'auto':
+        return None, N_("Source and target languages must be different.")
+    
+    normalized_source = GOOGLE_TRANSLATE_CODE_MAP.get(source_lang, source_lang)
+    normalized_target = GOOGLE_TRANSLATE_CODE_MAP.get(target_lang, target_lang)
+
+    try:
+        translator = GoogleTranslator(source=normalized_source, target=normalized_target)
+        translation_result = translator.translate(source_text)
+        return translation_result, None
+    except Exception as e:
+        logger.error("Translation error: %s", str(e))
+        return None, N_("Translation failed. Please try again.")
+
+
+class TranslationHandler(ContestHandler):
+    """Handles text translation for contestants.
+
+    """
+    SUPPORTED_LANGUAGES = {
+        'en': 'English',
+        'he': 'Hebrew',
+        'ru': 'Russian',
+        'ar': 'Arabic'
+    }
+
+    @tornado.web.authenticated
+    @multi_contest
+    def get(self):
+        self.render("translation.html",
+                    supported_languages=self.SUPPORTED_LANGUAGES,
+                    error_message=None,
+                    source_text="",
+                    source_lang="auto",
+                    target_lang="",
+                    translation_result=None,
+                    **self.r_params)
+
+    @tornado.web.authenticated
+    @multi_contest
+    def post(self):
+        source_text = self.get_argument("source_text", "")
+        source_lang = self.get_argument("source_lang", "")
+        target_lang = self.get_argument("target_lang", "")
+
+        translation_result, error_message = translate_text(
+            source_text, source_lang, target_lang, self.SUPPORTED_LANGUAGES)
+
+        self.render("translation.html",
+                    supported_languages=self.SUPPORTED_LANGUAGES,
+                    source_text=source_text,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    translation_result=translation_result,
+                    error_message=error_message,
                     **self.r_params)
