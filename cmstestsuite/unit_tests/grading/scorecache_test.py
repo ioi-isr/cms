@@ -27,7 +27,7 @@ from cmstestsuite.unit_tests.databasemixin import DatabaseMixin
 
 from cms.db.scorecache import ParticipationTaskScore, ScoreHistory
 from cms.grading.scorecache import (
-    get_cached_score,
+    get_cached_score_entry,
     rebuild_score_cache,
     invalidate_score_cache,
     update_score_cache,
@@ -114,40 +114,53 @@ class ScoreCacheMixin(DatabaseMixin):
         ).order_by(ScoreHistory.timestamp).all()
 
 
-class TestGetCachedScore(ScoreCacheMixin, unittest.TestCase):
-    """Tests for get_cached_score()."""
+class TestGetCachedScoreEntry(ScoreCacheMixin, unittest.TestCase):
+    """Tests for get_cached_score_entry()."""
 
     def setUp(self):
         super().setUp()
         self.task.score_mode = SCORE_MODE_MAX
 
     def test_no_submissions_creates_cache(self):
-        """Test that get_cached_score creates a cache entry if none exists."""
+        """Test that get_cached_score_entry creates a cache entry if none exists."""
         self.session.flush()
-        score = get_cached_score(self.session, self.participation, self.task)
-        self.assertEqual(score, 0.0)
-        cache_entry = self.get_cache_entry()
+        cache_entry = get_cached_score_entry(
+            self.session, self.participation, self.task)
         self.assertIsNotNone(cache_entry)
         self.assertEqual(cache_entry.score, 0.0)
+        self.assertFalse(cache_entry.has_submissions)
 
-    def test_returns_cached_score(self):
-        """Test that get_cached_score returns the cached score."""
+    def test_returns_cached_entry_with_score(self):
+        """Test that get_cached_score_entry returns the cached entry with score."""
+        self.session.flush()
+        cache_entry_before = get_cached_score_entry(
+            self.session, self.participation, self.task)
+        self.assertFalse(cache_entry_before.has_submissions)
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
-        score = get_cached_score(self.session, self.participation, self.task)
-        self.assertEqual(score, 50.0)
+        invalidate_score_cache(
+            self.session,
+            participation_id=self.participation.id,
+            task_id=self.task.id,
+        )
+        self.session.flush()
+        cache_entry = get_cached_score_entry(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry.score, 50.0)
+        self.assertTrue(cache_entry.has_submissions)
 
     def test_uses_existing_cache(self):
-        """Test that get_cached_score uses existing cache entry."""
+        """Test that get_cached_score_entry uses existing cache entry."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
-        get_cached_score(self.session, self.participation, self.task)
-        cache_entry = self.get_cache_entry()
-        original_id = cache_entry.id
-        score = get_cached_score(self.session, self.participation, self.task)
-        self.assertEqual(score, 50.0)
-        cache_entry = self.get_cache_entry()
-        self.assertEqual(cache_entry.id, original_id)
+        cache_entry1 = get_cached_score_entry(
+            self.session, self.participation, self.task)
+        original_id = cache_entry1.id
+        cache_entry2 = get_cached_score_entry(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry2.score, 50.0)
+        self.assertEqual(cache_entry2.id, original_id)
+        self.assertTrue(cache_entry2.has_submissions)
 
 
 class TestRebuildScoreCache(ScoreCacheMixin, unittest.TestCase):
@@ -252,7 +265,7 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         """Test invalidation by participation_id and task_id."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
-        get_cached_score(self.session, self.participation, self.task)
+        get_cached_score_entry(self.session, self.participation, self.task)
         self.assertIsNotNone(self.get_cache_entry())
         invalidate_score_cache(
             self.session,
@@ -266,7 +279,7 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         """Test invalidation by participation_id only."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
-        get_cached_score(self.session, self.participation, self.task)
+        get_cached_score_entry(self.session, self.participation, self.task)
         self.assertIsNotNone(self.get_cache_entry())
         invalidate_score_cache(
             self.session,
@@ -279,7 +292,7 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         """Test invalidation by task_id only."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
-        get_cached_score(self.session, self.participation, self.task)
+        get_cached_score_entry(self.session, self.participation, self.task)
         self.assertIsNotNone(self.get_cache_entry())
         invalidate_score_cache(
             self.session,
@@ -292,7 +305,7 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         """Test invalidation by contest_id."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
-        get_cached_score(self.session, self.participation, self.task)
+        get_cached_score_entry(self.session, self.participation, self.task)
         self.assertIsNotNone(self.get_cache_entry())
         invalidate_score_cache(
             self.session,
@@ -338,8 +351,8 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         )
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
-        get_cached_score(self.session, self.participation, self.task)
-        get_cached_score(self.session, self.participation, task2)
+        get_cached_score_entry(self.session, self.participation, self.task)
+        get_cached_score_entry(self.session, self.participation, task2)
         invalidate_score_cache(
             self.session,
             participation_id=self.participation.id,
@@ -448,16 +461,20 @@ class TestScoreCacheAfterInvalidation(ScoreCacheMixin, unittest.TestCase):
         self.add_scored_submission(self.at(1), 75.0)
         self.add_scored_submission(self.at(2), 50.0)
         self.session.flush()
-        score1 = get_cached_score(self.session, self.participation, self.task)
-        self.assertEqual(score1, 75.0)
+        cache_entry1 = get_cached_score_entry(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry1.score, 75.0)
+        self.assertTrue(cache_entry1.has_submissions)
         invalidate_score_cache(
             self.session,
             participation_id=self.participation.id,
             task_id=self.task.id,
         )
         self.session.flush()
-        score2 = get_cached_score(self.session, self.participation, self.task)
-        self.assertEqual(score2, 75.0)
+        cache_entry2 = get_cached_score_entry(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry2.score, 75.0)
+        self.assertTrue(cache_entry2.has_submissions)
 
     def test_cache_reflects_removed_submission(self):
         """Test that cache reflects changes when submission is removed.
@@ -469,8 +486,10 @@ class TestScoreCacheAfterInvalidation(ScoreCacheMixin, unittest.TestCase):
         submission1 = self.add_scored_submission(self.at(1), 50.0)
         submission2 = self.add_scored_submission(self.at(2), 75.0)
         self.session.flush()
-        score1 = get_cached_score(self.session, self.participation, self.task)
-        self.assertEqual(score1, 75.0)
+        cache_entry1 = get_cached_score_entry(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry1.score, 75.0)
+        self.assertTrue(cache_entry1.has_submissions)
         sr2 = submission2.get_result(self.task.active_dataset)
         sr2.score = None
         sr2.score_details = None
@@ -483,8 +502,10 @@ class TestScoreCacheAfterInvalidation(ScoreCacheMixin, unittest.TestCase):
             task_id=self.task.id,
         )
         self.session.flush()
-        score2 = get_cached_score(self.session, self.participation, self.task)
-        self.assertEqual(score2, 50.0)
+        cache_entry2 = get_cached_score_entry(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry2.score, 50.0)
+        self.assertTrue(cache_entry2.has_submissions)
 
 
 if __name__ == "__main__":
