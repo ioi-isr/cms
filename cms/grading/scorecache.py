@@ -415,8 +415,6 @@ def _update_cache_entry_from_submissions(
     submissions = [s for s in participation.submissions
                    if s.task is task and s.official]
 
-    has_submissions = len(submissions) > 0
-
     if len(submissions) == 0:
         cache_entry.score = 0.0
         cache_entry.subtask_max_scores = None
@@ -428,6 +426,7 @@ def _update_cache_entry_from_submissions(
         cache_entry.last_update = datetime.utcnow()
         return
 
+    cache_entry.has_submissions = True
     submissions_sorted = sorted(submissions, key=lambda s: s.timestamp)
 
     subtask_max_scores: dict[str, float] = {}
@@ -492,7 +491,6 @@ def _update_cache_entry_from_submissions(
     cache_entry.last_submission_score = last_submission_score
     cache_entry.last_submission_timestamp = last_submission_timestamp
     cache_entry.history_valid = True
-    cache_entry.has_submissions = has_submissions
     cache_entry.last_update = datetime.utcnow()
 
 

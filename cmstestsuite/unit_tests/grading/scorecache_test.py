@@ -132,7 +132,17 @@ class TestGetCachedScoreEntry(ScoreCacheMixin, unittest.TestCase):
 
     def test_returns_cached_entry_with_score(self):
         """Test that get_cached_score_entry returns the cached entry with score."""
+        self.session.flush()
+        cache_entry_before = get_cached_score_entry(
+            self.session, self.participation, self.task)
+        self.assertFalse(cache_entry_before.has_submissions)
         self.add_scored_submission(self.at(1), 50.0)
+        self.session.flush()
+        invalidate_score_cache(
+            self.session,
+            participation_id=self.participation.id,
+            task_id=self.task.id,
+        )
         self.session.flush()
         cache_entry = get_cached_score_entry(
             self.session, self.participation, self.task)
