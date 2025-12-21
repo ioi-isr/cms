@@ -50,12 +50,14 @@ window.toggleMultipleDeleteMode = function(dataset_id) {
   var deleteButton = $("#delete_selected_" + dataset_id);
   var cancelLink = $("#cancel_multi_delete_" + dataset_id);
   var searchBox = $("#testcase_search_" + dataset_id);
+  var searchContainer = $("#testcase_search_container_" + dataset_id);
   var currentlyVisible = cells.first().is(":visible");
   if (currentlyVisible) {
     cells.hide();
     actionContainer.hide();
     deleteButton.hide();
     cancelLink.hide();
+    searchContainer.hide();
     toggleLink.show();
     $(".multi_delete_checkbox_" + dataset_id).prop("checked", false);
     $("#multi_delete_master_" + dataset_id).prop("checked", false);
@@ -66,6 +68,7 @@ window.toggleMultipleDeleteMode = function(dataset_id) {
     actionContainer.show();
     deleteButton.show();
     cancelLink.show();
+    searchContainer.show();
     toggleLink.hide();
   }
 };
@@ -590,6 +593,9 @@ window.filterTestcases = function(dataset_id) {
       <a href="{{ url("dataset", dataset.id, "testcases", "download") }}">Download all testcases</a>
 {% if admin.permission_all %}
       <a href="javascript:void(0);" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Delete multiple testcases</a>
+      <div id="testcase_search_container_{{ dataset.id }}" style="display:none; margin:10px 0;">
+        <input type="text" id="testcase_search_{{ dataset.id }}" placeholder="Filter by codename..." oninput="filterTestcases({{ dataset.id }});" style="padding:4px 8px;">
+      </div>
 {% endif %}
       <table id="testcases_table_{{ dataset.id }}" class="bordered" style="text-align:center">
         <thead>
@@ -652,7 +658,6 @@ window.filterTestcases = function(dataset_id) {
       </table>
 {% if admin.permission_all %}
       <div class="multi_delete_actions" id="multi_delete_actions_{{ dataset.id }}" style="display:none; text-align:left; margin-top:18px;">
-        <input type="text" id="testcase_search_{{ dataset.id }}" placeholder="Filter by codename..." oninput="filterTestcases({{ dataset.id }});" style="margin-right:10px; padding:4px 8px;">
         <a href="javascript:void(0);" id="cancel_multi_delete_{{ dataset.id }}" class="button-link button-link-secondary" style="display:none;" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</a>
         <a href="javascript:void(0);" id="delete_selected_{{ dataset.id }}" class="button-link button-link-danger" style="display:none;" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete testcases</a>
       </div>
