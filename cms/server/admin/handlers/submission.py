@@ -205,8 +205,6 @@ class SubmissionOfficialStatusHandler(BaseHandler):
         should_make_official = self.get_argument("official", "yes") == "yes"
 
         submission.official = should_make_official
-        # Invalidate the score cache for this participation/task since
-        # the official status affects which submissions count for ranking
         invalidate_score_cache(
             self.sql_session,
             participation_id=submission.participation_id,

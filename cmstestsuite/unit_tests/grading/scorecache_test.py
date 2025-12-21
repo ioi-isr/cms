@@ -262,57 +262,74 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         self.task.score_mode = SCORE_MODE_MAX
 
     def test_invalidate_by_participation_and_task(self):
-        """Test invalidation by participation_id and task_id."""
+        """Test invalidation by participation_id and task_id marks as invalid."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
         get_cached_score_entry(self.session, self.participation, self.task)
-        self.assertIsNotNone(self.get_cache_entry())
+        cache_entry = self.get_cache_entry()
+        self.assertIsNotNone(cache_entry)
+        self.assertTrue(cache_entry.score_valid)
         invalidate_score_cache(
             self.session,
             participation_id=self.participation.id,
             task_id=self.task.id,
         )
         self.session.flush()
-        self.assertIsNone(self.get_cache_entry())
+        cache_entry = self.get_cache_entry()
+        self.assertIsNotNone(cache_entry)
+        self.assertFalse(cache_entry.score_valid)
+        self.assertFalse(cache_entry.history_valid)
 
     def test_invalidate_by_participation(self):
-        """Test invalidation by participation_id only."""
+        """Test invalidation by participation_id only marks as invalid."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
         get_cached_score_entry(self.session, self.participation, self.task)
-        self.assertIsNotNone(self.get_cache_entry())
+        cache_entry = self.get_cache_entry()
+        self.assertIsNotNone(cache_entry)
+        self.assertTrue(cache_entry.score_valid)
         invalidate_score_cache(
             self.session,
             participation_id=self.participation.id,
         )
         self.session.flush()
-        self.assertIsNone(self.get_cache_entry())
+        cache_entry = self.get_cache_entry()
+        self.assertIsNotNone(cache_entry)
+        self.assertFalse(cache_entry.score_valid)
 
     def test_invalidate_by_task(self):
-        """Test invalidation by task_id only."""
+        """Test invalidation by task_id only marks as invalid."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
         get_cached_score_entry(self.session, self.participation, self.task)
-        self.assertIsNotNone(self.get_cache_entry())
+        cache_entry = self.get_cache_entry()
+        self.assertIsNotNone(cache_entry)
+        self.assertTrue(cache_entry.score_valid)
         invalidate_score_cache(
             self.session,
             task_id=self.task.id,
         )
         self.session.flush()
-        self.assertIsNone(self.get_cache_entry())
+        cache_entry = self.get_cache_entry()
+        self.assertIsNotNone(cache_entry)
+        self.assertFalse(cache_entry.score_valid)
 
     def test_invalidate_by_contest(self):
-        """Test invalidation by contest_id."""
+        """Test invalidation by contest_id marks as invalid."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
         get_cached_score_entry(self.session, self.participation, self.task)
-        self.assertIsNotNone(self.get_cache_entry())
+        cache_entry = self.get_cache_entry()
+        self.assertIsNotNone(cache_entry)
+        self.assertTrue(cache_entry.score_valid)
         invalidate_score_cache(
             self.session,
             contest_id=self.participation.contest.id,
         )
         self.session.flush()
-        self.assertIsNone(self.get_cache_entry())
+        cache_entry = self.get_cache_entry()
+        self.assertIsNotNone(cache_entry)
+        self.assertFalse(cache_entry.score_valid)
 
     def test_invalidate_deletes_history(self):
         """Test that invalidation also deletes history entries."""
@@ -359,12 +376,15 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
             task_id=self.task.id,
         )
         self.session.flush()
-        self.assertIsNone(self.get_cache_entry())
+        cache_entry = self.get_cache_entry()
+        self.assertIsNotNone(cache_entry)
+        self.assertFalse(cache_entry.score_valid)
         task2_cache = self.session.query(ParticipationTaskScore).filter(
             ParticipationTaskScore.participation_id == self.participation.id,
             ParticipationTaskScore.task_id == task2.id,
         ).first()
         self.assertIsNotNone(task2_cache)
+        self.assertTrue(task2_cache.score_valid)
 
 
 class TestUpdateScoreCache(ScoreCacheMixin, unittest.TestCase):

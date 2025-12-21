@@ -77,7 +77,7 @@ def update_score_cache(
         return
 
     # Lock the cache row to serialize concurrent updates
-    cache_entry = _get_or_create_cache_entry_locked(session, participation, task)
+    cache_entry = _get_or_create_cache_entry(session, participation, task, lock=True)
     old_score = cache_entry.score
 
     # Incremental update based on score mode
@@ -111,14 +111,13 @@ def invalidate_score_cache(
 ) -> None:
     """Invalidate the score cache for the given scope.
 
-    This function deletes cached scores and history entries for the
-    specified scope. The cache will be lazily rebuilt when accessed
-    via get_cached_score_entry(), or incrementally updated as submissions
-    are re-scored.
+    This function marks cached scores as invalid and deletes history entries
+    for the specified scope. The cache will be lazily rebuilt when accessed
+    via get_cached_score_entry().
 
-    This is more efficient than rebuilding immediately during mass
-    invalidation, since the cache would just be rebuilt with partial
-    data (most submissions are unscored at invalidation time).
+    By marking as invalid instead of deleting, we ensure that endpoints can
+    reliably detect when a rebuild is needed, avoiding the "missing rows"
+    problem where history endpoints couldn't find entries to rebuild.
 
     session: the database session.
     participation_id: if specified, only invalidate for this participation.
@@ -126,12 +125,17 @@ def invalidate_score_cache(
     contest_id: if specified, only invalidate for this contest.
 
     """
-    # Build filter conditions based on scope
     if participation_id is not None and task_id is not None:
         session.query(ParticipationTaskScore).filter(
             ParticipationTaskScore.participation_id == participation_id,
             ParticipationTaskScore.task_id == task_id,
-        ).delete(synchronize_session=False)
+        ).update(
+            {
+                ParticipationTaskScore.score_valid: False,
+                ParticipationTaskScore.history_valid: False,
+            },
+            synchronize_session="fetch",
+        )
         session.query(ScoreHistory).filter(
             ScoreHistory.participation_id == participation_id,
             ScoreHistory.task_id == task_id,
@@ -139,19 +143,30 @@ def invalidate_score_cache(
     elif participation_id is not None:
         session.query(ParticipationTaskScore).filter(
             ParticipationTaskScore.participation_id == participation_id,
-        ).delete(synchronize_session=False)
+        ).update(
+            {
+                ParticipationTaskScore.score_valid: False,
+                ParticipationTaskScore.history_valid: False,
+            },
+            synchronize_session="fetch",
+        )
         session.query(ScoreHistory).filter(
             ScoreHistory.participation_id == participation_id,
         ).delete(synchronize_session=False)
     elif task_id is not None:
         session.query(ParticipationTaskScore).filter(
             ParticipationTaskScore.task_id == task_id,
-        ).delete(synchronize_session=False)
+        ).update(
+            {
+                ParticipationTaskScore.score_valid: False,
+                ParticipationTaskScore.history_valid: False,
+            },
+            synchronize_session="fetch",
+        )
         session.query(ScoreHistory).filter(
             ScoreHistory.task_id == task_id,
         ).delete(synchronize_session=False)
     elif contest_id is not None:
-        # Delete all cache entries for participations in this contest
         from cms.db import Contest
         contest = session.query(Contest).get(contest_id)
         if contest is not None:
@@ -159,7 +174,13 @@ def invalidate_score_cache(
             if participation_ids:
                 session.query(ParticipationTaskScore).filter(
                     ParticipationTaskScore.participation_id.in_(participation_ids),
-                ).delete(synchronize_session=False)
+                ).update(
+                    {
+                        ParticipationTaskScore.score_valid: False,
+                        ParticipationTaskScore.history_valid: False,
+                    },
+                    synchronize_session="fetch",
+                )
                 session.query(ScoreHistory).filter(
                     ScoreHistory.participation_id.in_(participation_ids),
                 ).delete(synchronize_session=False)
@@ -241,8 +262,8 @@ def get_cached_score_entry(
 ) -> ParticipationTaskScore:
     """Get the cached score entry for a participation/task pair.
 
-    If no cache entry exists, creates one and computes the score.
-    This returns the full cache entry including has_submissions and partial.
+    If no cache entry exists or if the cache is marked invalid (score_valid=False),
+    rebuilds the cache. This returns the full cache entry including has_submissions.
 
     session: the database session.
     participation: the participation.
@@ -256,7 +277,7 @@ def get_cached_score_entry(
         ParticipationTaskScore.task_id == task.id,
     ).first()
 
-    if cache_entry is None:
+    if cache_entry is None or not cache_entry.score_valid:
         cache_entry = rebuild_score_cache(session, participation, task)
 
     return cache_entry
@@ -266,49 +287,23 @@ def _get_or_create_cache_entry(
     session: Session,
     participation: Participation,
     task: Task,
+    lock: bool = False,
 ) -> ParticipationTaskScore:
-    """Get or create a cache entry for a participation/task pair."""
-    cache_entry = session.query(ParticipationTaskScore).filter(
-        ParticipationTaskScore.participation_id == participation.id,
-        ParticipationTaskScore.task_id == task.id,
-    ).first()
+    """Get or create a cache entry for a participation/task pair.
 
-    if cache_entry is None:
-        cache_entry = ParticipationTaskScore(
-            participation=participation,
-            task=task,
-            score=0.0,
-            subtask_max_scores=None,
-            max_tokened_score=0.0,
-            last_submission_score=None,
-            last_submission_timestamp=None,
-            history_valid=True,
-            has_submissions=False,
-            last_update=datetime.utcnow(),
-        )
-        session.add(cache_entry)
-
-    return cache_entry
-
-
-def _get_or_create_cache_entry_locked(
-    session: Session,
-    participation: Participation,
-    task: Task,
-) -> ParticipationTaskScore:
-    """Get or create a cache entry with row-level locking for concurrency.
-
-    Uses SELECT ... FOR UPDATE to serialize concurrent updates to the
-    same participation/task pair.
+    If lock=True, uses SELECT ... FOR UPDATE to serialize concurrent
+    updates to the same participation/task pair.
     """
-    # Try to get existing entry with lock
-    cache_entry = session.query(ParticipationTaskScore).filter(
+    query = session.query(ParticipationTaskScore).filter(
         ParticipationTaskScore.participation_id == participation.id,
         ParticipationTaskScore.task_id == task.id,
-    ).with_for_update().first()
+    )
+    if lock:
+        query = query.with_for_update()
+
+    cache_entry = query.first()
 
     if cache_entry is None:
-        # Create new entry
         cache_entry = ParticipationTaskScore(
             participation=participation,
             task=task,
@@ -318,12 +313,13 @@ def _get_or_create_cache_entry_locked(
             last_submission_score=None,
             last_submission_timestamp=None,
             history_valid=True,
+            score_valid=True,
             has_submissions=False,
             last_update=datetime.utcnow(),
         )
         session.add(cache_entry)
-        # Flush to get the row into the database so we can lock it
-        session.flush()
+        if lock:
+            session.flush()
 
     return cache_entry
 
@@ -422,6 +418,7 @@ def _update_cache_entry_from_submissions(
         cache_entry.last_submission_score = None
         cache_entry.last_submission_timestamp = None
         cache_entry.history_valid = True
+        cache_entry.score_valid = True
         cache_entry.has_submissions = False
         cache_entry.last_update = datetime.utcnow()
         return
@@ -491,6 +488,7 @@ def _update_cache_entry_from_submissions(
     cache_entry.last_submission_score = last_submission_score
     cache_entry.last_submission_timestamp = last_submission_timestamp
     cache_entry.history_valid = True
+    cache_entry.score_valid = True
     cache_entry.last_update = datetime.utcnow()
 
 

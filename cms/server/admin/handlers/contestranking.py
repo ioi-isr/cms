@@ -37,7 +37,7 @@ from sqlalchemy.orm import joinedload
 
 from cms.db import Contest, Participation, ParticipationTaskScore, ScoreHistory, \
     Submission, SubmissionResult, Task
-from cms.grading.scorecache import get_cached_score_entry, rebuild_score_history
+from cms.grading.scorecache import get_cached_score_entry, rebuild_score_cache, rebuild_score_history
 from .base import BaseHandler, require_permission
 
 
@@ -249,26 +249,38 @@ class ScoreHistoryHandler(BaseHandler):
 
         include_hidden = self.get_argument("include_hidden", "0") == "1"
 
-        # Check for any invalid history entries and rebuild them
-        # We need to rebuild all invalid entries for the contest since
-        # rank computation uses the full contest history stream
-        invalid_entries = (
+        invalid_score_entries = (
             self.sql_session.query(ParticipationTaskScore)
             .join(Participation)
             .filter(Participation.contest_id == contest_id)
+            .filter(ParticipationTaskScore.score_valid.is_(False))
+            .options(joinedload(ParticipationTaskScore.participation))
+            .options(joinedload(ParticipationTaskScore.task))
+            .all()
+        )
+
+        for entry in invalid_score_entries:
+            rebuild_score_cache(
+                self.sql_session, entry.participation, entry.task
+            )
+
+        invalid_history_entries = (
+            self.sql_session.query(ParticipationTaskScore)
+            .join(Participation)
+            .filter(Participation.contest_id == contest_id)
+            .filter(ParticipationTaskScore.score_valid.is_(True))
             .filter(ParticipationTaskScore.history_valid.is_(False))
             .options(joinedload(ParticipationTaskScore.participation))
             .options(joinedload(ParticipationTaskScore.task))
             .all()
         )
 
-        for entry in invalid_entries:
+        for entry in invalid_history_entries:
             rebuild_score_history(
                 self.sql_session, entry.participation, entry.task
             )
 
-        # Commit the rebuilt history before querying
-        if invalid_entries:
+        if invalid_score_entries or invalid_history_entries:
             self.sql_session.commit()
 
         query = (
@@ -287,14 +299,7 @@ class ScoreHistoryHandler(BaseHandler):
             [
                 str(h.participation.user_id),
                 str(h.task_id),
-                int(
-                    h.timestamp.timestamp()
-                    - (
-                        (h.participation.starting_time - contest.start).total_seconds()
-                        if h.participation.starting_time is not None
-                        else 0
-                    )
-                ),
+                int(h.timestamp.timestamp()),
                 h.score,
             ]
             for h in history
