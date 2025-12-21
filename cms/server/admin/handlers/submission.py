@@ -205,6 +205,13 @@ class SubmissionOfficialStatusHandler(BaseHandler):
         should_make_official = self.get_argument("official", "yes") == "yes"
 
         submission.official = should_make_official
+        # Invalidate the score cache for this participation/task since
+        # the official status affects which submissions count for ranking
+        invalidate_score_cache(
+            self.sql_session,
+            participation_id=submission.participation_id,
+            task_id=submission.task_id,
+        )
         if self.try_commit():
             logger.info("Submission '%s' by user %s in contest %s has "
                         "been made %s",
@@ -212,13 +219,6 @@ class SubmissionOfficialStatusHandler(BaseHandler):
                         submission.participation.user.username,
                         submission.participation.contest.name,
                         "official" if should_make_official else "unofficial")
-            # Invalidate the score cache for this participation/task since
-            # the official status affects which submissions count for ranking
-            invalidate_score_cache(
-                self.sql_session,
-                participation_id=submission.participation_id,
-                task_id=submission.task_id,
-            )
 
         if dataset_id is None:
             self.redirect(self.url("submission", submission_id))
