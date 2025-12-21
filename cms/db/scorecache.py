@@ -96,6 +96,11 @@ class ParticipationTaskScore(Base):
         nullable=False,
         default=True)
 
+    score_valid: bool = Column(
+        Boolean,
+        nullable=False,
+        default=True)
+
     has_submissions: bool = Column(
         Boolean,
         nullable=False,
