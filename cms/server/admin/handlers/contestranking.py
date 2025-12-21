@@ -287,7 +287,14 @@ class ScoreHistoryHandler(BaseHandler):
             [
                 str(h.participation.user_id),
                 str(h.task_id),
-                int(h.timestamp.timestamp()),
+                int(
+                    h.timestamp.timestamp()
+                    - (
+                        (h.participation.starting_time - contest.start).total_seconds()
+                        if h.participation.starting_time is not None
+                        else 0
+                    )
+                ),
                 h.score,
             ]
             for h in history
