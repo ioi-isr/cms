@@ -173,7 +173,6 @@ CREATE TABLE public.participation_task_scores (
     last_submission_timestamp timestamp without time zone,
     history_valid boolean NOT NULL,
     has_submissions boolean NOT NULL,
-    partial boolean NOT NULL,
     last_update timestamp without time zone NOT NULL
 );
 

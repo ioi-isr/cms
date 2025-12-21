@@ -305,7 +305,6 @@ def _get_or_create_cache_entry(
             last_submission_timestamp=None,
             history_valid=True,
             has_submissions=False,
-            partial=False,
             last_update=datetime.utcnow(),
         )
         session.add(cache_entry)
@@ -341,7 +340,6 @@ def _get_or_create_cache_entry_locked(
             last_submission_timestamp=None,
             history_valid=True,
             has_submissions=False,
-            partial=False,
             last_update=datetime.utcnow(),
         )
         session.add(cache_entry)
@@ -448,7 +446,6 @@ def _update_cache_entry_from_submissions(
         cache_entry.last_submission_timestamp = None
         cache_entry.history_valid = True
         cache_entry.has_submissions = False
-        cache_entry.partial = False
         cache_entry.last_update = datetime.utcnow()
         return
 
@@ -517,7 +514,6 @@ def _update_cache_entry_from_submissions(
     cache_entry.last_submission_timestamp = last_submission_timestamp
     cache_entry.history_valid = True
     cache_entry.has_submissions = has_submissions
-    # partial is computed at render time for correctness
     cache_entry.last_update = datetime.utcnow()
 
 

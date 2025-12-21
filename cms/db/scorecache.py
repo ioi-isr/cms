@@ -101,11 +101,6 @@ class ParticipationTaskScore(Base):
         nullable=False,
         default=False)
 
-    partial: bool = Column(
-        Boolean,
-        nullable=False,
-        default=False)
-
     last_update: datetime = Column(
         DateTime,
         nullable=False)
