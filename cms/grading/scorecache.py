@@ -28,7 +28,8 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from cms.db import (
-    Participation, Task, Submission, ParticipationTaskScore, ScoreHistory
+    Participation, Task, Submission,
+    ParticipationTaskScore, ScoreHistory
 )
 from cmscommon.constants import (
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
@@ -40,7 +41,7 @@ __all__ = [
     "invalidate_score_cache",
     "rebuild_score_cache",
     "rebuild_score_history",
-    "get_cached_score",
+    "get_cached_score_entry",
 ]
 
 
@@ -89,6 +90,9 @@ def update_score_cache(
             submission.timestamp < cache_entry.last_submission_timestamp):
         cache_entry.history_valid = False
 
+    # Update has_submissions flag (partial is computed at render time)
+    cache_entry.has_submissions = True
+
     cache_entry.last_update = datetime.utcnow()
 
     # Only add history entry if score changed and history is still valid
@@ -109,7 +113,7 @@ def invalidate_score_cache(
 
     This function deletes cached scores and history entries for the
     specified scope. The cache will be lazily rebuilt when accessed
-    via get_cached_score(), or incrementally updated as submissions
+    via get_cached_score_entry(), or incrementally updated as submissions
     are re-scored.
 
     This is more efficient than rebuilding immediately during mass
@@ -230,20 +234,21 @@ def rebuild_score_history(
         cache_entry.history_valid = True
 
 
-def get_cached_score(
+def get_cached_score_entry(
     session: Session,
     participation: Participation,
     task: Task,
-) -> float:
-    """Get the cached score for a participation/task pair.
+) -> ParticipationTaskScore:
+    """Get the cached score entry for a participation/task pair.
 
     If no cache entry exists, creates one and computes the score.
+    This returns the full cache entry including has_submissions and partial.
 
     session: the database session.
     participation: the participation.
     task: the task.
 
-    return: the cached score.
+    return: the cached score entry.
 
     """
     cache_entry = session.query(ParticipationTaskScore).filter(
@@ -254,7 +259,7 @@ def get_cached_score(
     if cache_entry is None:
         cache_entry = rebuild_score_cache(session, participation, task)
 
-    return cache_entry.score
+    return cache_entry
 
 
 def _get_or_create_cache_entry(
@@ -278,6 +283,7 @@ def _get_or_create_cache_entry(
             last_submission_score=None,
             last_submission_timestamp=None,
             history_valid=True,
+            has_submissions=False,
             last_update=datetime.utcnow(),
         )
         session.add(cache_entry)
@@ -312,6 +318,7 @@ def _get_or_create_cache_entry_locked(
             last_submission_score=None,
             last_submission_timestamp=None,
             history_valid=True,
+            has_submissions=False,
             last_update=datetime.utcnow(),
         )
         session.add(cache_entry)
@@ -415,9 +422,11 @@ def _update_cache_entry_from_submissions(
         cache_entry.last_submission_score = None
         cache_entry.last_submission_timestamp = None
         cache_entry.history_valid = True
+        cache_entry.has_submissions = False
         cache_entry.last_update = datetime.utcnow()
         return
 
+    cache_entry.has_submissions = True
     submissions_sorted = sorted(submissions, key=lambda s: s.timestamp)
 
     subtask_max_scores: dict[str, float] = {}

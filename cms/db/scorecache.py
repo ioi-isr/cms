@@ -96,6 +96,11 @@ class ParticipationTaskScore(Base):
         nullable=False,
         default=True)
 
+    has_submissions: bool = Column(
+        Boolean,
+        nullable=False,
+        default=False)
+
     last_update: datetime = Column(
         DateTime,
         nullable=False)

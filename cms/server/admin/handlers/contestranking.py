@@ -37,7 +37,7 @@ from sqlalchemy.orm import joinedload
 
 from cms.db import Contest, Participation, ParticipationTaskScore, ScoreHistory, \
     Submission, SubmissionResult, Task
-from cms.grading.scorecache import get_cached_score, rebuild_score_history
+from cms.grading.scorecache import get_cached_score_entry, rebuild_score_history
 from .base import BaseHandler, require_permission
 
 
@@ -56,8 +56,8 @@ class RankingHandler(BaseHandler):
         self.safe_get_item(Contest, contest_id)
 
         # Load contest with tasks, participations, and statement views.
-        # We no longer need to joinedload submissions/results since we use
-        # SQL aggregation to compute has_submissions and t_partial.
+        # We use the score cache to get score and has_submissions.
+        # partial is computed at render time via SQL aggregation for correctness.
         self.contest: Contest = (
             self.sql_session.query(Contest)
             .filter(Contest.id == contest_id)
@@ -73,17 +73,9 @@ class RankingHandler(BaseHandler):
         # Get participation IDs for the SQL aggregation query
         participation_ids = [p.id for p in self.contest.participations]
 
-        # SQL aggregation to compute has_submissions and t_partial for all
-        # participation/task pairs in a single query. This replaces the O(P*T*S)
-        # Python iteration with a single SQL query.
-        #
-        # t_partial is True when:
-        # - There is an official submission for the task
-        # - The task has an active dataset
-        # - The submission result for the active dataset is missing OR not scored
-        #
-        # scored() checks: score, score_details, public_score, public_score_details,
-        # ranking_score_details are all NOT NULL
+        # SQL aggregation to compute t_partial for all participation/task pairs.
+        # t_partial is True when there's an official submission that is not yet scored.
+        # has_submissions is retrieved from the cache instead.
         partial_flags_query = (
             self.sql_session.query(
                 Submission.participation_id,
@@ -115,14 +107,12 @@ class RankingHandler(BaseHandler):
             .group_by(Submission.participation_id, Submission.task_id)
         ) if participation_ids else []
 
-        # Build lookup dict: (participation_id, task_id) -> (has_submissions, t_partial)
-        # If a key exists, has_submissions is True (we only query official submissions)
+        # Build lookup dict: (participation_id, task_id) -> t_partial
         partial_by_pt = {}
         if participation_ids:
             for row in partial_flags_query.all():
                 partial_by_pt[(row.participation_id, row.task_id)] = (
-                    True,  # has_submissions is always True if row exists
-                    row.t_partial or False  # Handle None from bool_or
+                    row.t_partial or False
                 )
 
         statement_views_set = set()
@@ -131,6 +121,8 @@ class RankingHandler(BaseHandler):
                 statement_views_set.add((sv.participation_id, sv.task_id))
 
         # Preprocess participations: get data about teams, scores
+        # Use the score cache to get score and has_submissions.
+        # partial is computed via SQL aggregation above for correctness.
         show_teams = False
         for p in self.contest.participations:
             show_teams = show_teams or p.team_id
@@ -139,13 +131,12 @@ class RankingHandler(BaseHandler):
             total_score = 0.0
             partial = False
             for task in self.contest.tasks:
-                t_score = get_cached_score(self.sql_session, p, task)
-                t_score = round(t_score, task.score_precision)
-
-                # Get has_submissions and t_partial from SQL aggregation
-                has_submissions, t_partial = partial_by_pt.get(
-                    (p.id, task.id), (False, False)
-                )
+                # Get the cache entry with score and has_submissions
+                cache_entry = get_cached_score_entry(self.sql_session, p, task)
+                t_score = round(cache_entry.score, task.score_precision)
+                has_submissions = cache_entry.has_submissions
+                # Get t_partial from SQL aggregation (not from cache)
+                t_partial = partial_by_pt.get((p.id, task.id), False)
 
                 has_opened = (p.id, task.id) in statement_views_set
                 p.task_statuses.append(
