@@ -45,6 +45,77 @@ __all__ = [
 ]
 
 
+def _parse_subtask_scores(score_details, score: float) -> dict[str, float] | None:
+    """Parse subtask scores from score_details.
+
+    Returns a dict mapping subtask index (as string) to score,
+    or None if score_details indicates no score (empty list with score 0).
+    """
+    if score_details == [] and score == 0.0:
+        return None
+
+    try:
+        subtask_scores = dict(
+            (str(subtask["idx"]), subtask["score"])
+            for subtask in score_details
+        )
+    except Exception:
+        subtask_scores = None
+
+    if subtask_scores is None or len(subtask_scores) == 0:
+        subtask_scores = {"1": score}
+
+    return subtask_scores
+
+
+def _compute_final_score(
+    task: Task,
+    max_score: float,
+    subtask_max_scores: dict[str, float],
+    last_submission_score: float | None,
+    max_tokened_score: float,
+) -> float:
+    """Compute the final score based on task score mode.
+
+    Returns the rounded final score.
+    """
+    if task.score_mode == SCORE_MODE_MAX:
+        final_score = max_score
+    elif task.score_mode == SCORE_MODE_MAX_SUBTASK:
+        final_score = sum(subtask_max_scores.values())
+    elif task.score_mode == SCORE_MODE_MAX_TOKENED_LAST:
+        last_score = last_submission_score if last_submission_score is not None else 0.0
+        final_score = max(last_score, max_tokened_score)
+    else:
+        final_score = max_score
+
+    return round(final_score, task.score_precision)
+
+
+def _invalidate(
+    session: Session,
+    pt_filter,
+    history_filter,
+) -> None:
+    """Helper to invalidate cache entries and delete history.
+
+    pt_filter: filter conditions for ParticipationTaskScore query.
+    history_filter: filter conditions for ScoreHistory query.
+    """
+    session.query(ParticipationTaskScore).filter(
+        *pt_filter
+    ).update(
+        {
+            ParticipationTaskScore.score_valid: False,
+            ParticipationTaskScore.history_valid: False,
+        },
+        synchronize_session="fetch",
+    )
+    session.query(ScoreHistory).filter(
+        *history_filter
+    ).delete(synchronize_session=False)
+
+
 def update_score_cache(
     session: Session,
     submission: Submission,
@@ -126,64 +197,44 @@ def invalidate_score_cache(
 
     """
     if participation_id is not None and task_id is not None:
-        session.query(ParticipationTaskScore).filter(
-            ParticipationTaskScore.participation_id == participation_id,
-            ParticipationTaskScore.task_id == task_id,
-        ).update(
-            {
-                ParticipationTaskScore.score_valid: False,
-                ParticipationTaskScore.history_valid: False,
-            },
-            synchronize_session="fetch",
+        _invalidate(
+            session,
+            pt_filter=(
+                ParticipationTaskScore.participation_id == participation_id,
+                ParticipationTaskScore.task_id == task_id,
+            ),
+            history_filter=(
+                ScoreHistory.participation_id == participation_id,
+                ScoreHistory.task_id == task_id,
+            ),
         )
-        session.query(ScoreHistory).filter(
-            ScoreHistory.participation_id == participation_id,
-            ScoreHistory.task_id == task_id,
-        ).delete(synchronize_session=False)
     elif participation_id is not None:
-        session.query(ParticipationTaskScore).filter(
-            ParticipationTaskScore.participation_id == participation_id,
-        ).update(
-            {
-                ParticipationTaskScore.score_valid: False,
-                ParticipationTaskScore.history_valid: False,
-            },
-            synchronize_session="fetch",
+        _invalidate(
+            session,
+            pt_filter=(ParticipationTaskScore.participation_id == participation_id,),
+            history_filter=(ScoreHistory.participation_id == participation_id,),
         )
-        session.query(ScoreHistory).filter(
-            ScoreHistory.participation_id == participation_id,
-        ).delete(synchronize_session=False)
     elif task_id is not None:
-        session.query(ParticipationTaskScore).filter(
-            ParticipationTaskScore.task_id == task_id,
-        ).update(
-            {
-                ParticipationTaskScore.score_valid: False,
-                ParticipationTaskScore.history_valid: False,
-            },
-            synchronize_session="fetch",
+        _invalidate(
+            session,
+            pt_filter=(ParticipationTaskScore.task_id == task_id,),
+            history_filter=(ScoreHistory.task_id == task_id,),
         )
-        session.query(ScoreHistory).filter(
-            ScoreHistory.task_id == task_id,
-        ).delete(synchronize_session=False)
     elif contest_id is not None:
         from cms.db import Contest
         contest = session.query(Contest).get(contest_id)
         if contest is not None:
             participation_ids = [p.id for p in contest.participations]
             if participation_ids:
-                session.query(ParticipationTaskScore).filter(
-                    ParticipationTaskScore.participation_id.in_(participation_ids),
-                ).update(
-                    {
-                        ParticipationTaskScore.score_valid: False,
-                        ParticipationTaskScore.history_valid: False,
-                    },
-                    synchronize_session="fetch",
+                _invalidate(
+                    session,
+                    pt_filter=(
+                        ParticipationTaskScore.participation_id.in_(participation_ids),
+                    ),
+                    history_filter=(
+                        ScoreHistory.participation_id.in_(participation_ids),
+                    ),
                 )
-                session.query(ScoreHistory).filter(
-                    ScoreHistory.participation_id.in_(participation_ids),
-                ).delete(synchronize_session=False)
 
 
 def rebuild_score_cache(
@@ -363,18 +414,8 @@ def _update_cache_entry_incremental(
             str(k): v for k, v in (cache_entry.subtask_max_scores or {}).items()
         }
 
-        if not (score_details == [] and score == 0.0):
-            try:
-                subtask_scores = dict(
-                    (str(subtask["idx"]), subtask["score"])
-                    for subtask in score_details
-                )
-            except Exception:
-                subtask_scores = None
-
-            if subtask_scores is None or len(subtask_scores) == 0:
-                subtask_scores = {"1": score}
-
+        subtask_scores = _parse_subtask_scores(score_details, score)
+        if subtask_scores is not None:
             for idx, st_score in subtask_scores.items():
                 subtask_max_scores[idx] = max(
                     subtask_max_scores.get(idx, 0.0), st_score
@@ -451,36 +492,18 @@ def _update_cache_entry_from_submissions(
             max_tokened_score = max(max_tokened_score, score)
 
         if task.score_mode == SCORE_MODE_MAX_SUBTASK:
-            if score_details == [] and score == 0.0:
+            subtask_scores = _parse_subtask_scores(score_details, score)
+            if subtask_scores is None:
                 continue
-
-            try:
-                subtask_scores = dict(
-                    (str(subtask["idx"]), subtask["score"])
-                    for subtask in score_details
-                )
-            except Exception:
-                subtask_scores = None
-
-            if subtask_scores is None or len(subtask_scores) == 0:
-                subtask_scores = {"1": score}
 
             for idx, st_score in subtask_scores.items():
                 subtask_max_scores[idx] = max(
                     subtask_max_scores.get(idx, 0.0), st_score
                 )
 
-    if task.score_mode == SCORE_MODE_MAX:
-        final_score = max_score
-    elif task.score_mode == SCORE_MODE_MAX_SUBTASK:
-        final_score = sum(subtask_max_scores.values())
-    elif task.score_mode == SCORE_MODE_MAX_TOKENED_LAST:
-        last_score = last_submission_score if last_submission_score is not None else 0.0
-        final_score = max(last_score, max_tokened_score)
-    else:
-        final_score = max_score
-
-    final_score = round(final_score, task.score_precision)
+    final_score = _compute_final_score(
+        task, max_score, subtask_max_scores, last_submission_score, max_tokened_score
+    )
 
     cache_entry.score = final_score
     cache_entry.subtask_max_scores = subtask_max_scores if subtask_max_scores else None
@@ -552,36 +575,18 @@ def _rebuild_history(
             max_tokened_score = max(max_tokened_score, score)
 
         if task.score_mode == SCORE_MODE_MAX_SUBTASK:
-            if score_details == [] and score == 0.0:
+            subtask_scores = _parse_subtask_scores(score_details, score)
+            if subtask_scores is None:
                 continue
-
-            try:
-                subtask_scores = dict(
-                    (str(subtask["idx"]), subtask["score"])
-                    for subtask in score_details
-                )
-            except Exception:
-                subtask_scores = None
-
-            if subtask_scores is None or len(subtask_scores) == 0:
-                subtask_scores = {"1": score}
 
             for idx, st_score in subtask_scores.items():
                 subtask_max_scores[idx] = max(
                     subtask_max_scores.get(idx, 0.0), st_score
                 )
 
-        if task.score_mode == SCORE_MODE_MAX:
-            new_score = max_score
-        elif task.score_mode == SCORE_MODE_MAX_SUBTASK:
-            new_score = sum(subtask_max_scores.values())
-        elif task.score_mode == SCORE_MODE_MAX_TOKENED_LAST:
-            last_score = last_submission_score if last_submission_score is not None else 0.0
-            new_score = max(last_score, max_tokened_score)
-        else:
-            new_score = max_score
-
-        new_score = round(new_score, task.score_precision)
+        new_score = _compute_final_score(
+            task, max_score, subtask_max_scores, last_submission_score, max_tokened_score
+        )
 
         if new_score != current_score:
             _add_history_entry(session, participation, task, s, new_score)
