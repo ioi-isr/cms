@@ -49,6 +49,7 @@ window.toggleMultipleDeleteMode = function(dataset_id) {
   var actionContainer = $("#multi_delete_actions_" + dataset_id);
   var deleteButton = $("#delete_selected_" + dataset_id);
   var cancelLink = $("#cancel_multi_delete_" + dataset_id);
+  var searchBox = $("#testcase_search_" + dataset_id);
   var currentlyVisible = cells.first().is(":visible");
   if (currentlyVisible) {
     cells.hide();
@@ -58,6 +59,8 @@ window.toggleMultipleDeleteMode = function(dataset_id) {
     toggleLink.show();
     $(".multi_delete_checkbox_" + dataset_id).prop("checked", false);
     $("#multi_delete_master_" + dataset_id).prop("checked", false);
+    searchBox.val("");
+    $("#testcases_table_" + dataset_id + " tbody tr").show();
   } else {
     cells.show();
     actionContainer.show();
@@ -68,7 +71,7 @@ window.toggleMultipleDeleteMode = function(dataset_id) {
 };
 
 window.toggleSelectAllTestcases = function(dataset_id, masterCheckbox) {
-  $(".multi_delete_checkbox_" + dataset_id).prop("checked", masterCheckbox.checked);
+  $(".multi_delete_checkbox_" + dataset_id + ":visible").prop("checked", masterCheckbox.checked);
   window.updateMultiDeleteMaster(dataset_id);
 };
 
@@ -103,7 +106,7 @@ window.deleteSelectedTestcases = function(dataset_id, url) {
 window.updateMultiDeleteMaster = function(dataset_id) {
   var master = $("#multi_delete_master_" + dataset_id);
   if (master.length === 0) return;
-  var checkboxes = $(".multi_delete_checkbox_" + dataset_id);
+  var checkboxes = $(".multi_delete_checkbox_" + dataset_id + ":visible");
   var total = checkboxes.length;
   if (total === 0) {
     master.prop("checked", false);
@@ -111,6 +114,22 @@ window.updateMultiDeleteMaster = function(dataset_id) {
   }
   var checked = checkboxes.filter(":checked").length;
   master.prop("checked", checked === total);
+};
+
+window.filterTestcases = function(dataset_id) {
+  var searchText = $("#testcase_search_" + dataset_id).val().toLowerCase();
+  var table = $("#testcases_table_" + dataset_id);
+  var rows = table.find("tbody tr");
+  rows.each(function() {
+    var row = $(this);
+    var codename = row.find(".testcase_codename").text().toLowerCase();
+    if (codename.indexOf(searchText) !== -1) {
+      row.show();
+    } else {
+      row.hide();
+    }
+  });
+  window.updateMultiDeleteMaster(dataset_id);
 };
 
 {% endblock js_init %}
@@ -572,7 +591,7 @@ window.updateMultiDeleteMaster = function(dataset_id) {
 {% if admin.permission_all %}
       <a href="javascript:void(0);" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Delete multiple testcases</a>
 {% endif %}
-      <table class="bordered" style="text-align:center">
+      <table id="testcases_table_{{ dataset.id }}" class="bordered" style="text-align:center">
         <thead>
           <tr>
             <th class="multi_delete_col_{{ dataset.id }}" style="display:none;">
@@ -596,7 +615,7 @@ window.updateMultiDeleteMaster = function(dataset_id) {
               <input type="checkbox" class="multi_delete_checkbox_{{ dataset.id }}" value="{{ testcase.id }}">
             </td>
             <td style="font-weight:bold;">{{ loop.index }}</td>
-            <td>{{ codename }}</td>
+            <td class="testcase_codename">{{ codename }}</td>
             <td style="font-weight:bold;">
               <input type="checkbox" name="testcase_{{ testcase.id }}_public" {% if testcase.public %}checked{% endif %} />
             </td>
@@ -633,6 +652,7 @@ window.updateMultiDeleteMaster = function(dataset_id) {
       </table>
 {% if admin.permission_all %}
       <div class="multi_delete_actions" id="multi_delete_actions_{{ dataset.id }}" style="display:none; text-align:left; margin-top:18px;">
+        <input type="text" id="testcase_search_{{ dataset.id }}" placeholder="Filter by codename..." oninput="filterTestcases({{ dataset.id }});" style="margin-right:10px; padding:4px 8px;">
         <a href="javascript:void(0);" id="cancel_multi_delete_{{ dataset.id }}" class="button-link button-link-secondary" style="display:none;" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</a>
         <a href="javascript:void(0);" id="delete_selected_{{ dataset.id }}" class="button-link button-link-danger" style="display:none;" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete testcases</a>
       </div>
