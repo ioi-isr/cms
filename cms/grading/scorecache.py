@@ -41,7 +41,6 @@ __all__ = [
     "invalidate_score_cache",
     "rebuild_score_cache",
     "rebuild_score_history",
-    "get_cached_score",
     "get_cached_score_entry",
 ]
 
@@ -114,7 +113,7 @@ def invalidate_score_cache(
 
     This function deletes cached scores and history entries for the
     specified scope. The cache will be lazily rebuilt when accessed
-    via get_cached_score(), or incrementally updated as submissions
+    via get_cached_score_entry(), or incrementally updated as submissions
     are re-scored.
 
     This is more efficient than rebuilding immediately during mass
@@ -233,26 +232,6 @@ def rebuild_score_history(
 
     if cache_entry is not None:
         cache_entry.history_valid = True
-
-
-def get_cached_score(
-    session: Session,
-    participation: Participation,
-    task: Task,
-) -> float:
-    """Get the cached score for a participation/task pair.
-
-    If no cache entry exists, creates one and computes the score.
-
-    session: the database session.
-    participation: the participation.
-    task: the task.
-
-    return: the cached score.
-
-    """
-    cache_entry = get_cached_score_entry(session, participation, task)
-    return cache_entry.score
 
 
 def get_cached_score_entry(
