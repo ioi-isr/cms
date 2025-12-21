@@ -190,7 +190,7 @@ class RegistrationHandler(ContestHandler):
 
         if username.startswith("__"):
             raise RegistrationError("invalid_username_start", "username")
-        
+
         # Validate password length
         if not self.MIN_PASSWORD_LENGTH <= len(password) \
                 <= self.MAX_INPUT_LENGTH:
