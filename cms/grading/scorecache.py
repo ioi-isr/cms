@@ -25,11 +25,10 @@ up ranking page loading.
 
 from datetime import datetime
 
-from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from cms.db import (
-    Participation, Task, Submission, SubmissionResult,
+    Participation, Task, Submission,
     ParticipationTaskScore, ScoreHistory
 )
 from cmscommon.constants import (
@@ -92,9 +91,8 @@ def update_score_cache(
             submission.timestamp < cache_entry.last_submission_timestamp):
         cache_entry.history_valid = False
 
-    # Update has_submissions and partial flags
+    # Update has_submissions flag (partial is computed at render time)
     cache_entry.has_submissions = True
-    cache_entry.partial = _compute_partial_from_db(session, participation, task)
 
     cache_entry.last_update = datetime.utcnow()
 
@@ -519,7 +517,7 @@ def _update_cache_entry_from_submissions(
     cache_entry.last_submission_timestamp = last_submission_timestamp
     cache_entry.history_valid = True
     cache_entry.has_submissions = has_submissions
-    cache_entry.partial = _compute_partial_from_db(session, participation, task)
+    # partial is computed at render time for correctness
     cache_entry.last_update = datetime.utcnow()
 
 
@@ -617,54 +615,3 @@ def _rebuild_history(
         if new_score != current_score:
             _add_history_entry(session, participation, task, s, new_score)
             current_score = new_score
-
-
-def _compute_partial_from_db(
-    session: Session,
-    participation: Participation,
-    task: Task,
-) -> bool:
-    """Compute whether there are pending (unscored) submissions.
-
-    A submission is "pending" when:
-    - It is an official submission for the task
-    - The task has an active dataset
-    - The submission result for the active dataset is missing OR not scored
-
-    session: the database session.
-    participation: the participation.
-    task: the task.
-
-    return: True if there are pending submissions, False otherwise.
-
-    """
-    dataset = task.active_dataset
-    if dataset is None:
-        return False
-
-    pending_exists = session.query(
-        session.query(Submission)
-        .outerjoin(
-            SubmissionResult,
-            and_(
-                SubmissionResult.submission_id == Submission.id,
-                SubmissionResult.dataset_id == dataset.id
-            )
-        )
-        .filter(Submission.participation_id == participation.id)
-        .filter(Submission.task_id == task.id)
-        .filter(Submission.official.is_(True))
-        .filter(
-            or_(
-                SubmissionResult.submission_id.is_(None),
-                SubmissionResult.score.is_(None),
-                SubmissionResult.score_details.is_(None),
-                SubmissionResult.public_score.is_(None),
-                SubmissionResult.public_score_details.is_(None),
-                SubmissionResult.ranking_score_details.is_(None),
-            )
-        )
-        .exists()
-    ).scalar()
-
-    return pending_exists or False
