@@ -334,7 +334,7 @@ $(document).ready(initSidebarEvents);
                 <a href="{{ url("folder", folder.id) }}">{{ folder.name }}</a>
               </div>
               <ul class="folder-contents">
-                {% for c in folder.contests %}
+                {% for c in folder.contests if c.training_day is none %}
                   <li class="sidebar-contest">
                     <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
                   </li>
@@ -346,7 +346,7 @@ $(document).ready(initSidebarEvents);
                     <a href="{{ url("folder", subfolder.id) }}">{{ subfolder.name }}</a>
                   </div>
                   <ul class="folder-contents">
-                      {% for c in subfolder.contests %}
+                      {% for c in subfolder.contests if c.training_day is none %}
                       <li class="sidebar-contest">
                         <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
                       </li>
