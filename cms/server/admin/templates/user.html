@@ -9,7 +9,7 @@
   <form action="{{ url("user", user.id, "add_participation") }}" method="POST">
     {{ xsrf_form_html|safe }}
     Add a new participation:
-    <select name="contest_id">
+    <select name="contest_id" class="searchable-select">
       <option value="null" selected>Select a contest</option>
       {% for c in unassigned_contests %}
       <option value="{{ c.id }}">
