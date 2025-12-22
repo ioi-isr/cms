@@ -596,18 +596,6 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
 
             self.get_password(attrs, None, False)
 
-            # Validate password strength unless explicitly bypassed
-            # (e.g., for imports or tests)
-            password = self.get_argument("password", "")
-            allow_weak = self.get_argument("allow_weak_password", None)
-            if len(password) > 0 and allow_weak is None:
-                user_inputs = [attrs["username"]]
-                if attrs.get("email"):
-                    user_inputs.append(attrs["email"])
-                validate_password_strength(password, user_inputs)
-
-            self.get_password(attrs, None, False)
-
             self.get_string(attrs, "timezone", empty=None)
 
             self.get_string_list(attrs, "preferred_languages")
