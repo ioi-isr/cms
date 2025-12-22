@@ -749,16 +749,26 @@ th .column-sort {
 body.admin h1,
 body.admin .hr,
 body.admin #core h2 {
-    color: #1E40AF;
+    color: #1F2937;
 }
 
 body.admin pre {
-    border-left: 2px solid #1E40AF;
+    border-left: 2px solid #0F766E;
 }
 
 body.admin a,
 body.admin a:visited {
-    color: #2563EB;
+    color: #0F766E;
+}
+
+/* Sidebar links should stay bright/white, not inherit teal */
+body.admin #sidebar a,
+body.admin #sidebar a:visited {
+    color: #E5E7EB;
+}
+
+body.admin #sidebar a:hover {
+    color: #F9FAFB;
 }
 
 body.admin input,
@@ -930,9 +940,9 @@ table.jqplot-table-legend {
 
 /* OTHERS */
 span.info {
-    color: #2563EB;
+    color: #0F766E;
     font-size: smaller;
-    background-color: #EFF6FF;
+    background-color: #F0FDFA;
     display: inline-block;
     border-radius: 10px;
     width: 16px;
@@ -951,11 +961,11 @@ a.button-link {
     margin-right: 25px;
     padding: 8px;
     border-radius: 8px;
-    border: 1px solid #2563EB;
+    border: 1px solid #0F766E;
 }
 
 a.button-link:hover {
-    background-color: #EFF6FF;
+    background-color: #F0FDFA;
 }
 
 th.diff-only, td.diff-only {
