@@ -2,6 +2,50 @@
 <html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script>
+    // Pre-paint CSS injection to prevent flash of expanded menus
+    (function() {
+      var validSectionKeys = ['contests', 'tasks', 'users', 'teams'];
+      var folderKeyPattern = /^(folder|subfolder)-\d+$/;
+      var css = '';
+
+      // Apply collapsed state for sections
+      try {
+        var sections = localStorage.getItem('cms_sidebar_collapsed');
+        if (sections) {
+          JSON.parse(sections).forEach(function(key) {
+            if (validSectionKeys.indexOf(key) !== -1) {
+              css += '.sidebar-section[data-section-key="' + key + '"] { }\n';
+              css += '.sidebar-section[data-section-key="' + key + '"] .sidebar-section-body { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += '.sidebar-section[data-section-key="' + key + '"] .section-caret { transform: rotate(-45deg); }\n';
+            }
+          });
+        }
+      } catch (e) {}
+
+      // Apply collapsed state for folders
+      try {
+        var folders = localStorage.getItem('cms_sidebar_folders_collapsed');
+        if (folders) {
+          JSON.parse(folders).forEach(function(key) {
+            if (folderKeyPattern.test(key)) {
+              css += '.sidebar-folder[data-folder-key="' + key + '"] > .folder-contents,\n';
+              css += '.sidebar-subfolder[data-folder-key="' + key + '"] > .folder-contents { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += '.sidebar-folder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before,\n';
+              css += '.sidebar-subfolder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before { transform: rotate(0deg); margin-top: 4px; margin-left: 4px; }\n';
+            }
+          });
+        }
+      } catch (e) {}
+
+      if (css) {
+        var style = document.createElement('style');
+        style.id = 'sidebar-prepaint-collapsed';
+        style.textContent = css;
+        document.head.appendChild(style);
+      }
+    })();
+    </script>
     <link rel="shortcut icon" href="{{ url("static", "favicon.ico") }}" />
     <link rel="stylesheet" type="text/css" href="{{ url("static", "reset.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
@@ -54,106 +98,85 @@ function init()
 
 {% block js %}{% endblock js %}
 
-function getCollapsedSections() {
-    try {
-        var stored = localStorage.getItem('cms_sidebar_collapsed');
-        if (!stored) return new Set();
-        var arr = JSON.parse(stored);
-        return new Set(Array.isArray(arr) ? arr : []);
-    } catch (e) {
-        return new Set();
-    }
-}
-
-function saveCollapsedSections(set) {
-    try {
-        localStorage.setItem('cms_sidebar_collapsed', JSON.stringify(Array.from(set)));
-    } catch (e) {
-        // ignore storage errors
-    }
-}
-
-function applyCollapsedSections() {
-    var collapsed = getCollapsedSections();
-    var sections = document.querySelectorAll('.sidebar-section[data-section-key]');
-    sections.forEach(function(section) {
-        var key = section.getAttribute('data-section-key');
-        if (collapsed.has(key)) {
-            section.classList.add('collapsed');
+// Generic localStorage helpers for collapsed state
+var SidebarState = {
+    load: function(storageKey) {
+        try {
+            var stored = localStorage.getItem(storageKey);
+            if (!stored) return {};
+            var arr = JSON.parse(stored);
+            var set = {};
+            (Array.isArray(arr) ? arr : []).forEach(function(k) { set[k] = true; });
+            return set;
+        } catch (e) {
+            return {};
         }
+    },
+    save: function(storageKey, set) {
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(Object.keys(set)));
+        } catch (e) {}
+    },
+    toggle: function(storageKey, key, isCollapsed) {
+        var set = this.load(storageKey);
+        if (isCollapsed) {
+            set[key] = true;
+        } else {
+            delete set[key];
+        }
+        this.save(storageKey, set);
+    }
+};
+
+// Apply collapsed classes from storage (syncs with pre-paint CSS)
+function applySidebarState() {
+    var sectionState = SidebarState.load('cms_sidebar_collapsed');
+    document.querySelectorAll('.sidebar-section[data-section-key]').forEach(function(el) {
+        var key = el.getAttribute('data-section-key');
+        if (sectionState[key]) el.classList.add('collapsed');
+    });
+
+    var folderState = SidebarState.load('cms_sidebar_folders_collapsed');
+    document.querySelectorAll('.sidebar-folder[data-folder-key], .sidebar-subfolder[data-folder-key]').forEach(function(el) {
+        var key = el.getAttribute('data-folder-key');
+        if (folderState[key]) el.classList.add('collapsed');
     });
 }
 
-function getCollapsedFolders() {
-    try {
-        var stored = localStorage.getItem('cms_sidebar_folders_collapsed');
-        if (!stored) return new Set();
-        var arr = JSON.parse(stored);
-        return new Set(Array.isArray(arr) ? arr : []);
-    } catch (e) {
-        return new Set();
-    }
-}
+// Event delegation for sidebar interactions
+function initSidebarEvents() {
+    var sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
 
-function saveCollapsedFolders(set) {
-    try {
-        localStorage.setItem('cms_sidebar_folders_collapsed', JSON.stringify(Array.from(set)));
-    } catch (e) {
-        // ignore storage errors
-    }
-}
+    sidebar.addEventListener('click', function(e) {
+        // Handle section title clicks (but not link clicks)
+        var sectionTitle = e.target.closest('.sidebar-section-title');
+        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+            var section = sectionTitle.closest('.sidebar-section');
+            if (section) {
+                var key = section.getAttribute('data-section-key');
+                var isCollapsed = section.classList.toggle('collapsed');
+                if (key) SidebarState.toggle('cms_sidebar_collapsed', key, isCollapsed);
+            }
+            return;
+        }
 
-function applyCollapsedFolders() {
-    var collapsed = getCollapsedFolders();
-    var folders = document.querySelectorAll('.sidebar-folder[data-folder-key], .sidebar-subfolder[data-folder-key]');
-    folders.forEach(function(folder) {
-        var key = folder.getAttribute('data-folder-key');
-        if (collapsed.has(key)) {
-            folder.classList.add('collapsed');
+        // Handle folder header clicks (but not link clicks)
+        var folderHeader = e.target.closest('.folder-header');
+        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+            var folder = folderHeader.closest('.sidebar-folder, .sidebar-subfolder');
+            if (folder) {
+                var key = folder.getAttribute('data-folder-key');
+                var isCollapsed = folder.classList.toggle('collapsed');
+                if (key) SidebarState.toggle('cms_sidebar_folders_collapsed', key, isCollapsed);
+            }
         }
     });
-}
-
-function toggleFolder(header) {
-    var folder = header.closest('.sidebar-folder, .sidebar-subfolder');
-    if (!folder) return;
-    var key = folder.getAttribute('data-folder-key');
-    var collapsed = getCollapsedFolders();
-    var nowCollapsed = folder.classList.toggle('collapsed');
-    if (key) {
-        if (nowCollapsed) {
-            collapsed.add(key);
-        } else {
-            collapsed.delete(key);
-        }
-        saveCollapsedFolders(collapsed);
-    }
-}
-
-function toggleSection(header, event) {
-    if (event && event.target && event.target.tagName && event.target.tagName.toLowerCase() === 'a') {
-        return;
-    }
-    var section = header.closest('.sidebar-section');
-    if (!section) {
-        return;
-    }
-    var key = section.getAttribute('data-section-key');
-    var collapsed = getCollapsedSections();
-    var nowCollapsed = section.classList.toggle('collapsed');
-    if (key) {
-        if (nowCollapsed) {
-            collapsed.add(key);
-        } else {
-            collapsed.delete(key);
-        }
-        saveCollapsedSections(collapsed);
-    }
 }
 
 $(document).ready(init);
-$(document).ready(applyCollapsedSections);
-$(document).ready(applyCollapsedFolders);
+$(document).ready(applySidebarState);
+$(document).ready(initSidebarEvents);
 
 //-->
     </script>
@@ -208,7 +231,7 @@ $(document).ready(applyCollapsedFolders);
 
         {% if contest is none %}
         <div class="sidebar-section" data-section-key="contests">
-          <h2 class="sidebar-section-title" onclick="toggleSection(this, event)">
+          <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
             <a href="{{ url("contests") }}">Contests</a>
           </h2>
@@ -217,9 +240,9 @@ $(document).ready(applyCollapsedFolders);
             <ul class="sidebar-menu">
             {% for folder in folder_list if folder.parent is none %}
             <li class="sidebar-folder" data-folder-key="folder-{{ folder.id }}">
-              <div class="folder-header" onclick="toggleFolder(this)">
+              <div class="folder-header">
                 <span class="folder-icon"></span>
-                <a href="{{ url("folder", folder.id) }}" onclick="event.stopPropagation()">{{ folder.name }}</a>
+                <a href="{{ url("folder", folder.id) }}">{{ folder.name }}</a>
               </div>
               <ul class="folder-contents">
                 {% for c in folder.contests %}
@@ -229,9 +252,9 @@ $(document).ready(applyCollapsedFolders);
                   {% endfor %}
                 {% for subfolder in folder.children %}
                 <li class="sidebar-subfolder" data-folder-key="subfolder-{{ subfolder.id }}">
-                  <div class="folder-header" onclick="toggleFolder(this)">
+                  <div class="folder-header">
                     <span class="folder-icon"></span>
-                    <a href="{{ url("folder", subfolder.id) }}" onclick="event.stopPropagation()">{{ subfolder.name }}</a>
+                    <a href="{{ url("folder", subfolder.id) }}">{{ subfolder.name }}</a>
                   </div>
                   <ul class="folder-contents">
                       {% for c in subfolder.contests %}
@@ -270,7 +293,7 @@ $(document).ready(applyCollapsedFolders);
         </div>
 
         <div class="sidebar-section" data-section-key="tasks">
-          <h2 class="sidebar-section-title" onclick="toggleSection(this, event)">
+          <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
             <a href="{{ url("tasks") }}">Tasks</a>
           </h2>
@@ -300,7 +323,7 @@ $(document).ready(applyCollapsedFolders);
         </div>
 
         <div class="sidebar-section" data-section-key="users">
-          <h2 class="sidebar-section-title" onclick="toggleSection(this, event)">
+          <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
             <a href="{{ url("users") }}">Users</a>
           </h2>
@@ -325,7 +348,7 @@ $(document).ready(applyCollapsedFolders);
         </div>
 
         <div class="sidebar-section" data-section-key="teams">
-          <h2 class="sidebar-section-title" onclick="toggleSection(this, event)">
+          <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
             <a href="{{ url("teams") }}">Teams</a>
           </h2>
