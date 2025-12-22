@@ -299,6 +299,14 @@ class AddTrainingProgramStudentHandler(BaseHandler):
         )
         self.sql_session.add(student)
 
+        # Also add the student to all existing training days
+        for training_day in training_program.training_days:
+            td_participation = Participation(
+                contest=training_day.contest,
+                user=user
+            )
+            self.sql_session.add(td_participation)
+
         if self.try_commit():
             self.service.proxy_service.reinitialize()
 
@@ -328,10 +336,30 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
             .filter(Submission.participation == participation)
         self.render_params_for_remove_confirmation(submission_query)
 
+        # Count submissions and participations from training days
+        training_day_submissions = 0
+        training_day_participations = 0
+        for training_day in training_program.training_days:
+            td_participation: Participation | None = (
+                self.sql_session.query(Participation)
+                .filter(Participation.contest == training_day.contest)
+                .filter(Participation.user == user)
+                .first()
+            )
+            if td_participation is not None:
+                training_day_participations += 1
+                training_day_submissions += (
+                    self.sql_session.query(Submission)
+                    .filter(Submission.participation == td_participation)
+                    .count()
+                )
+
         self.r_params["user"] = user
         self.r_params["training_program"] = training_program
         self.r_params["contest"] = managing_contest
         self.r_params["unanswered"] = 0
+        self.r_params["training_day_submissions"] = training_day_submissions
+        self.r_params["training_day_participations"] = training_day_participations
         self.render("training_program_student_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -360,6 +388,17 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
             self.sql_session.delete(student)
 
         self.sql_session.delete(participation)
+
+        # Also delete participations from all training days
+        for training_day in training_program.training_days:
+            td_participation: Participation | None = (
+                self.sql_session.query(Participation)
+                .filter(Participation.contest == training_day.contest)
+                .filter(Participation.user == user)
+                .first()
+            )
+            if td_participation is not None:
+                self.sql_session.delete(td_participation)
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()
