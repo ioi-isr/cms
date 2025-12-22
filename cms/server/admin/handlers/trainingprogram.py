@@ -592,6 +592,14 @@ class TrainingProgramTasksHandler(BaseHandler):
         task_num = task.num
 
         if operation == self.REMOVE_FROM_PROGRAM:
+            # If the task is in a training day, redirect to confirmation page
+            if task.training_day is not None:
+                asking_page = self.url(
+                    "training_program", training_program_id, "task", task_id, "remove"
+                )
+                self.redirect(asking_page)
+                return
+
             task.contest = None
             task.num = None
 
@@ -686,6 +694,74 @@ class AddTrainingProgramTaskHandler(BaseHandler):
             self.service.proxy_service.reinitialize()
 
         self.redirect(fallback_page)
+
+
+class RemoveTrainingProgramTaskHandler(BaseHandler):
+    """Confirm and remove a task from a training program.
+
+    This handler is used when a task is assigned to a training day,
+    to warn the user that the task will also be removed from the training day.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, training_program_id: str, task_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        task = self.safe_get_item(Task, task_id)
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["task"] = task
+        self.r_params["unanswered"] = 0
+
+        self.render("training_program_task_remove.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, training_program_id: str, task_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        task = self.safe_get_item(Task, task_id)
+
+        task_num = task.num
+        training_day_num = task.training_day_num
+
+        # Remove from training day if assigned
+        if task.training_day is not None:
+            training_day = task.training_day
+            task.training_day = None
+            task.training_day_num = None
+
+            self.sql_session.flush()
+
+            # Reorder remaining tasks in the training day
+            for t in self.sql_session.query(Task)\
+                         .filter(Task.training_day == training_day)\
+                         .filter(Task.training_day_num > training_day_num)\
+                         .order_by(Task.training_day_num)\
+                         .all():
+                t.training_day_num -= 1
+                self.sql_session.flush()
+
+        # Remove from training program
+        task.contest = None
+        task.num = None
+
+        self.sql_session.flush()
+
+        # Reorder remaining tasks in the training program
+        for t in self.sql_session.query(Task)\
+                     .filter(Task.contest == managing_contest)\
+                     .filter(Task.num > task_num)\
+                     .order_by(Task.num)\
+                     .all():
+            t.num -= 1
+            self.sql_session.flush()
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+
+        self.write("../../tasks")
 
 
 class TrainingProgramRankingHandler(BaseHandler):
