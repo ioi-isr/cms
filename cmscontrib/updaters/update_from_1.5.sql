@@ -267,8 +267,10 @@ CREATE UNIQUE INDEX ix_training_days_contest_id ON public.training_days USING bt
 ALTER TABLE ONLY public.training_days
     ADD CONSTRAINT training_days_training_program_id_position_key UNIQUE (training_program_id, "position");
 
--- Add training_day_id to tasks table for training day-specific tasks
+-- Add training_day_id and training_day_num to tasks table for training day-specific tasks
+-- Tasks keep their contest_id (managing contest) and can also be assigned to a training day
 ALTER TABLE public.tasks ADD COLUMN training_day_id integer;
+ALTER TABLE public.tasks ADD COLUMN training_day_num integer;
 
 ALTER TABLE ONLY public.tasks
     ADD CONSTRAINT tasks_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE CASCADE;
