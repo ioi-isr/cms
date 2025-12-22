@@ -76,7 +76,7 @@ hr {
 
 .hr {
     height: 1px;
-    background: linear-gradient(to right, rgba(109, 201, 66, 0.3), rgba(109, 201, 66, 0.1), transparent);
+    background: linear-gradient(to right, rgba(37, 99, 235, 0.3), rgba(37, 99, 235, 0.1), transparent);
     margin: 0.75em 0;
     border: none;
     clear: both;
@@ -119,14 +119,14 @@ ul.normal_list {
     position: fixed;
     padding: 0 1em;
     width: 234px;
-    background-color: #EAEEF3;
-    text-shadow: white 0.0625em 0.0625em 0.0625em;
+    background-color: #F8FAFC;
+    text-shadow: none;
     height: 100%;
-    border-right: 2px solid #E4E5E8;
+    border-right: 2px solid #E2E8F0;
     overflow-y: auto;
     padding-bottom: 4em;
     scrollbar-width: thin;
-    scrollbar-color: rgba(109, 201, 66, 0.4) transparent;
+    scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
 }
 
 #sidebar::-webkit-scrollbar {
@@ -138,12 +138,12 @@ ul.normal_list {
 }
 
 #sidebar::-webkit-scrollbar-thumb {
-    background-color: rgba(109, 201, 66, 0.4);
+    background-color: rgba(100, 116, 139, 0.35);
     border-radius: 3px;
 }
 
 #sidebar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(109, 201, 66, 0.6);
+    background-color: rgba(100, 116, 139, 0.55);
 }
 
 #sidebar_header {
@@ -165,11 +165,11 @@ ul.normal_list {
     font-size: 0.9em;
     margin-bottom: 10px;
     padding-left: 5px;
-    border-left: 3px solid #6DC942;
+    border-left: 3px solid #2563EB;
 }
 
 .sidebar-breadcrumb a {
-    color: #6DC942;
+    color: #2563EB;
 }
 
 .breadcrumb-separator::before {
@@ -179,7 +179,7 @@ ul.normal_list {
 
 .breadcrumb-current {
     font-weight: bold;
-    color: #637D53;
+    color: #1E40AF;
 }
 
 .sidebar-section {
@@ -191,17 +191,17 @@ ul.normal_list {
     font-weight: 600;
     margin: 15px 0 8px 0;
     padding: 6px 12px;
-    background: linear-gradient(to right, rgba(109, 201, 66, 0.2), transparent);
+    background: linear-gradient(to right, rgba(37, 99, 235, 0.12), transparent);
     border-radius: 4px 0 0 4px;
 }
 
 .sidebar-section-title a {
-    color: #637D53;
+    color: #1E40AF;
     text-decoration: none;
 }
 
 .sidebar-section-title a:hover {
-    color: #6DC942;
+    color: #2563EB;
 }
 
 .sidebar-menu {
@@ -224,7 +224,7 @@ ul.normal_list {
 }
 
 .folder-header:hover {
-    background-color: rgba(109, 201, 66, 0.1);
+    background-color: rgba(37, 99, 235, 0.08);
 }
 
 .folder-icon {
@@ -240,7 +240,7 @@ ul.normal_list {
     display: block;
     width: 0;
     height: 0;
-    border-left: 5px solid #637D53;
+    border-left: 5px solid #475569;
     border-top: 4px solid transparent;
     border-bottom: 4px solid transparent;
     margin-top: 4px;
@@ -255,19 +255,19 @@ ul.normal_list {
 }
 
 .folder-header a {
-    color: #637D53;
+    color: #1E40AF;
     font-weight: 500;
     text-decoration: none;
 }
 
 .folder-header a:hover {
-    color: #6DC942;
+    color: #2563EB;
 }
 
 .folder-contents {
     margin-left: 16px;
     padding-left: 6px;
-    border-left: 1px solid #CED3CA;
+    border-left: 1px solid #CBD5E1;
     overflow: hidden;
     max-height: 500px;
     transition: max-height 0.3s ease-out;
@@ -295,7 +295,7 @@ ul.normal_list {
 }
 
 body.admin .sidebar-contest a, body.admin .sidebar-item a {
-    color: #6DC942;
+    color: #2563EB;
 }
 
 .sidebar-contest a:hover, .sidebar-item a:hover {
@@ -317,7 +317,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 .sidebar-action a:hover {
-    color: #6DC942;
+    color: #2563EB;
 }
 
 .sidebar-actions {
@@ -330,16 +330,16 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 
 .sidebar-action-link {
     font-size: 0.85em;
-    color: #6DC942;
+    color: #2563EB;
     text-decoration: none;
     padding: 2px 8px;
-    border: 1px solid #6DC942;
+    border: 1px solid #2563EB;
     border-radius: 3px;
     transition: all 0.2s;
 }
 
 .sidebar-action-link:hover {
-    background-color: #6DC942;
+    background-color: #2563EB;
     color: white;
 }
 
@@ -375,7 +375,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 #sidebar a:hover, #sidebar a:focus {
-    background-color: rgba(109, 201, 66, 0.1);
+    background-color: rgba(37, 99, 235, 0.08);
     outline: 0;
 }
 
@@ -744,21 +744,21 @@ th .column-sort {
 body.admin h1,
 body.admin .hr,
 body.admin #core h2 {
-    color: #637D53;
+    color: #1E40AF;
 }
 
 body.admin pre {
-    border-left: 2px solid #637D53;
+    border-left: 2px solid #1E40AF;
 }
 
 body.admin a,
 body.admin a:visited {
-    color: #6DC942;
+    color: #2563EB;
 }
 
 body.admin input,
 body.admin textarea {
-    border: 1px solid #637D53;
+    border: 1px solid #64748B;
 }
 
 body.admin input:focus,
@@ -767,27 +767,27 @@ body.admin textarea:focus {
 }
 
 body.admin #sidebar {
-    background-color: #EEF3EA;
-    border-right: 2px solid #E5E8E4;
+    background-color: #F8FAFC;
+    border-right: 2px solid #E2E8F0;
 }
 
 body.admin #border {
-    border-left: 2px solid #DEE3DA;
-    border-right: 2px solid #CED3CA;
+    border-left: 2px solid #E2E8F0;
+    border-right: 2px solid #CBD5E1;
 }
 
 body.admin #subpage_border {
-    border-left: 2px solid #DEE3DA;
-    border-right: 2px solid #CED3CA;
+    border-left: 2px solid #E2E8F0;
+    border-right: 2px solid #CBD5E1;
 }
 
 body.admin table th {
-    border-bottom: 0.072em solid #637D53;
+    border-bottom: 0.072em solid #64748B;
 }
 
 body.admin table.bordered td,
 body.admin table.bordered th {
-    border-right: 1px solid #637D53;
+    border-right: 1px solid #64748B;
 }
 
 body.admin table.bordered td:last-child,
@@ -800,13 +800,13 @@ body.admin table.bordered tbody tr:nth-child(even) {
 }
 
 body.admin table.bordered tbody tr:nth-child(odd) {
-    background-color: #EEF3EA;
+    background-color: #F8FAFC;
 }
 
 body.admin div.task_dataset {
     padding-left: 1em;
     padding-right: 1em;
-    border: 1px solid #CED3CA;
+    border: 1px solid #CBD5E1;
 }
 
 body.admin #notifications .notification {
@@ -830,8 +830,8 @@ body.admin .notifications .notification {
 }
 
 body.admin .notifications .communication {
-    background-color: #EEF3EA;
-    border: 0.143em solid #637D53;
+    background-color: #F8FAFC;
+    border: 0.143em solid #64748B;
 }
 
 body.admin .notifications .ignored {
@@ -925,9 +925,9 @@ table.jqplot-table-legend {
 
 /* OTHERS */
 span.info {
-    color: #6DC942;
+    color: #2563EB;
     font-size: smaller;
-    background-color: #EEF3EA;
+    background-color: #EFF6FF;
     display: inline-block;
     border-radius: 10px;
     width: 16px;
@@ -946,11 +946,11 @@ a.button-link {
     margin-right: 25px;
     padding: 8px;
     border-radius: 8px;
-    border: 1px solid #6DC942;
+    border: 1px solid #2563EB;
 }
 
 a.button-link:hover {
-    background-color: #EEF3EA;
+    background-color: #EFF6FF;
 }
 
 th.diff-only, td.diff-only {
