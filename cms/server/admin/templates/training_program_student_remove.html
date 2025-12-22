@@ -9,7 +9,11 @@
 <p>
   Are you sure you want to remove user {{ user.username }} from training program {{ training_program.name }}, including all related data?
   <br>
-  This will remove {{ submission_count }} submission(s).
+  This will remove {{ submission_count }} submission(s) from the main training program.
+  {% if training_day_participations > 0 %}
+  <br>
+  <strong>Warning:</strong> This will also remove {{ training_day_participations }} training day participation(s) and {{ training_day_submissions }} submission(s) from training days.
+  {% endif %}
   <br>
   This operation cannot be undone.
 </p>
