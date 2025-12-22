@@ -76,7 +76,7 @@ hr {
 
 .hr {
     height: 1px;
-    background: linear-gradient(to right, rgba(37, 99, 235, 0.3), rgba(37, 99, 235, 0.1), transparent);
+    background: linear-gradient(to right, rgba(71, 85, 105, 0.5), rgba(71, 85, 105, 0.2), transparent);
     margin: 0.75em 0;
     border: none;
     clear: both;
@@ -119,14 +119,14 @@ ul.normal_list {
     position: fixed;
     padding: 0 1em;
     width: 234px;
-    background-color: #F8FAFC;
+    background-color: #111827;
     text-shadow: none;
     height: 100%;
-    border-right: 2px solid #E2E8F0;
+    border-right: 1px solid #1F2937;
     overflow-y: auto;
     padding-bottom: 4em;
     scrollbar-width: thin;
-    scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
 
 #sidebar::-webkit-scrollbar {
@@ -138,12 +138,12 @@ ul.normal_list {
 }
 
 #sidebar::-webkit-scrollbar-thumb {
-    background-color: rgba(100, 116, 139, 0.35);
+    background-color: rgba(148, 163, 184, 0.35);
     border-radius: 3px;
 }
 
 #sidebar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(100, 116, 139, 0.55);
+    background-color: rgba(148, 163, 184, 0.55);
 }
 
 #sidebar_header {
@@ -153,33 +153,35 @@ ul.normal_list {
 #sidebar h1 {
     font-size: 1.5em;
     margin-top: 15px;
+    color: #E5E7EB;
 }
 
 #sidebar h1.sidebar-title {
     font-size: 1.6em;
     margin-top: 0;
     margin-bottom: 5px;
+    color: #F9FAFB;
 }
 
 .sidebar-breadcrumb {
     font-size: 0.9em;
     margin-bottom: 10px;
     padding-left: 5px;
-    border-left: 3px solid #2563EB;
+    border-left: 3px solid #60A5FA;
 }
 
 .sidebar-breadcrumb a {
-    color: #2563EB;
+    color: #60A5FA;
 }
 
 .breadcrumb-separator::before {
     content: " / ";
-    color: #999;
+    color: #64748B;
 }
 
 .breadcrumb-current {
     font-weight: bold;
-    color: #1E40AF;
+    color: #93C5FD;
 }
 
 .sidebar-section {
@@ -187,21 +189,23 @@ ul.normal_list {
 }
 
 .sidebar-section-title {
-    font-size: 1.25em;
+    font-size: 0.75em;
     font-weight: 600;
     margin: 15px 0 8px 0;
     padding: 6px 12px;
-    background: linear-gradient(to right, rgba(37, 99, 235, 0.12), transparent);
+    background: transparent;
     border-radius: 4px 0 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .sidebar-section-title a {
-    color: #1E40AF;
+    color: #64748B;
     text-decoration: none;
 }
 
 .sidebar-section-title a:hover {
-    color: #2563EB;
+    color: #94A3B8;
 }
 
 .sidebar-menu {
@@ -224,7 +228,7 @@ ul.normal_list {
 }
 
 .folder-header:hover {
-    background-color: rgba(37, 99, 235, 0.08);
+    background-color: rgba(148, 163, 184, 0.12);
 }
 
 .folder-icon {
@@ -240,7 +244,7 @@ ul.normal_list {
     display: block;
     width: 0;
     height: 0;
-    border-left: 5px solid #475569;
+    border-left: 5px solid #94A3B8;
     border-top: 4px solid transparent;
     border-bottom: 4px solid transparent;
     margin-top: 4px;
@@ -255,19 +259,19 @@ ul.normal_list {
 }
 
 .folder-header a {
-    color: #1E40AF;
+    color: #E5E7EB;
     font-weight: 500;
     text-decoration: none;
 }
 
 .folder-header a:hover {
-    color: #2563EB;
+    color: #F9FAFB;
 }
 
 .folder-contents {
     margin-left: 16px;
     padding-left: 6px;
-    border-left: 1px solid #CBD5E1;
+    border-left: 1px solid #334155;
     overflow: hidden;
     max-height: 500px;
     transition: max-height 0.3s ease-out;
@@ -289,13 +293,13 @@ ul.normal_list {
 }
 
 .sidebar-contest a, .sidebar-item a {
-    color: #426DC9;
+    color: #CBD5E1;
     text-decoration: none;
     font-size: 0.95em;
 }
 
 body.admin .sidebar-contest a, body.admin .sidebar-item a {
-    color: #2563EB;
+    color: #CBD5E1;
 }
 
 .sidebar-contest a:hover, .sidebar-item a:hover {
@@ -312,12 +316,12 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 .sidebar-action a {
-    color: #888;
+    color: #64748B;
     font-size: 0.9em;
 }
 
 .sidebar-action a:hover {
-    color: #2563EB;
+    color: #94A3B8;
 }
 
 .sidebar-actions {
@@ -330,22 +334,23 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 
 .sidebar-action-link {
     font-size: 0.85em;
-    color: #2563EB;
+    color: #94A3B8;
     text-decoration: none;
     padding: 2px 8px;
-    border: 1px solid #2563EB;
+    border: 1px solid #475569;
     border-radius: 3px;
     transition: all 0.2s;
 }
 
 .sidebar-action-link:hover {
-    background-color: #2563EB;
-    color: white;
+    background-color: #1F2937;
+    color: #E5E7EB;
+    border-color: #64748B;
 }
 
 .sidebar-empty {
     font-size: 0.9em;
-    color: #888;
+    color: #64748B;
     font-style: italic;
     padding: 5px 8px;
     margin: 0;
@@ -375,7 +380,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 #sidebar a:hover, #sidebar a:focus {
-    background-color: rgba(37, 99, 235, 0.08);
+    background-color: rgba(148, 163, 184, 0.12);
     outline: 0;
 }
 
@@ -767,18 +772,18 @@ body.admin textarea:focus {
 }
 
 body.admin #sidebar {
-    background-color: #F8FAFC;
-    border-right: 2px solid #E2E8F0;
+    background-color: #111827;
+    border-right: 1px solid #1F2937;
 }
 
 body.admin #border {
-    border-left: 2px solid #E2E8F0;
-    border-right: 2px solid #CBD5E1;
+    border-left: 1px solid #1F2937;
+    border-right: 1px solid #1F2937;
 }
 
 body.admin #subpage_border {
-    border-left: 2px solid #E2E8F0;
-    border-right: 2px solid #CBD5E1;
+    border-left: 1px solid #1F2937;
+    border-right: 1px solid #1F2937;
 }
 
 body.admin table th {
