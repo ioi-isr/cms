@@ -4,10 +4,14 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <script>
     // Pre-paint CSS injection to prevent flash of expanded menus
+    // Uses a hydration class on <html> so these rules only apply during initial render
     (function() {
       var validSectionKeys = ['contests', 'tasks', 'users', 'teams'];
       var folderKeyPattern = /^(folder|subfolder)-\d+$/;
       var css = '';
+
+      // Add hydration class to gate these styles
+      document.documentElement.classList.add('sidebar-hydrating');
 
       // Apply collapsed state for sections
       try {
@@ -15,9 +19,8 @@
         if (sections) {
           JSON.parse(sections).forEach(function(key) {
             if (validSectionKeys.indexOf(key) !== -1) {
-              css += '.sidebar-section[data-section-key="' + key + '"] { }\n';
-              css += '.sidebar-section[data-section-key="' + key + '"] .sidebar-section-body { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
-              css += '.sidebar-section[data-section-key="' + key + '"] .section-caret { transform: rotate(-45deg); }\n';
+              css += 'html.sidebar-hydrating .sidebar-section[data-section-key="' + key + '"] .sidebar-section-body { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += 'html.sidebar-hydrating .sidebar-section[data-section-key="' + key + '"] .section-caret { transform: rotate(-45deg); }\n';
             }
           });
         }
@@ -29,10 +32,10 @@
         if (folders) {
           JSON.parse(folders).forEach(function(key) {
             if (folderKeyPattern.test(key)) {
-              css += '.sidebar-folder[data-folder-key="' + key + '"] > .folder-contents,\n';
-              css += '.sidebar-subfolder[data-folder-key="' + key + '"] > .folder-contents { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
-              css += '.sidebar-folder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before,\n';
-              css += '.sidebar-subfolder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before { transform: rotate(0deg); margin-top: 4px; margin-left: 4px; }\n';
+              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-contents,\n';
+              css += 'html.sidebar-hydrating .sidebar-subfolder[data-folder-key="' + key + '"] > .folder-contents { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before,\n';
+              css += 'html.sidebar-hydrating .sidebar-subfolder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before { transform: rotate(0deg); margin-top: 4px; margin-left: 4px; }\n';
             }
           });
         }
@@ -128,7 +131,7 @@ var SidebarState = {
     }
 };
 
-// Apply collapsed classes from storage (syncs with pre-paint CSS)
+// Apply collapsed classes from storage, then end hydration phase
 function applySidebarState() {
     var sectionState = SidebarState.load('cms_sidebar_collapsed');
     document.querySelectorAll('.sidebar-section[data-section-key]').forEach(function(el) {
@@ -141,6 +144,9 @@ function applySidebarState() {
         var key = el.getAttribute('data-folder-key');
         if (folderState[key]) el.classList.add('collapsed');
     });
+
+    // End hydration phase - pre-paint CSS no longer applies, class-based CSS takes over
+    document.documentElement.classList.remove('sidebar-hydrating');
 }
 
 // Event delegation for sidebar interactions
