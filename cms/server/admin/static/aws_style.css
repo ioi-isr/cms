@@ -75,15 +75,11 @@ hr {
 }
 
 .hr {
-    text-align: center;
-    color: #53637D;
-    text-shadow: white 0 1px 1px;
-    padding: 0.75em 0;
+    height: 1px;
+    background: linear-gradient(to right, rgba(109, 201, 66, 0.3), rgba(109, 201, 66, 0.1), transparent);
+    margin: 0.75em 0;
+    border: none;
     clear: both;
-}
-
-.hr:before {
-    content: "\273B\273B\273B";
 }
 
 .displayed {
@@ -129,6 +125,25 @@ ul.normal_list {
     border-right: 2px solid #E4E5E8;
     overflow-y: auto;
     padding-bottom: 4em;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(109, 201, 66, 0.4) transparent;
+}
+
+#sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+#sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(109, 201, 66, 0.4);
+    border-radius: 3px;
+}
+
+#sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(109, 201, 66, 0.6);
 }
 
 #sidebar_header {
@@ -172,11 +187,11 @@ ul.normal_list {
 }
 
 .sidebar-section-title {
-    font-size: 1.1em;
-    font-weight: bold;
-    margin: 10px 0 5px 0;
-    padding: 5px 10px;
-    background: linear-gradient(to right, rgba(109, 201, 66, 0.15), transparent);
+    font-size: 1.25em;
+    font-weight: 600;
+    margin: 15px 0 8px 0;
+    padding: 6px 12px;
+    background: linear-gradient(to right, rgba(109, 201, 66, 0.2), transparent);
     border-radius: 4px 0 0 4px;
 }
 
@@ -232,7 +247,8 @@ ul.normal_list {
     margin-left: 4px;
 }
 
-.sidebar-folder:not(.collapsed) > .folder-header .folder-icon::before {
+.sidebar-folder:not(.collapsed) > .folder-header .folder-icon::before,
+.sidebar-subfolder:not(.collapsed) > .folder-header .folder-icon::before {
     transform: rotate(90deg);
     margin-top: 2px;
     margin-left: 6px;
@@ -249,15 +265,16 @@ ul.normal_list {
 }
 
 .folder-contents {
-    margin-left: 22px;
-    padding-left: 8px;
+    margin-left: 16px;
+    padding-left: 6px;
     border-left: 1px solid #CED3CA;
     overflow: hidden;
     max-height: 500px;
     transition: max-height 0.3s ease-out;
 }
 
-.sidebar-folder.collapsed > .folder-contents {
+.sidebar-folder.collapsed > .folder-contents,
+.sidebar-subfolder.collapsed > .folder-contents {
     max-height: 0;
     padding-top: 0;
     padding-bottom: 0;
@@ -351,13 +368,14 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 .menu_link {
-    border-radius: 10px 0 0 10px;
-    padding: 0 1em;
-    margin-right: -1em;
+    display: block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
 }
 
 #sidebar a:hover, #sidebar a:focus {
-    background-color: white;
+    background-color: rgba(109, 201, 66, 0.1);
     outline: 0;
 }
 
