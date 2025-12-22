@@ -351,9 +351,7 @@ class BaseHandler(CommonRequestHandler):
         params["task_list"] = self.sql_session.query(Task).order_by(Task.name).all()
         params["user_list"] = self.sql_session.query(User).order_by(User.username).all()
         params["team_list"] = self.sql_session.query(Team).order_by(Team.name).all()
-        params["folder_list"] = self.sql_session.query(ContestFolder).filter(
-            ContestFolder.hidden.is_(False)
-        ).order_by(ContestFolder.name).all()
+        params["folder_list"] = self.sql_session.query(ContestFolder).order_by(ContestFolder.name).all()
         params["root_contests"] = self.sql_session.query(Contest).filter(
             Contest.folder_id.is_(None)
         ).order_by(Contest.name).all()
