@@ -200,8 +200,13 @@ $(document).ready(initSidebarEvents);
             Hello, <a href="{{ url("admins") }}">{{ admin.name }}</a>.
               <form class="inline" action="{{ url("logout") }}" method="POST">{{ xsrf_form_html|safe }}<input type="submit" value="Logout"></form>
           </div>
-          {% if contest is none %}
+          {% if contest is none and training_program is not defined %}
           <h1 class="sidebar-title">Administration</h1>
+          {% elif training_program is defined %}
+          <h1 class="sidebar-title"><a href="{{ url() }}">Administration</a></h1>
+          <div class="sidebar-breadcrumb">
+            <span class="breadcrumb-current">{{ training_program.name }}</span>
+          </div>
           {% else %}
           <h1 class="sidebar-title"><a href="{{ url() }}">Administration</a></h1>
           {% if contest.folder %}
@@ -231,7 +236,7 @@ $(document).ready(initSidebarEvents);
         </div>
         {% endif %}
         <ul class="menu">
-        {% if contest is none %}
+        {% if contest is none or training_program is defined %}
           <li class="menu_entry"><a class="menu_link" href="{{ url() }}">Overview</a></li>
           <li class="menu_entry"><a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a></li>
         {% else %}
@@ -241,7 +246,7 @@ $(document).ready(initSidebarEvents);
         </ul>
         <div class="hr"></div>
 
-        {% if contest is none %}
+        {% if contest is none and training_program is not defined %}
         <div class="sidebar-section" data-section-key="contests">
           <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
@@ -418,6 +423,28 @@ $(document).ready(initSidebarEvents);
             {% endif %}
           </div>
         </div>
+        {% elif training_program is defined %}
+          <ul class="menu">
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id) }}">General</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "ranking") }}">Ranking</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a></li>
+            <li class="menu_entry">
+              <span id="unanswered_questions" class="unread"
+                {% if unanswered == 0 %} style="display: none;" {% endif %}>
+                {{ unanswered }}
+              </span>
+              <a class="menu_link" href="{{ url("training_program", training_program.id, "questions") }}">Questions</a>
+            </li>
+          </ul>
+          <div class="hr"></div>
+          <div class="footer">
+            <span id="remaining_text"></span>
+            <span id="remaining_value"></span>
+          </div>
         {% else %}
           <ul class="menu">
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id) }}">General</a></li>
