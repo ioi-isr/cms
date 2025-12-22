@@ -46,7 +46,7 @@ import typing
 if typing.TYPE_CHECKING:
     from cms.grading.scoretypes import ScoreType
     from cms.grading.tasktypes import TaskType
-    from . import Submission, UserTest
+    from . import Submission, UserTest, TrainingDay
     from .scorecache import ParticipationTaskScore
 
 
@@ -93,6 +93,19 @@ class Task(Base):
         index=True)
     contest: Contest | None = relationship(
         Contest,
+        back_populates="tasks")
+
+    # Training day (id and object) owning the task.
+    # Tasks can belong to either a Contest (via contest_id) or a TrainingDay
+    # (via training_day_id), but not both.
+    training_day_id: int | None = Column(
+        Integer,
+        ForeignKey("training_days.id",
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=True,
+        index=True)
+    training_day: "TrainingDay | None" = relationship(
+        "TrainingDay",
         back_populates="tasks")
 
     # Short name and long human readable title of the task.
