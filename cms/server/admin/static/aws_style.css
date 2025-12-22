@@ -1,4 +1,4 @@
-html {
+﻿html {
     font-size: 100%;
 }
 
@@ -128,6 +128,7 @@ ul.normal_list {
     padding-bottom: 4em;
     scrollbar-width: thin;
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+    font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 #sidebar::-webkit-scrollbar {
@@ -186,32 +187,50 @@ ul.normal_list {
 }
 
 .sidebar-section {
-    margin-bottom: 15px;
+    margin-bottom: 12px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(148, 163, 184, 0.08);
+}
+    
+    .sidebar-section:first-child {
+        border-top: none;
+        padding-top: 0;
 }
 
 .sidebar-section-title {
-    font-size: 0.75em;
+    font-size: 1.25em;
     font-weight: 600;
-    margin: 15px 0 8px 0;
-    padding: 6px 12px;
-    background: linear-gradient(to right, rgba(148, 163, 184, 0.15), transparent);
-    border-radius: 4px 0 0 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    margin: 12px 0 6px 0;
+        padding: 7px 12px 6px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 6px;
+        text-transform: none;
+        letter-spacing: 0.02em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: border-color 0.2s, background-color 0.2s;
 }
 
 .sidebar-section-title a {
-    color: #94A3B8;
+    color: #E5E7EB;
     text-decoration: none;
 }
 
 .sidebar-section-title a:hover {
-    color: #CBD5E1;
+    color: #F8FAFC;
+    }
+    
+    .sidebar-section-title:hover {
+        border-color: rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.9);
 }
 
 .sidebar-menu {
     list-style: none;
-    margin: 0;
+    margin: 4px 0 0 0;
     padding: 0;
 }
 
@@ -219,6 +238,37 @@ ul.normal_list {
     margin: 2px 0;
 }
 
+.sidebar-section-body {
+    padding-top: 4px;
+    transition: max-height 0.3s ease-out, padding 0.2s;
+    max-height: 2000px;
+    overflow: hidden;
+}
+
+.sidebar-section.collapsed .sidebar-section-body {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.section-caret {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border: solid #94A3B8;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    transition: transform 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+}
+
+.sidebar-section.collapsed .section-caret {
+    transform: rotate(-45deg);
+}
+
+.sidebar-section-title:hover .section-caret {
+    border-color: #CBD5E1;
+}
 .folder-header {
     display: flex;
     align-items: center;
@@ -270,9 +320,9 @@ ul.normal_list {
 }
 
 .folder-contents {
-    margin-left: 16px;
-    padding-left: 6px;
-    border-left: 1px solid #334155;
+    margin-left: 14px;
+        padding-left: 10px;
+        border-left: 1px solid #243047;
     overflow: hidden;
     max-height: 500px;
     transition: max-height 0.3s ease-out;
@@ -299,9 +349,9 @@ ul.normal_list {
     color: #CBD5E1;
     text-decoration: none;
     font-size: 0.95em;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
+    padding: 6px 10px;
+        border-radius: 6px;
+        transition: background-color 0.2s, color 0.2s;
 }
 
 body.admin .sidebar-contest a, body.admin .sidebar-item a {
@@ -310,6 +360,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 
 .sidebar-contest a:hover, .sidebar-item a:hover {
     background-color: rgba(148, 163, 184, 0.12);
+    color: #F8FAFC;
     text-decoration: none;
 }
 
@@ -319,7 +370,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 
 .sidebar-action {
     padding: 0;
-    margin: 2px 0;
+    margin: 4px 0 2px;
     font-style: italic;
 }
 
@@ -329,36 +380,39 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     font-size: 0.9em;
     padding: 4px 8px;
     border-radius: 4px;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .sidebar-action a:hover {
-    color: #CBD5E1;
+    color: #E0E7FF;
     background-color: rgba(148, 163, 184, 0.12);
 }
 
 .sidebar-actions {
-    margin-top: 5px;
-    padding: 5px 8px;
+    margin-top: 6px;
+        padding: 6px 0 0 0;
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
 .sidebar-action-link {
     font-size: 0.85em;
-    color: #94A3B8;
+    color: #E5E7EB;
     text-decoration: none;
-    padding: 2px 8px;
-    border: 1px solid #475569;
-    border-radius: 3px;
-    transition: all 0.2s;
+    padding: 6px 10px;
+        border: 1px solid #334155;
+        border-radius: 5px;
+        background-color: #0f172a;
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        transition: all 0.15s ease-in-out;
 }
 
 .sidebar-action-link:hover {
     background-color: #1F2937;
-    color: #E5E7EB;
+    color: #F8FAFC;
     border-color: #64748B;
+    box-shadow: 0 0 0 1px rgba(100, 116, 139, 0.3);
 }
 
 .sidebar-empty {
@@ -383,13 +437,37 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 
 #sidebar a {
     text-decoration: none;
+    line-height: 1.35;
+    }
+    
+    .menu {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .menu_entry {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 2px 0;
+    }
+    
+    .menu_entry .unread {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
 }
 
 .menu_link {
     display: block;
-    padding: 4px 8px;
-    border-radius: 4px;
+    flex: 1 1 auto;
+        padding: 6px 10px;
+        border-radius: 6px;
     transition: background-color 0.2s;
+    font-weight: 500;
+        letter-spacing: 0.01em;
 }
 
 #sidebar a:hover, #sidebar a:focus {
@@ -585,7 +663,7 @@ table.bordered tbody tr:nth-child(even) {
 }
 
 table.bordered tbody tr:nth-child(odd) {
-    background-color: #EAEEF3;
+    background-color: #D8E2F2;
 }
 
 table.TaskTypeOptions {
@@ -714,7 +792,7 @@ th .column-sort {
 }
 
 .notifications .communication {
-    background-color: #EAEEF3;
+    background-color: #D9E3F3;
     border: 0.143em solid #53637D;
 }
 
@@ -830,7 +908,7 @@ body.admin table.bordered tbody tr:nth-child(even) {
 }
 
 body.admin table.bordered tbody tr:nth-child(odd) {
-    background-color: #F8FAFC;
+    background-color: #DEE6F5;
 }
 
 body.admin div.task_dataset {
@@ -860,8 +938,8 @@ body.admin .notifications .notification {
 }
 
 body.admin .notifications .communication {
-    background-color: #F8FAFC;
-    border: 0.143em solid #64748B;
+    background-color: #DDE6F7;
+        border: 0.143em solid #5A6B84;
 }
 
 body.admin .notifications .ignored {
