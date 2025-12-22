@@ -51,8 +51,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, subqueryload
 
 from cms import __version__, config
-from cms.db import Admin, Contest, DelayRequest, Participation, Question, \
-    Submission, SubmissionResult, Task, Team, TrainingProgram, User, UserTest
+from cms.db import Admin, Contest, ContestFolder, DelayRequest, Participation, \
+    Question, Submission, SubmissionResult, Task, Team, TrainingProgram, User, UserTest
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
@@ -408,6 +408,13 @@ class BaseHandler(CommonRequestHandler):
         ]
         params["team_list"] = self.sql_session.query(Team)\
             .order_by(Team.name).all()
+        params["folder_list"] = self.sql_session.query(ContestFolder).order_by(ContestFolder.name).all()
+        params["root_contests"] = [
+            c for c in self.sql_session.query(Contest).filter(
+                Contest.folder_id.is_(None)
+            ).order_by(Contest.name).all()
+            if not c.name.startswith("__")
+        ]
         params["training_program_list"] = self.sql_session.query(TrainingProgram)\
             .order_by(TrainingProgram.name).all()
         return params
