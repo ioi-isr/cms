@@ -140,7 +140,7 @@ class RankingHandler(BaseHandler):
             task_statuses = []
             total_score = 0.0
             partial = False
-            for task in self.contest.tasks:
+            for task in self.contest.get_tasks():
                 # Get the cache entry with score and has_submissions
                 cache_entry = get_cached_score_entry(self.sql_session, p, task)
                 t_score = round(cache_entry.score, task.score_precision)
@@ -199,7 +199,7 @@ class RankingHandler(BaseHandler):
             row = ["Username", "User"]
             if show_teams:
                 row.append("Team")
-            for task in contest.tasks:
+            for task in contest.get_tasks():
                 row.append(task.name)
                 if include_partial:
                     row.append("P")
@@ -219,7 +219,7 @@ class RankingHandler(BaseHandler):
                        "%s %s" % (p.user.first_name, p.user.last_name)]
                 if show_teams:
                     row.append(p.team.name if p.team else "")
-                assert len(contest.tasks) == len(p.task_statuses)
+                assert len(contest.get_tasks()) == len(p.task_statuses)
                 for status in p.task_statuses:
                     row.append(status.score)
                     if include_partial:
