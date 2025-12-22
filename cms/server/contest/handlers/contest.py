@@ -276,7 +276,7 @@ class ContestHandler(BaseHandler):
         # some information about token configuration
         ret["tokens_contest"] = self.contest.token_mode
 
-        t_tokens = set(t.token_mode for t in self.contest.tasks)
+        t_tokens = set(t.token_mode for t in self.contest.get_tasks())
         if len(t_tokens) == 1:
             ret["tokens_tasks"] = next(iter(t_tokens))
         else:
@@ -299,10 +299,12 @@ class ContestHandler(BaseHandler):
         return: the corresponding task object, if found.
 
         """
-        return self.sql_session.query(Task) \
-            .filter(Task.contest == self.contest) \
-            .filter(Task.name == task_name) \
-            .one_or_none()
+        # For training day contests, tasks are linked via training_day_id
+        # rather than contest_id. Use get_tasks() to get the correct task list.
+        for task in self.contest.get_tasks():
+            if task.name == task_name:
+                return task
+        return None
 
     def get_submission(self, task: Task, opaque_id: str | int) -> Submission | None:
         """Return the num-th contestant's submission on the given task.

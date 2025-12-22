@@ -326,6 +326,34 @@ class Contest(Base):
         uselist=False,
     )
 
+    def get_tasks(self) -> list["Task"]:
+        """Return the tasks for this contest.
+
+        If this contest is a training day, return the training day's tasks.
+        Otherwise, return the contest's own tasks.
+
+        This allows training days to have their own task list separate from
+        the contest's task list, while still allowing contestants to see
+        the tasks when they enter the training day's contest.
+        """
+        if self.training_day is not None:
+            return self.training_day.tasks
+        return self.tasks
+
+    def task_belongs_here(self, task: "Task") -> bool:
+        """Check if a task belongs to this contest.
+
+        For regular contests, the task must have contest_id == self.id.
+        For training day contests, the task must have training_day_id == self.training_day.id.
+
+        This is used to validate that a task is accessible from this contest,
+        which is important for training days where tasks have contest_id pointing
+        to the managing contest but are served through the training day's contest.
+        """
+        if self.training_day is not None:
+            return task.training_day_id == self.training_day.id
+        return task.contest_id == self.id
+
     def phase(self, timestamp: datetime) -> int:
         """Return: -1 if contest isn't started yet at time timestamp,
                     0 if the contest is active at time timestamp,

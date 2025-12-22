@@ -46,7 +46,7 @@ import typing
 if typing.TYPE_CHECKING:
     from cms.grading.scoretypes import ScoreType
     from cms.grading.tasktypes import TaskType
-    from . import Submission, UserTest
+    from . import Submission, UserTest, TrainingDay
 
 
 class Task(Base):
@@ -93,6 +93,27 @@ class Task(Base):
     contest: Contest | None = relationship(
         Contest,
         back_populates="tasks")
+
+    # Training day (id and object) that this task is assigned to.
+    # Tasks belong to a Contest (via contest_id) which is the training program's
+    # managing contest. They can also be assigned to a TrainingDay (via
+    # training_day_id) to appear in that training day's contest.
+    # A task can be assigned to at most one training day at a time.
+    training_day_id: int | None = Column(
+        Integer,
+        ForeignKey("training_days.id",
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=True,
+        index=True)
+    training_day: "TrainingDay | None" = relationship(
+        "TrainingDay",
+        back_populates="tasks")
+
+    # Number of the task within the training day for sorting.
+    # This is separate from 'num' which is used for contest ordering.
+    training_day_num: int | None = Column(
+        Integer,
+        nullable=True)
 
     # Short name and long human readable title of the task.
     name: str = Column(
