@@ -298,6 +298,8 @@ def update_task(old_task: Task, new_task: Task, parent=None, get_statements=True
         Task.statement_views: False,
         # Score cache is computed, not imported.
         Task.participation_scores: False,
+        # Training day assignment is not handled by task importers.
+        Task.training_day: False,
         # Relationships to update.
         Task.statements: get_statements,
         Task.datasets: update_datasets_fn,
