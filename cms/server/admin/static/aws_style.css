@@ -506,6 +506,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     width: 200px;
     margin-left: 15px;
     margin-top: 15px;
+    margin-bottom: 12px;
     color: #94A3B8;
 }
 
