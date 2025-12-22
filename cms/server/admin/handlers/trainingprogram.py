@@ -1055,6 +1055,14 @@ class AddTrainingDayHandler(BaseHandler):
             )
             self.sql_session.add(training_day)
 
+            # Auto-add participations for all students in the training program
+            # Training days are for all students, so we create participations
+            # in the training day's contest for each student
+            for student in training_program.students:
+                user = student.participation.user
+                participation = Participation(contest=contest, user=user)
+                self.sql_session.add(participation)
+
         except Exception as error:
             self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback_page)
