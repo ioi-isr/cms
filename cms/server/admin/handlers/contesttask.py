@@ -51,14 +51,15 @@ class ContestTasksHandler(BaseHandler):
         self.r_params["is_training_day"] = training_day is not None
 
         if training_day is not None:
-            # For training days, show tasks from the training program
-            # that are not already assigned to this training day
+            # For training days, show tasks from the training program's
+            # managing contest that are not already assigned to any training day
             training_program = training_day.training_program
-            assigned_task_ids = {t.id for t in training_day.tasks}
-            self.r_params["unassigned_tasks"] = [
-                t for t in training_program.managing_contest.tasks
-                if t.id not in assigned_task_ids
-            ]
+            self.r_params["unassigned_tasks"] = \
+                self.sql_session.query(Task)\
+                    .filter(Task.contest_id == training_program.managing_contest_id)\
+                    .filter(Task.training_day_id.is_(None))\
+                    .order_by(Task.num)\
+                    .all()
         else:
             # For regular contests, show all unassigned tasks
             self.r_params["unassigned_tasks"] = \
@@ -96,26 +97,81 @@ class ContestTasksHandler(BaseHandler):
         task = self.safe_get_item(Task, task_id)
         task2 = None
 
-        # Save the current task_num (position in the contest/training day).
-        task_num = task.num
+        if training_day is not None:
+            # For training days, use training_day_num for ordering
+            # (task.num is used for contest ordering and should not be modified)
+            task_num = task.training_day_num
 
-        if operation in (self.REMOVE_FROM_CONTEST, self.REMOVE_FROM_TRAINING_DAY):
-            if training_day is not None:
+            if operation in (self.REMOVE_FROM_CONTEST, self.REMOVE_FROM_TRAINING_DAY):
                 # Unassign the task from the training day.
                 task.training_day = None
-                task.num = None
+                task.training_day_num = None
 
                 self.sql_session.flush()
 
-                # Decrease by 1 the num of every subsequent task.
+                # Decrease by 1 the training_day_num of every subsequent task.
                 for t in self.sql_session.query(Task)\
                              .filter(Task.training_day == training_day)\
-                             .filter(Task.num > task_num)\
-                             .order_by(Task.num)\
+                             .filter(Task.training_day_num > task_num)\
+                             .order_by(Task.training_day_num)\
                              .all():
-                    t.num -= 1
+                    t.training_day_num -= 1
                     self.sql_session.flush()
-            else:
+
+            elif operation == self.MOVE_UP:
+                task2 = self.sql_session.query(Task)\
+                            .filter(Task.training_day == training_day)\
+                            .filter(Task.training_day_num == task.training_day_num - 1)\
+                            .first()
+
+            elif operation == self.MOVE_DOWN:
+                task2 = self.sql_session.query(Task)\
+                            .filter(Task.training_day == training_day)\
+                            .filter(Task.training_day_num == task.training_day_num + 1)\
+                            .first()
+
+            elif operation == self.MOVE_TOP:
+                task.training_day_num = None
+                self.sql_session.flush()
+
+                # Increase by 1 the training_day_num of every previous task.
+                for t in self.sql_session.query(Task)\
+                             .filter(Task.training_day == training_day)\
+                             .filter(Task.training_day_num < task_num)\
+                             .order_by(Task.training_day_num.desc())\
+                             .all():
+                    t.training_day_num += 1
+                    self.sql_session.flush()
+
+                task.training_day_num = 0
+
+            elif operation == self.MOVE_BOTTOM:
+                task.training_day_num = None
+                self.sql_session.flush()
+
+                # Decrease by 1 the training_day_num of every subsequent task.
+                for t in self.sql_session.query(Task)\
+                             .filter(Task.training_day == training_day)\
+                             .filter(Task.training_day_num > task_num)\
+                             .order_by(Task.training_day_num)\
+                             .all():
+                    t.training_day_num -= 1
+                    self.sql_session.flush()
+
+                self.sql_session.flush()
+                task.training_day_num = len(training_day.tasks) - 1
+
+            # Swap training_day_num values, if needed
+            if task2 is not None:
+                tmp_a, tmp_b = task.training_day_num, task2.training_day_num
+                task.training_day_num, task2.training_day_num = None, None
+                self.sql_session.flush()
+                task.training_day_num, task2.training_day_num = tmp_b, tmp_a
+        else:
+            # For regular contests, use task.num for ordering
+            task_num = task.num
+
+            if operation in (self.REMOVE_FROM_CONTEST, self.REMOVE_FROM_TRAINING_DAY):
                 # Unassign the task from the contest.
                 task.contest = None
                 task.num = None
@@ -131,44 +187,22 @@ class ContestTasksHandler(BaseHandler):
                     t.num -= 1
                     self.sql_session.flush()
 
-        elif operation == self.MOVE_UP:
-            if training_day is not None:
-                task2 = self.sql_session.query(Task)\
-                            .filter(Task.training_day == training_day)\
-                            .filter(Task.num == task.num - 1)\
-                            .first()
-            else:
+            elif operation == self.MOVE_UP:
                 task2 = self.sql_session.query(Task)\
                             .filter(Task.contest == self.contest)\
                             .filter(Task.num == task.num - 1)\
                             .first()
 
-        elif operation == self.MOVE_DOWN:
-            if training_day is not None:
-                task2 = self.sql_session.query(Task)\
-                            .filter(Task.training_day == training_day)\
-                            .filter(Task.num == task.num + 1)\
-                            .first()
-            else:
+            elif operation == self.MOVE_DOWN:
                 task2 = self.sql_session.query(Task)\
                             .filter(Task.contest == self.contest)\
                             .filter(Task.num == task.num + 1)\
                             .first()
 
-        elif operation == self.MOVE_TOP:
-            task.num = None
-            self.sql_session.flush()
+            elif operation == self.MOVE_TOP:
+                task.num = None
+                self.sql_session.flush()
 
-            if training_day is not None:
-                # Increase by 1 the num of every previous task.
-                for t in self.sql_session.query(Task)\
-                             .filter(Task.training_day == training_day)\
-                             .filter(Task.num < task_num)\
-                             .order_by(Task.num.desc())\
-                             .all():
-                    t.num += 1
-                    self.sql_session.flush()
-            else:
                 # Increase by 1 the num of every previous task.
                 for t in self.sql_session.query(Task)\
                              .filter(Task.contest == self.contest)\
@@ -178,25 +212,12 @@ class ContestTasksHandler(BaseHandler):
                     t.num += 1
                     self.sql_session.flush()
 
-            task.num = 0
+                task.num = 0
 
-        elif operation == self.MOVE_BOTTOM:
-            task.num = None
-            self.sql_session.flush()
-
-            if training_day is not None:
-                # Decrease by 1 the num of every subsequent task.
-                for t in self.sql_session.query(Task)\
-                             .filter(Task.training_day == training_day)\
-                             .filter(Task.num > task_num)\
-                             .order_by(Task.num)\
-                             .all():
-                    t.num -= 1
-                    self.sql_session.flush()
-
+            elif operation == self.MOVE_BOTTOM:
+                task.num = None
                 self.sql_session.flush()
-                task.num = len(training_day.tasks) - 1
-            else:
+
                 # Decrease by 1 the num of every subsequent task.
                 for t in self.sql_session.query(Task)\
                              .filter(Task.contest == self.contest)\
@@ -209,12 +230,12 @@ class ContestTasksHandler(BaseHandler):
                 self.sql_session.flush()
                 task.num = len(self.contest.tasks) - 1
 
-        # Swap task.num and task2.num, if needed
-        if task2 is not None:
-            tmp_a, tmp_b = task.num, task2.num
-            task.num, task2.num = None, None
-            self.sql_session.flush()
-            task.num, task2.num = tmp_b, tmp_a
+            # Swap task.num values, if needed
+            if task2 is not None:
+                tmp_a, tmp_b = task.num, task2.num
+                task.num, task2.num = None, None
+                self.sql_session.flush()
+                task.num, task2.num = tmp_b, tmp_a
 
         if self.try_commit():
             # Create the user on RWS.
@@ -246,7 +267,9 @@ class AddContestTaskHandler(BaseHandler):
 
         if training_day is not None:
             # Assign the task to the training day.
-            task.num = len(training_day.tasks)
+            # Task keeps its contest_id (managing contest) and gets training_day_id set.
+            # Use training_day_num for ordering within the training day.
+            task.training_day_num = len(training_day.tasks)
             task.training_day = training_day
         else:
             # Assign the task to the contest.

@@ -80,5 +80,5 @@ class TrainingDay(Base):
     tasks: list["Task"] = relationship(
         "Task",
         back_populates="training_day",
-        order_by="Task.num",
+        order_by="Task.training_day_num",
     )
