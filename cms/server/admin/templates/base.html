@@ -6,8 +6,8 @@
     // Pre-paint CSS injection to prevent flash of expanded menus
     // Uses a hydration class on <html> so these rules only apply during initial render
     (function() {
-      var validSectionKeys = ['contests', 'training-programs', 'tasks', 'users', 'teams'];
-      var folderKeyPattern = /^(folder|subfolder)-\d+$/;
+      var validSectionKeys = ['training-programs', 'contests', 'tasks', 'users', 'teams'];
+      var folderKeyPattern = /^(folder|subfolder|training-program)-\d+$/;
       var css = '';
 
       // Add hydration class to gate these styles
@@ -237,20 +237,24 @@ $(document).ready(initSidebarEvents);
             Hello, <a href="{{ url("admins") }}">{{ admin.name }}</a>.
               <form class="inline" action="{{ url("logout") }}" method="POST">{{ xsrf_form_html|safe }}<input type="submit" value="Logout"></form>
           </div>
-          {% if training_program is defined %}
+          {% if contest is none and training_program is not defined %}
+          <h1 class="sidebar-title">Administration</h1>
+          {% elif training_program is defined %}
           <h1 class="sidebar-title"><a href="{{ url() }}">Administration</a></h1>
           <div class="sidebar-breadcrumb">
-            <a href="{{ url("training_programs") }}">Training programs</a>
-            <span class="breadcrumb-separator"></span>
             <span class="breadcrumb-current">{{ training_program.name }}</span>
           </div>
-          {% elif contest is none %}
-          <h1 class="sidebar-title">Administration</h1>
           {% else %}
           <h1 class="sidebar-title"><a href="{{ url() }}">Administration</a></h1>
           {% if contest.folder %}
           <div class="sidebar-breadcrumb">
             <a href="{{ url("folder", contest.folder.id) }}">{{ contest.folder.name }}</a>
+            <span class="breadcrumb-separator"></span>
+            <span class="breadcrumb-current">{{ contest.name }}</span>
+          </div>
+          {% elif contest.training_day %}
+          <div class="sidebar-breadcrumb">
+            <a href="{{ url("training_program", contest.training_day.training_program.id) }}">{{ contest.training_day.training_program.name }}</a>
             <span class="breadcrumb-separator"></span>
             <span class="breadcrumb-current">{{ contest.name }}</span>
           </div>
@@ -279,9 +283,44 @@ $(document).ready(initSidebarEvents);
         </ul>
         <div class="hr"></div>
 
-        {% if contest is none %}
+        {% if contest is none and training_program is not defined %}
+        <div class="sidebar-section" data-section-key="training-programs">
+          <h2 class="sidebar-section-title">
+            <span class="section-caret"></span>
+            <a href="{{ url("training_programs") }}">Training Programs</a>
+          </h2>
+          <div class="sidebar-section-body">
+            {% if training_program_list|length > 0 %}
+            <ul class="sidebar-menu">
+            {% for tp in training_program_list %}
+            <li class="sidebar-folder" data-folder-key="training-program-{{ tp.id }}">
+              <div class="folder-header">
+                <span class="folder-icon"></span>
+                <a href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">{{ tp.name }}</a>
+              </div>
+              <ul class="folder-contents">
+                {% for td in tp.training_days %}
+                <li class="sidebar-contest">
+                  <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
+                </li>
+                {% endfor %}
+              </ul>
+            </li>
+            {% endfor %}
+            </ul>
+            {% else %}
+            <p class="sidebar-empty">No training programs available</p>
+            {% endif %}
+            {% if admin.permission_all %}
+            <div class="sidebar-actions">
+              <a class="sidebar-action-link" href="{{ url("training_programs", "add") }}">New training program</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
         <div class="sidebar-section" data-section-key="contests">
-          <h2 class="sidebar-section-title" tabindex="0">
+          <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
             <a href="{{ url("contests") }}">Contests</a>
           </h2>
@@ -290,7 +329,7 @@ $(document).ready(initSidebarEvents);
             <ul class="sidebar-menu">
             {% for folder in folder_list if folder.parent is none %}
             <li class="sidebar-folder" data-folder-key="folder-{{ folder.id }}">
-              <div class="folder-header" tabindex="0">
+              <div class="folder-header">
                 <span class="folder-icon"></span>
                 <a href="{{ url("folder", folder.id) }}">{{ folder.name }}</a>
               </div>
@@ -302,7 +341,7 @@ $(document).ready(initSidebarEvents);
                   {% endfor %}
                 {% for subfolder in folder.children %}
                 <li class="sidebar-subfolder" data-folder-key="subfolder-{{ subfolder.id }}">
-                  <div class="folder-header" tabindex="0">
+                  <div class="folder-header">
                     <span class="folder-icon"></span>
                     <a href="{{ url("folder", subfolder.id) }}">{{ subfolder.name }}</a>
                   </div>
@@ -342,38 +381,8 @@ $(document).ready(initSidebarEvents);
           </div>
         </div>
 
-        <div class="sidebar-section" data-section-key="training-programs">
-          <h2 class="sidebar-section-title" tabindex="0">
-            <span class="section-caret"></span>
-            <a href="{{ url("training_programs") }}">Training Programs</a>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if training_program_list|length > 0 %}
-            <ul class="sidebar-menu">
-              {% for tp in training_program_list[:5] %}
-              <li class="sidebar-item">
-                <a href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">{{ tp.name }}</a>
-              </li>
-              {% endfor %}
-              {% if training_program_list|length > 5 %}
-              <li class="sidebar-action">
-                <a href="{{ url("training_programs") }}">Show more...</a>
-              </li>
-              {% endif %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No training programs available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("training_programs", "add") }}">New training program</a>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
         <div class="sidebar-section" data-section-key="tasks">
-          <h2 class="sidebar-section-title" tabindex="0">
+          <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
             <a href="{{ url("tasks") }}">Tasks</a>
           </h2>
@@ -403,7 +412,7 @@ $(document).ready(initSidebarEvents);
         </div>
 
         <div class="sidebar-section" data-section-key="users">
-          <h2 class="sidebar-section-title" tabindex="0">
+          <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
             <a href="{{ url("users") }}">Users</a>
           </h2>
@@ -428,7 +437,7 @@ $(document).ready(initSidebarEvents);
         </div>
 
         <div class="sidebar-section" data-section-key="teams">
-          <h2 class="sidebar-section-title" tabindex="0">
+          <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
             <a href="{{ url("teams") }}">Teams</a>
           </h2>

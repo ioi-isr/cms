@@ -52,8 +52,7 @@ from sqlalchemy.orm import Query, subqueryload
 
 from cms import __version__, config
 from cms.db import Admin, Contest, ContestFolder, DelayRequest, Participation, \
-    Question, Submission, SubmissionResult, Task, Team, TrainingProgram, User, \
-    UserTest
+    Question, Submission, SubmissionResult, Task, Team, TrainingProgram, User, UserTest
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
