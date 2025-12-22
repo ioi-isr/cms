@@ -33,6 +33,7 @@ from .base import BaseHandler, require_permission
 
 class ContestTasksHandler(BaseHandler):
     REMOVE_FROM_CONTEST = "Remove from contest"
+    REMOVE_FROM_TRAINING_DAY = "Remove from training day"
     MOVE_UP = "up by 1"
     MOVE_DOWN = "down by 1"
     MOVE_TOP = "to the top"
@@ -44,10 +45,27 @@ class ContestTasksHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["contest"] = self.contest
-        self.r_params["unassigned_tasks"] = \
-            self.sql_session.query(Task)\
-                .filter(Task.contest_id.is_(None))\
-                .all()
+
+        # Check if this contest is a training day
+        training_day = self.contest.training_day
+        self.r_params["is_training_day"] = training_day is not None
+
+        if training_day is not None:
+            # For training days, show tasks from the training program
+            # that are not already assigned to this training day
+            training_program = training_day.training_program
+            assigned_task_ids = {t.id for t in training_day.tasks}
+            self.r_params["unassigned_tasks"] = [
+                t for t in training_program.managing_contest.tasks
+                if t.id not in assigned_task_ids
+            ]
+        else:
+            # For regular contests, show all unassigned tasks
+            self.r_params["unassigned_tasks"] = \
+                self.sql_session.query(Task)\
+                    .filter(Task.contest_id.is_(None))\
+                    .filter(Task.training_day_id.is_(None))\
+                    .all()
         self.render("contest_tasks.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -55,17 +73,20 @@ class ContestTasksHandler(BaseHandler):
         fallback_page = self.url("contest", contest_id, "tasks")
 
         self.contest = self.safe_get_item(Contest, contest_id)
+        training_day = self.contest.training_day
 
         try:
             task_id: str = self.get_argument("task_id")
             operation: str = self.get_argument("operation")
-            assert operation in (
+            valid_operations = [
                 self.REMOVE_FROM_CONTEST,
+                self.REMOVE_FROM_TRAINING_DAY,
                 self.MOVE_UP,
                 self.MOVE_DOWN,
                 self.MOVE_TOP,
                 self.MOVE_BOTTOM
-            ), "Please select a valid operation"
+            ]
+            assert operation in valid_operations, "Please select a valid operation"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -75,49 +96,87 @@ class ContestTasksHandler(BaseHandler):
         task = self.safe_get_item(Task, task_id)
         task2 = None
 
-        # Save the current task_num (position in the contest).
+        # Save the current task_num (position in the contest/training day).
         task_num = task.num
 
-        if operation == self.REMOVE_FROM_CONTEST:
-            # Unassign the task to the contest.
-            task.contest = None
-            task.num = None  # not strictly necessary
+        if operation in (self.REMOVE_FROM_CONTEST, self.REMOVE_FROM_TRAINING_DAY):
+            if training_day is not None:
+                # Unassign the task from the training day.
+                task.training_day = None
+                task.num = None
 
-            self.sql_session.flush()
-
-            # Decrease by 1 the num of every subsequent task.
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == self.contest)\
-                         .filter(Task.num > task_num)\
-                         .order_by(Task.num)\
-                         .all():
-                t.num -= 1
                 self.sql_session.flush()
 
+                # Decrease by 1 the num of every subsequent task.
+                for t in self.sql_session.query(Task)\
+                             .filter(Task.training_day == training_day)\
+                             .filter(Task.num > task_num)\
+                             .order_by(Task.num)\
+                             .all():
+                    t.num -= 1
+                    self.sql_session.flush()
+            else:
+                # Unassign the task from the contest.
+                task.contest = None
+                task.num = None
+
+                self.sql_session.flush()
+
+                # Decrease by 1 the num of every subsequent task.
+                for t in self.sql_session.query(Task)\
+                             .filter(Task.contest == self.contest)\
+                             .filter(Task.num > task_num)\
+                             .order_by(Task.num)\
+                             .all():
+                    t.num -= 1
+                    self.sql_session.flush()
+
         elif operation == self.MOVE_UP:
-            task2 = self.sql_session.query(Task)\
-                        .filter(Task.contest == self.contest)\
-                        .filter(Task.num == task.num - 1)\
-                        .first()
+            if training_day is not None:
+                task2 = self.sql_session.query(Task)\
+                            .filter(Task.training_day == training_day)\
+                            .filter(Task.num == task.num - 1)\
+                            .first()
+            else:
+                task2 = self.sql_session.query(Task)\
+                            .filter(Task.contest == self.contest)\
+                            .filter(Task.num == task.num - 1)\
+                            .first()
 
         elif operation == self.MOVE_DOWN:
-            task2 = self.sql_session.query(Task)\
-                        .filter(Task.contest == self.contest)\
-                        .filter(Task.num == task.num + 1)\
-                        .first()
+            if training_day is not None:
+                task2 = self.sql_session.query(Task)\
+                            .filter(Task.training_day == training_day)\
+                            .filter(Task.num == task.num + 1)\
+                            .first()
+            else:
+                task2 = self.sql_session.query(Task)\
+                            .filter(Task.contest == self.contest)\
+                            .filter(Task.num == task.num + 1)\
+                            .first()
 
         elif operation == self.MOVE_TOP:
             task.num = None
             self.sql_session.flush()
 
-            # Increase by 1 the num of every previous task.
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == self.contest)\
-                         .filter(Task.num < task_num)\
-                         .order_by(Task.num.desc())\
-                         .all():
-                t.num += 1
-                self.sql_session.flush()
+            if training_day is not None:
+                # Increase by 1 the num of every previous task.
+                for t in self.sql_session.query(Task)\
+                             .filter(Task.training_day == training_day)\
+                             .filter(Task.num < task_num)\
+                             .order_by(Task.num.desc())\
+                             .all():
+                    t.num += 1
+                    self.sql_session.flush()
+            else:
+                # Increase by 1 the num of every previous task.
+                for t in self.sql_session.query(Task)\
+                             .filter(Task.contest == self.contest)\
+                             .filter(Task.num < task_num)\
+                             .order_by(Task.num.desc())\
+                             .all():
+                    t.num += 1
+                    self.sql_session.flush()
 
             task.num = 0
 
@@ -125,17 +184,30 @@ class ContestTasksHandler(BaseHandler):
             task.num = None
             self.sql_session.flush()
 
-            # Decrease by 1 the num of every subsequent task.
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == self.contest)\
-                         .filter(Task.num > task_num)\
-                         .order_by(Task.num)\
-                         .all():
-                t.num -= 1
-                self.sql_session.flush()
+            if training_day is not None:
+                # Decrease by 1 the num of every subsequent task.
+                for t in self.sql_session.query(Task)\
+                             .filter(Task.training_day == training_day)\
+                             .filter(Task.num > task_num)\
+                             .order_by(Task.num)\
+                             .all():
+                    t.num -= 1
+                    self.sql_session.flush()
 
-            self.sql_session.flush()
-            task.num = len(self.contest.tasks) - 1
+                self.sql_session.flush()
+                task.num = len(training_day.tasks) - 1
+            else:
+                # Decrease by 1 the num of every subsequent task.
+                for t in self.sql_session.query(Task)\
+                             .filter(Task.contest == self.contest)\
+                             .filter(Task.num > task_num)\
+                             .order_by(Task.num)\
+                             .all():
+                    t.num -= 1
+                    self.sql_session.flush()
+
+                self.sql_session.flush()
+                task.num = len(self.contest.tasks) - 1
 
         # Swap task.num and task2.num, if needed
         if task2 is not None:
@@ -158,6 +230,7 @@ class AddContestTaskHandler(BaseHandler):
         fallback_page = self.url("contest", contest_id, "tasks")
 
         self.contest = self.safe_get_item(Contest, contest_id)
+        training_day = self.contest.training_day
 
         try:
             task_id: str = self.get_argument("task_id")
@@ -171,9 +244,14 @@ class AddContestTaskHandler(BaseHandler):
 
         task = self.safe_get_item(Task, task_id)
 
-        # Assign the task to the contest.
-        task.num = len(self.contest.tasks)
-        task.contest = self.contest
+        if training_day is not None:
+            # Assign the task to the training day.
+            task.num = len(training_day.tasks)
+            task.training_day = training_day
+        else:
+            # Assign the task to the contest.
+            task.num = len(self.contest.tasks)
+            task.contest = self.contest
 
         if self.try_commit():
             # Create the user on RWS.

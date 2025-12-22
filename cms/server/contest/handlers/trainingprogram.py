@@ -55,7 +55,7 @@ class TrainingProgramOverviewHandler(ContestHandler):
         max_score = 0.0
         task_scores = []
 
-        for task in contest.tasks:
+        for task in contest.get_tasks():
             max_task_score = task.active_dataset.score_type_object.max_score \
                 if task.active_dataset else 100.0
             max_score += max_task_score

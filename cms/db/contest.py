@@ -326,6 +326,20 @@ class Contest(Base):
         uselist=False,
     )
 
+    def get_tasks(self) -> list["Task"]:
+        """Return the tasks for this contest.
+
+        If this contest is a training day, return the training day's tasks.
+        Otherwise, return the contest's own tasks.
+
+        This allows training days to have their own task list separate from
+        the contest's task list, while still allowing contestants to see
+        the tasks when they enter the training day's contest.
+        """
+        if self.training_day is not None:
+            return self.training_day.tasks
+        return self.tasks
+
     def phase(self, timestamp: datetime) -> int:
         """Return: -1 if contest isn't started yet at time timestamp,
                     0 if the contest is active at time timestamp,
