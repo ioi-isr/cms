@@ -54,6 +54,11 @@ function init()
 
 {% block js %}{% endblock js %}
 
+function toggleProgram(header) {
+    var program = header.parentElement;
+    program.classList.toggle('collapsed');
+}
+
 $(document).ready(init);
 
 //-->
@@ -151,29 +156,11 @@ $(document).ready(init);
         </ul>
 
         <h1><a class="menu_link" href="{{ url("training_programs") }}">Training Programs</a></h1>
+        {% if training_program_list|length < 1 %}
         <ul class="menu">
-          {% if training_program_list|length < 1 %}
           <li class="menu_entry">
             (no training programs available)
           </li>
-          {% endif %}
-
-          {% for tp in training_program_list[:5] %}
-          <li class="menu_entry">
-            <a class="menu_link bold" href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">
-              {{ tp.name }}
-            </a>
-          </li>
-          {% endfor %}
-
-          {% if training_program_list|length > 5 %}
-          <li>
-            <a class="menu_link" href="{{ url("training_programs") }}">
-              (show more...)
-            </a>
-          </li>
-          {% endif %}
-
 {% if admin.permission_all %}
           <li class="menu_entry">
             <a class="menu_link" href="{{ url("training_programs", "add") }}">
@@ -182,6 +169,32 @@ $(document).ready(init);
           </li>
 {% endif %}
         </ul>
+        {% else %}
+        <ul class="menu" style="list-style: none; padding: 0; margin: 0;">
+          {% for tp in training_program_list %}
+          <li class="sidebar-program">
+            <div class="program-header" onclick="toggleProgram(this)">
+              <span class="program-icon"></span>
+              <a href="{{ url("training_program", tp.id) }}" onclick="event.stopPropagation()" title="{{ tp.description }}">{{ tp.name }}</a>
+            </div>
+            <ul class="program-contents" style="list-style: none; padding: 0; margin: 0;">
+              {% for td in tp.training_days %}
+              <li class="sidebar-training-day">
+                <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </li>
+          {% endfor %}
+{% if admin.permission_all %}
+          <li class="menu_entry" style="margin-top: 5px;">
+            <a class="menu_link" href="{{ url("training_programs", "add") }}">
+              (create new training program...)
+            </a>
+          </li>
+{% endif %}
+        </ul>
+        {% endif %}
 
         <h1><a class="menu_link" href="{{ url("tasks") }}">Tasks</a></h1>
         <ul class="menu">

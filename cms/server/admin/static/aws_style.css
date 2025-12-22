@@ -119,7 +119,7 @@ ul.normal_list {
 /* LEFT */
 
 #sidebar {
-    text-align: right;
+    text-align: left;
     position: fixed;
     padding: 0 1em;
     width: 234px;
@@ -128,6 +128,7 @@ ul.normal_list {
     height: 100%;
     border-right: 2px solid #E4E5E8;
     overflow-y: auto;
+    padding-bottom: 4em;
 }
 
 #sidebar_header {
@@ -139,16 +140,98 @@ ul.normal_list {
     margin-top: 15px;
 }
 
-#sidebar h1.parent::before {
-   content: "• ";
+#sidebar h1.parent {
+    font-weight: bold;
 }
 
 #sidebar h1.child {
     margin-top: 0px;
+    font-size: 1.2em;
+    padding-left: 10px;
+    border-left: 3px solid #6DC942;
 }
 
-#sidebar h1.child::before {
-    content: "└─ ";
+/* Collapsible training program styles */
+.sidebar-program {
+    margin: 2px 0;
+}
+
+.program-header {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.program-header:hover {
+    background-color: rgba(109, 201, 66, 0.1);
+}
+
+.program-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    transition: transform 0.2s;
+}
+
+.program-icon::before {
+    content: "";
+    display: block;
+    width: 0;
+    height: 0;
+    border-left: 5px solid #637D53;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    margin-top: 4px;
+    margin-left: 4px;
+}
+
+.sidebar-program:not(.collapsed) > .program-header .program-icon::before {
+    transform: rotate(90deg);
+    margin-top: 2px;
+    margin-left: 6px;
+}
+
+.program-header a {
+    color: #637D53;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.program-header a:hover {
+    color: #6DC942;
+}
+
+.program-contents {
+    margin-left: 22px;
+    padding-left: 8px;
+    border-left: 1px solid #CED3CA;
+    overflow: hidden;
+    max-height: 1000px;
+    transition: max-height 0.3s ease-out;
+}
+
+.sidebar-program.collapsed > .program-contents {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.sidebar-training-day {
+    padding: 3px 8px;
+}
+
+.sidebar-training-day a {
+    color: #6DC942;
+    text-decoration: none;
+    font-size: 0.95em;
+}
+
+.sidebar-training-day a:hover {
+    text-decoration: underline;
 }
 
 #sidebar .sidebar_left {
@@ -215,8 +298,8 @@ ul.normal_list {
     font-size: 0.6em;
     line-height: 1.125em;
     text-align: center;
-    position: fixed;
-    bottom: 1.5em;
+    margin-top: 2em;
+    margin-bottom: 1em;
     width: 200px;
     margin-left: 15px;
 }
