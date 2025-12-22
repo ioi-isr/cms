@@ -247,6 +247,41 @@ $(document).ready(initSidebarEvents);
         <div class="hr"></div>
 
         {% if contest is none and training_program is not defined %}
+        <div class="sidebar-section" data-section-key="training-programs">
+          <h2 class="sidebar-section-title">
+            <span class="section-caret"></span>
+            <a href="{{ url("training_programs") }}">Training Programs</a>
+          </h2>
+          <div class="sidebar-section-body">
+            {% if training_program_list|length > 0 %}
+            <ul class="sidebar-menu">
+            {% for tp in training_program_list %}
+            <li class="sidebar-folder" data-folder-key="training-program-{{ tp.id }}">
+              <div class="folder-header">
+                <span class="folder-icon"></span>
+                <a href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">{{ tp.name }}</a>
+              </div>
+              <ul class="folder-contents">
+                {% for td in tp.training_days %}
+                <li class="sidebar-contest">
+                  <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
+                </li>
+                {% endfor %}
+              </ul>
+            </li>
+            {% endfor %}
+            </ul>
+            {% else %}
+            <p class="sidebar-empty">No training programs available</p>
+            {% endif %}
+            {% if admin.permission_all %}
+            <div class="sidebar-actions">
+              <a class="sidebar-action-link" href="{{ url("training_programs", "add") }}">New training program</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
         <div class="sidebar-section" data-section-key="contests">
           <h2 class="sidebar-section-title">
             <span class="section-caret"></span>
@@ -388,41 +423,6 @@ $(document).ready(initSidebarEvents);
             {% endif %}
           </div>
         </div>
-
-        <div class="sidebar-section" data-section-key="training-programs">
-          <h2 class="sidebar-section-title">
-            <span class="section-caret"></span>
-            <a href="{{ url("training_programs") }}">Training Programs</a>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if training_program_list|length > 0 %}
-            <ul class="sidebar-menu">
-            {% for tp in training_program_list %}
-            <li class="sidebar-folder" data-folder-key="training-program-{{ tp.id }}">
-              <div class="folder-header">
-                <span class="folder-icon"></span>
-                <a href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">{{ tp.name }}</a>
-              </div>
-              <ul class="folder-contents">
-                {% for td in tp.training_days %}
-                <li class="sidebar-contest">
-                  <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
-                </li>
-                {% endfor %}
-              </ul>
-            </li>
-            {% endfor %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No training programs available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("training_programs", "add") }}">New training program</a>
-            </div>
-            {% endif %}
-          </div>
-        </div>
         {% elif training_program is defined %}
           <ul class="menu">
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id) }}">General</a></li>
@@ -433,7 +433,7 @@ $(document).ready(initSidebarEvents);
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a></li>
             <li class="menu_entry">
-              <span id="unanswered_questions" class="unread"
+              <span id="unanswered_questions_tp" class="unread"
                 {% if unanswered == 0 %} style="display: none;" {% endif %}>
                 {{ unanswered }}
               </span>
@@ -451,7 +451,7 @@ $(document).ready(initSidebarEvents);
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "ranking") }}">Ranking</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "submissions") }}">Submissions</a></li>
             {% if contest.allow_user_tests %}<li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "user_tests") }}">User tests</a></li>{% endif %}
-            <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "users") }}">Users</a></li>
+            {% if contest.training_day is none %}<li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "users") }}">Users</a></li>{% endif %}
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "tasks") }}">Tasks</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "announcements") }}">Announcements</a></li>
             <li class="menu_entry">
