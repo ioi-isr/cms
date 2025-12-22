@@ -120,6 +120,7 @@ ul.normal_list {
     padding: 0 1em;
     width: 234px;
     background-color: #111827;
+    color: #CBD5E1;
     text-shadow: none;
     height: 100%;
     border-right: 1px solid #1F2937;
@@ -193,19 +194,19 @@ ul.normal_list {
     font-weight: 600;
     margin: 15px 0 8px 0;
     padding: 6px 12px;
-    background: transparent;
+    background: linear-gradient(to right, rgba(148, 163, 184, 0.15), transparent);
     border-radius: 4px 0 0 4px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .sidebar-section-title a {
-    color: #64748B;
+    color: #94A3B8;
     text-decoration: none;
 }
 
 .sidebar-section-title a:hover {
-    color: #94A3B8;
+    color: #CBD5E1;
 }
 
 .sidebar-menu {
@@ -289,13 +290,18 @@ ul.normal_list {
 }
 
 .sidebar-contest, .sidebar-item {
-    padding: 3px 8px;
+    padding: 0;
+    margin: 2px 0;
 }
 
 .sidebar-contest a, .sidebar-item a {
+    display: block;
     color: #CBD5E1;
     text-decoration: none;
     font-size: 0.95em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
 }
 
 body.admin .sidebar-contest a, body.admin .sidebar-item a {
@@ -303,7 +309,8 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 .sidebar-contest a:hover, .sidebar-item a:hover {
-    text-decoration: underline;
+    background-color: rgba(148, 163, 184, 0.12);
+    text-decoration: none;
 }
 
 .root-contest {
@@ -311,17 +318,23 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 .sidebar-action {
-    padding: 3px 8px;
+    padding: 0;
+    margin: 2px 0;
     font-style: italic;
 }
 
 .sidebar-action a {
-    color: #64748B;
+    display: block;
+    color: #94A3B8;
     font-size: 0.9em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
 }
 
 .sidebar-action a:hover {
-    color: #94A3B8;
+    color: #CBD5E1;
+    background-color: rgba(148, 163, 184, 0.12);
 }
 
 .sidebar-actions {
@@ -415,6 +428,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     width: 200px;
     margin-left: 15px;
     margin-top: 15px;
+    color: #94A3B8;
 }
 
 .cr_notice {
@@ -425,6 +439,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     margin-bottom: 1em;
     width: 200px;
     margin-left: 15px;
+    color: #64748B;
 }
 
 
