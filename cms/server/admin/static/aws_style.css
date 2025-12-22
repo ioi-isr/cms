@@ -119,7 +119,7 @@ ul.normal_list {
     position: fixed;
     padding: 0 1em;
     width: 234px;
-    background-color: #111827;
+    background: linear-gradient(180deg, #0F172A 0%, #111827 100%);
     color: #CBD5E1;
     text-shadow: none;
     height: 100%;
@@ -155,14 +155,14 @@ ul.normal_list {
 #sidebar h1 {
     font-size: 1.5em;
     margin-top: 15px;
-    color: #E5E7EB;
+    color: #DBE2EC;
 }
 
 #sidebar h1.sidebar-title {
     font-size: 1.6em;
     margin-top: 0;
     margin-bottom: 5px;
-    color: #F9FAFB;
+    color: #E5E9F0;
 }
 
 .sidebar-breadcrumb {
@@ -215,7 +215,7 @@ ul.normal_list {
 }
 
 .sidebar-section-title a {
-    color: #E5E7EB;
+    color: #DBE2EC;
     text-decoration: none;
 }
 
@@ -346,7 +346,7 @@ ul.normal_list {
 
 .sidebar-contest a, .sidebar-item a {
     display: block;
-    color: #CBD5E1;
+    color: #D8DFE8;
     text-decoration: none;
     font-size: 0.95em;
     padding: 6px 10px;
@@ -355,7 +355,7 @@ ul.normal_list {
 }
 
 body.admin .sidebar-contest a, body.admin .sidebar-item a {
-    color: #CBD5E1;
+    color: #D8DFE8;
 }
 
 .sidebar-contest a:hover, .sidebar-item a:hover {
@@ -438,6 +438,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 #sidebar a {
     text-decoration: none;
     line-height: 1.35;
+    color: #dce3ec;
     }
     
     .menu {
@@ -858,7 +859,7 @@ body.admin a:visited {
 /* Sidebar links should stay bright/white, not inherit teal */
 body.admin #sidebar a,
 body.admin #sidebar a:visited {
-    color: #E5E7EB;
+    color: #dce3ec;
 }
 
 body.admin #sidebar a:hover {
