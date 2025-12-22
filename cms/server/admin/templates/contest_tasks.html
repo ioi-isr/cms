@@ -5,13 +5,17 @@
   <h1>Tasks list of <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a></h1>
 </div>
 
+{% if is_training_day %}
+<p><em>This contest is a training day. Tasks are managed through the training day, not the contest directly.</em></p>
+{% endif %}
+
 {% if contest.start <= timestamp %}
 <span style="color: red;">Warning: the contest is visible to contestants, tasks added can be seen</span>
 {% endif %}
 
 <form action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  Add a new task:
+  Add a new task{% if is_training_day %} from training program{% endif %}:
   <select name="task_id" class="searchable-select">
     <option value="null" selected>Select a new task</option>
     {% for t in unassigned_tasks %}
@@ -29,12 +33,12 @@
 
 <form action="{{ url("contest", contest.id, "tasks") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  Remove selected task from the contest:
+  Remove selected task from the {% if is_training_day %}training day{% else %}contest{% endif %}:
   <input type="submit" name="operation"
 {% if not admin.permission_all %}
          disabled
 {% endif %}
-         value="Remove from contest" />
+         value="{% if is_training_day %}Remove from training day{% else %}Remove from contest{% endif %}" />
 
   <br>
 
@@ -68,7 +72,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for t in contest.tasks %}
+      {% for t in contest.get_tasks() %}
       <tr>
         <td>
           <input type="radio" name="task_id" value="{{ t.id }}"/>
