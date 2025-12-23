@@ -240,7 +240,23 @@ class EditModelSolutionHandler(BaseHandler):
 
         try:
             attrs = {}
+            self.get_string(attrs, "name")
             self.get_string(attrs, "description")
+
+            # Validate name using centralized validation
+            name = attrs.get("name", "").strip()
+            validate_model_solution_name(name)
+
+            # Check for duplicate name in the same dataset (if name changed)
+            if name != meta.name:
+                existing = self.sql_session.query(ModelSolutionMeta).filter(
+                    ModelSolutionMeta.dataset_id == meta.dataset_id,
+                    ModelSolutionMeta.name == name,
+                    ModelSolutionMeta.id != meta.id
+                ).first()
+                if existing:
+                    raise ValueError(
+                        f"A model solution with name '{name}' already exists")
             
             expected_score_min = self.get_argument(
                 "expected_score_min", "0.0")
@@ -284,6 +300,7 @@ class EditModelSolutionHandler(BaseHandler):
                         "max": st_max
                     }
 
+            meta.name = name
             meta.description = attrs["description"]
             meta.expected_score_min = expected_score_min
             meta.expected_score_max = expected_score_max
