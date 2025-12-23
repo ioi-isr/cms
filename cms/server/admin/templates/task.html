@@ -102,6 +102,11 @@ window.deleteSelectedTestcases = function(dataset_id, url) {
       if (redirect_url) {
         window.location.replace(redirect_url);
       }
+    },
+    error: function(xhr, status, error) {
+      utils.display_notification("notification", 0,
+        "Failed to delete testcases",
+        "Error: " + xhr.status + " " + xhr.statusText);
     }
   });
 };
