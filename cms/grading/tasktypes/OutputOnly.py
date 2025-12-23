@@ -139,7 +139,7 @@ class OutputOnly(TaskType):
             return
 
         # First and only step: eval the user output.
-        box_success, outcome, text = eval_output(
+        box_success, outcome, text, checker_stats = eval_output(
             file_cacher, job,
             OutputOnly.CHECKER_CODENAME if self._uses_checker() else None,
             use_realprecision=self._uses_realprecision(),
@@ -150,5 +150,5 @@ class OutputOnly(TaskType):
         job.success = box_success
         job.outcome = str(outcome) if outcome is not None else None
         job.text = text
-        # There is no actual evaluation, so no statistics.
-        job.plus = {} if box_success else None
+        # There is no actual evaluation, so no statistics (unless checker failed).
+        job.plus = {} if box_success else checker_stats

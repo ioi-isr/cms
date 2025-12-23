@@ -129,7 +129,7 @@ def extract_outcome_and_text(sandbox: Sandbox) -> tuple[float, list[str]]:
 
 
 def trusted_step(
-    sandbox: Sandbox, commands: list[list[str]]
+    sandbox: Sandbox, commands: list[list[str]], collect_output_on_failure: bool = True
 ) -> tuple[bool, bool | None, StatsDict | None]:
     """Execute some trusted commands in the sandbox.
 
@@ -139,13 +139,16 @@ def trusted_step(
 
     sandbox: the sandbox we consider, already created.
     commands: trusted commands to execute.
+    collect_output_on_failure: if True, collect stdout/stderr when the
+        command fails (useful for debugging manager/checker errors).
 
     return: a tuple with three items:
         * success: True if the sandbox did not fail, in any command;
         * execution_success: True if all commands terminated correctly,
             without timeouts or other errors; None if success is False;
         * stats: a dictionary with statistics about the execution, or None
-            if success is False.
+            if success is False. On failure, stats may include stdout/stderr
+            if collect_output_on_failure is True.
 
     """
     # Set sandbox parameters suitable for trusted commands.
@@ -177,6 +180,9 @@ def trusted_step(
         logger.error("Trusted step ended with status '%s' (usually due to "
                      "programming errors in a manager or configuration "
                      "issues).", exit_status)
+        # Collect stdout/stderr on failure to help diagnose the issue
+        if collect_output_on_failure:
+            stats = _collect_trusted_output(sandbox, stats)
         return True, False, stats
     elif exit_status == Sandbox.EXIT_SANDBOX_ERROR:
         # Sandbox not ok.
@@ -189,6 +195,40 @@ def trusted_step(
         return False, None, None
 
 
+def _collect_trusted_output(sandbox: Sandbox, stats: StatsDict) -> StatsDict:
+    """Collect stdout/stderr from sandbox and add to stats.
+
+    This is used to capture error output from failed trusted commands
+    (managers/checkers) to help diagnose issues.
+
+    sandbox: the sandbox to collect output from.
+    stats: the existing stats dictionary to augment.
+
+    return: stats with stdout/stderr added (truncated to avoid DB bloat).
+
+    """
+    import re
+    MAX_OUTPUT_SIZE = 16 * 1024  # 16KB max per stream
+
+    def safe_get_str(filename: str) -> str:
+        try:
+            s = sandbox.get_file_to_string(filename)
+            # Truncate to avoid storing huge outputs
+            if len(s) > MAX_OUTPUT_SIZE:
+                s = s[:MAX_OUTPUT_SIZE] + b"\n... (truncated)"
+            s = s.decode("utf-8", errors="replace")
+            s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\xbf]', '\ufffd', s)
+            s = s.strip()
+            return s
+        except Exception:
+            return ""
+
+    stats = stats.copy()
+    stats["stdout"] = safe_get_str(sandbox.stdout_file)
+    stats["stderr"] = safe_get_str(sandbox.stderr_file)
+    return stats
+
+
 def checker_step(
     sandbox: Sandbox,
     checker_digest: str | None,
@@ -196,7 +236,7 @@ def checker_step(
     correct_output_digest: str,
     output_filename: str,
     extra_args: list[str] | None = None
-) -> tuple[bool, float | None, list[str] | None]:
+) -> tuple[bool, float | None, list[str] | None, StatsDict | None]:
     """Run the explicit checker given by the admins
 
     sandbox: the sandbox to run the checker in; should already
@@ -212,8 +252,11 @@ def checker_step(
         sandbox).
     extra_args: extra arguments to pass to the checker.
 
-    return: success (true if the checker was able to check the solution
-        successfully), outcome and text (both None if success is False).
+    return: tuple of (success, outcome, text, stats):
+        - success: true if the checker was able to check the solution
+        - outcome: the score (None if success is False)
+        - text: the text message (None if success is False)
+        - stats: execution statistics (may contain stdout/stderr on failure)
 
     """
     # Check that the file we are going to inject in the sandbox are not already
@@ -224,12 +267,12 @@ def checker_step(
         if sandbox.file_exists(filename):
             logger.error("File %s already in the sandbox for the checker.",
                          filename)
-            return False, None, None
+            return False, None, None, None
 
     # Copy the checker in the sandbox, after making sure it was provided.
     if checker_digest is None:
         logger.error("Configuration error: missing checker in task managers.")
-        return False, None, None
+        return False, None, None, None
     sandbox.create_file_from_storage(CHECKER_FILENAME, checker_digest,
                                      executable=True)
 
@@ -243,21 +286,22 @@ def checker_step(
                CHECKER_INPUT_FILENAME,
                CHECKER_CORRECT_OUTPUT_FILENAME,
                output_filename] + (extra_args if extra_args is not None else [])
-    box_success, success, unused_stats = trusted_step(sandbox, [command])
+    box_success, success, stats = trusted_step(sandbox, [command])
     if not box_success or not success:
         logger.error("Sandbox failed during checker step. "
                      "See previous logs for the reason.")
-        return False, None, None
+        # Return stats even on failure to help diagnose the issue
+        return False, None, None, stats
 
     # Extract outcome and text assuming a standard manager output.
     try:
         outcome, text = extract_outcome_and_text(sandbox)
     except ValueError as e:
         logger.error("Invalid output from checker: %s", e)
-        return False, None, None
+        return False, None, None, stats
     except FileNotFoundError as e:
         # This should not happen, as the redirect is handled by the sandbox.
         logger.error("Missing stdout or stderr file from checker: %s", e)
-        return False, None, None
+        return False, None, None, stats
 
-    return True, outcome, text
+    return True, outcome, text, stats

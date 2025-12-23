@@ -167,6 +167,39 @@ class Communication(TaskType):
         return self.io == self.USER_IO_FIFOS
 
     @staticmethod
+    def _collect_manager_failure_stats(sandbox, stats):
+        """Collect manager stdout/stderr on failure for debugging.
+
+        sandbox: the manager sandbox.
+        stats: the existing stats dictionary from evaluation_step_after_run.
+
+        return: stats with stdout/stderr added (truncated to avoid DB bloat).
+
+        """
+        import re
+        MAX_OUTPUT_SIZE = 16 * 1024  # 16KB max per stream
+
+        def safe_get_str(filename):
+            try:
+                s = sandbox.get_file_to_string(filename)
+                if len(s) > MAX_OUTPUT_SIZE:
+                    s = s[:MAX_OUTPUT_SIZE] + b"\n... (truncated)"
+                s = s.decode("utf-8", errors="replace")
+                s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\xbf]', '\ufffd', s)
+                s = s.strip()
+                return s
+            except Exception:
+                return ""
+
+        if stats is None:
+            stats = {}
+        else:
+            stats = dict(stats)  # Make a copy
+        stats["stdout"] = safe_get_str(sandbox.stdout_file)
+        stats["stderr"] = safe_get_str(sandbox.stderr_file)
+        return stats
+
+    @staticmethod
     def _executable_filename(codenames: Iterable[str], language: Language) -> str:
         """Return the chosen executable name computed from the codenames.
 
@@ -375,7 +408,7 @@ class Communication(TaskType):
         wait_without_std(processes + [manager])
 
         # Get the results of the manager sandbox.
-        box_success_mgr, evaluation_success_mgr, unused_stats_mgr = \
+        box_success_mgr, evaluation_success_mgr, stats_mgr = \
             evaluation_step_after_run(sandbox_mgr)
 
         # Coalesce the results of the user sandboxes.
@@ -398,9 +431,15 @@ class Communication(TaskType):
         text = None
 
         # If at least one sandbox had problems, or the manager did not
-        # terminate correctly, we report an error (and no need for user stats).
+        # terminate correctly, we report an error.
+        # On manager failure, capture manager stats for debugging.
         if not success:
-            stats_user = None
+            if not box_success_mgr or not evaluation_success_mgr:
+                # Manager failed - capture its stats with stdout/stderr
+                stats_user = self._collect_manager_failure_stats(
+                    sandbox_mgr, stats_mgr)
+            else:
+                stats_user = None
 
         # If just asked to execute, fill text and set dummy outcome.
         elif job.only_execution:

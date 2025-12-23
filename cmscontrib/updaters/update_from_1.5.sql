@@ -168,5 +168,7 @@ ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_text VA
 ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_shard INTEGER;
 ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_sandbox_paths VARCHAR[];
 ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_sandbox_digests VARCHAR[];
+-- JSONB field storing detailed failure information (exit_status, signal, time, memory, stdout, stderr)
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_details JSONB;
 
 COMMIT;

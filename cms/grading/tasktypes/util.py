@@ -223,7 +223,7 @@ def eval_output(
     user_output_digest: str | None = None,
     user_output_filename: str = "",
     extra_args: list[str] | None = None
-) -> tuple[bool, float | None, list[str] | None]:
+) -> tuple[bool, float | None, list[str] | None, dict | None]:
     """Evaluate ("check") a user output using a white diff or a checker.
 
     file_cacher: file cacher to use to get files.
@@ -241,15 +241,18 @@ def eval_output(
         or empty if stdout (used to return an error to the user).
     extra_args: additional arguments to pass to the checker
 
-    return: tuple of success (true if the checker was
-        able to check the solution successfully), outcome and text (both None
-        if success is False).
+    return: tuple of (success, outcome, text, checker_stats):
+        - success: true if the checker was able to check the solution
+        - outcome: the score (None if success is False)
+        - text: the text message (None if success is False)
+        - checker_stats: execution statistics from checker (may contain
+            stdout/stderr on failure, None if no checker was used)
 
     """
     if (user_output_path is None) == (user_output_digest is None):
         raise ValueError(
             "Exactly one of user_output_{path,digest} should be None.")
-    
+
     if use_realprecision and realprecision_exponent is None:
         realprecision_exponent = 6
         logger.warning("Real precision exponent is None, defaulting to 6")
@@ -261,11 +264,11 @@ def eval_output(
         if not os.path.exists(user_output_path) \
                 or os.path.islink(user_output_path):
             return True, 0.0, [EVALUATION_MESSAGES.get("nooutput").message,
-                               user_output_filename]
+                               user_output_filename], None
 
     if checker_codename is not None:
         if not check_manager_present(job, checker_codename):
-            return False, None, None
+            return False, None, None, None
 
         # Create a brand-new sandbox just for checking.
         sandbox = create_sandbox(file_cacher, name="check")
@@ -284,12 +287,12 @@ def eval_output(
 
         checker_digest = job.managers[checker_codename].digest \
             if checker_codename in job.managers else None
-        success, outcome, text = checker_step(
+        success, outcome, text, checker_stats = checker_step(
             sandbox, checker_digest, job.input, job.output,
             EVAL_USER_OUTPUT_FILENAME, extra_args)
 
         delete_sandbox(sandbox, job, success)
-        return success, outcome, text
+        return success, outcome, text, checker_stats
 
     else:
         if user_output_path is not None:
@@ -304,7 +307,7 @@ def eval_output(
                 else:
                     outcome, text = white_diff_fobj_step(
                         user_output_fobj, correct_output_fobj)
-        return True, outcome, text
+        return True, outcome, text, None
 
 
 def get_allowed_manager_basenames(task_type: str | None) -> set[str]:

@@ -397,6 +397,11 @@ class SubmissionResult(Base):
     last_evaluation_failure_sandbox_digests: list[str] | None = Column(
         ARRAY(String),
         nullable=True)
+    # JSONB field storing detailed failure information including:
+    # exit_status, signal, execution_time, execution_memory, stdout, stderr
+    last_evaluation_failure_details: object | None = Column(
+        JSONB,
+        nullable=True)
 
     # Score as computed by ScoringService. Null means not yet scored.
     score: float | None = Column(
@@ -629,6 +634,7 @@ class SubmissionResult(Base):
         self.last_evaluation_failure_shard = None
         self.last_evaluation_failure_sandbox_paths = None
         self.last_evaluation_failure_sandbox_digests = None
+        self.last_evaluation_failure_details = None
         if testcase_id:
             self.evaluations = [e for e in self.evaluations if e.testcase_id != testcase_id]
         else:

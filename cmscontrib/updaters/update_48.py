@@ -41,5 +41,6 @@ class Updater:
                 v["last_evaluation_failure_shard"] = None
                 v["last_evaluation_failure_sandbox_paths"] = None
                 v["last_evaluation_failure_sandbox_digests"] = None
+                v["last_evaluation_failure_details"] = None
 
         return self.objs
