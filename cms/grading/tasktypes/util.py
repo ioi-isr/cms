@@ -372,7 +372,7 @@ def compile_manager_bytes(
     
     try:
         language = filename_to_language(source_filename)
-    except Exception:
+    except KeyError:
         msg = f"Could not detect language for {source_filename}"
         logger.warning(msg)
         if notify:
