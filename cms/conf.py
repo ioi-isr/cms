@@ -169,6 +169,16 @@ class TelegramBotConfig:
     chat_id: str
 
 
+@dataclass()
+class SMTPConfig:
+    server: str | None = None
+    port: int = 587
+    username: str | None = None
+    password: str | None = None
+    use_tls: bool = True
+    sender_address: str | None = None
+
+
 field_helper = lambda T: dataclasses.field(default_factory=T)
 
 @dataclass(kw_only=True)
@@ -189,6 +199,7 @@ class Config:
     printing: PrintingServiceConfig = field_helper(PrintingServiceConfig)
     prometheus: PrometheusConfig = field_helper(PrometheusConfig)
     telegram_bot: TelegramBotConfig | None = None
+    smtp: SMTPConfig = field_helper(SMTPConfig)
     # This is the one that will be provided in the config file.
     services_: dict[str, list[tuple[str, int]]]
     # And this is the one we want to use inside CMS.
