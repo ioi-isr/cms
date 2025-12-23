@@ -191,10 +191,11 @@ class Communication(TaskType):
             except Exception:
                 return ""
 
+        # Only add stdout/stderr if we have existing stats (sandbox succeeded)
+        # If stats is None, the sandbox itself failed and we have no stats
         if stats is None:
-            stats = {}
-        else:
-            stats = dict(stats)  # Make a copy
+            return None
+        stats = dict(stats)  # Make a copy
         stats["stdout"] = safe_get_str(sandbox.stdout_file)
         stats["stderr"] = safe_get_str(sandbox.stderr_file)
         return stats

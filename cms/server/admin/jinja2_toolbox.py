@@ -44,19 +44,31 @@ def safe_parse_authentication(auth: str) -> tuple[str, str]:
     return method, password
 
 
-def format_signal(signum: int | None) -> str:
-    """Convert a signal number to a human-readable name.
+def format_signal(signum: int | str | None) -> str:
+    """Convert a signal number to a human-readable name with description.
 
-    signum: the signal number (e.g., 11 for SIGSEGV).
+    signum: the signal number (e.g., 11 for SIGSEGV), may be int or str.
 
-    return: the signal name with number (e.g., "SIGSEGV (11)"), or just
+    return: the signal name with description and number
+        (e.g., "SIGFPE - Floating-point exception (8)"), or just
         the number if the signal is unknown.
 
     """
     if signum is None:
         return "N/A"
     try:
+        signum = int(signum)
+    except (ValueError, TypeError):
+        return str(signum)
+    try:
         name = signal.Signals(signum).name
+        # Try to get the signal description using strsignal (Python 3.8+)
+        try:
+            description = signal.strsignal(signum)
+            if description:
+                return f"{name} - {description} ({signum})"
+        except (ValueError, OSError):
+            pass
         return f"{name} ({signum})"
     except ValueError:
         return str(signum)
