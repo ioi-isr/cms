@@ -424,10 +424,7 @@ class AddManagerHandler(BaseHandler):
 
             # If a source file for a known compiled language is uploaded,
             # compile it into an executable manager.
-            try:
-                language = filename_to_language(filename)
-            except Exception:
-                language = None
+            language = filename_to_language(filename)
 
             if (language is not None
                     and isinstance(language, CompiledLanguage)

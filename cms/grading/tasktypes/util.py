@@ -370,9 +370,9 @@ def compile_manager_bytes(
     from cms.grading.language import CompiledLanguage
     from cms.grading.steps.compilation import compilation_step
     
-    try:
-        language = filename_to_language(source_filename)
-    except KeyError:
+    language = filename_to_language(source_filename)
+
+    if language is None:
         msg = f"Could not detect language for {source_filename}"
         logger.warning(msg)
         if notify:
