@@ -1,206 +1,23 @@
 {% extends "base.html" %}
+{% import "macro/model_solution_subtasks.html" as ms %}
 
 {% block core %}
-<style>
-.btn-group { display: inline-flex; }
-.btn { 
-  display: inline-block; 
-  padding: 4px 10px; 
-  font-size: 12px; 
-  font-weight: 500;
-  text-align: center; 
-  cursor: pointer; 
-  border: 1px solid transparent;
-  border-radius: 4px;
-  transition: all 0.15s ease-in-out;
-}
-.btn-success { 
-  color: #fff; 
-  background-color: #28a745; 
-  border-color: #28a745; 
-}
-.btn-success:hover { 
-  background-color: #218838; 
-  border-color: #1e7e34; 
-}
-.btn-danger { 
-  color: #fff; 
-  background-color: #dc3545; 
-  border-color: #dc3545; 
-}
-.btn-danger:hover { 
-  background-color: #c82333; 
-  border-color: #bd2130; 
-}
-.btn-outline-success {
-  color: #28a745;
-  background-color: transparent;
-  border-color: #28a745;
-}
-.btn-outline-success:hover {
-  color: #fff;
-  background-color: #28a745;
-}
-.btn-outline-danger {
-  color: #dc3545;
-  background-color: transparent;
-  border-color: #dc3545;
-}
-.btn-outline-danger:hover {
-  color: #fff;
-  background-color: #dc3545;
-}
-.btn-primary {
-  color: #fff;
-  background-color: #007bff;
-  border-color: #007bff;
-}
-.btn-primary:hover {
-  background-color: #0069d9;
-  border-color: #0062cc;
-}
-.btn-secondary {
-  color: #fff;
-  background-color: #6c757d;
-  border-color: #6c757d;
-}
-.btn-secondary:hover {
-  background-color: #5a6268;
-  border-color: #545b62;
-}
-.form-control {
-  display: block;
-  padding: 4px 8px;
-  font-size: 14px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-}
-.form-control:focus {
-  border-color: #80bdff;
-  outline: 0;
-  box-shadow: 0 0 0 2px rgba(0,123,255,.25);
-}
-.form-check-input {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-}
-.card {
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  background: #fff;
-}
-.card-header {
-  padding: 12px 16px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
-  border-radius: 7px 7px 0 0;
-  font-weight: 600;
-}
-.card-body {
-  padding: 16px;
-}
-.alert {
-  padding: 12px 16px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-.alert-info {
-  color: #0c5460;
-  background-color: #d1ecf1;
-  border: 1px solid #bee5eb;
-}
-.alert-warning {
-  color: #856404;
-  background-color: #fff3cd;
-  border: 1px solid #ffeeba;
-}
-.subtask-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-  margin: 4px;
-}
-.subtask-group-label {
-  font-weight: 600;
-  font-size: 12px;
-  color: #495057;
-  margin-right: 4px;
-  white-space: nowrap;
-}
-.subtask-input {
-  width: 55px;
-  padding: 3px 6px;
-  font-size: 13px;
-  border: 1px solid #ced4da;
-  border-radius: 3px;
-  text-align: center;
-}
-.subtask-input:focus {
-  border-color: #80bdff;
-  outline: 0;
-  box-shadow: 0 0 0 2px rgba(0,123,255,.25);
-}
-.solution-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  padding: 12px;
-  border-bottom: 1px solid #dee2e6;
-  gap: 8px;
-}
-.solution-row:last-child {
-  border-bottom: none;
-}
-.solution-row.needs-config {
-  background-color: #fff3cd;
-}
-.solution-name {
-  font-weight: 600;
-  min-width: 100px;
-  font-size: 14px;
-}
-.solution-subtasks {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-}
-.solution-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.auto-calc-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #6c757d;
-  cursor: pointer;
-}
-</style>
+{% include "fragments/model_solution_styles.html" %}
 
 <div class="core_title">
   <h1>Configure Model Solutions</h1>
 </div>
 
-<div class="alert alert-info">
+<div class="ms-alert ms-alert-info">
   The following model solutions need configuration. Please set the expected score ranges for each solution.
 </div>
 
 <form action="{{ url("task", task.id, "model_solutions", "configure") }}" method="POST">
   {{ xsrf_form_html|safe }}
 
-  <div class="card">
-    <div class="card-header">Overall Score Ranges</div>
-    <div class="card-body" style="padding: 0;">
+  <div class="ms-card">
+    <div class="ms-card-header">Overall Score Ranges</div>
+    <div class="ms-card-body" style="padding: 0;">
       <table class="bordered" style="width: 100%; margin: 0;">
         <thead>
           <tr>
@@ -221,17 +38,17 @@
             </td>
             <td style="padding: 10px;">{{ sol.language or 'auto-detect' }}</td>
             <td style="padding: 10px;">
-              <input type="text" name="sol_{{ sol.id }}_description" value="{{ sol.description }}" placeholder="Optional description" class="form-control" style="width: 200px;" />
+              <input type="text" name="sol_{{ sol.id }}_description" value="{{ sol.description }}" placeholder="Optional description" class="ms-form-control" style="width: 200px;" />
             </td>
             <td style="padding: 10px;">
-              <input type="number" step="0.01" name="sol_{{ sol.id }}_score_min" value="{{ sol.expected_score_min }}" class="form-control" style="width: 80px;" />
+              <input type="number" step="0.01" name="sol_{{ sol.id }}_score_min" value="{{ sol.expected_score_min }}" class="ms-form-control" style="width: 80px;" />
             </td>
             <td style="padding: 10px;">
               <div style="display: flex; flex-direction: column; gap: 6px;">
-                <input type="number" step="0.01" name="sol_{{ sol.id }}_score_max" value="{{ sol.expected_score_max }}" class="form-control" style="width: 80px;" />
+                <input type="number" step="0.01" name="sol_{{ sol.id }}_score_max" value="{{ sol.expected_score_max }}" class="ms-form-control" style="width: 80px;" />
 {% if subtasks %}
-                <label class="auto-calc-label" style="margin-top: 4px;">
-                  <input type="checkbox" class="form-check-input calc-from-subtasks" data-sol-id="{{ sol.id }}" />
+                <label class="ms-auto-calc-label" style="margin-top: 4px;">
+                  <input type="checkbox" class="ms-form-check-input calc-from-subtasks" data-sol-id="{{ sol.id }}" />
                   Calculate score range from subtask table
                 </label>
 {% endif %}
@@ -248,28 +65,28 @@
   </div>
 
 {% if subtasks %}
-  <div class="card">
-    <div class="card-header">Subtask Expected Scores</div>
-    <div class="card-body">
+  <div class="ms-card">
+    <div class="ms-card-header">Subtask Expected Scores</div>
+    <div class="ms-card-body">
       <p style="margin-bottom: 16px; color: #6c757d;">Configure expected scores per subtask. Use the buttons to quickly set scores:</p>
       
 {% for sol in model_solutions %}
-      <div class="solution-row{% if sol.needs_config %} needs-config{% endif %}" data-sol-id="{{ sol.id }}">
-        <div class="solution-name">{{ sol.name }}</div>
-        <div class="solution-subtasks">
+      <div class="ms-solution-row{% if sol.needs_config %} needs-config{% endif %}" data-sol-id="{{ sol.id }}">
+        <div class="ms-solution-name">{{ sol.name }}</div>
+        <div class="ms-solution-subtasks">
 {% for st in subtasks if st.max_score > 0 %}
-          <div class="subtask-group">
-            <span class="subtask-group-label">{{ st.display_name }}</span>
+          <div class="ms-subtask-group">
+            <span class="ms-subtask-group-label">{{ st.display_name }}</span>
             <input type="number" step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_min" 
                    value="{% if sol.subtask_expected_scores and sol.subtask_expected_scores[st.idx|string] %}{{ sol.subtask_expected_scores[st.idx|string].min }}{% else %}0{% endif %}" 
-                   class="subtask-input subtask-min" data-sol-id="{{ sol.id }}" placeholder="Min" title="Min (max: {{ st.max_score }})" />
+                   class="ms-subtask-input subtask-min" data-sol-id="{{ sol.id }}" placeholder="Min" title="Min (max: {{ st.max_score }})" />
             <span style="color: #6c757d;">-</span>
             <input type="number" step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_max" 
                    value="{% if sol.subtask_expected_scores and sol.subtask_expected_scores[st.idx|string] %}{{ sol.subtask_expected_scores[st.idx|string].max }}{% else %}{{ st.max_score }}{% endif %}" 
-                   class="subtask-input subtask-max" data-sol-id="{{ sol.id }}" placeholder="Max" title="Max (max: {{ st.max_score }})" />
-            <div class="btn-group">
-              <button type="button" class="btn btn-outline-danger btn-zero-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" title="Set to zero">0</button>
-              <button type="button" class="btn btn-outline-success btn-full-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" data-max-score="{{ st.max_score }}" title="Set to full score ({{ st.max_score }})">Full</button>
+                   class="ms-subtask-input subtask-max" data-sol-id="{{ sol.id }}" placeholder="Max" title="Max (max: {{ st.max_score }})" />
+            <div class="ms-btn-group">
+              <button type="button" class="ms-btn ms-btn-outline-danger btn-zero-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" title="Set to zero">0</button>
+              <button type="button" class="ms-btn ms-btn-outline-success btn-full-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" data-max-score="{{ st.max_score }}" title="Set to full score ({{ st.max_score }})">Full</button>
             </div>
           </div>
 {% endfor %}
@@ -281,12 +98,12 @@
 {% endif %}
 
   <div style="margin: 20px 0; display: flex; gap: 10px;">
-    <button type="submit" class="btn btn-primary">Save Configuration</button>
-    <button type="button" class="btn btn-secondary" onclick="window.location.href='{{ url("task", task.id) }}'">Skip</button>
+    <button type="submit" class="ms-btn ms-btn-primary">Save Configuration</button>
+    <button type="button" class="ms-btn ms-btn-secondary" onclick="window.location.href='{{ url("task", task.id) }}'">Skip</button>
   </div>
 </form>
 
-<div class="alert alert-warning">
+<div class="ms-alert ms-alert-warning">
   <strong>Note:</strong> Solutions highlighted in yellow have default values and may need configuration.
   You can also configure them later from the task page.
 </div>
