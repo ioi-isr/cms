@@ -858,10 +858,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     error_msg = "exponent must be a non-negative integer, got: %d" % exponent
                     logger.error(error_msg)
                     raise LoaderValidationError(error_msg)
-                except (ValueError, TypeError):
-                    error_msg = "exponent must be an integer, got: %s" % exponent
-                    logger.error(error_msg)
-                    raise LoaderValidationError(error_msg) from None
+            except (ValueError, TypeError):
+                error_msg = "exponent must be an integer, got: %s" % exponent
+                logger.error(error_msg)
+                raise LoaderValidationError(error_msg) from None
             
             if evaluation_param == "comparator":
                 logger.warning(
