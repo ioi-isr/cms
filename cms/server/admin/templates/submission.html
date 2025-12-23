@@ -201,7 +201,7 @@
                 {% if sr.last_evaluation_failure_details.get('signal') %}
                 <tr>
                   <td><strong>Signal</strong></td>
-                  <td>{{ sr.last_evaluation_failure_details.get('signal') }}</td>
+                  <td>{{ sr.last_evaluation_failure_details.get('signal')|format_signal }}</td>
                 </tr>
                 {% endif %}
                 {% if sr.last_evaluation_failure_details.get('execution_time') is not none %}
