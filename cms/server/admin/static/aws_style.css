@@ -223,9 +223,12 @@ ul.normal_list {
     color: #F8FAFC;
     }
     
-    .sidebar-section-title:hover {
+    .sidebar-section-title:hover,
+    .sidebar-section-title:focus {
         border-color: rgba(148, 163, 184, 0.25);
         background: rgba(15, 23, 42, 0.9);
+        outline: 2px solid #60A5FA;
+        outline-offset: 2px;
 }
 
 .sidebar-menu {
@@ -278,8 +281,11 @@ ul.normal_list {
     transition: background-color 0.2s;
 }
 
-.folder-header:hover {
+.folder-header:hover,
+.folder-header:focus {
     background-color: rgba(148, 163, 184, 0.12);
+    outline: 2px solid #60A5FA;
+    outline-offset: 1px;
 }
 
 .folder-icon {

@@ -154,28 +154,56 @@ function initSidebarEvents() {
     var sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
 
+    // Helper to toggle section
+    function toggleSection(sectionTitle) {
+        var section = sectionTitle.closest('.sidebar-section');
+        if (section) {
+            var key = section.getAttribute('data-section-key');
+            var isCollapsed = section.classList.toggle('collapsed');
+            if (key) SidebarState.toggle('cms_sidebar_collapsed', key, isCollapsed);
+        }
+    }
+
+    // Helper to toggle folder
+    function toggleFolder(folderHeader) {
+        var folder = folderHeader.closest('.sidebar-folder, .sidebar-subfolder');
+        if (folder) {
+            var key = folder.getAttribute('data-folder-key');
+            var isCollapsed = folder.classList.toggle('collapsed');
+            if (key) SidebarState.toggle('cms_sidebar_folders_collapsed', key, isCollapsed);
+        }
+    }
+
     sidebar.addEventListener('click', function(e) {
         // Handle section title clicks (but not link clicks)
         var sectionTitle = e.target.closest('.sidebar-section-title');
         if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
-            var section = sectionTitle.closest('.sidebar-section');
-            if (section) {
-                var key = section.getAttribute('data-section-key');
-                var isCollapsed = section.classList.toggle('collapsed');
-                if (key) SidebarState.toggle('cms_sidebar_collapsed', key, isCollapsed);
-            }
+            toggleSection(sectionTitle);
             return;
         }
 
         // Handle folder header clicks (but not link clicks)
         var folderHeader = e.target.closest('.folder-header');
         if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
-            var folder = folderHeader.closest('.sidebar-folder, .sidebar-subfolder');
-            if (folder) {
-                var key = folder.getAttribute('data-folder-key');
-                var isCollapsed = folder.classList.toggle('collapsed');
-                if (key) SidebarState.toggle('cms_sidebar_folders_collapsed', key, isCollapsed);
-            }
+            toggleFolder(folderHeader);
+        }
+    });
+
+    // Keyboard support for accessibility (Enter/Space to toggle)
+    sidebar.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+
+        var sectionTitle = e.target.closest('.sidebar-section-title');
+        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+            e.preventDefault();
+            toggleSection(sectionTitle);
+            return;
+        }
+
+        var folderHeader = e.target.closest('.folder-header');
+        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+            e.preventDefault();
+            toggleFolder(folderHeader);
         }
     });
 }
@@ -237,7 +265,7 @@ $(document).ready(initSidebarEvents);
 
         {% if contest is none %}
         <div class="sidebar-section" data-section-key="contests">
-          <h2 class="sidebar-section-title">
+          <h2 class="sidebar-section-title" tabindex="0">
             <span class="section-caret"></span>
             <a href="{{ url("contests") }}">Contests</a>
           </h2>
@@ -246,7 +274,7 @@ $(document).ready(initSidebarEvents);
             <ul class="sidebar-menu">
             {% for folder in folder_list if folder.parent is none %}
             <li class="sidebar-folder" data-folder-key="folder-{{ folder.id }}">
-              <div class="folder-header">
+              <div class="folder-header" tabindex="0">
                 <span class="folder-icon"></span>
                 <a href="{{ url("folder", folder.id) }}">{{ folder.name }}</a>
               </div>
@@ -258,7 +286,7 @@ $(document).ready(initSidebarEvents);
                   {% endfor %}
                 {% for subfolder in folder.children %}
                 <li class="sidebar-subfolder" data-folder-key="subfolder-{{ subfolder.id }}">
-                  <div class="folder-header">
+                  <div class="folder-header" tabindex="0">
                     <span class="folder-icon"></span>
                     <a href="{{ url("folder", subfolder.id) }}">{{ subfolder.name }}</a>
                   </div>
@@ -299,7 +327,7 @@ $(document).ready(initSidebarEvents);
         </div>
 
         <div class="sidebar-section" data-section-key="tasks">
-          <h2 class="sidebar-section-title">
+          <h2 class="sidebar-section-title" tabindex="0">
             <span class="section-caret"></span>
             <a href="{{ url("tasks") }}">Tasks</a>
           </h2>
@@ -329,7 +357,7 @@ $(document).ready(initSidebarEvents);
         </div>
 
         <div class="sidebar-section" data-section-key="users">
-          <h2 class="sidebar-section-title">
+          <h2 class="sidebar-section-title" tabindex="0">
             <span class="section-caret"></span>
             <a href="{{ url("users") }}">Users</a>
           </h2>
@@ -354,7 +382,7 @@ $(document).ready(initSidebarEvents);
         </div>
 
         <div class="sidebar-section" data-section-key="teams">
-          <h2 class="sidebar-section-title">
+          <h2 class="sidebar-section-title" tabindex="0">
             <span class="section-caret"></span>
             <a href="{{ url("teams") }}">Teams</a>
           </h2>
