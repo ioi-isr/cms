@@ -36,6 +36,7 @@
               <th>Subtask</th>
               <th>Expected Min</th>
               <th>Expected Max</th>
+              <th>Quick Set</th>
             </tr>
           </thead>
           <tbody>
@@ -45,12 +46,24 @@
 {% set current_max = meta.subtask_expected_scores[st_key].max if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else st.max_score %}
             <tr>
               <td>{{ st.display_name }}</td>
-              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_min" value="{{ current_min }}" style="width: 80px;" /></td>
-              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_max" value="{{ current_max }}" style="width: 80px;" /></td>
+              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_min" value="{{ current_min }}" style="width: 80px;" class="subtask-min" data-max-score="{{ st.max_score }}" /></td>
+              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_max" value="{{ current_max }}" style="width: 80px;" class="subtask-max" data-max-score="{{ st.max_score }}" /></td>
+              <td>
+                <button type="button" class="btn-full-score" data-idx="{{ st.idx }}" data-max-score="{{ st.max_score }}" style="padding: 2px 6px; margin-right: 4px;">Full</button>
+                <button type="button" class="btn-zero-score" data-idx="{{ st.idx }}" style="padding: 2px 6px;">Zero</button>
+              </td>
             </tr>
 {% endfor %}
           </tbody>
         </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <label>
+          <input type="checkbox" class="calc-from-subtasks" />
+          Calculate score range from subtask table
+        </label>
       </td>
     </tr>
 {% endif %}
@@ -58,4 +71,84 @@
   <input type="submit" value="Update">
   <input type="reset" value="Reset">
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Full score button handler
+    document.querySelectorAll('.btn-full-score').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var idx = this.dataset.idx;
+            var maxScore = parseFloat(this.dataset.maxScore);
+            var form = this.closest('form');
+            var minInput = form.querySelector('input[name="subtask_' + idx + '_min"]');
+            var maxInput = form.querySelector('input[name="subtask_' + idx + '_max"]');
+            if (minInput) minInput.value = maxScore;
+            if (maxInput) maxInput.value = maxScore;
+            updateScoreRangeFromSubtasks(form);
+        });
+    });
+
+    // Zero score button handler
+    document.querySelectorAll('.btn-zero-score').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var idx = this.dataset.idx;
+            var form = this.closest('form');
+            var minInput = form.querySelector('input[name="subtask_' + idx + '_min"]');
+            var maxInput = form.querySelector('input[name="subtask_' + idx + '_max"]');
+            if (minInput) minInput.value = 0;
+            if (maxInput) maxInput.value = 0;
+            updateScoreRangeFromSubtasks(form);
+        });
+    });
+
+    // Calculate from subtasks checkbox handler
+    document.querySelectorAll('.calc-from-subtasks').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            var form = this.closest('form');
+            if (this.checked) {
+                updateScoreRangeFromSubtasks(form);
+                var minInput = form.querySelector('input[name="expected_score_min"]');
+                var maxInput = form.querySelector('input[name="expected_score_max"]');
+                if (minInput) minInput.readOnly = true;
+                if (maxInput) maxInput.readOnly = true;
+            } else {
+                var minInput = form.querySelector('input[name="expected_score_min"]');
+                var maxInput = form.querySelector('input[name="expected_score_max"]');
+                if (minInput) minInput.readOnly = false;
+                if (maxInput) maxInput.readOnly = false;
+            }
+        });
+    });
+
+    // Update score range when subtask values change
+    document.querySelectorAll('.subtask-min, .subtask-max').forEach(function(input) {
+        input.addEventListener('input', function() {
+            var form = this.closest('form');
+            var checkbox = form.querySelector('.calc-from-subtasks');
+            if (checkbox && checkbox.checked) {
+                updateScoreRangeFromSubtasks(form);
+            }
+        });
+    });
+
+    function updateScoreRangeFromSubtasks(form) {
+        var checkbox = form.querySelector('.calc-from-subtasks');
+        if (!checkbox || !checkbox.checked) return;
+
+        var minSum = 0;
+        var maxSum = 0;
+        form.querySelectorAll('.subtask-min').forEach(function(input) {
+            minSum += parseFloat(input.value) || 0;
+        });
+        form.querySelectorAll('.subtask-max').forEach(function(input) {
+            maxSum += parseFloat(input.value) || 0;
+        });
+
+        var minInput = form.querySelector('input[name="expected_score_min"]');
+        var maxInput = form.querySelector('input[name="expected_score_max"]');
+        if (minInput) minInput.value = minSum.toFixed(2);
+        if (maxInput) maxInput.value = maxSum.toFixed(2);
+    }
+});
+</script>
 {% endblock core %}
