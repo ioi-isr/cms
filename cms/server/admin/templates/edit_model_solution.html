@@ -1,41 +1,8 @@
 {% extends "base.html" %}
+{% import "macro/model_solution_subtasks.html" as ms %}
 
 {% block core %}
-<style>
-.btn {
-  display: inline-block;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  text-align: center;
-  cursor: pointer;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  transition: all 0.15s ease-in-out;
-}
-.btn-outline-success {
-  color: #28a745;
-  background-color: transparent;
-  border-color: #28a745;
-}
-.btn-outline-success:hover {
-  color: #fff;
-  background-color: #28a745;
-}
-.btn-outline-danger {
-  color: #dc3545;
-  background-color: transparent;
-  border-color: #dc3545;
-}
-.btn-outline-danger:hover {
-  color: #fff;
-  background-color: #dc3545;
-}
-.btn-group {
-  display: inline-flex;
-  gap: 4px;
-}
-</style>
+{% include "fragments/model_solution_styles.html" %}
 
 <div class="core_title">
   <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Edit Model Solution</h1>
@@ -54,57 +21,23 @@
     </tr>
     <tr>
       <td>Expected Score Min:</td>
-      <td><input type="number" step="0.01" name="expected_score_min" value="{{ meta.expected_score_min }}" required /></td>
+      <td><input type="number" step="0.01" name="expected_score_min" value="{{ meta.expected_score_min }}" class="ms-form-control" style="width: 100px;" required /></td>
     </tr>
     <tr>
       <td>Expected Score Max:</td>
-      <td><input type="number" step="0.01" name="expected_score_max" value="{{ meta.expected_score_max }}" required /></td>
+      <td><input type="number" step="0.01" name="expected_score_max" value="{{ meta.expected_score_max }}" class="ms-form-control" style="width: 100px;" required /></td>
     </tr>
 {% if subtasks %}
     <tr>
       <td></td>
-      <td>
-        <label>
-          <input type="checkbox" class="calc-from-subtasks" />
-          Calculate score range from subtask table
-        </label>
-      </td>
+      <td>{{ ms.auto_calc_checkbox() }}</td>
     </tr>
-{% endif %}
-{% if subtasks %}
     <tr>
       <td colspan="2"><strong>Expected Subtask Scores:</strong></td>
     </tr>
     <tr>
       <td colspan="2">
-        <table class="bordered" style="text-align:center; margin-top: 5px;">
-          <thead>
-            <tr>
-              <th>Subtask</th>
-              <th>Expected Min</th>
-              <th>Expected Max</th>
-              <th>Quick Set</th>
-            </tr>
-          </thead>
-          <tbody>
-{% for st in subtasks if st.max_score > 0 %}
-{% set st_key = st.idx|string %}
-{% set current_min = meta.subtask_expected_scores[st_key].min if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else 0 %}
-{% set current_max = meta.subtask_expected_scores[st_key].max if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else st.max_score %}
-            <tr>
-              <td>{{ st.display_name }}</td>
-              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_min" value="{{ current_min }}" style="width: 80px;" class="subtask-min" data-max-score="{{ st.max_score }}" /></td>
-              <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_max" value="{{ current_max }}" style="width: 80px;" class="subtask-max" data-max-score="{{ st.max_score }}" /></td>
-              <td>
-                <div class="btn-group">
-                  <button type="button" class="btn btn-outline-danger btn-zero-score" data-idx="{{ st.idx }}" title="Set to zero">0</button>
-                  <button type="button" class="btn btn-outline-success btn-full-score" data-idx="{{ st.idx }}" data-max-score="{{ st.max_score }}" title="Set to full score ({{ st.max_score }})">Full</button>
-                </div>
-              </td>
-            </tr>
-{% endfor %}
-          </tbody>
-        </table>
+        {{ ms.subtask_table(subtasks, none, meta.subtask_expected_scores) }}
       </td>
     </tr>
 {% endif %}
