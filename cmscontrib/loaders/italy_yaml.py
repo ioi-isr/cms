@@ -195,7 +195,7 @@ def compile_manager_source(file_cacher, source_path, source_filename,
         if notify:
             notify(title, text)
 
-    success, compiled_bytes, stats = compile_manager_bytes(
+    success, compiled_bytes, _stats = compile_manager_bytes(
         file_cacher,
         source_filename,
         source_body,
@@ -901,11 +901,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     error_msg = "exponent must be a non-negative integer, got: %d" % exponent
                     logger.error(error_msg)
                     raise LoaderValidationError(error_msg)
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 error_msg = "exponent must be an integer, got: %s" % exponent
                 logger.error(error_msg)
-                raise LoaderValidationError(error_msg)
-
+                raise LoaderValidationError(error_msg) from None
+            
             if evaluation_param == "comparator":
                 logger.warning(
                     "Both checker and exponent specified. Checker takes precedence, "
@@ -1335,7 +1335,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             except ValueError as e:
                 error_msg = str(e)
                 logger.error(error_msg)
-                raise LoaderValidationError(error_msg)
+                raise LoaderValidationError(error_msg) from e
 
             if n_input == 0 and not os.path.exists(os.path.join(self.path, "gen", "GEN")):
                 n_input = len(paired_testcases)

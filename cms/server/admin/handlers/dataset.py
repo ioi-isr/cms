@@ -424,10 +424,7 @@ class AddManagerHandler(BaseHandler):
 
             # If a source file for a known compiled language is uploaded,
             # compile it into an executable manager.
-            try:
-                language = filename_to_language(filename)
-            except Exception:
-                language = None
+            language = filename_to_language(filename)
 
             if (language is not None
                     and isinstance(language, CompiledLanguage)
@@ -437,7 +434,7 @@ class AddManagerHandler(BaseHandler):
                 def notify(title, text):
                     self.service.add_notification(make_datetime(), title, text)
                 
-                success, compiled_bytes, stats = compile_manager_bytes(
+                success, compiled_bytes, _stats = compile_manager_bytes(
                     self.service.file_cacher,
                     filename,
                     body,

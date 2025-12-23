@@ -370,9 +370,9 @@ def compile_manager_bytes(
     from cms.grading.language import CompiledLanguage
     from cms.grading.steps.compilation import compilation_step
     
-    try:
-        language = filename_to_language(source_filename)
-    except Exception:
+    language = filename_to_language(source_filename)
+
+    if language is None:
         msg = f"Could not detect language for {source_filename}"
         logger.warning(msg)
         if notify:
@@ -396,7 +396,7 @@ def compile_manager_bytes(
         commands = language.get_compilation_commands(
             [safe_src], output_basename, for_evaluation=for_evaluation)
         
-        box_success, compilation_success, text, stats = \
+        box_success, compilation_success, _text, stats = \
             compilation_step(sandbox, commands)
         
         if not box_success:
