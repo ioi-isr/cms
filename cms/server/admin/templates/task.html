@@ -731,14 +731,14 @@ window.filterTestcases = function(dataset_id) {
               {% if validator %}
                 <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
                 {% if validator.executable_digest is none %}
-                  <span style="color: red;">(compilation failed)</span>
+                  <span class="validator-status validator-error">(compilation failed)</span>
                 {% endif %}
                 {% if admin.permission_all %}
                 [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">replace</a>]
                 [<a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>]
                 {% endif %}
               {% else %}
-                <span style="color: red; font-weight: bold;">No validator</span>
+                <span class="validator-status validator-missing">No validator</span>
                 {% if admin.permission_all %}
                 [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">add</a>]
                 {% endif %}
@@ -748,16 +748,16 @@ window.filterTestcases = function(dataset_id) {
               {{ ns.subtask_tc_count }}
               {% if validator and validator.validation_results|length > 0 %}
                 ({% if ns.subtask_failed == 0 and ns.subtask_error == 0 and ns.subtask_not_validated == 0 %}
-                  <span style="color: green;">all {{ ns.subtask_passed }} passed</span>
+                  <span class="validator-status validator-pass">all {{ ns.subtask_passed }} passed</span>
                 {% else %}
                   {% set has_prev = false %}
-                  {% if ns.subtask_passed > 0 %}<span style="color: green;">{{ ns.subtask_passed }} passed</span>{% set has_prev = true %}{% endif %}
-                  {% if ns.subtask_failed > 0 %}{% if has_prev %}, {% endif %}<span style="color: red;">{{ ns.subtask_failed }} failed</span>{% set has_prev = true %}{% endif %}
-                  {% if ns.subtask_error > 0 %}{% if has_prev %}, {% endif %}<span style="color: orange;">{{ ns.subtask_error }} error</span>{% set has_prev = true %}{% endif %}
-                  {% if ns.subtask_not_validated > 0 %}{% if has_prev %}, {% endif %}<span style="color: gray;">{{ ns.subtask_not_validated }} not validated</span>{% endif %}
+                  {% if ns.subtask_passed > 0 %}<span class="validator-status validator-pass">{{ ns.subtask_passed }} passed</span>{% set has_prev = true %}{% endif %}
+                  {% if ns.subtask_failed > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-fail">{{ ns.subtask_failed }} failed</span>{% set has_prev = true %}{% endif %}
+                  {% if ns.subtask_error > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-error">{{ ns.subtask_error }} error</span>{% set has_prev = true %}{% endif %}
+                  {% if ns.subtask_not_validated > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-unvalidated">{{ ns.subtask_not_validated }} not validated</span>{% endif %}
                 {% endif %})
               {% elif validator %}
-                (<em>not validated</em>)
+                (<span class="validator-status validator-unvalidated">not validated</span>)
               {% endif %}
               [<a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}">details</a>]
             </td>

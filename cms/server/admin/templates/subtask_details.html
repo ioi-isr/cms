@@ -358,14 +358,14 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           <td>
             {% if tc_info.result %}
               {% if tc_info.result.passed %}
-                <span style="color: green;">Passed</span>
+                <span class="validator-status validator-pass">Passed</span>
               {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
-                <span style="color: red;">Failed</span>
+                <span class="validator-status validator-fail">Failed</span>
               {% else %}
-                <span style="color: orange;">Error ({{ tc_info.result.exit_status }})</span>
+                <span class="validator-status validator-error">Error ({{ tc_info.result.exit_status }})</span>
               {% endif %}
             {% else %}
-              <span style="color: gray;">Not validated</span>
+              <span class="validator-status validator-unvalidated">Not validated</span>
             {% endif %}
           </td>
           <td>
