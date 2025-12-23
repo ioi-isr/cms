@@ -667,6 +667,8 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                         result.job.sandboxes
                     object_result.last_evaluation_failure_sandbox_digests = \
                         result.job.get_sandbox_digest_list()
+                    # Store detailed failure info (exit_status, signal, stdout, stderr)
+                    object_result.last_evaluation_failure_details = result.job.plus
 
         elif operation.type_ == ESOperation.USER_TEST_COMPILATION:
             if result.job_success:

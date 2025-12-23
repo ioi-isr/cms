@@ -188,15 +188,53 @@
         <td>Failures during evaluation</td>
         <td>
           {{ sr.evaluation_tries }}
-          {% if sr.evaluation_tries > 0 and sr.last_evaluation_failure_text is not none %}
+          {% if sr.evaluation_tries > 0 %}
           <div id="title_evaluation_failure_details" class="toggling_off">
             <button type="button" onclick="utils.toggle('evaluation_failure_details')">Details</button>
             <div id="evaluation_failure_details" style="display: none; margin-top: 10px;">
               <table class="nested bordered">
+                {% if sr.last_evaluation_failure_details %}
+                <tr>
+                  <td><strong>Exit status</strong></td>
+                  <td>{{ sr.last_evaluation_failure_details.get('exit_status', 'N/A') }}</td>
+                </tr>
+                {% if sr.last_evaluation_failure_details.get('signal') %}
+                <tr>
+                  <td><strong>Signal</strong></td>
+                  <td>{{ sr.last_evaluation_failure_details.get('signal') }}</td>
+                </tr>
+                {% endif %}
+                {% if sr.last_evaluation_failure_details.get('execution_time') is not none %}
+                <tr>
+                  <td><strong>Execution time</strong></td>
+                  <td>{{ sr.last_evaluation_failure_details.get('execution_time') }} s</td>
+                </tr>
+                {% endif %}
+                {% if sr.last_evaluation_failure_details.get('execution_memory') is not none %}
+                <tr>
+                  <td><strong>Memory used</strong></td>
+                  <td>{{ (sr.last_evaluation_failure_details.get('execution_memory') // (1024 * 1024)) }} MiB</td>
+                </tr>
+                {% endif %}
+                {% if sr.last_evaluation_failure_details.get('stdout') %}
+                <tr>
+                  <td><strong>Standard output</strong></td>
+                  <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stdout') }}</pre></td>
+                </tr>
+                {% endif %}
+                {% if sr.last_evaluation_failure_details.get('stderr') %}
+                <tr>
+                  <td><strong>Standard error</strong></td>
+                  <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stderr') }}</pre></td>
+                </tr>
+                {% endif %}
+                {% endif %}
+                {% if sr.last_evaluation_failure_text is not none %}
                 <tr>
                   <td><strong>Error text</strong></td>
                   <td>{{ sr.last_evaluation_failure_text|format_status_text }}</td>
                 </tr>
+                {% endif %}
                 <tr>
                   <td><strong>Worker shard</strong></td>
                   <td>{% if sr.last_evaluation_failure_shard is not none %}{{ sr.last_evaluation_failure_shard }}{% else %}N/A{% endif %}</td>
