@@ -205,6 +205,7 @@ def _collect_trusted_output(sandbox: Sandbox, stats: StatsDict) -> StatsDict:
     stats: the existing stats dictionary to augment.
 
     return: stats with stdout/stderr added (truncated to avoid DB bloat).
+        If stdout/stderr are already present in stats, they are preserved.
 
     """
     import re
@@ -224,8 +225,11 @@ def _collect_trusted_output(sandbox: Sandbox, stats: StatsDict) -> StatsDict:
             return ""
 
     stats = stats.copy()
-    stats["stdout"] = safe_get_str(sandbox.stdout_file)
-    stats["stderr"] = safe_get_str(sandbox.stderr_file)
+    # Only collect stdout/stderr if not already present in stats
+    if "stdout" not in stats:
+        stats["stdout"] = safe_get_str(sandbox.stdout_file)
+    if "stderr" not in stats:
+        stats["stderr"] = safe_get_str(sandbox.stderr_file)
     return stats
 
 

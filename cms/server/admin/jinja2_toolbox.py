@@ -23,6 +23,8 @@ useful specifically to the use that AWS makes of it.
 
 """
 
+import signal
+
 from jinja2 import Environment, PackageLoader
 
 from cms.db.user import Question
@@ -42,6 +44,24 @@ def safe_parse_authentication(auth: str) -> tuple[str, str]:
     return method, password
 
 
+def format_signal(signum: int | None) -> str:
+    """Convert a signal number to a human-readable name.
+
+    signum: the signal number (e.g., 11 for SIGSEGV).
+
+    return: the signal name with number (e.g., "SIGSEGV (11)"), or just
+        the number if the signal is unknown.
+
+    """
+    if signum is None:
+        return "N/A"
+    try:
+        name = signal.Signals(signum).name
+        return f"{name} ({signum})"
+    except ValueError:
+        return str(signum)
+
+
 def instrument_cms_toolbox(env: Environment):
     env.globals["TASK_TYPES"] = TASK_TYPES
     env.globals["SCORE_TYPES"] = SCORE_TYPES
@@ -53,6 +73,7 @@ def instrument_cms_toolbox(env: Environment):
 
 def instrument_formatting_toolbox(env: Environment):
     env.filters["format_dataset_attrs"] = format_dataset_attrs
+    env.filters["format_signal"] = format_signal
 
 
 AWS_ENVIRONMENT = GLOBAL_ENVIRONMENT.overlay(
