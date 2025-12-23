@@ -63,25 +63,34 @@
 {% for st in subtasks if st.max_score > 0 %}
         <th>Min</th>
         <th>Max</th>
+        <th>Set</th>
 {% endfor %}
+        <th>Auto-calc</th>
       </tr>
     </thead>
     <tbody>
 {% for sol in model_solutions %}
-      <tr{% if sol.needs_config %} style="background-color: #fff3cd;"{% endif %}>
+      <tr{% if sol.needs_config %} style="background-color: #fff3cd;"{% endif %} data-sol-id="{{ sol.id }}">
         <td><strong>{{ sol.name }}</strong></td>
 {% for st in subtasks if st.max_score > 0 %}
         <td>
           <input type="number" step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_min" 
                  value="{% if sol.subtask_expected_scores and sol.subtask_expected_scores[st.idx|string] %}{{ sol.subtask_expected_scores[st.idx|string].min }}{% else %}0{% endif %}" 
-                 style="width: 60px;" />
+                 style="width: 60px;" class="subtask-min" data-sol-id="{{ sol.id }}" />
         </td>
         <td>
           <input type="number" step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_max" 
                  value="{% if sol.subtask_expected_scores and sol.subtask_expected_scores[st.idx|string] %}{{ sol.subtask_expected_scores[st.idx|string].max }}{% else %}{{ st.max_score }}{% endif %}" 
-                 style="width: 60px;" />
+                 style="width: 60px;" class="subtask-max" data-sol-id="{{ sol.id }}" />
+        </td>
+        <td>
+          <button type="button" class="btn-full-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" data-max-score="{{ st.max_score }}" style="padding: 1px 4px; font-size: 0.8em;">F</button>
+          <button type="button" class="btn-zero-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" style="padding: 1px 4px; font-size: 0.8em;">0</button>
         </td>
 {% endfor %}
+        <td>
+          <input type="checkbox" class="calc-from-subtasks" data-sol-id="{{ sol.id }}" title="Calculate score range from subtask table" />
+        </td>
       </tr>
 {% endfor %}
     </tbody>
@@ -99,4 +108,83 @@
   You can also configure them later from the task page.
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Full score button handler (F button)
+    document.querySelectorAll('.btn-full-score').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var solId = this.dataset.solId;
+            var stIdx = this.dataset.stIdx;
+            var maxScore = parseFloat(this.dataset.maxScore);
+            var minInput = document.querySelector('input[name="sol_' + solId + '_st_' + stIdx + '_min"]');
+            var maxInput = document.querySelector('input[name="sol_' + solId + '_st_' + stIdx + '_max"]');
+            if (minInput) minInput.value = maxScore;
+            if (maxInput) maxInput.value = maxScore;
+            updateScoreRangeFromSubtasks(solId);
+        });
+    });
+
+    // Zero score button handler (0 button)
+    document.querySelectorAll('.btn-zero-score').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var solId = this.dataset.solId;
+            var stIdx = this.dataset.stIdx;
+            var minInput = document.querySelector('input[name="sol_' + solId + '_st_' + stIdx + '_min"]');
+            var maxInput = document.querySelector('input[name="sol_' + solId + '_st_' + stIdx + '_max"]');
+            if (minInput) minInput.value = 0;
+            if (maxInput) maxInput.value = 0;
+            updateScoreRangeFromSubtasks(solId);
+        });
+    });
+
+    // Calculate from subtasks checkbox handler
+    document.querySelectorAll('.calc-from-subtasks').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            var solId = this.dataset.solId;
+            if (this.checked) {
+                updateScoreRangeFromSubtasks(solId);
+                var minInput = document.querySelector('input[name="sol_' + solId + '_score_min"]');
+                var maxInput = document.querySelector('input[name="sol_' + solId + '_score_max"]');
+                if (minInput) minInput.readOnly = true;
+                if (maxInput) maxInput.readOnly = true;
+            } else {
+                var minInput = document.querySelector('input[name="sol_' + solId + '_score_min"]');
+                var maxInput = document.querySelector('input[name="sol_' + solId + '_score_max"]');
+                if (minInput) minInput.readOnly = false;
+                if (maxInput) maxInput.readOnly = false;
+            }
+        });
+    });
+
+    // Update score range when subtask values change
+    document.querySelectorAll('.subtask-min, .subtask-max').forEach(function(input) {
+        input.addEventListener('input', function() {
+            var solId = this.dataset.solId;
+            var checkbox = document.querySelector('.calc-from-subtasks[data-sol-id="' + solId + '"]');
+            if (checkbox && checkbox.checked) {
+                updateScoreRangeFromSubtasks(solId);
+            }
+        });
+    });
+
+    function updateScoreRangeFromSubtasks(solId) {
+        var checkbox = document.querySelector('.calc-from-subtasks[data-sol-id="' + solId + '"]');
+        if (!checkbox || !checkbox.checked) return;
+
+        var minSum = 0;
+        var maxSum = 0;
+        document.querySelectorAll('.subtask-min[data-sol-id="' + solId + '"]').forEach(function(input) {
+            minSum += parseFloat(input.value) || 0;
+        });
+        document.querySelectorAll('.subtask-max[data-sol-id="' + solId + '"]').forEach(function(input) {
+            maxSum += parseFloat(input.value) || 0;
+        });
+
+        var minInput = document.querySelector('input[name="sol_' + solId + '_score_min"]');
+        var maxInput = document.querySelector('input[name="sol_' + solId + '_score_max"]');
+        if (minInput) minInput.value = minSum.toFixed(2);
+        if (maxInput) maxInput.value = maxSum.toFixed(2);
+    }
+});
+</script>
 {% endblock core %}
