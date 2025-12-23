@@ -382,6 +382,22 @@ class SubmissionResult(Base):
         nullable=False,
         default=0)
 
+    # Information about the last evaluation failure (for debugging).
+    # These fields store details about why the last evaluation attempt failed,
+    # which helps admins diagnose issues with checkers or managers.
+    last_evaluation_failure_text: list[str] | None = Column(
+        ARRAY(String),
+        nullable=True)
+    last_evaluation_failure_shard: int | None = Column(
+        Integer,
+        nullable=True)
+    last_evaluation_failure_sandbox_paths: list[str] | None = Column(
+        ARRAY(Unicode),
+        nullable=True)
+    last_evaluation_failure_sandbox_digests: list[str] | None = Column(
+        ARRAY(String),
+        nullable=True)
+
     # Score as computed by ScoringService. Null means not yet scored.
     score: float | None = Column(
         Float,
@@ -609,6 +625,10 @@ class SubmissionResult(Base):
         self.invalidate_score()
         self.evaluation_outcome = None
         self.evaluation_tries = 0
+        self.last_evaluation_failure_text = None
+        self.last_evaluation_failure_shard = None
+        self.last_evaluation_failure_sandbox_paths = None
+        self.last_evaluation_failure_sandbox_digests = None
         if testcase_id:
             self.evaluations = [e for e in self.evaluations if e.testcase_id != testcase_id]
         else:

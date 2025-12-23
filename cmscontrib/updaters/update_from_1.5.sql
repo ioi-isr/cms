@@ -241,4 +241,12 @@ ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_submission_id
 -- https://github.com/ioi-isr/cms/pull/82 - Add rejection reason to delay requests
 ALTER TABLE public.delay_requests ADD COLUMN rejection_reason character varying;
 
+-- https://github.com/ioi-isr/cms/pull/79 - Add evaluation failure details
+-- These fields store details about why the last evaluation attempt failed,
+-- which helps admins diagnose issues with checkers or managers.
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_text VARCHAR[];
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_shard INTEGER;
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_sandbox_paths VARCHAR[];
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_sandbox_digests VARCHAR[];
+
 COMMIT;

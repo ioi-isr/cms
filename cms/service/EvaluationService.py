@@ -660,6 +660,13 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                             object_result.submission)
                 else:
                     object_result.evaluation_tries += 1
+                    # Store failure details for debugging
+                    object_result.last_evaluation_failure_text = result.job.text
+                    object_result.last_evaluation_failure_shard = result.job.shard
+                    object_result.last_evaluation_failure_sandbox_paths = \
+                        result.job.sandboxes
+                    object_result.last_evaluation_failure_sandbox_digests = \
+                        result.job.get_sandbox_digest_list()
 
         elif operation.type_ == ESOperation.USER_TEST_COMPILATION:
             if result.job_success:
