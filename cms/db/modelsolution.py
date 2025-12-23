@@ -32,6 +32,42 @@ from sqlalchemy.types import Integer, Float, Unicode
 from . import Base
 
 
+# Characters that are invalid in model solution names (problematic for filenames)
+INVALID_NAME_CHARS = set('/\\*?<>|:"')
+
+
+def validate_model_solution_name(name: str) -> None:
+    """Validate a model solution name.
+
+    Checks that the name is non-empty, doesn't contain invalid characters,
+    and doesn't contain directory traversal sequences.
+
+    name: the name to validate
+
+    raise (ValueError): if the name is invalid
+
+    """
+    if not name or not name.strip():
+        raise ValueError("Name is required")
+
+    name = name.strip()
+
+    # Check for invalid characters
+    if any(c in INVALID_NAME_CHARS for c in name):
+        raise ValueError(
+            "Name cannot contain: / \\ * ? < > | : \"")
+
+    # Check for directory traversal sequences
+    if ".." in name:
+        raise ValueError(
+            "Name cannot contain '..' (directory traversal)")
+
+    # Check for names that are just dots (current/parent directory)
+    if name in (".", ".."):
+        raise ValueError(
+            "Name cannot be '.' or '..'")
+
+
 class ModelSolutionMeta(Base):
     """Metadata for model solutions.
     
@@ -270,9 +306,15 @@ def create_model_solution(
     subtask_expected_scores: optional dict of subtask score ranges
     
     return: tuple of (submission, meta)
+
+    raise (ValueError): if the name is invalid
+
     """
     from cmscommon.datetime import make_datetime
     from .submission import Submission, File
+
+    # Validate the name to prevent directory traversal and invalid characters
+    validate_model_solution_name(name)
     
     timestamp = make_datetime()
     opaque_id = Submission.generate_opaque_id(session, participation.id)

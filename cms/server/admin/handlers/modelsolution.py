@@ -22,7 +22,8 @@
 import logging
 
 from cms.db import Dataset, Submission, File, ModelSolutionMeta, \
-    get_or_create_model_solution_participation, create_model_solution
+    get_or_create_model_solution_participation, create_model_solution, \
+    validate_model_solution_name
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.contest.submission import UnacceptableSubmission
 from cms.server.contest.submission.workflow import _extract_and_match_files
@@ -87,15 +88,9 @@ class AddModelSolutionHandler(BaseHandler):
             self.get_string(attrs, "name")
             self.get_string(attrs, "description")
 
-            # Validate name is a valid identifier (alphanumeric + underscore)
+            # Validate name using centralized validation
             name = attrs.get("name", "").strip()
-            if not name:
-                raise ValueError("Name is required")
-            # Only reject characters that are problematic for filenames
-            invalid_chars = set('/\\*?<>|:"')
-            if any(c in invalid_chars for c in name):
-                raise ValueError(
-                    "Name cannot contain: / \\ * ? < > | : \"")
+            validate_model_solution_name(name)
 
             expected_score_min = self.get_argument(
                 "expected_score_min", "0.0")
