@@ -86,7 +86,7 @@ class ImportTaskHandler(
 
         task_file = self.request.files["task_file"][0]
 
-        if not task_file["filename"].endswith(".zip"):
+        if not task_file["filename"].lower().endswith(".zip"):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid file format",
@@ -212,7 +212,7 @@ class ImportContestHandler(
 
         contest_file = self.request.files["contest_file"][0]
 
-        if not contest_file["filename"].endswith(".zip"):
+        if not contest_file["filename"].lower().endswith(".zip"):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid file format",

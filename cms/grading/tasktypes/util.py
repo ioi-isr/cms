@@ -396,7 +396,7 @@ def compile_manager_bytes(
         commands = language.get_compilation_commands(
             [safe_src], output_basename, for_evaluation=for_evaluation)
         
-        box_success, compilation_success, text, stats = \
+        box_success, compilation_success, _text, stats = \
             compilation_step(sandbox, commands)
         
         if not box_success:

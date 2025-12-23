@@ -437,7 +437,7 @@ class AddManagerHandler(BaseHandler):
                 def notify(title, text):
                     self.service.add_notification(make_datetime(), title, text)
                 
-                success, compiled_bytes, stats = compile_manager_bytes(
+                success, compiled_bytes, _stats = compile_manager_bytes(
                     self.service.file_cacher,
                     filename,
                     body,
