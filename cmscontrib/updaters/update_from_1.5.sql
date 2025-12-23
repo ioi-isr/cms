@@ -161,4 +161,12 @@ ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participa
 
 ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+-- https://github.com/ioi-isr/cms/pull/XX - Add evaluation failure details
+-- These fields store details about why the last evaluation attempt failed,
+-- which helps admins diagnose issues with checkers or managers.
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_text VARCHAR[];
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_shard INTEGER;
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_sandbox_paths VARCHAR[];
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_sandbox_digests VARCHAR[];
+
 COMMIT;

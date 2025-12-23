@@ -186,7 +186,43 @@
       </tr>
       <tr>
         <td>Failures during evaluation</td>
-        <td>{{ sr.evaluation_tries }}</td>
+        <td>
+          {{ sr.evaluation_tries }}
+          {% if sr.evaluation_tries > 0 and sr.last_evaluation_failure_text is not none %}
+          <div id="title_evaluation_failure_details" class="toggling_off">
+            <button type="button" onclick="utils.toggle('evaluation_failure_details')">Details</button>
+            <div id="evaluation_failure_details" style="display: none; margin-top: 10px;">
+              <table class="nested bordered">
+                <tr>
+                  <td><strong>Error text</strong></td>
+                  <td>{{ sr.last_evaluation_failure_text|format_status_text }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Worker shard</strong></td>
+                  <td>{% if sr.last_evaluation_failure_shard is not none %}{{ sr.last_evaluation_failure_shard }}{% else %}N/A{% endif %}</td>
+                </tr>
+                <tr>
+                  <td><strong>Sandbox</strong></td>
+                  <td>
+                    {% if sr.last_evaluation_failure_sandbox_digests %}
+                      {% for sandbox_digest in sr.last_evaluation_failure_sandbox_digests %}
+                        {%- set filename = "submission_%s_evaluation_failure_sandbox_%s.tar.gz"|format(sr.submission_id, loop.index) -%}
+                        <a href="{{ url("file", sandbox_digest, filename) }}">
+                          {{- sr.last_evaluation_failure_sandbox_paths[loop.index0] -}}
+                        </a>
+                      {% endfor %}
+                    {% elif sr.last_evaluation_failure_sandbox_paths %}
+                      {{ sr.last_evaluation_failure_sandbox_paths|join(" ") }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          {% endif %}
+        </td>
       </tr>
         {% set t, m = sr.get_max_evaluation_resources() %}
       <tr>
