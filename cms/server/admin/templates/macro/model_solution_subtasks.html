@@ -1,0 +1,84 @@
+{#
+Macros for model solution subtask scoring UI.
+
+These macros provide reusable components for the subtask expected scores
+table used in add_model_solution.html and edit_model_solution.html.
+#}
+
+{% macro subtask_table(subtasks, form_id=none, current_values=none) %}
+{#
+Render the complete subtask expected scores table.
+
+subtasks: list of subtask dicts with idx, display_name, max_score
+form_id: optional form identifier for data-form attribute (e.g., "form1", "form2")
+current_values: optional dict mapping subtask idx (as string) to {min, max} values
+#}
+{% if subtasks %}
+<table class="bordered" style="text-align:center; margin-top: 5px;">
+  <thead>
+    <tr>
+      <th>Subtask</th>
+      <th>Expected Min</th>
+      <th>Expected Max</th>
+      <th>Quick Set</th>
+    </tr>
+  </thead>
+  <tbody>
+{% for st in subtasks if st.max_score > 0 %}
+{% set st_key = st.idx|string %}
+{% set current_min = current_values[st_key].min if current_values and st_key in current_values else 0 %}
+{% set current_max = current_values[st_key].max if current_values and st_key in current_values else st.max_score %}
+    <tr>
+      <td>{{ st.display_name }}</td>
+      <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_min" value="{{ current_min }}" style="width: 80px;" class="subtask-min" {% if form_id %}data-form="{{ form_id }}"{% endif %} data-max-score="{{ st.max_score }}" /></td>
+      <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_max" value="{{ current_max }}" style="width: 80px;" class="subtask-max" {% if form_id %}data-form="{{ form_id }}"{% endif %} data-max-score="{{ st.max_score }}" /></td>
+      <td>
+        {{ button_group(st.idx, st.max_score, form_id) }}
+      </td>
+    </tr>
+{% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endmacro %}
+
+{% macro button_group(idx, max_score, form_id=none) %}
+{#
+Render the 0/Full button group for a subtask.
+
+idx: subtask index
+max_score: maximum score for this subtask
+form_id: optional form identifier for data-form attribute
+#}
+<div class="ms-btn-group">
+  <button type="button" class="ms-btn ms-btn-outline-danger btn-zero-score" data-idx="{{ idx }}" {% if form_id %}data-form="{{ form_id }}"{% endif %} title="Set to zero">0</button>
+  <button type="button" class="ms-btn ms-btn-outline-success btn-full-score" data-idx="{{ idx }}" {% if form_id %}data-form="{{ form_id }}"{% endif %} data-max-score="{{ max_score }}" title="Set to full score ({{ max_score }})">Full</button>
+</div>
+{% endmacro %}
+
+{% macro configure_button_group(sol_id, st_idx, max_score) %}
+{#
+Render the 0/Full button group for configure page (uses sol_id instead of form_id).
+
+sol_id: model solution ID
+st_idx: subtask index
+max_score: maximum score for this subtask
+#}
+<div class="ms-btn-group">
+  <button type="button" class="ms-btn ms-btn-outline-danger btn-zero-score" data-sol-id="{{ sol_id }}" data-st-idx="{{ st_idx }}" title="Set to zero">0</button>
+  <button type="button" class="ms-btn ms-btn-outline-success btn-full-score" data-sol-id="{{ sol_id }}" data-st-idx="{{ st_idx }}" data-max-score="{{ max_score }}" title="Set to full score ({{ max_score }})">Full</button>
+</div>
+{% endmacro %}
+
+{% macro auto_calc_checkbox(form_id=none, sol_id=none) %}
+{#
+Render the auto-calculate checkbox.
+
+form_id: optional form identifier for data-form attribute (for add/edit pages)
+sol_id: optional solution ID for data-sol-id attribute (for configure page)
+#}
+<label{% if sol_id %} class="ms-auto-calc-label"{% endif %}>
+  <input type="checkbox" class="{% if sol_id %}ms-form-check-input {% endif %}calc-from-subtasks" {% if form_id %}data-form="{{ form_id }}"{% endif %} {% if sol_id %}data-sol-id="{{ sol_id }}"{% endif %} />
+  Calculate score range from subtask table
+</label>
+{% endmacro %}
