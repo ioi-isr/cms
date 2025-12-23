@@ -281,11 +281,19 @@ ul.normal_list {
     transition: background-color 0.2s;
 }
 
-.folder-header:hover,
-.folder-header:focus {
+.folder-header:hover {
     background-color: rgba(148, 163, 184, 0.12);
-    outline: 2px solid #60A5FA;
-    outline-offset: 1px;
+}
+
+.folder-header:focus-within {
+    outline: none;
+    box-shadow: inset 0 0 0 2px #5f8bd4;
+    background-color: rgba(148, 163, 184, 0.12);
+    border-radius: 4px;
+}
+
+.folder-header a:focus {
+    outline: none;
 }
 
 .folder-icon {
@@ -327,9 +335,9 @@ ul.normal_list {
 
 .folder-contents {
     margin-left: 14px;
-        padding-left: 10px;
-        border-left: 1px solid #243047;
-    overflow: hidden;
+    padding-left: 10px;
+    border-left: 1px solid #243047;
+    overflow-y: auto;
     max-height: 500px;
     transition: max-height 0.3s ease-out;
 }
