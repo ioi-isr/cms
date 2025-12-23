@@ -685,42 +685,35 @@ window.filterTestcases = function(dataset_id) {
           {% for subtask in subtask_info[dataset.id] %}
           {% set validator = dataset.subtask_validators.get(subtask.idx) %}
           {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, subtask_error=0, subtask_not_validated=0, other_passed=0) %}
-          {% if testcase_subtasks.get(dataset.id) %}
-            {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
-              {% if subtask.idx in tc_subtasks %}
-                {% set ns.subtask_tc_count = ns.subtask_tc_count + 1 %}
-              {% else %}
-                {% set ns.other_tc_count = ns.other_tc_count + 1 %}
-              {% endif %}
-            {% endfor %}
-          {% endif %}
+          {% set results_by_tc = {} %}
           {% if validator and validator.validation_results %}
-            {% set results_by_tc = {} %}
             {% for r in validator.validation_results %}
               {% set _ = results_by_tc.update({r.testcase.codename: r}) %}
             {% endfor %}
-            {% if testcase_subtasks.get(dataset.id) %}
-              {% for tc_codename, tc_subtasks in testcase_subtasks[dataset.id].items() %}
-                {% if subtask.idx in tc_subtasks %}
-                  {% if results_by_tc.get(tc_codename) %}
-                    {% if results_by_tc[tc_codename].passed %}
-                      {% set ns.subtask_passed = ns.subtask_passed + 1 %}
-                    {% elif results_by_tc[tc_codename].exit_status in ['ok', 'nonzero return', none] %}
-                      {% set ns.subtask_failed = ns.subtask_failed + 1 %}
-                    {% else %}
-                      {% set ns.subtask_error = ns.subtask_error + 1 %}
-                    {% endif %}
-                  {% else %}
-                    {% set ns.subtask_not_validated = ns.subtask_not_validated + 1 %}
-                  {% endif %}
-                {% else %}
-                  {% if results_by_tc.get(tc_codename) and results_by_tc[tc_codename].passed %}
-                    {% set ns.other_passed = ns.other_passed + 1 %}
-                  {% endif %}
-                {% endif %}
-              {% endfor %}
-            {% endif %}
           {% endif %}
+          {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+            {% set tc_subtasks = testcase_subtasks.get(dataset.id, {}).get(tc_codename, []) %}
+            {% set has_result = results_by_tc.get(tc_codename) %}
+            {% if subtask.idx in tc_subtasks %}
+              {% set ns.subtask_tc_count = ns.subtask_tc_count + 1 %}
+              {% if has_result %}
+                {% if has_result.passed %}
+                  {% set ns.subtask_passed = ns.subtask_passed + 1 %}
+                {% elif has_result.exit_status in ['ok', 'nonzero return', none] %}
+                  {% set ns.subtask_failed = ns.subtask_failed + 1 %}
+                {% else %}
+                  {% set ns.subtask_error = ns.subtask_error + 1 %}
+                {% endif %}
+              {% else %}
+                {% set ns.subtask_not_validated = ns.subtask_not_validated + 1 %}
+              {% endif %}
+            {% else %}
+              {% set ns.other_tc_count = ns.other_tc_count + 1 %}
+              {% if has_result and has_result.passed %}
+                {% set ns.other_passed = ns.other_passed + 1 %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
           <tr>
             <td>{{ subtask.display_name }}</td>
             <td>
