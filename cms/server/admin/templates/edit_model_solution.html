@@ -62,6 +62,17 @@
     </tr>
 {% if subtasks %}
     <tr>
+      <td></td>
+      <td>
+        <label>
+          <input type="checkbox" class="calc-from-subtasks" />
+          Calculate score range from subtask table
+        </label>
+      </td>
+    </tr>
+{% endif %}
+{% if subtasks %}
+    <tr>
       <td colspan="2"><strong>Expected Subtask Scores:</strong></td>
     </tr>
     <tr>
@@ -94,14 +105,6 @@
 {% endfor %}
           </tbody>
         </table>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2">
-        <label>
-          <input type="checkbox" class="calc-from-subtasks" />
-          Calculate score range from subtask table
-        </label>
       </td>
     </tr>
 {% endif %}
