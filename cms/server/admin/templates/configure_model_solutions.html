@@ -227,7 +227,15 @@
               <input type="number" step="0.01" name="sol_{{ sol.id }}_score_min" value="{{ sol.expected_score_min }}" class="form-control" style="width: 80px;" />
             </td>
             <td style="padding: 10px;">
-              <input type="number" step="0.01" name="sol_{{ sol.id }}_score_max" value="{{ sol.expected_score_max }}" class="form-control" style="width: 80px;" />
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <input type="number" step="0.01" name="sol_{{ sol.id }}_score_max" value="{{ sol.expected_score_max }}" class="form-control" style="width: 80px;" />
+{% if subtasks %}
+                <label class="auto-calc-label" style="margin-top: 4px;">
+                  <input type="checkbox" class="form-check-input calc-from-subtasks" data-sol-id="{{ sol.id }}" />
+                  Calculate score range from subtask table
+                </label>
+{% endif %}
+              </div>
             </td>
             <td style="padding: 10px; color: {% if sol.needs_config %}#856404{% else %}#28a745{% endif %}; font-weight: 500;">
               {% if sol.needs_config %}Needs Config{% else %}Configured{% endif %}
@@ -265,12 +273,6 @@
             </div>
           </div>
 {% endfor %}
-        </div>
-        <div class="solution-actions">
-          <label class="auto-calc-label">
-            <input type="checkbox" class="form-check-input calc-from-subtasks" data-sol-id="{{ sol.id }}" />
-            Auto-calc
-          </label>
         </div>
       </div>
 {% endfor %}
