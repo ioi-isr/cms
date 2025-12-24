@@ -401,6 +401,19 @@ class AddAttachmentHandler(BaseHandler):
             return
 
         attachments = non_empty_attachments
+
+        # Check for conflicts with existing attachments before storing files
+        filenames_in_batch = [a["filename"] for a in attachments]
+        existing_filenames = set(task.attachments.keys())
+        conflicts = [f for f in filenames_in_batch if f in existing_filenames]
+        if conflicts:
+            self.service.add_notification(
+                make_datetime(),
+                "Attachment filename conflict",
+                "The following files already exist: %s" % ", ".join(conflicts))
+            self.redirect(fallback_page)
+            return
+
         task_name = task.name
         self.sql_session.close()
 
@@ -422,18 +435,6 @@ class AddAttachmentHandler(BaseHandler):
 
         self.sql_session = Session()
         task = self.safe_get_item(Task, task_id)
-
-        # Check for conflicts with existing attachments
-        filenames_in_batch = [filename for filename, _ in stored_attachments]
-        existing_filenames = set(task.attachments.keys())
-        conflicts = [f for f in filenames_in_batch if f in existing_filenames]
-        if conflicts:
-            self.service.add_notification(
-                make_datetime(),
-                "Attachment filename conflict",
-                "The following files already exist: %s" % ", ".join(conflicts))
-            self.redirect(fallback_page)
-            return
 
         for filename, digest in stored_attachments:
             attachment = Attachment(filename, digest, task=task)

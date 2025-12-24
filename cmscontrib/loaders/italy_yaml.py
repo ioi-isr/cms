@@ -860,10 +860,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     error_msg = "exponent must be a non-negative integer, got: %d" % exponent
                     logger.error(error_msg)
                     raise LoaderValidationError(error_msg)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
                 error_msg = "exponent must be an integer, got: %s" % exponent
                 logger.error(error_msg)
-                raise LoaderValidationError(error_msg) from None
+                raise LoaderValidationError(error_msg) from e
             
             if evaluation_param == "comparator":
                 logger.warning(
@@ -1268,6 +1268,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                             Attachment("input_%s.txt" % test_codename, input_digest))
         elif source_type in ('zip', 'folder'):
             testcases_dir = None
+            testcases_temp_dir = None
             
             if source_type == 'zip':
                 testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
