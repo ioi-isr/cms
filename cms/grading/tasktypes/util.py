@@ -425,14 +425,14 @@ def compile_manager_bytes(
             return False, None, stats
         
         compiled_bytes = sandbox.get_file_to_string(output_basename, maxlen=None)
-        return True, compiled_bytes, stats
-        
     except Exception as error:
         msg = f"Error compiling {source_filename}: {error}"
         logger.error(msg, exc_info=True)
         if notify:
             notify("Manager compilation error", msg)
         return False, None, None
+    else:
+        return True, compiled_bytes, stats
     finally:
         if sandbox:
             sandbox.cleanup(delete=True)

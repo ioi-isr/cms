@@ -6,7 +6,7 @@
 </div>
 <form enctype="multipart/form-data" action="{{ url("task", task.id, "attachments", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  <input type="file" name="attachment" multiple/><br/>
+  <input type="file" name="attachment" multiple required/><br/>
   <input type="submit" value="Upload">
   <input type="Reset" >
 </form>

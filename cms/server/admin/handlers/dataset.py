@@ -378,7 +378,28 @@ class AddManagerHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
+        # Check if any files were uploaded
+        if "manager" not in self.request.files:
+            self.service.add_notification(
+                make_datetime(),
+                "No file selected",
+                "Please select at least one file to upload.")
+            self.redirect(fallback_page)
+            return
+
         managers = self.request.files["manager"]
+
+        # Filter out empty files
+        non_empty_managers = [m for m in managers if len(m["body"]) > 0]
+        if not non_empty_managers:
+            self.service.add_notification(
+                make_datetime(),
+                "Empty file(s)",
+                "The selected file(s) are empty. Please select non-empty files.")
+            self.redirect(fallback_page)
+            return
+
+        managers = non_empty_managers
         task_name = task.name
 
         # Decide which auto-compiled basenames are allowed for this task type.
@@ -557,6 +578,15 @@ class AddTestcaseHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
+        # Check for empty files
+        if len(input_["body"]) == 0 or len(output["body"]) == 0:
+            self.service.add_notification(
+                make_datetime(),
+                "Empty file(s)",
+                "Input and output files must not be empty.")
+            self.redirect(fallback_page)
+            return
+
         public = self.get_argument("public", None) is not None
         task_name = task.name
         self.sql_session.close()
@@ -632,6 +662,15 @@ class AddTestcasesHandler(BaseHandler):
                 make_datetime(),
                 "Invalid data",
                 "Please choose tests archive.")
+            self.redirect(fallback_page)
+            return
+
+        # Check for empty file
+        if len(archive["body"]) == 0:
+            self.service.add_notification(
+                make_datetime(),
+                "Empty file",
+                "The selected archive is empty. Please select a non-empty zip file.")
             self.redirect(fallback_page)
             return
 

@@ -1271,69 +1271,69 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             
             if source_type == 'zip':
                 testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
-                with zipfile.ZipFile(source_path, 'r') as zip_ref:
-                    zip_ref.extractall(testcases_temp_dir)
-                
-                contents = os.listdir(testcases_temp_dir)
-                if len(contents) == 1 and os.path.isdir(os.path.join(testcases_temp_dir, contents[0])):
-                    testcases_dir = os.path.join(testcases_temp_dir, contents[0])
-                else:
-                    testcases_dir = testcases_temp_dir
-                logger.info("Extracted testcases from %s", os.path.basename(source_path))
-            else:
-                testcases_dir = source_path
-
-            input_template = load(conf, None, "input_template")
-            if input_template is None:
-                input_template = "input.*"
-            output_template = load(conf, None, "output_template")
-            if output_template is None:
-                output_template = "output.*"
-
+            
             try:
-                input_re = compile_template_regex(input_template)
-                output_re = compile_template_regex(output_template)
-                paired_testcases = pair_testcases_in_directory(
-                    testcases_dir, input_re, output_re)
-            except ValueError as e:
-                error_msg = str(e)
-                logger.error(error_msg)
-                raise LoaderValidationError(error_msg) from e
+                if source_type == 'zip':
+                    with zipfile.ZipFile(source_path, 'r') as zip_ref:
+                        zip_ref.extractall(testcases_temp_dir)
+                    
+                    contents = os.listdir(testcases_temp_dir)
+                    if len(contents) == 1 and os.path.isdir(os.path.join(testcases_temp_dir, contents[0])):
+                        testcases_dir = os.path.join(testcases_temp_dir, contents[0])
+                    else:
+                        testcases_dir = testcases_temp_dir
+                    logger.info("Extracted testcases from %s", os.path.basename(source_path))
+                else:
+                    testcases_dir = source_path
 
-            if n_input == 0 and not os.path.exists(os.path.join(self.path, "gen", "GEN")):
-                n_input = len(paired_testcases)
-                logger.info("Discovered %d testcases from templates", n_input)
+                input_template = load(conf, None, "input_template")
+                if input_template is None:
+                    input_template = "input.*"
+                output_template = load(conf, None, "output_template")
+                if output_template is None:
+                    output_template = "output.*"
 
-            if len(paired_testcases) != n_input:
-                if testcases_temp_dir:
-                    import shutil
-                    shutil.rmtree(testcases_temp_dir)
-                error_msg = ("Testcase count mismatch: found %d testcases but expected %d" %
-                             (len(paired_testcases), n_input))
-                logger.error(error_msg)
-                raise LoaderValidationError(error_msg)
+                try:
+                    input_re = compile_template_regex(input_template)
+                    output_re = compile_template_regex(output_template)
+                    paired_testcases = pair_testcases_in_directory(
+                        testcases_dir, input_re, output_re)
+                except ValueError as e:
+                    error_msg = str(e)
+                    logger.error(error_msg)
+                    raise LoaderValidationError(error_msg) from e
 
-            # Load testcases
-            for codename, (input_path, output_path) in paired_testcases.items():
-                input_digest = self.file_cacher.put_file_from_path(
-                    input_path,
-                    "Input %s for task %s" % (codename, task.name))
-                output_digest = self.file_cacher.put_file_from_path(
-                    output_path,
-                    "Output %s for task %s" % (codename, task.name))
-                args["testcases"] += [
-                    Testcase(codename, True, input_digest, output_digest)]
-                if args["task_type"] == "OutputOnly":
-                    task.attachments.set(
-                        Attachment("input_%s.txt" % codename, input_digest))
-                elif args["task_type"] == "BatchAndOutput":
-                    if output_codenames is not None and codename in output_codenames:
+                if n_input == 0 and not os.path.exists(os.path.join(self.path, "gen", "GEN")):
+                    n_input = len(paired_testcases)
+                    logger.info("Discovered %d testcases from templates", n_input)
+
+                if len(paired_testcases) != n_input:
+                    error_msg = ("Testcase count mismatch: found %d testcases but expected %d" %
+                                 (len(paired_testcases), n_input))
+                    logger.error(error_msg)
+                    raise LoaderValidationError(error_msg)
+
+                # Load testcases
+                for codename, (input_path, output_path) in paired_testcases.items():
+                    input_digest = self.file_cacher.put_file_from_path(
+                        input_path,
+                        "Input %s for task %s" % (codename, task.name))
+                    output_digest = self.file_cacher.put_file_from_path(
+                        output_path,
+                        "Output %s for task %s" % (codename, task.name))
+                    args["testcases"] += [
+                        Testcase(codename, True, input_digest, output_digest)]
+                    if args["task_type"] == "OutputOnly":
                         task.attachments.set(
                             Attachment("input_%s.txt" % codename, input_digest))
-
-            if testcases_temp_dir:
-                import shutil
-                shutil.rmtree(testcases_temp_dir)
+                    elif args["task_type"] == "BatchAndOutput":
+                        if output_codenames is not None and codename in output_codenames:
+                            task.attachments.set(
+                                Attachment("input_%s.txt" % codename, input_digest))
+            finally:
+                if testcases_temp_dir:
+                    import shutil
+                    shutil.rmtree(testcases_temp_dir, ignore_errors=True)
         else:
             # No testcase source found
             error_msg = ("No testcases found. Expected input/output folders or "

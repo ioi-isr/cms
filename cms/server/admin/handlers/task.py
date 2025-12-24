@@ -280,7 +280,26 @@ class AddStatementHandler(BaseHandler):
                 "The language code can be any string.")
             self.redirect(fallback_page)
             return
+
+        # Check if a file was uploaded
+        if "statement" not in self.request.files:
+            self.service.add_notification(
+                make_datetime(),
+                "No file selected",
+                "Please select a PDF file to upload.")
+            self.redirect(fallback_page)
+            return
+
         statement = self.request.files["statement"][0]
+
+        # Check for empty file
+        if len(statement["body"]) == 0:
+            self.service.add_notification(
+                make_datetime(),
+                "Empty file",
+                "The selected file is empty. Please select a non-empty PDF file.")
+            self.redirect(fallback_page)
+            return
         if not statement["filename"].endswith(".pdf"):
             self.service.add_notification(
                 make_datetime(),
@@ -360,7 +379,28 @@ class AddAttachmentHandler(BaseHandler):
 
         task = self.safe_get_item(Task, task_id)
 
+        # Check if any files were uploaded
+        if "attachment" not in self.request.files:
+            self.service.add_notification(
+                make_datetime(),
+                "No file selected",
+                "Please select at least one file to upload.")
+            self.redirect(fallback_page)
+            return
+
         attachments = self.request.files["attachment"]
+
+        # Filter out empty files
+        non_empty_attachments = [a for a in attachments if len(a["body"]) > 0]
+        if not non_empty_attachments:
+            self.service.add_notification(
+                make_datetime(),
+                "Empty file(s)",
+                "The selected file(s) are empty. Please select non-empty files.")
+            self.redirect(fallback_page)
+            return
+
+        attachments = non_empty_attachments
         task_name = task.name
         self.sql_session.close()
 
@@ -380,11 +420,20 @@ class AddAttachmentHandler(BaseHandler):
                 self.redirect(fallback_page)
                 return
 
-        # TODO verify that there's no other Attachment with that filename
-        # otherwise we'd trigger an IntegrityError for constraint violation
-
         self.sql_session = Session()
         task = self.safe_get_item(Task, task_id)
+
+        # Check for conflicts with existing attachments
+        filenames_in_batch = [filename for filename, _ in stored_attachments]
+        existing_filenames = set(task.attachments.keys())
+        conflicts = [f for f in filenames_in_batch if f in existing_filenames]
+        if conflicts:
+            self.service.add_notification(
+                make_datetime(),
+                "Attachment filename conflict",
+                "The following files already exist: %s" % ", ".join(conflicts))
+            self.redirect(fallback_page)
+            return
 
         for filename, digest in stored_attachments:
             attachment = Attachment(filename, digest, task=task)
