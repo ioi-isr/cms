@@ -64,10 +64,7 @@ def import_testcases_from_zipfile(
     task_name = dataset.task.name
     try:
         with zipfile.ZipFile(archive, "r") as archive_zfp:
-            try:
-                paired_tests = pair_testcases_in_zip(archive_zfp, input_re, output_re)
-            except ValueError as e:
-                raise
+            paired_tests = pair_testcases_in_zip(archive_zfp, input_re, output_re)
 
             skipped_tc = []
             overwritten_tc = []
