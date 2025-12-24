@@ -262,6 +262,7 @@ var Config = new function() {
     return {{ history_url | tojson | safe }};
   };
   self.get_submissions_url = function(user_id) {
+     // user_id ignored - URL is pre-configured for the current participation
     return {{ submissions_url | tojson | safe }};
   };
   self.get_face_url = function(user_id) {

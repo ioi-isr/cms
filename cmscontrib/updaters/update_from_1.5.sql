@@ -233,6 +233,8 @@ CREATE INDEX ix_score_history_timestamp ON public.score_history USING btree ("ti
 
 CREATE INDEX ix_score_history_submission_id ON public.score_history USING btree (submission_id);
 
+CREATE INDEX ix_score_history_participation_task ON public.score_history USING btree (participation_id, task_id);
+
 ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;

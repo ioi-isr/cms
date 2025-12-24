@@ -29,6 +29,7 @@
 import csv
 import io
 import json
+import logging
 from collections import namedtuple
 
 import tornado.web
@@ -37,8 +38,11 @@ from sqlalchemy.orm import joinedload
 
 from cms.db import Contest, Participation, ScoreHistory, \
     Submission, SubmissionResult, Task
+
 from cms.grading.scorecache import get_cached_score_entry, ensure_valid_history
 from .base import BaseHandler, require_permission
+
+logger = logging.getLogger(__name__)
 
 
 TaskStatus = namedtuple(
@@ -70,12 +74,11 @@ class RankingHandler(BaseHandler):
             .first()
         )
 
-        # Get participation IDs for the SQL aggregation query
-        participation_ids = [p.id for p in self.contest.participations]
-
         # SQL aggregation to compute t_partial for all participation/task pairs.
         # t_partial is True when there's an official submission that is not yet scored.
         # has_submissions is retrieved from the cache instead.
+        # We join with Participation and filter by contest_id instead of using
+        # an IN clause with participation IDs for better query plan efficiency.
         partial_flags_query = (
             self.sql_session.query(
                 Submission.participation_id,
@@ -94,6 +97,7 @@ class RankingHandler(BaseHandler):
                     )
                 ).label('t_partial')
             )
+            .join(Participation, Submission.participation_id == Participation.id)
             .join(Task, Submission.task_id == Task.id)
             .outerjoin(
                 SubmissionResult,
@@ -102,18 +106,17 @@ class RankingHandler(BaseHandler):
                     SubmissionResult.dataset_id == Task.active_dataset_id
                 )
             )
-            .filter(Submission.participation_id.in_(participation_ids))
+            .filter(Participation.contest_id == contest_id)
             .filter(Submission.official.is_(True))
             .group_by(Submission.participation_id, Submission.task_id)
-        ) if participation_ids else []
+        )
 
         # Build lookup dict: (participation_id, task_id) -> t_partial
         partial_by_pt = {}
-        if participation_ids:
-            for row in partial_flags_query.all():
-                partial_by_pt[(row.participation_id, row.task_id)] = (
-                    row.t_partial or False
-                )
+        for row in partial_flags_query.all():
+            partial_by_pt[(row.participation_id, row.task_id)] = (
+                row.t_partial or False
+            )
 
         statement_views_set = set()
         for p in self.contest.participations:
@@ -334,8 +337,10 @@ class ParticipationDetailHandler(BaseHandler):
                     score_type = task.active_dataset.score_type_object
                     max_score = score_type.max_score
                     extra_headers = score_type.ranking_headers
-                except (KeyError, TypeError, AttributeError):
-                    pass
+                except (KeyError, TypeError, AttributeError) as e:
+                    logger.warning(
+                        "Failed to get score type for task %s: %s", task.id, e
+                    )
             tasks_data[str(task.id)] = {
                 "key": str(task.id),
                 "name": task.title,

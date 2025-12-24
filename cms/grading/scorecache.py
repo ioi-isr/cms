@@ -23,7 +23,7 @@ up ranking page loading.
 
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -168,7 +168,7 @@ def update_score_cache(
     # Update has_submissions flag (partial is computed at render time)
     cache_entry.has_submissions = True
 
-    cache_entry.last_update = datetime.utcnow()
+    cache_entry.last_update = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # Only add history entry if score changed and history is still valid
     if cache_entry.score != old_score and cache_entry.history_valid:
@@ -441,7 +441,7 @@ def _get_or_create_cache_entry(
             history_valid=True,
             score_valid=True,
             has_submissions=False,
-            last_update=datetime.utcnow(),
+            last_update=datetime.now(timezone.utc).replace(tzinfo=None),
         )
         session.add(cache_entry)
         if lock:
@@ -523,7 +523,7 @@ def _update_cache_entry_incremental(
 
 
 def _update_cache_entry_from_submissions(
-    session: Session,
+    session: Session,  # noqa: ARG001 - kept for API consistency with other functions
     cache_entry: ParticipationTaskScore,
     participation: Participation,
     task: Task,
@@ -545,7 +545,7 @@ def _update_cache_entry_from_submissions(
         cache_entry.history_valid = True
         cache_entry.score_valid = True
         cache_entry.has_submissions = False
-        cache_entry.last_update = datetime.utcnow()
+        cache_entry.last_update = datetime.now(timezone.utc).replace(tzinfo=None)
         return
 
     cache_entry.has_submissions = True
@@ -577,6 +577,9 @@ def _update_cache_entry_from_submissions(
 
         if task.score_mode == SCORE_MODE_MAX_SUBTASK:
             subtask_scores = _parse_subtask_scores(score_details, score)
+            # Skip submissions with no subtask data (score_details=[] and score=0).
+            # This can happen for unscored or partially scored submissions.
+            # We still track max_score for fallback in _compute_final_score.
             if subtask_scores is None:
                 continue
 
@@ -596,7 +599,7 @@ def _update_cache_entry_from_submissions(
     cache_entry.last_submission_timestamp = last_submission_timestamp
     cache_entry.history_valid = True
     cache_entry.score_valid = True
-    cache_entry.last_update = datetime.utcnow()
+    cache_entry.last_update = datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _add_history_entry(

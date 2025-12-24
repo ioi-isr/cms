@@ -503,7 +503,7 @@ class TestScoreCacheAfterInvalidation(ScoreCacheMixin, unittest.TestCase):
         (e.g., due to recompilation failure) and the cache should reflect
         the next best score.
         """
-        submission1 = self.add_scored_submission(self.at(1), 50.0)
+        self.add_scored_submission(self.at(1), 50.0)
         submission2 = self.add_scored_submission(self.at(2), 75.0)
         self.session.flush()
         cache_entry1 = get_cached_score_entry(
