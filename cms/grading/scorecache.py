@@ -25,6 +25,7 @@ up ranking page loading.
 
 from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from cms.db import (
@@ -42,6 +43,7 @@ __all__ = [
     "rebuild_score_cache",
     "rebuild_score_history",
     "get_cached_score_entry",
+    "ensure_valid_history",
 ]
 
 
@@ -50,6 +52,8 @@ def _parse_subtask_scores(score_details, score: float) -> dict[str, float] | Non
 
     Returns a dict mapping subtask index (as string) to score,
     or None if score_details indicates no score (empty list with score 0).
+
+    This is similar to the subtask parsing in cms/grading/scoring.py task_score().
     """
     if score_details == [] and score == 0.0:
         return None
@@ -59,7 +63,7 @@ def _parse_subtask_scores(score_details, score: float) -> dict[str, float] | Non
             (str(subtask["idx"]), subtask["score"])
             for subtask in score_details
         )
-    except Exception:
+    except (KeyError, TypeError):
         subtask_scores = None
 
     if subtask_scores is None or len(subtask_scores) == 0:
@@ -187,15 +191,25 @@ def invalidate_score_cache(
     via get_cached_score_entry().
 
     By marking as invalid instead of deleting, we ensure that endpoints can
-    reliably detect when a rebuild is needed, avoiding the "missing rows"
-    problem where history endpoints couldn't find entries to rebuild.
+    reliably detect when a rebuild is needed.
+
+    At least one of participation_id, task_id, or contest_id must be provided.
 
     session: the database session.
     participation_id: if specified, only invalidate for this participation.
     task_id: if specified, only invalidate for this task.
     contest_id: if specified, only invalidate for this contest.
 
+    Raises:
+        ValueError: if no filter parameters are provided, or if contest_id
+            is provided but the contest does not exist.
+
     """
+    if participation_id is None and task_id is None and contest_id is None:
+        raise ValueError(
+            "At least one of participation_id, task_id, or contest_id must be provided"
+        )
+
     if participation_id is not None and task_id is not None:
         _invalidate(
             session,
@@ -223,18 +237,19 @@ def invalidate_score_cache(
     elif contest_id is not None:
         from cms.db import Contest
         contest = session.query(Contest).get(contest_id)
-        if contest is not None:
-            participation_ids = [p.id for p in contest.participations]
-            if participation_ids:
-                _invalidate(
-                    session,
-                    pt_filter=(
-                        ParticipationTaskScore.participation_id.in_(participation_ids),
-                    ),
-                    history_filter=(
-                        ScoreHistory.participation_id.in_(participation_ids),
-                    ),
-                )
+        if contest is None:
+            raise ValueError(f"Contest with id {contest_id} not found")
+        participation_ids = [p.id for p in contest.participations]
+        if participation_ids:
+            _invalidate(
+                session,
+                pt_filter=(
+                    ParticipationTaskScore.participation_id.in_(participation_ids),
+                ),
+                history_filter=(
+                    ScoreHistory.participation_id.in_(participation_ids),
+                ),
+            )
 
 
 def rebuild_score_cache(
@@ -245,7 +260,12 @@ def rebuild_score_cache(
     """Rebuild the score cache for a participation/task pair.
 
     This function recalculates the cached score from all submissions
-    and rebuilds the history.
+    and rebuilds the history. It deletes any existing cache entry and
+    history, then creates a fresh cache entry.
+
+    Uses synchronize_session="fetch" for the ParticipationTaskScore delete
+    to ensure the session is updated and _get_or_create_cache_entry won't
+    return a stale/deleted entry.
 
     session: the database session.
     participation: the participation.
@@ -257,7 +277,7 @@ def rebuild_score_cache(
     session.query(ParticipationTaskScore).filter(
         ParticipationTaskScore.participation_id == participation.id,
         ParticipationTaskScore.task_id == task.id,
-    ).delete(synchronize_session=False)
+    ).delete(synchronize_session="fetch")
 
     session.query(ScoreHistory).filter(
         ScoreHistory.participation_id == participation.id,
@@ -334,6 +354,57 @@ def get_cached_score_entry(
     return cache_entry
 
 
+def ensure_valid_history(
+    session: Session,
+    contest_id: int,
+) -> bool:
+    """Ensure all score history for a contest is valid.
+
+    This function finds all cache entries with invalid scores or history
+    for the given contest and rebuilds them. This should be called before
+    querying score history to ensure the data is up-to-date.
+
+    session: the database session.
+    contest_id: the contest ID to check.
+
+    returns: True if any entries were rebuilt, False otherwise.
+
+    """
+    from sqlalchemy.orm import joinedload
+    from cms.db import Participation
+
+    # First rebuild any entries with invalid scores
+    invalid_score_entries = (
+        session.query(ParticipationTaskScore)
+        .join(Participation)
+        .filter(Participation.contest_id == contest_id)
+        .filter(ParticipationTaskScore.score_valid.is_(False))
+        .options(joinedload(ParticipationTaskScore.participation))
+        .options(joinedload(ParticipationTaskScore.task))
+        .all()
+    )
+
+    for entry in invalid_score_entries:
+        rebuild_score_cache(session, entry.participation, entry.task)
+
+    # Then rebuild any entries with invalid history (but valid scores)
+    invalid_history_entries = (
+        session.query(ParticipationTaskScore)
+        .join(Participation)
+        .filter(Participation.contest_id == contest_id)
+        .filter(ParticipationTaskScore.score_valid.is_(True))
+        .filter(ParticipationTaskScore.history_valid.is_(False))
+        .options(joinedload(ParticipationTaskScore.participation))
+        .options(joinedload(ParticipationTaskScore.task))
+        .all()
+    )
+
+    for entry in invalid_history_entries:
+        rebuild_score_history(session, entry.participation, entry.task)
+
+    return bool(invalid_score_entries or invalid_history_entries)
+
+
 def _get_or_create_cache_entry(
     session: Session,
     participation: Participation,
@@ -344,6 +415,10 @@ def _get_or_create_cache_entry(
 
     If lock=True, uses SELECT ... FOR UPDATE to serialize concurrent
     updates to the same participation/task pair.
+
+    Handles race conditions where two concurrent requests both try to
+    create a new entry - if an IntegrityError occurs on flush, we
+    rollback and re-query to get the entry created by the other request.
     """
     query = session.query(ParticipationTaskScore).filter(
         ParticipationTaskScore.participation_id == participation.id,
@@ -370,7 +445,16 @@ def _get_or_create_cache_entry(
         )
         session.add(cache_entry)
         if lock:
-            session.flush()
+            try:
+                session.flush()
+            except IntegrityError:
+                # Another request created the entry concurrently
+                session.rollback()
+                query = session.query(ParticipationTaskScore).filter(
+                    ParticipationTaskScore.participation_id == participation.id,
+                    ParticipationTaskScore.task_id == task.id,
+                ).with_for_update()
+                cache_entry = query.first()
 
     return cache_entry
 

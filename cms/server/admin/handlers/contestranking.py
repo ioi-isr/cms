@@ -35,9 +35,9 @@ import tornado.web
 from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import joinedload
 
-from cms.db import Contest, Participation, ParticipationTaskScore, ScoreHistory, \
+from cms.db import Contest, Participation, ScoreHistory, \
     Submission, SubmissionResult, Task
-from cms.grading.scorecache import get_cached_score_entry, rebuild_score_cache, rebuild_score_history
+from cms.grading.scorecache import get_cached_score_entry, ensure_valid_history
 from .base import BaseHandler, require_permission
 
 
@@ -245,42 +245,13 @@ class ScoreHistoryHandler(BaseHandler):
     """
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
-        contest = self.safe_get_item(Contest, contest_id)
+        # Validate contest exists
+        self.safe_get_item(Contest, contest_id)
 
         include_hidden = self.get_argument("include_hidden", "0") == "1"
 
-        invalid_score_entries = (
-            self.sql_session.query(ParticipationTaskScore)
-            .join(Participation)
-            .filter(Participation.contest_id == contest_id)
-            .filter(ParticipationTaskScore.score_valid.is_(False))
-            .options(joinedload(ParticipationTaskScore.participation))
-            .options(joinedload(ParticipationTaskScore.task))
-            .all()
-        )
-
-        for entry in invalid_score_entries:
-            rebuild_score_cache(
-                self.sql_session, entry.participation, entry.task
-            )
-
-        invalid_history_entries = (
-            self.sql_session.query(ParticipationTaskScore)
-            .join(Participation)
-            .filter(Participation.contest_id == contest_id)
-            .filter(ParticipationTaskScore.score_valid.is_(True))
-            .filter(ParticipationTaskScore.history_valid.is_(False))
-            .options(joinedload(ParticipationTaskScore.participation))
-            .options(joinedload(ParticipationTaskScore.task))
-            .all()
-        )
-
-        for entry in invalid_history_entries:
-            rebuild_score_history(
-                self.sql_session, entry.participation, entry.task
-            )
-
-        if invalid_score_entries or invalid_history_entries:
+        # Ensure all score history for the contest is valid before querying
+        if ensure_valid_history(self.sql_session, int(contest_id)):
             self.sql_session.commit()
 
         query = (
@@ -363,7 +334,7 @@ class ParticipationDetailHandler(BaseHandler):
                     score_type = task.active_dataset.score_type_object
                     max_score = score_type.max_score
                     extra_headers = score_type.ranking_headers
-                except Exception:
+                except (KeyError, TypeError, AttributeError):
                     pass
             tasks_data[str(task.id)] = {
                 "key": str(task.id),
