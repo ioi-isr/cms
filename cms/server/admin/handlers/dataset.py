@@ -566,15 +566,6 @@ class AddTestcaseHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        # Check for empty files
-        if len(input_["body"]) == 0 or len(output["body"]) == 0:
-            self.service.add_notification(
-                make_datetime(),
-                "Empty file(s)",
-                "Input and output files must not be empty.")
-            self.redirect(fallback_page)
-            return
-
         public = self.get_argument("public", None) is not None
         task_name = task.name
         self.sql_session.close()
