@@ -388,18 +388,6 @@ class AddManagerHandler(BaseHandler):
             return
 
         managers = self.request.files["manager"]
-
-        # Filter out empty files
-        non_empty_managers = [m for m in managers if len(m["body"]) > 0]
-        if not non_empty_managers:
-            self.service.add_notification(
-                make_datetime(),
-                "Empty file(s)",
-                "The selected file(s) are empty. Please select non-empty files.")
-            self.redirect(fallback_page)
-            return
-
-        managers = non_empty_managers
         task_name = task.name
 
         # Decide which auto-compiled basenames are allowed for this task type.
