@@ -817,9 +817,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             if explicit_compilation in ("alone", "grader", "stub"):
                 compilation_param = explicit_compilation
             else:
-                logger.warning("Invalid compilation value '%s', using file-based detection",
-                               explicit_compilation)
-                compilation_param = "grader" if graders else "alone"
+                error_msg = ("Invalid compilation value '%s' (expected one of: "
+                             "alone, grader, stub)" % explicit_compilation)
+                logger.error(error_msg)
+                raise LoaderValidationError(error_msg)
         else:
             compilation_param = "grader" if graders else "alone"
 
@@ -844,9 +845,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             if explicit_output_eval in ("diff", "comparator", "realprecision"):
                 evaluation_param = explicit_output_eval
             else:
-                logger.warning("Invalid output_eval value '%s', using file-based detection",
-                               explicit_output_eval)
-                evaluation_param = "comparator" if checker_found else "diff"
+                error_msg = ("Invalid output_eval value '%s' (expected one of: "
+                             "diff, comparator, realprecision)" % explicit_output_eval)
+                logger.error(error_msg)
+                raise LoaderValidationError(error_msg)
         else:
             evaluation_param = "comparator" if checker_found else "diff"
         
@@ -1100,9 +1102,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 if explicit_compilation in ("alone", "stub"):
                     comm_compilation = explicit_compilation
                 else:
-                    logger.warning("Invalid compilation value '%s' for Communication task, "
-                                   "using file-based detection", explicit_compilation)
-                    comm_compilation = "stub" if stubs_found else "alone"
+                    error_msg = ("Invalid compilation value '%s' for Communication task "
+                                 "(expected one of: alone, stub)" % explicit_compilation)
+                    logger.error(error_msg)
+                    raise LoaderValidationError(error_msg)
             else:
                 comm_compilation = "stub" if stubs_found else "alone"
             
@@ -1232,9 +1235,12 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     # Default to Batch/BatchAndOutput
                     setup_batch()
         else:
-            # Unknown task_type - log warning and default to Batch
-            logger.warning("Unknown task_type '%s', defaulting to Batch", configured_type)
-            setup_batch()
+            # Unknown task_type - raise error
+            error_msg = ("Unknown task_type '%s' (expected one of: "
+                         "Batch, BatchAndOutput, OutputOnly, Communication, TwoSteps)"
+                         % configured_type)
+            logger.error(error_msg)
+            raise LoaderValidationError(error_msg)
 
         args["testcases"] = []
         testcases_temp_dir = None
