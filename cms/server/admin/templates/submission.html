@@ -254,6 +254,22 @@
                     {% else %}
                       N/A
                     {% endif %}
+
+                    <button onclick="cmsrpc_request(
+                                     'EvaluationService', 0,
+                                     'invalidate_submission', {
+                                       'submission_id': {{ s.id }},
+                                       'dataset_id': {{ shown_dataset.id }},
+                                       'level': 'evaluation',
+                                       'archive_sandbox': true
+                                     },
+                                     function(response) { utils.redirect_if_ok('{{ url("submission", s.id, shown_dataset.id) }}', response); }
+                    );"
+                    {% if not admin.permission_all %}
+                    disabled
+                    {% endif %}>
+                      Rerun and archive
+                    </button>
                   </td>
                 </tr>
               </table>
