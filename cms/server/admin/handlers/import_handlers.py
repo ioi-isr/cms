@@ -68,6 +68,97 @@ def _extract_uploaded_zip(uploaded_file, temp_prefix, zip_filename):
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def _validate_zip_upload(handler, file_key, fallback_page):
+    """Validate that a zip file was uploaded.
+
+    Args:
+        handler: The request handler instance.
+        file_key: The form field name for the uploaded file.
+        fallback_page: URL to redirect to on validation failure.
+
+    Returns:
+        The uploaded file dict if valid, None if validation failed
+        (redirect already issued).
+    """
+    if file_key not in handler.request.files:
+        handler.service.add_notification(
+            make_datetime(),
+            "No file uploaded",
+            "Please select a zip file to upload.")
+        handler.redirect(fallback_page)
+        return None
+
+    uploaded_file = handler.request.files[file_key][0]
+
+    if not uploaded_file["filename"].lower().endswith(".zip"):
+        handler.service.add_notification(
+            make_datetime(),
+            "Invalid file format",
+            "The uploaded file must be a .zip file.")
+        handler.redirect(fallback_page)
+        return None
+
+    return uploaded_file
+
+
+def _setup_importer_with_notifier(importer, service):
+    """Set up the notifier callback on an importer if supported.
+
+    Args:
+        importer: The importer instance (TaskImporter or ContestImporter).
+        service: The service instance for adding notifications.
+    """
+    if hasattr(importer.loader, 'set_notifier'):
+        def notify(title, text):
+            service.add_notification(make_datetime(), title, text)
+        importer.loader.set_notifier(notify)
+
+
+def _handle_import_result(handler, success, entity_type, success_redirect,
+                          fallback_page):
+    """Handle the result of an import operation.
+
+    Args:
+        handler: The request handler instance.
+        success: Whether the import succeeded.
+        entity_type: "Task" or "Contest" for notification messages.
+        success_redirect: URL to redirect to on success.
+        fallback_page: URL to redirect to on failure.
+    """
+    if success:
+        handler.service.add_notification(
+            make_datetime(),
+            f"{entity_type} imported successfully",
+            "")
+        handler.redirect(success_redirect)
+    else:
+        handler.service.add_notification(
+            make_datetime(),
+            f"{entity_type} import failed",
+            "Import failed. Please check the logs for details.")
+        handler.redirect(fallback_page)
+
+
+def _handle_import_error(handler, error, entity_type, fallback_page,
+                         log_error=False):
+    """Handle an import error by notifying and redirecting.
+
+    Args:
+        handler: The request handler instance.
+        error: The exception that occurred.
+        entity_type: "Task" or "Contest" for notification messages.
+        fallback_page: URL to redirect to on failure.
+        log_error: If True, log the error with traceback.
+    """
+    if log_error:
+        logger.error("%s import failed: %s", entity_type, error, exc_info=True)
+    handler.service.add_notification(
+        make_datetime(),
+        f"{entity_type} import failed",
+        str(error))
+    handler.redirect(fallback_page)
+
+
 class ImportTaskHandler(
         SimpleHandler("import_task.html", permission_all=True)):
     """Handler for importing a task from a zip file.
@@ -77,22 +168,8 @@ class ImportTaskHandler(
     def post(self):
         fallback_page = self.url("tasks", "import")
 
-        if "task_file" not in self.request.files:
-            self.service.add_notification(
-                make_datetime(),
-                "No file uploaded",
-                "Please select a zip file to upload.")
-            self.redirect(fallback_page)
-            return
-
-        task_file = self.request.files["task_file"][0]
-
-        if not task_file["filename"].lower().endswith(".zip"):
-            self.service.add_notification(
-                make_datetime(),
-                "Invalid file format",
-                "The uploaded file must be a .zip file.")
-            self.redirect(fallback_page)
+        task_file = _validate_zip_upload(self, "task_file", fallback_page)
+        if task_file is None:
             return
 
         update = bool(self.get_argument("update", False))
@@ -159,39 +236,19 @@ class ImportTaskHandler(
                     raise_import_errors=True
                 )
 
-                if hasattr(importer.loader, 'set_notifier'):
-                    def notify(title, text):
-                        self.service.add_notification(make_datetime(), title, text)
-                    importer.loader.set_notifier(notify)
+                _setup_importer_with_notifier(importer, self.service)
 
                 try:
                     success = importer.do_import()
-                    if success:
-                        self.service.add_notification(
-                            make_datetime(),
-                            "Task imported successfully",
-                            "")
-                        self.redirect(self.url("tasks"))
-                    else:
-                        self.service.add_notification(
-                            make_datetime(),
-                            "Task import failed",
-                            "Import failed. Please check the logs for details.")
-                        self.redirect(fallback_page)
+                    _handle_import_result(
+                        self, success, "Task",
+                        self.url("tasks"), fallback_page)
                 except (LoaderValidationError, ImportDataError) as e:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Task import failed",
-                        str(e))
-                    self.redirect(fallback_page)
+                    _handle_import_error(self, e, "Task", fallback_page)
 
         except Exception as error:
-            logger.error("Task import failed: %s", error, exc_info=True)
-            self.service.add_notification(
-                make_datetime(),
-                "Task import failed",
-                str(error))
-            self.redirect(fallback_page)
+            _handle_import_error(self, error, "Task", fallback_page,
+                                 log_error=True)
 
 
 class ImportContestHandler(
@@ -203,22 +260,8 @@ class ImportContestHandler(
     def post(self):
         fallback_page = self.url("contests", "import")
 
-        if "contest_file" not in self.request.files:
-            self.service.add_notification(
-                make_datetime(),
-                "No file uploaded",
-                "Please select a zip file to upload.")
-            self.redirect(fallback_page)
-            return
-
-        contest_file = self.request.files["contest_file"][0]
-
-        if not contest_file["filename"].lower().endswith(".zip"):
-            self.service.add_notification(
-                make_datetime(),
-                "Invalid file format",
-                "The uploaded file must be a .zip file.")
-            self.redirect(fallback_page)
+        contest_file = _validate_zip_upload(self, "contest_file", fallback_page)
+        if contest_file is None:
             return
 
         import_tasks = bool(self.get_argument("import_tasks", False))
@@ -252,37 +295,16 @@ class ImportContestHandler(
                     raise_import_errors=True
                 )
 
-                if hasattr(importer.loader, 'set_notifier'):
-                    def notify(title, text):
-                        self.service.add_notification(make_datetime(), title, text)
-                    importer.loader.set_notifier(notify)
+                _setup_importer_with_notifier(importer, self.service)
 
                 try:
                     success = importer.do_import()
-                    if success:
-                        self.service.add_notification(
-                            make_datetime(),
-                            "Contest imported successfully",
-                            "")
-                        self.redirect(self.url("contests"))
-                    else:
-                        self.service.add_notification(
-                            make_datetime(),
-                            "Contest import failed",
-                            "Import failed. Please check the logs for details.")
-                        self.redirect(fallback_page)
+                    _handle_import_result(
+                        self, success, "Contest",
+                        self.url("contests"), fallback_page)
                 except (LoaderValidationError, ImportDataError) as e:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Contest import failed",
-                        str(e))
-                    self.redirect(fallback_page)
+                    _handle_import_error(self, e, "Contest", fallback_page)
 
         except Exception as error:
-            logger.error("Contest import failed: %s", error,
-                         exc_info=True)
-            self.service.add_notification(
-                make_datetime(),
-                "Contest import failed",
-                str(error))
-            self.redirect(fallback_page)
+            _handle_import_error(self, error, "Contest", fallback_page,
+                                 log_error=True)

@@ -59,6 +59,32 @@ from .base import BaseHandler, require_permission
 logger = logging.getLogger(__name__)
 
 
+def check_compiled_file_conflict(filename, allowed_basenames, existing_managers):
+    """Check if uploading a compiled file conflicts with existing source.
+
+    When a compiled file (no extension) is uploaded for a basename that has
+    an existing source file, this would conflict with auto-compilation.
+
+    Args:
+        filename: The filename being uploaded.
+        allowed_basenames: Set of basenames that are auto-compiled.
+        existing_managers: Dict or set of existing manager filenames.
+
+    Returns:
+        The conflicting source filename if a conflict exists, None otherwise.
+    """
+    base_noext = os.path.splitext(os.path.basename(filename))[0]
+    has_extension = "." in os.path.basename(filename)
+
+    if base_noext in allowed_basenames and not has_extension:
+        for existing_filename in existing_managers:
+            existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
+            existing_has_ext = "." in os.path.basename(existing_filename)
+            if existing_base == base_noext and existing_has_ext:
+                return existing_filename
+    return None
+
+
 class DatasetSubmissionsHandler(BaseHandler):
     """Shows all submissions for this dataset, allowing the admin to
     view the results under different datasets.
@@ -400,23 +426,20 @@ class AddManagerHandler(BaseHandler):
             filename = manager["filename"]
             base_noext = os.path.splitext(os.path.basename(filename))[0]
 
-            # compiled files (no extension) when a source file already exists.
-            has_extension = "." in os.path.basename(filename)
-            if (base_noext in allowed_compile_basenames and not has_extension):
-                for existing_filename in dataset.managers.keys():
-                    existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
-                    existing_has_ext = "." in os.path.basename(existing_filename)
-                    if existing_base == base_noext and existing_has_ext:
-                        self.service.add_notification(
-                            make_datetime(),
-                            "Cannot upload compiled manager",
-                            ("A source file '%s' already exists for '%s'. "
-                             "Compiled files are auto-generated from source. "
-                             "Please upload the source file instead, or delete "
-                             "the existing source first." %
-                             (existing_filename, base_noext)))
-                        self.redirect(fallback_page)
-                        return
+            # Check if uploading a compiled file conflicts with existing source
+            conflicting_source = check_compiled_file_conflict(
+                filename, allowed_compile_basenames, dataset.managers.keys())
+            if conflicting_source is not None:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Cannot upload compiled manager",
+                    ("A source file '%s' already exists for '%s'. "
+                     "Compiled files are auto-generated from source. "
+                     "Please upload the source file instead, or delete "
+                     "the existing source first." %
+                     (conflicting_source, base_noext)))
+                self.redirect(fallback_page)
+                return
 
         self.sql_session.close()
 

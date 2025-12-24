@@ -222,6 +222,40 @@ def compile_manager_source(file_cacher, source_path, source_filename,
     return (source_digest, compiled_digest)
 
 
+def apply_checker_to_output_eval(evaluation_param, explicit_output_eval, exponent,
+                                  managers_folder, checker_source_desc, notify):
+    """Determine output_eval when a checker is discovered.
+
+    When a checker is found, this function decides whether to use 'comparator'
+    or respect an explicit output_eval setting from task.yaml.
+
+    evaluation_param: current evaluation parameter value.
+    explicit_output_eval: explicit output_eval from task.yaml, or None.
+    exponent: exponent value if realprecision was configured, or None.
+    managers_folder: name of the managers folder (for warning messages).
+    checker_source_desc: description of how checker was found (for warnings).
+    notify: callback(title, text) to report configuration conflicts.
+
+    return: the new evaluation_param value to use.
+
+    """
+    if explicit_output_eval is not None:
+        if explicit_output_eval != "comparator":
+            msg = ("Checker %s but explicit output_eval '%s' specified in "
+                   "task.yaml. Using explicit setting." %
+                   (checker_source_desc, explicit_output_eval))
+            logger.warning(msg)
+            notify("Configuration conflict", msg)
+        return evaluation_param
+
+    if exponent is not None:
+        logger.warning(
+            "Both checker (from %s/) and exponent specified. "
+            "Checker takes precedence, ignoring exponent parameter.",
+            managers_folder)
+    return "comparator"
+
+
 # Patch PyYAML to make it load all strings as unicode instead of str
 # (see http://stackoverflow.com/questions/2890146).
 def construct_yaml_str(self, node):
@@ -939,7 +973,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                             existing_manager_filenames.add(base_noext)
 
                             if base_noext == "checker":
-                                evaluation_param = "comparator"
+                                evaluation_param = apply_checker_to_output_eval(
+                                    evaluation_param, explicit_output_eval, exponent,
+                                    managers_folder,
+                                    "compiled from %s/" % managers_folder,
+                                    self._notify)
                     else:
                         logger.warning(
                             "Failed to compile %s from managers folder, skipping",
@@ -957,6 +995,14 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                             "Manager %s for task %s" % (filename, task.name))
                         args["managers"] += [Manager(filename, digest)]
                         existing_manager_filenames.add(filename)
+
+                        # Handle precompiled checker (no extension)
+                        if filename == "checker":
+                            evaluation_param = apply_checker_to_output_eval(
+                                evaluation_param, explicit_output_eval, exponent,
+                                managers_folder,
+                                "precompiled in %s/" % managers_folder,
+                                self._notify)
 
         # Override score_type if explicitly specified
         if "score_type" in conf and "score_type_parameters" in conf and "n_input" in conf:

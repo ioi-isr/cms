@@ -27,7 +27,9 @@ def safe_extract_zip(zip_ref, extract_dir):
     """Safely extract a zip file, preventing zip slip attacks.
 
     Validates that all extracted paths stay within the target directory.
-    Raises ValueError if a malicious path is detected.
+    Also rejects symbolic links within the archive to prevent symlink-based
+    attacks that could point outside the extraction directory.
+    Raises ValueError if a malicious path or symlink is detected.
 
     zip_ref: an open zipfile.ZipFile object
     extract_dir: the directory to extract files into
@@ -35,7 +37,15 @@ def safe_extract_zip(zip_ref, extract_dir):
     """
     extract_dir_real = os.path.realpath(extract_dir)
 
-    for member in zip_ref.namelist():
+    for member_info in zip_ref.infolist():
+        member = member_info.filename
+
+        # Reject symbolic links (external_attr high bits indicate Unix mode)
+        # Unix symlinks have mode 0o120000 (S_IFLNK)
+        unix_mode = (member_info.external_attr >> 16) & 0o170000
+        if unix_mode == 0o120000:
+            raise ValueError(f"Symbolic link not allowed in zip archive: {member}")
+
         # Normalize the member path (handle both / and \ separators)
         member_path = os.path.normpath(member)
 
