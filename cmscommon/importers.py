@@ -67,7 +67,7 @@ def import_testcases_from_zipfile(
             try:
                 paired_tests = pair_testcases_in_zip(archive_zfp, input_re, output_re)
             except ValueError as e:
-                raise Exception(str(e)) from e
+                raise
 
             skipped_tc = []
             overwritten_tc = []
