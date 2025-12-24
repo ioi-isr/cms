@@ -54,6 +54,7 @@ from cmscommon.testcases import (
     compile_template_regex,
     pair_testcases_in_directory,
 )
+from cmscommon.zip import safe_extract_zip
 from cmscontrib import touch
 from .base_loader import ContestLoader, TaskLoader, UserLoader, TeamLoader, \
     LANGUAGE_MAP, LoaderValidationError
@@ -1267,16 +1268,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                         task.attachments.set(
                             Attachment("input_%s.txt" % test_codename, input_digest))
         elif source_type in ('zip', 'folder'):
-            testcases_dir = None
             testcases_temp_dir = None
-            
-            if source_type == 'zip':
-                testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
             
             try:
                 if source_type == 'zip':
+                    testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
                     with zipfile.ZipFile(source_path, 'r') as zip_ref:
-                        zip_ref.extractall(testcases_temp_dir)
+                        safe_extract_zip(zip_ref, testcases_temp_dir)
                     
                     contents = os.listdir(testcases_temp_dir)
                     if len(contents) == 1 and os.path.isdir(os.path.join(testcases_temp_dir, contents[0])):

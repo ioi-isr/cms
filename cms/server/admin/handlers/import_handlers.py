@@ -28,6 +28,7 @@ import zipfile
 from contextlib import contextmanager
 
 from cmscommon.datetime import make_datetime
+from cmscommon.zip import safe_extract_zip
 from cmscontrib.ImportTask import TaskImporter
 from cmscontrib.ImportContest import ContestImporter
 from cmscontrib.importing import ImportDataError
@@ -38,36 +39,6 @@ from .base import BaseHandler, SimpleHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
-
-
-def _safe_extract_zip(zip_ref, extract_dir):
-    """Safely extract a zip file, preventing zip slip attacks.
-    
-    Validates that all extracted paths stay within the target directory.
-    Raises ValueError if a malicious path is detected.
-    """
-    extract_dir_real = os.path.realpath(extract_dir)
-    
-    for member in zip_ref.namelist():
-        # Normalize the member path (handle both / and \ separators)
-        member_path = os.path.normpath(member)
-        
-        # Reject absolute paths
-        if os.path.isabs(member_path):
-            raise ValueError(f"Unsafe absolute path in zip archive: {member}")
-        
-        # Reject paths that try to escape (e.g., ../../../etc/passwd)
-        if member_path.startswith('..') or member_path.startswith(os.sep + '..'):
-            raise ValueError(f"Unsafe path in zip archive: {member}")
-        
-        # Compute the final extraction path and verify it's within extract_dir
-        target_path = os.path.realpath(os.path.join(extract_dir, member_path))
-        if not target_path.startswith(extract_dir_real + os.sep) and \
-                target_path != extract_dir_real:
-            raise ValueError(f"Unsafe path in zip archive: {member}")
-    
-    # All paths validated, now extract
-    zip_ref.extractall(extract_dir)
 
 
 @contextmanager
@@ -83,7 +54,7 @@ def _extract_uploaded_zip(uploaded_file, temp_prefix, zip_filename):
         os.makedirs(extract_dir)
 
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            _safe_extract_zip(zip_ref, extract_dir)
+            safe_extract_zip(zip_ref, extract_dir)
 
         contents = os.listdir(extract_dir)
         if len(contents) == 1 and \
