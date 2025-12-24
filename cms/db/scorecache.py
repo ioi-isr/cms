@@ -27,7 +27,7 @@ from datetime import datetime
 
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
+from sqlalchemy.schema import Column, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.types import Integer, Float, Boolean, DateTime
 
 from . import Base, Participation, Task, Submission
@@ -119,6 +119,9 @@ class ScoreHistory(Base):
 
     """
     __tablename__ = 'score_history'
+    __table_args__ = (
+        Index('ix_score_history_participation_task', 'participation_id', 'task_id'),
+    )
 
     id: int = Column(
         Integer,
