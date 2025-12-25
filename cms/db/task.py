@@ -48,6 +48,7 @@ if typing.TYPE_CHECKING:
     from cms.grading.scoretypes import ScoreType
     from cms.grading.tasktypes import TaskType
     from . import Submission, UserTest
+    from .modelsolution import ModelSolutionMeta
 
 
 class Task(Base):
@@ -286,7 +287,7 @@ class Task(Base):
         passive_deletes=True,
         back_populates="task")
 
-    def get_allowed_languages(self) -> list[str] | None:
+    def get_allowed_languages(self) -> list[str]:
         """Get the list of allowed languages for this task.
 
         If the task has specific allowed languages configured, return those.
