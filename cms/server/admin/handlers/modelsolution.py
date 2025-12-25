@@ -142,7 +142,7 @@ class AddModelSolutionHandler(BaseHandler):
             if language_name == "":
                 language_name = None
             try:
-                received_files, files, language = _extract_and_match_files(
+                _received_files, files, language = _extract_and_match_files(
                     self.request.files, task, language_name=language_name)
             except UnacceptableSubmission as err:
                 raise ValueError(err.formatted_text)
@@ -161,7 +161,7 @@ class AddModelSolutionHandler(BaseHandler):
             participation = get_or_create_model_solution_participation(
                 self.sql_session)
 
-            submission, meta = create_model_solution(
+            submission, _meta = create_model_solution(
                 self.sql_session,
                 task=task,
                 dataset=dataset,
@@ -333,20 +333,19 @@ class DeleteModelSolutionHandler(BaseHandler):
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
         task = meta.dataset.task
         task_id = task.id
-        
+        task_name = task.name
+
         submission = meta.submission
-        
-        self.sql_session.delete(meta)
-        
+
+        # Delete submission - ModelSolutionMeta will be cascade-deleted
+        self.sql_session.delete(submission)
+
         if self.try_commit():
-            self.sql_session.delete(submission)
-            self.sql_session.commit()
-            
             self.service.add_notification(
                 make_datetime(),
                 "Model solution deleted",
-                "Model solution deleted from task %s" % task.name)
-        
+                "Model solution deleted from task %s" % task_name)
+
         self.write("./%d" % task_id)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

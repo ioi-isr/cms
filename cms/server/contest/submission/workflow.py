@@ -126,16 +126,16 @@ def _extract_and_match_files(
             raise UnacceptableSubmission(
                 N_("Submission too big!"),
                 N_("Each source file must be at most %d bytes long."),
-                config.contest_web_server.max_submission_length)
+                config.contest_web_server.max_submission_length) from e
         if e.too_many_files:
             raise UnacceptableSubmission(
                 N_("Submission too big!"),
                 N_("The submission should contain at most %d files."),
-                len(required_codenames))
+                len(required_codenames)) from e
         else:
             raise UnacceptableSubmission(
                 N_("Invalid archive format!"),
-                N_("The submitted archive could not be opened."))
+                N_("The submitted archive could not be opened.")) from e
 
     if len(received_files) == 0:
         raise UnacceptableSubmission(
@@ -153,7 +153,7 @@ def _extract_and_match_files(
         logger.info(f'Submission rejected: {err}')
         raise UnacceptableSubmission(
             N_("Invalid submission format!"),
-            N_("Please select the correct files."))
+            N_("Please select the correct files.")) from err
 
     if any(
         len(content) > config.contest_web_server.max_submission_length

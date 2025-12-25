@@ -347,18 +347,14 @@ class BaseHandler(CommonRequestHandler):
                 .count()
         # TODO: not all pages require all these data.
         # TODO: use a better sorting method.
-        params["contest_list"] = [
-            c for c in self.sql_session.query(Contest)
+        params["contest_list"] = self.sql_session.query(Contest)\
+            .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
             .order_by(Contest.name).all()
-            if not c.name.startswith("__")
-        ]
         params["task_list"] = self.sql_session.query(Task)\
             .order_by(Task.name).all()
-        params["user_list"] = [
-            u for u in self.sql_session.query(User)
+        params["user_list"] = self.sql_session.query(User)\
+            .filter(~User.username.like(r'\_\_%', escape='\\'))\
             .order_by(User.username).all()
-            if not u.username.startswith("__")
-        ]
         params["team_list"] = self.sql_session.query(Team)\
             .order_by(Team.name).all()
         params["folder_list"] = self.sql_session.query(ContestFolder)\
