@@ -341,12 +341,14 @@ class DeleteModelSolutionHandler(BaseHandler):
         task_id = task.id
         task_name = task.name
 
+        # Capture submission before deleting meta to avoid use-after-delete.
+        submission = getattr(meta, "submission", None)
+
         # Delete the meta first to avoid setting submission_id to NULL on update
         # (DB has NOT NULL on submission_id).
         self.sql_session.delete(meta)
         self.sql_session.flush()  # ensure meta row is gone before submission delete
 
-        submission = meta.submission
         if submission is not None:
             self.sql_session.delete(submission)
 
