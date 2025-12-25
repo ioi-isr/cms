@@ -361,6 +361,7 @@ var DataStore = new function() {
       success: UserDetail.submissions_callback,
       error: function() {
         console.error("Error while getting the submissions for " + UserDetail.user_id);
+        UserDetail.submission_table.html('<p style="color: red; text-align: center;">Failed to load submissions. Please refresh the page.</p>');
       }
     });
   };

@@ -193,8 +193,6 @@ ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_t
 
 ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_participation_id_task_id_key UNIQUE (participation_id, task_id);
 
-CREATE INDEX ix_participation_task_scores_participation_id ON public.participation_task_scores USING btree (participation_id);
-
 CREATE INDEX ix_participation_task_scores_task_id ON public.participation_task_scores USING btree (task_id);
 
 ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
@@ -224,8 +222,6 @@ ALTER SEQUENCE public.score_history_id_seq OWNED BY public.score_history.id;
 ALTER TABLE ONLY public.score_history ALTER COLUMN id SET DEFAULT nextval('public.score_history_id_seq'::regclass);
 
 ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_pkey PRIMARY KEY (id);
-
-CREATE INDEX ix_score_history_participation_id ON public.score_history USING btree (participation_id);
 
 CREATE INDEX ix_score_history_task_id ON public.score_history USING btree (task_id);
 

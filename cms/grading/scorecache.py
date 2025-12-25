@@ -154,28 +154,9 @@ def _parse_subtask_scores(score_details, score: float) -> dict[str, float] | Non
     return subtask_scores
 
 
-def _compute_final_score(
-    task: Task,
-    max_score: float,
-    subtask_max_scores: dict[str, float],
-    last_submission_score: float | None,
-    max_tokened_score: float,
-) -> float:
-    """Compute the final score based on task score mode.
-
-    Returns the rounded final score.
-    """
-    if task.score_mode == SCORE_MODE_MAX:
-        final_score = max_score
-    elif task.score_mode == SCORE_MODE_MAX_SUBTASK:
-        final_score = sum(subtask_max_scores.values())
-    elif task.score_mode == SCORE_MODE_MAX_TOKENED_LAST:
-        last_score = last_submission_score if last_submission_score is not None else 0.0
-        final_score = max(last_score, max_tokened_score)
-    else:
-        final_score = max_score
-
-    return round(final_score, task.score_precision)
+def _utc_now() -> datetime:
+    """Return current UTC time as a naive datetime."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _invalidate(
@@ -250,7 +231,7 @@ def update_score_cache(
     # Update has_submissions flag (partial is computed at render time)
     cache_entry.has_submissions = True
 
-    cache_entry.last_update = datetime.now(timezone.utc).replace(tzinfo=None)
+    cache_entry.last_update = _utc_now()
 
     # Only add history entry if score changed and history is still valid
     if cache_entry.score != old_score and cache_entry.history_valid:
@@ -523,7 +504,7 @@ def _get_or_create_cache_entry(
             history_valid=True,
             score_valid=True,
             has_submissions=False,
-            last_update=datetime.now(timezone.utc).replace(tzinfo=None),
+            last_update=_utc_now(),
         )
         session.add(cache_entry)
         if lock:
@@ -605,17 +586,20 @@ def _update_cache_entry_incremental(
 
 
 def _get_sorted_official_submissions(
+    session: Session,
     participation: Participation,
     task: Task,
 ) -> list[Submission]:
     """Get official submissions for a task, sorted by timestamp."""
-    submissions = [s for s in participation.submissions
-                   if s.task is task and s.official]
-    return sorted(submissions, key=lambda s: s.timestamp)
+    return session.query(Submission).filter(
+        Submission.participation_id == participation.id,
+        Submission.task_id == task.id,
+        Submission.official.is_(True)
+    ).order_by(Submission.timestamp.asc()).all()
 
 
 def _update_cache_entry_from_submissions(
-    session: Session,  # noqa: ARG001 - kept for API consistency with other functions
+    session: Session,
     cache_entry: ParticipationTaskScore,
     participation: Participation,
     task: Task,
@@ -625,7 +609,7 @@ def _update_cache_entry_from_submissions(
     if dataset is None:
         return
 
-    submissions_sorted = _get_sorted_official_submissions(participation, task)
+    submissions_sorted = _get_sorted_official_submissions(session, participation, task)
 
     if len(submissions_sorted) == 0:
         cache_entry.score = 0.0
@@ -636,7 +620,7 @@ def _update_cache_entry_from_submissions(
         cache_entry.history_valid = True
         cache_entry.score_valid = True
         cache_entry.has_submissions = False
-        cache_entry.last_update = datetime.now(timezone.utc).replace(tzinfo=None)
+        cache_entry.last_update = _utc_now()
         return
 
     accumulator = ScoreAccumulator()
@@ -666,7 +650,7 @@ def _update_cache_entry_from_submissions(
     cache_entry.history_valid = True
     cache_entry.score_valid = True
     cache_entry.has_submissions = accumulator.has_submissions
-    cache_entry.last_update = datetime.now(timezone.utc).replace(tzinfo=None)
+    cache_entry.last_update = _utc_now()
 
 
 def _add_history_entry(
@@ -697,7 +681,7 @@ def _rebuild_history(
     if dataset is None:
         return
 
-    submissions_sorted = _get_sorted_official_submissions(participation, task)
+    submissions_sorted = _get_sorted_official_submissions(session, participation, task)
 
     if len(submissions_sorted) == 0:
         return

@@ -53,8 +53,7 @@ class ParticipationTaskScore(Base):
         Integer,
         ForeignKey(Participation.id,
                    onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
+        nullable=False)
     participation: Participation = relationship(
         Participation,
         back_populates="task_scores")
@@ -131,8 +130,7 @@ class ScoreHistory(Base):
         Integer,
         ForeignKey(Participation.id,
                    onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
+        nullable=False)
     participation: Participation = relationship(
         Participation,
         back_populates="score_history")
