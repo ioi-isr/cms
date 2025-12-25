@@ -347,17 +347,23 @@ class BaseHandler(CommonRequestHandler):
                 .count()
         # TODO: not all pages require all these data.
         # TODO: use a better sorting method.
-        params["contest_list"] = self.sql_session.query(Contest).order_by(Contest.name).all()
-        params["task_list"] = self.sql_session.query(Task).order_by(Task.name).all()
-        params["user_list"] = self.sql_session.query(User).order_by(User.username).all()
-        params["team_list"] = self.sql_session.query(Team).order_by(Team.name).all()
+        params["contest_list"] = self.sql_session.query(Contest)\
+            .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
+            .order_by(Contest.name).all()
+        params["task_list"] = self.sql_session.query(Task)\
+            .order_by(Task.name).all()
+        params["user_list"] = self.sql_session.query(User)\
+            .filter(~User.username.like(r'\_\_%', escape='\\'))\
+            .order_by(User.username).all()
+        params["team_list"] = self.sql_session.query(Team)\
+            .order_by(Team.name).all()
         params["folder_list"] = self.sql_session.query(ContestFolder)\
             .options(subqueryload(ContestFolder.contests))\
             .options(subqueryload(ContestFolder.children).subqueryload(ContestFolder.contests))\
             .order_by(ContestFolder.name).all()
         params["root_contests"] = self.sql_session.query(Contest).filter(
             Contest.folder_id.is_(None)
-        ).order_by(Contest.name).all()
+        ).filter(~Contest.name.like(r'\_\_%', escape='\\')).order_by(Contest.name).all()
         return params
 
     def write_error(self, status_code, **kwargs):

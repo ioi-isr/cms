@@ -44,9 +44,11 @@ from cms.db.contest import Contest
 from cms.db.session import Session
 from cms.db import SessionGen, Task
 from cms.db.filecacher import FileCacher
-from cmscontrib.importing import ImportDataError, contest_from_db, update_task
+from cmscontrib.importing import ImportDataError, contest_from_db, update_task, \
+    import_model_solutions
 from cmscontrib.loaders import choose_loader, build_epilog
 from cmscontrib.loaders.base_loader import TaskLoader
+from cmscontrib.AddSubmission import maybe_send_notification
 
 
 logger = logging.getLogger(__name__)
@@ -91,6 +93,13 @@ class TaskImporter:
         self.contest_id = contest_id
         self.raise_import_errors = raise_import_errors
         self.loader = loader_class(os.path.abspath(path), self.file_cacher)
+        
+        # Track imported task and model solutions that need configuration
+        # (used by admin interface to redirect to configuration page)
+        self.imported_task_id: int | None = None
+        self.model_solution_meta_ids_missing_metadata: list[int] = []
+        # Track submission IDs for triggering evaluation after commit
+        self._imported_model_solution_submission_ids: list[int] = []
 
     def do_import(self):
         """Get the task from the TaskLoader and store it."""
@@ -122,6 +131,19 @@ class TaskImporter:
                 task = self._task_to_db(
                     session, contest, task, task_has_changed)
 
+                # Import model solutions if present
+                dataset = task.active_dataset
+                if dataset is not None and \
+                        hasattr(dataset, '_model_solutions_import_data') and \
+                        dataset._model_solutions_import_data:
+                    try:
+                        self._import_model_solutions_for_task(
+                            session, task, dataset,
+                            dataset._model_solutions_import_data)
+                    finally:
+                        # Clean up temporary attribute to avoid leaking it
+                        del dataset._model_solutions_import_data
+
             except ImportDataError as e:
                 if self.raise_import_errors:
                     raise
@@ -131,6 +153,19 @@ class TaskImporter:
 
             session.commit()
             task_id = task.id
+            # Store the imported task ID for admin interface redirect
+            self.imported_task_id = task_id
+
+        # Trigger evaluation for imported model solutions (after commit)
+        # This is a non-blocking attempt - if EvaluationService is not running,
+        # the model solutions will be picked up when it starts
+        for submission_id in self._imported_model_solution_submission_ids:
+            try:
+                maybe_send_notification(submission_id)
+            except Exception as e:
+                logger.warning(
+                    "Failed to notify EvaluationService about model solution "
+                    "submission %d: %s", submission_id, e)
 
         logger.info("Import finished (new task id: %s).", task_id)
         return True
@@ -174,6 +209,26 @@ class TaskImporter:
             logger.info("Task \"%s\" data has not changed.", task.name)
 
         return task
+
+    def _import_model_solutions_for_task(
+        self, session: Session, task: Task, dataset, model_solutions_data: list
+    ):
+        """Import model solutions from parsed data using the shared helper.
+
+        session: SQLAlchemy session.
+        task: Task object (already in database).
+        dataset: Dataset object (already in database).
+        model_solutions_data: list of model solution data dicts from loader.
+
+        """
+        import_model_solutions(
+            session,
+            task,
+            dataset,
+            model_solutions_data,
+            track_missing_meta_ids=self.model_solution_meta_ids_missing_metadata,
+            track_submission_ids=self._imported_model_solution_submission_ids,
+        )
 
 
 def main():

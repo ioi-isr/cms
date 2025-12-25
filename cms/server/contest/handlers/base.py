@@ -233,6 +233,11 @@ class ContestListHandler(BaseHandler):
         self.redirect(self.url("browse"))
 
 
+def _exclude_internal_contests(query):
+    """Exclude contests with names starting with '__' (internal/system contests)."""
+    return query.filter(~Contest.name.like(r'\_\_%', escape='\\'))
+
+
 class ContestFolderBrowseHandler(BaseHandler):
     """Browse contests by folders.
 
@@ -246,8 +251,10 @@ class ContestFolderBrowseHandler(BaseHandler):
         Excludes hidden folders and their descendants from the tree.
         """
         all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
-        all_contests = self.sql_session.query(Contest).order_by(Contest.name).all()
-        
+        all_contests = _exclude_internal_contests(
+            self.sql_session.query(Contest)
+        ).order_by(Contest.name).all()
+
         folder_map = {}
         for folder in all_folders:
             folder_map[folder.id] = {
@@ -314,11 +321,10 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = (
+            contests = _exclude_internal_contests(
                 self.sql_session.query(Contest)
                 .filter(Contest.folder_id.is_(None))
-                .all()
-            )
+            ).all()
         else:
             subfolders = (
                 self.sql_session.query(ContestFolder)
@@ -327,11 +333,10 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = (
+            contests = _exclude_internal_contests(
                 self.sql_session.query(Contest)
                 .filter(Contest.folder == cur_folder)
-                .all()
-            )
+            ).all()
 
         # Build url helper for folder/contest entries
         def folder_href(f: ContestFolder) -> str:
