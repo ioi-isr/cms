@@ -111,7 +111,7 @@ jobs:
 
       - name: Run shellcheck
         run: |
-          find . -name "*.sh" -type f | xargs shellcheck --severity=warning || true
+          find . -name "*.sh" -type f -exec shellcheck --severity=warning {} + || true
 
   lint-actions:
     name: GitHub Actions Linting (actionlint)
