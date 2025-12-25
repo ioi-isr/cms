@@ -1656,11 +1656,12 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         """
         try:
             validate_model_solution_name(name)
-            return True
         except ValueError as e:
             logger.warning(
                 "Skipping model solution '%s': %s", name, e)
             return False
+        else:
+            return True
 
     def _load_solution_files_from_dir(
             self, name, dir_path, submission_format, task_name):

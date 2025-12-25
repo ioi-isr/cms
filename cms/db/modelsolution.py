@@ -62,10 +62,9 @@ def validate_model_solution_name(name: str) -> None:
         raise ValueError(
             "Name cannot contain '..' (directory traversal)")
 
-    # Check for names that are just dots (current/parent directory)
-    if name in (".", ".."):
-        raise ValueError(
-            "Name cannot be '.' or '..'")
+    # Check for names that are just current directory
+    if name == ".":
+        raise ValueError("Name cannot be '.'")
 
 
 class ModelSolutionMeta(Base):
