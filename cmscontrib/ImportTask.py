@@ -142,8 +142,7 @@ class TaskImporter:
                             dataset._model_solutions_import_data)
                     finally:
                         # Clean up temporary attribute to avoid leaking it
-                        if hasattr(dataset, '_model_solutions_import_data'):
-                            del dataset._model_solutions_import_data
+                        del dataset._model_solutions_import_data
 
             except ImportDataError as e:
                 if self.raise_import_errors:
