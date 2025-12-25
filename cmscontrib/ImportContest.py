@@ -291,8 +291,7 @@ class ContestImporter:
                         track_submission_ids=self._imported_model_solution_submission_ids)
                 finally:
                     # Clean up temporary attribute to avoid leaking it
-                    if hasattr(dataset, '_model_solutions_import_data'):
-                        del dataset._model_solutions_import_data
+                    del dataset._model_solutions_import_data
 
         return task
 
