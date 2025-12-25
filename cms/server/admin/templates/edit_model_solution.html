@@ -12,7 +12,7 @@
   <table>
     <tr>
       <td>Name:</td>
-      <td><input type="text" name="name" value="{{ meta.name }}" pattern="[^/\\*?<>|:&quot;]+" title="Cannot contain: / \ * ? < > | : &quot; or .." required /></td>
+      <td><input type="text" name="name" value="{{ meta.name }}" pattern="^(?!.*\.\.)([^/\\*?<>|:&quot;])+$" title="Cannot contain: / \ * ? < > | : &quot; or .." required /></td>
       <td style="font-size: 0.9em; color: #666;">(identifier for export; changing may affect re-import matching)</td>
     </tr>
     <tr>
@@ -48,81 +48,8 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Full score button handler
-    document.querySelectorAll('.btn-full-score').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var idx = this.dataset.idx;
-            var maxScore = parseFloat(this.dataset.maxScore);
-            var form = this.closest('form');
-            var minInput = form.querySelector('input[name="subtask_' + idx + '_min"]');
-            var maxInput = form.querySelector('input[name="subtask_' + idx + '_max"]');
-            if (minInput) minInput.value = maxScore;
-            if (maxInput) maxInput.value = maxScore;
-            updateScoreRangeFromSubtasks(form);
-        });
-    });
-
-    // Zero score button handler
-    document.querySelectorAll('.btn-zero-score').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var idx = this.dataset.idx;
-            var form = this.closest('form');
-            var minInput = form.querySelector('input[name="subtask_' + idx + '_min"]');
-            var maxInput = form.querySelector('input[name="subtask_' + idx + '_max"]');
-            if (minInput) minInput.value = 0;
-            if (maxInput) maxInput.value = 0;
-            updateScoreRangeFromSubtasks(form);
-        });
-    });
-
-    // Calculate from subtasks checkbox handler
-    document.querySelectorAll('.calc-from-subtasks').forEach(function(checkbox) {
-        checkbox.addEventListener('change', function() {
-            var form = this.closest('form');
-            if (this.checked) {
-                updateScoreRangeFromSubtasks(form);
-                var minInput = form.querySelector('input[name="expected_score_min"]');
-                var maxInput = form.querySelector('input[name="expected_score_max"]');
-                if (minInput) minInput.readOnly = true;
-                if (maxInput) maxInput.readOnly = true;
-            } else {
-                var minInput = form.querySelector('input[name="expected_score_min"]');
-                var maxInput = form.querySelector('input[name="expected_score_max"]');
-                if (minInput) minInput.readOnly = false;
-                if (maxInput) maxInput.readOnly = false;
-            }
-        });
-    });
-
-    // Update score range when subtask values change
-    document.querySelectorAll('.subtask-min, .subtask-max').forEach(function(input) {
-        input.addEventListener('input', function() {
-            var form = this.closest('form');
-            var checkbox = form.querySelector('.calc-from-subtasks');
-            if (checkbox && checkbox.checked) {
-                updateScoreRangeFromSubtasks(form);
-            }
-        });
-    });
-
-    function updateScoreRangeFromSubtasks(form) {
-        var checkbox = form.querySelector('.calc-from-subtasks');
-        if (!checkbox || !checkbox.checked) return;
-
-        var minSum = 0;
-        var maxSum = 0;
-        form.querySelectorAll('.subtask-min').forEach(function(input) {
-            minSum += parseFloat(input.value) || 0;
-        });
-        form.querySelectorAll('.subtask-max').forEach(function(input) {
-            maxSum += parseFloat(input.value) || 0;
-        });
-
-        var minInput = form.querySelector('input[name="expected_score_min"]');
-        var maxInput = form.querySelector('input[name="expected_score_max"]');
-        if (minInput) minInput.value = minSum.toFixed(2);
-        if (maxInput) maxInput.value = maxSum.toFixed(2);
-    }
+    // Initialize model solution subtask handlers (from aws_utils.js)
+    CMS.AWSUtils.initModelSolutionSubtasks();
 });
 </script>
 {% endblock core %}

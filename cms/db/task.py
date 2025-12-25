@@ -299,7 +299,8 @@ class Task(Base):
         If the task has specific allowed languages configured, return those.
         Otherwise, return the contest's allowed languages.
 
-        return: list of allowed language names, or None if no contest is set
+        return: list of allowed language names (task-specific, contest-level,
+            or all languages if no contest is set)
         """
         # If task has specific language restrictions, use those
         if self.allowed_languages is not None:

@@ -363,7 +363,7 @@ class BaseHandler(CommonRequestHandler):
             .order_by(ContestFolder.name).all()
         params["root_contests"] = self.sql_session.query(Contest).filter(
             Contest.folder_id.is_(None)
-        ).order_by(Contest.name).all()
+        ).filter(~Contest.name.like(r'\_\_%', escape='\\')).order_by(Contest.name).all()
         return params
 
     def write_error(self, status_code, **kwargs):

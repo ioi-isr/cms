@@ -40,6 +40,7 @@ from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
     FEEDBACK_LEVEL_OI_RESTRICTED
 from cms.db import Contest, User, Task, Statement, Attachment, Team, Dataset, \
     Manager, Testcase
+from cms.db.modelsolution import validate_model_solution_name
 from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
     SOURCE_EXTS, filename_to_language
 from cms.grading.language import CompiledLanguage
@@ -1645,18 +1646,21 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
     def _is_valid_solution_name(self, name):
         """Check if a solution name is valid.
 
+        Uses validate_model_solution_name from cms.db.modelsolution for
+        consistency with the admin UI validation.
+
         name: the solution name to validate.
 
         return: True if valid, False otherwise (logs a warning).
 
         """
-        invalid_chars = set('/\\*?<>|:"')
-        if any(c in invalid_chars for c in name):
+        try:
+            validate_model_solution_name(name)
+            return True
+        except ValueError as e:
             logger.warning(
-                "Skipping model solution '%s': name contains invalid "
-                "characters (/ \\ * ? < > | : \")", name)
+                "Skipping model solution '%s': %s", name, e)
             return False
-        return True
 
     def _load_solution_files_from_dir(
             self, name, dir_path, submission_format, task_name):

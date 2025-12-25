@@ -1083,14 +1083,11 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                     pass  # Ok, the operation wasn't in the pool.
 
             # Get submission results for model solutions only
-            submission_results = session.query(SubmissionResult).join(
-                Submission
-            ).join(
-                ModelSolutionMeta,
-                ModelSolutionMeta.submission_id == Submission.id
-            ).filter(
-                SubmissionResult.dataset_id == dataset_id,
-                ModelSolutionMeta.dataset_id == dataset_id
+            # Use the submission IDs we already have to avoid an extra join
+            submission_ids = [s.id for s in submissions]
+            submission_results = session.query(SubmissionResult).filter(
+                SubmissionResult.submission_id.in_(submission_ids),
+                SubmissionResult.dataset_id == dataset_id
             ).all()
 
             logger.info("Model solution results to invalidate %s for: %d.",
