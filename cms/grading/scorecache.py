@@ -55,6 +55,16 @@ class ScoreAccumulator:
     This class encapsulates the common logic for tracking score-related state
     across submissions, used by both cache rebuilding and history rebuilding.
     It handles all score modes: MAX, MAX_SUBTASK, and MAX_TOKENED_LAST.
+
+    Note on SCORE_MODE_MAX_TOKENED_LAST semantics:
+    This class only processes scored submissions (unscored submissions are
+    skipped by callers). For MAX_TOKENED_LAST, task_score() in scoring.py
+    treats the chronologically last submission's score as 0.0 if it's unscored,
+    which can cause the displayed score to drop. The cache instead tracks
+    last_submission_score as the last *scored* submission's score. This means
+    the cache may show a higher score than task_score() when the newest
+    submission is unscored. This is intentional: the cache shows the "stable"
+    score while the partial indicator (*) signals that scoring is in progress.
     """
 
     max_score: float = 0.0

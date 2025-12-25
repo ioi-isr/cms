@@ -528,5 +528,303 @@ class TestScoreCacheAfterInvalidation(ScoreCacheMixin, unittest.TestCase):
         self.assertTrue(cache_entry2.has_submissions)
 
 
+class TestScorePrecisionHandling(ScoreCacheMixin, unittest.TestCase):
+    """Tests for score precision handling in cache operations."""
+
+    def setUp(self):
+        super().setUp()
+        self.task.score_mode = SCORE_MODE_MAX
+
+    def test_score_precision_rounding_on_rebuild(self):
+        """Test that scores are correctly rounded according to task precision."""
+        self.task.score_precision = 2
+        self.add_scored_submission(self.at(1), 75.666666)
+        self.session.flush()
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry.score, 75.67)
+
+    def test_score_precision_zero_decimals(self):
+        """Test score precision with zero decimal places."""
+        self.task.score_precision = 0
+        self.add_scored_submission(self.at(1), 75.666666)
+        self.session.flush()
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry.score, 76.0)
+
+    def test_incremental_update_respects_precision(self):
+        """Test that incremental updates respect score precision."""
+        self.task.score_precision = 1
+        submission = self.add_scored_submission(self.at(1), 88.8888)
+        self.session.flush()
+        update_score_cache(self.session, submission)
+        cache_entry = self.get_cache_entry()
+        self.assertEqual(cache_entry.score, 88.9)
+
+
+class TestOutOfOrderSubmissions(ScoreCacheMixin, unittest.TestCase):
+    """Tests for handling out-of-order submission arrivals."""
+
+    def setUp(self):
+        super().setUp()
+        self.task.score_mode = SCORE_MODE_MAX
+
+    def test_out_of_order_marks_history_invalid(self):
+        """Test that out-of-order submission marks history as invalid."""
+        submission1 = self.add_scored_submission(self.at(2), 60.0)
+        self.session.flush()
+        update_score_cache(self.session, submission1)
+
+        # Add earlier submission after later one
+        submission2 = self.add_scored_submission(self.at(1), 50.0)
+        self.session.flush()
+        update_score_cache(self.session, submission2)
+
+        cache_entry = self.get_cache_entry()
+        self.assertFalse(cache_entry.history_valid)
+        self.assertTrue(cache_entry.score_valid)
+
+    def test_in_order_submissions_keep_history_valid(self):
+        """Test that in-order submissions keep history valid."""
+        submission1 = self.add_scored_submission(self.at(1), 50.0)
+        self.session.flush()
+        update_score_cache(self.session, submission1)
+
+        submission2 = self.add_scored_submission(self.at(2), 60.0)
+        self.session.flush()
+        update_score_cache(self.session, submission2)
+
+        cache_entry = self.get_cache_entry()
+        self.assertTrue(cache_entry.history_valid)
+        self.assertTrue(cache_entry.score_valid)
+
+    def test_rebuild_handles_out_of_order_correctly(self):
+        """Test that rebuild correctly handles out-of-order submissions."""
+        # Add submissions out of chronological order
+        self.add_scored_submission(self.at(3), 70.0)
+        self.add_scored_submission(self.at(1), 50.0)
+        self.add_scored_submission(self.at(2), 60.0)
+        self.session.flush()
+
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry.score, 70.0)
+        self.assertEqual(cache_entry.last_submission_timestamp, self.at(3))
+
+
+class TestScoreHistoryRebuild(ScoreCacheMixin, unittest.TestCase):
+    """Tests for score history rebuild functionality."""
+
+    def setUp(self):
+        super().setUp()
+        self.task.score_mode = SCORE_MODE_MAX
+
+    def test_history_only_includes_score_changes(self):
+        """Test that history only includes entries where score changed."""
+        self.add_scored_submission(self.at(1), 50.0)
+        self.add_scored_submission(self.at(2), 30.0)  # Worse score
+        self.add_scored_submission(self.at(3), 40.0)  # Still worse
+        self.add_scored_submission(self.at(4), 75.0)  # Better score
+        self.session.flush()
+
+        rebuild_score_cache(self.session, self.participation, self.task)
+        history = self.get_history_entries()
+
+        # Should only have 2 entries: initial 50.0 and improved 75.0
+        self.assertEqual(len(history), 2)
+        self.assertEqual(history[0].score, 50.0)
+        self.assertEqual(history[1].score, 75.0)
+
+    def test_history_respects_timestamp_order(self):
+        """Test that history entries are ordered by timestamp."""
+        self.add_scored_submission(self.at(1), 30.0)
+        self.add_scored_submission(self.at(3), 70.0)
+        self.add_scored_submission(self.at(2), 50.0)
+        self.session.flush()
+
+        rebuild_score_cache(self.session, self.participation, self.task)
+        history = self.get_history_entries()
+
+        # History should be ordered by timestamp
+        self.assertEqual(history[0].timestamp, self.at(1))
+        self.assertEqual(history[1].timestamp, self.at(2))
+        self.assertEqual(history[2].timestamp, self.at(3))
+
+
+class TestMaxSubtaskEdgeCases(ScoreCacheMixin, unittest.TestCase):
+    """Tests for edge cases in SCORE_MODE_MAX_SUBTASK."""
+
+    def setUp(self):
+        super().setUp()
+        self.task.score_mode = SCORE_MODE_MAX_SUBTASK
+
+    def test_empty_score_details_with_zero_score(self):
+        """Test handling of empty score_details with zero score (compile failure)."""
+        self.add_scored_submission(self.at(1), 0.0, score_details=[])
+        self.session.flush()
+
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry.score, 0.0)
+        self.assertIsNone(cache_entry.subtask_max_scores)
+
+    def test_empty_score_details_with_nonzero_score(self):
+        """Test handling of empty score_details with non-zero score."""
+        self.add_scored_submission(self.at(1), 50.0, score_details=[])
+        self.session.flush()
+
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        # Should create a single subtask with full score
+        self.assertEqual(cache_entry.score, 50.0)
+        self.assertEqual(cache_entry.subtask_max_scores, {"1": 50.0})
+
+    def test_subtask_key_normalization(self):
+        """Test that subtask keys are normalized to strings."""
+        self.add_scored_submission(
+            self.at(1), 30.0,
+            score_details=[
+                {"idx": 1, "score": 15.0},  # Integer idx
+                {"idx": "2", "score": 15.0},  # String idx
+            ]
+        )
+        self.session.flush()
+
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        # Both keys should be strings
+        self.assertIn("1", cache_entry.subtask_max_scores)
+        self.assertIn("2", cache_entry.subtask_max_scores)
+
+    def test_incremental_update_new_subtasks(self):
+        """Test incremental update when new subtasks appear."""
+        # First submission with subtasks 1 and 2
+        submission1 = self.add_scored_submission(
+            self.at(1), 30.0,
+            score_details=[
+                {"idx": "1", "score": 15.0},
+                {"idx": "2", "score": 15.0},
+            ]
+        )
+        self.session.flush()
+        update_score_cache(self.session, submission1)
+
+        # Second submission with subtasks 2 and 3
+        submission2 = self.add_scored_submission(
+            self.at(2), 35.0,
+            score_details=[
+                {"idx": "2", "score": 20.0},
+                {"idx": "3", "score": 15.0},
+            ]
+        )
+        self.session.flush()
+        update_score_cache(self.session, submission2)
+
+        cache_entry = self.get_cache_entry()
+        self.assertEqual(cache_entry.score, 50.0)  # 15 + 20 + 15
+        self.assertEqual(cache_entry.subtask_max_scores, {
+            "1": 15.0,
+            "2": 20.0,
+            "3": 15.0,
+        })
+
+
+class TestMaxTokenedLastEdgeCases(ScoreCacheMixin, unittest.TestCase):
+    """Tests for edge cases in SCORE_MODE_MAX_TOKENED_LAST."""
+
+    def setUp(self):
+        super().setUp()
+        self.task.score_mode = SCORE_MODE_MAX_TOKENED_LAST
+
+    def test_tokened_better_than_last_uses_tokened(self):
+        """Test that tokened score is used when it's better than last."""
+        self.add_scored_submission(self.at(1), 80.0, tokened=True)
+        self.add_scored_submission(self.at(2), 60.0, tokened=False)
+        self.session.flush()
+
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry.score, 80.0)
+        self.assertEqual(cache_entry.max_tokened_score, 80.0)
+        self.assertEqual(cache_entry.last_submission_score, 60.0)
+
+    def test_last_better_than_tokened_uses_last(self):
+        """Test that last score is used when it's better than max tokened."""
+        self.add_scored_submission(self.at(1), 60.0, tokened=True)
+        self.add_scored_submission(self.at(2), 90.0, tokened=False)
+        self.session.flush()
+
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry.score, 90.0)
+        self.assertEqual(cache_entry.max_tokened_score, 60.0)
+        self.assertEqual(cache_entry.last_submission_score, 90.0)
+
+    def test_incremental_update_tokened_last(self):
+        """Test incremental update with SCORE_MODE_MAX_TOKENED_LAST."""
+        submission1 = self.add_scored_submission(self.at(1), 60.0, tokened=True)
+        self.session.flush()
+        update_score_cache(self.session, submission1)
+
+        submission2 = self.add_scored_submission(self.at(2), 80.0, tokened=False)
+        self.session.flush()
+        update_score_cache(self.session, submission2)
+
+        cache_entry = self.get_cache_entry()
+        self.assertEqual(cache_entry.score, 80.0)
+
+        submission3 = self.add_scored_submission(self.at(3), 50.0, tokened=False)
+        self.session.flush()
+        update_score_cache(self.session, submission3)
+
+        cache_entry = self.get_cache_entry()
+        self.assertEqual(cache_entry.score, 60.0)  # Falls back to tokened
+
+    def test_no_tokened_submissions(self):
+        """Test behavior when no submissions are tokened."""
+        self.add_scored_submission(self.at(1), 50.0, tokened=False)
+        self.add_scored_submission(self.at(2), 80.0, tokened=False)
+        self.add_scored_submission(self.at(3), 60.0, tokened=False)
+        self.session.flush()
+
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        # Score should be last submission score (no tokened to compare)
+        self.assertEqual(cache_entry.score, 60.0)
+        self.assertEqual(cache_entry.max_tokened_score, 0.0)
+        self.assertEqual(cache_entry.last_submission_score, 60.0)
+
+
+class TestZeroAndEdgeScores(ScoreCacheMixin, unittest.TestCase):
+    """Tests for handling zero and edge case scores."""
+
+    def setUp(self):
+        super().setUp()
+        self.task.score_mode = SCORE_MODE_MAX
+
+    def test_zero_score_handling(self):
+        """Test that zero scores are handled correctly."""
+        self.add_scored_submission(self.at(1), 0.0)
+        self.add_scored_submission(self.at(2), 25.0)
+        self.add_scored_submission(self.at(3), 0.0)
+        self.session.flush()
+
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry.score, 25.0)
+
+    def test_all_zero_scores(self):
+        """Test behavior when all scores are zero."""
+        self.add_scored_submission(self.at(1), 0.0)
+        self.add_scored_submission(self.at(2), 0.0)
+        self.session.flush()
+
+        cache_entry = rebuild_score_cache(
+            self.session, self.participation, self.task)
+        self.assertEqual(cache_entry.score, 0.0)
+        self.assertTrue(cache_entry.has_submissions)
+
+
 if __name__ == "__main__":
     unittest.main()
