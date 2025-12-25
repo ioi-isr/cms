@@ -245,38 +245,36 @@ class ImportTaskHandler(
 
                 try:
                     success = importer.do_import()
-                    _handle_import_result(
-                        self, success, "Task",
-                        self.url("tasks"), fallback_page)
-                    if success:
-                        # Check if there are model solutions that need configuration
-                        pending_ids = getattr(
-                            importer, "model_solution_meta_ids_missing_metadata", [])
-                        task_id = getattr(importer, "imported_task_id", None)
-                        
-                        if pending_ids and task_id is not None:
-                            # Redirect to configuration page for model solutions
-                            # that were imported with defaults
-                            ids_str = ",".join(str(i) for i in pending_ids)
-                            self.service.add_notification(
-                                make_datetime(),
-                                "Task imported",
-                                "Some model solutions need configuration.")
-                            self.redirect(self.url(
-                                "task", task_id, "model_solutions", "configure"
-                            ) + f"?ids={ids_str}")
-                        else:
-                            self.service.add_notification(
-                                make_datetime(),
-                                "Task imported successfully",
-                                "")
-                            self.redirect(self.url("tasks"))
-                    else:
+                    if not success:
                         self.service.add_notification(
                             make_datetime(),
                             "Task import failed",
                             "Import failed. Please check the logs for details.")
                         self.redirect(fallback_page)
+                        return
+
+                    # Check if there are model solutions that need configuration
+                    pending_ids = getattr(
+                        importer, "model_solution_meta_ids_missing_metadata", [])
+                    task_id = getattr(importer, "imported_task_id", None)
+
+                    if pending_ids and task_id is not None:
+                        # Redirect to configuration page for model solutions
+                        # that were imported with defaults
+                        ids_str = ",".join(str(i) for i in pending_ids)
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Task imported",
+                            "Some model solutions need configuration.")
+                        self.redirect(self.url(
+                            "task", task_id, "model_solutions", "configure"
+                        ) + f"?ids={ids_str}")
+                    else:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Task imported successfully",
+                            "")
+                        self.redirect(self.url("tasks"))
                 except (LoaderValidationError, ImportDataError) as e:
                     _handle_import_error(self, e, "Task", fallback_page)
 

@@ -341,10 +341,14 @@ class DeleteModelSolutionHandler(BaseHandler):
         task_id = task.id
         task_name = task.name
 
-        submission = meta.submission
+        # Delete the meta first to avoid setting submission_id to NULL on update
+        # (DB has NOT NULL on submission_id).
+        self.sql_session.delete(meta)
+        self.sql_session.flush()  # ensure meta row is gone before submission delete
 
-        # Delete submission - ModelSolutionMeta will be cascade-deleted
-        self.sql_session.delete(submission)
+        submission = meta.submission
+        if submission is not None:
+            self.sql_session.delete(submission)
 
         if self.try_commit():
             self.service.add_notification(
