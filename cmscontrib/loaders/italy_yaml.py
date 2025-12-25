@@ -1632,7 +1632,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 if filename_to_language(entry) is None:
                     continue
 
-                base, ext = os.path.splitext(entry)
+                base, _ext = os.path.splitext(entry)
                 if not self._is_valid_solution_name(base):
                     continue
 
@@ -1874,7 +1874,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         if solutions_folder is not None:
             solutions_path = os.path.join(self.path, solutions_folder)
             if os.path.isdir(solutions_path):
-                for root, dirs, filenames in os.walk(solutions_path):
+                for root, _dirs, filenames in os.walk(solutions_path):
                     for fname in filenames:
                         files.append(os.path.join(root, fname))
 
