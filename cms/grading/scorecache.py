@@ -23,6 +23,7 @@ up ranking page loading.
 
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from sqlalchemy.exc import IntegrityError
@@ -45,6 +46,77 @@ __all__ = [
     "get_cached_score_entry",
     "ensure_valid_history",
 ]
+
+
+@dataclass
+class ScoreAccumulator:
+    """Accumulates score data from submissions for computing final scores.
+
+    This class encapsulates the common logic for tracking score-related state
+    across submissions, used by both cache rebuilding and history rebuilding.
+    It handles all score modes: MAX, MAX_SUBTASK, and MAX_TOKENED_LAST.
+    """
+
+    max_score: float = 0.0
+    max_tokened_score: float = 0.0
+    last_submission_score: float | None = None
+    last_submission_timestamp: datetime | None = None
+    subtask_max_scores: dict[str, float] = field(default_factory=dict)
+    has_submissions: bool = False
+
+    def process_submission(
+        self,
+        score: float,
+        score_details: list,
+        timestamp: datetime,
+        tokened: bool,
+        score_mode: str,
+    ) -> None:
+        """Process a single scored submission and update accumulated state.
+
+        score: the submission's score (must not be None).
+        score_details: the submission's score_details.
+        timestamp: the submission's timestamp.
+        tokened: whether the submission was tokened.
+        score_mode: the task's score mode.
+        """
+        self.has_submissions = True
+        self.max_score = max(self.max_score, score)
+        self.last_submission_score = score
+        self.last_submission_timestamp = timestamp
+
+        if tokened:
+            self.max_tokened_score = max(self.max_tokened_score, score)
+
+        if score_mode == SCORE_MODE_MAX_SUBTASK:
+            subtask_scores = _parse_subtask_scores(score_details, score)
+            # Skip submissions with no subtask data (score_details=[] and score=0).
+            # This indicates a compile failure - we can't extract per-subtask scores.
+            # We still track max_score for fallback in compute_final_score.
+            if subtask_scores is not None:
+                for idx, st_score in subtask_scores.items():
+                    self.subtask_max_scores[idx] = max(
+                        self.subtask_max_scores.get(idx, 0.0), st_score
+                    )
+
+    def compute_final_score(self, task: "Task") -> float:
+        """Compute the final score based on task score mode.
+
+        task: the task (used for score_mode and score_precision).
+
+        Returns the rounded final score.
+        """
+        if task.score_mode == SCORE_MODE_MAX:
+            final_score = self.max_score
+        elif task.score_mode == SCORE_MODE_MAX_SUBTASK:
+            final_score = sum(self.subtask_max_scores.values()) if self.subtask_max_scores else 0.0
+        elif task.score_mode == SCORE_MODE_MAX_TOKENED_LAST:
+            last_score = self.last_submission_score if self.last_submission_score is not None else 0.0
+            final_score = max(last_score, self.max_tokened_score)
+        else:
+            final_score = self.max_score
+
+        return round(final_score, task.score_precision)
 
 
 def _parse_subtask_scores(score_details, score: float) -> dict[str, float] | None:
@@ -522,6 +594,16 @@ def _update_cache_entry_incremental(
         cache_entry.score = round(new_score, task.score_precision)
 
 
+def _get_sorted_official_submissions(
+    participation: Participation,
+    task: Task,
+) -> list[Submission]:
+    """Get official submissions for a task, sorted by timestamp."""
+    submissions = [s for s in participation.submissions
+                   if s.task is task and s.official]
+    return sorted(submissions, key=lambda s: s.timestamp)
+
+
 def _update_cache_entry_from_submissions(
     session: Session,  # noqa: ARG001 - kept for API consistency with other functions
     cache_entry: ParticipationTaskScore,
@@ -533,10 +615,9 @@ def _update_cache_entry_from_submissions(
     if dataset is None:
         return
 
-    submissions = [s for s in participation.submissions
-                   if s.task is task and s.official]
+    submissions_sorted = _get_sorted_official_submissions(participation, task)
 
-    if len(submissions) == 0:
+    if len(submissions_sorted) == 0:
         cache_entry.score = 0.0
         cache_entry.subtask_max_scores = None
         cache_entry.max_tokened_score = 0.0
@@ -548,14 +629,7 @@ def _update_cache_entry_from_submissions(
         cache_entry.last_update = datetime.now(timezone.utc).replace(tzinfo=None)
         return
 
-    cache_entry.has_submissions = True
-    submissions_sorted = sorted(submissions, key=lambda s: s.timestamp)
-
-    subtask_max_scores: dict[str, float] = {}
-    max_score = 0.0
-    max_tokened_score = 0.0
-    last_submission_score = None
-    last_submission_timestamp = None
+    accumulator = ScoreAccumulator()
 
     for s in submissions_sorted:
         sr = s.get_result(dataset)
@@ -563,42 +637,25 @@ def _update_cache_entry_from_submissions(
             continue
 
         score = sr.score
-        score_details = sr.score_details
-
         if score is None:
             continue
 
-        max_score = max(max_score, score)
-        last_submission_score = score
-        last_submission_timestamp = s.timestamp
+        accumulator.process_submission(
+            score=score,
+            score_details=sr.score_details,
+            timestamp=s.timestamp,
+            tokened=s.tokened(),
+            score_mode=task.score_mode,
+        )
 
-        if s.tokened():
-            max_tokened_score = max(max_tokened_score, score)
-
-        if task.score_mode == SCORE_MODE_MAX_SUBTASK:
-            subtask_scores = _parse_subtask_scores(score_details, score)
-            # Skip submissions with no subtask data (score_details=[] and score=0).
-            # This can happen for unscored or partially scored submissions.
-            # We still track max_score for fallback in _compute_final_score.
-            if subtask_scores is None:
-                continue
-
-            for idx, st_score in subtask_scores.items():
-                subtask_max_scores[idx] = max(
-                    subtask_max_scores.get(idx, 0.0), st_score
-                )
-
-    final_score = _compute_final_score(
-        task, max_score, subtask_max_scores, last_submission_score, max_tokened_score
-    )
-
-    cache_entry.score = final_score
-    cache_entry.subtask_max_scores = subtask_max_scores if subtask_max_scores else None
-    cache_entry.max_tokened_score = max_tokened_score
-    cache_entry.last_submission_score = last_submission_score
-    cache_entry.last_submission_timestamp = last_submission_timestamp
+    cache_entry.score = accumulator.compute_final_score(task)
+    cache_entry.subtask_max_scores = accumulator.subtask_max_scores if accumulator.subtask_max_scores else None
+    cache_entry.max_tokened_score = accumulator.max_tokened_score
+    cache_entry.last_submission_score = accumulator.last_submission_score
+    cache_entry.last_submission_timestamp = accumulator.last_submission_timestamp
     cache_entry.history_valid = True
     cache_entry.score_valid = True
+    cache_entry.has_submissions = accumulator.has_submissions
     cache_entry.last_update = datetime.now(timezone.utc).replace(tzinfo=None)
 
 
@@ -630,18 +687,12 @@ def _rebuild_history(
     if dataset is None:
         return
 
-    submissions = [s for s in participation.submissions
-                   if s.task is task and s.official]
+    submissions_sorted = _get_sorted_official_submissions(participation, task)
 
-    if len(submissions) == 0:
+    if len(submissions_sorted) == 0:
         return
 
-    submissions_sorted = sorted(submissions, key=lambda s: s.timestamp)
-
-    subtask_max_scores: dict[str, float] = {}
-    max_score = 0.0
-    max_tokened_score = 0.0
-    last_submission_score = None
+    accumulator = ScoreAccumulator()
     current_score = 0.0
 
     for s in submissions_sorted:
@@ -650,30 +701,18 @@ def _rebuild_history(
             continue
 
         score = sr.score
-        score_details = sr.score_details
-
         if score is None:
             continue
 
-        max_score = max(max_score, score)
-        last_submission_score = score
-
-        if s.tokened():
-            max_tokened_score = max(max_tokened_score, score)
-
-        if task.score_mode == SCORE_MODE_MAX_SUBTASK:
-            subtask_scores = _parse_subtask_scores(score_details, score)
-            if subtask_scores is None:
-                continue
-
-            for idx, st_score in subtask_scores.items():
-                subtask_max_scores[idx] = max(
-                    subtask_max_scores.get(idx, 0.0), st_score
-                )
-
-        new_score = _compute_final_score(
-            task, max_score, subtask_max_scores, last_submission_score, max_tokened_score
+        accumulator.process_submission(
+            score=score,
+            score_details=sr.score_details,
+            timestamp=s.timestamp,
+            tokened=s.tokened(),
+            score_mode=task.score_mode,
         )
+
+        new_score = accumulator.compute_final_score(task)
 
         if new_score != current_score:
             _add_history_entry(session, participation, task, s, new_score)
