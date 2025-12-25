@@ -125,8 +125,8 @@ def _extract_and_match_files(
         if e.too_big:
             raise UnacceptableSubmission(
                 N_("Submission too big!"),
-                N_("Each source file must be at most %d bytes long."),
-                config.contest_web_server.max_submission_length) from e
+                N_("Submitted archive is too large; total archive must be at most %d bytes."),
+                archive_size_limit) from e
         if e.too_many_files:
             raise UnacceptableSubmission(
                 N_("Submission too big!"),

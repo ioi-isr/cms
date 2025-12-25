@@ -1095,3 +1095,99 @@ CMS.AWSUtils.prototype.do_diff = function() {
     var show_diff = this.bind_func(this, this.show_diff);
     this.ajax_request(this.url("submission_diff", old_id, new_id), null, show_diff);
 }
+
+/**
+ * Model Solution Subtask Score Utilities
+ *
+ * These functions handle the auto-calculation of expected score ranges
+ * from subtask scores in model solution forms.
+ */
+
+/**
+ * Update the expected score range inputs based on subtask score sums.
+ * Only updates if the auto-calculate checkbox is checked.
+ *
+ * @param {HTMLFormElement} form - The form containing the subtask inputs
+ */
+CMS.AWSUtils.updateScoreRangeFromSubtasks = function(form) {
+    var checkbox = form.querySelector('.calc-from-subtasks');
+    if (!checkbox || !checkbox.checked) return;
+
+    var minSum = 0;
+    var maxSum = 0;
+    form.querySelectorAll('.subtask-min').forEach(function(input) {
+        minSum += parseFloat(input.value) || 0;
+    });
+    form.querySelectorAll('.subtask-max').forEach(function(input) {
+        maxSum += parseFloat(input.value) || 0;
+    });
+
+    var minInput = form.querySelector('input[name="expected_score_min"]');
+    var maxInput = form.querySelector('input[name="expected_score_max"]');
+    if (minInput) minInput.value = minSum.toFixed(2);
+    if (maxInput) maxInput.value = maxSum.toFixed(2);
+};
+
+/**
+ * Initialize model solution subtask score handlers for a page.
+ * Sets up event listeners for full/zero score buttons, auto-calculate
+ * checkbox, and subtask input changes.
+ */
+CMS.AWSUtils.initModelSolutionSubtasks = function() {
+    // Full score button handler
+    document.querySelectorAll('.btn-full-score').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var idx = this.dataset.idx;
+            var maxScore = parseFloat(this.dataset.maxScore);
+            var form = this.closest('form');
+            var minInput = form.querySelector('input[name="subtask_' + idx + '_min"]');
+            var maxInput = form.querySelector('input[name="subtask_' + idx + '_max"]');
+            if (minInput) minInput.value = maxScore;
+            if (maxInput) maxInput.value = maxScore;
+            CMS.AWSUtils.updateScoreRangeFromSubtasks(form);
+        });
+    });
+
+    // Zero score button handler
+    document.querySelectorAll('.btn-zero-score').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var idx = this.dataset.idx;
+            var form = this.closest('form');
+            var minInput = form.querySelector('input[name="subtask_' + idx + '_min"]');
+            var maxInput = form.querySelector('input[name="subtask_' + idx + '_max"]');
+            if (minInput) minInput.value = 0;
+            if (maxInput) maxInput.value = 0;
+            CMS.AWSUtils.updateScoreRangeFromSubtasks(form);
+        });
+    });
+
+    // Calculate from subtasks checkbox handler
+    document.querySelectorAll('.calc-from-subtasks').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            var form = this.closest('form');
+            if (this.checked) {
+                CMS.AWSUtils.updateScoreRangeFromSubtasks(form);
+                var minInput = form.querySelector('input[name="expected_score_min"]');
+                var maxInput = form.querySelector('input[name="expected_score_max"]');
+                if (minInput) minInput.readOnly = true;
+                if (maxInput) maxInput.readOnly = true;
+            } else {
+                var minInput = form.querySelector('input[name="expected_score_min"]');
+                var maxInput = form.querySelector('input[name="expected_score_max"]');
+                if (minInput) minInput.readOnly = false;
+                if (maxInput) maxInput.readOnly = false;
+            }
+        });
+    });
+
+    // Update score range when subtask values change
+    document.querySelectorAll('.subtask-min, .subtask-max').forEach(function(input) {
+        input.addEventListener('input', function() {
+            var form = this.closest('form');
+            var checkbox = form.querySelector('.calc-from-subtasks');
+            if (checkbox && checkbox.checked) {
+                CMS.AWSUtils.updateScoreRangeFromSubtasks(form);
+            }
+        });
+    });
+};

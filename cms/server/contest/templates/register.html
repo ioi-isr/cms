@@ -173,7 +173,7 @@ $(document).ready(function() {
                         $("#username").focus();
                     } else if (payload.code === "invalid_username_start") {
                         $("#username-input").addClass("error");
-                        $("#username-input span.help-block").text("{% trans %}Username may not start in __.{% endtrans %}");
+                        $("#username-input span.help-block").text("{% trans %}Username may not start with __.{% endtrans %}");
                         $("#username").focus();
                     } else if (payload.code === "invalid_username_length") {
                         $("#username-input").addClass("error");

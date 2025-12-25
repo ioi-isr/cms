@@ -100,8 +100,8 @@ class AddModelSolutionHandler(BaseHandler):
             try:
                 expected_score_min = float(expected_score_min)
                 expected_score_max = float(expected_score_max)
-            except ValueError:
-                raise ValueError("Invalid score range values")
+            except ValueError as err:
+                raise ValueError("Invalid score range values") from err
 
             if expected_score_min > expected_score_max:
                 raise ValueError(
@@ -122,9 +122,9 @@ class AddModelSolutionHandler(BaseHandler):
                     try:
                         st_min = float(st_min)
                         st_max = float(st_max)
-                    except ValueError:
+                    except ValueError as err:
                         raise ValueError(
-                            f"Invalid score range for subtask {idx}")
+                            f"Invalid score range for subtask {idx}") from err
                     if st_min > st_max:
                         raise ValueError(
                             f"Min score cannot be greater than max score "
@@ -145,7 +145,7 @@ class AddModelSolutionHandler(BaseHandler):
                 _received_files, files, language = _extract_and_match_files(
                     self.request.files, task, language_name=language_name)
             except UnacceptableSubmission as err:
-                raise ValueError(err.formatted_text)
+                raise ValueError(err.formatted_text) from err
 
             timestamp = make_datetime()
             digests = {}
@@ -266,8 +266,8 @@ class EditModelSolutionHandler(BaseHandler):
             try:
                 expected_score_min = float(expected_score_min)
                 expected_score_max = float(expected_score_max)
-            except ValueError:
-                raise ValueError("Invalid score range values")
+            except ValueError as err:
+                raise ValueError("Invalid score range values") from err
 
             if expected_score_min > expected_score_max:
                 raise ValueError(
@@ -288,9 +288,9 @@ class EditModelSolutionHandler(BaseHandler):
                     try:
                         st_min = float(st_min)
                         st_max = float(st_max)
-                    except ValueError:
+                    except ValueError as err:
                         raise ValueError(
-                            f"Invalid score range for subtask {idx}")
+                            f"Invalid score range for subtask {idx}") from err
                     if st_min > st_max:
                         raise ValueError(
                             f"Min score cannot be greater than max score "
