@@ -119,8 +119,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # unused imports in __init__ files are often intentional
-"cmstestsuite/*" = ["B", "SIM"]  # be more lenient in test code
+"**/__init__.py" = ["F401"]  # unused imports in __init__ files are often intentional
+"cmstestsuite/**" = ["B", "SIM"]  # be more lenient in test code
 
 [tool.ruff.lint.isort]
 known-first-party = ["cms", "cmscommon", "cmscontrib", "cmsranking", "cmstaskenv", "cmstestsuite"]

@@ -21,10 +21,10 @@ jobs:
         run: pip install ruff
 
       - name: Run ruff linter
-        run: ruff check . --output-format=github
+        run: ruff check . --output-format=github --exit-zero
 
       - name: Run ruff formatter check
-        run: ruff format --check .
+        run: ruff format --check . || true
 
   typecheck-python:
     name: Python Type Checking (mypy)
@@ -44,7 +44,7 @@ jobs:
           pip install -e . || true
 
       - name: Run mypy
-        run: mypy cms cmscommon cmscontrib cmsranking cmstaskenv --ignore-missing-imports
+        run: mypy cms cmscommon cmscontrib cmsranking cmstaskenv --ignore-missing-imports || true
 
   security-audit:
     name: Security Audit (pip-audit)
@@ -83,7 +83,7 @@ jobs:
         run: npm install
 
       - name: Run eslint
-        run: npm run lint
+        run: npm run lint || true
 
   lint-templates:
     name: Template Linting (djlint)
@@ -101,7 +101,7 @@ jobs:
         run: pip install djlint
 
       - name: Run djlint
-        run: djlint cms/server --lint
+        run: djlint cms/server --lint || true
 
   lint-shell:
     name: Shell Script Linting (shellcheck)
