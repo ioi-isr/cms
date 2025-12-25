@@ -21,6 +21,8 @@
 
 import logging
 
+import tornado.web
+
 from cms.db import Dataset, Submission, File, ModelSolutionMeta, \
     get_or_create_model_solution_participation, create_model_solution, \
     validate_model_solution_name
@@ -58,7 +60,8 @@ def get_subtask_info(dataset):
                 "max_score": max_score
             })
         return subtasks
-    except Exception:
+    except (KeyError, IndexError, TypeError, AttributeError) as e:
+        logger.debug("Could not extract subtask info: %s", e)
         return None
 
 
@@ -208,7 +211,10 @@ class ModelSolutionHandler(BaseHandler):
         if dataset_id is None:
             dataset_id = meta.dataset_id
         else:
-            dataset_id = int(dataset_id)
+            try:
+                dataset_id = int(dataset_id)
+            except ValueError:
+                raise tornado.web.HTTPError(400, "Invalid dataset ID")
         
         self.redirect(self.url("submission", meta.submission_id, dataset_id))
 
@@ -447,9 +453,9 @@ class ConfigureImportedModelSolutionsHandler(BaseHandler):
                 try:
                     score_min = float(score_min_str)
                     score_max = float(score_max_str)
-                except ValueError:
+                except ValueError as err:
                     raise ValueError(
-                        f"Invalid score range for solution {meta.name}")
+                        f"Invalid score range for solution {meta.name}") from err
 
                 if score_min > score_max:
                     raise ValueError(
@@ -472,10 +478,10 @@ class ConfigureImportedModelSolutionsHandler(BaseHandler):
                             try:
                                 st_min = float(st_min)
                                 st_max = float(st_max)
-                            except ValueError:
+                            except ValueError as err:
                                 raise ValueError(
                                     f"Invalid score range for subtask {idx} "
-                                    f"of solution {meta.name}")
+                                    f"of solution {meta.name}") from err
                             if st_min > st_max:
                                 raise ValueError(
                                     f"Min score cannot be greater than max "

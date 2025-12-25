@@ -133,8 +133,12 @@ CMS.AWSUtils.filter_languages = function(options, inputs, languages) {
     var enabled = {};
     var anyEnabled = false;
     for (var lang in languages) {
+        var langExts = languages[lang];
+        if (!langExts) {
+            continue;
+        }
         for (var j = 0; j < exts.length; j++) {
-            if (languages[lang][exts[j]]) {
+            if (langExts[exts[j]]) {
                 enabled[lang] = true;
                 anyEnabled = true;
                 break;
@@ -1165,15 +1169,13 @@ CMS.AWSUtils.initModelSolutionSubtasks = function() {
     document.querySelectorAll('.calc-from-subtasks').forEach(function(checkbox) {
         checkbox.addEventListener('change', function() {
             var form = this.closest('form');
+            var minInput = form.querySelector('input[name="expected_score_min"]');
+            var maxInput = form.querySelector('input[name="expected_score_max"]');
             if (this.checked) {
                 CMS.AWSUtils.updateScoreRangeFromSubtasks(form);
-                var minInput = form.querySelector('input[name="expected_score_min"]');
-                var maxInput = form.querySelector('input[name="expected_score_max"]');
                 if (minInput) minInput.readOnly = true;
                 if (maxInput) maxInput.readOnly = true;
             } else {
-                var minInput = form.querySelector('input[name="expected_score_min"]');
-                var maxInput = form.querySelector('input[name="expected_score_max"]');
                 if (minInput) minInput.readOnly = false;
                 if (maxInput) maxInput.readOnly = false;
             }
