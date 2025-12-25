@@ -136,9 +136,14 @@ class TaskImporter:
                 if dataset is not None and \
                         hasattr(dataset, '_model_solutions_import_data') and \
                         dataset._model_solutions_import_data:
-                    self._import_model_solutions_for_task(
-                        session, task, dataset,
-                        dataset._model_solutions_import_data)
+                    try:
+                        self._import_model_solutions_for_task(
+                            session, task, dataset,
+                            dataset._model_solutions_import_data)
+                    finally:
+                        # Clean up temporary attribute to avoid leaking it
+                        if hasattr(dataset, '_model_solutions_import_data'):
+                            del dataset._model_solutions_import_data
 
             except ImportDataError as e:
                 if self.raise_import_errors:

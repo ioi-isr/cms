@@ -284,10 +284,15 @@ class ContestImporter:
             if dataset is not None and \
                     hasattr(dataset, '_model_solutions_import_data') and \
                     dataset._model_solutions_import_data:
-                import_model_solutions(
-                    session, task, dataset,
-                    dataset._model_solutions_import_data,
-                    track_submission_ids=self._imported_model_solution_submission_ids)
+                try:
+                    import_model_solutions(
+                        session, task, dataset,
+                        dataset._model_solutions_import_data,
+                        track_submission_ids=self._imported_model_solution_submission_ids)
+                finally:
+                    # Clean up temporary attribute to avoid leaking it
+                    if hasattr(dataset, '_model_solutions_import_data'):
+                        del dataset._model_solutions_import_data
 
         return task
 

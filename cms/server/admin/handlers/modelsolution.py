@@ -371,7 +371,17 @@ class ConfigureImportedModelSolutionsHandler(BaseHandler):
         # Get model solution IDs from query string, or show all that need config
         ids_str = self.get_argument("ids", "")
         if ids_str:
-            meta_ids = [int(x) for x in ids_str.split(",") if x.strip()]
+            # Robustly parse comma-separated IDs, ignoring malformed values
+            meta_ids = set()
+            for token in ids_str.split(","):
+                token = token.strip()
+                if not token:
+                    continue
+                try:
+                    meta_ids.add(int(token))
+                except ValueError:
+                    # Ignore malformed tokens silently
+                    pass
             model_solutions = [
                 meta for meta in dataset.model_solution_metas
                 if meta.id in meta_ids
