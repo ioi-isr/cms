@@ -9,6 +9,7 @@
 </div>
 <p>Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.</p>
 
+{% set allowed_langs = task.get_allowed_languages() or [] %}
 {% set language_required = task.submission_format|any("endswith", ".%l") %}
 {% set allow_partial = task.submission_format|length > 1 and not language_required %}
 
@@ -30,13 +31,17 @@
       <td>Description:</td>
       <td><input type="text" name="description" required /></td>
     </tr>
+{% for filename in task.submission_format %}
+    <tr>
+      <td>{{ filename }}:</td>
+      <td><input type="file" name="{{ filename }}" class="ms-file-input" /></td>
+    </tr>
+{% endfor %}
 {% if language_required %}
-{% set allowed_langs = task.get_allowed_languages() or [] %}
     <tr>
       <td>Language:</td>
       <td>
         <select name="language">
-          <option value="" disabled selected>-- Select Language --</option>
 {% for lang in allowed_langs %}
           <option value="{{ lang }}">{{ lang }}</option>
 {% endfor %}
@@ -66,12 +71,6 @@
       </td>
     </tr>
 {% endif %}
-{% for filename in task.submission_format %}
-    <tr>
-      <td>{{ filename }}:</td>
-      <td><input type="file" name="{{ filename }}" /></td>
-    </tr>
-{% endfor %}
   </table>
   <input type="submit" value="Add Model Solution">
   <input type="reset" value="Reset">
@@ -91,6 +90,10 @@
     <tr>
       <td>Description:</td>
       <td><input type="text" name="description" required /></td>
+    </tr>
+    <tr>
+      <td>submission.zip:</td>
+      <td><input type="file" name="submission" class="ms-file-input" required /></td>
     </tr>
     <tr>
       <td>Expected Score Min:</td>
@@ -114,10 +117,6 @@
       </td>
     </tr>
 {% endif %}
-    <tr>
-      <td>submission.zip:</td>
-      <td><input type="file" name="submission" required /></td>
-    </tr>
   </table>
   <input type="submit" value="Add Model Solution">
   <input type="reset" value="Reset">
@@ -129,6 +128,31 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+{% if language_required %}
+    const TASK_LANGUAGES = {
+{% for lang in allowed_langs %}
+        "{{ lang }}": {
+{% for extension in (lang|to_language).source_extensions %}
+            "{{ extension }}": true,
+{% endfor %}
+        },
+{% endfor %}
+    };
+
+    document.querySelectorAll('form[action$="model_solutions/add"]').forEach(function(form) {
+        const select = form.querySelector('select[name="language"]');
+        if (!select) return;
+        const inputs = form.querySelectorAll('input[type="file"]');
+        const filter = function() {
+            CMS.AWSUtils.filter_languages(select.options, inputs, TASK_LANGUAGES);
+        };
+        inputs.forEach(function(input) {
+            input.addEventListener('change', filter);
+        });
+        filter();
+    });
+{% endif %}
+
     // Full score button handler
     document.querySelectorAll('.btn-full-score').forEach(function(btn) {
         btn.addEventListener('click', function() {
