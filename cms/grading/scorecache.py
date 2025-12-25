@@ -26,7 +26,7 @@ up ranking page loading.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from cms.db import (
@@ -159,6 +159,31 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _acquire_cache_lock(
+    session: Session,
+    participation_id: int,
+    task_id: int,
+) -> None:
+    """Acquire an advisory lock for a (participation, task) pair.
+
+    This uses PostgreSQL's pg_advisory_xact_lock to serialize all operations
+    on a given (participation_id, task_id) pair. The lock is transaction-scoped
+    and automatically released on commit or rollback.
+
+    This solves the race condition where SELECT ... FOR UPDATE cannot lock
+    a non-existent row, allowing two concurrent sessions to both try to
+    create a new cache entry.
+
+    session: the database session.
+    participation_id: the participation ID.
+    task_id: the task ID.
+    """
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(:p_id, :t_id)"),
+        {"p_id": participation_id, "t_id": task_id}
+    )
+
+
 def _invalidate(
     session: Session,
     pt_filter,
@@ -193,7 +218,7 @@ def update_score_cache(
     pair of the given submission using O(1) incremental updates instead
     of recomputing from all submissions.
 
-    Uses row-level locking to ensure concurrent updates are serialized.
+    Uses PostgreSQL advisory locks to serialize concurrent updates.
 
     session: the database session.
     submission: the submission that was just scored.
@@ -214,8 +239,10 @@ def update_score_cache(
     if score is None:
         return
 
-    # Lock the cache row to serialize concurrent updates
-    cache_entry = _get_or_create_cache_entry(session, participation, task, lock=True)
+    # Acquire advisory lock to serialize concurrent updates
+    _acquire_cache_lock(session, participation.id, task.id)
+
+    cache_entry = _get_or_create_cache_entry(session, participation, task)
     old_score = cache_entry.score
 
     # Incremental update based on score mode
@@ -326,6 +353,7 @@ def rebuild_score_cache(
     and rebuilds the history. It deletes any existing cache entry and
     history, then creates a fresh cache entry.
 
+    Uses PostgreSQL advisory locks to serialize concurrent operations.
     Uses synchronize_session="fetch" for the ParticipationTaskScore delete
     to ensure the session is updated and _get_or_create_cache_entry won't
     return a stale/deleted entry.
@@ -337,6 +365,9 @@ def rebuild_score_cache(
     returns: the updated cache entry.
 
     """
+    # Acquire advisory lock to serialize concurrent operations
+    _acquire_cache_lock(session, participation.id, task.id)
+
     session.query(ParticipationTaskScore).filter(
         ParticipationTaskScore.participation_id == participation.id,
         ParticipationTaskScore.task_id == task.id,
@@ -365,11 +396,16 @@ def rebuild_score_history(
     score. Use this when history_valid is False but the score itself
     is still correct (e.g., when submissions arrived out of order).
 
+    Uses PostgreSQL advisory locks to serialize concurrent operations.
+
     session: the database session.
     participation: the participation.
     task: the task.
 
     """
+    # Acquire advisory lock to serialize concurrent operations
+    _acquire_cache_lock(session, participation.id, task.id)
+
     # Delete existing history entries
     session.query(ScoreHistory).filter(
         ScoreHistory.participation_id == participation.id,
@@ -427,6 +463,9 @@ def ensure_valid_history(
     for the given contest and rebuilds them. This should be called before
     querying score history to ensure the data is up-to-date.
 
+    Entries are processed in (participation_id, task_id) order to prevent
+    deadlocks when multiple concurrent calls try to rebuild different pairs.
+
     session: the database session.
     contest_id: the contest ID to check.
 
@@ -444,7 +483,16 @@ def ensure_valid_history(
         .filter(ParticipationTaskScore.score_valid.is_(False))
         .options(joinedload(ParticipationTaskScore.participation))
         .options(joinedload(ParticipationTaskScore.task))
+        .order_by(
+            ParticipationTaskScore.participation_id,
+            ParticipationTaskScore.task_id,
+        )
         .all()
+    )
+
+    # Sort by (participation_id, task_id) to prevent deadlocks
+    invalid_score_entries.sort(
+        key=lambda e: (e.participation_id, e.task_id)
     )
 
     for entry in invalid_score_entries:
@@ -459,7 +507,16 @@ def ensure_valid_history(
         .filter(ParticipationTaskScore.history_valid.is_(False))
         .options(joinedload(ParticipationTaskScore.participation))
         .options(joinedload(ParticipationTaskScore.task))
+        .order_by(
+            ParticipationTaskScore.participation_id,
+            ParticipationTaskScore.task_id,
+        )
         .all()
+    )
+
+    # Sort by (participation_id, task_id) to prevent deadlocks
+    invalid_history_entries.sort(
+        key=lambda e: (e.participation_id, e.task_id)
     )
 
     for entry in invalid_history_entries:
@@ -472,25 +529,17 @@ def _get_or_create_cache_entry(
     session: Session,
     participation: Participation,
     task: Task,
-    lock: bool = False,
 ) -> ParticipationTaskScore:
     """Get or create a cache entry for a participation/task pair.
 
-    If lock=True, uses SELECT ... FOR UPDATE to serialize concurrent
-    updates to the same participation/task pair.
-
-    Handles race conditions where two concurrent requests both try to
-    create a new entry - if an IntegrityError occurs on flush, we
-    rollback and re-query to get the entry created by the other request.
+    This function assumes the caller has already acquired the advisory lock
+    for this (participation, task) pair via _acquire_cache_lock(). This
+    ensures no race conditions when creating new entries.
     """
-    query = session.query(ParticipationTaskScore).filter(
+    cache_entry = session.query(ParticipationTaskScore).filter(
         ParticipationTaskScore.participation_id == participation.id,
         ParticipationTaskScore.task_id == task.id,
-    )
-    if lock:
-        query = query.with_for_update()
-
-    cache_entry = query.first()
+    ).first()
 
     if cache_entry is None:
         cache_entry = ParticipationTaskScore(
@@ -507,17 +556,6 @@ def _get_or_create_cache_entry(
             last_update=_utc_now(),
         )
         session.add(cache_entry)
-        if lock:
-            try:
-                session.flush()
-            except IntegrityError:
-                # Another request created the entry concurrently
-                session.rollback()
-                query = session.query(ParticipationTaskScore).filter(
-                    ParticipationTaskScore.participation_id == participation.id,
-                    ParticipationTaskScore.task_id == task.id,
-                ).with_for_update()
-                cache_entry = query.first()
 
     return cache_entry
 
