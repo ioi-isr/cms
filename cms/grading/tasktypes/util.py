@@ -32,6 +32,7 @@ compilation and the evaluation are contained in the task type class.
 import logging
 import os
 import shutil
+from typing import Callable, Optional
 
 from cms import config
 from cms.db.filecacher import FileCacher
@@ -49,7 +50,7 @@ logger = logging.getLogger(__name__)
 EVAL_USER_OUTPUT_FILENAME = "user_output.txt"
 
 
-def create_sandbox(file_cacher: FileCacher, name: str | None = None) -> Sandbox:
+def create_sandbox(file_cacher: FileCacher, name: Optional[str] = None) -> Sandbox:
     """Create a sandbox, and return it.
 
     file_cacher: a file cacher instance.
@@ -216,14 +217,14 @@ def check_manager_present(job: Job, codename: str) -> bool:
 def eval_output(
     file_cacher: FileCacher,
     job: Job,
-    checker_codename: str | None,
+    checker_codename: Optional[str],
     use_realprecision: bool = False,
-    realprecision_exponent: int | None = None,
-    user_output_path: str | None = None,
-    user_output_digest: str | None = None,
+    realprecision_exponent: Optional[int] = None,
+    user_output_path: Optional[str] = None,
+    user_output_digest: Optional[str] = None,
     user_output_filename: str = "",
-    extra_args: list[str] | None = None
-) -> tuple[bool, float | None, list[str] | None]:
+    extra_args: Optional[list[str]] = None
+) -> tuple[bool, Optional[float], Optional[list[str]]]:
     """Evaluate ("check") a user output using a white diff or a checker.
 
     file_cacher: file cacher to use to get files.
@@ -307,7 +308,7 @@ def eval_output(
         return True, outcome, text
 
 
-def get_allowed_manager_basenames(task_type: str | None) -> set[str]:
+def get_allowed_manager_basenames(task_type: Optional[str]) -> set[str]:
     """Get the set of manager basenames that should be auto-compiled.
 
     Uses the task type class to discover CHECKER_CODENAME and MANAGER_FILENAME
@@ -319,7 +320,7 @@ def get_allowed_manager_basenames(task_type: str | None) -> set[str]:
 
     """
     from cms.grading.tasktypes import get_task_type_class
-
+    
     allowed_basenames = set()
     if task_type:
         try:
@@ -330,8 +331,108 @@ def get_allowed_manager_basenames(task_type: str | None) -> set[str]:
                 allowed_basenames.add(getattr(tt_cls, "MANAGER_FILENAME"))
         except Exception:
             pass
-
+    
     if not allowed_basenames:
         allowed_basenames = {"checker", "manager"}
-
+    
     return allowed_basenames
+
+
+def compile_manager_bytes(
+    file_cacher: FileCacher,
+    source_filename: str,
+    source_bytes: bytes,
+    output_basename: str,
+    sandbox_name: str = "compile",
+    for_evaluation: bool = True,
+    notify: Optional[Callable[[str, str], None]] = None
+) -> tuple[bool, Optional[bytes], Optional[dict]]:
+    """Compile a manager source file and return the compiled bytes.
+
+    This is a shared helper for compiling managers (checkers, graders, etc.)
+    used by both the admin interface and loaders.
+
+    file_cacher: FileCacher instance for sandbox operations.
+    source_filename: name of the source file (e.g., "checker.cpp").
+    source_bytes: content of the source file.
+    output_basename: name for the compiled binary (e.g., "checker").
+    sandbox_name: name prefix for the sandbox (default: "compile").
+    for_evaluation: whether to compile for evaluation (default: True).
+    notify: optional callback(title: str, text: str) to report errors.
+
+    return: tuple (success, compiled_bytes, stats) where:
+        - success: True if compilation succeeded, False otherwise
+        - compiled_bytes: the compiled binary bytes if successful, None otherwise
+        - stats: compilation statistics dict if available, None otherwise
+
+    """
+    from cms.grading.languagemanager import filename_to_language
+    from cms.grading.language import CompiledLanguage
+    from cms.grading.steps.compilation import compilation_step
+    
+    language = filename_to_language(source_filename)
+
+    if language is None:
+        msg = f"Could not detect language for {source_filename}"
+        logger.warning(msg)
+        if notify:
+            notify("Manager compilation skipped", msg)
+        return False, None, None
+
+    if not isinstance(language, CompiledLanguage):
+        msg = f"{source_filename} is not a compiled language"
+        logger.warning(msg)
+        if notify:
+            notify("Manager compilation skipped", msg)
+        return False, None, None
+
+    sandbox = None
+    try:
+        sandbox = create_sandbox(file_cacher, name=sandbox_name)
+        
+        safe_src = os.path.basename(source_filename)
+        sandbox.create_file_from_string(safe_src, source_bytes)
+        
+        commands = language.get_compilation_commands(
+            [safe_src], output_basename, for_evaluation=for_evaluation)
+        
+        box_success, compilation_success, _text, stats = \
+            compilation_step(sandbox, commands)
+        
+        if not box_success:
+            msg = f"Sandbox error during compilation of {source_filename}"
+            logger.error(msg)
+            if notify:
+                notify("Manager compilation failed", 
+                       f"{msg}. See logs for details.")
+            return False, None, stats
+        
+        if not compilation_success:
+            stdout = stats.get("stdout", "") if stats else ""
+            stderr = stats.get("stderr", "") if stats else ""
+            
+            error_details = f"Compilation failed for {source_filename}.\n"
+            if commands:
+                error_details += f"Command: {commands}\n"
+            if stdout:
+                error_details += f"Stdout:\n{stdout}\n"
+            if stderr:
+                error_details += f"Stderr:\n{stderr}"
+            
+            logger.error(error_details)
+            if notify:
+                notify("Manager compilation failed", error_details)
+            return False, None, stats
+        
+        compiled_bytes = sandbox.get_file_to_string(output_basename, maxlen=None)
+    except Exception as error:
+        msg = f"Error compiling {source_filename}: {error}"
+        logger.error(msg, exc_info=True)
+        if notify:
+            notify("Manager compilation error", msg)
+        return False, None, None
+    else:
+        return True, compiled_bytes, stats
+    finally:
+        if sandbox:
+            sandbox.cleanup(delete=True)
