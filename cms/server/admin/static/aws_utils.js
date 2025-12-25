@@ -112,6 +112,57 @@ CMS.AWSUtils.filename_to_lang = function(file_name) {
 }
 
 /**
+ * Enable/disable language options based on selected file extensions.
+ *
+ * options: jQuery collection or array-like of <option> elements.
+ * inputs: jQuery collection or array-like of <input type="file"> elements.
+ * languages: mapping { langName: { '.ext': true, ... }, ... }.
+ */
+CMS.AWSUtils.filter_languages = function(options, inputs, languages) {
+    languages = languages || {};
+
+    var exts = [];
+    for (var i = 0; i < inputs.length; i++) {
+        var value = inputs[i].value || "";
+        var lastDot = value.lastIndexOf(".");
+        if (lastDot !== -1) {
+            exts.push(value.slice(lastDot).toLowerCase());
+        }
+    }
+
+    var enabled = {};
+    var anyEnabled = false;
+    for (var lang in languages) {
+        for (var j = 0; j < exts.length; j++) {
+            if (languages[lang][exts[j]]) {
+                enabled[lang] = true;
+                anyEnabled = true;
+                break;
+            }
+        }
+    }
+
+    var selectedDisabled = false;
+    for (var k = 0; k < options.length; k++) {
+        var option = options[k];
+        var shouldEnable = !anyEnabled || enabled[option.value];
+        option.disabled = !shouldEnable;
+        if (!shouldEnable && option.selected) {
+            selectedDisabled = true;
+        }
+    }
+
+    if (selectedDisabled) {
+        for (var m = 0; m < options.length; m++) {
+            if (!options[m].disabled) {
+                options[m].selected = true;
+                break;
+            }
+        }
+    }
+};
+
+/**
  * This is called when we receive file content, or an error message.
  *
  * file_name (string): the name of the requested file
