@@ -131,25 +131,19 @@ def extract_outcome_and_text(sandbox: Sandbox) -> tuple[float, list[str]]:
 def trusted_step(
     sandbox: Sandbox, commands: list[list[str]], collect_output_on_failure: bool = True
 ) -> tuple[bool, bool | None, StatsDict | None]:
-    """Execute some trusted commands in the sandbox.
-
-    Even if the commands are trusted, we use the sandbox to limit the resources
-    they use to avoid crashing a worker due to some configuration or
-    programming error.
-
-    sandbox: the sandbox we consider, already created.
-    commands: trusted commands to execute.
-    collect_output_on_failure: if True, collect stdout/stderr when the
-        command fails (useful for debugging manager/checker errors).
-
-    return: a tuple with three items:
-        * success: True if the sandbox did not fail, in any command;
-        * execution_success: True if all commands terminated correctly,
-            without timeouts or other errors; None if success is False;
-        * stats: a dictionary with statistics about the execution, or None
-            if success is False. On failure, stats may include stdout/stderr
-            if collect_output_on_failure is True.
-
+    """
+    Run trusted commands inside the given sandbox with resource limits and return overall success, command execution result, and execution statistics.
+    
+    Parameters:
+        sandbox (Sandbox): Preconfigured sandbox instance to run commands in.
+        commands (list[list[str]]): Sequence of trusted commands to execute.
+        collect_output_on_failure (bool): If True, attach sanitized `stdout`/`stderr` to the returned stats when commands fail.
+    
+    Returns:
+        tuple:
+            success (bool): `True` if the sandbox infrastructure completed (no sandbox-level failure), `False` otherwise.
+            execution_success (bool | None): `True` if all commands terminated normally; `False` if they exited with nonzero status, timed out, or were signaled; `None` when `success` is `False`.
+            stats (StatsDict | None): Dictionary of execution statistics when `success` is `True`. May include `stdout` and `stderr` fields when `collect_output_on_failure` is `True` and commands failed. `None` when `success` is `False`.
     """
     # Set sandbox parameters suitable for trusted commands.
     sandbox.preserve_env = True
@@ -196,22 +190,31 @@ def trusted_step(
 
 
 def _collect_trusted_output(sandbox: Sandbox, stats: StatsDict) -> StatsDict:
-    """Collect stdout/stderr from sandbox and add to stats.
-
-    This is used to capture error output from failed trusted commands
-    (managers/checkers) to help diagnose issues.
-
-    sandbox: the sandbox to collect output from.
-    stats: the existing stats dictionary to augment.
-
-    return: stats with stdout/stderr added (truncated to avoid DB bloat).
-        If stdout/stderr are already present in stats, they are preserved.
-
+    """
+    Collects and attaches the sandbox's stdout and stderr to the provided stats dictionary.
+    
+    Reads the sandbox stdout and stderr files, decodes them as UTF-8 with replacement for invalid bytes, replaces non-printable/control characters with the Unicode replacement character, trims surrounding whitespace, and truncates each stream to 16 KB to avoid large payloads. Existing "stdout" or "stderr" keys in the input stats are preserved and will not be overwritten.
+    
+    Parameters:
+        sandbox (Sandbox): Sandbox instance providing stdout_file, stderr_file and get_file_to_string().
+        stats (StatsDict): Existing statistics dictionary to augment.
+    
+    Returns:
+        StatsDict: A shallow copy of `stats` augmented with "stdout" and/or "stderr" entries when they were not already present.
     """
     import re
     MAX_OUTPUT_SIZE = 16 * 1024  # 16KB max per stream
 
     def safe_get_str(filename: str) -> str:
+        """
+        Read a file from the sandbox and return a safe, UTF-8 decoded string suitable for diagnostics.
+        
+        Parameters:
+            filename (str): Path to the file inside the sandbox to read.
+        
+        Returns:
+            str: The file contents decoded as UTF-8 with decoding errors replaced, control characters replaced with U+FFFD, leading/trailing whitespace trimmed, and truncated with a "\n... (truncated)" marker if longer than MAX_OUTPUT_SIZE. Returns an empty string if the file cannot be read or any error occurs.
+        """
         try:
             s = sandbox.get_file_to_string(filename)
             # Truncate to avoid storing huge outputs
@@ -241,27 +244,23 @@ def checker_step(
     output_filename: str,
     extra_args: list[str] | None = None
 ) -> tuple[bool, float | None, list[str] | None, StatsDict | None]:
-    """Run the explicit checker given by the admins
-
-    sandbox: the sandbox to run the checker in; should already
-        contain input, correct output, and user output; the checker is instead
-        copied from the managers.
-    checker_digest: digest of the checker, will be fetched as
-        "checker"; if None, an appropriate error for bad configuration of the
-        task will be generated.
-    input_digest: digest of the input, will be fetched as "input.txt".
-    correct_output_digest: digest of the correct output, will be fetched
-        as "correct_output.txt".
-    output_filename: inner filename of the user output (already in the
-        sandbox).
-    extra_args: extra arguments to pass to the checker.
-
-    return: tuple of (success, outcome, text, stats):
-        - success: true if the checker was able to check the solution
-        - outcome: the score (None if success is False)
-        - text: the text message (None if success is False)
-        - stats: execution statistics (may contain stdout/stderr on failure)
-
+    """
+    Run the explicit checker provided by task managers inside the sandbox and return its verdict.
+    
+    Parameters:
+        sandbox (Sandbox): Sandbox prepared to run the checker; checker, input, and correct output will be injected.
+        checker_digest (str | None): Storage digest of the checker executable; if None the function fails due to missing configuration.
+        input_digest (str): Storage digest of the checker input file.
+        correct_output_digest (str): Storage digest of the correct output file.
+        output_filename (str): Filename inside the sandbox containing the contestant's output to be checked.
+        extra_args (list[str] | None): Additional command-line arguments to pass to the checker.
+    
+    Returns:
+        tuple:
+            success (bool): True if the checker ran and produced a valid verdict, False otherwise.
+            outcome (float | None): Numeric score produced by the checker if success is True, otherwise None.
+            text (list[str] | None): Sanitized textual message produced by the checker if success is True, otherwise None.
+            stats (StatsDict | None): Execution statistics from the checker run; may include captured stdout/stderr on failure.
     """
     # Check that the file we are going to inject in the sandbox are not already
     # present (if so, it is due to a programming error in the task type).

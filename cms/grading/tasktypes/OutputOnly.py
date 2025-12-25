@@ -126,7 +126,11 @@ class OutputOnly(TaskType):
         job.plus = {}
 
     def evaluate(self, job, file_cacher):
-        """See TaskType.evaluate."""
+        """
+        Evaluate an output-only submission for a single job and populate the job result fields.
+        
+        If the expected per-testcase user output file is missing, marks the job as successful with outcome "0.0", sets a "File not submitted" message, and clears additional stats. Otherwise performs the output evaluation (using a checker or real-number comparison when configured) and updates job.success, job.outcome (string or None), job.text, and job.plus (empty dict on success; checker statistics on failure).
+        """
         user_output_filename = self._get_user_output_filename(job)
 
         # Since we allow partial submission, if the file is not

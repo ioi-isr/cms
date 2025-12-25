@@ -284,6 +284,22 @@ class Batch(TaskType):
 
     def _execution_step(self, job, file_cacher):
         # Prepare the execution
+        """
+        Prepare and run the submission executable inside a sandbox and collect execution results for later evaluation.
+        
+        Parameters:
+            job: Job object containing execution limits, flags (time_limit, memory_limit, multithreaded_sandbox, get_output, only_execution), file listings, and places where results and artifacts are stored; this function may append sandbox paths to job.sandboxes and set job.user_output.
+            file_cacher: Storage/cache helper used to create sandboxes and fetch/store files.
+        
+        Returns:
+            tuple: (outcome, text, output_file_params, stats, box_success, sandbox)
+                outcome (float|None): Numeric score placeholder or None when not determined.
+                text (list|None): Human-readable message or localized message tuple when available.
+                output_file_params (dict|None): Parameters for later evaluation containing 'user_output_path' and 'user_output_filename', or None if no output to evaluate.
+                stats (dict): Execution statistics produced by the sandbox/evaluation step.
+                box_success (bool): True if the sandbox launched and completed without internal errors.
+                sandbox: The Sandbox instance used for execution (caller is responsible for cleanup).
+        """
         executable_filename = next(iter(job.executables.keys()))
         language = get_language(job.language)
         main = self.GRADER_BASENAME if self._uses_grader() \
@@ -380,6 +396,25 @@ class Batch(TaskType):
         return outcome, text, output_file_params, stats, box_success, sandbox
 
     def _evaluate_step(self, job, file_cacher, output_file_params, outcome, text, stats, box_success, sandbox, extra_args):
+        """
+        Finalize evaluation for a job by optionally running the checker, updating job fields with outcome and diagnostics, and cleaning up the sandbox.
+        
+        Parameters:
+            job: The job object whose fields (success, outcome, text, plus, user_output) will be updated based on evaluation results.
+            file_cacher: Storage helper used by the checker/evaluation routine.
+            output_file_params: Parameters describing the produced user output (path and metadata); when None, no output evaluation is performed.
+            outcome: Precomputed outcome from execution stage; must be None exactly when output_file_params is not provided.
+            text: Human-readable message produced so far; may be replaced by checker evaluation.
+            stats: Execution-time statistics to attach to the job when appropriate.
+            box_success (bool): Whether the sandboxed execution completed successfully.
+            sandbox: Sandbox handle to remove after evaluation; if None, no sandbox cleanup is performed.
+            extra_args: Additional arguments forwarded to the output evaluation routine.
+        
+        Side effects:
+            - If box_success is True and output_file_params is provided, runs output evaluation (checker or comparator) and may overwrite outcome, text, and produce checker-specific stats.
+            - Sets job.success, job.outcome (string or None), job.text, and job.plus. On failure, prefers checker-derived stats over execution stats when available.
+            - Deletes the sandbox if a sandbox handle is provided.
+        """
         checker_stats = None
         if box_success:
             assert (output_file_params is None) == (outcome is not None)

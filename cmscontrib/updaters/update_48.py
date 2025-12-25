@@ -29,10 +29,27 @@ diagnose issues with checkers or managers.
 class Updater:
 
     def __init__(self, data):
+        """
+        Initialize the Updater with CMS dump objects and verify the dump version.
+        
+        Parameters:
+            data (dict): Mapping of top-level CMS dump objects; must include a "_version" key equal to 47.
+        
+        Raises:
+            AssertionError: If `data["_version"]` is not 47.
+        """
         assert data["_version"] == 47
         self.objs = data
 
     def run(self):
+        """
+        Populate new evaluation-failure fields on SubmissionResult objects in the stored CMS dump.
+        
+        For each top-level object (keys starting with "_" are skipped), ensures SubmissionResult entries contain the following fields set to None: "last_evaluation_failure_text", "last_evaluation_failure_shard", "last_evaluation_failure_sandbox_paths", "last_evaluation_failure_sandbox_digests", and "last_evaluation_failure_details". This mutates the stored objects in place.
+        
+        Returns:
+            dict: The updated objects mapping (the same dictionary provided at initialization) with the new fields added to SubmissionResult entries.
+        """
         for k, v in self.objs.items():
             if k.startswith("_"):
                 continue

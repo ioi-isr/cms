@@ -213,7 +213,11 @@ class TwoSteps(TaskType):
         delete_sandbox(sandbox, job)
 
     def evaluate(self, job, file_cacher):
-        """See TaskType.evaluate."""
+        """
+        Run the two-stage manager executable for a submission, coordinate the FIFO-based data transfer between stages, and evaluate the produced output.
+        
+        This executes the compiled manager twice (first with role "0", then with role "1") using two isolated sandboxes connected by a filesystem FIFO, collects and merges execution statistics from both runs, and determines the job outcome. It handles missing output, optional storage of the produced output, an "only execution" mode (which marks execution success without invoking a checker), and output evaluation via a diff or comparator checker when configured. On completion the function updates the job's fields: `success`, `outcome`, `text`, `plus`, and `user_output` (when requested), and cleans up created sandboxes and temporary resources.
+        """
         if not check_executables_number(job, 1):
             return
 

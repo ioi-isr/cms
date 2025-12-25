@@ -224,30 +224,29 @@ def eval_output(
     user_output_filename: str = "",
     extra_args: list[str] | None = None
 ) -> tuple[bool, float | None, list[str] | None, dict | None]:
-    """Evaluate ("check") a user output using a white diff or a checker.
-
-    file_cacher: file cacher to use to get files.
-    job: the job triggering this checker run.
-    checker_codename: codename of the checker amongst the manager,
-        or None to use white diff / real number precision.
-    use_realprecision: whether we should use real precision comparator.
-    realprecision_exponent: exponent X for tolerance 1e-X when using real
-        precision comparison; defaults to 6 (1e-6) if None.
-    user_output_path: full path of the user output file, None if
-        using the digest (exactly one must be non-None).
-    user_output_digest: digest of the user output file, None if
-        using the path (exactly one must be non-None).
-    user_output_filename: the filename the user was expected to write to,
-        or empty if stdout (used to return an error to the user).
-    extra_args: additional arguments to pass to the checker
-
-    return: tuple of (success, outcome, text, checker_stats):
-        - success: true if the checker was able to check the solution
-        - outcome: the score (None if success is False)
-        - text: the text message (None if success is False)
-        - checker_stats: execution statistics from checker (may contain
-            stdout/stderr on failure, None if no checker was used)
-
+    """
+    Evaluate a user's output either by running a checker or by performing a white-diff / real-number precision comparison.
+    
+    Parameters:
+        file_cacher: FileCacher used to access stored files.
+        job: Job triggering this evaluation; used for input/output paths and managers.
+        checker_codename: Codename of the checker manager to run, or None to use diff/real-precision comparison.
+        use_realprecision: If True, compare numeric output with tolerance.
+        realprecision_exponent: Exponent X for tolerance 1e-X when using real precision; defaults to 6 if None.
+        user_output_path: Filesystem path to the user's output file, or None when providing user_output_digest.
+        user_output_digest: Storage digest of the user's output file, or None when providing user_output_path.
+        user_output_filename: The filename the user was expected to write (used in user-facing messages); empty string means stdout.
+        extra_args: Additional arguments forwarded to the checker when one is used.
+    
+    Returns:
+        tuple containing:
+        - success (bool): `true` if the evaluation process ran (checker executed or diff completed), `false` if a configuration/manager error prevented checking.
+        - outcome (float | None): Score or numeric outcome produced by the checker or diff; `None` if success is `false`.
+        - text (list[str] | None): Lines of human-readable messages from the checker or diff; `None` if success is `false`.
+        - checker_stats (dict | None): Execution statistics returned by the checker when a checker was used; `None` when no checker was run or no stats are available.
+    
+    Raises:
+        ValueError: if both or neither of user_output_path and user_output_digest are provided.
     """
     if (user_output_path is None) == (user_output_digest is None):
         raise ValueError(
@@ -311,15 +310,19 @@ def eval_output(
 
 
 def get_allowed_manager_basenames(task_type: str | None) -> set[str]:
-    """Get the set of manager basenames that should be auto-compiled.
-
-    Uses the task type class to discover CHECKER_CODENAME and MANAGER_FILENAME
-    attributes, falling back to a default set if the task type is unknown.
-
-    task_type: the task type name (e.g., "Batch", "Communication"), or None.
-
-    return: set of allowed manager basenames (e.g., {"checker", "manager"}).
-
+    """
+    Determine which manager basenames should be auto-compiled for a given task type.
+    
+    If a task type name is provided, attempts to load its class and include the values
+    of its CHECKER_CODENAME and MANAGER_FILENAME attributes when present. If the task
+    type is unknown or no attributes are found, returns the default set {"checker", "manager"}.
+    
+    Parameters:
+        task_type (str | None): Name of the task type (for example, "Batch" or "Communication"),
+            or None to use the default set.
+    
+    Returns:
+        set[str]: A set of manager basenames to be auto-compiled (e.g., {"checker", "manager"}).
     """
     from cms.grading.tasktypes import get_task_type_class
 

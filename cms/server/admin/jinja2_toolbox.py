@@ -37,6 +37,15 @@ from cmscommon.crypto import get_hex_random_key, parse_authentication
 
 
 def safe_parse_authentication(auth: str) -> tuple[str, str]:
+    """
+    Attempt to parse an authentication string and return its method and password, falling back to plaintext with an empty password on parse errors.
+    
+    Parameters:
+        auth (str): Authentication string to parse.
+    
+    Returns:
+        tuple[str, str]: (method, password). If parsing fails, returns ("plaintext", "").
+    """
     try:
         method, password = parse_authentication(auth)
     except ValueError:
@@ -45,14 +54,14 @@ def safe_parse_authentication(auth: str) -> tuple[str, str]:
 
 
 def format_signal(signum: int | str | None) -> str:
-    """Convert a signal number to a human-readable name with description.
-
-    signum: the signal number (e.g., 11 for SIGSEGV), may be int or str.
-
-    return: the signal name with description and number
-        (e.g., "SIGFPE - Floating-point exception (8)"), or just
-        the number if the signal is unknown.
-
+    """
+    Format a POSIX signal value into a human-readable string.
+    
+    Parameters:
+        signum (int | str | None): A signal number, a string value, or None.
+    
+    Returns:
+        str: "N/A" if `signum` is None; `str(signum)` if `signum` cannot be interpreted as a known signal number; if the number corresponds to a known signal, "NAME - description (N)" when a system description is available, otherwise "NAME (N)".
     """
     if signum is None:
         return "N/A"
@@ -75,6 +84,20 @@ def format_signal(signum: int | str | None) -> str:
 
 
 def instrument_cms_toolbox(env: Environment):
+    """
+    Injects CMS-related utilities and constants into a Jinja2 environment's globals.
+    
+    Adds the following globals to the provided Environment:
+    - TASK_TYPES: available task type constants
+    - SCORE_TYPES: available scoring type constants
+    - LANGUAGES: supported language definitions
+    - get_hex_random_key: callable that returns a hex random key
+    - parse_authentication: safe authentication parser
+    - question_quick_answers: quick-answer constants from Question
+    
+    Parameters:
+        env (Environment): Jinja2 Environment to augment (mutated in place).
+    """
     env.globals["TASK_TYPES"] = TASK_TYPES
     env.globals["SCORE_TYPES"] = SCORE_TYPES
     env.globals["LANGUAGES"] = LANGUAGES
@@ -84,6 +107,16 @@ def instrument_cms_toolbox(env: Environment):
 
 
 def instrument_formatting_toolbox(env: Environment):
+    """
+    Register formatting filters on the given Jinja2 environment.
+    
+    Adds two filters to env.filters:
+    - "format_dataset_attrs": formats dataset attribute dictionaries for presentation.
+    - "format_signal": converts a signal value to a human-readable string.
+    
+    Parameters:
+        env (Environment): Jinja2 environment to modify; filters are registered in-place.
+    """
     env.filters["format_dataset_attrs"] = format_dataset_attrs
     env.filters["format_signal"] = format_signal
 

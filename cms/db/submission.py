@@ -622,10 +622,11 @@ class SubmissionResult(Base):
         self.executables = {}
 
     def invalidate_evaluation(self, testcase_id: int | None = None):
-        """Blank the evaluation outcomes and the score.
-
-        testcase_id: ID of testcase to invalidate, or None to invalidate all.
-
+        """
+        Invalidate evaluation state and clear associated score and last-failure metadata.
+        
+        Parameters:
+            testcase_id (int | None): ID of the testcase to remove evaluations for; if None, remove all evaluations.
         """
         self.invalidate_score()
         self.evaluation_outcome = None

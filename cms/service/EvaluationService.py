@@ -624,13 +624,19 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         operation: ESOperation,
         result: Result,
     ):
-        """Write to the DB a single result.
-
-        session: the DB session to use.
-        object_result: the DB object for the operation (and for the result).
-        operation: the operation for which we have the result.
-        result: the result from the worker.
-
+        """
+        Apply a single worker Result to the corresponding SubmissionResult or UserTestResult in the database.
+        
+        Updates the provided object_result according to the operation type:
+        - COMPILATION: on success, attach the Job to the object_result; on failure, increment compilation_tries.
+        - EVALUATION: on success, attach the Job to the object_result; on failure, if the Job indicates a tombstone and the object's executables contain the tombstone digest, invalidate the compilation within a nested transaction and re-enqueue subsequent submission operations; otherwise increment evaluation_tries and record detailed failure information (failure text, shard, sandbox paths and digests, and low-level failure details).
+        - USER_TEST_COMPILATION and USER_TEST_EVALUATION: on success, attach the Job to the user test result; on failure, increment the appropriate try counter.
+        
+        Parameters:
+            session (Session): Active database session used for writes and nested transactions.
+            object_result (SubmissionResult | UserTestResult): The result row to update for this operation.
+            operation (ESOperation): The operation that produced the Result; determines which fields are updated.
+            result (Result): The worker Result containing the Job and success indicator; may supply tombstone and failure details.
         """
         if operation.type_ == ESOperation.COMPILATION:
             if result.job_success:

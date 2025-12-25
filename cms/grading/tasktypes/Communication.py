@@ -164,22 +164,39 @@ class Communication(TaskType):
         return self.compilation == self.COMPILATION_STUB
 
     def _uses_fifos(self) -> bool:
+        """
+        Indicates whether user-manager communication is configured to use FIFO files.
+        
+        Returns:
+            `True` if FIFO-based I/O is configured, `False` otherwise.
+        """
         return self.io == self.USER_IO_FIFOS
 
     @staticmethod
     def _collect_manager_failure_stats(sandbox, stats):
-        """Collect manager stdout/stderr on failure for debugging.
-
-        sandbox: the manager sandbox.
-        stats: the existing stats dictionary from evaluation_step_after_run.
-
-        return: stats with stdout/stderr added (truncated to avoid DB bloat).
-
+        """
+        Collects the manager sandbox's stdout and stderr and augments the provided stats with sanitized, truncated output for debugging.
+        
+        Parameters:
+            sandbox: Manager sandbox object exposing `stdout_file`, `stderr_file`, and `get_file_to_string(filename)` to read file contents.
+            stats (dict|None): Existing evaluation stats from `evaluation_step_after_run`. If `None`, no augmentation is possible.
+        
+        Returns:
+            dict|None: A shallow copy of `stats` with added `stdout` and `stderr` keys containing UTF-8 decoded strings where control characters have been replaced and each stream is truncated to 16 KB; returns `None` if `stats` was `None`.
         """
         import re
         MAX_OUTPUT_SIZE = 16 * 1024  # 16KB max per stream
 
         def safe_get_str(filename):
+            """
+            Read a file from the surrounding sandbox and return a sanitized, UTF‑8 string suitable for inclusion in diagnostics.
+            
+            Parameters:
+                filename (str): Path to the file inside the sandbox.
+            
+            Returns:
+                str: File contents decoded as UTF-8 with invalid bytes replaced, control characters substituted with U+FFFD, leading/trailing whitespace removed, and truncated to at most MAX_OUTPUT_SIZE bytes with a "\n... (truncated)" marker appended if truncation occurred. Returns an empty string on any read or processing error.
+            """
             try:
                 s = sandbox.get_file_to_string(filename)
                 if len(s) > MAX_OUTPUT_SIZE:
@@ -202,14 +219,15 @@ class Communication(TaskType):
 
     @staticmethod
     def _executable_filename(codenames: Iterable[str], language: Language) -> str:
-        """Return the chosen executable name computed from the codenames.
-
-        codenames: submission format or codename of submitted files,
-            may contain %l.
-        language: the programming language of the submission.
-
-        return: a deterministic executable name.
-
+        """
+        Construct a deterministic executable filename for a set of source codenames and a language.
+        
+        Parameters:
+            codenames (Iterable[str]): Collection of source codenames; occurrences of the placeholder suffix `.%l` will be removed before name construction.
+            language (Language): Language object whose `executable_extension` will be appended.
+        
+        Returns:
+            str: Deterministic filename formed by sorting the processed codenames, joining them with underscores, and appending the language's executable extension.
         """
         name = "_".join(sorted(codename.replace(".%l", "")
                                for codename in codenames))
@@ -279,7 +297,24 @@ class Communication(TaskType):
         delete_sandbox(sandbox, job)
 
     def evaluate(self, job, file_cacher):
-        """See TaskType.evaluate."""
+        """
+        Run a compiled job by launching the manager and the user solution processes, coordinate their I/O, collect execution results, and update the job with the outcome.
+        
+        This method performs the following high-level steps:
+        - Verifies the presence of a single executable and the manager binary.
+        - Creates per-process FIFO directories (or uses std I/O mapping) and sandboxes for the manager and each user.
+        - Copies the manager, input file, and user executable(s) into the respective sandboxes.
+        - Starts the manager with a time limit large enough to cover all user processes and starts each user process (running any setup commands first).
+        - Waits for all processes to finish, then collects box/evaluation results and aggregated execution statistics.
+        - If the manager failed, augments the returned stats with sanitized manager stdout/stderr for debugging.
+        - Determines job.success, job.outcome, job.text, and job.plus according to manager and user results.
+        - Optionally saves the manager-produced output file into job.user_output.
+        - Cleans up sandboxes and temporary FIFO directories according to configuration and job.keep_sandbox.
+        
+        Parameters:
+            job: The job to evaluate; this object is read for inputs/executables and is updated with sandboxes, success, outcome, text, plus, and user_output.
+            file_cacher: Storage/file helper used to create sandboxes and retrieve files from storage.
+        """
         if not check_executables_number(job, 1):
             return
         executable_filename = next(iter(job.executables.keys()))
