@@ -84,3 +84,67 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 python_files = ["test_*.py", "*_test.py", "*Test.py"]
 testpaths = ["cmstestsuite/unit_tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "*.egg-info",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter or ignored for now)
+    "E731",   # do not assign a lambda expression
+    "B008",   # do not perform function calls in argument defaults
+    "B905",   # zip without explicit strict parameter
+    "SIM108", # use ternary operator instead of if-else
+    "UP007",  # use X | Y for type annotations (requires newer Python features)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports in __init__ files are often intentional
+"cmstestsuite/*" = ["B", "SIM"]  # be more lenient in test code
+
+[tool.ruff.lint.isort]
+known-first-party = ["cms", "cmscommon", "cmscontrib", "cmsranking", "cmstaskenv", "cmstestsuite"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+no_implicit_optional = false
+strict = false
+exclude = [
+    "build/",
+    "dist/",
+    "venv/",
+    ".venv/",
+]
+
+[tool.djlint]
+profile = "jinja"
+indent = 4
+ignore = "H006,H013,H021,H023,H030,H031"
+exclude = ".git,.venv,venv,node_modules"
+max_line_length = 120

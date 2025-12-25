@@ -5,15 +5,148 @@ on:
   - pull_request
 
 jobs:
-  test:
+  lint-python:
+    name: Python Linting (ruff)
     runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff linter
+        run: ruff check . --output-format=github
+
+      - name: Run ruff formatter check
+        run: ruff format --check .
+
+  typecheck-python:
+    name: Python Type Checking (mypy)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install mypy
+          pip install -e . || true
+
+      - name: Run mypy
+        run: mypy cms cmscommon cmscontrib cmsranking cmstaskenv --ignore-missing-imports
+
+  security-audit:
+    name: Security Audit (pip-audit)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Install project dependencies
+        run: pip install -e . || true
+
+      - name: Run pip-audit
+        run: pip-audit --skip-editable || true
+
+  lint-javascript:
+    name: JavaScript Linting (eslint)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run eslint
+        run: npm run lint
+
+  lint-templates:
+    name: Template Linting (djlint)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install djlint
+        run: pip install djlint
+
+      - name: Run djlint
+        run: djlint cms/server --lint
+
+  lint-shell:
+    name: Shell Script Linting (shellcheck)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run shellcheck
+        run: |
+          find . -name "*.sh" -type f | xargs shellcheck --severity=warning || true
+
+  lint-actions:
+    name: GitHub Actions Linting (actionlint)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run actionlint
+        uses: raven-actions/actionlint@v2
+
+  syntax-check:
+    name: Python Syntax Check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check Python syntax
+        run: python -m compileall -q cms cmscommon cmscontrib cmsranking cmstaskenv
+
+  test:
+    name: Tests (${{ matrix.base_image }})
+    runs-on: ubuntu-24.04
+    needs: [syntax-check]
 
     strategy:
       matrix:
         base_image: ["ubuntu:noble", "debian:bookworm"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Check available cgroups
         run: |
