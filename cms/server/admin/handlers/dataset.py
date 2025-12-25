@@ -46,7 +46,7 @@ import tornado.web
 from cms.db import Dataset, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
 from cms.grading.tasktypes import get_task_type_class
-from cms.grading.tasktypes.util import create_sandbox, \
+from cms.grading.tasktypes.util import \
     get_allowed_manager_basenames, compile_manager_bytes
 from cms.grading.languagemanager import filename_to_language
 from cms.grading.language import CompiledLanguage
@@ -443,6 +443,9 @@ class AddManagerHandler(BaseHandler):
 
         self.sql_session.close()
 
+        def notify(title, text):
+            self.service.add_notification(make_datetime(), title, text)
+
         # Phase 1: Compile all files first, collecting results in memory.
         # This ensures no files are stored in file_cacher if any compilation fails.
         planned_entries: list[tuple[str, bytes]] = []  # (filename, content_bytes)
@@ -462,10 +465,6 @@ class AddManagerHandler(BaseHandler):
                     and isinstance(language, CompiledLanguage)
                     and base_noext in allowed_compile_basenames):
                 compiled_filename = base_noext
-                
-                def notify(title, text):
-                    self.service.add_notification(make_datetime(), title, text)
-                
                 success, compiled_bytes, _stats = compile_manager_bytes(
                     self.service.file_cacher,
                     filename,
@@ -492,6 +491,7 @@ class AddManagerHandler(BaseHandler):
                     content, "Task manager for %s" % task_name)
                 all_stored_entries.append((filename, digest))
             except Exception as error:
+                logger.warning("Failed to store manager '%s'", filename, exc_info=True)
                 self.service.add_notification(
                     make_datetime(),
                     "Manager storage failed",
