@@ -1,0 +1,1 @@
+../../../../../cmsranking/static/UserDetail.js

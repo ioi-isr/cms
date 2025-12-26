@@ -69,6 +69,8 @@ __all__ = [
     # printjob
     "PrintJob",
     "StatementView",
+    # scorecache
+    "ParticipationTaskScore", "ScoreHistory",
     # init
     "init_db",
     # drop
@@ -107,6 +109,7 @@ from .usertest import UserTest, UserTestFile, UserTestManager, \
     UserTestResult, UserTestExecutable
 from .printjob import PrintJob
 from .statementview import StatementView
+from .scorecache import ParticipationTaskScore, ScoreHistory
 
 from .init import init_db
 from .drop import drop_db

@@ -47,6 +47,7 @@ from cms.db import SessionGen, Digest, Dataset, Evaluation, Submission, \
     SubmissionResult, Testcase, UserTest, UserTestResult, get_submissions, \
     get_submission_results, get_datasets_to_judge
 from cms.grading.Job import Job, JobGroup
+from cms.grading.scorecache import invalidate_score_cache
 from cms.io import Executor, TriggeredService, rpc_method
 from .esoperations import ESOperation, get_relevant_operations, \
     get_submissions_operations, get_user_tests_operations, \
@@ -994,6 +995,19 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                     submission_result.invalidate_compilation()
                 elif level == "evaluation":
                     submission_result.invalidate_evaluation(testcase_id=testcase_id)
+
+            # Invalidate score cache for affected participation/task pairs.
+            # We derive the pairs from the submissions to be precise.
+            affected_pairs: set[tuple[int, int]] = set()
+            for submission in submissions:
+                affected_pairs.add(
+                    (submission.participation_id, submission.task_id))
+            for p_id, t_id in affected_pairs:
+                invalidate_score_cache(
+                    session,
+                    participation_id=p_id,
+                    task_id=t_id,
+                )
 
             # Finally, we re-enqueue the operations for the
             # submissions.

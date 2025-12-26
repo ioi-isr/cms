@@ -296,6 +296,8 @@ def update_task(old_task: Task, new_task: Task, parent=None, get_statements=True
         Task.submissions: False,
         Task.user_tests: False,
         Task.statement_views: False,
+        # Score cache is computed, not imported.
+        Task.participation_scores: False,
         # Relationships to update.
         Task.statements: get_statements,
         Task.datasets: update_datasets_fn,
