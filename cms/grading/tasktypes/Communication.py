@@ -36,7 +36,7 @@ from cms.grading.language import Language
 from cms.grading.languagemanager import LANGUAGES, get_language
 from cms.grading.steps import compilation_step, evaluation_step_before_run, \
     evaluation_step_after_run, extract_outcome_and_text, \
-    human_evaluation_message, merge_execution_stats, trusted_step
+    human_evaluation_message, merge_execution_stats, trusted_step, safe_get_str
 from cms.grading.tasktypes import check_files_number
 from . import TaskType, check_executables_number, check_manager_present, \
     create_sandbox, delete_sandbox, is_manager_for_compilation
@@ -176,28 +176,13 @@ class Communication(TaskType):
         return: stats with stdout/stderr added (truncated to avoid DB bloat).
 
         """
-        import re
-        MAX_OUTPUT_SIZE = 16 * 1024  # 16KB max per stream
-
-        def safe_get_str(filename):
-            try:
-                s = sandbox.get_file_to_string(filename)
-                if len(s) > MAX_OUTPUT_SIZE:
-                    s = s[:MAX_OUTPUT_SIZE] + b"\n... (truncated)"
-                s = s.decode("utf-8", errors="replace")
-                s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\xbf]', '\ufffd', s)
-                s = s.strip()
-                return s
-            except Exception:
-                return ""
-
         # Only add stdout/stderr if we have existing stats (sandbox succeeded)
         # If stats is None, the sandbox itself failed and we have no stats
         if stats is None:
             return None
         stats = dict(stats)  # Make a copy
-        stats["stdout"] = safe_get_str(sandbox.stdout_file)
-        stats["stderr"] = safe_get_str(sandbox.stderr_file)
+        stats["stdout"] = safe_get_str(sandbox, sandbox.stdout_file)
+        stats["stderr"] = safe_get_str(sandbox, sandbox.stderr_file)
         return stats
 
     @staticmethod

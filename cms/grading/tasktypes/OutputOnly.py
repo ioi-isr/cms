@@ -150,5 +150,5 @@ class OutputOnly(TaskType):
         job.success = box_success
         job.outcome = str(outcome) if outcome is not None else None
         job.text = text
-        # There is no actual evaluation, so no statistics (unless checker failed).
-        job.plus = {} if box_success else checker_stats
+        # No user code execution, so no execution statistics (unless checker failed).
+        job.plus = {} if box_success else (checker_stats if checker_stats is not None else {})

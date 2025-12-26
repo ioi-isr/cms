@@ -195,6 +195,35 @@ def trusted_step(
         return False, None, None
 
 
+MAX_OUTPUT_SIZE = 16 * 1024  # 16KB max per stream
+
+
+def safe_get_str(sandbox: Sandbox, filename: str) -> str:
+    """Safely read a file from sandbox as a string.
+
+    This is used to capture output from failed trusted commands
+    (managers/checkers) to help diagnose issues.
+
+    sandbox: the sandbox to read from.
+    filename: the filename to read.
+
+    return: the file contents as a string (truncated to avoid DB bloat),
+        or empty string on error.
+
+    """
+    try:
+        s = sandbox.get_file_to_string(filename)
+        # Truncate to avoid storing huge outputs
+        if len(s) > MAX_OUTPUT_SIZE:
+            s = s[:MAX_OUTPUT_SIZE] + b"\n... (truncated)"
+        s = s.decode("utf-8", errors="replace")
+        s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\xbf]', '\ufffd', s)
+        s = s.strip()
+        return s
+    except Exception:
+        return ""
+
+
 def _collect_trusted_output(sandbox: Sandbox, stats: StatsDict) -> StatsDict:
     """Collect stdout/stderr from sandbox and add to stats.
 
@@ -208,28 +237,12 @@ def _collect_trusted_output(sandbox: Sandbox, stats: StatsDict) -> StatsDict:
         If stdout/stderr are already present in stats, they are preserved.
 
     """
-    import re
-    MAX_OUTPUT_SIZE = 16 * 1024  # 16KB max per stream
-
-    def safe_get_str(filename: str) -> str:
-        try:
-            s = sandbox.get_file_to_string(filename)
-            # Truncate to avoid storing huge outputs
-            if len(s) > MAX_OUTPUT_SIZE:
-                s = s[:MAX_OUTPUT_SIZE] + b"\n... (truncated)"
-            s = s.decode("utf-8", errors="replace")
-            s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\xbf]', '\ufffd', s)
-            s = s.strip()
-            return s
-        except Exception:
-            return ""
-
     stats = stats.copy()
     # Only collect stdout/stderr if not already present in stats
     if "stdout" not in stats:
-        stats["stdout"] = safe_get_str(sandbox.stdout_file)
+        stats["stdout"] = safe_get_str(sandbox, sandbox.stdout_file)
     if "stderr" not in stats:
-        stats["stderr"] = safe_get_str(sandbox.stderr_file)
+        stats["stderr"] = safe_get_str(sandbox, sandbox.stderr_file)
     return stats
 
 
