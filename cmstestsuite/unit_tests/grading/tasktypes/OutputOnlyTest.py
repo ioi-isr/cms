@@ -119,7 +119,7 @@ class TestEvaluate(TaskTypeTestMixin, unittest.TestCase):
             self.file_cacher, job, None, use_realprecision=False,
             realprecision_exponent=6,
             user_output_digest="digest of 023")
-        self.assertResultsInJob(job, False, None, None, None)
+        self.assertResultsInJob(job, False, None, None, {})
 
     def test_comparator_success(self):
         tt, job = self.prepare(["comparator"], {
