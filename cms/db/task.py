@@ -57,6 +57,7 @@ class Task(Base):
     __table_args__ = (
         UniqueConstraint('contest_id', 'num'),
         UniqueConstraint('contest_id', 'name'),
+        UniqueConstraint('training_day_id', 'training_day_num'),
         ForeignKeyConstraint(
             ("id", "active_dataset_id"),
             ("datasets.task_id", "datasets.id"),
