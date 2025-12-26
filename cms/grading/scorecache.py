@@ -39,12 +39,12 @@ from cmscommon.constants import (
 
 
 __all__ = [
-    "update_score_cache",
+    "ensure_valid_history",
+    "get_cached_score_entry",
     "invalidate_score_cache",
     "rebuild_score_cache",
     "rebuild_score_history",
-    "get_cached_score_entry",
-    "ensure_valid_history",
+    "update_score_cache",
 ]
 
 
@@ -228,10 +228,11 @@ def update_score_cache(
     submission: the submission that was just scored.
 
     """
-    participation = submission.participation
+    if not submission.official:
+        return
+
     task = submission.task
     dataset = task.active_dataset
-
     if dataset is None:
         return
 
@@ -244,6 +245,7 @@ def update_score_cache(
         return
 
     # Acquire advisory lock to serialize concurrent updates
+    participation = submission.participation
     _acquire_cache_lock(session, participation.id, task.id)
 
     cache_entry = _get_or_create_cache_entry(session, participation, task)

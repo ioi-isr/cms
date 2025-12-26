@@ -471,6 +471,33 @@ class TestUpdateScoreCache(ScoreCacheMixin, unittest.TestCase):
         self.assertEqual(cache_entry.score, 55.0)
         self.assertEqual(cache_entry.subtask_max_scores, {"1": 30.0, "2": 25.0})
 
+    def test_unofficial_submission_is_ignored(self):
+        """Incremental updates should ignore unofficial submissions."""
+        submission = self.add_scored_submission(self.at(1), 50.0)
+        submission.official = False
+        self.session.flush()
+
+        update_score_cache(self.session, submission)
+        cache_entry = self.get_cache_entry()
+        self.assertIsNone(cache_entry)
+
+    def test_unofficial_submission_does_not_change_existing_cache(self):
+        """Existing cache should remain unchanged when an unofficial submission arrives."""
+        official_submission = self.add_scored_submission(self.at(1), 40.0)
+        self.session.flush()
+        update_score_cache(self.session, official_submission)
+        cache_entry = self.get_cache_entry()
+        self.assertEqual(cache_entry.score, 40.0)
+
+        unofficial_submission = self.add_scored_submission(self.at(2), 90.0)
+        unofficial_submission.official = False
+        self.session.flush()
+
+        update_score_cache(self.session, unofficial_submission)
+        cache_entry_after = self.get_cache_entry()
+        self.assertEqual(cache_entry_after.score, 40.0)
+        self.assertEqual(cache_entry_after.last_submission_score, 40.0)
+
 
 class TestScoreCacheAfterInvalidation(ScoreCacheMixin, unittest.TestCase):
     """Tests for score cache behavior after invalidation.

@@ -386,8 +386,6 @@ class ParticipationSubmissionsHandler(BaseHandler):
     """
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id, user_id):
-        from cms.db import Submission
-
         self.contest = self.safe_get_item(Contest, contest_id)
 
         participation = (
