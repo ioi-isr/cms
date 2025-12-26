@@ -40,6 +40,14 @@
   <input type="submit" value="Update"/>
 </form>
 
+<script>
+CMS.AWSUtils.initDateTimeValidation(
+  'form[name="edit_training_program"]',
+  'input[name="start"]',
+  'input[name="stop"]'
+);
+</script>
+
 <form action="{{ url("training_programs") }}" method="POST" style="display:inline;">
   {{ xsrf_form_html|safe }}
   <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>

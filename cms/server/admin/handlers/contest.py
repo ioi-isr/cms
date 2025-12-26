@@ -54,20 +54,26 @@ def remove_contest_with_action(session, contest, action, target_contest=None):
         if target_contest is None:
             raise ValueError("Target contest must be specified when moving tasks")
         
+        tasks = session.query(Task)\
+            .filter(Task.contest == contest)\
+            .order_by(Task.num, Task.id)\
+            .all()
+
+        # Phase 1: clear nums on moving tasks to avoid duplicate (contest_id, num).
+        for task in tasks:
+            task.num = None
+        session.flush()
+
+        # Phase 2: append after current max num in target, preserving gaps.
         max_num = session.query(func.max(Task.num))\
             .filter(Task.contest == target_contest)\
             .scalar()
         base_num = (max_num or -1) + 1
-        
-        tasks = session.query(Task)\
-            .filter(Task.contest == contest)\
-            .order_by(Task.num)\
-            .all()
-        
+
         for i, task in enumerate(tasks):
             task.contest = target_contest
             task.num = base_num + i
-            session.flush()
+        session.flush()
         
     elif action == "detach":
         tasks = session.query(Task)\
@@ -77,8 +83,7 @@ def remove_contest_with_action(session, contest, action, target_contest=None):
         for task in tasks:
             task.contest = None
             task.num = None
-            session.flush()
-    
+        session.flush()
     
     session.delete(contest)
     session.flush()

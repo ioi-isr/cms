@@ -15,7 +15,7 @@
 
 <p>
   <strong>Warning:</strong> This will remove {{ participation_count }} participation(s) and {{ submission_count }} submission(s)
-  from the training day contest, regardless of the option you choose below.
+  from the training day contest{% if task_count > 0 %}, regardless of the option you choose below{% endif %}.
   <br>
   This operation cannot be undone.
 </p>
@@ -50,59 +50,17 @@
 {% endif %}
 
 <br>
-<a onclick="removeTrainingDay();" class="button-link">Yes, remove training day</a>
+<a onclick="doRemove();" class="button-link">Yes, remove training day</a>
 <a href="{{ url("training_program", training_program.id, "training_days") }}" class="button-link">No, cancel</a>
 
 <script>
-  {% if task_count > 0 %}
-  // Enable/disable the target training day dropdown based on the selected action
-  document.querySelectorAll('input[name="action"]').forEach(function(radio) {
-    radio.addEventListener('change', function() {
-      var targetSelect = document.getElementById('target_training_day_select');
-      if (document.getElementById('action_move').checked) {
-        targetSelect.disabled = false;
-      } else {
-        targetSelect.disabled = true;
-      }
-    });
-  });
-  
-  // Initialize the dropdown state
-  document.getElementById('target_training_day_select').disabled = true;
-  {% endif %}
-  
-  function removeTrainingDay() {
-    var url = '{{ url("training_program", training_program.id, "training_day", training_day.id, "remove") }}';
-    
-    {% if task_count > 0 %}
-    var actionRadios = document.querySelectorAll('input[name="action"]');
-    var selectedAction = null;
-    for (var i = 0; i < actionRadios.length; i++) {
-      if (actionRadios[i].checked) {
-        selectedAction = actionRadios[i].value;
-        break;
-      }
-    }
-    
-    if (!selectedAction) {
-      alert('Please select an option for handling tasks.');
-      return;
-    }
-    
-    url += '?action=' + encodeURIComponent(selectedAction);
-    
-    if (selectedAction === 'move') {
-      var targetId = document.getElementById('target_training_day_select').value;
-      if (!targetId) {
-        alert('Please select a target training day.');
-        return;
-      }
-      url += '&target_training_day_id=' + encodeURIComponent(targetId);
-    }
-    {% endif %}
-    
-    CMS.AWSUtils.ajax_delete(url);
-  }
+CMS.AWSUtils.initRemovePage({
+  removeUrl: '{{ url("training_program", training_program.id, "training_day", training_day.id, "remove") }}',
+  hasTaskOptions: {{ 'true' if task_count > 0 else 'false' }},
+  targetSelectId: 'target_training_day_select',
+  targetParamName: 'target_training_day_id',
+  targetLabel: 'training day'
+});
 </script>
 
 {% else %}

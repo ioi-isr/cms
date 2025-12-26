@@ -8,25 +8,56 @@
 {% if admin.permission_all %}
 <p>
   Are you sure you want to remove the training program <strong>{{ training_program.name }}</strong>?
+  <br>
+  <strong>Warning:</strong> This will remove {{ participation_count }} participation(s) and {{ submission_count }} submission(s){% if task_count > 0 %}, regardless of the option you choose below{% endif %}.
+  <br>
+  It will also delete {{ training_day_count }} training day contest(s) and their data ({{ training_day_participation_count }} participation(s), {{ training_day_submission_count }} submission(s)).
+  <br>
+  This operation cannot be undone.
 </p>
 
-<p class="warning">
-  <strong>Warning:</strong> This will also delete the managing contest and all associated data:
+{% if task_count > 0 %}
+<p>
+  The training program has {{ task_count }} task(s). Please choose what to do with them:
 </p>
 
-<ul>
-  <li><strong>{{ participation_count }}</strong> participation(s)</li>
-  <li><strong>{{ submission_count }}</strong> submission(s)</li>
-  <li><strong>{{ task_count }}</strong> task(s)</li>
-</ul>
-
-<p class="warning">
-  <strong>This action cannot be undone!</strong>
-</p>
+<div style="margin: 20px 0;">
+  <label style="display: block; margin-bottom: 10px;">
+    <input type="radio" name="action" value="move" id="action_move">
+    Move all tasks to another contest:
+    <select name="target_contest_id" id="target_contest_select" style="margin-left: 10px;">
+      <option value="">Select a contest</option>
+      {% for c in other_contests %}
+      <option value="{{ c.id }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  
+  <label style="display: block; margin-bottom: 10px;">
+    <input type="radio" name="action" value="detach">
+    Remove tasks from training program but keep them in the system (tasks will not belong to any contest)
+  </label>
+  
+  <label style="display: block; margin-bottom: 10px; color: red; font-weight: bold;">
+    <input type="radio" name="action" value="delete_all">
+    Delete all tasks from the system
+  </label>
+</div>
+{% endif %}
 
 <br>
-<a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_programs", training_program.id, "remove") }}');" class="button-link">Yes, remove</a>
+<a onclick="doRemove();" class="button-link">Yes, remove</a>
 <a href="{{ url("training_program", training_program.id) }}" class="button-link">No, cancel</a>
+
+<script>
+CMS.AWSUtils.initRemovePage({
+  removeUrl: '{{ url("training_programs", training_program.id, "remove") }}',
+  hasTaskOptions: {{ 'true' if task_count > 0 else 'false' }},
+  targetSelectId: 'target_contest_select',
+  targetParamName: 'target_contest_id',
+  targetLabel: 'contest'
+});
+</script>
 
 {% else %}
 You do not have permission to remove a training program.

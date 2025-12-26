@@ -221,26 +221,111 @@ class RemoveTrainingProgramHandler(BaseHandler):
             .filter(Participation.contest == managing_contest)
             .count()
         )
+        training_day_contest_ids = [td.contest_id for td in training_program.training_days]
+        self.r_params["training_day_count"] = len(training_day_contest_ids)
+        self.r_params["training_day_participation_count"] = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .count()
+            if training_day_contest_ids else 0
+        )
         self.r_params["submission_count"] = (
             self.sql_session.query(Submission)
             .join(Participation)
             .filter(Participation.contest == managing_contest)
             .count()
         )
+        self.r_params["training_day_submission_count"] = (
+            self.sql_session.query(Submission)
+            .join(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .count()
+            if training_day_contest_ids else 0
+        )
         self.r_params["task_count"] = len(managing_contest.tasks)
+
+        # Other contests available to move tasks into (excluding training day contests)
+        self.r_params["other_contests"] = (
+            self.sql_session.query(Contest)
+            .filter(Contest.id != managing_contest.id)
+            .filter(~Contest.name.like(r'\_\_%', escape='\\'))
+            .filter(~Contest.training_day.has())
+            .order_by(Contest.name)
+            .all()
+        )
 
         self.render("training_program_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str):
+        from sqlalchemy import func
+
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
 
-        # Delete the training program first (it will cascade to nothing else)
+        action = self.get_argument("action", "delete_all")
+        target_contest_id = self.get_argument("target_contest_id", None)
+
+        # Handle tasks before deleting the training program
+        tasks = (
+            self.sql_session.query(Task)
+            .filter(Task.contest == managing_contest)
+            .order_by(Task.num)
+            .all()
+        )
+
+        if action == "move":
+            if not target_contest_id:
+                raise tornado.web.HTTPError(400, "Target contest is required")
+            target_contest = self.safe_get_item(Contest, target_contest_id)
+
+            # Phase 1: clear nums on moving tasks (and detach training day links)
+            # so we can reassign without violating the unique constraint.
+            for task in tasks:
+                task.num = None
+                task.training_day = None
+                task.training_day_num = None
+            self.sql_session.flush()
+
+            # Phase 2: append after current max num in target, preserving gaps.
+            max_num = (
+                self.sql_session.query(func.max(Task.num))
+                .filter(Task.contest == target_contest)
+                .scalar()
+            )
+            base_num = (max_num or -1) + 1
+
+            for i, task in enumerate(tasks):
+                task.contest = target_contest
+                task.num = base_num + i
+            self.sql_session.flush()
+
+        elif action == "detach":
+            for task in tasks:
+                task.contest = None
+                task.num = None
+                task.training_day = None
+                task.training_day_num = None
+            self.sql_session.flush()
+
+        elif action == "delete_all":
+            for task in tasks:
+                self.sql_session.delete(task)
+            self.sql_session.flush()
+        else:
+            raise tornado.web.HTTPError(400, "Invalid action")
+
+        # Delete all training days (and their contests/participations).
+        for training_day in list(training_program.training_days):
+            td_contest = training_day.contest
+            self.sql_session.delete(training_day)
+            self.sql_session.delete(td_contest)
+
+        # Delete the training program (tasks already handled above)
         self.sql_session.delete(training_program)
 
         # Then delete the managing contest (this cascades to participations,
-        # submissions, tasks, etc.)
+        # submissions, etc. - tasks already handled above)
         self.sql_session.delete(managing_contest)
 
         self.try_commit()
