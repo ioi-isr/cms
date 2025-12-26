@@ -34,14 +34,11 @@
 </form>
 
 <script>
-document.forms['add_training_program'].addEventListener('submit', function(e) {
-  var start = document.querySelector('input[name="start"]').value;
-  var stop = document.querySelector('input[name="stop"]').value;
-  if (start && stop && stop <= start) {
-    alert('End time must be after start time');
-    e.preventDefault();
-  }
-});
+CMS.AWSUtils.initDateTimeValidation(
+  'form[name="add_training_program"]',
+  'input[name="start"]',
+  'input[name="stop"]'
+);
 </script>
 
 {% endblock core %}

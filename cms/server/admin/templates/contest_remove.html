@@ -44,64 +44,17 @@
 {% endif %}
 
 <br>
-<a onclick="removeContest();" class="button-link">Yes, remove contest</a>
+<a onclick="doRemove();" class="button-link">Yes, remove contest</a>
 <a href="{{ url("contests") }}" class="button-link">No, cancel</a>
 
 <script>
-  {% if task_count > 0 %}
-  // Enable/disable the target contest dropdown based on the selected action
-  document.querySelectorAll('input[name="action"]').forEach(function(radio) {
-    radio.addEventListener('change', function() {
-      var targetSelect = document.getElementById('target_contest_select');
-      if (document.getElementById('action_move').checked) {
-        targetSelect.disabled = false;
-      } else {
-        targetSelect.disabled = true;
-      }
-    });
-  });
-  
-  // Initialize the dropdown state
-  document.getElementById('target_contest_select').disabled = true;
-  {% endif %}
-  
-  // Function to handle contest removal with AJAX DELETE
-  function removeContest() {
-    // Build the URL with query parameters
-    var url = '{{ url("contests", contest.id, "remove") }}';
-    
-    {% if task_count > 0 %}
-    // Get the selected action
-    var actionRadios = document.querySelectorAll('input[name="action"]');
-    var selectedAction = null;
-    for (var i = 0; i < actionRadios.length; i++) {
-      if (actionRadios[i].checked) {
-        selectedAction = actionRadios[i].value;
-        break;
-      }
-    }
-    
-    if (!selectedAction) {
-      alert('Please select an option for handling tasks.');
-      return;
-    }
-    
-    url += '?action=' + encodeURIComponent(selectedAction);
-    
-    // If action is 'move', include the target contest ID
-    if (selectedAction === 'move') {
-      var targetContestId = document.getElementById('target_contest_select').value;
-      if (!targetContestId) {
-        alert('Please select a target contest.');
-        return;
-      }
-      url += '&target_contest_id=' + encodeURIComponent(targetContestId);
-    }
-    {% endif %}
-    
-    // Use CMS.AWSUtils.ajax_delete to make the DELETE request
-    CMS.AWSUtils.ajax_delete(url);
-  }
+CMS.AWSUtils.initRemovePage({
+  removeUrl: '{{ url("contests", contest.id, "remove") }}',
+  hasTaskOptions: {{ 'true' if task_count > 0 else 'false' }},
+  targetSelectId: 'target_contest_select',
+  targetParamName: 'target_contest_id',
+  targetLabel: 'contest'
+});
 </script>
 
 {% else %}
