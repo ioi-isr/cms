@@ -47,6 +47,38 @@
     </div>
 </div>
 
+{% if upcoming_training_days|length > 0 %}
+<h2 style="margin-bottom: 15px;">{% trans %}Upcoming Training Days{% endtrans %}</h2>
+
+<div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 30px;">
+{% for td_info in upcoming_training_days %}
+    <div class="training-day-card" style="background: {% if td_info.actual_phase == 0 %}linear-gradient(135deg, #28a745 0%, #20c997 100%){% else %}linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%){% endif %}; padding: 20px; border-radius: 12px; color: white; min-width: 280px; max-width: 350px; flex: 1; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <h3 style="margin: 0 0 10px 0; font-size: 18px;">{{ td_info.contest.description }}</h3>
+        
+        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 15px;">
+            <strong>{% trans %}Start:{% endtrans %}</strong> {{ td_info.user_start_time.strftime('%Y-%m-%d %H:%M') }}
+        </div>
+        
+        {% if td_info.actual_phase == 0 %}
+        <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; text-align: center;">
+            <span style="font-size: 16px; font-weight: bold;">{% trans %}Started{% endtrans %}</span>
+        </div>
+        <div style="margin-top: 15px; text-align: center;">
+            <a href="{{ url[td_info.contest.name]() }}" class="btn btn-light" style="background: white; color: #28a745; font-weight: bold; padding: 8px 20px;">{% trans %}Enter{% endtrans %}</a>
+        </div>
+        {% else %}
+        <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 5px;">{% trans %}Starts in{% endtrans %}</div>
+            <div class="countdown" data-start-time="{{ td_info.user_start_time.isoformat() }}" style="font-size: 20px; font-weight: bold;">
+                {% trans %}Loading...{% endtrans %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endfor %}
+</div>
+{% endif %}
+
 <h2 style="margin-bottom: 15px;">{% trans %}Task Archive{% endtrans %}</h2>
 
 {% if task_scores|length == 0 %}
@@ -145,6 +177,38 @@
     document.getElementById('partial-count').textContent = partialCount;
     document.getElementById('unsolved-count').textContent = unsolvedCount;
 })();
+
+function updateCountdowns() {
+    var countdowns = document.querySelectorAll('.countdown');
+    var now = new Date().getTime();
+    
+    countdowns.forEach(function(el) {
+        var startTime = new Date(el.getAttribute('data-start-time')).getTime();
+        var diff = startTime - now;
+        
+        if (diff <= 0) {
+            el.textContent = '{% trans %}Starting...{% endtrans %}';
+            setTimeout(function() { location.reload(); }, 2000);
+            return;
+        }
+        
+        var days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        var minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        var seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        var parts = [];
+        if (days > 0) parts.push(days + 'd');
+        if (hours > 0 || days > 0) parts.push(hours + 'h');
+        if (minutes > 0 || hours > 0 || days > 0) parts.push(minutes + 'm');
+        parts.push(seconds + 's');
+        
+        el.textContent = parts.join(' ');
+    });
+}
+
+updateCountdowns();
+setInterval(updateCountdowns, 1000);
 
 function filterTasks(filter) {
     var rows = document.querySelectorAll('#task-table tbody tr');
