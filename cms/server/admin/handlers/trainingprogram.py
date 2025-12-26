@@ -1153,10 +1153,26 @@ class AddTrainingDayHandler(BaseHandler):
             if not description or not description.strip():
                 description = name
 
-            contest = Contest(
-                name=name,
-                description=description,
-            )
+            # Parse optional start and stop times from datetime-local inputs
+            # Format from HTML5 datetime-local: YYYY-MM-DDTHH:MM
+            start_str = self.get_argument("start", "")
+            stop_str = self.get_argument("stop", "")
+
+            contest_kwargs: dict = {
+                "name": name,
+                "description": description,
+            }
+
+            if start_str:
+                from datetime import datetime as dt
+                # Convert from datetime-local format (YYYY-MM-DDTHH:MM) to datetime
+                contest_kwargs["start"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+
+            if stop_str:
+                from datetime import datetime as dt
+                contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
+
+            contest = Contest(**contest_kwargs)
             self.sql_session.add(contest)
             self.sql_session.flush()
 
