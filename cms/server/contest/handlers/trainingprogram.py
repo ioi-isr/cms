@@ -131,12 +131,16 @@ class TrainingProgramOverviewHandler(ContestHandler):
             # Calculate user-specific start time
             user_start_time = td_contest.start + td_participation.delay_time
 
+            # Calculate duration
+            duration = td_contest.stop - td_contest.start
+
             upcoming_training_days.append({
                 "training_day": training_day,
                 "contest": td_contest,
                 "actual_phase": actual_phase,
                 "user_start_time": user_start_time,
                 "valid_phase_begin": valid_phase_begin,
+                "duration": duration,
             })
 
         # Sort by proximity to start time (closest first)
@@ -149,5 +153,6 @@ class TrainingProgramOverviewHandler(ContestHandler):
             percentage=percentage,
             task_scores=task_scores,
             upcoming_training_days=upcoming_training_days,
+            server_timestamp=self.timestamp,
             **self.r_params
         )

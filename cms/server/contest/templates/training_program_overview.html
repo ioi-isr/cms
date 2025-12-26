@@ -7,8 +7,55 @@
 <div class="span9">
 
 <div class="page-header">
-    <h1>{{ training_program.name }}</h1>
+    <h1>{{ training_program.description }}</h1>
 </div>
+
+{% if upcoming_training_days|length > 0 %}
+<h2 style="margin-bottom: 20px; font-size: 24px; font-weight: 600; color: #333;">{% trans %}Upcoming Training Days{% endtrans %}</h2>
+
+<div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px;">
+{% for td_info in upcoming_training_days %}
+    <div class="training-day-card" style="background: #fff; border-left: 4px solid {% if td_info.actual_phase == 0 %}#28a745{% else %}#0d6efd{% endif %}; border-radius: 8px; padding: 20px 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+        <div style="flex: 1; min-width: 250px;">
+            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #333;">{{ td_info.contest.description }}</h3>
+            <div style="font-size: 14px; color: #666; margin-bottom: 4px;">
+                <strong>{% trans %}Start:{% endtrans %}</strong> {{ td_info.user_start_time|format_datetime_smart }}
+            </div>
+            <div style="font-size: 14px; color: #666;">
+                <strong>{% trans %}Duration:{% endtrans %}</strong> {{ (td_info.duration.total_seconds() // 3600)|int }}h{% if (td_info.duration.total_seconds() % 3600) // 60 > 0 %} {{ ((td_info.duration.total_seconds() % 3600) // 60)|int }}m{% endif %}
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 25px; flex-wrap: wrap;">
+            {% if td_info.actual_phase == 0 %}
+            <div style="text-align: center;">
+                                <div style="font-size: 13px; color: #28a745; font-weight: 600; margin-bottom: 8px;">{% trans %}Started{% endtrans %}</div>
+                <div class="countdown-display" style="display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px;">
+                    <span style="font-size: 16px; font-weight: 600; color: #28a745;">{% trans %}In Progress{% endtrans %}</span>
+                </div>
+            </div>
+            {% else %}
+            <div style="text-align: center;">
+                <div style="font-size: 13px; color: #666; margin-bottom: 8px;">{% trans %}Starts in:{% endtrans %}</div>
+                <div class="countdown" data-start-time="{{ td_info.user_start_time.timestamp() * 1000 }}" style="display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px;">
+                    <span class="countdown-text" style="font-size: 16px; font-weight: 600; color: #0d6efd;">
+                        <span class="countdown-days">--</span>d
+                        <span class="countdown-hours">--</span>h
+                        <span class="countdown-minutes">--</span>m
+                        <span class="countdown-seconds">--</span>s
+                    </span>
+                </div>
+            </div>
+            {% endif %}
+            
+            <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.actual_phase == 0 %}btn-success{% else %}btn-primary{% endif %}" style="font-weight: 600; padding: 10px 20px;">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
+        </div>
+    </div>
+{% endfor %}
+</div>
+{% endif %}
+
+<h2 style="margin-bottom: 15px;">{% trans %}Statistics{% endtrans %}</h2>
 
 <div class="training-program-summary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 25px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
     <p style="font-size: 16px; opacity: 0.9; margin-bottom: 20px;">{{ training_program.description }}</p>
@@ -46,38 +93,6 @@
         <div style="font-size: 13px; color: #c62828;">{% trans %}Not Solved{% endtrans %}</div>
     </div>
 </div>
-
-{% if upcoming_training_days|length > 0 %}
-<h2 style="margin-bottom: 15px;">{% trans %}Upcoming Training Days{% endtrans %}</h2>
-
-<div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 30px;">
-{% for td_info in upcoming_training_days %}
-    <div class="training-day-card" style="background: {% if td_info.actual_phase == 0 %}linear-gradient(135deg, #28a745 0%, #20c997 100%){% else %}linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%){% endif %}; padding: 20px; border-radius: 12px; color: white; min-width: 280px; max-width: 350px; flex: 1; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-        <h3 style="margin: 0 0 10px 0; font-size: 18px;">{{ td_info.contest.description }}</h3>
-        
-        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 15px;">
-            <strong>{% trans %}Start:{% endtrans %}</strong> {{ td_info.user_start_time.strftime('%Y-%m-%d %H:%M') }}
-        </div>
-        
-        {% if td_info.actual_phase == 0 %}
-        <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; text-align: center;">
-            <span style="font-size: 16px; font-weight: bold;">{% trans %}Started{% endtrans %}</span>
-        </div>
-        <div style="margin-top: 15px; text-align: center;">
-            <a href="{{ url[td_info.contest.name]() }}" class="btn btn-light" style="background: white; color: #28a745; font-weight: bold; padding: 8px 20px;">{% trans %}Enter{% endtrans %}</a>
-        </div>
-        {% else %}
-        <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 5px;">{% trans %}Starts in{% endtrans %}</div>
-            <div class="countdown" data-start-time="{{ td_info.user_start_time.isoformat() }}" style="font-size: 20px; font-weight: bold;">
-                {% trans %}Loading...{% endtrans %}
-            </div>
-        </div>
-        {% endif %}
-    </div>
-{% endfor %}
-</div>
-{% endif %}
 
 <h2 style="margin-bottom: 15px;">{% trans %}Task Archive{% endtrans %}</h2>
 
@@ -178,16 +193,25 @@
     document.getElementById('unsolved-count').textContent = unsolvedCount;
 })();
 
+// Server timestamp for timezone-correct countdown
+var serverTimestamp = {{ server_timestamp.timestamp() * 1000 }};
+var clientLoadTime = new Date().getTime();
+
 function updateCountdowns() {
     var countdowns = document.querySelectorAll('.countdown');
-    var now = new Date().getTime();
+    // Calculate current server time by adding elapsed time since page load
+    var elapsed = new Date().getTime() - clientLoadTime;
+    var serverNow = serverTimestamp + elapsed;
     
     countdowns.forEach(function(el) {
-        var startTime = new Date(el.getAttribute('data-start-time')).getTime();
-        var diff = startTime - now;
+        var startTime = parseFloat(el.getAttribute('data-start-time'));
+        var diff = startTime - serverNow;
         
         if (diff <= 0) {
-            el.textContent = '{% trans %}Starting...{% endtrans %}';
+            el.querySelector('.countdown-days').textContent = '0';
+            el.querySelector('.countdown-hours').textContent = '0';
+            el.querySelector('.countdown-minutes').textContent = '0';
+            el.querySelector('.countdown-seconds').textContent = '0';
             setTimeout(function() { location.reload(); }, 2000);
             return;
         }
@@ -197,13 +221,10 @@ function updateCountdowns() {
         var minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         var seconds = Math.floor((diff % (1000 * 60)) / 1000);
         
-        var parts = [];
-        if (days > 0) parts.push(days + 'd');
-        if (hours > 0 || days > 0) parts.push(hours + 'h');
-        if (minutes > 0 || hours > 0 || days > 0) parts.push(minutes + 'm');
-        parts.push(seconds + 's');
-        
-        el.textContent = parts.join(' ');
+        el.querySelector('.countdown-days').textContent = days;
+        el.querySelector('.countdown-hours').textContent = hours;
+        el.querySelector('.countdown-minutes').textContent = minutes;
+        el.querySelector('.countdown-seconds').textContent = seconds;
     });
 }
 
