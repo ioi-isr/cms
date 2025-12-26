@@ -18,13 +18,16 @@
 """Training program overview handler for CWS.
 
 This handler provides a custom overview page for training programs,
-showing total score, percentage, and task archive.
+showing total score, percentage, task archive, and upcoming training days.
 """
+
+from datetime import timedelta
 
 import tornado.web
 
 from cms.db import Participation, Submission, SubmissionResult
 from cms.server import multi_contest
+from cms.server.contest.phase_management import compute_actual_phase
 from .contest import ContestHandler
 
 
@@ -91,11 +94,60 @@ class TrainingProgramOverviewHandler(ContestHandler):
         # Calculate percentage
         percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
 
+        # Get upcoming training days for this user
+        upcoming_training_days = []
+        for training_day in training_program.training_days:
+            td_contest = training_day.contest
+
+            # Get user's participation in this training day's contest
+            td_participation = (
+                self.sql_session.query(Participation)
+                .filter(Participation.contest == td_contest)
+                .filter(Participation.user == participation.user)
+                .first()
+            )
+
+            if td_participation is None:
+                continue
+
+            # Compute actual phase for this training day
+            actual_phase, current_phase_begin, current_phase_end, valid_phase_begin, valid_phase_end = compute_actual_phase(
+                self.timestamp,
+                td_contest.start,
+                td_contest.stop,
+                td_contest.analysis_start if td_contest.analysis_enabled else None,
+                td_contest.analysis_stop if td_contest.analysis_enabled else None,
+                td_contest.per_user_time,
+                td_participation.starting_time,
+                td_participation.delay_time,
+                td_participation.extra_time,
+            )
+
+            # Only show training days with actual_phase < 1 (not yet completed)
+            # actual_phase < 0 means not started yet, actual_phase == 0 means active
+            if actual_phase >= 1:
+                continue
+
+            # Calculate user-specific start time
+            user_start_time = td_contest.start + td_participation.delay_time
+
+            upcoming_training_days.append({
+                "training_day": training_day,
+                "contest": td_contest,
+                "actual_phase": actual_phase,
+                "user_start_time": user_start_time,
+                "valid_phase_begin": valid_phase_begin,
+            })
+
+        # Sort by proximity to start time (closest first)
+        upcoming_training_days.sort(key=lambda x: x["user_start_time"])
+
         self.render(
             "training_program_overview.html",
             total_score=total_score,
             max_score=max_score,
             percentage=percentage,
             task_scores=task_scores,
+            upcoming_training_days=upcoming_training_days,
             **self.r_params
         )
