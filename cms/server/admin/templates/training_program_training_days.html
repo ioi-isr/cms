@@ -50,7 +50,7 @@
         <td><a href="{{ url("contest", td.contest.id) }}">{{ td.contest.name }}</a></td>
         <td>{{ td.contest.description }}</td>
         <td>
-          {% if td.contest.start.year != 2000 %}
+          {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
             {{ td.contest.start.strftime("%Y-%m-%d %H:%M") }}
           {% else %}
             -

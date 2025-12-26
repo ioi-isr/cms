@@ -100,6 +100,23 @@ class TrainingProgramHandler(BaseHandler):
 
             # Sync description to managing contest
             training_program.managing_contest.description = attrs["description"]
+
+            # Parse and update start/stop times on managing contest
+            start_str = self.get_argument("start", "")
+            stop_str = self.get_argument("stop", "")
+
+            if start_str:
+                from datetime import datetime as dt
+                training_program.managing_contest.start = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+
+            if stop_str:
+                from datetime import datetime as dt
+                training_program.managing_contest.stop = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
+
+            # Validate that stop is not before start
+            if training_program.managing_contest.stop < training_program.managing_contest.start:
+                raise ValueError("End time must be after start time")
+
         except Exception as error:
             self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback)
@@ -131,12 +148,30 @@ class AddTrainingProgramHandler(SimpleHandler("add_training_program.html", permi
             if not description or not description.strip():
                 description = name
 
-            # Create the managing contest with name prefixed by "__"
-            managing_contest_name = "__" + name
-            managing_contest = Contest(
-                name=managing_contest_name,
-                description=description,
-            )
+            # Parse optional start and stop times from datetime-local inputs
+            start_str = self.get_argument("start", "")
+            stop_str = self.get_argument("stop", "")
+
+            contest_kwargs: dict = {
+                "name": "__" + name,
+                "description": description,
+            }
+
+            if start_str:
+                from datetime import datetime as dt
+                contest_kwargs["start"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+
+            if stop_str:
+                from datetime import datetime as dt
+                contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
+
+            # Validate that stop is not before start
+            if "start" in contest_kwargs and "stop" in contest_kwargs:
+                if contest_kwargs["stop"] < contest_kwargs["start"]:
+                    raise ValueError("End time must be after start time")
+
+            # Create the managing contest
+            managing_contest = Contest(**contest_kwargs)
             self.sql_session.add(managing_contest)
 
             # Create the training program
@@ -1167,10 +1202,20 @@ class AddTrainingDayHandler(BaseHandler):
                 from datetime import datetime as dt
                 # Convert from datetime-local format (YYYY-MM-DDTHH:MM) to datetime
                 contest_kwargs["start"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+            else:
+                # Default to after training program end year (so contestants can't start until configured)
+                from datetime import datetime as dt
+                program_end_year = training_program.managing_contest.stop.year
+                contest_kwargs["start"] = dt(program_end_year + 1, 1, 1, 0, 0)
 
             if stop_str:
                 from datetime import datetime as dt
                 contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
+            else:
+                # Default stop to same as start (or slightly after) when not specified
+                from datetime import datetime as dt
+                program_end_year = training_program.managing_contest.stop.year
+                contest_kwargs["stop"] = dt(program_end_year + 1, 1, 1, 0, 0)
 
             contest = Contest(**contest_kwargs)
             self.sql_session.add(contest)
