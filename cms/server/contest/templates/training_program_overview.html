@@ -26,30 +26,27 @@
             </div>
         </div>
         
-        <div style="display: flex; align-items: center; gap: 25px; flex-wrap: wrap;">
-            {% if td_info.actual_phase == 0 %}
-            <div style="text-align: center;">
-                                <div style="font-size: 13px; color: #28a745; font-weight: 600; margin-bottom: 8px;">{% trans %}Started{% endtrans %}</div>
-                <div class="countdown-display" style="display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px;">
-                    <span style="font-size: 16px; font-weight: 600; color: #28a745;">{% trans %}In Progress{% endtrans %}</span>
-                </div>
+        {% if td_info.actual_phase == 0 %}
+        <div style="text-align: center; flex: 0 0 auto;">
+            <div class="countdown-display" style="display: inline-block; background: #dc3545; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); animation: pulse 2s ease-in-out infinite;">
+                <span style="font-size: 16px; font-weight: 700; color: white; letter-spacing: 1px;">⬤ {% trans %}LIVE{% endtrans %}</span>
             </div>
-            {% else %}
-            <div style="text-align: center;">
-                <div style="font-size: 13px; color: #666; margin-bottom: 8px;">{% trans %}Starts in:{% endtrans %}</div>
-                <div class="countdown" data-start-time="{{ td_info.user_start_time.timestamp() * 1000 }}" style="display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px;">
-                    <span class="countdown-text" style="font-size: 16px; font-weight: 600; color: #0d6efd;">
-                        <span class="countdown-days">--</span>d
-                        <span class="countdown-hours">--</span>h
-                        <span class="countdown-minutes">--</span>m
-                        <span class="countdown-seconds">--</span>s
-                    </span>
-                </div>
-            </div>
-            {% endif %}
-            
-            <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.actual_phase == 0 %}btn-success{% else %}btn-primary{% endif %}" style="font-weight: 600; padding: 10px 20px;">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
         </div>
+        {% else %}
+        <div style="text-align: center; flex: 0 0 auto;">
+            <div style="font-size: 13px; color: #666; margin-bottom: 8px;">{% trans %}Starts in:{% endtrans %}</div>
+            <div class="countdown" data-start-time="{{ td_info.user_start_time.timestamp() * 1000 }}" style="display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px;">
+                <span class="countdown-text" style="font-size: 16px; font-weight: 600; color: #0d6efd;">
+                    <span class="countdown-days">--</span>d
+                    <span class="countdown-hours">--</span>h
+                    <span class="countdown-minutes">--</span>m
+                    <span class="countdown-seconds">--</span>s
+                </span>
+            </div>
+        </div>
+        {% endif %}
+        
+        <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.actual_phase == 0 %}btn-success{% else %}btn-primary{% endif %}" style="font-weight: 600; padding: 10px 20px; flex: 0 0 auto;">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
     </div>
 {% endfor %}
 </div>
@@ -175,6 +172,19 @@
 .sort-desc .sort-icon::after {
     content: '\2193';
     opacity: 1;
+}
+.training-day-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: all 0.3s ease;
+}
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+    }
+    50% {
+        box-shadow: 0 2px 16px rgba(220, 53, 69, 0.6);
+    }
 }
 </style>
 
