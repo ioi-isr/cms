@@ -24,7 +24,7 @@ from .evaluation import EVALUATION_MESSAGES, evaluation_step, \
     human_evaluation_message
 from .messages import HumanMessage, MessageCollection
 from .stats import execution_stats, merge_execution_stats
-from .trusted import checker_step, extract_outcome_and_text, trusted_step
+from .trusted import checker_step, extract_outcome_and_text, trusted_step, safe_get_str
 from .whitediff import _WHITES, _white_diff, white_diff_step,\
     white_diff_fobj_step
 from .realprecision import _DEFAULT_EXP, realprecision_diff_step, \
@@ -43,7 +43,7 @@ __all__ = [
     # stats_test.py
     "execution_stats", "merge_execution_stats",
     # trusted.py
-    "checker_step", "extract_outcome_and_text", "trusted_step",
+    "checker_step", "extract_outcome_and_text", "trusted_step", "safe_get_str",
     # whitediff.py
     "_WHITES", "_white_diff", "white_diff_step", "white_diff_fobj_step",
     # realprecision.py

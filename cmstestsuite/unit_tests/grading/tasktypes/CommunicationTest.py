@@ -453,6 +453,7 @@ class TestEvaluate(TaskTypeTestMixin, FileSystemMixin, unittest.TestCase):
 
     def test_single_process_manager_failure(self):
         # Manager had problems, it's not the user's fault.
+        # On manager failure, we capture manager stats with stdout/stderr.
         tt, job = self.prepare(
             [1, "stub", "fifo_io"],
             {"foo": EXE_FOO}, {"manager": MANAGER})
@@ -465,7 +466,9 @@ class TestEvaluate(TaskTypeTestMixin, FileSystemMixin, unittest.TestCase):
 
         tt.evaluate(job, self.file_cacher)
 
-        self.assertResultsInJob(job, False, None, None, None)
+        # Stats should include manager's stats plus stdout/stderr for debugging
+        expected_stats = dict(STATS_RE, stdout="", stderr="")
+        self.assertResultsInJob(job, False, None, None, expected_stats)
         sandbox_mgr.cleanup.assert_called_once_with(delete=False)
         sandbox_usr.cleanup.assert_called_once_with(delete=False)
 
@@ -490,6 +493,7 @@ class TestEvaluate(TaskTypeTestMixin, FileSystemMixin, unittest.TestCase):
     def test_single_process_manager_and_user_failure(self):
         # Manager had problems, it's not the user's fault even if also their
         # submission had problems.
+        # On manager failure, we capture manager stats with stdout/stderr.
         tt, job = self.prepare(
             [1, "stub", "fifo_io"],
             {"foo": EXE_FOO}, {"manager": MANAGER})
@@ -502,7 +506,9 @@ class TestEvaluate(TaskTypeTestMixin, FileSystemMixin, unittest.TestCase):
 
         tt.evaluate(job, self.file_cacher)
 
-        self.assertResultsInJob(job, False, None, None, None)
+        # Stats should include manager's stats plus stdout/stderr for debugging
+        expected_stats = dict(STATS_RE, stdout="", stderr="")
+        self.assertResultsInJob(job, False, None, None, expected_stats)
         sandbox_mgr.cleanup.assert_called_once_with(delete=False)
         sandbox_usr.cleanup.assert_called_once_with(delete=False)
 
