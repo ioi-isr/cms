@@ -295,6 +295,8 @@ class RemoveContestHandler(BaseHandler):
         self.r_params["task_count"] = len(contest.tasks)
         self.r_params["other_contests"] = self.sql_session.query(Contest)\
             .filter(Contest.id != contest.id)\
+            .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
+            .filter(~Contest.training_day.has())\
             .order_by(Contest.name)\
             .all()
         
