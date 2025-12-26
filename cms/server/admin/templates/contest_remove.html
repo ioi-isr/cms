@@ -9,7 +9,7 @@
 <p>
   Are you sure you want to remove contest {{ contest.name }} from CMS?
   <br>
-  <strong>Warning:</strong> This will remove {{ contest.participations|length }} participation(s) and {{ submission_count }} submission(s), regardless of the option you choose below.
+  <strong>Warning:</strong> This will remove {{ contest.participations|length }} participation(s) and {{ submission_count }} submission(s){% if task_count > 0 %}, regardless of the option you choose below{% endif %}.
   <br>
   This operation cannot be undone.
 </p>

@@ -101,20 +101,22 @@ class TrainingProgramHandler(BaseHandler):
             # Sync description to managing contest
             training_program.managing_contest.description = attrs["description"]
 
+            from datetime import datetime as dt
+
             # Parse and update start/stop times on managing contest
             start_str = self.get_argument("start", "")
             stop_str = self.get_argument("stop", "")
 
             if start_str:
-                from datetime import datetime as dt
                 training_program.managing_contest.start = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
 
             if stop_str:
-                from datetime import datetime as dt
                 training_program.managing_contest.stop = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
 
-            # Validate that stop is not before start
-            if training_program.managing_contest.stop < training_program.managing_contest.start:
+            # Validate that stop is not before start (only if both are set)
+            if (training_program.managing_contest.start is not None and
+                    training_program.managing_contest.stop is not None and
+                    training_program.managing_contest.stop < training_program.managing_contest.start):
                 raise ValueError("End time must be after start time")
 
         except Exception as error:
@@ -148,6 +150,8 @@ class AddTrainingProgramHandler(SimpleHandler("add_training_program.html", permi
             if not description or not description.strip():
                 description = name
 
+            from datetime import datetime as dt
+
             # Parse optional start and stop times from datetime-local inputs
             start_str = self.get_argument("start", "")
             stop_str = self.get_argument("stop", "")
@@ -158,11 +162,9 @@ class AddTrainingProgramHandler(SimpleHandler("add_training_program.html", permi
             }
 
             if start_str:
-                from datetime import datetime as dt
                 contest_kwargs["start"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
 
             if stop_str:
-                from datetime import datetime as dt
                 contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
 
             # Validate that stop is not before start
@@ -1188,6 +1190,8 @@ class AddTrainingDayHandler(BaseHandler):
             if not description or not description.strip():
                 description = name
 
+            from datetime import datetime as dt
+
             # Parse optional start and stop times from datetime-local inputs
             # Format from HTML5 datetime-local: YYYY-MM-DDTHH:MM
             start_str = self.get_argument("start", "")
@@ -1199,12 +1203,10 @@ class AddTrainingDayHandler(BaseHandler):
             }
 
             if start_str:
-                from datetime import datetime as dt
                 # Convert from datetime-local format (YYYY-MM-DDTHH:MM) to datetime
                 contest_kwargs["start"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
             else:
                 # Default to after training program end year (so contestants can't start until configured)
-                from datetime import datetime as dt
                 program_end_year = training_program.managing_contest.stop.year
                 default_date = dt(program_end_year + 1, 1, 1, 0, 0)
                 contest_kwargs["start"] = default_date
@@ -1214,11 +1216,9 @@ class AddTrainingDayHandler(BaseHandler):
                 contest_kwargs["analysis_stop"] = default_date
 
             if stop_str:
-                from datetime import datetime as dt
                 contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
             else:
                 # Default stop to same as start when not specified
-                from datetime import datetime as dt
                 program_end_year = training_program.managing_contest.stop.year
                 contest_kwargs["stop"] = dt(program_end_year + 1, 1, 1, 0, 0)
 
