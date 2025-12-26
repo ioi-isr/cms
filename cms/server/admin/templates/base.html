@@ -2,6 +2,53 @@
 <html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script>
+    // Pre-paint CSS injection to prevent flash of expanded menus
+    // Uses a hydration class on <html> so these rules only apply during initial render
+    (function() {
+      var validSectionKeys = ['contests', 'tasks', 'users', 'teams'];
+      var folderKeyPattern = /^(folder|subfolder)-\d+$/;
+      var css = '';
+
+      // Add hydration class to gate these styles
+      document.documentElement.classList.add('sidebar-hydrating');
+
+      // Apply collapsed state for sections
+      try {
+        var sections = localStorage.getItem('cms_sidebar_collapsed');
+        if (sections) {
+          JSON.parse(sections).forEach(function(key) {
+            if (validSectionKeys.indexOf(key) !== -1) {
+              css += 'html.sidebar-hydrating .sidebar-section[data-section-key="' + key + '"] .sidebar-section-body { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += 'html.sidebar-hydrating .sidebar-section[data-section-key="' + key + '"] .section-caret { transform: rotate(-45deg); }\n';
+            }
+          });
+        }
+      } catch (e) {}
+
+      // Apply collapsed state for folders
+      try {
+        var folders = localStorage.getItem('cms_sidebar_folders_collapsed');
+        if (folders) {
+          JSON.parse(folders).forEach(function(key) {
+            if (folderKeyPattern.test(key)) {
+              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-contents,\n';
+              css += 'html.sidebar-hydrating .sidebar-subfolder[data-folder-key="' + key + '"] > .folder-contents { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before,\n';
+              css += 'html.sidebar-hydrating .sidebar-subfolder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before { transform: rotate(0deg); margin-top: 4px; margin-left: 4px; }\n';
+            }
+          });
+        }
+      } catch (e) {}
+
+      if (css) {
+        var style = document.createElement('style');
+        style.id = 'sidebar-prepaint-collapsed';
+        style.textContent = css;
+        document.head.appendChild(style);
+      }
+    })();
+    </script>
     <link rel="shortcut icon" href="{{ url("static", "favicon.ico") }}" />
     <link rel="stylesheet" type="text/css" href="{{ url("static", "reset.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
@@ -63,7 +110,116 @@ function init()
 
 {% block js %}{% endblock js %}
 
+// Generic localStorage helpers for collapsed state
+var SidebarState = {
+    load: function(storageKey) {
+        try {
+            var stored = localStorage.getItem(storageKey);
+            if (!stored) return {};
+            var arr = JSON.parse(stored);
+            var set = {};
+            (Array.isArray(arr) ? arr : []).forEach(function(k) { set[k] = true; });
+            return set;
+        } catch (e) {
+            return {};
+        }
+    },
+    save: function(storageKey, set) {
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(Object.keys(set)));
+        } catch (e) {}
+    },
+    toggle: function(storageKey, key, isCollapsed) {
+        var set = this.load(storageKey);
+        if (isCollapsed) {
+            set[key] = true;
+        } else {
+            delete set[key];
+        }
+        this.save(storageKey, set);
+    }
+};
+
+// Apply collapsed classes from storage, then end hydration phase
+function applySidebarState() {
+    var sectionState = SidebarState.load('cms_sidebar_collapsed');
+    document.querySelectorAll('.sidebar-section[data-section-key]').forEach(function(el) {
+        var key = el.getAttribute('data-section-key');
+        if (sectionState[key]) el.classList.add('collapsed');
+    });
+
+    var folderState = SidebarState.load('cms_sidebar_folders_collapsed');
+    document.querySelectorAll('.sidebar-folder[data-folder-key], .sidebar-subfolder[data-folder-key]').forEach(function(el) {
+        var key = el.getAttribute('data-folder-key');
+        if (folderState[key]) el.classList.add('collapsed');
+    });
+
+    // End hydration phase - pre-paint CSS no longer applies, class-based CSS takes over
+    document.documentElement.classList.remove('sidebar-hydrating');
+}
+
+// Event delegation for sidebar interactions
+function initSidebarEvents() {
+    var sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+
+    // Helper to toggle section
+    function toggleSection(sectionTitle) {
+        var section = sectionTitle.closest('.sidebar-section');
+        if (section) {
+            var key = section.getAttribute('data-section-key');
+            var isCollapsed = section.classList.toggle('collapsed');
+            if (key) SidebarState.toggle('cms_sidebar_collapsed', key, isCollapsed);
+        }
+    }
+
+    // Helper to toggle folder
+    function toggleFolder(folderHeader) {
+        var folder = folderHeader.closest('.sidebar-folder, .sidebar-subfolder');
+        if (folder) {
+            var key = folder.getAttribute('data-folder-key');
+            var isCollapsed = folder.classList.toggle('collapsed');
+            if (key) SidebarState.toggle('cms_sidebar_folders_collapsed', key, isCollapsed);
+        }
+    }
+
+    sidebar.addEventListener('click', function(e) {
+        // Handle section title clicks (but not link clicks)
+        var sectionTitle = e.target.closest('.sidebar-section-title');
+        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+            toggleSection(sectionTitle);
+            return;
+        }
+
+        // Handle folder header clicks (but not link clicks)
+        var folderHeader = e.target.closest('.folder-header');
+        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+            toggleFolder(folderHeader);
+        }
+    });
+
+    // Keyboard support for accessibility (Enter/Space to toggle)
+    sidebar.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+
+        var sectionTitle = e.target.closest('.sidebar-section-title');
+        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+            e.preventDefault();
+            toggleSection(sectionTitle);
+            return;
+        }
+
+        var folderHeader = e.target.closest('.folder-header');
+        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+            e.preventDefault();
+            toggleFolder(folderHeader);
+        }
+    });
+}
+
 $(document).ready(init);
+$(document).ready(applySidebarState);
+$(document).ready(initSidebarEvents);
 
 //-->
     </script>
@@ -73,7 +229,7 @@ $(document).ready(init);
       <div id="sidebar">
 {% if admin is undefined %}
         <div id="sidebar_header">
-          <h1 class="parent">Administration</h1>
+          <h1 class="sidebar-title">Administration</h1>
         </div>
 {% else %}
         <div id="sidebar_header">
@@ -82,10 +238,20 @@ $(document).ready(init);
               <form class="inline" action="{{ url("logout") }}" method="POST">{{ xsrf_form_html|safe }}<input type="submit" value="Logout"></form>
           </div>
           {% if contest is none %}
-          <h1 class="parent">Administration</h1>
+          <h1 class="sidebar-title">Administration</h1>
           {% else %}
-          <h1 class="parent"><a href="{{ url() }}">Administration</a></h1>
-          <h1 class="child">{{ contest.name }}</h1>
+          <h1 class="sidebar-title"><a href="{{ url() }}">Administration</a></h1>
+          {% if contest.folder %}
+          <div class="sidebar-breadcrumb">
+            <a href="{{ url("folder", contest.folder.id) }}">{{ contest.folder.name }}</a>
+            <span class="breadcrumb-separator"></span>
+            <span class="breadcrumb-current">{{ contest.name }}</span>
+          </div>
+          {% else %}
+          <div class="sidebar-breadcrumb">
+            <span class="breadcrumb-current">{{ contest.name }}</span>
+          </div>
+          {% endif %}
           {% endif %}
         </div>
         {% if config.web_server.secret_key == config.web_server.DEFAULT_SECRET_KEY %}
@@ -107,141 +273,147 @@ $(document).ready(init);
         <div class="hr"></div>
 
         {% if contest is none %}
-        <h1><a class="menu_link" href="{{ url("contests") }}">Contests</a></h1>
-        <ul class="menu">
-          {% if contest_list|length < 1 %}
-          <li class="menu_entry">
-            (no contests available)
-          </li>
-          {% endif %}
+        <div class="sidebar-section" data-section-key="contests">
+          <h2 class="sidebar-section-title" tabindex="0">
+            <span class="section-caret"></span>
+            <a href="{{ url("contests") }}">Contests</a>
+          </h2>
+          <div class="sidebar-section-body">
+            {% if folder_list|length > 0 or root_contests|length > 0 %}
+            <ul class="sidebar-menu">
+            {% for folder in folder_list if folder.parent is none %}
+            <li class="sidebar-folder" data-folder-key="folder-{{ folder.id }}">
+              <div class="folder-header" tabindex="0">
+                <span class="folder-icon"></span>
+                <a href="{{ url("folder", folder.id) }}">{{ folder.name }}</a>
+              </div>
+              <ul class="folder-contents">
+                {% for c in folder.contests %}
+                  <li class="sidebar-contest">
+                    <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
+                  </li>
+                  {% endfor %}
+                {% for subfolder in folder.children %}
+                <li class="sidebar-subfolder" data-folder-key="subfolder-{{ subfolder.id }}">
+                  <div class="folder-header" tabindex="0">
+                    <span class="folder-icon"></span>
+                    <a href="{{ url("folder", subfolder.id) }}">{{ subfolder.name }}</a>
+                  </div>
+                  <ul class="folder-contents">
+                      {% for c in subfolder.contests %}
+                      <li class="sidebar-contest">
+                        <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </li>
+              {% endfor %}
+              {% for c in root_contests[:5] %}
+              <li class="sidebar-contest root-contest">
+                <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
+              </li>
+              {% endfor %}
+              {% if root_contests|length > 5 %}
+              <li class="sidebar-action">
+                <a href="{{ url("contests") }}">Show more...</a>
+              </li>
+              {% endif %}
+            </ul>
+            {% else %}
+            <p class="sidebar-empty">No contests available</p>
+            {% endif %}
+            {% if admin.permission_all %}
+            <div class="sidebar-actions">
+              <a class="sidebar-action-link" href="{{ url("contests", "add") }}">New contest</a>
+              <a class="sidebar-action-link" href="{{ url("folders", "add") }}">New folder</a>
+              <a class="sidebar-action-link" href="{{ url("folders") }}">Manage folders</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
 
-          {% for c in contest_list[:5] %}
-          <li class="menu_entry">
-            <a class="menu_link bold" href="{{ url("contest", c.id) }}" title="{{ c.description }}">
-              {{ c.name }}
-            </a>
-          </li>
-          {% endfor %}
+        <div class="sidebar-section" data-section-key="tasks">
+          <h2 class="sidebar-section-title" tabindex="0">
+            <span class="section-caret"></span>
+            <a href="{{ url("tasks") }}">Tasks</a>
+          </h2>
+          <div class="sidebar-section-body">
+            {% if task_list|length > 0 %}
+            <ul class="sidebar-menu">
+              {% for t in task_list[:5] %}
+              <li class="sidebar-item">
+                <a href="{{ url("task", t.id) }}" title="{{ t.title }}">{{ t.name }}</a>
+              </li>
+              {% endfor %}
+              {% if task_list|length > 5 %}
+              <li class="sidebar-action">
+                <a href="{{ url("tasks") }}">Show more...</a>
+              </li>
+              {% endif %}
+            </ul>
+            {% else %}
+            <p class="sidebar-empty">No tasks available</p>
+            {% endif %}
+            {% if admin.permission_all %}
+            <div class="sidebar-actions">
+              <a class="sidebar-action-link" href="{{ url("tasks", "add") }}">New task</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
 
-          {% if contest_list|length > 5 %}
-          <li>
-            <a class="menu_link" href="{{ url("contests") }}">
-              (show more...)
-            </a>
-          </li>
-          {% endif %}
+        <div class="sidebar-section" data-section-key="users">
+          <h2 class="sidebar-section-title" tabindex="0">
+            <span class="section-caret"></span>
+            <a href="{{ url("users") }}">Users</a>
+          </h2>
+          <div class="sidebar-section-body">
+            {% if user_list|length > 0 %}
+            <ul class="sidebar-menu">
+              <li class="sidebar-action">
+                <a href="{{ url("users") }}">
+                  {% if user_list|length == 1 %}Show the only user{% else %}Show {{ user_list|length }} users{% endif %}
+                </a>
+              </li>
+            </ul>
+            {% else %}
+            <p class="sidebar-empty">No users available</p>
+            {% endif %}
+            {% if admin.permission_all %}
+            <div class="sidebar-actions">
+              <a class="sidebar-action-link" href="{{ url("users", "add") }}">New user</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
 
-{% if admin.permission_all %}
-          <li class="menu_entry">
-            <a class="menu_link" href="{{ url("contests", "add") }}">
-              (create new contest...)
-            </a>
-          </li>
-{% endif %}
-        </ul>
-
-        <h1><a class="menu_link" href="{{ url("folders") }}">Folders</a></h1>
-        <ul class="menu">
-          <li>
-            <a class="menu_link" href="{{ url("folders") }}">
-              (manage folders...)
-            </a>
-          </li>
-          {% if admin.permission_all %}
-          <li class="menu_entry">
-            <a class="menu_link" href="{{ url("folders", "add") }}">
-              (create new folder...)
-            </a>
-          </li>
-          {% endif %}
-        </ul>
-
-        <h1><a class="menu_link" href="{{ url("tasks") }}">Tasks</a></h1>
-        <ul class="menu">
-          {% if task_list|length < 1 %}
-          <li class="menu_entry">
-            (no tasks available)
-          </li>
-          {% endif %}
-
-          {% for t in task_list[:5] %}
-          <li class="menu_entry">
-            <a class="menu_link bold" href="{{ url("task", t.id) }}" title="{{ t.title }}">
-              {{ t.name }}
-            </a>
-          </li>
-          {% endfor %}
-
-          {% if task_list|length > 5 %}
-          <li>
-            <a class="menu_link" href="{{ url("tasks") }}">
-              (show more...)
-            </a>
-          </li>
-          {% endif %}
-
-{% if admin.permission_all %}
-          <li class="menu_entry">
-            <a class="menu_link" href="{{ url("tasks", "add") }}">
-              (create new task...)
-            </a>
-          </li>
-{% endif %}
-        </ul>
-
-        <h1><a class="menu_link" href="{{ url("users") }}">Users</a></h1>
-        <ul class="menu">
-          {% if user_list|length == 0 %}
-            <li class="menu_entry">
-              (no user available)
-            </li>
-          {% else %}
-            <li>
-              <a class="menu_link" href="{{ url("users") }}">
-                {% if user_list|length == 1 %}
-                  (show the only user...)
-                {% else %}
-                  (show the {{ user_list|length }} users...)
-                {% endif %}
-              </a>
-            </li>
-          {% endif %}
-
-{% if admin.permission_all %}
-          <li class="menu_entry">
-            <a class="menu_link" href="{{ url("users", "add") }}">
-              (create new user...)
-            </a>
-          </li>
-{% endif %}
-        </ul>
-
-        <h1><a class="menu_link" href="{{ url("teams") }}">Teams</a></h1>
-        <ul class="menu">
-          {% if team_list|length == 0 %}
-            <li class="menu_entry">
-              (no team available)
-            </li>
-          {% else %}
-            <li>
-              <a class="menu_link" href="{{ url("teams") }}">
-                {% if team_list|length == 1 %}
-                  (show the only team...)
-                {% else %}
-                  (show the {{ team_list|length }} teams...)
-                {% endif %}
-              </a>
-            </li>
-          {% endif %}
-
-{% if admin.permission_all %}
-          <li class="menu_entry">
-            <a class="menu_link" href="{{ url("teams", "add") }}">
-              (create new team...)
-            </a>
-          </li>
-{% endif %}
-        </ul>
+        <div class="sidebar-section" data-section-key="teams">
+          <h2 class="sidebar-section-title" tabindex="0">
+            <span class="section-caret"></span>
+            <a href="{{ url("teams") }}">Teams</a>
+          </h2>
+          <div class="sidebar-section-body">
+            {% if team_list|length > 0 %}
+            <ul class="sidebar-menu">
+              <li class="sidebar-action">
+                <a href="{{ url("teams") }}">
+                  {% if team_list|length == 1 %}Show the only team{% else %}Show {{ team_list|length }} teams{% endif %}
+                </a>
+              </li>
+            </ul>
+            {% else %}
+            <p class="sidebar-empty">No teams available</p>
+            {% endif %}
+            {% if admin.permission_all %}
+            <div class="sidebar-actions">
+              <a class="sidebar-action-link" href="{{ url("teams", "add") }}">New team</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
         {% else %}
           <ul class="menu">
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id) }}">General</a></li>

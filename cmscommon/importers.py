@@ -25,6 +25,11 @@ from cms.db import Testcase, Dataset
 from cms.db.filecacher import FileCacher
 from sqlalchemy.orm import Session
 
+from cmscommon.testcases import (
+    compile_template_regex,
+    pair_testcases_in_zip,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -59,31 +64,12 @@ def import_testcases_from_zipfile(
     task_name = dataset.task.name
     try:
         with zipfile.ZipFile(archive, "r") as archive_zfp:
-            tests = dict()
-            # Match input/output file names to testcases' codenames.
-            for filename in archive_zfp.namelist():
-                match = input_re.match(filename)
-                if match:
-                    codename = match.group(1)
-                    if codename not in tests:
-                        tests[codename] = [None, None]
-                    tests[codename][0] = filename
-                else:
-                    match = output_re.match(filename)
-                    if match:
-                        codename = match.group(1)
-                        if codename not in tests:
-                            tests[codename] = [None, None]
-                        tests[codename][1] = filename
+            paired_tests = pair_testcases_in_zip(archive_zfp, input_re, output_re)
 
             skipped_tc = []
             overwritten_tc = []
             added_tc = []
-            for codename, testdata in tests.items():
-                # If input or output file isn't found, skip it.
-                if not testdata[0] or not testdata[1]:
-                    continue
-
+            for codename, (input_filename, output_filename) in paired_tests.items():
                 # Check, whether current testcase already exists.
                 if codename in dataset.testcases:
                     # If we are allowed, remove existing testcase.
@@ -103,8 +89,8 @@ def import_testcases_from_zipfile(
 
                 # Add current testcase.
                 try:
-                    input_ = archive_zfp.read(testdata[0])
-                    output = archive_zfp.read(testdata[1])
+                    input_ = archive_zfp.read(input_filename)
+                    output = archive_zfp.read(output_filename)
                 except Exception:
                     raise Exception("Reading testcase %s failed" % codename)
                 try:
