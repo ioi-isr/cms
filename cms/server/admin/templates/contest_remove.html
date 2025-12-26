@@ -14,6 +14,7 @@
   This operation cannot be undone.
 </p>
 
+{% if task_count > 0 %}
 <p>
   The contest has {{ task_count }} task(s). Please choose what to do with them:
 </p>
@@ -40,12 +41,14 @@
     Delete all tasks from the system
   </label>
 </div>
+{% endif %}
 
 <br>
 <a onclick="removeContest();" class="button-link">Yes, remove contest</a>
 <a href="{{ url("contests") }}" class="button-link">No, cancel</a>
 
 <script>
+  {% if task_count > 0 %}
   // Enable/disable the target contest dropdown based on the selected action
   document.querySelectorAll('input[name="action"]').forEach(function(radio) {
     radio.addEventListener('change', function() {
@@ -60,9 +63,14 @@
   
   // Initialize the dropdown state
   document.getElementById('target_contest_select').disabled = true;
+  {% endif %}
   
   // Function to handle contest removal with AJAX DELETE
   function removeContest() {
+    // Build the URL with query parameters
+    var url = '{{ url("contests", contest.id, "remove") }}';
+    
+    {% if task_count > 0 %}
     // Get the selected action
     var actionRadios = document.querySelectorAll('input[name="action"]');
     var selectedAction = null;
@@ -78,8 +86,6 @@
       return;
     }
     
-    // Build the URL with query parameters
-    var url = '{{ url("contests", contest.id, "remove") }}';
     url += '?action=' + encodeURIComponent(selectedAction);
     
     // If action is 'move', include the target contest ID
@@ -91,6 +97,7 @@
       }
       url += '&target_contest_id=' + encodeURIComponent(targetContestId);
     }
+    {% endif %}
     
     // Use CMS.AWSUtils.ajax_delete to make the DELETE request
     CMS.AWSUtils.ajax_delete(url);
