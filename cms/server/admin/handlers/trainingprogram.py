@@ -1206,13 +1206,18 @@ class AddTrainingDayHandler(BaseHandler):
                 # Default to after training program end year (so contestants can't start until configured)
                 from datetime import datetime as dt
                 program_end_year = training_program.managing_contest.stop.year
-                contest_kwargs["start"] = dt(program_end_year + 1, 1, 1, 0, 0)
+                default_date = dt(program_end_year + 1, 1, 1, 0, 0)
+                contest_kwargs["start"] = default_date
+                # Also set analysis_start/stop to satisfy Contest check constraints
+                # (stop <= analysis_start and analysis_start <= analysis_stop)
+                contest_kwargs["analysis_start"] = default_date
+                contest_kwargs["analysis_stop"] = default_date
 
             if stop_str:
                 from datetime import datetime as dt
                 contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
             else:
-                # Default stop to same as start (or slightly after) when not specified
+                # Default stop to same as start when not specified
                 from datetime import datetime as dt
                 program_end_year = training_program.managing_contest.stop.year
                 contest_kwargs["stop"] = dt(program_end_year + 1, 1, 1, 0, 0)

@@ -20,6 +20,7 @@
   This operation cannot be undone.
 </p>
 
+{% if task_count > 0 %}
 <p>
   The training day has {{ task_count }} task(s) assigned. Please choose what to do with them:
 </p>
@@ -46,12 +47,14 @@
     Delete all tasks from the system
   </label>
 </div>
+{% endif %}
 
 <br>
 <a onclick="removeTrainingDay();" class="button-link">Yes, remove training day</a>
 <a href="{{ url("training_program", training_program.id, "training_days") }}" class="button-link">No, cancel</a>
 
 <script>
+  {% if task_count > 0 %}
   // Enable/disable the target training day dropdown based on the selected action
   document.querySelectorAll('input[name="action"]').forEach(function(radio) {
     radio.addEventListener('change', function() {
@@ -66,8 +69,12 @@
   
   // Initialize the dropdown state
   document.getElementById('target_training_day_select').disabled = true;
+  {% endif %}
   
   function removeTrainingDay() {
+    var url = '{{ url("training_program", training_program.id, "training_day", training_day.id, "remove") }}';
+    
+    {% if task_count > 0 %}
     var actionRadios = document.querySelectorAll('input[name="action"]');
     var selectedAction = null;
     for (var i = 0; i < actionRadios.length; i++) {
@@ -82,7 +89,6 @@
       return;
     }
     
-    var url = '{{ url("training_program", training_program.id, "training_day", training_day.id, "remove") }}';
     url += '?action=' + encodeURIComponent(selectedAction);
     
     if (selectedAction === 'move') {
@@ -93,6 +99,7 @@
       }
       url += '&target_training_day_id=' + encodeURIComponent(targetId);
     }
+    {% endif %}
     
     CMS.AWSUtils.ajax_delete(url);
   }
