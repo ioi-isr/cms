@@ -22,6 +22,20 @@
       </td>
       <td><input type="text" name="description" value="{{ training_program.description }}"/></td>
     </tr>
+    <tr>
+      <td>
+        <span class="info" title="When the training program starts."></span>
+        Start time
+      </td>
+      <td><input type="datetime-local" name="start" value="{{ training_program.managing_contest.start.strftime('%Y-%m-%dT%H:%M') }}"/></td>
+    </tr>
+    <tr>
+      <td>
+        <span class="info" title="When the training program ends. Must be after start time."></span>
+        End time
+      </td>
+      <td><input type="datetime-local" name="stop" value="{{ training_program.managing_contest.stop.strftime('%Y-%m-%dT%H:%M') }}"/></td>
+    </tr>
   </table>
   <input type="submit" value="Update"/>
 </form>
