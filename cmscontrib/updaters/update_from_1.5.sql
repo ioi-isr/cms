@@ -373,4 +373,8 @@ ALTER TABLE ONLY public.tasks
 
 CREATE INDEX ix_tasks_training_day_id ON public.tasks USING btree (training_day_id);
 
+-- Ensure a task's position is unique within a training day
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_training_day_id_training_day_num_key UNIQUE (training_day_id, training_day_num);
+
 COMMIT;

@@ -337,22 +337,21 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
         self.render_params_for_remove_confirmation(submission_query)
 
         # Count submissions and participations from training days
-        training_day_submissions = 0
-        training_day_participations = 0
-        for training_day in training_program.training_days:
-            td_participation: Participation | None = (
-                self.sql_session.query(Participation)
-                .filter(Participation.contest == training_day.contest)
-                .filter(Participation.user == user)
-                .first()
-            )
-            if td_participation is not None:
-                training_day_participations += 1
-                training_day_submissions += (
-                    self.sql_session.query(Submission)
-                    .filter(Submission.participation == td_participation)
-                    .count()
-                )
+        training_day_contest_ids = [td.contest_id for td in training_program.training_days]
+        training_day_participations = (
+        self.sql_session.query(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .filter(Participation.user == user)
+            .count()
+        )
+
+        training_day_submissions = (
+            self.sql_session.query(Submission)
+            .join(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .filter(Participation.user == user)
+            .count()
+        )
 
         self.r_params["user"] = user
         self.r_params["training_program"] = training_program
@@ -722,13 +721,12 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
         task = self.safe_get_item(Task, task_id)
-
         task_num = task.num
-        training_day_num = task.training_day_num
 
         # Remove from training day if assigned
         if task.training_day is not None:
             training_day = task.training_day
+            training_day_num = task.training_day_num
             task.training_day = None
             task.training_day_num = None
 
@@ -1207,6 +1205,29 @@ class RemoveTrainingDayHandler(BaseHandler):
         self.r_params["contest"] = managing_contest
         self.r_params["unanswered"] = 0
 
+        # Stats for warning message
+        self.r_params["task_count"] = len(training_day.tasks)
+        self.r_params["participation_count"] = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == training_day.contest_id)
+            .count()
+        )
+        self.r_params["submission_count"] = (
+            self.sql_session.query(Submission)
+            .join(Participation)
+            .filter(Participation.contest_id == training_day.contest_id)
+            .count()
+        )
+
+        # Training days available to move tasks into
+        self.r_params["other_training_days"] = (
+            self.sql_session.query(TrainingDay)
+            .filter(TrainingDay.training_program == training_program)
+            .filter(TrainingDay.id != training_day.id)
+            .order_by(TrainingDay.position)
+            .all()
+        )
+
         self.render("training_day_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -1217,8 +1238,51 @@ class RemoveTrainingDayHandler(BaseHandler):
         if training_day.training_program_id != training_program.id:
             raise tornado.web.HTTPError(404)
 
+        action = self.get_argument("action", "delete_all")
+        target_training_day_id = self.get_argument("target_training_day_id", None)
+
         contest = training_day.contest
         position = training_day.position
+
+        # Handle tasks before deleting the training day so they are not cascade-deleted.
+        tasks = (
+            self.sql_session.query(Task)
+            .filter(Task.training_day == training_day)
+            .order_by(Task.training_day_num)
+            .all()
+        )
+
+        if action == "move":
+            if not target_training_day_id:
+                raise tornado.web.HTTPError(400, "Target training day is required")
+            target_training_day = self.safe_get_item(TrainingDay, target_training_day_id)
+            if target_training_day.training_program_id != training_program.id:
+                raise tornado.web.HTTPError(400, "Target training day must be in the same program")
+
+            # Append tasks to the end of the target training day, preserving order
+            existing_tasks = (
+                self.sql_session.query(Task)
+                .filter(Task.training_day == target_training_day)
+                .order_by(Task.training_day_num)
+                .all()
+            )
+            start_idx = len(existing_tasks)
+            for offset, task in enumerate(tasks):
+                task.training_day = target_training_day
+                task.training_day_num = start_idx + offset
+
+        elif action == "detach":
+            for task in tasks:
+                task.training_day = None
+                task.training_day_num = None
+
+        elif action == "delete_all":
+            for task in tasks:
+                self.sql_session.delete(task)
+        else:
+            raise tornado.web.HTTPError(400, "Invalid action")
+
+        self.sql_session.flush()
 
         self.sql_session.delete(training_day)
         self.sql_session.delete(contest)
