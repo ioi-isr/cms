@@ -32,12 +32,13 @@
 {% endif %}
          value="down by 1" />
 
-  <table class="bordered">
+  <table class="bordered" id="training_days_table">
     <thead>
       <tr>
         <th></th>
         <th>Name</th>
         <th>Description</th>
+        <th>Start</th>
       </tr>
     </thead>
     <tbody>
@@ -48,13 +49,26 @@
         </td>
         <td><a href="{{ url("contest", td.contest.id) }}">{{ td.contest.name }}</a></td>
         <td>{{ td.contest.description }}</td>
+        <td>
+          {% if td.contest.start.year != 2000 %}
+            {{ td.contest.start.strftime("%Y-%m-%d %H:%M") }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="3">(no training days yet)</td>
+        <td colspan="4">(no training days yet)</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+
+  <script>
+    $(document).ready(function() {
+      CMS.AWSUtils.init_table_sort($("#training_days_table"), false, 3, false);
+    });
+  </script>
 </form>
 {% endblock core %}
