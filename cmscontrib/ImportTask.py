@@ -230,7 +230,6 @@ class TaskImporter:
             track_submission_ids=self._imported_model_solution_submission_ids,
         )
 
-
 def main():
     """Parse arguments and launch process."""
 

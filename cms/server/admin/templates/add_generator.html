@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Upload generator</h1>
+</div>
+<form enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "generators", "add") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>Generator source file:</td>
+      <td>
+        <input type="file" name="generator"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Input file names template (use * as a testcase codename, for example: input.* or *.in):</td>
+      <td>
+        <input type="text" name="input_filename_template" value="input.*">
+      </td>
+    </tr>
+    <tr>
+      <td>Output file names template (use * as a testcase codename, for example: output.* or *.out):</td>
+      <td>
+        <input type="text" name="output_filename_template" value="output.*">
+      </td>
+    </tr>
+  </table>
+  <input type="submit" value="Upload">
+  <input type="Reset" >
+</form>
+{% endblock core %}
