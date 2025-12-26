@@ -172,9 +172,10 @@ CREATE TABLE public.participation_task_scores (
     last_submission_score double precision,
     last_submission_timestamp timestamp without time zone,
     history_valid boolean NOT NULL,
-    score_valid boolean NOT NULL,
     has_submissions boolean NOT NULL,
-    last_update timestamp without time zone NOT NULL
+    last_update timestamp without time zone NOT NULL,
+    created_at timestamp without time zone,
+    invalidated_at timestamp without time zone
 );
 
 CREATE SEQUENCE public.participation_task_scores_id_seq

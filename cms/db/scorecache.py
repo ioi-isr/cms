@@ -95,11 +95,6 @@ class ParticipationTaskScore(Base):
         nullable=False,
         default=True)
 
-    score_valid: bool = Column(
-        Boolean,
-        nullable=False,
-        default=True)
-
     has_submissions: bool = Column(
         Boolean,
         nullable=False,
@@ -108,6 +103,18 @@ class ParticipationTaskScore(Base):
     last_update: datetime = Column(
         DateTime,
         nullable=False)
+
+    # Timestamp when this cache entry was created/rebuilt.
+    # Set at the START of a rebuild operation.
+    created_at: datetime = Column(
+        DateTime,
+        nullable=True)
+
+    # Timestamp of the last invalidation request.
+    # Cache is valid if created_at > invalidated_at (or invalidated_at is NULL).
+    invalidated_at: datetime | None = Column(
+        DateTime,
+        nullable=True)
 
 
 class ScoreHistory(Base):

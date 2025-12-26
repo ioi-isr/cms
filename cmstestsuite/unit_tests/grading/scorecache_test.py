@@ -262,13 +262,14 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         self.task.score_mode = SCORE_MODE_MAX
 
     def test_invalidate_by_participation_and_task(self):
-        """Test invalidation by participation_id and task_id marks as invalid."""
+        """Test invalidation by participation_id and task_id sets invalidated_at."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
         get_cached_score_entry(self.session, self.participation, self.task)
         cache_entry = self.get_cache_entry()
         self.assertIsNotNone(cache_entry)
-        self.assertTrue(cache_entry.score_valid)
+        self.assertIsNone(cache_entry.invalidated_at)
+        self.assertIsNotNone(cache_entry.created_at)
         invalidate_score_cache(
             self.session,
             participation_id=self.participation.id,
@@ -277,17 +278,18 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         self.session.flush()
         cache_entry = self.get_cache_entry()
         self.assertIsNotNone(cache_entry)
-        self.assertFalse(cache_entry.score_valid)
-        self.assertFalse(cache_entry.history_valid)
+        self.assertIsNotNone(cache_entry.invalidated_at)
+        self.assertGreater(cache_entry.invalidated_at, cache_entry.created_at)
 
     def test_invalidate_by_participation(self):
-        """Test invalidation by participation_id only marks as invalid."""
+        """Test invalidation by participation_id only sets invalidated_at."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
         get_cached_score_entry(self.session, self.participation, self.task)
         cache_entry = self.get_cache_entry()
         self.assertIsNotNone(cache_entry)
-        self.assertTrue(cache_entry.score_valid)
+        self.assertIsNone(cache_entry.invalidated_at)
+        self.assertIsNotNone(cache_entry.created_at)
         invalidate_score_cache(
             self.session,
             participation_id=self.participation.id,
@@ -295,16 +297,18 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         self.session.flush()
         cache_entry = self.get_cache_entry()
         self.assertIsNotNone(cache_entry)
-        self.assertFalse(cache_entry.score_valid)
+        self.assertIsNotNone(cache_entry.invalidated_at)
+        self.assertGreater(cache_entry.invalidated_at, cache_entry.created_at)
 
     def test_invalidate_by_task(self):
-        """Test invalidation by task_id only marks as invalid."""
+        """Test invalidation by task_id only sets invalidated_at."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
         get_cached_score_entry(self.session, self.participation, self.task)
         cache_entry = self.get_cache_entry()
         self.assertIsNotNone(cache_entry)
-        self.assertTrue(cache_entry.score_valid)
+        self.assertIsNone(cache_entry.invalidated_at)
+        self.assertIsNotNone(cache_entry.created_at)
         invalidate_score_cache(
             self.session,
             task_id=self.task.id,
@@ -312,16 +316,18 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         self.session.flush()
         cache_entry = self.get_cache_entry()
         self.assertIsNotNone(cache_entry)
-        self.assertFalse(cache_entry.score_valid)
+        self.assertIsNotNone(cache_entry.invalidated_at)
+        self.assertGreater(cache_entry.invalidated_at, cache_entry.created_at)
 
     def test_invalidate_by_contest(self):
-        """Test invalidation by contest_id marks as invalid."""
+        """Test invalidation by contest_id sets invalidated_at."""
         self.add_scored_submission(self.at(1), 50.0)
         self.session.flush()
         get_cached_score_entry(self.session, self.participation, self.task)
         cache_entry = self.get_cache_entry()
         self.assertIsNotNone(cache_entry)
-        self.assertTrue(cache_entry.score_valid)
+        self.assertIsNone(cache_entry.invalidated_at)
+        self.assertIsNotNone(cache_entry.created_at)
         invalidate_score_cache(
             self.session,
             contest_id=self.participation.contest.id,
@@ -329,7 +335,8 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         self.session.flush()
         cache_entry = self.get_cache_entry()
         self.assertIsNotNone(cache_entry)
-        self.assertFalse(cache_entry.score_valid)
+        self.assertIsNotNone(cache_entry.invalidated_at)
+        self.assertGreater(cache_entry.invalidated_at, cache_entry.created_at)
 
     def test_invalidate_deletes_history(self):
         """Test that invalidation also deletes history entries."""
@@ -378,13 +385,13 @@ class TestInvalidateScoreCache(ScoreCacheMixin, unittest.TestCase):
         self.session.flush()
         cache_entry = self.get_cache_entry()
         self.assertIsNotNone(cache_entry)
-        self.assertFalse(cache_entry.score_valid)
+        self.assertIsNotNone(cache_entry.invalidated_at)
         task2_cache = self.session.query(ParticipationTaskScore).filter(
             ParticipationTaskScore.participation_id == self.participation.id,
             ParticipationTaskScore.task_id == task2.id,
         ).first()
         self.assertIsNotNone(task2_cache)
-        self.assertTrue(task2_cache.score_valid)
+        self.assertIsNone(task2_cache.invalidated_at)
 
 
 class TestUpdateScoreCache(ScoreCacheMixin, unittest.TestCase):
@@ -583,7 +590,6 @@ class TestOutOfOrderSubmissions(ScoreCacheMixin, unittest.TestCase):
 
         cache_entry = self.get_cache_entry()
         self.assertFalse(cache_entry.history_valid)
-        self.assertTrue(cache_entry.score_valid)
 
     def test_in_order_submissions_keep_history_valid(self):
         """Test that in-order submissions keep history valid."""
@@ -597,7 +603,6 @@ class TestOutOfOrderSubmissions(ScoreCacheMixin, unittest.TestCase):
 
         cache_entry = self.get_cache_entry()
         self.assertTrue(cache_entry.history_valid)
-        self.assertTrue(cache_entry.score_valid)
 
     def test_rebuild_handles_out_of_order_correctly(self):
         """Test that rebuild correctly handles out-of-order submissions."""

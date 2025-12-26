@@ -191,18 +191,22 @@ def _invalidate(
 ) -> None:
     """Helper to invalidate cache entries and delete history.
 
+    Sets invalidated_at to current timestamp via bulk UPDATE. Validity is
+    determined by created_at > invalidated_at comparison.
+
     pt_filter: filter conditions for ParticipationTaskScore query.
     history_filter: filter conditions for ScoreHistory query.
     """
+    now = _utc_now()
+
+    # Bulk update invalidated_at - simple and fast
     session.query(ParticipationTaskScore).filter(
         *pt_filter
     ).update(
-        {
-            ParticipationTaskScore.score_valid: False,
-            ParticipationTaskScore.history_valid: False,
-        },
+        {ParticipationTaskScore.invalidated_at: now},
         synchronize_session="fetch",
     )
+
     session.query(ScoreHistory).filter(
         *history_filter
     ).delete(synchronize_session=False)
@@ -276,12 +280,11 @@ def invalidate_score_cache(
 ) -> None:
     """Invalidate the score cache for the given scope.
 
-    This function marks cached scores as invalid and deletes history entries
-    for the specified scope. The cache will be lazily rebuilt when accessed
-    via get_cached_score_entry().
-
-    By marking as invalid instead of deleting, we ensure that endpoints can
-    reliably detect when a rebuild is needed.
+    Marks cache entries as stale by setting `invalidated_at` to now and deleting
+    associated history rows. Rebuilds are then triggered lazily by
+    `get_cached_score_entry()`, which considers an entry valid only if
+    `created_at > invalidated_at`. This timestamp-based approach makes
+    invalidation safe even if it interleaves with a concurrent rebuild.
 
     At least one of participation_id, task_id, or contest_id must be provided.
 
@@ -350,13 +353,16 @@ def rebuild_score_cache(
     """Rebuild the score cache for a participation/task pair.
 
     This function recalculates the cached score from all submissions
-    and rebuilds the history. It deletes any existing cache entry and
-    history, then creates a fresh cache entry.
+    and rebuilds the history. Unlike deletion-based rebuilds, this
+    updates the cache entry in-place to preserve the invalidated_at
+    timestamp for proper race condition handling.
+
+    The created_at timestamp is set at the START of the rebuild. This
+    ensures that if an invalidation occurs during the rebuild, the
+    resulting cache entry will be correctly marked as stale (since
+    created_at < invalidated_at).
 
     Uses PostgreSQL advisory locks to serialize concurrent operations.
-    Uses synchronize_session="fetch" for the ParticipationTaskScore delete
-    to ensure the session is updated and _get_or_create_cache_entry won't
-    return a stale/deleted entry.
 
     session: the database session.
     participation: the participation.
@@ -368,17 +374,23 @@ def rebuild_score_cache(
     # Acquire advisory lock to serialize concurrent operations
     _acquire_cache_lock(session, participation.id, task.id)
 
-    session.query(ParticipationTaskScore).filter(
-        ParticipationTaskScore.participation_id == participation.id,
-        ParticipationTaskScore.task_id == task.id,
-    ).delete(synchronize_session="fetch")
+    # Set created_at at the START of rebuild - this is critical for
+    # timestamp-based validity. If invalidation happens during rebuild,
+    # created_at will be < invalidated_at, marking the result as stale.
+    rebuild_start_time = _utc_now()
 
+    # Delete history entries (we'll rebuild them)
     session.query(ScoreHistory).filter(
         ScoreHistory.participation_id == participation.id,
         ScoreHistory.task_id == task.id,
     ).delete(synchronize_session=False)
 
+    # Get or create cache entry (don't delete - preserve invalidated_at)
     cache_entry = _get_or_create_cache_entry(session, participation, task)
+
+    # Set created_at to the rebuild start time
+    cache_entry.created_at = rebuild_start_time
+
     _update_cache_entry_from_submissions(session, cache_entry, participation, task)
     _rebuild_history(session, participation, task)
 
@@ -425,6 +437,27 @@ def rebuild_score_history(
         cache_entry.history_valid = True
 
 
+def _is_cache_valid(cache_entry: ParticipationTaskScore) -> bool:
+    """Check if a cache entry is valid using timestamp-based validity.
+
+    A cache entry is valid if created_at > invalidated_at (or invalidated_at
+    is NULL). If created_at is NULL, the entry needs to be rebuilt.
+
+    The timestamp check ensures that if an invalidation occurred during
+    a rebuild, the rebuild result is correctly marked as stale.
+    """
+    # If created_at is not set, needs rebuild
+    if cache_entry.created_at is None:
+        return False
+
+    # If never invalidated, it's valid
+    if cache_entry.invalidated_at is None:
+        return True
+
+    # Valid if created after last invalidation
+    return cache_entry.created_at > cache_entry.invalidated_at
+
+
 def get_cached_score_entry(
     session: Session,
     participation: Participation,
@@ -432,8 +465,9 @@ def get_cached_score_entry(
 ) -> ParticipationTaskScore:
     """Get the cached score entry for a participation/task pair.
 
-    If no cache entry exists or if the cache is marked invalid (score_valid=False),
-    rebuilds the cache. This returns the full cache entry including has_submissions.
+    If no cache entry exists or if the cache is invalid, rebuilds the cache.
+    Validity is determined by timestamp comparison: created_at > invalidated_at.
+    This returns the full cache entry including has_submissions.
 
     session: the database session.
     participation: the participation.
@@ -447,7 +481,7 @@ def get_cached_score_entry(
         ParticipationTaskScore.task_id == task.id,
     ).first()
 
-    if cache_entry is None or not cache_entry.score_valid:
+    if cache_entry is None or not _is_cache_valid(cache_entry):
         cache_entry = rebuild_score_cache(session, participation, task)
 
     return cache_entry
@@ -463,6 +497,8 @@ def ensure_valid_history(
     for the given contest and rebuilds them. This should be called before
     querying score history to ensure the data is up-to-date.
 
+    Uses timestamp-based validity checking (created_at > invalidated_at).
+
     Entries are processed in (participation_id, task_id) order to prevent
     deadlocks when multiple concurrent calls try to rebuild different pairs.
 
@@ -475,12 +511,11 @@ def ensure_valid_history(
     from sqlalchemy.orm import joinedload
     from cms.db import Participation
 
-    # First rebuild any entries with invalid scores
-    invalid_score_entries = (
+    # Get all entries for this contest
+    all_entries = (
         session.query(ParticipationTaskScore)
         .join(Participation)
         .filter(Participation.contest_id == contest_id)
-        .filter(ParticipationTaskScore.score_valid.is_(False))
         .options(joinedload(ParticipationTaskScore.participation))
         .options(joinedload(ParticipationTaskScore.task))
         .order_by(
@@ -490,34 +525,20 @@ def ensure_valid_history(
         .all()
     )
 
-    # Sort by (participation_id, task_id) to prevent deadlocks
-    invalid_score_entries.sort(
-        key=lambda e: (e.participation_id, e.task_id)
-    )
+    # Filter entries with invalid scores using timestamp-based validity
+    invalid_score_entries = [
+        e for e in all_entries if not _is_cache_valid(e)
+    ]
 
     for entry in invalid_score_entries:
         rebuild_score_cache(session, entry.participation, entry.task)
 
     # Then rebuild any entries with invalid history (but valid scores)
-    invalid_history_entries = (
-        session.query(ParticipationTaskScore)
-        .join(Participation)
-        .filter(Participation.contest_id == contest_id)
-        .filter(ParticipationTaskScore.score_valid.is_(True))
-        .filter(ParticipationTaskScore.history_valid.is_(False))
-        .options(joinedload(ParticipationTaskScore.participation))
-        .options(joinedload(ParticipationTaskScore.task))
-        .order_by(
-            ParticipationTaskScore.participation_id,
-            ParticipationTaskScore.task_id,
-        )
-        .all()
-    )
-
-    # Sort by (participation_id, task_id) to prevent deadlocks
-    invalid_history_entries.sort(
-        key=lambda e: (e.participation_id, e.task_id)
-    )
+    # Filter from all_entries to use timestamp-based validity
+    invalid_history_entries = [
+        e for e in all_entries
+        if _is_cache_valid(e) and not e.history_valid
+    ]
 
     for entry in invalid_history_entries:
         rebuild_score_history(session, entry.participation, entry.task)
@@ -535,6 +556,10 @@ def _get_or_create_cache_entry(
     This function assumes the caller has already acquired the advisory lock
     for this (participation, task) pair via _acquire_cache_lock(). This
     ensures no race conditions when creating new entries.
+
+    Note: created_at is set by the caller (rebuild_score_cache) at the
+    START of the rebuild operation, not here. This ensures proper
+    timestamp-based validity checking.
     """
     cache_entry = session.query(ParticipationTaskScore).filter(
         ParticipationTaskScore.participation_id == participation.id,
@@ -542,6 +567,7 @@ def _get_or_create_cache_entry(
     ).first()
 
     if cache_entry is None:
+        now = _utc_now()
         cache_entry = ParticipationTaskScore(
             participation=participation,
             task=task,
@@ -551,9 +577,10 @@ def _get_or_create_cache_entry(
             last_submission_score=None,
             last_submission_timestamp=None,
             history_valid=True,
-            score_valid=True,
             has_submissions=False,
-            last_update=_utc_now(),
+            last_update=now,
+            created_at=now,  # Set created_at for new entries
+            invalidated_at=None,  # No invalidation yet
         )
         session.add(cache_entry)
 
@@ -656,7 +683,6 @@ def _update_cache_entry_from_submissions(
         cache_entry.last_submission_score = None
         cache_entry.last_submission_timestamp = None
         cache_entry.history_valid = True
-        cache_entry.score_valid = True
         cache_entry.has_submissions = False
         cache_entry.last_update = _utc_now()
         return
@@ -686,7 +712,6 @@ def _update_cache_entry_from_submissions(
     cache_entry.last_submission_score = accumulator.last_submission_score
     cache_entry.last_submission_timestamp = accumulator.last_submission_timestamp
     cache_entry.history_valid = True
-    cache_entry.score_valid = True
     cache_entry.has_submissions = accumulator.has_submissions
     cache_entry.last_update = _utc_now()
 
