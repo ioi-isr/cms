@@ -744,6 +744,59 @@ class DeleteTestcaseHandler(BaseHandler):
         self.write("./%d" % task_id)
 
 
+class DeleteSelectedTestcasesHandler(BaseHandler):
+    """Delete multiple selected testcases from a dataset.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        task_id = task.id
+
+        # Collect selected testcase IDs from the request.
+        id_strings = self.get_arguments("testcase_id")
+
+        # If nothing was selected, just redirect back without doing anything.
+        if not id_strings:
+            self.write("./%d" % task_id)
+            return
+
+        testcases = []
+        for id_str in id_strings:
+            try:
+                tid = int(id_str)
+            except ValueError:
+                raise tornado.web.HTTPError(400)
+            tc = self.safe_get_item(Testcase, tid)
+
+            # Protect against mixing datasets.
+            if tc.dataset is not dataset:
+                raise tornado.web.HTTPError(400)
+
+            testcases.append(tc)
+
+        # Delete all selected testcases.
+        for tc in testcases:
+            self.sql_session.delete(tc)
+
+        # Handle OutputOnly tasks
+        if dataset.active and dataset.task_type == "OutputOnly":
+            for tc in testcases:
+                dataset.testcases.pop(tc.codename, None)
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
+
+        if self.try_commit():
+            # max_score and/or extra_headers might have changed.
+            self.service.proxy_service.reinitialize()
+        self.write("./%d" % task_id)
+
+
 class DownloadTestcasesHandler(BaseHandler):
     """Download all testcases in a zip file.
 
