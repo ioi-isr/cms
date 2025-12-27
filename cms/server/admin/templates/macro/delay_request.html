@@ -53,8 +53,10 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
         </form>
         <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" style="display: inline;">
           {{ xsrf_form_html|safe }}
-          <input type="text" name="rejection_reason" placeholder="Rejection reason (optional)" style="width: 200px; margin-right: 5px;">
           <button type="submit" class="btn btn-danger">Reject</button>
+          <div style="display: inline-block; margin-right: 5px;">
+            <input type="text" name="rejection_reason" placeholder="Rejection reason (optional)" style="width: 250px;">
+          </div>
         </form>
       </div>
     {% endif %}
