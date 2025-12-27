@@ -32,6 +32,9 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
       <strong>Reason:</strong> {{ req.reason }}<br>
       {% if req.status != 'pending' %}
         <strong>Status:</strong> {{ req.status }}
+        {% if req.status == 'rejected' and req.rejection_reason %}
+          <br><strong>Rejection Reason:</strong> {{ req.rejection_reason }}
+        {% endif %}
         {% if req.processed_timestamp %}
           <br><strong>Processed:</strong> {{ req.processed_timestamp|format_datetime }}
         {% endif %}
@@ -50,6 +53,7 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
         </form>
         <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" style="display: inline;">
           {{ xsrf_form_html|safe }}
+          <input type="text" name="rejection_reason" placeholder="Rejection reason (optional)" style="width: 200px; margin-right: 5px;">
           <button type="submit" class="btn btn-danger">Reject</button>
         </form>
       </div>

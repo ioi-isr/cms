@@ -161,4 +161,7 @@ ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participa
 
 ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+-- https://github.com/ioi-isr/cms/pull/XX - Add rejection reason to delay requests
+ALTER TABLE public.delay_requests ADD COLUMN rejection_reason character varying;
+
 COMMIT;
