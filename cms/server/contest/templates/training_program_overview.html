@@ -48,14 +48,12 @@
         {% endif %}
         
         <div class="training-day-actions">
-            <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn training-day-main-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
+            <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn training-day-enter-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
             {% if td_info.contest.allow_delay_requests %}
-            <div class="btn-group training-day-delay-actions">
-                <button type="button" class="btn btn-warning training-day-btn training-day-request-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
+            <div class="btn-group training-day-delay-group{% if td_info.participation.delay_requests|length == 0 %} single{% endif %}">
+                <button type="button" class="btn btn-warning training-day-btn training-day-delay-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
                 {% if td_info.participation.delay_requests|length > 0 %}
-                <button type="button" class="btn btn-info training-day-btn training-day-existing-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans %}View Requests{% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
-                {% else %}
-                <span class="training-day-existing-spacer"></span>
+                <button type="button" class="btn btn-info training-day-btn training-day-requests-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans %}View Requests{% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
                 {% endif %}
             </div>
             {% endif %}
@@ -234,13 +232,14 @@
 .training-day-countdown { display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px; }
 .training-day-countdown-text { font-size: 16px; font-weight: 600; color: #0d6efd; }
 .training-day-btn { font-weight: 600; padding: 9px 16px; font-size: 14px; line-height: 18px; text-align: center; }
-.training-day-main-btn { width: 160px; box-sizing: border-box; }
-.training-day-actions { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
-.training-day-delay-actions { display: flex; align-items: stretch; width: 160px; }
-.training-day-request-btn { flex: 1 1 auto; min-width: 0; }
-.training-day-existing-btn, .training-day-existing-spacer { flex: 0 0 44px; width: 44px; }
-.training-day-existing-btn { text-align: center; padding: 6px 0; font-size: 12px; line-height: 16px; }
-.training-day-existing-spacer { visibility: hidden; }
+.training-day-actions { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; align-items: flex-end; }
+.training-day-enter-btn { width: 220px; box-sizing: border-box; }
+.training-day-delay-group { display: inline-flex; align-items: stretch; width: 220px; flex-shrink: 0; }
+.training-day-delay-group > .btn { float: none; margin: 0; }
+.training-day-delay-btn { flex: 1 1 auto; min-width: 0; width: 100%; }
+.training-day-delay-group.single .training-day-delay-btn { width: 220px; }
+.training-day-requests-btn { flex: 0 0 44px; width: 44px; }
+.training-day-requests-btn { text-align: center; padding: 6px 0; font-size: 12px; line-height: 16px; }
 .filter-btn {
     transition: all 0.2s ease;
 }
