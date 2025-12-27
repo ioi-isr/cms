@@ -180,6 +180,9 @@ class ContestHandler(BaseHandler):
         - if username/password authentication is enabled, and the cookie
           is valid, the corresponding participation is returned, and the
           cookie is refreshed.
+        - for training day contests: if the user is authenticated to the
+          parent training program's managing contest, they are automatically
+          authenticated to the training day contest as well.
 
         After finding the participation, IP login and hidden users
         restrictions are checked.
@@ -211,6 +214,40 @@ class ContestHandler(BaseHandler):
             self.timestamp, cookie,
             authorization_header,
             ip_address)
+
+        # For training day contests: if direct authentication failed,
+        # try to authenticate via the parent training program's managing contest.
+        # This allows users logged into the training program to automatically
+        # access training day contests without re-authenticating.
+        if participation is None and self.contest.training_day is not None:
+            training_program = self.contest.training_day.training_program
+            managing_contest = training_program.managing_contest
+
+            # Try to authenticate using the managing contest's cookie
+            managing_cookie_name = managing_contest.name + "_login"
+            managing_cookie = self.get_secure_cookie(managing_cookie_name)
+
+            if managing_cookie is not None:
+                # Authenticate against the managing contest
+                managing_participation, _, managing_impersonated = authenticate_request(
+                    self.sql_session, managing_contest,
+                    self.timestamp, managing_cookie,
+                    None,  # No authorization header for fallback
+                    ip_address)
+
+                if managing_participation is not None:
+                    # User is authenticated to the managing contest.
+                    # Find their participation in this training day's contest.
+                    participation = (
+                        self.sql_session.query(Participation)
+                        .filter(Participation.contest == self.contest)
+                        .filter(Participation.user == managing_participation.user)
+                        .first()
+                    )
+                    if participation is not None:
+                        impersonated = managing_impersonated
+                        # Don't set a cookie for the training day contest -
+                        # authentication is always via the managing contest
 
         if cookie is None:
             self.clear_cookie(cookie_name)
