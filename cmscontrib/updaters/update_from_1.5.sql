@@ -161,7 +161,6 @@ ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participa
 
 ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
-<<<<<<< HEAD
 -- Training programs table for organizing year-long training with multiple sessions
 CREATE TABLE public.training_programs (
     id integer NOT NULL,

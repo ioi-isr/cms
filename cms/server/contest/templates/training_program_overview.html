@@ -49,7 +49,7 @@
         
         <div class="training-day-actions">
             {% if td_info.contest.allow_delay_requests %}
-            <button type="button" class="btn btn-warning training-day-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
+            <button type="button" class="btn btn-warning training-day-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
             {% endif %}
             <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
         </div>
@@ -65,7 +65,7 @@
             <p class="text-info" style="margin-bottom: 15px;">
                 {% trans %}Current start time:{% endtrans %} <strong>{{ td_info.user_start_time|format_datetime_smart }}</strong>
             </p>
-            {{ delay_request_form(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop.index, inline=True, next_url=contest_url("training_overview")) }}
+            {{ delay_request_form(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop.index, inline=True, next_url="/" ~ training_program.name ~ "/training_overview") }}
         </div>
     </div>
     {% endif %}

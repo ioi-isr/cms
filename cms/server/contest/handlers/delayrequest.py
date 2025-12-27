@@ -51,9 +51,10 @@ class DelayRequestHandler(ContestHandler):
     @multi_contest
     def post(self):
         # Get the redirect URL (for training program integration)
-        next_url = self.get_argument("next", "")
-        # Validate next_url is a safe relative path
-        if next_url and (not next_url.startswith("/") or "://" in next_url):
+        next_url = self.get_argument("next", "").strip()
+        # Validate next_url is a safe absolute path (prevent open redirects)
+        # Must start with "/" but not "//" (scheme-relative), and must not contain "://"
+        if next_url and (not next_url.startswith("/") or next_url.startswith("//") or "://" in next_url):
             next_url = ""
         redirect_url = next_url if next_url else self.contest_url("communication")
 
