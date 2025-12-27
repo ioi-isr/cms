@@ -49,10 +49,12 @@
         
         <div class="training-day-actions">
             {% if td_info.contest.allow_delay_requests %}
-            <button type="button" class="btn btn-warning training-day-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
-            {% endif %}
-            {% if td_info.participation.delay_requests|length > 0 %}
-            <button type="button" class="btn btn-info training-day-btn" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">{% trans %}View Requests{% endtrans %} ({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
+            <div class="btn-group training-day-delay-actions">
+                <button type="button" class="btn btn-warning training-day-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
+                {% if td_info.participation.delay_requests|length > 0 %}
+                <button type="button" class="btn btn-info training-day-btn training-day-existing-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans %}View Requests{% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
+                {% endif %}
+            </div>
             {% endif %}
             <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
         </div>
@@ -229,8 +231,11 @@
 .training-day-countdown-label { font-size: 13px; color: #666; margin-bottom: 8px; }
 .training-day-countdown { display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px; }
 .training-day-countdown-text { font-size: 16px; font-weight: 600; color: #0d6efd; }
-.training-day-btn { font-weight: 600; padding: 10px 20px; flex: 0 0 auto; }
+.training-day-btn { font-weight: 600; padding: 9px 16px; font-size: 14px; line-height: 18px; text-align: center; }
 .training-day-actions { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+.training-day-delay-actions { display: inline-flex; align-items: stretch; width: 100%; }
+.training-day-existing-btn { min-width: 44px; text-align: center; padding: 6px 0; font-size: 12px; line-height: 16px; flex: 0 0 44px; }
+.training-day-delay-actions .btn-warning { flex: 1 1 auto; }
 .filter-btn {
     transition: all 0.2s ease;
 }
