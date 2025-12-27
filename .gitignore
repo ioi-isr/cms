@@ -16,3 +16,4 @@ log/
 codecov/
 .dev/
 test_logs/
+node_modules/
