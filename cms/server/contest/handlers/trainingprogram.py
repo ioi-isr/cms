@@ -111,7 +111,7 @@ class TrainingProgramOverviewHandler(ContestHandler):
                 continue
 
             # Compute actual phase for this training day
-            actual_phase, current_phase_begin, current_phase_end, valid_phase_begin, valid_phase_end = compute_actual_phase(
+            actual_phase, _current_phase_begin, _current_phase_end, valid_phase_begin, _valid_phase_end = compute_actual_phase(
                 self.timestamp,
                 td_contest.start,
                 td_contest.stop,
@@ -132,12 +132,14 @@ class TrainingProgramOverviewHandler(ContestHandler):
             user_start_time = td_contest.start + td_participation.delay_time
 
             # Calculate duration
-            duration = td_contest.stop - td_contest.start
+            duration = td_contest.per_user_time \
+                if td_contest.per_user_time is not None else \
+                td_contest.stop - td_contest.start
 
             upcoming_training_days.append({
                 "training_day": training_day,
                 "contest": td_contest,
-                "actual_phase": actual_phase,
+                "has_started": actual_phase >= -1,
                 "user_start_time": user_start_time,
                 "valid_phase_begin": valid_phase_begin,
                 "duration": duration,
