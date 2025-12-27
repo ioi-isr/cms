@@ -1,5 +1,5 @@
 {% extends "contest.html" %}
-{% from "macro/delay_request.html" import delay_request_form with context %}
+{% from "macro/delay_request.html" import delay_request_form, delay_request_list with context %}
 
 {% set page = "training_overview" %}
 
@@ -51,6 +51,9 @@
             {% if td_info.contest.allow_delay_requests %}
             <button type="button" class="btn btn-warning training-day-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
             {% endif %}
+            {% if td_info.participation.delay_requests|length > 0 %}
+            <button type="button" class="btn btn-info training-day-btn" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">{% trans %}View Requests{% endtrans %} ({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
+            {% endif %}
             <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
         </div>
     </div>
@@ -59,13 +62,28 @@
     <div id="delay-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-modal-label-{{ loop.index }}" aria-hidden="true">
         <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-            <h3 id="delay-modal-label-{{ loop.index }}">{% trans %}Request Delay{% endtrans %} - {{ td_info.contest.description }}</h3>
+            <h3 id="delay-modal-label-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} - {{ td_info.contest.description }}</h3>
         </div>
         <div class="modal-body">
             <p class="text-info" style="margin-bottom: 15px;">
                 {% trans %}Current start time:{% endtrans %} <strong>{{ td_info.user_start_time|format_datetime_smart }}</strong>
             </p>
             {{ delay_request_form(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop.index, inline=True, next_url="/" ~ training_program.name ~ "/training_overview") }}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if td_info.participation.delay_requests|length > 0 %}
+    <div id="delay-requests-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-requests-modal-label-{{ loop.index }}" aria-hidden="true">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h3 id="delay-requests-modal-label-{{ loop.index }}">{% trans %}Your Delay Requests{% endtrans %} - {{ td_info.contest.description }}</h3>
+        </div>
+        <div class="modal-body">
+            {{ delay_request_list(td_info.participation.delay_requests) }}
+        </div>
+        <div class="modal-footer">
+            <button class="btn" data-dismiss="modal" aria-hidden="true">{% trans %}Close{% endtrans %}</button>
         </div>
     </div>
     {% endif %}

@@ -139,6 +139,7 @@ class TrainingProgramOverviewHandler(ContestHandler):
             upcoming_training_days.append({
                 "training_day": training_day,
                 "contest": td_contest,
+                "participation": td_participation,
                 "has_started": actual_phase >= -1,
                 "user_start_time": user_start_time,
                 "valid_phase_begin": valid_phase_begin,
