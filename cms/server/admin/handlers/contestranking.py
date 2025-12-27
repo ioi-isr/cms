@@ -77,7 +77,7 @@ class RankingHandler(BaseHandler):
             p.task_statuses = []  # status per task for rendering/export
             total_score = 0.0
             partial = False
-            for task in self.contest.tasks:
+            for task in self.contest.get_tasks():
                 t_score, t_partial = task_score(p, task, rounded=True)
                 
                 has_submissions = any(s.task_id == task.id and s.official 
@@ -124,7 +124,7 @@ class RankingHandler(BaseHandler):
             row = ["Username", "User"]
             if show_teams:
                 row.append("Team")
-            for task in contest.tasks:
+            for task in contest.get_tasks():
                 row.append(task.name)
                 if include_partial:
                     row.append("P")
@@ -144,7 +144,7 @@ class RankingHandler(BaseHandler):
                        "%s %s" % (p.user.first_name, p.user.last_name)]
                 if show_teams:
                     row.append(p.team.name if p.team else "")
-                assert len(contest.tasks) == len(p.task_statuses)
+                assert len(contest.get_tasks()) == len(p.task_statuses)
                 for status in p.task_statuses:
                     row.append(status.score)
                     if include_partial:

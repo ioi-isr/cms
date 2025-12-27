@@ -230,4 +230,55 @@ CREATE UNIQUE INDEX ix_students_participation_id ON public.students USING btree 
 ALTER TABLE ONLY public.students
     ALTER COLUMN student_tags DROP DEFAULT;
 
+-- Training days table for organizing training days within a training program
+CREATE TABLE public.training_days (
+    id integer NOT NULL,
+    training_program_id integer NOT NULL,
+    contest_id integer NOT NULL,
+    "position" integer
+);
+
+CREATE SEQUENCE public.training_days_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.training_days_id_seq OWNED BY public.training_days.id;
+
+ALTER TABLE ONLY public.training_days
+    ALTER COLUMN id SET DEFAULT nextval('public.training_days_id_seq'::regclass);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_training_program_id_fkey FOREIGN KEY (training_program_id) REFERENCES public.training_programs(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_contest_id_fkey FOREIGN KEY (contest_id) REFERENCES public.contests(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_training_days_training_program_id ON public.training_days USING btree (training_program_id);
+
+CREATE UNIQUE INDEX ix_training_days_contest_id ON public.training_days USING btree (contest_id);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_training_program_id_position_key UNIQUE (training_program_id, "position");
+
+-- Add training_day_id and training_day_num to tasks table for training day-specific tasks
+-- Tasks keep their contest_id (managing contest) and can also be assigned to a training day
+ALTER TABLE public.tasks ADD COLUMN training_day_id integer;
+ALTER TABLE public.tasks ADD COLUMN training_day_num integer;
+
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+CREATE INDEX ix_tasks_training_day_id ON public.tasks USING btree (training_day_id);
+
+-- Ensure a task's position is unique within a training day
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_training_day_id_training_day_num_key UNIQUE (training_day_id, training_day_num);
+
 COMMIT;

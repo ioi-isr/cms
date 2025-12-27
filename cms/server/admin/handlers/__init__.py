@@ -147,12 +147,16 @@ from .trainingprogram import \
     RemoveTrainingProgramStudentHandler, \
     TrainingProgramTasksHandler, \
     AddTrainingProgramTaskHandler, \
+    RemoveTrainingProgramTaskHandler, \
     TrainingProgramRankingHandler, \
     TrainingProgramSubmissionsHandler, \
     TrainingProgramAnnouncementsHandler, \
     TrainingProgramAnnouncementHandler, \
     TrainingProgramQuestionsHandler, \
-    StudentHandler
+    StudentHandler, \
+    TrainingProgramTrainingDaysHandler, \
+    AddTrainingDayHandler, \
+    RemoveTrainingDayHandler
 
 
 HANDLERS = [
@@ -295,12 +299,16 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/student/([0-9]+)/edit", StudentHandler),
     (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
     (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),
+    (r"/training_program/([0-9]+)/task/([0-9]+)/remove", RemoveTrainingProgramTaskHandler),
     (r"/training_program/([0-9]+)/ranking", TrainingProgramRankingHandler),
     (r"/training_program/([0-9]+)/ranking/([a-z]+)", TrainingProgramRankingHandler),
     (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
     (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
     (r"/training_program/([0-9]+)/announcement/([0-9]+)", TrainingProgramAnnouncementHandler),
     (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
+    (r"/training_program/([0-9]+)/training_days", TrainingProgramTrainingDaysHandler),
+    (r"/training_program/([0-9]+)/training_days/add", AddTrainingDayHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/remove", RemoveTrainingDayHandler),
 
     # Admins
 

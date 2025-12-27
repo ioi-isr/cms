@@ -1044,3 +1044,97 @@ CMS.AWSUtils.prototype.do_diff = function() {
     var show_diff = this.bind_func(this, this.show_diff);
     this.ajax_request(this.url("submission_diff", old_id, new_id), null, show_diff);
 }
+
+
+/**
+ * Validates that end time is after start time for datetime-local inputs.
+ * Attaches to a form's submit event and prevents submission if invalid.
+ *
+ * formSelector (string): jQuery selector for the form element.
+ * startSelector (string): jQuery selector for the start datetime-local input.
+ * stopSelector (string): jQuery selector for the stop/end datetime-local input.
+ */
+CMS.AWSUtils.initDateTimeValidation = function(formSelector, startSelector, stopSelector) {
+    var form = document.querySelector(formSelector);
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        // Use form-scoped selectors to avoid matching inputs in other forms
+        var startInput = form.querySelector(startSelector);
+        var stopInput = form.querySelector(stopSelector);
+        if (!startInput || !stopInput) return;
+
+        // Use valueAsNumber for reliable datetime-local comparison
+        var startValue = startInput.valueAsNumber;
+        var stopValue = stopInput.valueAsNumber;
+        if (startValue && stopValue && stopValue <= startValue) {
+            alert('End time must be after start time');
+            e.preventDefault();
+        }
+    });
+};
+
+
+/**
+ * Initializes a remove page with task handling options.
+ * Handles the radio button selection, dropdown enable/disable, and form submission.
+ *
+ * config (object): Configuration object with the following properties:
+ *   - removeUrl (string): The base URL for the DELETE request.
+ *   - hasTaskOptions (boolean): Whether task handling options are shown.
+ *   - targetSelectId (string): ID of the target dropdown (e.g., 'target_contest_select').
+ *   - targetParamName (string): Query param name for target (e.g., 'target_contest_id').
+ *   - targetLabel (string): Label for validation alert (e.g., 'contest').
+ */
+CMS.AWSUtils.initRemovePage = function(config) {
+    if (config.hasTaskOptions) {
+        // Enable/disable the target dropdown based on the selected action
+        document.querySelectorAll('input[name="action"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                var targetSelect = document.getElementById(config.targetSelectId);
+                if (document.getElementById('action_move').checked) {
+                    targetSelect.disabled = false;
+                } else {
+                    targetSelect.disabled = true;
+                }
+            });
+        });
+
+        // Initialize the dropdown state
+        document.getElementById(config.targetSelectId).disabled = true;
+    }
+
+    // Attach the remove function to the window for onclick access
+    window.doRemove = function() {
+        var url = config.removeUrl;
+
+        if (config.hasTaskOptions) {
+            var actionRadios = document.querySelectorAll('input[name="action"]');
+            var selectedAction = null;
+            for (var i = 0; i < actionRadios.length; i++) {
+                if (actionRadios[i].checked) {
+                    selectedAction = actionRadios[i].value;
+                    break;
+                }
+            }
+
+            if (!selectedAction) {
+                alert('Please select an option for handling tasks.');
+                return;
+            }
+
+            url += '?action=' + encodeURIComponent(selectedAction);
+
+            if (selectedAction === 'move') {
+                var targetId = document.getElementById(config.targetSelectId).value;
+                if (!targetId) {
+                    alert('Please select a target ' + config.targetLabel + '.');
+                    return;
+                }
+                url += '&' + config.targetParamName + '=' + encodeURIComponent(targetId);
+            }
+        }
+
+        CMS.AWSUtils.ajax_delete(url);
+    };
+};

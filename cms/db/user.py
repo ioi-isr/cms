@@ -300,7 +300,6 @@ class Participation(Base):
         uselist=False,
     )
 
-
 class Message(Base):
     """Class to store a private message from the managers to the
     user.

@@ -52,8 +52,7 @@ from sqlalchemy.orm import Query, subqueryload
 
 from cms import __version__, config
 from cms.db import Admin, Contest, ContestFolder, DelayRequest, Participation, \
-    Question, Submission, SubmissionResult, Task, Team, TrainingProgram, User, \
-    UserTest
+    Question, Submission, SubmissionResult, Task, Team, TrainingProgram, User, UserTest
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
@@ -397,6 +396,7 @@ class BaseHandler(CommonRequestHandler):
         # TODO: use a better sorting method.
         params["contest_list"] = self.sql_session.query(Contest)\
             .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
+            .filter(~Contest.training_day.has())\
             .order_by(Contest.name).all()
         params["task_list"] = self.sql_session.query(Task)\
             .order_by(Task.name).all()
@@ -411,7 +411,7 @@ class BaseHandler(CommonRequestHandler):
             .order_by(ContestFolder.name).all()
         params["root_contests"] = self.sql_session.query(Contest).filter(
             Contest.folder_id.is_(None)
-        ).filter(~Contest.name.like(r'\_\_%', escape='\\')).order_by(Contest.name).all()
+        ).filter(~Contest.name.like(r'\_\_%', escape='\\')).filter(~Contest.training_day.has()).order_by(Contest.name).all()
         params["training_program_list"] = self.sql_session.query(TrainingProgram)\
             .order_by(TrainingProgram.name).all()
         return params
