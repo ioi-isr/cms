@@ -51,9 +51,11 @@
             <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn training-day-main-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
             {% if td_info.contest.allow_delay_requests %}
             <div class="btn-group training-day-delay-actions">
-                <button type="button" class="btn btn-warning training-day-btn training-day-main-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
+                <button type="button" class="btn btn-warning training-day-btn training-day-request-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
                 {% if td_info.participation.delay_requests|length > 0 %}
                 <button type="button" class="btn btn-info training-day-btn training-day-existing-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans %}View Requests{% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
+                {% else %}
+                <span class="training-day-existing-spacer"></span>
                 {% endif %}
             </div>
             {% endif %}
@@ -234,9 +236,11 @@
 .training-day-btn { font-weight: 600; padding: 9px 16px; font-size: 14px; line-height: 18px; text-align: center; }
 .training-day-main-btn { width: 160px; box-sizing: border-box; }
 .training-day-actions { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
-.training-day-delay-actions { display: inline-flex; align-items: stretch; width: auto; }
-.training-day-existing-btn { min-width: 44px; text-align: center; padding: 6px 0; font-size: 12px; line-height: 16px; flex: 0 0 44px; }
-.training-day-delay-actions .training-day-main-btn { flex: 0 0 160px; }
+.training-day-delay-actions { display: flex; align-items: stretch; width: 160px; }
+.training-day-request-btn { flex: 1 1 auto; min-width: 0; }
+.training-day-existing-btn, .training-day-existing-spacer { flex: 0 0 44px; width: 44px; }
+.training-day-existing-btn { text-align: center; padding: 6px 0; font-size: 12px; line-height: 16px; }
+.training-day-existing-spacer { visibility: hidden; }
 .filter-btn {
     transition: all 0.2s ease;
 }
