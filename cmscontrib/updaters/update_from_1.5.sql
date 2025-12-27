@@ -161,6 +161,7 @@ ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participa
 
 ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+<<<<<<< HEAD
 -- Training programs table for organizing year-long training with multiple sessions
 CREATE TABLE public.training_programs (
     id integer NOT NULL,
@@ -280,5 +281,8 @@ CREATE INDEX ix_tasks_training_day_id ON public.tasks USING btree (training_day_
 -- Ensure a task's position is unique within a training day
 ALTER TABLE ONLY public.tasks
     ADD CONSTRAINT tasks_training_day_id_training_day_num_key UNIQUE (training_day_id, training_day_num);
+
+-- https://github.com/ioi-isr/cms/pull/82 - Add rejection reason to delay requests
+ALTER TABLE public.delay_requests ADD COLUMN rejection_reason character varying;
 
 COMMIT;

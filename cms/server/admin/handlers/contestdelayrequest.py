@@ -186,9 +186,12 @@ class DelayRequestRejectHandler(DelayRequestActionHandler):
         if delay_request.status != 'pending':
             raise tornado.web.HTTPError(400, "Delay request is not pending")
 
+        rejection_reason = self.get_argument("rejection_reason", "").strip()
+
         delay_request.status = 'rejected'
         delay_request.processed_timestamp = make_datetime()
         delay_request.admin = self.current_user
+        delay_request.rejection_reason = rejection_reason if rejection_reason else None
 
         if self.try_commit():
             logger.info("Delay request %s rejected by admin %s for user %s in contest %s",
