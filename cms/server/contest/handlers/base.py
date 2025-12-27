@@ -47,7 +47,7 @@ import tornado.web
 from werkzeug.datastructures import LanguageAccept
 from werkzeug.http import parse_accept_header
 
-from cms.db import Contest, TrainingProgram
+from cms.db import Contest
 from cms.db.contest_folder import ContestFolder
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
 from cms.server import CommonRequestHandler
@@ -337,15 +337,9 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .all()
             )
 
-        # Query training programs (only at root level, not in folders)
-        if cur_folder is None:
-            training_programs = (
-                self.sql_session.query(TrainingProgram)
-                .order_by(TrainingProgram.name)
-                .all()
-            )
-        else:
-            training_programs = []
+        # Training programs are not shown in the browse view - contestants
+        # access them directly via their URL (e.g., /training_program_name)
+        training_programs = []
 
         # Build url helper for folder/contest entries
         def folder_href(f: ContestFolder) -> str:
@@ -355,10 +349,6 @@ class ContestFolderBrowseHandler(BaseHandler):
             # Contest pages expect the contest name segment; we still support
             # nested paths by capturing full path but resolve by last segment.
             return self.url(*[bf.name for bf in breadcrumbs], c.name)
-
-        def training_program_href(tp: TrainingProgram) -> str:
-            # Training programs are accessed by their name directly
-            return self.url(tp.name)
 
         folder_tree = self._build_folder_tree()
 
@@ -370,7 +360,6 @@ class ContestFolderBrowseHandler(BaseHandler):
             training_programs=training_programs,
             folder_href=folder_href,
             contest_href=contest_href,
-            training_program_href=training_program_href,
             folder_tree=folder_tree,
             current_path=path or "",
             **self.r_params,
