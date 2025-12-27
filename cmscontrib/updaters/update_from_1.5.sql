@@ -285,4 +285,13 @@ ALTER TABLE ONLY public.tasks
 -- https://github.com/ioi-isr/cms/pull/82 - Add rejection reason to delay requests
 ALTER TABLE public.delay_requests ADD COLUMN rejection_reason character varying;
 
+-- https://github.com/ioi-isr/cms/pull/83 - Add allow_delay_requests to contests
+ALTER TABLE public.contests ADD COLUMN allow_delay_requests boolean NOT NULL DEFAULT true;
+ALTER TABLE public.contests ALTER COLUMN allow_delay_requests DROP DEFAULT;
+
+-- Set allow_delay_requests=false for existing training program managing contests
+UPDATE public.contests SET allow_delay_requests = false WHERE id IN (
+    SELECT managing_contest_id FROM public.training_programs
+);
+
 COMMIT;

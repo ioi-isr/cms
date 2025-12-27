@@ -1,6 +1,6 @@
 {# This macro should be imported "with context". #}
 
-{% macro delay_request_form(action_url, xsrf_form_html, timezone, now, form_id=None, inline=False) %}
+{% macro delay_request_form(action_url, xsrf_form_html, timezone, now, form_id=None, inline=False, next_url=None) %}
 {#
 Render a delay request form.
 
@@ -10,9 +10,13 @@ timezone: the user's timezone object.
 now: the current datetime.
 form_id (str|None): optional ID for the form element.
 inline (bool): if True, renders a more compact inline version for modals.
+next_url (str|None): optional URL to redirect to after form submission.
 #}
 <form class="form-horizontal" action="{{ action_url }}" method="POST"{% if form_id %} id="{{ form_id }}"{% endif %}>
     {{ xsrf_form_html|safe }}
+    {% if next_url %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+    {% endif %}
     <fieldset>
         <div class="control-group">
             <label class="control-label" for="input_requested_start_time{% if form_id %}_{{ form_id }}{% endif %}">{% trans %}Requested Start Time{% endtrans %}</label>

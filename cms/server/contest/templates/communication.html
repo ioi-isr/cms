@@ -125,12 +125,14 @@
 {% endif %}
 
 
+{% if contest.allow_delay_requests %}
 <h2>{% trans %}Request Contest Delay{% endtrans %}</h2>
 <div class="well delay_request_submit">
     {{ delay_request_form(contest_url("delay_request"), xsrf_form_html, timezone, now) }}
 </div>
 
 {{ delay_request_list(participation.delay_requests) }}
+{% endif %}
 
 
 </div>
