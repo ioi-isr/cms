@@ -47,7 +47,7 @@ import tornado.web
 from werkzeug.datastructures import LanguageAccept
 from werkzeug.http import parse_accept_header
 
-from cms.db import Contest
+from cms.db import Contest, TrainingProgram
 from cms.db.contest_folder import ContestFolder
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
 from cms.server import CommonRequestHandler
@@ -244,10 +244,12 @@ class ContestFolderBrowseHandler(BaseHandler):
         """Build complete folder tree with contests for client-side navigation.
         
         Excludes hidden folders and their descendants from the tree.
+        Also excludes training day contests (contests that belong to a training day).
         """
         all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
         all_contests = self.sql_session.query(Contest)\
             .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
+            .filter(Contest.training_day == None)\
             .order_by(Contest.name).all()
 
         folder_map = {}
@@ -308,6 +310,7 @@ class ContestFolderBrowseHandler(BaseHandler):
             cur_folder = None
 
         # Subfolders (exclude hidden folders)
+        # Contests exclude managing contests (starting with __) and training day contests
         if cur_folder is None:
             subfolders = (
                 self.sql_session.query(ContestFolder)
@@ -320,6 +323,7 @@ class ContestFolderBrowseHandler(BaseHandler):
                 self.sql_session.query(Contest)
                 .filter(Contest.folder_id.is_(None))
                 .filter(~Contest.name.like(r'\_\_%', escape='\\'))
+                .filter(Contest.training_day == None)
                 .all()
             )
         else:
@@ -334,12 +338,19 @@ class ContestFolderBrowseHandler(BaseHandler):
                 self.sql_session.query(Contest)
                 .filter(Contest.folder == cur_folder)
                 .filter(~Contest.name.like(r'\_\_%', escape='\\'))
+                .filter(Contest.training_day == None)
                 .all()
             )
 
-        # Training programs are not shown in the browse view - contestants
-        # access them directly via their URL (e.g., /training_program_name)
-        training_programs = []
+        # Query training programs (only at root level, not in folders)
+        if cur_folder is None:
+            training_programs = (
+                self.sql_session.query(TrainingProgram)
+                .order_by(TrainingProgram.name)
+                .all()
+            )
+        else:
+            training_programs = []
 
         # Build url helper for folder/contest entries
         def folder_href(f: ContestFolder) -> str:
@@ -349,6 +360,10 @@ class ContestFolderBrowseHandler(BaseHandler):
             # Contest pages expect the contest name segment; we still support
             # nested paths by capturing full path but resolve by last segment.
             return self.url(*[bf.name for bf in breadcrumbs], c.name)
+
+        def training_program_href(tp: TrainingProgram) -> str:
+            # Training programs are accessed by their name directly
+            return self.url(tp.name)
 
         folder_tree = self._build_folder_tree()
 
@@ -360,6 +375,7 @@ class ContestFolderBrowseHandler(BaseHandler):
             training_programs=training_programs,
             folder_href=folder_href,
             contest_href=contest_href,
+            training_program_href=training_program_href,
             folder_tree=folder_tree,
             current_path=path or "",
             **self.r_params,
