@@ -159,6 +159,7 @@ class AddTrainingProgramHandler(SimpleHandler("add_training_program.html", permi
             contest_kwargs: dict = {
                 "name": "__" + name,
                 "description": description,
+                "allow_delay_requests": False,
             }
 
             if start_str:

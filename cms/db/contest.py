@@ -131,6 +131,12 @@ class Contest(Base):
         nullable=False,
         default=False)
 
+    # Whether contestants can submit delay requests.
+    allow_delay_requests: bool = Column(
+        Boolean,
+        nullable=False,
+        default=True)
+
     # Whether to enforce that the IP address of the request matches
     # the IP address or subnet specified for the participation (if
     # present).

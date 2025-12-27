@@ -50,20 +50,32 @@ class DelayRequestHandler(ContestHandler):
     @tornado.web.authenticated
     @multi_contest
     def post(self):
+        # Get the redirect URL (for training program integration)
+        next_url = self.get_argument("next", "").strip()
+        # Validate next_url is a safe absolute path (prevent open redirects)
+        # Must start with "/" but not "//" (scheme-relative), and must not contain "://"
+        if next_url and (not next_url.startswith("/") or next_url.startswith("//") or "://" in next_url):
+            next_url = ""
+        redirect_url = next_url if next_url else self.contest_url("communication")
+
+        # Check if delay requests are allowed for this contest
+        if not self.contest.allow_delay_requests:
+            raise tornado.web.HTTPError(404)
+
         requested_start_time_str = self.get_argument("requested_start_time", "")
         reason = self.get_argument("reason", "")
 
         if not requested_start_time_str or not reason:
             self.notify_error(N_("Invalid request"),
                             N_("Please provide both a requested start time and a reason."))
-            self.redirect(self.contest_url("communication"))
+            self.redirect(redirect_url)
             return
 
         if len(reason) > DelayRequest.MAX_REASON_LENGTH:
             self.notify_error(N_("Reason too long"),
                             N_("The reason must be at most %d characters long."),
                             DelayRequest.MAX_REASON_LENGTH)
-            self.redirect(self.contest_url("communication"))
+            self.redirect(redirect_url)
             return
 
         try:
@@ -71,7 +83,7 @@ class DelayRequestHandler(ContestHandler):
         except (ValueError, TypeError):
             self.notify_error(N_("Invalid date"),
                             N_("The requested start time is not valid."))
-            self.redirect(self.contest_url("communication"))
+            self.redirect(redirect_url)
             return
 
         tz = get_timezone(self.current_user.user, self.contest)
@@ -94,7 +106,7 @@ class DelayRequestHandler(ContestHandler):
             self.notify_error(N_("Couldn't interpret requested time"),
                             N_("We couldn't interpret the requested start time in your time zone. "
                                "Please pick a different time or adjust the date."))
-            self.redirect(self.contest_url("communication"))
+            self.redirect(redirect_url)
             return
 
         delay_request = DelayRequest(
@@ -115,4 +127,4 @@ class DelayRequestHandler(ContestHandler):
             self.notify_error(N_("Error"),
                             N_("An error occurred while submitting your request."))
 
-        self.redirect(self.contest_url("communication"))
+        self.redirect(redirect_url)
