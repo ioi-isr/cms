@@ -11,32 +11,32 @@
 </div>
 
 {% if upcoming_training_days|length > 0 %}
-<h2 style="margin-bottom: 20px; font-size: 24px; font-weight: 600; color: #333;">{% trans %}Upcoming Training Days{% endtrans %}</h2>
+<h2 class="tp-section-heading">{% trans %}Upcoming Training Days{% endtrans %}</h2>
 
-<div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px;">
+<div class="training-day-list">
 {% for td_info in upcoming_training_days %}
-    <div class="training-day-card" style="background: #fff; border-left: 4px solid {% if td_info.actual_phase == 0 %}#28a745{% else %}#0d6efd{% endif %}; border-radius: 8px; padding: 20px 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
-        <div style="flex: 1; min-width: 250px;">
-            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #333;">{{ td_info.contest.description }}</h3>
-            <div style="font-size: 14px; color: #666; margin-bottom: 4px;">
+    <div class="training-day-card {% if td_info.has_started %}started{% else %}upcoming{% endif %}">
+        <div class="training-day-meta">
+            <h3 class="training-day-title">{{ td_info.contest.description }}</h3>
+            <div class="training-day-detail">
                 <strong>{% trans %}Start:{% endtrans %}</strong> {{ td_info.user_start_time|format_datetime_smart }}
             </div>
-            <div style="font-size: 14px; color: #666;">
+            <div class="training-day-detail">
                 <strong>{% trans %}Duration:{% endtrans %}</strong> {{ (td_info.duration.total_seconds() // 3600)|int }}h{% if (td_info.duration.total_seconds() % 3600) // 60 > 0 %} {{ ((td_info.duration.total_seconds() % 3600) // 60)|int }}m{% endif %}
             </div>
         </div>
         
-        {% if td_info.actual_phase == 0 %}
-        <div style="text-align: center; flex: 0 0 auto;">
-            <div class="countdown-display" style="display: inline-block; background: #dc3545; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); animation: pulse 2s ease-in-out infinite;">
-                <span style="font-size: 16px; font-weight: 700; color: white; letter-spacing: 1px;">⬤ {% trans %}LIVE{% endtrans %}</span>
+        {% if td_info.has_started %}
+        <div class="training-day-status">
+            <div class="countdown-display live-pill">
+                <span class="countdown-running">⬤ {% trans %}LIVE{% endtrans %}</span>
             </div>
         </div>
         {% else %}
-        <div style="text-align: center; flex: 0 0 auto;">
-            <div style="font-size: 13px; color: #666; margin-bottom: 8px;">{% trans %}Starts in:{% endtrans %}</div>
-            <div class="countdown" data-start-time="{{ td_info.user_start_time.timestamp() * 1000 }}" style="display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px;">
-                <span class="countdown-text" style="font-size: 16px; font-weight: 600; color: #0d6efd;">
+        <div class="training-day-status">
+            <div class="training-day-countdown-label">{% trans %}Starts in:{% endtrans %}</div>
+            <div class="countdown training-day-countdown" data-start-time="{{ td_info.user_start_time.timestamp() * 1000 }}">
+                <span class="countdown-text training-day-countdown-text">
                     <span class="countdown-days">--</span>d
                     <span class="countdown-hours">--</span>h
                     <span class="countdown-minutes">--</span>m
@@ -46,7 +46,7 @@
         </div>
         {% endif %}
         
-        <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.actual_phase == 0 %}btn-success{% else %}btn-primary{% endif %}" style="font-weight: 600; padding: 10px 20px; flex: 0 0 auto;">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
+        <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
     </div>
 {% endfor %}
 </div>
@@ -148,6 +148,49 @@
 </div>
 
 <style>
+.tp-section-heading {
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+}
+.training-day-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+.training-day-card {
+    background: #fff;
+    border-left: 4px solid transparent;
+    border-radius: 8px;
+    padding: 20px 25px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+    transition: all 0.3s ease;
+}
+.training-day-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.training-day-card.started { border-left-color: #28a745; }
+.training-day-card.upcoming { border-left-color: #0d6efd; }
+.training-day-meta { flex: 1; min-width: 250px; }
+.training-day-title { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #333; }
+.training-day-detail { font-size: 14px; color: #666; margin-bottom: 4px; }
+.training-day-status { text-align: center; flex: 0 0 auto; }
+.training-day-status-label { font-size: 13px; color: #28a745; font-weight: 600; margin-bottom: 8px; }
+.countdown-display { display: inline-block; border-radius: 8px; padding: 10px 15px; }
+.countdown-running { font-size: 16px; font-weight: 700; color: white; letter-spacing: 1px; }
+.live-pill { background: #dc3545; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); animation: pulse 2s ease-in-out infinite; }
+.training-day-countdown-label { font-size: 13px; color: #666; margin-bottom: 8px; }
+.training-day-countdown { display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px; }
+.training-day-countdown-text { font-size: 16px; font-weight: 600; color: #0d6efd; }
+.training-day-btn { font-weight: 600; padding: 10px 20px; flex: 0 0 auto; }
 .filter-btn {
     transition: all 0.2s ease;
 }
@@ -173,18 +216,9 @@
     content: '\2193';
     opacity: 1;
 }
-.training-day-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transition: all 0.3s ease;
-}
 @keyframes pulse {
-    0%, 100% {
-        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
-    }
-    50% {
-        box-shadow: 0 2px 16px rgba(220, 53, 69, 0.6);
-    }
+    0%, 100% { box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); }
+    50% { box-shadow: 0 2px 16px rgba(220, 53, 69, 0.6); }
 }
 </style>
 
@@ -198,18 +232,38 @@
         else if (status === 'partial') partialCount++;
         else unsolvedCount++;
     });
-    document.getElementById('solved-count').textContent = solvedCount;
-    document.getElementById('partial-count').textContent = partialCount;
-    document.getElementById('unsolved-count').textContent = unsolvedCount;
+    var solvedEl = document.getElementById('solved-count');
+    if (solvedEl) solvedEl.textContent = solvedCount;
+    var partialEl = document.getElementById('partial-count');
+    if (partialEl) partialEl.textContent = partialCount;
+    var unsolvedEl = document.getElementById('unsolved-count');
+    if (unsolvedEl) unsolvedEl.textContent = unsolvedCount;
 })();
 
 // Server timestamp for timezone-correct countdown
 var serverTimestamp = {{ server_timestamp.timestamp() * 1000 }};
 var clientLoadTime = new Date().getTime();
+var reloadScheduled = false;
+var reloadBackoffMs = 1000;
+
+async function checkAndMaybeReload(startTimeMs) {
+    try {
+        const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
+        const dateHeader = res.headers.get('Date');
+        const serverNow = dateHeader ? Date.parse(dateHeader) : NaN;
+        if (!Number.isNaN(serverNow) && serverNow < startTimeMs) {
+            reloadBackoffMs = Math.min(reloadBackoffMs * 2, 30000);
+            setTimeout(function() { checkAndMaybeReload(startTimeMs); }, reloadBackoffMs);
+            return;
+        }
+    } catch (e) {
+        // fall through to reload
+    }
+    window.location.reload();
+}
 
 function updateCountdowns() {
     var countdowns = document.querySelectorAll('.countdown');
-    // Calculate current server time by adding elapsed time since page load
     var elapsed = new Date().getTime() - clientLoadTime;
     var serverNow = serverTimestamp + elapsed;
     
@@ -222,7 +276,10 @@ function updateCountdowns() {
             el.querySelector('.countdown-hours').textContent = '0';
             el.querySelector('.countdown-minutes').textContent = '0';
             el.querySelector('.countdown-seconds').textContent = '0';
-            setTimeout(function() { location.reload(); }, 2000);
+            if (!reloadScheduled) {
+                reloadScheduled = true;
+                checkAndMaybeReload(startTime);
+            }
             return;
         }
         
