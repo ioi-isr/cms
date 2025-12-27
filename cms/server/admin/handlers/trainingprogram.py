@@ -1370,15 +1370,6 @@ class RemoveTrainingDayHandler(BaseHandler):
             .count()
         )
 
-        # Training days available to move tasks into
-        self.r_params["other_training_days"] = (
-            self.sql_session.query(TrainingDay)
-            .filter(TrainingDay.training_program == training_program)
-            .filter(TrainingDay.id != training_day.id)
-            .order_by(TrainingDay.position)
-            .all()
-        )
-
         self.render("training_day_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -1389,13 +1380,12 @@ class RemoveTrainingDayHandler(BaseHandler):
         if training_day.training_program_id != training_program.id:
             raise tornado.web.HTTPError(404)
 
-        action = self.get_argument("action", "delete_all")
-        target_training_day_id = self.get_argument("target_training_day_id", None)
-
         contest = training_day.contest
         position = training_day.position
 
-        # Handle tasks before deleting the training day so they are not cascade-deleted.
+        # Always detach tasks from the training day - they stay in the training program.
+        # The database FK has ON DELETE SET NULL, but we also clear training_day_num
+        # explicitly to remove stale ordering metadata.
         tasks = (
             self.sql_session.query(Task)
             .filter(Task.training_day == training_day)
@@ -1403,35 +1393,9 @@ class RemoveTrainingDayHandler(BaseHandler):
             .all()
         )
 
-        if action == "move":
-            if not target_training_day_id:
-                raise tornado.web.HTTPError(400, "Target training day is required")
-            target_training_day = self.safe_get_item(TrainingDay, target_training_day_id)
-            if target_training_day.training_program_id != training_program.id:
-                raise tornado.web.HTTPError(400, "Target training day must be in the same program")
-
-            # Append tasks to the end of the target training day, preserving order
-            existing_tasks = (
-                self.sql_session.query(Task)
-                .filter(Task.training_day == target_training_day)
-                .order_by(Task.training_day_num)
-                .all()
-            )
-            start_idx = len(existing_tasks)
-            for offset, task in enumerate(tasks):
-                task.training_day = target_training_day
-                task.training_day_num = start_idx + offset
-
-        elif action == "detach":
-            for task in tasks:
-                task.training_day = None
-                task.training_day_num = None
-
-        elif action == "delete_all":
-            for task in tasks:
-                self.sql_session.delete(task)
-        else:
-            raise tornado.web.HTTPError(400, "Invalid action")
+        for task in tasks:
+            task.training_day = None
+            task.training_day_num = None
 
         self.sql_session.flush()
 

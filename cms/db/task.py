@@ -103,7 +103,7 @@ class Task(Base):
     training_day_id: int | None = Column(
         Integer,
         ForeignKey("training_days.id",
-                   onupdate="CASCADE", ondelete="CASCADE"),
+                   onupdate="CASCADE", ondelete="SET NULL"),
         nullable=True,
         index=True)
     training_day: "TrainingDay | None" = relationship(
