@@ -273,7 +273,7 @@ ALTER TABLE public.tasks ADD COLUMN training_day_id integer;
 ALTER TABLE public.tasks ADD COLUMN training_day_num integer;
 
 ALTER TABLE ONLY public.tasks
-    ADD CONSTRAINT tasks_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT tasks_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 CREATE INDEX ix_tasks_training_day_id ON public.tasks USING btree (training_day_id);
 
