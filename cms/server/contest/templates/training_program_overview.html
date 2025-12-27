@@ -1,4 +1,5 @@
 {% extends "contest.html" %}
+{% from "macro/delay_request.html" import delay_request_form with context %}
 
 {% set page = "training_overview" %}
 
@@ -46,7 +47,23 @@
         </div>
         {% endif %}
         
-        <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
+        <div class="training-day-actions">
+            <button type="button" class="btn btn-warning training-day-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
+            <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
+        </div>
+    </div>
+    
+    <div id="delay-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-modal-label-{{ loop.index }}" aria-hidden="true">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h3 id="delay-modal-label-{{ loop.index }}">{% trans %}Request Delay{% endtrans %} - {{ td_info.contest.description }}</h3>
+        </div>
+        <div class="modal-body">
+            <p class="text-info" style="margin-bottom: 15px;">
+                {% trans %}Current start time:{% endtrans %} <strong>{{ td_info.user_start_time|format_datetime_smart }}</strong>
+            </p>
+            {{ delay_request_form(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop.index, inline=True) }}
+        </div>
     </div>
 {% endfor %}
 </div>
@@ -191,6 +208,7 @@
 .training-day-countdown { display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px; }
 .training-day-countdown-text { font-size: 16px; font-weight: 600; color: #0d6efd; }
 .training-day-btn { font-weight: 600; padding: 10px 20px; flex: 0 0 auto; }
+.training-day-actions { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
 .filter-btn {
     transition: all 0.2s ease;
 }
