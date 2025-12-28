@@ -125,13 +125,25 @@ window.updateMultiDeleteMaster = function(dataset_id) {
 };
 
 window.filterTestcases = function(dataset_id) {
-  var searchText = $("#testcase_search_" + dataset_id).val().toLowerCase();
+  var searchInput = $("#testcase_search_" + dataset_id);
+  var errorEl = $("#testcase_search_error_" + dataset_id);
+  var searchVal = searchInput.val();
+  var searchText;
+  try {
+    searchText = new RegExp(searchVal, 'i');
+    errorEl.hide();
+  } catch (e) {
+    errorEl.text("Invalid regex").show();
+    $("#testcases_table_" + dataset_id + " tbody tr").show();
+    window.updateMultiDeleteMaster(dataset_id);
+    return;
+  }
   var table = $("#testcases_table_" + dataset_id);
   var rows = table.find("tbody tr");
   rows.each(function() {
     var row = $(this);
-    var codename = row.find(".testcase_codename").text().toLowerCase();
-    if (codename.indexOf(searchText) !== -1) {
+    var codename = row.find(".testcase_codename").text();
+    if (searchText.test(codename)) {
       row.show();
     } else {
       row.hide();
@@ -600,6 +612,7 @@ window.filterTestcases = function(dataset_id) {
       <a href="javascript:void(0);" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Delete multiple testcases</a>
       <div id="testcase_search_container_{{ dataset.id }}" style="display:none; margin:10px 0;">
         <input type="text" id="testcase_search_{{ dataset.id }}" placeholder="Filter by codename..." oninput="filterTestcases({{ dataset.id }});" style="padding:4px 8px;">
+        <div id="testcase_search_error_{{ dataset.id }}" style="color:#c00; display:none; margin-top:4px; font-size:12px;"></div>
       </div>
 {% endif %}
       <table id="testcases_table_{{ dataset.id }}" class="bordered" style="text-align:center">
