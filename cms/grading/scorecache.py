@@ -222,7 +222,21 @@ def update_score_cache(
     pair of the given submission using O(1) incremental updates instead
     of recomputing from all submissions.
 
-    Uses PostgreSQL advisory locks to serialize concurrent updates.
+    IMPORTANT - Locking and Transaction Behavior:
+    This function acquires a PostgreSQL advisory lock (pg_advisory_xact_lock)
+    for the (participation_id, task_id) pair. The lock is transaction-scoped
+    and is released when the transaction ends (commit or rollback).
+
+    Caller Responsibility:
+    - The caller MUST commit or rollback the session to persist changes
+      and release the lock. Without commit, changes are lost on session close.
+    - Do NOT call this function or any other function that carries this
+      warning with the same (participation, task) pair within the same
+      transaction without committing in between, as the second call will block
+      waiting for the lock (self-deadlock).
+    - Do NOT call ensure_valid_history with a contest that contains the same
+      (participation, task) pair whithin the same transaction without committing
+      in between, as this might also cause a self-deadlock.
 
     session: the database session.
     submission: the submission that was just scored.
@@ -364,7 +378,21 @@ def rebuild_score_cache(
     resulting cache entry will be correctly marked as stale (since
     created_at < invalidated_at).
 
-    Uses PostgreSQL advisory locks to serialize concurrent operations.
+    IMPORTANT - Locking and Transaction Behavior:
+    This function acquires a PostgreSQL advisory lock (pg_advisory_xact_lock)
+    for the (participation_id, task_id) pair. The lock is transaction-scoped
+    and is released when the transaction ends (commit or rollback).
+
+    Caller Responsibility:
+    - The caller MUST commit or rollback the session to persist changes
+      and release the lock. Without commit, changes are lost on session close.
+    - Do NOT call this function or any other function that carries this
+      warning with the same (participation, task) pair within the same
+      transaction without committing in between, as the second call will block
+      waiting for the lock (self-deadlock).
+    - Do NOT call ensure_valid_history with a contest that contains the same
+      (participation, task) pair whithin the same transaction without committing
+      in between, as this might also cause a self-deadlock.
 
     session: the database session.
     participation: the participation.
@@ -410,7 +438,21 @@ def rebuild_score_history(
     score. Use this when history_valid is False but the score itself
     is still correct (e.g., when submissions arrived out of order).
 
-    Uses PostgreSQL advisory locks to serialize concurrent operations.
+    IMPORTANT - Locking and Transaction Behavior:
+    This function acquires a PostgreSQL advisory lock (pg_advisory_xact_lock)
+    for the (participation_id, task_id) pair. The lock is transaction-scoped
+    and is released when the transaction ends (commit or rollback).
+
+    Caller Responsibility:
+    - The caller MUST commit or rollback the session to persist changes
+      and release the lock. Without commit, changes are lost on session close.
+    - Do NOT call this function or any other function that carries this
+      warning with the same (participation, task) pair within the same
+      transaction without committing in between, as the second call will block
+      waiting for the lock (self-deadlock).
+    - Do NOT call ensure_valid_history with a contest that contains the same
+      (participation, task) pair whithin the same transaction without committing
+      in between, as this might also cause a self-deadlock.
 
     session: the database session.
     participation: the participation.
@@ -467,9 +509,27 @@ def get_cached_score_entry(
 ) -> ParticipationTaskScore:
     """Get the cached score entry for a participation/task pair.
 
-    If no cache entry exists or if the cache is invalid, rebuilds the cache.
-    Validity is determined by timestamp comparison: created_at > invalidated_at.
+    If no cache entry exists or if the cache is invalid, rebuilds the cache
+    by calling rebuild_score_cache(). Validity is determined by timestamp
+    comparison: created_at > invalidated_at.
     This returns the full cache entry including has_submissions.
+
+    IMPORTANT - Locking and Transaction Behavior:
+    If a rebuild is triggered, this function acquires a PostgreSQL advisory
+    lock (pg_advisory_xact_lock) for the (participation_id, task_id) pair.
+    The lock is transaction-scoped and is released when the transaction ends
+    (commit or rollback).
+
+    Caller Responsibility:
+    - The caller MUST commit or rollback the session to persist possible
+      changes and release the lock. Without commit, changes are lost.
+    - Do NOT call this function or any other function that carries this
+      warning with the same (participation, task) pair within the same
+      transaction without committing in between, as the second call will block
+      waiting for the lock (self-deadlock).
+    - Do NOT call ensure_valid_history with a contest that contains the same
+      (participation, task) pair whithin the same transaction without committing
+      in between, as this might also cause a self-deadlock.
 
     session: the database session.
     participation: the participation.
@@ -503,6 +563,21 @@ def ensure_valid_history(
 
     Entries are processed in (participation_id, task_id) order to prevent
     deadlocks when multiple concurrent calls try to rebuild different pairs.
+
+    IMPORTANT - Locking and Transaction Behavior:
+    This function may acquire PostgreSQL advisory locks (pg_advisory_xact_lock)
+    for multiple (participation_id, task_id) pairs if rebuilds are needed.
+    The locks are transaction-scoped and are released when the transaction
+    ends (commit or rollback).
+
+    Caller Responsibility if any entries were rebuilt (function returns true):
+    - The caller MUST commit or rollback the session to persist changes
+      and release the locks. Without commit, changes are lost on session close.
+    - Do NOT call this function or any other function that carries this warning
+      again within the same transaction for any (participation, training) pair
+      belonging to the same contest without committing in between, as the second
+      call will block waiting for the lock (self-deadlock), unless you have
+      verified that no overlapping (participation, training) pairs are involved.
 
     session: the database session.
     contest_id: the contest ID to check.

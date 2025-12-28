@@ -126,6 +126,10 @@ class RankingHandler(BaseHandler):
         # Preprocess participations: get data about teams, scores
         # Use the score cache to get score and has_submissions.
         # partial is computed via SQL aggregation above for correctness.
+        #
+        # Note: get_cached_score_entry may trigger cache rebuilds which acquire
+        # advisory locks. We commit after this loop to persist any rebuilds
+        # and release the locks. See get_cached_score_entry docstring.
         show_teams = False
         for p in self.contest.participations:
             show_teams = show_teams or p.team_id
@@ -154,6 +158,10 @@ class RankingHandler(BaseHandler):
                 partial = partial or t_partial
             total_score = round(total_score, self.contest.score_precision)
             p.total_score = (total_score, partial)
+
+        # Commit to persist any cache rebuilds and release advisory locks.
+        # This is a no-op if no rebuilds occurred.
+        self.sql_session.commit()
 
         self.r_params = self.render_params()
         self.r_params["show_teams"] = show_teams
