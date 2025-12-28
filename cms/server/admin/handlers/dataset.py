@@ -47,7 +47,7 @@ from cms.db import Dataset, Generator, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
 from cms.grading.tasktypes import get_task_type_class
 from cms.grading.tasktypes.util import \
-    get_allowed_manager_basenames, compile_manager_bytes
+    get_allowed_manager_basenames, compile_manager_bytes, create_sandbox
 from cms.grading.languagemanager import filename_to_language
 from cms.grading.language import CompiledLanguage
 from cms.grading.scoring import compute_changes_for_dataset
@@ -923,11 +923,7 @@ class AddGeneratorHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        try:
-            language = filename_to_language(filename)
-        except Exception:
-            language = None
-
+        language = filename_to_language(filename)
         if language is None:
             self.service.add_notification(
                 make_datetime(),
@@ -952,7 +948,7 @@ class AddGeneratorHandler(BaseHandler):
         def notify(title, text):
             self.service.add_notification(make_datetime(), title, text)
 
-        success, compiled_bytes, stats = compile_manager_bytes(
+        success, compiled_bytes, _stats = compile_manager_bytes(
             self.service.file_cacher,
             filename,
             body,
@@ -1152,11 +1148,7 @@ class GenerateTestcasesHandler(BaseHandler):
 
         self.sql_session.close()
 
-        try:
-            language = filename_to_language(generator.filename)
-        except Exception:
-            language = None
-
+        language = filename_to_language(generator.filename)
         exe_name = "generator"
         if language is not None and isinstance(language, CompiledLanguage):
             exe_name += language.executable_extension
