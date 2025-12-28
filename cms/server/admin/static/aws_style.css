@@ -1101,6 +1101,24 @@ a.button-link:hover {
     background-color: #F0FDFA;
 }
 
+a.button-link-secondary {
+    border-color: #888;
+    color: #444;
+}
+
+a.button-link-secondary:hover {
+    background-color: #F5F5F5;
+}
+
+a.button-link-danger {
+    border-color: #C75252;
+    color: #C75252;
+}
+
+a.button-link-danger:hover {
+    background-color: #FBEAEA;
+}
+
 th.diff-only, td.diff-only {
     display: none;
 }
