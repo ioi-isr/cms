@@ -35,6 +35,7 @@ class ScoreTypeTestMixin:
     def get_submission_result(testcases):
         sr = Mock()
         sr.evaluated.return_value = True
+        sr.evaluation_failed.return_value = False
         # Reversed to make sure the score type does not depend on the order.
         sr.evaluations = [
             ScoreTypeTestMixin.get_evaluation(codename, 1.0)

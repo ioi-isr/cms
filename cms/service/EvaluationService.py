@@ -669,6 +669,12 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                         result.job.get_sandbox_digest_list()
                     # Store detailed failure info (exit_status, signal, stdout, stderr)
                     object_result.last_evaluation_failure_details = result.job.plus
+                    # Mark as failed if max retries reached, so evaluation_ended()
+                    # will be called and the submission won't be stuck in
+                    # "Evaluating..." state forever.
+                    if object_result.evaluation_tries >= \
+                            EvaluationService.MAX_EVALUATION_TRIES:
+                        object_result.set_evaluation_outcome(success=False)
 
         elif operation.type_ == ESOperation.USER_TEST_COMPILATION:
             if result.job_success:
@@ -751,7 +757,7 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         # update the score. We need to commit the session beforehand,
         # otherwise the ScoringService wouldn't receive the updated
         # submission.
-        if submission_result.evaluated():
+        if submission_result.evaluation_succeeded():
             logger.info("Submission %d(%d) was evaluated successfully.",
                         submission_result.submission_id,
                         submission_result.dataset_id)
@@ -759,7 +765,18 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 submission_id=submission_result.submission_id,
                 dataset_id=submission_result.dataset_id)
 
-        # Evaluation unsuccessful, we log the error.
+        # Evaluation failed due to system error (e.g., checker crash),
+        # we inform ScoringService so it can update the score.
+        elif submission_result.evaluation_failed():
+            logger.info("Submission %d(%d) evaluation failed due to system "
+                        "error.",
+                        submission_result.submission_id,
+                        submission_result.dataset_id)
+            self.scoring_service.new_evaluation(
+                submission_id=submission_result.submission_id,
+                dataset_id=submission_result.dataset_id)
+
+        # Worker failed, we log the error and check if max retries reached.
         else:
             logger.warning("Worker failed when evaluating submission "
                            "%d(%d).",
@@ -768,9 +785,14 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
             if submission_result.evaluation_tries >= \
                     EvaluationService.MAX_EVALUATION_TRIES:
                 logger.error("Maximum number of failures reached for the "
-                             "evaluation of submission %d(%d).",
+                             "evaluation of submission %d(%d). Marking as "
+                             "evaluation failed.",
                              submission_result.submission_id,
                              submission_result.dataset_id)
+                submission_result.set_evaluation_outcome(success=False)
+                self.scoring_service.new_evaluation(
+                    submission_id=submission_result.submission_id,
+                    dataset_id=submission_result.dataset_id)
 
         # Enqueue next steps to be done (e.g., if evaluation failed).
         self.submission_enqueue_operations(submission, archive_sandbox)

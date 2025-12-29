@@ -292,6 +292,7 @@ class SubmissionResult(Base):
     EVALUATING = 3
     SCORING = 4
     SCORED = 5
+    EVALUATION_FAILED = 6
 
     __tablename__ = 'submission_results'
     __table_args__ = (
@@ -370,10 +371,11 @@ class SubmissionResult(Base):
         nullable=True)
 
     # Evaluation outcome (can be None = yet to evaluate, "ok" =
-    # evaluation successful). At any time, this should be equal to
-    # evaluations != [].
+    # evaluation successful, "fail" = evaluation failed due to system
+    # error like checker/manager crash). At any time, "ok" should be
+    # equal to evaluations != [].
     evaluation_outcome: str | None = Column(
-        Enum("ok", name="evaluation_outcome"),
+        Enum("ok", "fail", name="evaluation_outcome"),
         nullable=True)
 
     # Number of failures during evaluation.
@@ -462,6 +464,8 @@ class SubmissionResult(Base):
             return SubmissionResult.COMPILING
         elif self.compilation_failed():
             return SubmissionResult.COMPILATION_FAILED
+        elif self.evaluation_failed():
+            return SubmissionResult.EVALUATION_FAILED
         elif not self.evaluated():
             return SubmissionResult.EVALUATING
         elif not self.scored():
@@ -559,10 +563,23 @@ class SubmissionResult(Base):
         """
         return SubmissionResult.compilation_outcome == "ok"
 
+    def evaluation_failed(self) -> bool:
+        """Return whether the submission result failed evaluation.
+
+        return: True if the evaluation failed due to a system error
+            (e.g., checker/manager crash), False if not yet evaluated
+            or evaluation was successful.
+
+        """
+        return self.evaluation_outcome == "fail"
+
     def evaluated(self) -> bool:
         """Return whether the submission result has been evaluated.
 
-        return: True if evaluated, False otherwise.
+        This returns True if evaluation is terminal (either success or failure),
+        meaning no more evaluation operations should be scheduled.
+
+        return: True if evaluated (terminal state), False otherwise.
 
         """
         return self.evaluation_outcome is not None
@@ -571,8 +588,19 @@ class SubmissionResult(Base):
     def filter_evaluated():
         """Return a filtering lambda for evaluated submission results.
 
+        This filters for terminal evaluation state (either success or failure).
+
         """
         return SubmissionResult.evaluation_outcome.isnot(None)
+
+    def evaluation_succeeded(self) -> bool:
+        """Return whether the submission result was evaluated successfully.
+
+        return: True if evaluation succeeded, False if not yet evaluated
+            or evaluation failed.
+
+        """
+        return self.evaluation_outcome == "ok"
 
     def needs_scoring(self) -> bool:
         """Return whether the submission result needs to be scored.
@@ -658,11 +686,13 @@ class SubmissionResult(Base):
         """
         self.compilation_outcome = "ok" if success else "fail"
 
-    def set_evaluation_outcome(self):
-        """Set the evaluation outcome (always ok now).
+    def set_evaluation_outcome(self, success: bool = True):
+        """Set the evaluation outcome based on success.
+
+        success: if the evaluation was successful.
 
         """
-        self.evaluation_outcome = "ok"
+        self.evaluation_outcome = "ok" if success else "fail"
 
 
 class Executable(Base):

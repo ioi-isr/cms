@@ -112,6 +112,8 @@
             Evaluating...
           {% elif status == SubmissionResult.SCORING %}
             Scoring...
+          {% elif status == SubmissionResult.EVALUATION_FAILED %}
+            Evaluation system error
           {% elif status == SubmissionResult.SCORED %}
             {% if st is defined %}
               {% set max_score = st.max_score %}
