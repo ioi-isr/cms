@@ -396,11 +396,12 @@ class Batch(TaskType):
         job.success = box_success
         job.outcome = str(outcome) if outcome is not None else None
         job.text = text
-        # On failure, store checker stats if available (for debugging)
+        # On success, store user execution stats. On eval_output failure (sandbox
+        # error or checker crash), prefer checker stats if available (contains
+        # stdout/stderr for debugging), otherwise keep user execution stats.
         if box_success:
             job.plus = stats
         else:
-            # Prefer checker stats on checker failure, otherwise use execution stats
             job.plus = checker_stats if checker_stats is not None else stats
 
         if sandbox is not None:

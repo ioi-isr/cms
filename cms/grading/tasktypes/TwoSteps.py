@@ -339,7 +339,8 @@ class TwoSteps(TaskType):
                         if self._uses_checker() else None,
                         user_output_path=second_sandbox.relative_path(
                             TwoSteps.OUTPUT_FILENAME))
-                    # On checker failure, use checker stats for debugging
+                    # On eval_output failure (sandbox error or checker crash),
+                    # use checker stats for debugging if available.
                     if not box_success and checker_stats is not None:
                         stats = checker_stats
 

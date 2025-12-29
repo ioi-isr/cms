@@ -150,5 +150,7 @@ class OutputOnly(TaskType):
         job.success = box_success
         job.outcome = str(outcome) if outcome is not None else None
         job.text = text
-        # No user code execution, so no execution statistics (unless checker failed).
+        # No user code execution, so keep job.plus empty on success (avoids exposing
+        # checker timing to contestants). On eval_output failure, store checker stats
+        # if available (contains stdout/stderr for admin debugging).
         job.plus = {} if box_success else (checker_stats if checker_stats is not None else {})

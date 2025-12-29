@@ -246,8 +246,9 @@ def eval_output(
         - success: true if the checker was able to check the solution
         - outcome: the score (None if success is False)
         - text: the text message (None if success is False)
-        - checker_stats: execution statistics from checker (may contain
-            stdout/stderr on failure, None if no checker was used)
+        - checker_stats: execution statistics from checker sandbox (time,
+            memory, exit_status, etc.). On sandbox/checker failure, also
+            contains stdout/stderr for debugging. None if no checker was used.
 
     """
     if (user_output_path is None) == (user_output_digest is None):
