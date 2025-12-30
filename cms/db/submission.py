@@ -372,8 +372,9 @@ class SubmissionResult(Base):
 
     # Evaluation outcome (can be None = yet to evaluate, "ok" =
     # evaluation successful, "fail" = evaluation failed due to system
-    # error like checker/manager crash). At any time, "ok" should be
-    # equal to evaluations != [].
+    # error like checker/manager crash). When "ok", all testcases have
+    # been evaluated successfully. For "fail" state, evaluations may be
+    # partial or empty depending on when the failure occurred.
     evaluation_outcome: str | None = Column(
         Enum("ok", "fail", name="evaluation_outcome"),
         nullable=True)
@@ -610,6 +611,14 @@ class SubmissionResult(Base):
 
         """
         return self.evaluation_outcome == "ok"
+
+    @staticmethod
+    def filter_evaluation_succeeded():
+        """Return a filtering expression for submission results passing
+        evaluation.
+
+        """
+        return SubmissionResult.evaluation_outcome == "ok"
 
     def needs_scoring(self) -> bool:
         """Return whether the submission result needs to be scored.

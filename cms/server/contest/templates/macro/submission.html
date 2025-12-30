@@ -152,6 +152,7 @@ submissions_download_allowed (bool): whether to allow users to download
         <a class="details">{% trans %}details{% endtrans %}</a>
 {% elif status == SubmissionResult.EVALUATION_FAILED %}
         {% trans %}Evaluation system error{% endtrans %}
+        <a class="details">{% trans %}details{% endtrans %}</a>
 {% elif status == SubmissionResult.EVALUATING %}
         {% trans %}Evaluating...{% endtrans %}
       <img class="details" src="{{ url("static", "loading.gif") }}" />

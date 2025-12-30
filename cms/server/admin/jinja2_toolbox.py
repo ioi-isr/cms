@@ -67,9 +67,10 @@ def format_signal(signum: int | str | None) -> str:
             description = signal.strsignal(signum)
             if description:
                 return f"{name} - {description} ({signum})"
+            else:
+                return f"{name} ({signum})"
         except (ValueError, OSError):
-            pass
-        return f"{name} ({signum})"
+            return f"{name} ({signum})"
     except ValueError:
         return str(signum)
 
