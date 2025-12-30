@@ -2,6 +2,19 @@ html {
     font-size: 100%;
 }
 
+.searchable-select {
+    width: 240px;
+    display: inline-block;
+}
+
+.ts-wrapper {
+    width: 240px;
+    display: inline-block;
+}
+
+.ts-wrapper .ts-control {
+    width: 240px;
+}
 body {
     font-size: 1em;
     line-height: 1.5em;

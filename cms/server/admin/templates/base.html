@@ -62,8 +62,8 @@
     <link rel="stylesheet" type="text/css" href="{{ url("static", "jq", "jquery.jqplot.min.css") }}"/>
     <link rel="stylesheet" type="text/css" href="{{ url("static", "prism.css") }}">
     <script src="{{ url("static", "prism.js") }}" data-manual></script>
-    <link rel="stylesheet" type="text/css" href="{{ url("static", "select2", "select2.min.css") }}">
-    <script src="{{ url("static", "select2", "select2.min.js") }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "tomselect/css/tom-select.css") }}">
+    <script src="{{ url("static", "tomselect/js/tom-select.complete.min.js") }}"></script>
 
     {% if contest is none %}
     <title>Admin</title>
@@ -100,11 +100,13 @@ function init()
 
     {% block js_init %}{% endblock js_init %}
 
-    // Initialize Select2 on searchable select elements
-    $('.searchable-select').select2({
-        placeholder: 'Search...',
-        allowClear: true,
-        width: '240px'
+    // Initialize Tom Select on searchable select elements
+    $('.searchable-select').each(function() {
+        new TomSelect(this, {
+            allowEmptyOption: true,
+            create: false,
+            plugins: ['clear_button'],
+        });
     });
 }
 
