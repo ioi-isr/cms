@@ -4,6 +4,46 @@
 {% import 'macro/submission.html' as macro_submission %}
 {% import 'macro/question.html' as macro_question with context %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
+ag
+{% block js %}
+// Tagify initialization for student tags
+function initTagify() {
+    var input = document.querySelector('input[name="student_tags"]');
+    if (!input) return;
+
+    var tagify = new Tagify(input, {
+        delimiters: ",",
+        maxTags: 50,
+        placeholder: "Type a tag and press Enter",
+        editTags: {
+            clicks: 2,
+            keepInvalid: false
+        },
+        // Output as comma-separated values instead of JSON
+        originalInputValueFormat: function(valuesArr) {
+            return valuesArr.map(function(item) {
+                return item.value;
+            }).join(', ');
+        },
+        hooks: {
+            beforeRemoveTag: function(tags) {
+                return new Promise(function(resolve, reject) {
+                    var tagValue = tags[0].data.value;
+                    if (confirm('Remove tag "' + tagValue + '"?')) {
+                        resolve();
+                    } else {
+                        reject();
+                    }
+                });
+            }
+        }
+    });
+}
+{% endblock js %}
+
+{% block js_init %}
+initTagify();
+{% endblock js_init %}
 
 {% block core %}
 <h1>
@@ -41,11 +81,11 @@
     <table>
       <tr>
         <td>
-          <span class="info" title="Comma-separated list of tags for this student (e.g., beginner, advanced, python). Used to control which training questions they see."></span>
+          <span class="info" title="Tags for this student (e.g., beginner, advanced, python). Used to control which training questions they see. Double-click a tag to edit it."></span>
           Student Tags
         </td>
-        <td>
-          <input type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}" placeholder="e.g. beginner, python" style="width: 100%"/>
+        <td style="min-width: 300px;">
+          <input type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}"/>
         </td>
       </tr>
       <tr>

@@ -42,6 +42,7 @@ PACKAGE_DATA = {
         "admin/static/*.*",
         "admin/static/jq/*.*",
         "admin/static/sh/*.*",
+        "admin/static/tagify/*.*",
         "admin/templates/*.*",
         "admin/templates/fragments/*.*",
         "admin/templates/macro/*.*",
