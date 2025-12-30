@@ -389,4 +389,9 @@ UPDATE public.contests SET allow_delay_requests = false WHERE id IN (
     SELECT managing_contest_id FROM public.training_programs
 );
 
+-- Add visible_to_tags column to tasks for controlling task visibility based on student tags
+-- If empty, the task is visible to all students. If set, only students with at least one matching tag can see the task.
+ALTER TABLE public.tasks ADD COLUMN visible_to_tags character varying[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.tasks ALTER COLUMN visible_to_tags DROP DEFAULT;
+
 COMMIT;

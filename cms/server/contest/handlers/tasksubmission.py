@@ -94,6 +94,10 @@ class SubmitHandler(ContestHandler):
         if task is None:
             raise tornado.web.HTTPError(404)
 
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
+            raise tornado.web.HTTPError(404)
+
         # Only set the official bit when the user can compete and we are not in
         # analysis mode.
         official = self.r_params["actual_phase"] == 0
@@ -141,6 +145,10 @@ class TaskSubmissionsHandler(ContestHandler):
 
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         submissions: list[Submission] = (
@@ -260,6 +268,10 @@ class SubmissionStatusHandler(ContestHandler):
         if task is None:
             raise tornado.web.HTTPError(404)
 
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
+            raise tornado.web.HTTPError(404)
+
         submission = self.get_submission(task, opaque_id)
         if submission is None:
             raise tornado.web.HTTPError(404)
@@ -326,6 +338,10 @@ class SubmissionDetailsHandler(ContestHandler):
         if task is None:
             raise tornado.web.HTTPError(404)
 
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
+            raise tornado.web.HTTPError(404)
+
         submission = self.get_submission(task, opaque_id)
         if submission is None:
             raise tornado.web.HTTPError(404)
@@ -376,6 +392,10 @@ class SubmissionFileHandler(FileHandler):
         if task is None:
             raise tornado.web.HTTPError(404)
 
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
+            raise tornado.web.HTTPError(404)
+
         submission = self.get_submission(task, opaque_id)
         if submission is None:
             raise tornado.web.HTTPError(404)
@@ -423,6 +443,10 @@ class UseTokenHandler(ContestHandler):
 
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         submission = self.get_submission(task, opaque_id)

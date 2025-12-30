@@ -60,6 +60,12 @@ class ContestTasksHandler(BaseHandler):
                     .filter(Task.training_day_id.is_(None))\
                     .order_by(Task.num)\
                     .all()
+            
+            # Get all student tags for autocomplete (for task visibility tags)
+            all_tags_set: set[str] = set()
+            for student in training_program.students:
+                all_tags_set.update(student.student_tags)
+            self.r_params["all_student_tags"] = sorted(all_tags_set)
         else:
             # For regular contests, show all unassigned tasks
             self.r_params["unassigned_tasks"] = \
@@ -282,3 +288,49 @@ class AddContestTaskHandler(BaseHandler):
 
         # Maybe they'll want to do this again (for another task)
         self.redirect(fallback_page)
+
+
+class TaskVisibilityHandler(BaseHandler):
+    """Handler for updating task visibility tags via AJAX."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id, task_id):
+        self.contest = self.safe_get_item(Contest, contest_id)
+        task = self.safe_get_item(Task, task_id)
+
+        # Verify this contest is a training day
+        training_day = self.contest.training_day
+        if training_day is None:
+            self.set_status(400)
+            self.write({"error": "This contest is not a training day"})
+            return
+
+        # Verify the task belongs to this training day
+        if task.training_day_id != training_day.id:
+            self.set_status(400)
+            self.write({"error": "Task does not belong to this training day"})
+            return
+
+        try:
+            visible_to_tags_str = self.get_argument("visible_to_tags", "")
+            visible_to_tags = [tag.strip() for tag in visible_to_tags_str.split(",") if tag.strip()]
+
+            # Remove duplicates while preserving order
+            seen: set[str] = set()
+            unique_tags: list[str] = []
+            for tag in visible_to_tags:
+                if tag not in seen:
+                    seen.add(tag)
+                    unique_tags.append(tag)
+
+            task.visible_to_tags = unique_tags
+
+            if self.try_commit():
+                self.write({"success": True, "tags": unique_tags})
+            else:
+                self.set_status(500)
+                self.write({"error": "Failed to save"})
+
+        except Exception as error:
+            self.set_status(400)
+            self.write({"error": str(error)})

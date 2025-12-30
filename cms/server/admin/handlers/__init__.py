@@ -62,7 +62,8 @@ from .contestsubmission import \
     ContestUserTestsHandler
 from .contesttask import \
     ContestTasksHandler, \
-    AddContestTaskHandler
+    AddContestTaskHandler, \
+    TaskVisibilityHandler
 from .contestuser import \
     ContestUsersHandler, \
     RemoveParticipationHandler, \
@@ -158,6 +159,7 @@ from .trainingprogram import \
     TrainingProgramAnnouncementHandler, \
     TrainingProgramQuestionsHandler, \
     StudentHandler, \
+    StudentTagsHandler, \
     TrainingProgramTrainingDaysHandler, \
     AddTrainingDayHandler, \
     RemoveTrainingDayHandler
@@ -199,6 +201,7 @@ HANDLERS = [
 
     (r"/contest/([0-9]+)/tasks", ContestTasksHandler),
     (r"/contest/([0-9]+)/tasks/add", AddContestTaskHandler),
+    (r"/contest/([0-9]+)/task_visibility/([0-9]+)", TaskVisibilityHandler),
 
     # Contest's submissions / user tests
 
@@ -305,6 +308,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/students/add", AddTrainingProgramStudentHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/remove", RemoveTrainingProgramStudentHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/edit", StudentHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/tags", StudentTagsHandler),
     (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
     (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),
     (r"/training_program/([0-9]+)/task/([0-9]+)/remove", RemoveTrainingProgramTaskHandler),

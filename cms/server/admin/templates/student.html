@@ -11,14 +11,26 @@ function initTagify() {
     var input = document.querySelector('input[name="student_tags"]');
     if (!input) return;
 
+    // Get existing tags from the training program for autocomplete suggestions
+    var existingTags = {{ all_student_tags | tojson }};
+
     var tagify = new Tagify(input, {
         delimiters: ",",
-        maxTags: 50,
-        placeholder: "Type a tag and press Enter",
+        maxTags: 20,
+        placeholder: "Type tags",
+        whitelist: existingTags,
+        dropdown: {
+            maxItems: 20,
+            classname: "tags-look",
+            enabled: 0,  // Show suggestions on focus
+            closeOnSelect: true
+        },
         editTags: {
             clicks: 2,
             keepInvalid: false
         },
+        // Validate tags - no commas allowed
+        pattern: /^[^,]+$/,
         // Output as comma-separated values instead of JSON
         originalInputValueFormat: function(valuesArr) {
             return valuesArr.map(function(item) {
@@ -37,6 +49,65 @@ function initTagify() {
                 });
             }
         }
+    });
+
+    // Store the original value before editing
+    var editingTagValue = null;
+
+    tagify.on('edit:start', function(e) {
+        editingTagValue = e.detail.data.value;
+    });
+
+    tagify.on('edit:beforeUpdate', function (e) {
+        const oldVal = editingTagValue;
+        const newVal = e.detail.data?.value;
+
+        if (oldVal === newVal) return;
+
+        if (!confirm(`Change tag "${oldVal}" to "${newVal}"?`)) {
+            e.detail.data.value = oldVal;
+        }
+    });
+
+    // Show alert when invalid character (comma) is entered
+    tagify.on('invalid', function(e) {
+        if (e.detail.message === 'pattern mismatch') {
+            alert('Tags cannot contain commas.');
+        }
+    });
+
+    // Auto-save on change with debounce
+    var saveTimeout = null;
+    function saveStudentTags() {
+        var tags = input.value;
+        var formData = new FormData();
+        formData.append('student_tags', tags);
+        formData.append('_xsrf', document.querySelector('input[name="_xsrf"]').value);
+
+        fetch('{{ url("training_program", training_program.id, "student", selected_user.id, "tags") }}', {
+            method: 'POST',
+            body: formData
+        }).then(function(response) {
+            if (!response.ok) {
+                console.error('Failed to save student tags');
+            }
+        }).catch(function(error) {
+            console.error('Error saving student tags:', error);
+        });
+    }
+
+    tagify.on('add', function() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveStudentTags, 500);
+    });
+    tagify.on('change', function() {
+        console.log('change fired');
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveStudentTags, 500);
+    });
+    tagify.on('remove', function() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveStudentTags, 500);
     });
 }
 {% endblock js %}
@@ -81,7 +152,7 @@ initTagify();
     <table>
       <tr>
         <td>
-          <span class="info" title="Tags for this student (e.g., beginner, advanced, python). Used to control which training questions they see. Double-click a tag to edit it."></span>
+          <span class="info" title="Tags for this student (e.g., beginner, advanced). Used to control which training questions they see. Double-click a tag to edit it."></span>
           Student Tags
         </td>
         <td style="min-width: 300px;">

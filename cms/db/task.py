@@ -117,6 +117,14 @@ class Task(Base):
         Integer,
         nullable=True)
 
+    # Tags that control which students can see this task.
+    # If empty, the task is visible to all students.
+    # If set, only students with at least one matching tag can see the task.
+    visible_to_tags: list[str] = Column(
+        ARRAY(Unicode),
+        nullable=False,
+        default=[])
+
     # Short name and long human readable title of the task.
     name: str = Column(
         Codename,

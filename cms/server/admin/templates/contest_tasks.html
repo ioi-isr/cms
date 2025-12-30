@@ -1,5 +1,68 @@
 {% extends "base.html" %}
 
+{% block js_init %}
+{% if is_training_day %}
+// Initialize Tagify for task visibility tags
+function initTaskVisibilityTagify() {
+    var existingTags = {{ all_student_tags | tojson }};
+    
+    document.querySelectorAll('.task-visibility-tags').forEach(function(input) {
+        var taskId = input.dataset.taskId;
+        
+        var tagify = new Tagify(input, {
+            delimiters: ",",
+            maxTags: 20,
+            placeholder: "All students",
+            whitelist: existingTags,
+            enforceWhitelist: true,
+            dropdown: {
+                maxItems: 20,
+                classname: "tags-look",
+                enabled: 0,
+                closeOnSelect: true
+            },
+            editTags: false,
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.map(function(item) {
+                    return item.value;
+                }).join(', ');
+            }
+        });
+        
+        // Auto-save on change with debounce
+        var saveTimeout = null;
+        function saveVisibilityTags() {
+            var tags = input.value;
+            var formData = new FormData();
+            formData.append('visible_to_tags', tags);
+            formData.append('_xsrf', document.querySelector('input[name="_xsrf"]').value);
+            
+            fetch('{{ url("contest", contest.id, "task_visibility") }}/' + taskId, {
+                method: 'POST',
+                body: formData
+            }).then(function(response) {
+                if (!response.ok) {
+                    console.error('Failed to save visibility tags');
+                }
+            }).catch(function(error) {
+                console.error('Error saving visibility tags:', error);
+            });
+        }
+        
+        tagify.on('add', function() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(saveVisibilityTags, 500);
+        });
+        tagify.on('remove', function() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(saveVisibilityTags, 500);
+        });
+    });
+}
+initTaskVisibilityTagify();
+{% endif %}
+{% endblock js_init %}
+
 {% block core %}
 <div class="core_title">
   <h1>Tasks list of <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a></h1>
@@ -69,6 +132,9 @@
         <th></th>
         <th>Name</th>
         <th>Title</th>
+{% if is_training_day %}
+        <th>Visible to</th>
+{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -79,6 +145,11 @@
         </td>
         <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
         <td>{{ t.title }}</td>
+{% if is_training_day %}
+        <td style="min-width: 200px;">
+          <input type="text" class="task-visibility-tags" data-task-id="{{ t.id }}" value="{{ t.visible_to_tags|join(', ') }}"/>
+        </td>
+{% endif %}
       </tr>
       {% endfor %}
     </tbody>

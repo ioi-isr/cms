@@ -50,7 +50,7 @@ except:
 import tornado.web
 
 from cms import config, TOKEN_MODE_MIXED
-from cms.db import Contest, Submission, Task, TrainingProgram, UserTest, contest
+from cms.db import Contest, Student, Submission, Task, TrainingProgram, UserTest, contest
 from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
@@ -319,6 +319,9 @@ class ContestHandler(BaseHandler):
         else:
             ret["tokens_tasks"] = TOKEN_MODE_MIXED
 
+        # For training day contests, filter tasks based on visibility tags
+        ret["visible_tasks"] = self.get_visible_tasks()
+
         return ret
 
     def get_login_url(self):
@@ -342,6 +345,71 @@ class ContestHandler(BaseHandler):
             if task.name == task_name:
                 return task
         return None
+
+    def can_access_task(self, task: Task) -> bool:
+        """Check if the current user can access the given task.
+
+        For training day contests, tasks may have visibility restrictions
+        based on student tags. A task is accessible if:
+        - The task has no visible_to_tags (empty list = visible to all)
+        - The student has at least one tag matching the task's visible_to_tags
+
+        For non-training-day contests, all tasks are accessible.
+
+        task: the task to check access for.
+
+        return: True if the current user can access the task.
+
+        """
+        # Only apply visibility filtering for training day contests
+        training_day = self.contest.training_day
+        if training_day is None:
+            return True
+
+        # If task has no visibility restrictions, it's visible to all
+        if not task.visible_to_tags:
+            return True
+
+        # Must be logged in to access restricted tasks
+        if self.current_user is None:
+            return False
+
+        # Find the student record for this participation
+        # Note: Student records are linked to the managing contest participation,
+        # not the training day participation. So we need to find the user's
+        # participation in the managing contest first.
+        managing_contest = training_day.training_program.managing_contest
+        managing_participation = self.sql_session.query(Participation).filter(
+            Participation.contest_id == managing_contest.id,
+            Participation.user_id == self.current_user.user_id
+        ).first()
+
+        if managing_participation is None:
+            return False
+
+        student = self.sql_session.query(Student).filter(
+            Student.participation_id == managing_participation.id,
+            Student.training_program_id == training_day.training_program_id
+        ).first()
+
+        if student is None:
+            return False
+
+        # Check if student has any matching tag
+        student_tags_set = set(student.student_tags)
+        task_tags_set = set(task.visible_to_tags)
+        return bool(student_tags_set & task_tags_set)
+
+    def get_visible_tasks(self) -> list[Task]:
+        """Return the list of tasks visible to the current user.
+
+        For training day contests, filters tasks based on visibility tags.
+        For non-training-day contests, returns all tasks.
+
+        return: list of tasks the current user can access.
+
+        """
+        return [task for task in self.contest.get_tasks() if self.can_access_task(task)]
 
     def get_submission(self, task: Task, opaque_id: str | int) -> Submission | None:
         """Return the num-th contestant's submission on the given task.

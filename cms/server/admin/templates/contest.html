@@ -80,6 +80,15 @@
     </tr>
     <tr>
       <td>
+        <span class="info" title="If checked, contestants will be able to submit delay requests for this contest."></span>
+        <label for="allow_delay_requests">Allow delay requests</label>
+      </td>
+      <td>
+        <input type="checkbox" id="allow_delay_requests" name="allow_delay_requests" {{ "checked" if contest.allow_delay_requests else "" }}/>
+      </td>
+    </tr>
+    <tr>
+      <td>
         <span class="info" title="Whether contestants can submit user tests."></span>
         <label for="allow_user_tests">Allow user tests</label>
       </td>
@@ -131,15 +140,6 @@
       </td>
       <td>
         <input type="checkbox" id="allow_registration" name="allow_registration" {{ "checked" if contest.allow_registration else "" }}/>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="If checked, contestants will be able to submit delay requests for this contest."></span>
-        <label for="allow_delay_requests">Allow delay requests</label>
-      </td>
-      <td>
-        <input type="checkbox" id="allow_delay_requests" name="allow_delay_requests" {{ "checked" if contest.allow_delay_requests else "" }}/>
       </td>
     </tr>
     <tr>

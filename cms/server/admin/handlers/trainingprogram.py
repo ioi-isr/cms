@@ -571,11 +571,19 @@ class StudentHandler(BaseHandler):
         page = int(self.get_query_argument("page", "0"))
         self.render_params_for_submissions(submission_query, page)
         
+        # Get all unique student tags from this training program for autocomplete
+        all_students = training_program.students
+        all_tags_set: set[str] = set()
+        for s in all_students:
+            all_tags_set.update(s.student_tags)
+        all_tags = sorted(all_tags_set)
+        
         self.r_params["training_program"] = training_program
         self.r_params["participation"] = participation
         self.r_params["student"] = student
         self.r_params["selected_user"] = participation.user
         self.r_params["teams"] = self.sql_session.query(Team).all()
+        self.r_params["all_student_tags"] = all_tags
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == managing_contest.id)\
@@ -642,7 +650,14 @@ class StudentHandler(BaseHandler):
             
             tags_str = self.get_argument("student_tags", "")
             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
-            student.student_tags = tags
+            # Remove duplicates while preserving order
+            seen: set[str] = set()
+            unique_tags: list[str] = []
+            for tag in tags:
+                if tag not in seen:
+                    seen.add(tag)
+                    unique_tags.append(tag)
+            student.student_tags = unique_tags
             
         except Exception as error:
             self.service.add_notification(
@@ -653,6 +668,65 @@ class StudentHandler(BaseHandler):
         if self.try_commit():
             self.service.proxy_service.reinitialize()
         self.redirect(fallback_page)
+
+
+class StudentTagsHandler(BaseHandler):
+    """Handler for updating student tags via AJAX."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, user_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == managing_contest.id)
+            .filter(Participation.user_id == user_id)
+            .first()
+        )
+
+        if participation is None:
+            self.set_status(404)
+            self.write({"error": "Participation not found"})
+            return
+
+        student: Student | None = (
+            self.sql_session.query(Student)
+            .filter(Student.participation == participation)
+            .filter(Student.training_program == training_program)
+            .first()
+        )
+
+        if student is None:
+            student = Student(
+                training_program=training_program,
+                participation=participation,
+                student_tags=[]
+            )
+            self.sql_session.add(student)
+
+        try:
+            tags_str = self.get_argument("student_tags", "")
+            tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+
+            # Remove duplicates while preserving order
+            seen: set[str] = set()
+            unique_tags: list[str] = []
+            for tag in tags:
+                if tag not in seen:
+                    seen.add(tag)
+                    unique_tags.append(tag)
+            student.student_tags = unique_tags
+
+            if self.try_commit():
+                self.write({"success": True, "tags": unique_tags})
+            else:
+                self.set_status(500)
+                self.write({"error": "Failed to save"})
+
+        except Exception as error:
+            self.set_status(400)
+            self.write({"error": str(error)})
 
 
 class TrainingProgramTasksHandler(BaseHandler):
