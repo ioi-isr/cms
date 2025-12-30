@@ -573,6 +573,15 @@ class SubmissionResult(Base):
         """
         return self.evaluation_outcome == "fail"
 
+    @staticmethod
+    def filter_evaluation_failed():
+        """Return a filtering expression for submission results failing
+        evaluation.
+
+        """
+        return SubmissionResult.evaluation_outcome == "fail"
+
+
     def evaluated(self) -> bool:
         """Return whether the submission result has been evaluated.
 
