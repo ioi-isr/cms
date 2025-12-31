@@ -652,7 +652,7 @@ window.filterTestcases = function(dataset_id) {
 {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
       <p>
         <strong>Reevaluate all model solutions:</strong>
-        <button onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+        <button type="button" onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
                          'EvaluationService', 0,
                          'invalidate_model_solutions', {
                          'dataset_id': {{ dataset.id }},
@@ -660,7 +660,7 @@ window.filterTestcases = function(dataset_id) {
                          function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
                          );"
                 title="Compilation" >C</button>
-        <button onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+        <button type="button" onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
                          'EvaluationService', 0,
                          'invalidate_model_solutions', {
                          'dataset_id': {{ dataset.id }},
@@ -668,7 +668,7 @@ window.filterTestcases = function(dataset_id) {
                          function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
                          );"
                 title="Evaluation" >E</button>
-        <button onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+        <button type="button" onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
                          'ScoringService', 0,
                          'invalidate_model_solutions', {
                          'dataset_id': {{ dataset.id }}},
