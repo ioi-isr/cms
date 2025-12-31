@@ -4,6 +4,69 @@
 
 {% block js_init %}
 
+var originalScoreParams = {};
+var RESCORE_STORAGE_KEY = 'cms_rescore_datasets_{{ task.id }}';
+
+{% for dataset in task.datasets %}
+originalScoreParams[{{ dataset.id }}] = {
+    score_type: $("select[name=score_type_{{ dataset.id }}]").val(),
+    score_type_parameters: $("textarea[name=score_type_parameters_{{ dataset.id }}]").val()
+};
+{% endfor %}
+
+function checkScoreParameterChanges() {
+    var changedDatasets = [];
+    {% for dataset in task.datasets %}
+    var currentScoreType = $("select[name=score_type_{{ dataset.id }}]").val();
+    var currentScoreParams = $("textarea[name=score_type_parameters_{{ dataset.id }}]").val();
+    if (currentScoreType !== originalScoreParams[{{ dataset.id }}].score_type ||
+        currentScoreParams !== originalScoreParams[{{ dataset.id }}].score_type_parameters) {
+        changedDatasets.push({{ dataset.id }});
+    }
+    {% endfor %}
+    return changedDatasets;
+}
+
+function rescoreDataset(datasetId, callback) {
+    cmsrpc_request(
+        'ScoringService', 0,
+        'invalidate_submission',
+        {'dataset_id': datasetId},
+        function(response) {
+            cmsrpc_request(
+                'ScoringService', 0,
+                'invalidate_model_solutions',
+                {'dataset_id': datasetId},
+                callback
+            );
+        }
+    );
+}
+
+function rescoreAllChangedDatasets(datasets, index, finalCallback) {
+    if (index >= datasets.length) {
+        finalCallback();
+        return;
+    }
+    rescoreDataset(datasets[index], function() {
+        rescoreAllChangedDatasets(datasets, index + 1, finalCallback);
+    });
+}
+
+function checkAndTriggerPendingRescore() {
+    var stored = localStorage.getItem(RESCORE_STORAGE_KEY);
+    if (stored) {
+        localStorage.removeItem(RESCORE_STORAGE_KEY);
+        var datasets = JSON.parse(stored);
+        if (datasets && datasets.length > 0) {
+            rescoreAllChangedDatasets(datasets, 0, function() {
+                utils.display_notification("notification", 3, "Re-scoring triggered",
+                    "Re-scoring has been triggered for " + datasets.length + " dataset(s).");
+            });
+        }
+    }
+}
+
 function showTaskTypeOption(dataset_id) {
     var selector = $("select[name=task_type_" + dataset_id + "]")[0];
     $(".TaskTypeOptions_" + dataset_id + ":visible").hide("fast");
@@ -43,6 +106,23 @@ $(document).ready(function() {
     updateMultiDeleteMaster({{ dataset.id }});
   });
   {% endfor %}
+
+  $("form[action='{{ url("task", task.id) }}']").submit(function(e) {
+    var changedDatasets = checkScoreParameterChanges();
+    if (changedDatasets.length > 0) {
+      var shouldRescore = confirm(
+        "Score parameters have been changed for " + changedDatasets.length + " dataset(s).\n\n" +
+        "Do you want to re-score all submissions (including model solutions) for the affected dataset(s)?\n\n" +
+        "Click OK to save changes AND re-score, or Cancel to save changes WITHOUT re-scoring."
+      );
+      if (shouldRescore) {
+        localStorage.setItem(RESCORE_STORAGE_KEY, JSON.stringify(changedDatasets));
+      }
+    }
+    return true;
+  });
+
+  checkAndTriggerPendingRescore();
 });
 
 window.toggleMultipleDeleteMode = function(dataset_id) {
