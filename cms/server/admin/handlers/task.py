@@ -263,6 +263,35 @@ class TaskHandler(BaseHandler):
             # Update the task and score on RWS.
             self.service.proxy_service.dataset_updated(
                 task_id=task.id)
+
+            # Check if re-scoring was requested for changed score parameters
+            rescore_datasets_str = self.get_argument("rescore_datasets", "")
+            if rescore_datasets_str:
+                # Parse dataset IDs and validate they belong to this task
+                task_dataset_ids = {d.id for d in task.datasets}
+                rescore_count = 0
+                for dataset_id_str in rescore_datasets_str.split(","):
+                    dataset_id_str = dataset_id_str.strip()
+                    if not dataset_id_str:
+                        continue
+                    try:
+                        dataset_id = int(dataset_id_str)
+                    except ValueError:
+                        continue
+                    # Only re-score datasets that belong to this task
+                    if dataset_id in task_dataset_ids:
+                        # Invalidate all submissions (including model solutions)
+                        self.service.scoring_service.invalidate_submission(
+                            dataset_id=dataset_id)
+                        rescore_count += 1
+
+                if rescore_count > 0:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Re-scoring triggered",
+                        "Re-scoring has been triggered for %d dataset(s)." %
+                        rescore_count)
+
         self.redirect(self.url("task", task_id))
 
 

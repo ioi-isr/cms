@@ -5,7 +5,6 @@
 {% block js_init %}
 
 var originalScoreParams = {};
-var RESCORE_STORAGE_KEY = 'cms_rescore_datasets_{{ task.id }}';
 
 {% for dataset in task.datasets %}
 originalScoreParams[{{ dataset.id }}] = {
@@ -25,46 +24,6 @@ function checkScoreParameterChanges() {
     }
     {% endfor %}
     return changedDatasets;
-}
-
-function rescoreDataset(datasetId, callback) {
-    cmsrpc_request(
-        'ScoringService', 0,
-        'invalidate_submission',
-        {'dataset_id': datasetId},
-        function(response) {
-            cmsrpc_request(
-                'ScoringService', 0,
-                'invalidate_model_solutions',
-                {'dataset_id': datasetId},
-                callback
-            );
-        }
-    );
-}
-
-function rescoreAllChangedDatasets(datasets, index, finalCallback) {
-    if (index >= datasets.length) {
-        finalCallback();
-        return;
-    }
-    rescoreDataset(datasets[index], function() {
-        rescoreAllChangedDatasets(datasets, index + 1, finalCallback);
-    });
-}
-
-function checkAndTriggerPendingRescore() {
-    var stored = localStorage.getItem(RESCORE_STORAGE_KEY);
-    if (stored) {
-        localStorage.removeItem(RESCORE_STORAGE_KEY);
-        var datasets = JSON.parse(stored);
-        if (datasets && datasets.length > 0) {
-            rescoreAllChangedDatasets(datasets, 0, function() {
-                utils.display_notification("notification", 3, "Re-scoring triggered",
-                    "Re-scoring has been triggered for " + datasets.length + " dataset(s).");
-            });
-        }
-    }
 }
 
 function showTaskTypeOption(dataset_id) {
@@ -116,13 +75,13 @@ $(document).ready(function() {
         "Click OK to save changes AND re-score, or Cancel to save changes WITHOUT re-scoring."
       );
       if (shouldRescore) {
-        localStorage.setItem(RESCORE_STORAGE_KEY, JSON.stringify(changedDatasets));
+        // Add hidden field with dataset IDs to re-score
+        // Server will trigger re-scoring only after successful commit
+        $(this).append('<input type="hidden" name="rescore_datasets" value="' + changedDatasets.join(',') + '" />');
       }
     }
     return true;
   });
-
-  checkAndTriggerPendingRescore();
 });
 
 window.toggleMultipleDeleteMode = function(dataset_id) {
