@@ -4,7 +4,7 @@
 {% import 'macro/submission.html' as macro_submission %}
 {% import 'macro/question.html' as macro_question with context %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
-ag
+
 {% block js %}
 // Tagify initialization for student tags
 function initTagify() {
@@ -96,16 +96,7 @@ function initTagify() {
         });
     }
 
-    tagify.on('add', function() {
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(saveStudentTags, 500);
-    });
     tagify.on('change', function() {
-        console.log('change fired');
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(saveStudentTags, 500);
-    });
-    tagify.on('remove', function() {
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(saveStudentTags, 500);
     });

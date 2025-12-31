@@ -331,6 +331,6 @@ class TaskVisibilityHandler(BaseHandler):
                 self.set_status(500)
                 self.write({"error": "Failed to save"})
 
-        except Exception as error:
+        except (ValueError, KeyError) as error:
             self.set_status(400)
             self.write({"error": str(error)})

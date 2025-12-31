@@ -136,14 +136,20 @@ class TrainingProgramOverviewHandler(ContestHandler):
                 if td_contest.per_user_time is not None else \
                 td_contest.stop - td_contest.start
 
+            # Check if training starts within 6 hours (21600 seconds)
+            six_hours_from_now = self.timestamp + timedelta(hours=6)
+            has_started = actual_phase >= -1
+            can_enter_soon = not has_started and user_start_time <= six_hours_from_now
+
             upcoming_training_days.append({
                 "training_day": training_day,
                 "contest": td_contest,
                 "participation": td_participation,
-                "has_started": actual_phase >= -1,
+                "has_started": has_started,
                 "user_start_time": user_start_time,
                 "valid_phase_begin": valid_phase_begin,
                 "duration": duration,
+                "can_enter_soon": can_enter_soon,
             })
 
         # Sort by proximity to start time (closest first)

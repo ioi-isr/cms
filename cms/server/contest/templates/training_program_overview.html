@@ -48,7 +48,9 @@
         {% endif %}
         
         <div class="training-day-actions">
+            {% if td_info.has_started or td_info.can_enter_soon %}
             <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn training-day-enter-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
+            {% endif %}
             {% if td_info.contest.allow_delay_requests %}
             <div class="btn-group training-day-delay-group{% if td_info.participation.delay_requests|length == 0 %} single{% endif %}">
                 <button type="button" class="btn btn-warning training-day-btn training-day-delay-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
