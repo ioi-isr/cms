@@ -1067,7 +1067,6 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
 
             if not submissions:
                 logger.info("No model solutions found for dataset %d.", dataset_id)
-                session.commit()
                 return
 
             operations = get_relevant_operations(

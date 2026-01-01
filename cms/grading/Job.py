@@ -76,7 +76,10 @@ def _is_sandbox_multithreaded(submission: Submission) -> bool:
     if contest is not None:
         return _is_contest_multithreaded(contest)
 
-    return get_language(submission.language).requires_multithreading
+    if submission.language is not None:
+        return get_language(submission.language).requires_multithreading
+    
+    return False
 
 
 class Job:

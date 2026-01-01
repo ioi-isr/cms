@@ -299,6 +299,8 @@ HANDLERS = [
     (r"/user_test/([0-9]+)(?:/([0-9]+))?", UserTestHandler),
     (r"/user_test_file/([0-9]+)", UserTestFileHandler),
 
+    # Model Solutions
+
 
     (r"/dataset/([0-9]+)/model_solutions/add", AddModelSolutionHandler),
     (r"/model_solution/([0-9]+)(?:/([0-9]+))?", ModelSolutionHandler),

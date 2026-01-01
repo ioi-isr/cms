@@ -24,6 +24,8 @@ metadata stored in ModelSolutionMeta.
 
 """
 
+import re
+
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
@@ -32,39 +34,33 @@ from sqlalchemy.types import Integer, Float, Unicode
 from . import Base
 
 
-# Characters that are invalid in model solution names (problematic for filenames)
-INVALID_NAME_CHARS = set('/\\*?<>|:"')
+# Pattern for valid model solution names: word characters (letters, digits, underscore),
+# spaces, hyphens, parentheses, and caret. This is a whitelist approach - safer than
+# blacklisting bad chars. Allows names like "O(N^2)" or "slow (TLE)".
+VALID_NAME_PATTERN = re.compile(r'^[\w\-\s()^]+$')
 
 
 def validate_model_solution_name(name: str) -> None:
     """Validate a model solution name.
 
-    Checks that the name is non-empty, doesn't contain invalid characters,
-    and doesn't contain directory traversal sequences.
+    Names must contain only word characters (letters, digits, underscore),
+    spaces, hyphens, parentheses, and caret. This whitelist approach is safer
+    than blacklisting.
 
     name: the name to validate
 
     raise (ValueError): if the name is invalid
 
     """
-    if not name or not name.strip():
+    if not name.strip():
         raise ValueError("Name is required")
 
     name = name.strip()
 
-    # Check for invalid characters
-    if any(c in INVALID_NAME_CHARS for c in name):
+    if not VALID_NAME_PATTERN.match(name):
         raise ValueError(
-            "Name cannot contain: / \\ * ? < > | : \"")
-
-    # Check for directory traversal sequences
-    if ".." in name:
-        raise ValueError(
-            "Name cannot contain '..' (directory traversal)")
-
-    # Check for names that are just current directory
-    if name == ".":
-        raise ValueError("Name cannot be '.'")
+            "Name can only contain letters, digits, underscores, hyphens, "
+            "spaces, parentheses, and caret")
 
 
 class ModelSolutionMeta(Base):
@@ -157,34 +153,23 @@ class ModelSolutionMeta(Base):
                 "not_configured" if no expected range was set for this subtask,
                 None if not scored yet
         """
-        result = self.submission.get_result(self.dataset)
-        if result is None or result.score_details is None:
-            return None
-        
         subtask_key = str(subtask_idx)
         if self.subtask_expected_scores is None or \
                 subtask_key not in self.subtask_expected_scores:
             return "not_configured"
         
+        actual_score = self.get_subtask_actual_score(subtask_idx)
+        if actual_score is None:
+            return None
+        
         expected = self.subtask_expected_scores[subtask_key]
         expected_min = expected.get("min", 0)
         expected_max = expected.get("max", 0)
         
-        score_details = result.score_details
-        if not isinstance(score_details, list):
-            return None
-        
-        for st in score_details:
-            if st.get("idx") == subtask_idx:
-                actual_score = st.get("score")
-                if actual_score is None:
-                    return None
-                if expected_min <= actual_score <= expected_max:
-                    return "in_range"
-                else:
-                    return "out_of_range"
-        
-        return None
+        if expected_min <= actual_score <= expected_max:
+            return "in_range"
+        else:
+            return "out_of_range"
 
     def get_subtask_actual_score(self, subtask_idx: int) -> float | None:
         """Get the actual score for a subtask.
