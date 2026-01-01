@@ -40,6 +40,7 @@ from . import CastingArray, Codename, Base, Admin, Contest
 import typing
 if typing.TYPE_CHECKING:
     from . import PrintJob, Submission, UserTest
+    from .scorecache import ParticipationTaskScore, ScoreHistory
 
 class User(Base):
     """Class to store a user.
@@ -290,6 +291,18 @@ class Participation(Base):
 
     statement_views: list["StatementView"] = relationship(
         "StatementView",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="participation")
+
+    task_scores: list["ParticipationTaskScore"] = relationship(
+        "ParticipationTaskScore",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="participation")
+
+    score_history: list["ScoreHistory"] = relationship(
+        "ScoreHistory",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="participation")
