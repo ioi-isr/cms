@@ -732,6 +732,8 @@ window.filterTestcases = function(dataset_id) {
               Compilation failed
               {% elif not msr.evaluated() %}
               Evaluating...
+              {% elif msr.evaluation_failed() %}
+              Evaluation system error
               {% elif not msr.scored() %}
               Scoring...
               {% else %}
