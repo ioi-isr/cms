@@ -483,6 +483,11 @@ class DelayRequest(Base):
         Participation,
         back_populates="delay_requests")
 
+    # Reason for rejection (only set when status is 'rejected').
+    rejection_reason: str | None = Column(
+        Unicode,
+        nullable=True)
+
     # Admin that processed the request (or null if not processed yet or
     # if the admin has been later deleted). Admins only loosely "own" a
     # delay request, so we do not back populate any field in Admin, and

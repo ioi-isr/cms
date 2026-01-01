@@ -161,7 +161,7 @@ ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participa
 
 ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
--- Score cache for AWS ranking performance
+-- https://github.com/ioi-isr/cms/pull/73
 CREATE TABLE public.participation_task_scores (
     id integer NOT NULL,
     participation_id integer NOT NULL,
@@ -237,5 +237,8 @@ ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_participation
 ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.submissions(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+-- https://github.com/ioi-isr/cms/pull/82 - Add rejection reason to delay requests
+ALTER TABLE public.delay_requests ADD COLUMN rejection_reason character varying;
 
 COMMIT;

@@ -172,6 +172,9 @@
                 <span class="label label-success">{% trans %}Approved{% endtrans %}</span>
             {% elif req.status == 'rejected' %}
                 <span class="label label-important">{% trans %}Rejected{% endtrans %}</span>
+                {% if req.rejection_reason %}
+                    <br><strong>{% trans %}Rejection Reason:{% endtrans %}</strong> {{ req.rejection_reason }}
+                {% endif %}
             {% endif %}
         </div>
     </div>
