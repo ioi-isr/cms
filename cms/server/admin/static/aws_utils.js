@@ -1195,8 +1195,10 @@ CMS.AWSUtils.initTagify = function(config) {
         // Flag to prevent confirmations during initial page load
         var armed = false;
 
-        function saveTags() {
-            var tags = input.value;
+        function saveTags(tagifyInstance) {
+            // Use tagify.value (canonical state) instead of input.value
+            // input.value may be stale if Tagify's debounced update() hasn't run yet
+            var tags = tagifyInstance.value.map(function(t) { return t.value; }).join(', ');
             var formData = new FormData();
             formData.append(config.saveParamName, tags);
             var xsrfInput = document.querySelector(xsrfSelector);
@@ -1278,8 +1280,9 @@ CMS.AWSUtils.initTagify = function(config) {
                 pendingSave = true;
             } else {
                 // Roll back the add - use isRollback flag to skip beforeRemoveTag confirmation
+                // Use non-silent removal so Tagify properly updates its internal state
                 isRollback = true;
-                tagify.removeTags(e.detail.tag, true);
+                tagify.removeTags(e.detail.tag);
                 isRollback = false;
             }
         });
@@ -1310,10 +1313,10 @@ CMS.AWSUtils.initTagify = function(config) {
             });
         }
 
-        // Save on 'change' event - this fires AFTER Tagify updates input.value
+        // Save on 'change' event - this fires AFTER Tagify updates its internal state
         tagify.on('change', function() {
             if (pendingSave) {
-                saveTags();
+                saveTags(tagify);
                 pendingSave = false;
             }
         });
