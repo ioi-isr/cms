@@ -660,6 +660,21 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                             object_result.submission)
                 else:
                     object_result.evaluation_tries += 1
+                    # Store failure details for debugging
+                    object_result.last_evaluation_failure_text = result.job.text
+                    object_result.last_evaluation_failure_shard = result.job.shard
+                    object_result.last_evaluation_failure_sandbox_paths = \
+                        result.job.sandboxes
+                    object_result.last_evaluation_failure_sandbox_digests = \
+                        result.job.get_sandbox_digest_list()
+                    # Store detailed failure info (exit_status, signal, stdout, stderr)
+                    object_result.last_evaluation_failure_details = result.job.plus
+                    # Mark as failed if max retries reached, so evaluation_ended()
+                    # will be called and the submission won't be stuck in
+                    # "Evaluating..." state forever.
+                    if object_result.evaluation_tries >= \
+                            EvaluationService.MAX_EVALUATION_TRIES:
+                        object_result.set_evaluation_outcome(success=False)
 
         elif operation.type_ == ESOperation.USER_TEST_COMPILATION:
             if result.job_success:
@@ -729,8 +744,8 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
 
     def evaluation_ended(self, submission_result: SubmissionResult, archive_sandbox: bool = False):
         """Actions to be performed when we have a submission that has
-        been evaluated. In particular: we inform ScoringService on
-        success, we requeue on failure.
+        been evaluated. In particular: we inform ScoringService so it can
+        update the score for both successful and failed evaluations.
 
         submission_result: the submission result.
         archive_sandbox: whether we need to archive the sandbox.
@@ -738,30 +753,23 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         """
         submission = submission_result.submission
 
-        # Evaluation successful, we inform ScoringService so it can
-        # update the score. We need to commit the session beforehand,
-        # otherwise the ScoringService wouldn't receive the updated
-        # submission.
-        if submission_result.evaluated():
+        # Log successful evaluation for debugging/monitoring purposes
+        if submission_result.evaluation_succeeded():
             logger.info("Submission %d(%d) was evaluated successfully.",
                         submission_result.submission_id,
                         submission_result.dataset_id)
-            self.scoring_service.new_evaluation(
-                submission_id=submission_result.submission_id,
-                dataset_id=submission_result.dataset_id)
 
-        # Evaluation unsuccessful, we log the error.
+        # Log failed evaluation for debugging/monitoring purposes
         else:
-            logger.warning("Worker failed when evaluating submission "
-                           "%d(%d).",
+            logger.warning("Submission %d(%d) evaluation failed due to system "
+                           "error.",
                            submission_result.submission_id,
                            submission_result.dataset_id)
-            if submission_result.evaluation_tries >= \
-                    EvaluationService.MAX_EVALUATION_TRIES:
-                logger.error("Maximum number of failures reached for the "
-                             "evaluation of submission %d(%d).",
-                             submission_result.submission_id,
-                             submission_result.dataset_id)
+
+        # Inform ScoringService to update the score regardless of success/failure
+        self.scoring_service.new_evaluation(
+            submission_id=submission_result.submission_id,
+            dataset_id=submission_result.dataset_id)
 
         # Enqueue next steps to be done (e.g., if evaluation failed).
         self.submission_enqueue_operations(submission, archive_sandbox)

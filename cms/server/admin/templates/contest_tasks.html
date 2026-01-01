@@ -13,7 +13,7 @@
   {{ xsrf_form_html|safe }}
   Add a new task:
   <select name="task_id" class="searchable-select">
-    <option value="null" selected>Select a new task</option>
+    <option value="" selected disabled hidden>Select a new task...</option>
     {% for t in unassigned_tasks %}
     <option value="{{ t.id }}">
       {{ t.name }}

@@ -18,6 +18,8 @@ function update_submissions_status(response)
         strings.push('<tr><td>Scoring...</td><td>' + response['data']['scoring'] + '</td></tr>');
     if (response['data']['compilation_fail'] != 0)
         strings.push('<tr><td>Compilation failed</td><td>' + response['data']['compilation_fail'] + '</td></tr>');
+    if (response['data']['evaluation_fail'] != 0)
+        strings.push('<tr><td>Evaluation failed</td><td>' + response['data']['evaluation_fail'] + '</td></tr>');
     if (response['data']['compiling'] != 0)
         strings.push('<tr><td>Compiling...</td><td>' + response['data']['compiling'] + '</td></tr>');
     if (response['data']['evaluating'] != 0)

@@ -402,8 +402,9 @@ class ScoreTypeGroup(ScoreTypeAlone):
 
     def compute_score(self, submission_result):
         """See ScoreType.compute_score."""
-        # Actually, this means it didn't even compile!
-        if not submission_result.evaluated():
+        # If evaluation failed or didn't complete, score as 0 with empty details.
+        # Note: "didn't complete" means didn't even compile (otherwise this function won't be called).
+        if submission_result.evaluation_failed() or not submission_result.evaluated():
             return 0.0, [], 0.0, [], ["%lg" % 0.0 for _ in self.parameters]
 
         score = 0

@@ -154,7 +154,7 @@ class AddContestUserHandler(BaseHandler):
 
         try:
             user_id: str = self.get_argument("user_id")
-            assert user_id != "null", "Please select a valid user"
+            assert user_id != "", "Please select a valid user"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))

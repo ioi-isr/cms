@@ -622,7 +622,7 @@ class AddParticipationHandler(BaseHandler):
 
         try:
             contest_id: str = self.get_argument("contest_id")
-            assert contest_id != "null", "Please select a valid contest"
+            assert contest_id != "", "Please select a valid contest"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -660,7 +660,7 @@ class EditParticipationHandler(BaseHandler):
         try:
             contest_id: str = self.get_argument("contest_id")
             operation: str = self.get_argument("operation")
-            assert contest_id != "null", "Please select a valid contest"
+            assert contest_id != "", "Please select a valid contest"
             assert operation in (
                 "Remove",
             ), "Please select a valid operation"

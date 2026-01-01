@@ -114,8 +114,9 @@ class Sum(ScoreTypeAlone):
 
     def compute_score(self, submission_result):
         """See ScoreType.compute_score."""
-        # Actually, this means it didn't even compile!
-        if not submission_result.evaluated():
+        # If evaluation didn't succeed (evaluation or compilation failed),
+        # score as 0 with empty details.
+        if not submission_result.evaluation_succeeded():
             return 0.0, [], 0.0, [], []
 
         # XXX Lexicographical order by codename
