@@ -51,12 +51,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, subqueryload
 
 from cms import __version__, config
-from cms.db import Admin, Contest, ContestFolder, DelayRequest, Participation, \
-    Question, Submission, SubmissionResult, Task, Team, User, UserTest
+from cms.db import Session, Contest, ContestFolder, DelayRequest, Participation, \
+    Question, Submission, SubmissionResult, Task, Team, User, UserTest, Admin
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
 from cms.server import CommonRequestHandler, FileHandlerMixin
+from cms.server.util import exclude_internal_contests
 from cmscommon.crypto import hash_password, parse_authentication
 from cmscommon.datetime import make_datetime
 if typing.TYPE_CHECKING:
@@ -347,9 +348,9 @@ class BaseHandler(CommonRequestHandler):
                 .count()
         # TODO: not all pages require all these data.
         # TODO: use a better sorting method.
-        params["contest_list"] = self.sql_session.query(Contest)\
-            .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
-            .order_by(Contest.name).all()
+        params["contest_list"] = exclude_internal_contests(
+            self.sql_session.query(Contest)
+        ).order_by(Contest.name).all()
         params["task_list"] = self.sql_session.query(Task)\
             .order_by(Task.name).all()
         params["user_list"] = self.sql_session.query(User)\
@@ -361,9 +362,11 @@ class BaseHandler(CommonRequestHandler):
             .options(subqueryload(ContestFolder.contests))\
             .options(subqueryload(ContestFolder.children).subqueryload(ContestFolder.contests))\
             .order_by(ContestFolder.name).all()
-        params["root_contests"] = self.sql_session.query(Contest).filter(
-            Contest.folder_id.is_(None)
-        ).filter(~Contest.name.like(r'\_\_%', escape='\\')).order_by(Contest.name).all()
+        params["root_contests"] = exclude_internal_contests(
+            self.sql_session.query(Contest).filter(
+                Contest.folder_id.is_(None)
+            )
+        ).order_by(Contest.name).all()
         return params
 
     def write_error(self, status_code, **kwargs):

@@ -258,6 +258,11 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
         for the specified dataset. It's similar to invalidate_submission but
         explicitly filters to only model solutions via ModelSolutionMeta.
 
+        Note: Model solutions don't update ranking or contest caches because
+        they are not part of any contest's scoring or ranking calculations.
+        They are only used for reference/validation purposes and don't affect
+        user scores or contest standings, so cache invalidation is unnecessary.
+
         dataset_id: id of the dataset whose model solutions should be invalidated.
 
         """

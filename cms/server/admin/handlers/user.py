@@ -32,7 +32,8 @@ import io
 import re
 
 from cms.db import Contest, Participation, Submission, Team, User
-from cmscommon.crypto import (parse_authentication, build_password, 
+from cms.server.util import exclude_internal_contests
+from cmscommon.crypto import (parse_authentication, 
                                hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
 
@@ -50,14 +51,13 @@ class UserHandler(BaseHandler):
             self.sql_session.query(Participation)\
                 .filter(Participation.user == user)\
                 .all()
-        self.r_params["unassigned_contests"] = \
-            self.sql_session.query(Contest)\
+        self.r_params["unassigned_contests"] = exclude_internal_contests(
+            self.sql_session.query(Contest)
                 .filter(Contest.id.notin_(
                     self.sql_session.query(Participation.contest_id)
                         .filter(Participation.user == user)
-                        .all()))\
-                .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
-                .all()
+                        .all()))
+        ).all()
         self.render("user.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

@@ -7,6 +7,7 @@ the contest page (dropdown).
 """
 
 from cms.db import ContestFolder, Contest
+from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -22,9 +23,10 @@ class FolderListHandler(SimpleHandler("folders.html")):
             .all()
         )
         self.r_params["root_contests"] = (
-            self.sql_session.query(Contest)
-            .filter(Contest.folder_id.is_(None))
-            .filter(~Contest.name.like(r'\_\_%', escape='\\'))
+            exclude_internal_contests(
+                self.sql_session.query(Contest)
+                .filter(Contest.folder_id.is_(None))
+            )
             .order_by(Contest.name)
             .all()
         )
@@ -130,7 +132,9 @@ class RemoveFolderHandler(BaseHandler):
         self.r_params = self.render_params()
         self.r_params["folder"] = folder
         self.r_params["subfolder_count"] = len(folder.children)
-        self.r_params["contest_count"] = self.sql_session.query(Contest).filter(Contest.folder == folder).filter(~Contest.name.like(r'\_\_%', escape='\\')).count()
+        self.r_params["contest_count"] = exclude_internal_contests(
+            self.sql_session.query(Contest).filter(Contest.folder == folder)
+        ).count()
         self.render("folder_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -141,7 +145,9 @@ class RemoveFolderHandler(BaseHandler):
             child.parent = folder.parent
         # Move contests under this folder to its parent (or root if None)
         parent = folder.parent
-        for c in list(self.sql_session.query(Contest).filter(Contest.folder == folder).filter(~Contest.name.like(r'\_\_%', escape='\\')).all()):
+        for c in exclude_internal_contests(
+            self.sql_session.query(Contest).filter(Contest.folder == folder)
+        ).all():
             c.folder = parent
         # Delete the folder itself; contests will be detached via FK SET NULL
         self.sql_session.delete(folder)

@@ -32,6 +32,7 @@ from datetime import timedelta
 
 from cms import ServiceCoord, get_service_shards, get_service_address
 from cms.db import Contest, Participation, Submission, Task, ContestFolder
+from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 from sqlalchemy import func
 
@@ -293,11 +294,10 @@ class RemoveContestHandler(BaseHandler):
         self.render_params_for_remove_confirmation(submission_query)
         
         self.r_params["task_count"] = len(contest.tasks)
-        self.r_params["other_contests"] = self.sql_session.query(Contest)\
-            .filter(Contest.id != contest.id)\
-            .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
-            .order_by(Contest.name)\
-            .all()
+        self.r_params["other_contests"] = exclude_internal_contests(
+            self.sql_session.query(Contest)
+            .filter(Contest.id != contest.id)
+        ).order_by(Contest.name).all()
         
         self.render("contest_remove.html", **self.r_params)
 

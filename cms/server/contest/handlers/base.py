@@ -48,6 +48,7 @@ from werkzeug.datastructures import LanguageAccept
 from werkzeug.http import parse_accept_header
 
 from cms.db import Contest
+from cms.server.util import exclude_internal_contests
 from cms.db.contest_folder import ContestFolder
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
 from cms.server import CommonRequestHandler
@@ -233,11 +234,6 @@ class ContestListHandler(BaseHandler):
         self.redirect(self.url("browse"))
 
 
-def _exclude_internal_contests(query):
-    """Exclude contests with names starting with '__' (internal/system contests)."""
-    return query.filter(~Contest.name.like(r'\_\_%', escape='\\'))
-
-
 class ContestFolderBrowseHandler(BaseHandler):
     """Browse contests by folders.
 
@@ -251,7 +247,7 @@ class ContestFolderBrowseHandler(BaseHandler):
         Excludes hidden folders and their descendants from the tree.
         """
         all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
-        all_contests = _exclude_internal_contests(
+        all_contests = exclude_internal_contests(
             self.sql_session.query(Contest)
         ).order_by(Contest.name).all()
 
@@ -321,7 +317,7 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = _exclude_internal_contests(
+            contests = exclude_internal_contests(
                 self.sql_session.query(Contest)
                 .filter(Contest.folder_id.is_(None))
             ).all()
@@ -333,7 +329,7 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = _exclude_internal_contests(
+            contests = exclude_internal_contests(
                 self.sql_session.query(Contest)
                 .filter(Contest.folder == cur_folder)
             ).all()
