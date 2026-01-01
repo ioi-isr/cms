@@ -1188,6 +1188,13 @@ CMS.AWSUtils.initTagify = function(config) {
         tagifyOptions.enforceWhitelist = !!config.enforceWhitelist;
         if (config.pattern) tagifyOptions.pattern = config.pattern;
 
+        // Flag to track if a save should happen on the next 'change' event
+        var pendingSave = false;
+        // Flag to track if we're rolling back a cancelled add (to skip confirmation)
+        var isRollback = false;
+        // Flag to prevent confirmations during initial page load
+        var armed = false;
+
         function saveTags() {
             var tags = input.value;
             var formData = new FormData();
@@ -1210,27 +1217,35 @@ CMS.AWSUtils.initTagify = function(config) {
             });
         }
 
+        // Track user-initiated removals (X click or backspace)
         var userRemovalTriggeredAt = 0;
-        var removalWasConfirmed = false;
 
         tagifyOptions.hooks = {
             beforeRemoveTag: function(tags) {
                 return new Promise(function(resolve, reject) {
+                    // If this is a rollback from cancelled add, skip confirmation
+                    if (isRollback) {
+                        resolve();
+                        return;
+                    }
+
                     var now = Date.now();
                     var isUserInitiated = (now - userRemovalTriggeredAt) < 200;
                     userRemovalTriggeredAt = 0;
 
+                    // Auto-removals (duplicates, etc.) don't need confirmation
                     if (!isUserInitiated) {
-                        removalWasConfirmed = true;
+                        pendingSave = true;
                         resolve();
                         return;
                     }
+
+                    // User-initiated removal needs confirmation
                     var tagValue = tags[0].data.value;
                     if (confirm('Remove tag "' + tagValue + '"?')) {
-                        removalWasConfirmed = true;
+                        pendingSave = true;
                         resolve();
                     } else {
-                        removalWasConfirmed = false;
                         reject();
                     }
                 });
@@ -1239,41 +1254,39 @@ CMS.AWSUtils.initTagify = function(config) {
 
         var tagify = new Tagify(input, tagifyOptions);
 
+        // Detect X button clicks
         tagify.DOM.scope.addEventListener('click', function(e) {
             if (e.target.closest('.tagify__tag__removeBtn')) {
                 userRemovalTriggeredAt = Date.now();
             }
         }, true);
 
+        // Detect backspace/delete key presses
         tagify.DOM.input.addEventListener('keydown', function(e) {
             if (e.key === 'Backspace' || e.key === 'Delete') {
                 userRemovalTriggeredAt = Date.now();
             }
         }, true);
 
-        tagify.on('remove', function() {
-            if (removalWasConfirmed) {
-                saveTags();
-                removalWasConfirmed = false;
-            }
-        });
-
-        var addWasCancelled = false;
-
+        // Handle add confirmation
         tagify.on('add', function(e) {
+            // Skip confirmation if not armed yet (initial page load)
+            if (!armed) return;
+
             var tagValue = e.detail.data.value;
             if (confirm('Add tag "' + tagValue + '"?')) {
-                saveTags();
+                pendingSave = true;
             } else {
-                addWasCancelled = true;
-                tagify.removeTag(e.detail.tag, { skipHook: true });
-                addWasCancelled = false;
+                // Roll back the add - use isRollback flag to skip beforeRemoveTag confirmation
+                isRollback = true;
+                tagify.removeTags(e.detail.tag, true);
+                isRollback = false;
             }
         });
 
+        // Handle edit confirmation
         if (config.editable) {
             var editingTagValue = null;
-            var editWasConfirmed = false;
 
             tagify.on('edit:start', function(e) {
                 editingTagValue = e.detail.data.value;
@@ -1283,26 +1296,27 @@ CMS.AWSUtils.initTagify = function(config) {
                 var oldVal = editingTagValue;
                 var newVal = e.detail.data && e.detail.data.value;
 
+                // No change, no confirmation needed
                 if (oldVal === newVal) {
-                    editWasConfirmed = false;
                     return;
                 }
 
                 if (confirm('Change tag "' + oldVal + '" to "' + newVal + '"?')) {
-                    editWasConfirmed = true;
+                    pendingSave = true;
                 } else {
+                    // Revert to old value
                     e.detail.data.value = oldVal;
-                    editWasConfirmed = false;
-                }
-            });
-
-            tagify.on('edit:updated', function() {
-                if (editWasConfirmed) {
-                    saveTags();
-                    editWasConfirmed = false;
                 }
             });
         }
+
+        // Save on 'change' event - this fires AFTER Tagify updates input.value
+        tagify.on('change', function() {
+            if (pendingSave) {
+                saveTags();
+                pendingSave = false;
+            }
+        });
 
         if (config.pattern && config.invalidMessage) {
             tagify.on('invalid', function(e) {
@@ -1311,5 +1325,10 @@ CMS.AWSUtils.initTagify = function(config) {
                 }
             });
         }
+
+        // Arm the confirmations after a short delay to skip initial load events
+        setTimeout(function() {
+            armed = true;
+        }, 100);
     });
 };
