@@ -128,13 +128,16 @@ class RankingHandler(BaseHandler):
         # partial is computed via SQL aggregation above for correctness.
         #
         # Note: get_cached_score_entry may trigger cache rebuilds which acquire
-        # advisory locks. We commit after this loop to persist any rebuilds
-        # and release the locks. See get_cached_score_entry docstring.
+        # advisory locks. We collect data first, then commit to persist any
+        # rebuilds and release the locks, then attach transient attributes.
+        # This two-phase approach is needed because commit() expires ORM objects,
+        # which would clear any dynamically added attributes like task_statuses.
         show_teams = False
+        participation_data = {}  # p.id -> (task_statuses, total_score)
         for p in self.contest.participations:
             show_teams = show_teams or p.team_id
 
-            p.task_statuses = []  # status per task for rendering/export
+            task_statuses = []
             total_score = 0.0
             partial = False
             for task in self.contest.tasks:
@@ -146,7 +149,7 @@ class RankingHandler(BaseHandler):
                 t_partial = partial_by_pt.get((p.id, task.id), False)
 
                 has_opened = (p.id, task.id) in statement_views_set
-                p.task_statuses.append(
+                task_statuses.append(
                     TaskStatus(
                         score=t_score,
                         partial=t_partial,
@@ -157,11 +160,16 @@ class RankingHandler(BaseHandler):
                 total_score += t_score
                 partial = partial or t_partial
             total_score = round(total_score, self.contest.score_precision)
-            p.total_score = (total_score, partial)
+            participation_data[p.id] = (task_statuses, (total_score, partial))
 
         # Commit to persist any cache rebuilds and release advisory locks.
         # This is a no-op if no rebuilds occurred.
         self.sql_session.commit()
+
+        # Now attach transient attributes after commit (so they aren't cleared
+        # by SQLAlchemy's expire-on-commit behavior).
+        for p in self.contest.participations:
+            p.task_statuses, p.total_score = participation_data[p.id]
 
         self.r_params = self.render_params()
         self.r_params["show_teams"] = show_teams
