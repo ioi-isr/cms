@@ -1189,17 +1189,20 @@ CMS.AWSUtils.initTagify = function(config) {
         tagifyOptions.enforceWhitelist = !!config.enforceWhitelist;
         if (config.pattern) tagifyOptions.pattern = config.pattern;
 
-        var userInitiatedRemoval = false;
+        var userRemovalTriggeredAt = 0;
 
         if (config.confirmRemove) {
             tagifyOptions.hooks = {
                 beforeRemoveTag: function(tags) {
                     return new Promise(function(resolve, reject) {
-                        if (!userInitiatedRemoval) {
+                        var now = Date.now();
+                        var isUserInitiated = (now - userRemovalTriggeredAt) < 200;
+                        userRemovalTriggeredAt = 0;
+
+                        if (!isUserInitiated) {
                             resolve();
                             return;
                         }
-                        userInitiatedRemoval = false;
                         var tagValue = tags[0].data.value;
                         if (confirm('Remove tag "' + tagValue + '"?')) {
                             resolve();
@@ -1216,7 +1219,13 @@ CMS.AWSUtils.initTagify = function(config) {
         if (config.confirmRemove) {
             tagify.DOM.scope.addEventListener('click', function(e) {
                 if (e.target.closest('.tagify__tag__removeBtn')) {
-                    userInitiatedRemoval = true;
+                    userRemovalTriggeredAt = Date.now();
+                }
+            }, true);
+
+            tagify.DOM.input.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                    userRemovalTriggeredAt = Date.now();
                 }
             }, true);
         }
