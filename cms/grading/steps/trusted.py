@@ -195,7 +195,7 @@ def trusted_step(
         return False, None, None
 
 
-MAX_OUTPUT_SIZE = 16 * 1024  # 16KB max per stream
+MAX_OUTPUT_SIZE = 2 * 1024  # 2KB max per stream
 
 
 def safe_get_str(sandbox: Sandbox, filename: str) -> str:
@@ -212,7 +212,7 @@ def safe_get_str(sandbox: Sandbox, filename: str) -> str:
 
     """
     try:
-        s = sandbox.get_file_to_string(filename)
+        s = sandbox.get_file_to_string(filename, maxlen = MAX_OUTPUT_SIZE + 1)
         # Truncate to avoid storing huge outputs
         if len(s) > MAX_OUTPUT_SIZE:
             s = s[:MAX_OUTPUT_SIZE] + b"\n... (truncated)"
