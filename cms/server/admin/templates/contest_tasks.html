@@ -2,64 +2,16 @@
 
 {% block js_init %}
 {% if is_training_day %}
-// Initialize Tagify for task visibility tags
-function initTaskVisibilityTagify() {
-    var existingTags = {{ all_student_tags | tojson }};
-    
-    document.querySelectorAll('.task-visibility-tags').forEach(function(input) {
-        var taskId = input.dataset.taskId;
-        
-        var tagify = new Tagify(input, {
-            delimiters: ",",
-            maxTags: 20,
-            placeholder: "All students",
-            whitelist: existingTags,
-            enforceWhitelist: true,
-            dropdown: {
-                maxItems: 20,
-                classname: "tags-look",
-                enabled: 0,
-                closeOnSelect: true
-            },
-            editTags: false,
-            originalInputValueFormat: function(valuesArr) {
-                return valuesArr.map(function(item) {
-                    return item.value;
-                }).join(', ');
-            }
-        });
-        
-        // Auto-save on change with debounce
-        var saveTimeout = null;
-        function saveVisibilityTags() {
-            var tags = input.value;
-            var formData = new FormData();
-            formData.append('visible_to_tags', tags);
-            formData.append('_xsrf', document.querySelector('input[name="_xsrf"]').value);
-            
-            fetch('{{ url("contest", contest.id, "task_visibility") }}/' + taskId, {
-                method: 'POST',
-                body: formData
-            }).then(function(response) {
-                if (!response.ok) {
-                    console.error('Failed to save visibility tags');
-                }
-            }).catch(function(error) {
-                console.error('Error saving visibility tags:', error);
-            });
-        }
-        
-        tagify.on('add', function() {
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(saveVisibilityTags, 500);
-        });
-        tagify.on('remove', function() {
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(saveVisibilityTags, 500);
-        });
-    });
-}
-initTaskVisibilityTagify();
+CMS.AWSUtils.initTagify({
+    inputSelector: '.task-visibility-tags',
+    whitelist: {{ all_student_tags | tojson }},
+    getSaveUrl: function(input) {
+        return '{{ url("contest", contest.id, "task_visibility") }}/' + input.dataset.taskId;
+    },
+    saveParamName: 'visible_to_tags',
+    placeholder: 'All students',
+    enforceWhitelist: true
+});
 {% endif %}
 {% endblock js_init %}
 

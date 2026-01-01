@@ -1138,3 +1138,155 @@ CMS.AWSUtils.initRemovePage = function(config) {
         CMS.AWSUtils.ajax_delete(url);
     };
 };
+
+
+/**
+ * Initializes Tagify on input element(s) with auto-save functionality.
+ * Provides a unified interface for tag inputs across the admin interface.
+ *
+ * config (object): Configuration object with the following properties:
+ *   - inputSelector (string): CSS selector for the input element(s).
+ *   - whitelist (array): Array of existing tags for autocomplete suggestions.
+ *   - getSaveUrl (function): Function that receives the input element and returns the save URL.
+ *   - saveParamName (string): Parameter name for the save request (e.g., 'student_tags').
+ *   - xsrfSelector (string): CSS selector for the XSRF token input (default: 'input[name="_xsrf"]').
+ *   - placeholder (string): Placeholder text (default: 'Type tags').
+ *   - editable (boolean): Whether tags can be edited by double-clicking (default: false).
+ *   - confirmRemove (boolean): Whether to show confirmation dialog on removal (default: false).
+ *   - confirmEdit (boolean): Whether to show confirmation dialog on edit (default: false).
+ *   - enforceWhitelist (boolean): Whether to only allow tags from whitelist (default: false).
+ *   - pattern (RegExp): Pattern for tag validation (default: null).
+ *   - invalidMessage (string): Message to show when pattern validation fails.
+ *   - debounceMs (number): Debounce delay for auto-save in milliseconds (default: 500).
+ */
+CMS.AWSUtils.initTagify = function(config) {
+    var inputs = document.querySelectorAll(config.inputSelector);
+    if (!inputs.length) return;
+
+    var xsrfSelector = config.xsrfSelector || 'input[name="_xsrf"]';
+    var debounceMs = config.debounceMs || 500;
+
+    inputs.forEach(function(input) {
+        var tagifyOptions = {
+            delimiters: ",",
+            maxTags: 20,
+            placeholder: config.placeholder || "Type tags",
+            whitelist: config.whitelist || [],
+            dropdown: {
+                maxItems: 20,
+                classname: "tags-look",
+                enabled: 0,
+                closeOnSelect: true
+            },
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.map(function(item) {
+                    return item.value;
+                }).join(', ');
+            }
+        };
+
+        if (config.editable) {
+            tagifyOptions.editTags = {
+                clicks: 2,
+                keepInvalid: false
+            };
+        } else {
+            tagifyOptions.editTags = false;
+        }
+
+        if (config.enforceWhitelist) {
+            tagifyOptions.enforceWhitelist = true;
+        }
+
+        if (config.pattern) {
+            tagifyOptions.pattern = config.pattern;
+        }
+
+        var pendingDuplicateRemoval = false;
+
+        if (config.confirmRemove) {
+            tagifyOptions.hooks = {
+                beforeRemoveTag: function(tags) {
+                    return new Promise(function(resolve, reject) {
+                        if (pendingDuplicateRemoval) {
+                            pendingDuplicateRemoval = false;
+                            resolve();
+                            return;
+                        }
+                        var tagValue = tags[0].data.value;
+                        if (confirm('Remove tag "' + tagValue + '"?')) {
+                            resolve();
+                        } else {
+                            reject();
+                        }
+                    });
+                }
+            };
+        }
+
+        var tagify = new Tagify(input, tagifyOptions);
+
+        if (config.confirmRemove) {
+            tagify.on('duplicate', function() {
+                pendingDuplicateRemoval = true;
+            });
+        }
+
+        if (config.editable) {
+            var editingTagValue = null;
+
+            tagify.on('edit:start', function(e) {
+                editingTagValue = e.detail.data.value;
+            });
+
+            if (config.confirmEdit) {
+                tagify.on('edit:beforeUpdate', function(e) {
+                    var oldVal = editingTagValue;
+                    var newVal = e.detail.data && e.detail.data.value;
+
+                    if (oldVal === newVal) return;
+
+                    if (!confirm('Change tag "' + oldVal + '" to "' + newVal + '"?')) {
+                        e.detail.data.value = oldVal;
+                    }
+                });
+            }
+        }
+
+        if (config.pattern && config.invalidMessage) {
+            tagify.on('invalid', function(e) {
+                if (e.detail.message === 'pattern mismatch') {
+                    alert(config.invalidMessage);
+                }
+            });
+        }
+
+        var saveTimeout = null;
+        function saveTags() {
+            var tags = input.value;
+            var formData = new FormData();
+            formData.append(config.saveParamName, tags);
+            var xsrfInput = document.querySelector(xsrfSelector);
+            if (xsrfInput) {
+                formData.append('_xsrf', xsrfInput.value);
+            }
+
+            var saveUrl = config.getSaveUrl(input);
+            fetch(saveUrl, {
+                method: 'POST',
+                body: formData
+            }).then(function(response) {
+                if (!response.ok) {
+                    console.error('Failed to save tags');
+                }
+            }).catch(function(error) {
+                console.error('Error saving tags:', error);
+            });
+        }
+
+        tagify.on('change', function() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(saveTags, debounceMs);
+        });
+    });
+};
