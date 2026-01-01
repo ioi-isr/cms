@@ -440,7 +440,16 @@ class Communication(TaskType):
 
         # Otherwise, we use the manager to obtain the outcome.
         else:
-            outcome, text = extract_outcome_and_text(sandbox_mgr)
+            try:
+                outcome, text = extract_outcome_and_text(sandbox_mgr)
+            except (ValueError, FileNotFoundError) as e:
+                # Manager output parsing failed - this is an infrastructure error
+                logger.error("Invalid output from manager: %s", e)
+                success = False
+                outcome = None
+                text = [f"Invalid manager output: {e} (see stdout/stderr in details)"]
+                # Capture manager stdout/stderr for debugging
+                stats_user = self._collect_manager_failure_stats(sandbox_mgr, stats_mgr)
 
         # If asked so, save the output file with additional information,
         # provided that it exists.
