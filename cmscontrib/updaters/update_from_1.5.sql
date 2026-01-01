@@ -377,9 +377,6 @@ CREATE INDEX ix_tasks_training_day_id ON public.tasks USING btree (training_day_
 ALTER TABLE ONLY public.tasks
     ADD CONSTRAINT tasks_training_day_id_training_day_num_key UNIQUE (training_day_id, training_day_num);
 
--- https://github.com/ioi-isr/cms/pull/82 - Add rejection reason to delay requests
-ALTER TABLE public.delay_requests ADD COLUMN rejection_reason character varying;
-
 -- https://github.com/ioi-isr/cms/pull/83 - Add allow_delay_requests to contests
 ALTER TABLE public.contests ADD COLUMN allow_delay_requests boolean NOT NULL DEFAULT true;
 ALTER TABLE public.contests ALTER COLUMN allow_delay_requests DROP DEFAULT;

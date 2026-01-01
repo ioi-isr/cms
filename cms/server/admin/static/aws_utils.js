@@ -1141,8 +1141,11 @@ CMS.AWSUtils.initRemovePage = function(config) {
 
 
 /**
- * Initializes Tagify on input element(s) with auto-save functionality.
+ * Initializes Tagify on input element(s) with confirmation dialogs and save-on-confirm.
  * Provides a unified interface for tag inputs across the admin interface.
+ * 
+ * All tag operations (add, edit, remove) require confirmation before saving.
+ * Automatic removals (like duplicate detection) do not require confirmation but still save.
  *
  * config (object): Configuration object with the following properties:
  *   - inputSelector (string): CSS selector for the input element(s).
@@ -1152,20 +1155,15 @@ CMS.AWSUtils.initRemovePage = function(config) {
  *   - xsrfSelector (string): CSS selector for the XSRF token input (default: 'input[name="_xsrf"]').
  *   - placeholder (string): Placeholder text (default: 'Type tags').
  *   - editable (boolean): Whether tags can be edited by double-clicking (default: false).
- *   - confirmRemove (boolean): Whether to show confirmation dialog on removal (default: false).
- *   - confirmAdd (boolean): Whether to show confirmation dialog on add (default: false).
- *   - confirmEdit (boolean): Whether to show confirmation dialog on edit (default: false).
  *   - enforceWhitelist (boolean): Whether to only allow tags from whitelist (default: false).
  *   - pattern (RegExp): Pattern for tag validation (default: null).
  *   - invalidMessage (string): Message to show when pattern validation fails.
- *   - debounceMs (number): Debounce delay for auto-save in milliseconds (default: 500).
  */
 CMS.AWSUtils.initTagify = function(config) {
     var inputs = document.querySelectorAll(config.inputSelector);
     if (!inputs.length) return;
 
     var xsrfSelector = config.xsrfSelector || 'input[name="_xsrf"]';
-    var debounceMs = config.debounceMs || 500;
 
     inputs.forEach(function(input) {
         var tagifyOptions = {
@@ -1190,89 +1188,6 @@ CMS.AWSUtils.initTagify = function(config) {
         tagifyOptions.enforceWhitelist = !!config.enforceWhitelist;
         if (config.pattern) tagifyOptions.pattern = config.pattern;
 
-        var userRemovalTriggeredAt = 0;
-
-        if (config.confirmRemove) {
-            tagifyOptions.hooks = {
-                beforeRemoveTag: function(tags) {
-                    return new Promise(function(resolve, reject) {
-                        var now = Date.now();
-                        var isUserInitiated = (now - userRemovalTriggeredAt) < 200;
-                        userRemovalTriggeredAt = 0;
-
-                        if (!isUserInitiated) {
-                            resolve();
-                            return;
-                        }
-                        var tagValue = tags[0].data.value;
-                        if (confirm('Remove tag "' + tagValue + '"?')) {
-                            resolve();
-                        } else {
-                            reject();
-                        }
-                    });
-                }
-            };
-        }
-
-        var tagify = new Tagify(input, tagifyOptions);
-
-        if (config.confirmRemove) {
-            tagify.DOM.scope.addEventListener('click', function(e) {
-                if (e.target.closest('.tagify__tag__removeBtn')) {
-                    userRemovalTriggeredAt = Date.now();
-                }
-            }, true);
-
-            tagify.DOM.input.addEventListener('keydown', function(e) {
-                if (e.key === 'Backspace' || e.key === 'Delete') {
-                    userRemovalTriggeredAt = Date.now();
-                }
-            }, true);
-        }
-
-        if (config.editable) {
-            var editingTagValue = null;
-
-            tagify.on('edit:start', function(e) {
-                editingTagValue = e.detail.data.value;
-            });
-
-            if (config.confirmEdit) {
-                tagify.on('edit:beforeUpdate', function(e) {
-                    var oldVal = editingTagValue;
-                    var newVal = e.detail.data && e.detail.data.value;
-
-                    if (oldVal === newVal) return;
-
-                    if (!confirm('Change tag "' + oldVal + '" to "' + newVal + '"?')) {
-                        e.detail.data.value = oldVal;
-                    }
-                });
-            }
-        }
-
-        if (config.pattern && config.invalidMessage) {
-            tagify.on('invalid', function(e) {
-                if (e.detail.message === 'pattern mismatch') {
-                    alert(config.invalidMessage);
-                }
-            });
-        }
-
-        var suppressSave = false;
-        var saveTimeout = null;
-
-        if (config.confirmAdd) {
-            tagify.on('add', function(e) {
-                var tagValue = e.detail.data.value;
-                if (!confirm('Add tag "' + tagValue + '"?')) {
-                    suppressSave = true;
-                    tagify.removeTag(e.detail.tag, { skipHook: true });
-                    suppressSave = false;
-                }
-            });
-        }
         function saveTags() {
             var tags = input.value;
             var formData = new FormData();
@@ -1295,10 +1210,106 @@ CMS.AWSUtils.initTagify = function(config) {
             });
         }
 
-        tagify.on('change', function() {
-            if (suppressSave) return;
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(saveTags, debounceMs);
+        var userRemovalTriggeredAt = 0;
+        var removalWasConfirmed = false;
+
+        tagifyOptions.hooks = {
+            beforeRemoveTag: function(tags) {
+                return new Promise(function(resolve, reject) {
+                    var now = Date.now();
+                    var isUserInitiated = (now - userRemovalTriggeredAt) < 200;
+                    userRemovalTriggeredAt = 0;
+
+                    if (!isUserInitiated) {
+                        removalWasConfirmed = true;
+                        resolve();
+                        return;
+                    }
+                    var tagValue = tags[0].data.value;
+                    if (confirm('Remove tag "' + tagValue + '"?')) {
+                        removalWasConfirmed = true;
+                        resolve();
+                    } else {
+                        removalWasConfirmed = false;
+                        reject();
+                    }
+                });
+            }
+        };
+
+        var tagify = new Tagify(input, tagifyOptions);
+
+        tagify.DOM.scope.addEventListener('click', function(e) {
+            if (e.target.closest('.tagify__tag__removeBtn')) {
+                userRemovalTriggeredAt = Date.now();
+            }
+        }, true);
+
+        tagify.DOM.input.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                userRemovalTriggeredAt = Date.now();
+            }
+        }, true);
+
+        tagify.on('remove', function() {
+            if (removalWasConfirmed) {
+                saveTags();
+                removalWasConfirmed = false;
+            }
         });
+
+        var addWasCancelled = false;
+
+        tagify.on('add', function(e) {
+            var tagValue = e.detail.data.value;
+            if (confirm('Add tag "' + tagValue + '"?')) {
+                saveTags();
+            } else {
+                addWasCancelled = true;
+                tagify.removeTag(e.detail.tag, { skipHook: true });
+                addWasCancelled = false;
+            }
+        });
+
+        if (config.editable) {
+            var editingTagValue = null;
+            var editWasConfirmed = false;
+
+            tagify.on('edit:start', function(e) {
+                editingTagValue = e.detail.data.value;
+            });
+
+            tagify.on('edit:beforeUpdate', function(e) {
+                var oldVal = editingTagValue;
+                var newVal = e.detail.data && e.detail.data.value;
+
+                if (oldVal === newVal) {
+                    editWasConfirmed = false;
+                    return;
+                }
+
+                if (confirm('Change tag "' + oldVal + '" to "' + newVal + '"?')) {
+                    editWasConfirmed = true;
+                } else {
+                    e.detail.data.value = oldVal;
+                    editWasConfirmed = false;
+                }
+            });
+
+            tagify.on('edit:updated', function() {
+                if (editWasConfirmed) {
+                    saveTags();
+                    editWasConfirmed = false;
+                }
+            });
+        }
+
+        if (config.pattern && config.invalidMessage) {
+            tagify.on('invalid', function(e) {
+                if (e.detail.message === 'pattern mismatch') {
+                    alert(config.invalidMessage);
+                }
+            });
+        }
     });
 };
