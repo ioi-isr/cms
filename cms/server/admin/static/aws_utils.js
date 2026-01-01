@@ -1153,6 +1153,7 @@ CMS.AWSUtils.initRemovePage = function(config) {
  *   - placeholder (string): Placeholder text (default: 'Type tags').
  *   - editable (boolean): Whether tags can be edited by double-clicking (default: false).
  *   - confirmRemove (boolean): Whether to show confirmation dialog on removal (default: false).
+ *   - confirmAdd (boolean): Whether to show confirmation dialog on add (default: false).
  *   - confirmEdit (boolean): Whether to show confirmation dialog on edit (default: false).
  *   - enforceWhitelist (boolean): Whether to only allow tags from whitelist (default: false).
  *   - pattern (RegExp): Pattern for tag validation (default: null).
@@ -1259,7 +1260,19 @@ CMS.AWSUtils.initTagify = function(config) {
             });
         }
 
+        var suppressSave = false;
         var saveTimeout = null;
+
+        if (config.confirmAdd) {
+            tagify.on('add', function(e) {
+                var tagValue = e.detail.data.value;
+                if (!confirm('Add tag "' + tagValue + '"?')) {
+                    suppressSave = true;
+                    tagify.removeTag(e.detail.tag, { skipHook: true });
+                    suppressSave = false;
+                }
+            });
+        }
         function saveTags() {
             var tags = input.value;
             var formData = new FormData();
@@ -1283,6 +1296,7 @@ CMS.AWSUtils.initTagify = function(config) {
         }
 
         tagify.on('change', function() {
+            if (suppressSave) return;
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(saveTags, debounceMs);
         });
