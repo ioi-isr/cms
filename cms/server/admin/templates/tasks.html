@@ -28,7 +28,6 @@
         <th></th>
         <th>Name</th>
         <th>Title</th>
-        <th>Training</th>
       </tr>
     </thead>
     <tbody>
@@ -39,11 +38,6 @@
         </td>
         <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
         <td>{{ t.title }}</td>
-        <td>
-          {% if t.training_day is not none %}
-          <a href="{{ url("training_program", t.training_day.training_program.id) }}">{{ t.training_day.training_program.name }}</a>
-          {% endif %}
-        </td>
       </tr>
       {% endfor %}
     </tbody>

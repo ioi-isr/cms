@@ -1185,34 +1185,21 @@ CMS.AWSUtils.initTagify = function(config) {
             }
         };
 
-        if (config.editable) {
-            tagifyOptions.editTags = {
-                clicks: 2,
-                keepInvalid: false
-            };
-        } else {
-            tagifyOptions.editTags = false;
-        }
+        tagifyOptions.editTags = config.editable ? { clicks: 2, keepInvalid: false } : false;
+        tagifyOptions.enforceWhitelist = !!config.enforceWhitelist;
+        if (config.pattern) tagifyOptions.pattern = config.pattern;
 
-        if (config.enforceWhitelist) {
-            tagifyOptions.enforceWhitelist = true;
-        }
-
-        if (config.pattern) {
-            tagifyOptions.pattern = config.pattern;
-        }
-
-        var pendingDuplicateRemoval = false;
+        var userInitiatedRemoval = false;
 
         if (config.confirmRemove) {
             tagifyOptions.hooks = {
                 beforeRemoveTag: function(tags) {
                     return new Promise(function(resolve, reject) {
-                        if (pendingDuplicateRemoval) {
-                            pendingDuplicateRemoval = false;
+                        if (!userInitiatedRemoval) {
                             resolve();
                             return;
                         }
+                        userInitiatedRemoval = false;
                         var tagValue = tags[0].data.value;
                         if (confirm('Remove tag "' + tagValue + '"?')) {
                             resolve();
@@ -1227,9 +1214,11 @@ CMS.AWSUtils.initTagify = function(config) {
         var tagify = new Tagify(input, tagifyOptions);
 
         if (config.confirmRemove) {
-            tagify.on('duplicate', function() {
-                pendingDuplicateRemoval = true;
-            });
+            tagify.DOM.scope.addEventListener('click', function(e) {
+                if (e.target.closest('.tagify__tag__removeBtn')) {
+                    userInitiatedRemoval = true;
+                }
+            }, true);
         }
 
         if (config.editable) {
