@@ -20,6 +20,7 @@
 """
 
 import logging
+from typing import Callable
 
 import tornado.web
 
@@ -38,17 +39,17 @@ logger = logging.getLogger(__name__)
 
 def get_subtask_info(dataset):
     """Get subtask information from a dataset if it uses a group-based score type.
-    
+
     dataset: the dataset to get subtask info from
-    
+
     return: a list of dicts with subtask info, or None if not a group-based score type.
-            Each dict has: idx, name, max_score
+            Each dict has: idx, name, display_name, max_score
     """
     try:
         score_type_obj = dataset.score_type_object
         if not isinstance(score_type_obj, ScoreTypeGroup):
             return None
-        
+
         subtasks = []
         for idx, param in enumerate(score_type_obj.parameters):
             max_score = param[0]
@@ -63,6 +64,144 @@ def get_subtask_info(dataset):
     except (KeyError, IndexError, TypeError, AttributeError) as e:
         logger.debug("Could not extract subtask info: %s", e)
         return None
+
+
+def parse_score_range(min_str: str, max_str: str, context: str = "") -> tuple[float, float]:
+    """Parse and validate a min/max score range from string values.
+
+    min_str: string representation of minimum score
+    max_str: string representation of maximum score
+    context: optional context string for error messages (e.g., "for subtask 0")
+
+    return: tuple of (min_score, max_score) as floats
+
+    raises: ValueError if values are invalid or min > max
+    """
+    try:
+        score_min = float(min_str)
+        score_max = float(max_str)
+    except ValueError as err:
+        msg = "Invalid score range values"
+        if context:
+            msg = f"{msg} {context}"
+        raise ValueError(msg) from err
+
+    if score_min > score_max:
+        msg = "Minimum score cannot be greater than maximum score"
+        if context:
+            msg = f"{msg} {context}"
+        raise ValueError(msg)
+
+    return score_min, score_max
+
+
+def parse_subtask_expected_scores(
+    get_argument: Callable[[str, str | None], str | None],
+    subtasks: list[dict] | None,
+    min_key_fn: Callable[[int], str],
+    max_key_fn: Callable[[int], str],
+    default_min_fn: Callable[[dict], str] | None = None,
+    default_max_fn: Callable[[dict], str] | None = None,
+    context_fn: Callable[[int], str] | None = None,
+    skip_if_none: bool = False,
+) -> dict | None:
+    """Parse subtask expected scores from form arguments.
+
+    get_argument: function to get form argument value (e.g., handler.get_argument)
+    subtasks: list of subtask dicts from get_subtask_info(), or None
+    min_key_fn: function that takes subtask idx and returns the form field name for min
+    max_key_fn: function that takes subtask idx and returns the form field name for max
+    default_min_fn: optional function that takes subtask dict and returns default min value
+    default_max_fn: optional function that takes subtask dict and returns default max value
+    context_fn: optional function that takes subtask idx and returns context for error messages
+    skip_if_none: if True, skip subtasks where both min and max are None
+
+    return: dict mapping subtask idx (as string) to {"min": float, "max": float},
+            or None if subtasks is None/empty
+    """
+    if not subtasks:
+        return None
+
+    def _default_min(st):
+        return "0.0"
+
+    def _default_max(st):
+        return str(st["max_score"])
+
+    def _default_context(idx):
+        return f"for subtask {idx}"
+
+    if default_min_fn is None:
+        default_min_fn = _default_min
+    if default_max_fn is None:
+        default_max_fn = _default_max
+    if context_fn is None:
+        context_fn = _default_context
+
+    subtask_scores = {}
+    for st in subtasks:
+        if st["max_score"] == 0:
+            continue
+        idx = st["idx"]
+
+        st_min_str = get_argument(min_key_fn(idx), None)
+        st_max_str = get_argument(max_key_fn(idx), None)
+
+        # Skip if both are None and skip_if_none is True
+        if skip_if_none and st_min_str is None and st_max_str is None:
+            continue
+
+        # Apply defaults if None
+        if st_min_str is None:
+            st_min_str = default_min_fn(st)
+        if st_max_str is None:
+            st_max_str = default_max_fn(st)
+
+        st_min, st_max = parse_score_range(st_min_str, st_max_str, context_fn(idx))
+        subtask_scores[str(idx)] = {"min": st_min, "max": st_max}
+
+    return subtask_scores if subtask_scores else None
+
+
+def parse_model_solution_scores(
+    get_argument: Callable[[str, str], str],
+    dataset,
+    field_prefix: str = "",
+    context: str = "",
+) -> tuple[float, float, dict | None]:
+    """Parse all expected score fields for a model solution from form arguments.
+
+    This is a convenience function that combines parse_score_range and
+    parse_subtask_expected_scores for the common case of model solution forms.
+
+    get_argument: function to get form argument value (e.g., handler.get_argument)
+    dataset: the dataset to get subtask info from
+    field_prefix: prefix for field names (e.g., "sol_123_" for configure page)
+    context: context string for error messages (e.g., "for solution foo")
+
+    return: tuple of (expected_score_min, expected_score_max, subtask_expected_scores)
+    """
+    # Parse overall score range
+    min_field = f"{field_prefix}expected_score_min" if field_prefix else "expected_score_min"
+    max_field = f"{field_prefix}expected_score_max" if field_prefix else "expected_score_max"
+
+    expected_score_min, expected_score_max = parse_score_range(
+        get_argument(min_field, "0.0"),
+        get_argument(max_field, "100.0"),
+        context
+    )
+
+    # Parse subtask scores
+    subtasks = get_subtask_info(dataset)
+    subtask_expected_scores = parse_subtask_expected_scores(
+        get_argument,
+        subtasks,
+        min_key_fn=lambda idx: f"{field_prefix}subtask_{idx}_min" if field_prefix else f"subtask_{idx}_min",
+        max_key_fn=lambda idx: f"{field_prefix}subtask_{idx}_max" if field_prefix else f"subtask_{idx}_max",
+        context_fn=lambda idx: f"for subtask {idx}" + (f" {context}" if context else ""),
+    )
+
+    return expected_score_min, expected_score_max, subtask_expected_scores
 
 
 class AddModelSolutionHandler(BaseHandler):
@@ -95,47 +234,9 @@ class AddModelSolutionHandler(BaseHandler):
             name = attrs.get("name", "").strip()
             validate_model_solution_name(name)
 
-            expected_score_min = self.get_argument(
-                "expected_score_min", "0.0")
-            expected_score_max = self.get_argument(
-                "expected_score_max", "100.0")
-
-            try:
-                expected_score_min = float(expected_score_min)
-                expected_score_max = float(expected_score_max)
-            except ValueError as err:
-                raise ValueError("Invalid score range values") from err
-
-            if expected_score_min > expected_score_max:
-                raise ValueError(
-                    "Minimum score cannot be greater than maximum score")
-
-            subtask_expected_scores = None
-            subtasks = get_subtask_info(dataset)
-            if subtasks:
-                subtask_expected_scores = {}
-                for st in subtasks:
-                    if st["max_score"] == 0:
-                        continue
-                    idx = st["idx"]
-                    st_min = self.get_argument(
-                        f"subtask_{idx}_min", "0.0")
-                    st_max = self.get_argument(
-                        f"subtask_{idx}_max", str(st["max_score"]))
-                    try:
-                        st_min = float(st_min)
-                        st_max = float(st_max)
-                    except ValueError as err:
-                        raise ValueError(
-                            f"Invalid score range for subtask {idx}") from err
-                    if st_min > st_max:
-                        raise ValueError(
-                            f"Min score cannot be greater than max score "
-                            f"for subtask {idx}")
-                    subtask_expected_scores[str(idx)] = {
-                        "min": st_min,
-                        "max": st_max
-                    }
+            # Parse expected scores using shared helper
+            expected_score_min, expected_score_max, subtask_expected_scores = \
+                parse_model_solution_scores(self.get_argument, dataset)
 
             # Use the shared submission file processing logic from accept_submission.
             # This handles archive extraction, file matching, language detection, etc.
@@ -207,7 +308,7 @@ class ModelSolutionHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, meta_id, dataset_id=None):
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
-        
+
         if dataset_id is None:
             dataset_id = meta.dataset_id
         else:
@@ -215,7 +316,7 @@ class ModelSolutionHandler(BaseHandler):
                 dataset_id = int(dataset_id)
             except ValueError:
                 raise tornado.web.HTTPError(400, "Invalid dataset ID")
-        
+
         self.redirect(self.url("submission", meta.submission_id, dataset_id))
 
 
@@ -239,7 +340,7 @@ class EditModelSolutionHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, meta_id):
         fallback_page = self.url("model_solution", meta_id, "edit")
-        
+
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
         task = meta.dataset.task
         dataset = meta.dataset
@@ -263,48 +364,10 @@ class EditModelSolutionHandler(BaseHandler):
                 if existing:
                     raise ValueError(
                         f"A model solution with name '{name}' already exists")
-            
-            expected_score_min = self.get_argument(
-                "expected_score_min", "0.0")
-            expected_score_max = self.get_argument(
-                "expected_score_max", "100.0")
 
-            try:
-                expected_score_min = float(expected_score_min)
-                expected_score_max = float(expected_score_max)
-            except ValueError as err:
-                raise ValueError("Invalid score range values") from err
-
-            if expected_score_min > expected_score_max:
-                raise ValueError(
-                    "Minimum score cannot be greater than maximum score")
-
-            subtask_expected_scores = None
-            subtasks = get_subtask_info(dataset)
-            if subtasks:
-                subtask_expected_scores = {}
-                for st in subtasks:
-                    if st["max_score"] == 0:
-                        continue
-                    idx = st["idx"]
-                    st_min = self.get_argument(
-                        f"subtask_{idx}_min", "0.0")
-                    st_max = self.get_argument(
-                        f"subtask_{idx}_max", str(st["max_score"]))
-                    try:
-                        st_min = float(st_min)
-                        st_max = float(st_max)
-                    except ValueError as err:
-                        raise ValueError(
-                            f"Invalid score range for subtask {idx}") from err
-                    if st_min > st_max:
-                        raise ValueError(
-                            f"Min score cannot be greater than max score "
-                            f"for subtask {idx}")
-                    subtask_expected_scores[str(idx)] = {
-                        "min": st_min,
-                        "max": st_max
-                    }
+            # Parse expected scores using shared helper
+            expected_score_min, expected_score_max, subtask_expected_scores = \
+                parse_model_solution_scores(self.get_argument, dataset)
 
             meta.name = name
             meta.description = attrs["description"]
@@ -451,51 +514,23 @@ class ConfigureImportedModelSolutionsHandler(BaseHandler):
                 if description is None:
                     continue  # No form data for this solution
 
-                score_min_str = self.get_argument(
-                    f"sol_{meta_id}_score_min", "0.0")
-                score_max_str = self.get_argument(
-                    f"sol_{meta_id}_score_max", "100.0")
+                # Parse overall score range using shared helper
+                context = f"for solution {meta.name}"
+                score_min, score_max = parse_score_range(
+                    self.get_argument(f"sol_{meta_id}_score_min", "0.0"),
+                    self.get_argument(f"sol_{meta_id}_score_max", "100.0"),
+                    context
+                )
 
-                try:
-                    score_min = float(score_min_str)
-                    score_max = float(score_max_str)
-                except ValueError as err:
-                    raise ValueError(
-                        f"Invalid score range for solution {meta.name}") from err
-
-                if score_min > score_max:
-                    raise ValueError(
-                        f"Min score cannot be greater than max score "
-                        f"for solution {meta.name}")
-
-                # Parse subtask scores if present
-                subtask_scores = None
-                if subtasks:
-                    subtask_scores = {}
-                    for st in subtasks:
-                        if st["max_score"] == 0:
-                            continue
-                        idx = st["idx"]
-                        st_min = self.get_argument(
-                            f"sol_{meta_id}_st_{idx}_min", None)
-                        st_max = self.get_argument(
-                            f"sol_{meta_id}_st_{idx}_max", None)
-                        if st_min is not None and st_max is not None:
-                            try:
-                                st_min = float(st_min)
-                                st_max = float(st_max)
-                            except ValueError as err:
-                                raise ValueError(
-                                    f"Invalid score range for subtask {idx} "
-                                    f"of solution {meta.name}") from err
-                            if st_min > st_max:
-                                raise ValueError(
-                                    f"Min score cannot be greater than max "
-                                    f"for subtask {idx} of solution {meta.name}")
-                            subtask_scores[str(idx)] = {
-                                "min": st_min,
-                                "max": st_max
-                            }
+                # Parse subtask scores using shared helper
+                subtask_scores = parse_subtask_expected_scores(
+                    self.get_argument,
+                    subtasks,
+                    min_key_fn=lambda idx, mid=meta_id: f"sol_{mid}_st_{idx}_min",
+                    max_key_fn=lambda idx, mid=meta_id: f"sol_{mid}_st_{idx}_max",
+                    context_fn=lambda idx, name=meta.name: f"for subtask {idx} of solution {name}",
+                    skip_if_none=True,
+                )
 
                 # Update the meta
                 meta.description = description

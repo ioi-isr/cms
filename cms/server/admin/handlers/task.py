@@ -43,6 +43,7 @@ from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cms.grading.scoretypes import ScoreTypeGroup
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
+from .modelsolution import get_subtask_info
 
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ class TaskHandler(BaseHandler):
             self.sql_session.query(Submission)\
                 .join(Task).filter(Task.id == task_id)\
                 .order_by(Submission.timestamp.desc()).all()
-        
+
         testcase_subtasks = {}
         subtask_names = {}
         subtask_info = {}
@@ -128,6 +129,7 @@ class TaskHandler(BaseHandler):
             try:
                 score_type_obj = dataset.score_type_object
                 if isinstance(score_type_obj, ScoreTypeGroup):
+                    # Build testcase -> subtask mapping
                     targets = score_type_obj.retrieve_target_testcases()
                     tc_to_subtasks = {}
                     for subtask_idx, testcase_list in enumerate(targets):
@@ -136,29 +138,18 @@ class TaskHandler(BaseHandler):
                                 tc_to_subtasks[tc_codename] = []
                             tc_to_subtasks[tc_codename].append(subtask_idx)
                     testcase_subtasks[dataset.id] = tc_to_subtasks
-                    
-                    # Extract subtask names and info from score type parameters
-                    # Parameters format: [[score, pattern, optional_name], ...]
-                    names = {}
-                    subtasks = []
-                    for idx, param in enumerate(score_type_obj.parameters):
-                        max_score = param[0]
-                        name = param[2] if len(param) >= 3 and param[2] else None
-                        if name:
-                            names[idx] = name
-                        subtasks.append({
-                            "idx": idx,
-                            "name": name,
-                            "display_name": name if name else f"Subtask {idx}",
-                            "max_score": max_score
-                        })
-                    if names:
-                        subtask_names[dataset.id] = names
+
+                    # Use shared helper to get subtask info
+                    subtasks = get_subtask_info(dataset)
                     if subtasks:
                         subtask_info[dataset.id] = subtasks
+                        # Extract names dict for backward compatibility
+                        names = {st["idx"]: st["name"] for st in subtasks if st["name"]}
+                        if names:
+                            subtask_names[dataset.id] = names
             except Exception:
                 pass
-        
+
         self.r_params["testcase_subtasks"] = testcase_subtasks
         self.r_params["subtask_names"] = subtask_names
         self.r_params["subtask_info"] = subtask_info
@@ -662,19 +653,19 @@ class DefaultSubmissionFormatHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
         task = self.safe_get_item(Task, task_id)
-        
+
         if task.active_dataset is None:
             raise tornado.web.HTTPError(400, "Task has no active dataset")
         if task.active_dataset.task_type != "OutputOnly":
             raise tornado.web.HTTPError(
                 400, f"Task type must be OutputOnly, got {task.active_dataset.task_type}")
-        
+
         try:
             task.set_default_output_only_submission_format()
         except Exception as e:
             raise RuntimeError(
                 f"Couldn't create default submission format for task {task.id}") from e
-        
+
         if self.try_commit():
             self.service.proxy_service.reinitialize()
 

@@ -110,81 +110,8 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Full score button handler (F button)
-    document.querySelectorAll('.btn-full-score').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var solId = this.dataset.solId;
-            var stIdx = this.dataset.stIdx;
-            var maxScore = parseFloat(this.dataset.maxScore);
-            var minInput = document.querySelector('input[name="sol_' + solId + '_st_' + stIdx + '_min"]');
-            var maxInput = document.querySelector('input[name="sol_' + solId + '_st_' + stIdx + '_max"]');
-            if (minInput) minInput.value = maxScore;
-            if (maxInput) maxInput.value = maxScore;
-            updateScoreRangeFromSubtasks(solId);
-        });
-    });
-
-    // Zero score button handler (0 button)
-    document.querySelectorAll('.btn-zero-score').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var solId = this.dataset.solId;
-            var stIdx = this.dataset.stIdx;
-            var minInput = document.querySelector('input[name="sol_' + solId + '_st_' + stIdx + '_min"]');
-            var maxInput = document.querySelector('input[name="sol_' + solId + '_st_' + stIdx + '_max"]');
-            if (minInput) minInput.value = 0;
-            if (maxInput) maxInput.value = 0;
-            updateScoreRangeFromSubtasks(solId);
-        });
-    });
-
-    // Calculate from subtasks checkbox handler
-    document.querySelectorAll('.calc-from-subtasks').forEach(function(checkbox) {
-        checkbox.addEventListener('change', function() {
-            var solId = this.dataset.solId;
-            if (this.checked) {
-                updateScoreRangeFromSubtasks(solId);
-                var minInput = document.querySelector('input[name="sol_' + solId + '_score_min"]');
-                var maxInput = document.querySelector('input[name="sol_' + solId + '_score_max"]');
-                if (minInput) minInput.readOnly = true;
-                if (maxInput) maxInput.readOnly = true;
-            } else {
-                var minInput = document.querySelector('input[name="sol_' + solId + '_score_min"]');
-                var maxInput = document.querySelector('input[name="sol_' + solId + '_score_max"]');
-                if (minInput) minInput.readOnly = false;
-                if (maxInput) maxInput.readOnly = false;
-            }
-        });
-    });
-
-    // Update score range when subtask values change
-    document.querySelectorAll('.subtask-min, .subtask-max').forEach(function(input) {
-        input.addEventListener('input', function() {
-            var solId = this.dataset.solId;
-            var checkbox = document.querySelector('.calc-from-subtasks[data-sol-id="' + solId + '"]');
-            if (checkbox && checkbox.checked) {
-                updateScoreRangeFromSubtasks(solId);
-            }
-        });
-    });
-
-    function updateScoreRangeFromSubtasks(solId) {
-        var checkbox = document.querySelector('.calc-from-subtasks[data-sol-id="' + solId + '"]');
-        if (!checkbox || !checkbox.checked) return;
-
-        var minSum = 0;
-        var maxSum = 0;
-        document.querySelectorAll('.subtask-min[data-sol-id="' + solId + '"]').forEach(function(input) {
-            minSum += parseFloat(input.value) || 0;
-        });
-        document.querySelectorAll('.subtask-max[data-sol-id="' + solId + '"]').forEach(function(input) {
-            maxSum += parseFloat(input.value) || 0;
-        });
-
-        var minInput = document.querySelector('input[name="sol_' + solId + '_score_min"]');
-        var maxInput = document.querySelector('input[name="sol_' + solId + '_score_max"]');
-        if (minInput) minInput.value = minSum.toFixed(2);
-        if (maxInput) maxInput.value = maxSum.toFixed(2);
-    }
+    // Use shared utility with multi-solution mode for configure page
+    CMS.AWSUtils.initModelSolutionSubtasks({ multiSolution: true });
 });
 </script>
 {% endblock core %}
