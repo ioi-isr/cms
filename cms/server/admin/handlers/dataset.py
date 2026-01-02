@@ -1350,10 +1350,7 @@ def _run_validator(file_cacher, filename, executable_digest, testcase_data):
         - exit_code: Exit code from validator (when exit_status is 'ok' or 'nonzero return')
         Raises Exception on error (caller handles notification/logging)
     """
-    try:
-        language = filename_to_language(filename)
-    except Exception:
-        language = None
+    language = filename_to_language(filename)
 
     exe_name = "validator"
     if language is not None and isinstance(language, CompiledLanguage):
@@ -1517,10 +1514,7 @@ class AddSubtaskValidatorHandler(BaseHandler):
 
         self.sql_session.close()
 
-        try:
-            language = filename_to_language(filename)
-        except Exception:
-            language = None
+        language = filename_to_language(filename)
 
         if language is None or not isinstance(language, CompiledLanguage):
             self.service.add_notification(
