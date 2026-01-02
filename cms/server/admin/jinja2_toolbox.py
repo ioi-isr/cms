@@ -29,6 +29,7 @@ from jinja2 import Environment, PackageLoader
 
 from cms.db.user import Question
 from cms.grading.languagemanager import LANGUAGES
+from cms.grading.language import CompiledLanguage
 from cms.grading.scoretypes import SCORE_TYPES
 from cms.grading.tasktypes import TASK_TYPES
 from cms.server.admin.formatting import format_dataset_attrs
@@ -84,9 +85,34 @@ def instrument_cms_toolbox(env: Environment):
     env.globals["question_quick_answers"] = Question.QUICK_ANSWERS
 
 
+def is_compiled_language(lang) -> bool:
+    """Check if a language is a compiled language (produces an executable)."""
+    return isinstance(lang, CompiledLanguage)
+
+
+def get_compiled_language_extensions() -> str:
+    """Get a comma-separated list of all source file extensions for compiled languages.
+
+    This is used for the 'accept' attribute of file inputs to help users select
+    appropriate source files. The list is generated dynamically from the available
+    compiled languages to prevent mismatches when new languages are added.
+
+    return: comma-separated extensions (e.g., ".cpp,.c,.py,.java,.pas,.cs,.hs,.rs")
+
+    """
+    extensions = set()
+    for lang in LANGUAGES:
+        if isinstance(lang, CompiledLanguage):
+            for ext in lang.source_extensions:
+                extensions.add(ext)
+    return ",".join(sorted(extensions))
+
+
 def instrument_formatting_toolbox(env: Environment):
     env.filters["format_dataset_attrs"] = format_dataset_attrs
     env.filters["format_signal"] = format_signal
+    env.filters["is_compiled_language"] = is_compiled_language
+    env.globals["get_compiled_language_extensions"] = get_compiled_language_extensions
 
 
 AWS_ENVIRONMENT = GLOBAL_ENVIRONMENT.overlay(

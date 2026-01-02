@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Upload generator</h1>
+</div>
+
+<form enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "generators", "add") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>Generator source file:</td>
+      <td>
+        <input type="file" name="generator" id="generator_file" accept="{{ get_compiled_language_extensions() }}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Language:</td>
+      <td>
+        <select name="language" id="language_select">
+{% for lang in LANGUAGES %}
+{% if lang|is_compiled_language %}
+          <option value="{{ lang.name }}">{{ lang.name }}</option>
+{% endif %}
+{% endfor %}
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Input file names template (use * as a testcase codename, for example: input.* or *.in):</td>
+      <td>
+        <input type="text" name="input_filename_template" value="input.*" pattern=".*\*.*" required title="Template must contain * placeholder">
+      </td>
+    </tr>
+    <tr>
+      <td>Output file names template (use * as a testcase codename, for example: output.* or *.out):</td>
+      <td>
+        <input type="text" name="output_filename_template" value="output.*" pattern=".*\*.*" required title="Template must contain * placeholder">
+      </td>
+    </tr>
+  </table>
+  <input type="submit" value="Upload">
+  <input type="reset" value="Reset">
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const GENERATOR_LANGUAGES = {
+{% for lang in LANGUAGES %}
+{% if lang|is_compiled_language %}
+        "{{ lang.name }}": {
+{% for extension in lang.source_extensions %}
+            "{{ extension }}": true,
+{% endfor %}
+        },
+{% endif %}
+{% endfor %}
+    };
+
+    const select = document.getElementById('language_select');
+    const fileInput = document.getElementById('generator_file');
+
+    function filterLanguages() {
+        CMS.AWSUtils.filter_languages(select.options, [fileInput], GENERATOR_LANGUAGES);
+    }
+
+    fileInput.addEventListener('change', filterLanguages);
+    filterLanguages();
+});
+</script>
+{% endblock core %}

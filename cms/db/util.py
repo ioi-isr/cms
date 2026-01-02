@@ -42,6 +42,7 @@ from . import (
     Manager,
     Dataset,
     Testcase,
+    Generator,
     Submission,
     File,
     SubmissionResult,
@@ -356,6 +357,13 @@ def enumerate_files(
                    .with_entities(Testcase.input))
     queries.append(dataset_q.join(Dataset.testcases)
                    .with_entities(Testcase.output))
+
+    # Generator source and executable files
+    queries.append(dataset_q.join(Dataset.generators)
+                   .with_entities(Generator.digest))
+    queries.append(dataset_q.join(Dataset.generators)
+                   .filter(Generator.executable_digest.isnot(None))
+                   .with_entities(Generator.executable_digest))
 
     if not skip_submissions and not skip_users:
         submission_q = task_q.join(Task.submissions)

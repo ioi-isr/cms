@@ -497,6 +497,13 @@ class Dataset(Base):
         passive_deletes=True,
         back_populates="dataset")
 
+    generators: dict[str, "Generator"] = relationship(
+        "Generator",
+        collection_class=attribute_mapped_collection("filename"),
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="dataset")
+
     @property
     def active(self) -> bool:
         """Shorthand for detecting if the dataset is active.
@@ -677,3 +684,66 @@ class Testcase(Base):
     output: str = Column(
         Digest,
         nullable=False)
+
+
+class Generator(Base):
+    """Class to store testcase generators for a dataset.
+
+    A generator is a compiled program that, when executed, produces
+    input and output files for testcases.
+
+    """
+    __tablename__ = 'generators'
+    __table_args__ = (
+        UniqueConstraint('dataset_id', 'filename'),
+    )
+
+    # Auto increment primary key.
+    id: int = Column(
+        Integer,
+        primary_key=True)
+
+    # Dataset (id and object) owning the generator.
+    dataset_id: int = Column(
+        Integer,
+        ForeignKey(Dataset.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    dataset: Dataset = relationship(
+        Dataset,
+        back_populates="generators")
+
+    # Filename of the source file.
+    filename: str = Column(
+        Filename,
+        nullable=False)
+
+    # Digest of the source file.
+    digest: str = Column(
+        Digest,
+        nullable=False)
+
+    # Digest of the compiled executable (None if compilation failed).
+    executable_digest: str | None = Column(
+        Digest,
+        nullable=True)
+
+    # Template for input file names (e.g., "input.*" or "*.in").
+    input_filename_template: str = Column(
+        Unicode,
+        nullable=False,
+        default="input.*")
+
+    # Template for output file names (e.g., "output.*" or "*.out").
+    output_filename_template: str = Column(
+        Unicode,
+        nullable=False,
+        default="output.*")
+
+    # Language name for the generator (e.g., "C++17 / g++", "Python 3 / CPython").
+    # This allows explicit language selection to distinguish between languages
+    # with the same file extension (e.g., PyPy vs CPython for .py files).
+    language_name: str | None = Column(
+        String,
+        nullable=True)

@@ -279,10 +279,10 @@ def update_dataset(old_dataset: Dataset, new_dataset: Dataset, parent=None):
         # Relationships to update (all others).
         Dataset.managers: True,
         Dataset.testcases: True,
+        Dataset.generators: True,
         # Model solutions are handled separately by ImportTask
-        # via _model_solutions_import_data.
-        # We need to copy this temporary attribute so it's available
-        # on the DB dataset after update_task completes.
+        # via _model_solutions_import_data because they require creating
+        # Submission objects and triggering evaluation.
         Dataset.model_solution_metas: False,
     }, parent=parent)
 

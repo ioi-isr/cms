@@ -821,6 +821,48 @@ window.filterTestcases = function(dataset_id) {
 
   <h4 id="title_testcases_{{ dataset.id }}" class="toggling_on">Test cases</h4>
     <div id="testcases_{{ dataset.id }}" class="task_dataset_testcases">
+
+      <!-- Generators section -->
+      <div class="generators_section" style="margin-bottom: 20px;">
+        <strong>Generators</strong>
+{% if admin.permission_all %}
+        [<a href="{{ url("dataset", dataset.id, "generators", "add") }}">add</a>]
+{% endif %}
+        <div style="margin-top: 5px;">
+        {% if dataset.generators|length == 0 %}
+          No generators.
+        {% else %}
+          <table class="bordered" style="text-align:center; margin-top: 10px;">
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Template</th>
+                <th>Ops</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for filename, generator in dataset.generators|dictsort(by="key") %}
+              <tr>
+                <td><a href="javascript:void(0);" onclick="utils.show_file('{{ generator.filename }}','{{ url("file", generator.digest, generator.filename) }}')">{{ generator.filename }}</a></td>
+                <td>
+                  {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
+                  [<a href="{{ url("dataset", dataset.id, "generator", generator.id, "edit") }}">edit</a>]
+                </td>
+                <td>
+                  <a href="{{ url("dataset", dataset.id, "generator", generator.id, "generate") }}">Generate testcases</a>
+{% if admin.permission_all %}
+                  | <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');">Delete</a>
+{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+        </div>
+      </div>
+      <div class="hr"></div>
+
 {% if admin.permission_all %}
       <a href="{{ url("dataset", dataset.id, "testcases", "add") }}">Add a testcase</a>
       <a href="{{ url("dataset", dataset.id, "testcases", "add_multiple") }}">Add multiple testcases</a>

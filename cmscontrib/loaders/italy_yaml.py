@@ -26,8 +26,6 @@
 import logging
 import os
 import os.path
-import re
-import sys
 import tempfile
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -39,15 +37,12 @@ from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
     FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED, \
     FEEDBACK_LEVEL_OI_RESTRICTED
 from cms.db import Contest, User, Task, Statement, Attachment, Team, Dataset, \
-    Manager, Testcase
+    Manager, Testcase, Generator
 from cms.db.modelsolution import validate_model_solution_name
 from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
-    SOURCE_EXTS, filename_to_language
+    SOURCE_EXTS, filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
-from cms.grading.tasktypes import get_task_type_class
-from cms.grading.tasktypes.util import create_sandbox, \
-    get_allowed_manager_basenames, compile_manager_bytes
-from cms.grading.steps.compilation import compilation_step
+from cms.grading.tasktypes.util import get_allowed_manager_basenames, compile_manager_bytes
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
 from cmscommon.crypto import build_password
@@ -170,8 +165,9 @@ def detect_testcase_sources(task_path):
 
 def compile_manager_source(file_cacher, source_path, source_filename,
                            compiled_filename, task_name, notify=None,
-                           raise_on_error=False):
-    """Compile a manager source file (checker.cpp or manager.cpp).
+                           raise_on_error=False, language_name=None,
+                           kind="Manager"):
+    """Compile a manager or generator source file.
 
     file_cacher: FileCacher instance for storing files.
     source_path: path to the source file.
@@ -180,6 +176,12 @@ def compile_manager_source(file_cacher, source_path, source_filename,
     task_name: name of the task (for logging).
     notify: optional callback(title: str, text: str) to report errors.
     raise_on_error: if True, raise LoaderValidationError on compilation failure.
+    language_name: optional explicit language name (e.g., "C++17 / g++").
+        If provided, this language is used instead of auto-detection from
+        the filename. This is useful for distinguishing between languages
+        with the same file extension (e.g., PyPy vs CPython for .py files).
+    kind: description prefix for file cacher (default: "Manager").
+        Use "Generator" for generator files.
 
     return: tuple (source_digest, compiled_digest) or None if compilation fails
             (and raise_on_error is False).
@@ -204,7 +206,8 @@ def compile_manager_source(file_cacher, source_path, source_filename,
         compiled_filename,
         sandbox_name="loader_compile",
         for_evaluation=True,
-        notify=capture_error
+        notify=capture_error,
+        language_name=language_name
     )
 
     if not success:
@@ -216,9 +219,9 @@ def compile_manager_source(file_cacher, source_path, source_filename,
         return None
 
     source_digest = file_cacher.put_file_content(
-        source_body, "Manager source %s for task %s" % (source_filename, task_name))
+        source_body, "%s source %s for task %s" % (kind, source_filename, task_name))
     compiled_digest = file_cacher.put_file_content(
-        compiled_bytes, "Compiled manager %s for task %s" % (compiled_filename, task_name))
+        compiled_bytes, "Compiled %s %s for task %s" % (kind.lower(), compiled_filename, task_name))
 
     return (source_digest, compiled_digest)
 
@@ -1049,18 +1052,17 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                                 self._notify)
 
         # Override score_type if explicitly specified
-        if "score_type" in conf and "score_type_parameters" in conf and "n_input" in conf:
+        if "score_type" in conf and "score_type_parameters" in conf:
             logger.info("Overriding 'score_type' and 'score_type_parameters' "
                         "as per task.yaml")
-            n_input = conf["n_input"]
+            n_input = conf["n_input"] if "n_input" in conf else 0
             load(conf, args, "score_type")
             load(conf, args, "score_type_parameters")
         else:
             if "score_type" in conf or "score_type_parameters" in conf:
                 logger.warning("To override score type data, task.yaml must "
-                            "specify all 'score_type', "
-                            "'score_type_parameters' and "
-                            "'n_input'.")
+                            "specify both 'score_type' and "
+                            "'score_type_parameters'.")
 
             # Detect subtasks by checking GEN
             gen_filename = os.path.join(self.path, 'gen', 'GEN')
@@ -1424,11 +1426,31 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     import shutil
                     shutil.rmtree(testcases_temp_dir, ignore_errors=True)
         else:
-            # No testcase source found
-            error_msg = ("No testcases found. Expected input/output folders or "
-                         "tests/testcases folder/zip.")
-            logger.error(error_msg)
-            raise LoaderValidationError(error_msg)
+            # No testcase source found - check if this is a generator-based task
+            generators_yaml = conf.get("generators", []) or []
+            generators_folder = find_first_existing_dir(
+                self.path, ["generators", "Generators", "generator", "Generator"])
+            has_generators = bool(generators_yaml) or generators_folder is not None
+
+            if has_generators:
+                # Generator-based task: allow zero testcases, they will be generated later
+                logger.warning(
+                    "No testcases found for task %s, but generators are present; "
+                    "importing dataset with zero testcases (expected to be generated later)",
+                    task.name)
+            elif n_input and n_input > 0:
+                # n_input is explicitly set but no testcases or generators found - this is an error
+                error_msg = ("No testcases found, but n_input=%d in config. "
+                             "Expected input/output folders or tests/testcases folder/zip."
+                             % n_input)
+                logger.error(error_msg)
+                raise LoaderValidationError(error_msg)
+            else:
+                # Allow tasks with no testcases (n_input is 0 or not set)
+                logger.warning(
+                    "No testcases found for task %s; importing dataset with zero testcases",
+                    task.name)
+            # args["testcases"] was initialized to [] above, just fall through
 
         public_testcases = load(conf, None, ["public_testcases", "risultati"],
                                 conv=lambda x: "" if x is None else x)
@@ -1478,6 +1500,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         if model_solutions_data:
             # Store as a temporary attribute for the importer to process
             dataset._model_solutions_import_data = model_solutions_data
+
+        # Parse generators from task.yaml and generators/ folder if present
+        # Attach directly to dataset (similar to managers and testcases)
+        generators = self._parse_generators(conf, task.name)
+        for filename, generator in generators.items():
+            generator.dataset = dataset
+            dataset.generators[filename] = generator
 
         # Import was successful
         os.remove(os.path.join(self.path, ".import_error"))
@@ -1584,6 +1613,155 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         if result:
             logger.info("Found %d model solution(s) to import", len(result))
+
+        return result
+
+    def _parse_generators(self, conf, task_name):
+        """Parse generators from task.yaml and generators/ folder.
+
+        conf: the task configuration dictionary.
+        task_name: name of the task (for logging).
+
+        return: dict mapping filename to Generator objects, ready to be
+            attached to dataset.generators.
+
+        Generators are discovered from the generators/ folder (or variants like
+        Generators/, generator/, Generator/). Template metadata can be specified
+        in task.yaml under the 'generators' key. If no metadata is provided,
+        the task's input_template/output_template from config are used as defaults,
+        falling back to "input.*" and "output.*" if those are also not set.
+
+        Generators are compiled using compile_manager_bytes, similar to how
+        managers are compiled. If compilation fails, the generator is skipped.
+        """
+        # Load global defaults for generator templates from config
+        # These are the same templates used for testcase discovery
+        base_input_template = load(conf, None, "input_template")
+        if base_input_template is None:
+            base_input_template = "input.*"
+        base_output_template = load(conf, None, "output_template")
+        if base_output_template is None:
+            base_output_template = "output.*"
+
+        # Find generators directory (supports alternative names)
+        generators_folder = find_first_existing_dir(
+            self.path, ["generators", "Generators", "generator", "Generator"])
+        generators_dir = (os.path.join(self.path, generators_folder)
+                          if generators_folder is not None else None)
+
+        generators_yaml = conf.get("generators", []) or []
+
+        if not generators_yaml and not generators_dir:
+            return {}
+
+        # Build a lookup from filename to YAML metadata
+        yaml_meta_by_filename = {}
+        for gen_conf in generators_yaml:
+            filename = gen_conf.get("filename")
+            if not filename:
+                logger.warning("Generator entry missing 'filename' field, skipping")
+                continue
+            yaml_meta_by_filename[filename] = {
+                "input_template": gen_conf.get("input_template", base_input_template),
+                "output_template": gen_conf.get("output_template", base_output_template),
+                "language": gen_conf.get("language"),
+            }
+
+        result = {}
+
+        # Discover generators from filesystem
+        if generators_dir and os.path.isdir(generators_dir):
+            for filename in sorted(os.listdir(generators_dir)):
+                file_path = os.path.join(generators_dir, filename)
+                if not os.path.isfile(file_path):
+                    continue
+
+                # Check if it's a source file
+                _, ext = os.path.splitext(filename)
+                if ext not in SOURCE_EXTS:
+                    logger.warning(
+                        "Skipping non-source file '%s' in generators folder", filename)
+                    continue
+
+                # Get language from YAML metadata if available, otherwise auto-detect
+                meta = yaml_meta_by_filename.get(filename)
+                yaml_language_name = meta.get("language") if meta else None
+
+                if yaml_language_name:
+                    # Use explicit language from YAML
+                    try:
+                        language = get_language(yaml_language_name)
+                    except KeyError:
+                        logger.warning(
+                            "Unknown language '%s' for generator '%s', "
+                            "falling back to auto-detection",
+                            yaml_language_name, filename)
+                        language = filename_to_language(filename)
+                else:
+                    # Auto-detect language from filename
+                    language = filename_to_language(filename)
+
+                if language is None:
+                    logger.warning(
+                        "Could not detect language for generator '%s', skipping",
+                        filename)
+                    continue
+
+                if not isinstance(language, CompiledLanguage):
+                    logger.warning(
+                        "Generator '%s' must be a compiled language, not '%s', "
+                        "skipping", filename, language.name)
+                    continue
+
+                # Compile the generator using compile_manager_source
+                compiled_filename = "generator"
+
+                result_digests = compile_manager_source(
+                    self.file_cacher,
+                    file_path,
+                    filename,
+                    compiled_filename,
+                    task_name,
+                    notify=self._notify,
+                    raise_on_error=False,
+                    language_name=language.name,
+                    kind="Generator"
+                )
+
+                if result_digests is None:
+                    logger.warning(
+                        "Failed to compile generator '%s'", filename)
+                    continue
+
+                source_digest, executable_digest = result_digests
+
+                # Get templates from YAML metadata or use config defaults
+                # (meta was already fetched above for language detection)
+                input_template = meta["input_template"] if meta else base_input_template
+                output_template = meta["output_template"] if meta else base_output_template
+
+                # Create Generator object directly
+                generator = Generator(
+                    filename=filename,
+                    digest=source_digest,
+                    executable_digest=executable_digest,
+                    input_filename_template=input_template,
+                    output_filename_template=output_template,
+                    language_name=language.name,
+                )
+                result[filename] = generator
+
+        # Warn about YAML entries with no matching filesystem file
+        if generators_dir and os.path.isdir(generators_dir):
+            fs_files = set(os.listdir(generators_dir))
+            for filename in yaml_meta_by_filename:
+                if filename not in fs_files:
+                    logger.warning(
+                        "Generator '%s' is defined in task.yaml but not found "
+                        "in generators folder", filename)
+
+        if result:
+            logger.info("Found %d generator(s) to import", len(result))
 
         return result
 
@@ -1882,6 +2060,15 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 for root, _dirs, filenames in os.walk(solutions_path):
                     for fname in filenames:
                         files.append(os.path.join(root, fname))
+
+        # Generators
+        generators_folder = find_first_existing_dir(
+            self.path, ["generators", "Generators", "generator", "Generator"])
+        if generators_folder is not None:
+            generators_path = os.path.join(self.path, generators_folder)
+            if os.path.isdir(generators_path):
+                for filename in os.listdir(generators_path):
+                    files.append(os.path.join(generators_path, filename))
 
         # Check if task is OutputOnly (via task_type or legacy output_only field)
         is_output_only = (conf.get('task_type') == "OutputOnly" or

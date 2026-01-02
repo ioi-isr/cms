@@ -75,6 +75,7 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     - tests.zip: Testcases (input/output pairs)
     - managers/: Manager files (checker, grader, etc.)
     - solutions/: Model solution source files (one subdirectory per solution)
+    - generators/: Generator source files (if any)
     """
 
     statements_dir = os.path.join(export_dir, "statements")
@@ -264,6 +265,32 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
 
         if model_solutions_config:
             task_config['model_solutions'] = model_solutions_config
+
+    # Export generators
+    if dataset.generators:
+        generators_dir = os.path.join(export_dir, "generators")
+        os.makedirs(generators_dir, exist_ok=True)
+        generators_config = []
+
+        for filename, generator in dataset.generators.items():
+            # Export generator source file
+            generator_path = os.path.join(generators_dir, filename)
+            file_cacher.get_file_to_path(generator.digest, generator_path)
+
+            # Add generator metadata to config
+            generator_config = {
+                'filename': filename,
+                'input_template': generator.input_filename_template,
+                'output_template': generator.output_filename_template,
+            }
+
+            if generator.language_name:
+                generator_config['language'] = generator.language_name
+
+            generators_config.append(generator_config)
+
+        if generators_config:
+            task_config['generators'] = generators_config
 
     task_yaml_path = os.path.join(export_dir, "task.yaml")
     with open(task_yaml_path, 'w', encoding='utf-8') as f:
