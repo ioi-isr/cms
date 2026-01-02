@@ -378,7 +378,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           {% endif %}
           {% if admin.permission_all %}
           <td>
-            <a href="javascript:void(0);" onclick="promptRename('{{ dataset.id }}', '{{ tc_info.testcase.id }}', '{{ tc_info.codename }}', '{{ subtask_index }}')">rename</a>
+            <a href="javascript:void(0);" onclick="promptRename({{ dataset.id }}, {{ tc_info.testcase.id }}, {{ tc_info.codename|tojson|forceescape }}, {{ subtask_index }})">rename</a>
           </td>
           {% endif %}
         </tr>
@@ -388,8 +388,8 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     {% if admin.permission_all %}
     <div id="{{ table_id }}_batch_actions" class="batch-actions">
       <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
-      <a href="javascript:void(0);" onclick="batchAddPrefix('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}', '{{ uses_regex|lower }}', '{{ suggested_prefix|default("", true) }}')" style="margin-left: 10px;">Add prefix</a> |
-      <a href="javascript:void(0);" onclick="batchRemoveSubstring('{{ dataset.id }}', '{{ table_id }}', '{{ url("dataset", dataset.id, "testcases", "batch_rename") }}', '{{ subtask_index }}')">Remove common substring</a>
+      <a href="javascript:void(0);" onclick="batchAddPrefix({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }}, {{ uses_regex|tojson|forceescape }}, {{ suggested_prefix|default("", true)|tojson|forceescape }})" style="margin-left: 10px;">Add prefix</a> |
+      <a href="javascript:void(0);" onclick="batchRemoveSubstring({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }})">Remove common substring</a>
     </div>
     {% endif %}
   </div>

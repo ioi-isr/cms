@@ -2208,8 +2208,8 @@ def _run_validators_background(service, file_cacher, dataset_id, validator_data,
                 validation_results = _run_validator(
                     file_cacher, vdata["filename"], vdata["executable_digest"], testcase_data)
             except Exception as error:
-                logger.error("Validation execution error for validator %d: %s",
-                             vdata["id"], repr(error))
+                logger.exception("Validation execution error for validator %d: %s",
+                                 vdata["id"], repr(error))
                 errors.append("Validator %d: %s" % (vdata["subtask_index"], repr(error)))
                 continue
 
@@ -2234,8 +2234,8 @@ def _run_validators_background(service, file_cacher, dataset_id, validator_data,
                 validators_run += 1
 
             except Exception as error:
-                logger.error("Database error for validator %d: %s",
-                             vdata["id"], repr(error))
+                logger.exception("Database error for validator %d: %s",
+                                 vdata["id"], repr(error))
                 errors.append("Validator %d DB error: %s" % (vdata["subtask_index"], repr(error)))
                 sql_session.rollback()
             finally:
@@ -2256,7 +2256,7 @@ def _run_validators_background(service, file_cacher, dataset_id, validator_data,
         service.add_notification(make_datetime(), "Validation complete", msg)
 
     except Exception as error:
-        logger.error("Background validation failed: %s", repr(error))
+        logger.exception("Background validation failed: %s", repr(error))
         _running_validations[dataset_id]["status"] = "error"
         _running_validations[dataset_id]["result"] = repr(error)
         _running_validations[dataset_id]["progress"] = "Error"
