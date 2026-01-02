@@ -973,7 +973,8 @@ class AddGeneratorHandler(BaseHandler):
             compiled_filename,
             sandbox_name="admin_compile",
             for_evaluation=True,
-            notify=notify
+            notify=notify,
+            language_name=language_name
         )
 
         if not success:
@@ -1305,6 +1306,8 @@ class GenerateTestcasesHandler(BaseHandler):
             return
 
         if self.try_commit():
+            # max_score and/or extra_headers might have changed.
+            self.service.proxy_service.reinitialize()
             self.redirect(self.url("task", task.id))
         else:
             self.redirect(fallback_page)

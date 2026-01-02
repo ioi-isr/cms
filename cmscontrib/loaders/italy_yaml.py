@@ -1729,7 +1729,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     compiled_filename,
                     sandbox_name="loader_compile",
                     for_evaluation=True,
-                    notify=capture_error
+                    notify=capture_error,
+                    language_name=language.name
                 )
 
                 if not success or compiled_bytes is None:

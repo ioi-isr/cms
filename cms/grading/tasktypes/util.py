@@ -349,7 +349,8 @@ def compile_manager_bytes(
     output_basename: str,
     sandbox_name: str = "compile",
     for_evaluation: bool = True,
-    notify: Optional[Callable[[str, str], None]] = None
+    notify: Optional[Callable[[str, str], None]] = None,
+    language_name: Optional[str] = None
 ) -> tuple[bool, Optional[bytes], Optional[dict]]:
     """Compile a manager source file and return the compiled bytes.
 
@@ -363,6 +364,10 @@ def compile_manager_bytes(
     sandbox_name: name prefix for the sandbox (default: "compile").
     for_evaluation: whether to compile for evaluation (default: True).
     notify: optional callback(title: str, text: str) to report errors.
+    language_name: optional explicit language name (e.g., "C++17 / g++").
+        If provided, this language is used instead of auto-detection from
+        the filename. This is useful for distinguishing between languages
+        with the same file extension (e.g., PyPy vs CPython for .py files).
 
     return: tuple (success, compiled_bytes, stats) where:
         - success: True if compilation succeeded, False otherwise
@@ -370,11 +375,22 @@ def compile_manager_bytes(
         - stats: compilation statistics dict if available, None otherwise
 
     """
-    from cms.grading.languagemanager import filename_to_language
+    from cms.grading.languagemanager import filename_to_language, get_language
     from cms.grading.language import CompiledLanguage
     from cms.grading.steps.compilation import compilation_step
-    
-    language = filename_to_language(source_filename)
+
+    # Use explicit language if provided, otherwise auto-detect from filename
+    language = None
+    if language_name:
+        try:
+            language = get_language(language_name)
+        except KeyError:
+            msg = f"Unknown language '{language_name}' for {source_filename}, " \
+                  f"falling back to auto-detection"
+            logger.warning(msg)
+            language = filename_to_language(source_filename)
+    else:
+        language = filename_to_language(source_filename)
 
     if language is None:
         msg = f"Could not detect language for {source_filename}"

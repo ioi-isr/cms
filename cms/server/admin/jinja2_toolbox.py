@@ -90,10 +90,29 @@ def is_compiled_language(lang) -> bool:
     return isinstance(lang, CompiledLanguage)
 
 
+def get_compiled_language_extensions() -> str:
+    """Get a comma-separated list of all source file extensions for compiled languages.
+
+    This is used for the 'accept' attribute of file inputs to help users select
+    appropriate source files. The list is generated dynamically from the available
+    compiled languages to prevent mismatches when new languages are added.
+
+    return: comma-separated extensions (e.g., ".cpp,.c,.py,.java,.pas,.cs,.hs,.rs")
+
+    """
+    extensions = set()
+    for lang in LANGUAGES:
+        if isinstance(lang, CompiledLanguage):
+            for ext in lang.source_extensions:
+                extensions.add(ext)
+    return ",".join(sorted(extensions))
+
+
 def instrument_formatting_toolbox(env: Environment):
     env.filters["format_dataset_attrs"] = format_dataset_attrs
     env.filters["format_signal"] = format_signal
     env.filters["is_compiled_language"] = is_compiled_language
+    env.globals["get_compiled_language_extensions"] = get_compiled_language_extensions
 
 
 AWS_ENVIRONMENT = GLOBAL_ENVIRONMENT.overlay(
