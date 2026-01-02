@@ -362,7 +362,7 @@ def enumerate_files(
     queries.append(dataset_q.join(Dataset.generators)
                    .with_entities(Generator.digest))
     queries.append(dataset_q.join(Dataset.generators)
-                   .filter(Generator.executable_digest != None)
+                   .filter(Generator.executable_digest.isnot(None))
                    .with_entities(Generator.executable_digest))
 
     if not skip_submissions and not skip_users:

@@ -303,7 +303,8 @@ CREATE TABLE public.generators (
     digest public.digest NOT NULL,
     executable_digest public.digest,
     input_filename_template character varying NOT NULL,
-    output_filename_template character varying NOT NULL
+    output_filename_template character varying NOT NULL,
+    language_name character varying
 );
 
 CREATE SEQUENCE public.generators_id_seq

@@ -29,6 +29,7 @@ from jinja2 import Environment, PackageLoader
 
 from cms.db.user import Question
 from cms.grading.languagemanager import LANGUAGES
+from cms.grading.language import CompiledLanguage
 from cms.grading.scoretypes import SCORE_TYPES
 from cms.grading.tasktypes import TASK_TYPES
 from cms.server.admin.formatting import format_dataset_attrs
@@ -84,9 +85,15 @@ def instrument_cms_toolbox(env: Environment):
     env.globals["question_quick_answers"] = Question.QUICK_ANSWERS
 
 
+def is_compiled_language(lang) -> bool:
+    """Check if a language is a compiled language (produces an executable)."""
+    return isinstance(lang, CompiledLanguage)
+
+
 def instrument_formatting_toolbox(env: Environment):
     env.filters["format_dataset_attrs"] = format_dataset_attrs
     env.filters["format_signal"] = format_signal
+    env.filters["is_compiled_language"] = is_compiled_language
 
 
 AWS_ENVIRONMENT = GLOBAL_ENVIRONMENT.overlay(

@@ -43,12 +43,13 @@ except:
 
 import tornado.web
 
+from cms import config
 from cms.db import Dataset, Generator, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
 from cms.grading.tasktypes import get_task_type_class
 from cms.grading.tasktypes.util import \
     get_allowed_manager_basenames, compile_manager_bytes, create_sandbox
-from cms.grading.languagemanager import filename_to_language
+from cms.grading.languagemanager import filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
 from cms.grading.scoring import compute_changes_for_dataset
 from cmscommon.datetime import make_datetime
@@ -923,14 +924,31 @@ class AddGeneratorHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        language = filename_to_language(filename)
-        if language is None:
-            self.service.add_notification(
-                make_datetime(),
-                "Unknown language",
-                "Could not detect language for file '%s'." % filename)
-            self.redirect(fallback_page)
-            return
+        # Get language from form (explicit selection) instead of auto-detection
+        # This allows distinguishing between languages with the same extension
+        # (e.g., PyPy vs CPython for .py files)
+        language_name = self.get_argument("language", "").strip()
+        if not language_name:
+            # Fallback to auto-detection if no language selected
+            language = filename_to_language(filename)
+            if language is None:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Unknown language",
+                    "Could not detect language for file '%s'." % filename)
+                self.redirect(fallback_page)
+                return
+            language_name = language.name
+        else:
+            try:
+                language = get_language(language_name)
+            except KeyError:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Unknown language",
+                    "Language '%s' is not supported." % language_name)
+                self.redirect(fallback_page)
+                return
 
         if not isinstance(language, CompiledLanguage):
             self.service.add_notification(
@@ -996,6 +1014,7 @@ class AddGeneratorHandler(BaseHandler):
             existing_generator.executable_digest = executable_digest
             existing_generator.input_filename_template = input_filename_template
             existing_generator.output_filename_template = output_filename_template
+            existing_generator.language_name = language_name
         else:
             generator = Generator(
                 filename=filename,
@@ -1003,6 +1022,7 @@ class AddGeneratorHandler(BaseHandler):
                 executable_digest=executable_digest,
                 input_filename_template=input_filename_template,
                 output_filename_template=output_filename_template,
+                language_name=language_name,
                 dataset=dataset)
             self.sql_session.add(generator)
 
@@ -1086,8 +1106,8 @@ class DeleteGeneratorHandler(BaseHandler):
         task_id = dataset.task_id
         self.sql_session.delete(generator)
 
-        if self.try_commit():
-            self.write("./%d" % task_id)
+        self.try_commit()
+        self.write("./%d" % task_id)
 
 
 class GenerateTestcasesHandler(BaseHandler):
@@ -1148,7 +1168,19 @@ class GenerateTestcasesHandler(BaseHandler):
 
         self.sql_session.close()
 
-        language = filename_to_language(generator.filename)
+        # Use stored language_name if available, otherwise fall back to auto-detection
+        language = None
+        if generator.language_name:
+            try:
+                language = get_language(generator.language_name)
+            except KeyError:
+                logger.debug(
+                    "Stored language '%s' not found for generator %s, "
+                    "falling back to auto-detection",
+                    generator.language_name, generator.filename)
+        if language is None:
+            language = filename_to_language(generator.filename)
+
         exe_name = "generator"
         if language is not None and isinstance(language, CompiledLanguage):
             exe_name += language.executable_extension
@@ -1168,8 +1200,18 @@ class GenerateTestcasesHandler(BaseHandler):
                     cmds = language.get_evaluation_commands(exe_name)
                     if cmds:
                         cmd = cmds[0]
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "get_evaluation_commands failed for %s: %s, using default",
+                        generator.filename, e)
+
+            # Set resource limits from config to prevent buggy generators
+            # from consuming system resources indefinitely
+            sandbox.timeout = config.sandbox.trusted_sandbox_max_time_s
+            sandbox.wallclock_timeout = config.sandbox.trusted_sandbox_max_time_s * 2
+            sandbox.address_space = \
+                config.sandbox.trusted_sandbox_max_memory_kib * 1024
+            sandbox.max_processes = config.sandbox.trusted_sandbox_max_processes
 
             # Set stdout/stderr files so they are created during execution
             sandbox.stdout_file = "stdout.txt"
@@ -1214,7 +1256,7 @@ class GenerateTestcasesHandler(BaseHandler):
             temp_zip = io.BytesIO()
             with zipfile.ZipFile(temp_zip, "w") as zf:
                 sandbox_home = sandbox.relative_path("")
-                for root, dirs, files in os.walk(sandbox_home):
+                for root, _dirs, files in os.walk(sandbox_home):
                     for filename in files:
                         if filename in [exe_name, "stdout.txt", "stderr.txt"]:
                             continue

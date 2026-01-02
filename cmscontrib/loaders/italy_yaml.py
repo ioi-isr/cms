@@ -1680,11 +1680,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     continue
 
                 # Check if it's a compiled language
-                try:
-                    language = filename_to_language(filename)
-                except Exception:
-                    language = None
-
+                language = filename_to_language(filename)
                 if language is None:
                     logger.warning(
                         "Could not detect language for generator '%s', skipping",
@@ -1745,6 +1741,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     executable_digest=executable_digest,
                     input_filename_template=input_template,
                     output_filename_template=output_template,
+                    language_name=language.name,
                 )
                 result[filename] = generator
 

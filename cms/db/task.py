@@ -740,3 +740,10 @@ class Generator(Base):
         Unicode,
         nullable=False,
         default="output.*")
+
+    # Language name for the generator (e.g., "C++17 / g++", "Python 3 / CPython").
+    # This allows explicit language selection to distinguish between languages
+    # with the same file extension (e.g., PyPy vs CPython for .py files).
+    language_name: str | None = Column(
+        Unicode,
+        nullable=True)

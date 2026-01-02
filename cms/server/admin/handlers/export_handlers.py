@@ -75,6 +75,7 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     - tests.zip: Testcases (input/output pairs)
     - managers/: Manager files (checker, grader, etc.)
     - solutions/: Model solution source files (one subdirectory per solution)
+    - generators/: Generator source files (if any)
     """
 
     statements_dir = os.path.join(export_dir, "statements")
