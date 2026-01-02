@@ -283,6 +283,10 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
                 'input_template': generator.input_filename_template,
                 'output_template': generator.output_filename_template,
             }
+
+            if generator.language_name:
+                generator_config['language'] = generator.language_name
+
             generators_config.append(generator_config)
 
         if generators_config:

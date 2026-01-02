@@ -745,5 +745,5 @@ class Generator(Base):
     # This allows explicit language selection to distinguish between languages
     # with the same file extension (e.g., PyPy vs CPython for .py files).
     language_name: str | None = Column(
-        Unicode,
+        String,
         nullable=True)

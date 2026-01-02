@@ -42,7 +42,7 @@ from cms.db import Contest, User, Task, Statement, Attachment, Team, Dataset, \
     Manager, Testcase, Generator
 from cms.db.modelsolution import validate_model_solution_name
 from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
-    SOURCE_EXTS, filename_to_language
+    SOURCE_EXTS, filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
 from cms.grading.tasktypes import get_task_type_class
 from cms.grading.tasktypes.util import create_sandbox, \
@@ -1661,6 +1661,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             yaml_meta_by_filename[filename] = {
                 "input_template": gen_conf.get("input_template", base_input_template),
                 "output_template": gen_conf.get("output_template", base_output_template),
+                "language": gen_conf.get("language"),
             }
 
         result = {}
@@ -1679,8 +1680,24 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                         "Skipping non-source file '%s' in generators folder", filename)
                     continue
 
-                # Check if it's a compiled language
-                language = filename_to_language(filename)
+                # Get language from YAML metadata if available, otherwise auto-detect
+                meta = yaml_meta_by_filename.get(filename)
+                yaml_language_name = meta.get("language") if meta else None
+
+                if yaml_language_name:
+                    # Use explicit language from YAML
+                    try:
+                        language = get_language(yaml_language_name)
+                    except KeyError:
+                        logger.warning(
+                            "Unknown language '%s' for generator '%s', "
+                            "falling back to auto-detection",
+                            yaml_language_name, filename)
+                        language = filename_to_language(filename)
+                else:
+                    # Auto-detect language from filename
+                    language = filename_to_language(filename)
+
                 if language is None:
                     logger.warning(
                         "Could not detect language for generator '%s', skipping",
@@ -1730,7 +1747,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     "Compiled generator %s for task %s" % (filename, task_name))
 
                 # Get templates from YAML metadata or use config defaults
-                meta = yaml_meta_by_filename.get(filename)
+                # (meta was already fetched above for language detection)
                 input_template = meta["input_template"] if meta else base_input_template
                 output_template = meta["output_template"] if meta else base_output_template
 
