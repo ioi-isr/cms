@@ -26,8 +26,6 @@
 import logging
 import os
 import os.path
-import re
-import sys
 import tempfile
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -44,10 +42,7 @@ from cms.db.modelsolution import validate_model_solution_name
 from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
     SOURCE_EXTS, filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
-from cms.grading.tasktypes import get_task_type_class
-from cms.grading.tasktypes.util import create_sandbox, \
-    get_allowed_manager_basenames, compile_manager_bytes
-from cms.grading.steps.compilation import compilation_step
+from cms.grading.tasktypes.util import get_allowed_manager_basenames, compile_manager_bytes
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
 from cmscommon.crypto import build_password

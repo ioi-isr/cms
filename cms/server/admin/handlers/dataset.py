@@ -46,7 +46,6 @@ import tornado.web
 from cms import config
 from cms.db import Dataset, Generator, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
-from cms.grading.tasktypes import get_task_type_class
 from cms.grading.tasktypes.util import \
     get_allowed_manager_basenames, compile_manager_bytes, create_sandbox
 from cms.grading.languagemanager import filename_to_language, get_language
