@@ -149,6 +149,7 @@ class TaskHandler(BaseHandler):
         
         self.r_params["testcase_subtasks"] = testcase_subtasks
         self.r_params["subtask_names"] = subtask_names
+        
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -202,6 +203,21 @@ class TaskHandler(BaseHandler):
             self.get_int(attrs, "score_precision")
 
             self.get_string(attrs, "score_mode")
+
+            # Process visible_to_tags for training day tasks
+            # Only update if the parameter is explicitly present in the request
+            # (to avoid clobbering when editing from the general task page)
+            visible_to_tags_str = self.get_argument("visible_to_tags", None)
+            if visible_to_tags_str is not None:
+                visible_to_tags = [tag.strip() for tag in visible_to_tags_str.split(",") if tag.strip()]
+                # Remove duplicates while preserving order
+                seen: set[str] = set()
+                unique_tags: list[str] = []
+                for tag in visible_to_tags:
+                    if tag not in seen:
+                        seen.add(tag)
+                        unique_tags.append(tag)
+                attrs["visible_to_tags"] = unique_tags
 
             # Update the task.
             task.set_attrs(attrs)

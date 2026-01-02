@@ -244,10 +244,12 @@ class ContestFolderBrowseHandler(BaseHandler):
         """Build complete folder tree with contests for client-side navigation.
         
         Excludes hidden folders and their descendants from the tree.
+        Also excludes training day contests (contests that belong to a training day).
         """
         all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
         all_contests = self.sql_session.query(Contest)\
             .filter(~Contest.name.like(r'\_\_%', escape='\\'))\
+            .filter(Contest.training_day == None)\
             .order_by(Contest.name).all()
 
         folder_map = {}
@@ -308,6 +310,7 @@ class ContestFolderBrowseHandler(BaseHandler):
             cur_folder = None
 
         # Subfolders (exclude hidden folders)
+        # Contests exclude managing contests (starting with __) and training day contests
         if cur_folder is None:
             subfolders = (
                 self.sql_session.query(ContestFolder)
@@ -320,6 +323,7 @@ class ContestFolderBrowseHandler(BaseHandler):
                 self.sql_session.query(Contest)
                 .filter(Contest.folder_id.is_(None))
                 .filter(~Contest.name.like(r'\_\_%', escape='\\'))
+                .filter(Contest.training_day == None)
                 .all()
             )
         else:
@@ -334,6 +338,7 @@ class ContestFolderBrowseHandler(BaseHandler):
                 self.sql_session.query(Contest)
                 .filter(Contest.folder == cur_folder)
                 .filter(~Contest.name.like(r'\_\_%', escape='\\'))
+                .filter(Contest.training_day == None)
                 .all()
             )
 

@@ -50,7 +50,7 @@ except:
 import tornado.web
 
 from cms import config, TOKEN_MODE_MIXED
-from cms.db import Contest, Submission, Task, TrainingProgram, UserTest, contest
+from cms.db import Contest, Student, Submission, Task, TrainingProgram, UserTest, contest
 from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
@@ -180,6 +180,9 @@ class ContestHandler(BaseHandler):
         - if username/password authentication is enabled, and the cookie
           is valid, the corresponding participation is returned, and the
           cookie is refreshed.
+        - for training day contests: if the user is authenticated to the
+          parent training program's managing contest, they are automatically
+          authenticated to the training day contest as well.
 
         After finding the participation, IP login and hidden users
         restrictions are checked.
@@ -211,6 +214,40 @@ class ContestHandler(BaseHandler):
             self.timestamp, cookie,
             authorization_header,
             ip_address)
+
+        # For training day contests: if direct authentication failed,
+        # try to authenticate via the parent training program's managing contest.
+        # This allows users logged into the training program to automatically
+        # access training day contests without re-authenticating.
+        if participation is None and self.contest.training_day is not None:
+            training_program = self.contest.training_day.training_program
+            managing_contest = training_program.managing_contest
+
+            # Try to authenticate using the managing contest's cookie
+            managing_cookie_name = managing_contest.name + "_login"
+            managing_cookie = self.get_secure_cookie(managing_cookie_name)
+
+            if managing_cookie is not None:
+                # Authenticate against the managing contest
+                managing_participation, _, managing_impersonated = authenticate_request(
+                    self.sql_session, managing_contest,
+                    self.timestamp, managing_cookie,
+                    None,  # No authorization header for fallback
+                    ip_address)
+
+                if managing_participation is not None:
+                    # User is authenticated to the managing contest.
+                    # Find their participation in this training day's contest.
+                    participation = (
+                        self.sql_session.query(Participation)
+                        .filter(Participation.contest == self.contest)
+                        .filter(Participation.user == managing_participation.user)
+                        .first()
+                    )
+                    if participation is not None:
+                        impersonated = managing_impersonated
+                        # Don't set a cookie for the training day contest -
+                        # authentication is always via the managing contest
 
         if cookie is None:
             self.clear_cookie(cookie_name)
@@ -276,11 +313,14 @@ class ContestHandler(BaseHandler):
         # some information about token configuration
         ret["tokens_contest"] = self.contest.token_mode
 
-        t_tokens = set(t.token_mode for t in self.contest.tasks)
+        t_tokens = set(t.token_mode for t in self.contest.get_tasks())
         if len(t_tokens) == 1:
             ret["tokens_tasks"] = next(iter(t_tokens))
         else:
             ret["tokens_tasks"] = TOKEN_MODE_MIXED
+
+        # For training day contests, filter tasks based on visibility tags
+        ret["visible_tasks"] = self.get_visible_tasks()
 
         return ret
 
@@ -299,10 +339,47 @@ class ContestHandler(BaseHandler):
         return: the corresponding task object, if found.
 
         """
-        return self.sql_session.query(Task) \
-            .filter(Task.contest == self.contest) \
-            .filter(Task.name == task_name) \
-            .one_or_none()
+        # For training day contests, tasks are linked via training_day_id
+        # rather than contest_id. Use get_tasks() to get the correct task list.
+        for task in self.contest.get_tasks():
+            if task.name == task_name:
+                return task
+        return None
+
+    def can_access_task(self, task: Task) -> bool:
+        """Check if the current user can access the given task.
+
+        For training day contests, tasks may have visibility restrictions
+        based on student tags. A task is accessible if:
+        - The task has no visible_to_tags (empty list = visible to all)
+        - The student has at least one tag matching the task's visible_to_tags
+
+        For non-training-day contests, all tasks are accessible.
+
+        task: the task to check access for.
+
+        return: True if the current user can access the task.
+
+        """
+        # Must be logged in to access restricted tasks
+        if self.current_user is None:
+            return not task.visible_to_tags
+
+        from cms.server.util import can_access_task
+        return can_access_task(
+            self.sql_session, task, self.current_user, self.contest.training_day
+        )
+
+    def get_visible_tasks(self) -> list[Task]:
+        """Return the list of tasks visible to the current user.
+
+        For training day contests, filters tasks based on visibility tags.
+        For non-training-day contests, returns all tasks.
+
+        return: list of tasks the current user can access.
+
+        """
+        return [task for task in self.contest.get_tasks() if self.can_access_task(task)]
 
     def get_submission(self, task: Task, opaque_id: str | int) -> Submission | None:
         """Return the num-th contestant's submission on the given task.

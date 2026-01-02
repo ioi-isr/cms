@@ -2,16 +2,16 @@
 
 {% block core %}
 <div class="core_title">
-  <h1>Add Training Program</h1>
+  <h1>Add Training Day to <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
 </div>
 
-<form action="{{ url("training_programs", "add") }}" method="POST" name="add_training_program" style="display:inline;">
+<form action="{{ url("training_program", training_program.id, "training_days", "add") }}" method="POST" name="add_training_day">
   {{ xsrf_form_html|safe }}
   <table class="sub_table">
     <tr>
-      <td>Name</td>
+      <td>Name (codename)</td>
       <td><input type="text" name="name" required/></td>
-      <td class="hint">A codename for the training program (e.g., "training2025"). A managing contest named "__name" will be created automatically.</td>
+      <td class="hint">A unique identifier for the training day contest</td>
     </tr>
     <tr>
       <td>Description</td>
@@ -21,24 +21,26 @@
     <tr>
       <td>Start time</td>
       <td><input type="datetime-local" name="start"/></td>
-      <td class="hint">When the training program starts (optional)</td>
+      <td class="hint">When the training day starts (optional)</td>
     </tr>
     <tr>
       <td>End time</td>
       <td><input type="datetime-local" name="stop"/></td>
-      <td class="hint">When the training program ends (optional, must be after start)</td>
+      <td class="hint">When the training day ends (optional)</td>
     </tr>
   </table>
-  <input type="submit" name="operation" value="Create"/>
-  <input type="submit" name="operation" value="Create and add another"/>
+  <input type="submit" value="Create"/>
 </form>
 
 <script>
 CMS.AWSUtils.initDateTimeValidation(
-  'form[name="add_training_program"]',
+  'form[name="add_training_day"]',
   'input[name="start"]',
   'input[name="stop"]'
 );
 </script>
 
+<p>
+  <a href="{{ url("training_program", training_program.id, "training_days") }}">Back to training days</a>
+</p>
 {% endblock core %}
