@@ -98,7 +98,7 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
             if statement.source_extension:
                 source_path = os.path.join(statements_dir, f"{lang_name}{statement.source_extension}")
             else:
-                source_path = os.path.join(statements_dir, f"{lang_name}._source")
+                source_path = os.path.join(statements_dir, f"{lang_name}_source")
             file_cacher.get_file_to_path(statement.source_digest, source_path)
 
     for filename, attachment in task.attachments.items():
