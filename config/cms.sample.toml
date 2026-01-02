@@ -230,4 +230,6 @@ port = 25
 #password = "your_smtp_password"
 #use_tls = true
 sender_address = "no-reply@contest.biu.ac.il"
+# Prefix for email subjects (defaults to "CMS" if not set)
+#email_subject_prefix = "IOI 2025"
 

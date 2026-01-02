@@ -177,6 +177,7 @@ class SMTPConfig:
     password: str | None = None
     use_tls: bool = True
     sender_address: str | None = None
+    email_subject_prefix: str | None = None
 
 
 field_helper = lambda T: dataclasses.field(default_factory=T)

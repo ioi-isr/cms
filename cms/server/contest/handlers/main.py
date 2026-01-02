@@ -33,6 +33,7 @@ import json
 import logging
 import os.path
 import re
+import secrets
 import smtplib
 from datetime import timedelta
 from email.mime.text import MIMEText
@@ -62,7 +63,7 @@ from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
 from cmscommon.crypto import hash_password, validate_password, \
-    validate_password_strength, WeakPasswordError, generate_random_password
+    validate_password_strength, WeakPasswordError
 from cmscommon.datetime import make_datetime, make_timestamp
 from .contest import ContestHandler, api_login_required
 from ..phase_management import actual_phase_required
@@ -164,10 +165,12 @@ class RegistrationHandler(ContestHandler):
         except tornado.web.MissingArgumentError:
             raise RegistrationError("missing_field")
 
-        # Validate email - required and basic format check
+        # Validate email - required and RFC 5322 compliant format check
         if not email or len(email) == 0:
             raise RegistrationError("missing_email", "email")
-        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        # RFC 5322 compliant email regex (case-insensitive)
+        email_regex = r'''^(?:[a-z0-9!#$%&'*+\x2f=?^_`\x7b-\x7d~\x2d]+(?:\.[a-z0-9!#$%&'*+\x2f=?^_`\x7b-\x7d~\x2d]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9\x2d]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9\x2d]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9\x2d]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$'''
+        if not re.match(email_regex, email, re.IGNORECASE):
             raise RegistrationError("invalid_email", "email")
         if len(email) > self.MAX_INPUT_LENGTH:
             raise RegistrationError("invalid_email", "email")
@@ -606,7 +609,7 @@ class PasswordResetRequestHandler(ContestHandler):
                         **self.r_params)
             return
 
-        token = generate_random_password()
+        token = secrets.token_urlsafe(16)
         user.password_reset_token = token
         user.password_reset_token_expires = self.timestamp + timedelta(
             hours=self.TOKEN_EXPIRATION_HOURS)
@@ -638,13 +641,14 @@ class PasswordResetRequestHandler(ContestHandler):
             return False
 
         try:
+            subject_prefix = smtp_config.email_subject_prefix or "CMS"
             msg = MIMEText(
-                f"You have requested a password reset.\n\n"
+                f"You have requested a password reset for your {subject_prefix} account.\n\n"
                 f"Click the following link to reset your password:\n{reset_url}\n\n"
                 f"This link will expire in {self.TOKEN_EXPIRATION_HOURS} hours.\n\n"
                 f"If you did not request this reset, please ignore this email."
             )
-            msg["Subject"] = "Password Reset Request"
+            msg["Subject"] = f"{subject_prefix} - Password Reset Request"
             msg["From"] = smtp_config.sender_address
             msg["To"] = email
 
@@ -654,14 +658,15 @@ class PasswordResetRequestHandler(ContestHandler):
             else:
                 server = smtplib.SMTP(smtp_config.server, smtp_config.port)
 
-            if smtp_config.username and smtp_config.password:
-                server.login(smtp_config.username, smtp_config.password)
-
-            server.sendmail(smtp_config.sender_address, [email], msg.as_string())
-            server.quit()
+            try:
+                if smtp_config.username and smtp_config.password:
+                    server.login(smtp_config.username, smtp_config.password)
+                server.sendmail(smtp_config.sender_address, [email], msg.as_string())
+            finally:
+                server.quit()
             return True
-        except Exception as e:
-            logger.error("Failed to send password reset email: %s", str(e))
+        except (smtplib.SMTPException, OSError):
+            logger.exception("Failed to send password reset email")
             return False
 
 
@@ -728,7 +733,10 @@ class PasswordResetConfirmHandler(ContestHandler):
             return
 
         try:
-            validate_password_strength(password, [user.username])
+            user_inputs = [user.username]
+            if user.email:
+                user_inputs.append(user.email)
+            validate_password_strength(password, user_inputs)
         except WeakPasswordError:
             self.render("password_reset_confirm.html",
                         token=token,
