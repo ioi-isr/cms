@@ -1513,7 +1513,7 @@ class AddSubtaskValidatorHandler(BaseHandler):
         def notify(title, text):
             self.service.add_notification(make_datetime(), title, text)
 
-        success, compiled_bytes, stats = compile_manager_bytes(
+        success, compiled_bytes, _stats = compile_manager_bytes(
             self.service.file_cacher,
             filename,
             body,
@@ -1735,7 +1735,6 @@ class UpdateSubtaskRegexHandler(BaseHandler):
     def post(self, dataset_id, subtask_index):
         dataset = self.safe_get_item(Dataset, dataset_id)
         subtask_index = int(subtask_index)
-        task = dataset.task
 
         fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
 
