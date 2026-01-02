@@ -370,7 +370,7 @@ def enumerate_files(
     queries.append(dataset_q.join(Dataset.subtask_validators)
                    .with_entities(SubtaskValidator.digest))
     queries.append(dataset_q.join(Dataset.subtask_validators)
-                   .filter(SubtaskValidator.executable_digest != None)
+                   .filter(SubtaskValidator.executable_digest.isnot(None))
                    .with_entities(SubtaskValidator.executable_digest))
 
     if not skip_submissions and not skip_users:
