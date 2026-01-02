@@ -170,8 +170,9 @@ def detect_testcase_sources(task_path):
 
 def compile_manager_source(file_cacher, source_path, source_filename,
                            compiled_filename, task_name, notify=None,
-                           raise_on_error=False):
-    """Compile a manager source file (checker.cpp or manager.cpp).
+                           raise_on_error=False, language_name=None,
+                           kind="Manager"):
+    """Compile a manager or generator source file.
 
     file_cacher: FileCacher instance for storing files.
     source_path: path to the source file.
@@ -180,6 +181,12 @@ def compile_manager_source(file_cacher, source_path, source_filename,
     task_name: name of the task (for logging).
     notify: optional callback(title: str, text: str) to report errors.
     raise_on_error: if True, raise LoaderValidationError on compilation failure.
+    language_name: optional explicit language name (e.g., "C++17 / g++").
+        If provided, this language is used instead of auto-detection from
+        the filename. This is useful for distinguishing between languages
+        with the same file extension (e.g., PyPy vs CPython for .py files).
+    kind: description prefix for file cacher (default: "Manager").
+        Use "Generator" for generator files.
 
     return: tuple (source_digest, compiled_digest) or None if compilation fails
             (and raise_on_error is False).
@@ -204,7 +211,8 @@ def compile_manager_source(file_cacher, source_path, source_filename,
         compiled_filename,
         sandbox_name="loader_compile",
         for_evaluation=True,
-        notify=capture_error
+        notify=capture_error,
+        language_name=language_name
     )
 
     if not success:
@@ -216,9 +224,9 @@ def compile_manager_source(file_cacher, source_path, source_filename,
         return None
 
     source_digest = file_cacher.put_file_content(
-        source_body, "Manager source %s for task %s" % (source_filename, task_name))
+        source_body, "%s source %s for task %s" % (kind, source_filename, task_name))
     compiled_digest = file_cacher.put_file_content(
-        compiled_bytes, "Compiled manager %s for task %s" % (compiled_filename, task_name))
+        compiled_bytes, "Compiled %s %s for task %s" % (kind.lower(), compiled_filename, task_name))
 
     return (source_digest, compiled_digest)
 
@@ -1710,42 +1718,27 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                         "skipping", filename, language.name)
                     continue
 
-                # Compile the generator using compile_manager_source pattern
-                with open(file_path, 'rb') as f:
-                    source_body = f.read()
-
+                # Compile the generator using compile_manager_source
                 compiled_filename = "generator"
 
-                error_messages = []
-
-                def capture_error(title, text):
-                    error_messages.append("%s: %s" % (title, text))
-                    self._notify(title, text)
-
-                success, compiled_bytes, _stats = compile_manager_bytes(
+                result_digests = compile_manager_source(
                     self.file_cacher,
+                    file_path,
                     filename,
-                    source_body,
                     compiled_filename,
-                    sandbox_name="loader_compile",
-                    for_evaluation=True,
-                    notify=capture_error,
-                    language_name=language.name
+                    task_name,
+                    notify=self._notify,
+                    raise_on_error=False,
+                    language_name=language.name,
+                    kind="Generator"
                 )
 
-                if not success or compiled_bytes is None:
+                if result_digests is None:
                     logger.warning(
-                        "Failed to compile generator '%s': %s",
-                        filename, error_messages[0] if error_messages else "unknown error")
+                        "Failed to compile generator '%s'", filename)
                     continue
 
-                # Store source and compiled executable
-                source_digest = self.file_cacher.put_file_content(
-                    source_body,
-                    "Generator source %s for task %s" % (filename, task_name))
-                executable_digest = self.file_cacher.put_file_content(
-                    compiled_bytes,
-                    "Compiled generator %s for task %s" % (filename, task_name))
+                source_digest, executable_digest = result_digests
 
                 # Get templates from YAML metadata or use config defaults
                 # (meta was already fetched above for language detection)
