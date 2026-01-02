@@ -1367,6 +1367,9 @@ def _run_validator(file_cacher, filename, executable_digest, testcase_data):
                 except Exception:
                     pass
 
+            # Provide input via stdin so validators can read from either
+            # input.txt file or stdin (output is still read from output.txt)
+            sandbox.stdin_file = "input.txt"
             sandbox.stdout_file = "stdout.txt"
             sandbox.stderr_file = "stderr.txt"
 
@@ -1769,7 +1772,7 @@ class UpdateSubtaskRegexHandler(BaseHandler):
             return
 
         # Check that the current parameter uses regex (string), not count (int)
-        if not isinstance(params[subtask_index][1], str):
+        if len(params[subtask_index]) < 2 or not isinstance(params[subtask_index][1], str):
             self.service.add_notification(
                 make_datetime(),
                 "Cannot update regex",
@@ -1881,6 +1884,15 @@ class RenameTestcaseHandler(BaseHandler):
         testcase.codename = new_codename
         # Re-add to the collection (keyed by new codename)
         dataset.testcases[new_codename] = testcase
+
+        # Update submission format for OutputOnly tasks
+        if dataset.active and dataset.task_type == "OutputOnly":
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
 
         if self.try_commit():
             self.service.add_notification(
@@ -2039,6 +2051,15 @@ class BatchRenameTestcasesHandler(BaseHandler):
             # Apply the rename using two-phase approach
             renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
 
+            # Update submission format for OutputOnly tasks
+            if dataset.active and dataset.task_type == "OutputOnly":
+                try:
+                    task.set_default_output_only_submission_format()
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Couldn't create default submission format for task {task.id}, "
+                        f"dataset {dataset.id}") from e
+
             # Check if user wants to update the subtask regex
             update_regex = self.get_argument("update_regex", "") == "true"
             regex_updated = False
@@ -2127,6 +2148,15 @@ class BatchRenameTestcasesHandler(BaseHandler):
 
             # Apply the rename using two-phase approach
             renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
+
+            # Update submission format for OutputOnly tasks
+            if dataset.active and dataset.task_type == "OutputOnly":
+                try:
+                    task.set_default_output_only_submission_format()
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Couldn't create default submission format for task {task.id}, "
+                        f"dataset {dataset.id}") from e
 
             if self.try_commit():
                 self.service.add_notification(
