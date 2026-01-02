@@ -171,8 +171,9 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
   if (!prefix) return;
   
   // Ask if user wants to update the subtask regex
+  // Accept both boolean true and string 'true' for backwards compatibility
   var updateRegex = false;
-  if (usesRegex === 'true') {
+  if (usesRegex === true || usesRegex === 'true') {
     updateRegex = confirm('Do you also want to update the subtask regex to match testcases containing "' + prefix + '" as a substring?');
   }
   
