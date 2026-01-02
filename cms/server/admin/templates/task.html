@@ -1,6 +1,30 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+
 {% extends "base.html" %}
 
 {% block js_init %}
+
+var originalScoreParams = {};
+
+{% for dataset in task.datasets %}
+originalScoreParams[{{ dataset.id }}] = {
+    score_type: $("select[name=score_type_{{ dataset.id }}]").val(),
+    score_type_parameters: $("textarea[name=score_type_parameters_{{ dataset.id }}]").val()
+};
+{% endfor %}
+
+function checkScoreParameterChanges() {
+    var changedDatasets = [];
+    {% for dataset in task.datasets %}
+    var currentScoreType = $("select[name=score_type_{{ dataset.id }}]").val();
+    var currentScoreParams = $("textarea[name=score_type_parameters_{{ dataset.id }}]").val();
+    if (currentScoreType !== originalScoreParams[{{ dataset.id }}].score_type ||
+        currentScoreParams !== originalScoreParams[{{ dataset.id }}].score_type_parameters) {
+        changedDatasets.push({{ dataset.id }});
+    }
+    {% endfor %}
+    return changedDatasets;
+}
 
 function showTaskTypeOption(dataset_id) {
     var selector = $("select[name=task_type_" + dataset_id + "]")[0];
@@ -41,6 +65,23 @@ $(document).ready(function() {
     updateMultiDeleteMaster({{ dataset.id }});
   });
   {% endfor %}
+
+  $("form[action='{{ url("task", task.id) }}']").submit(function(e) {
+    var changedDatasets = checkScoreParameterChanges();
+    if (changedDatasets.length > 0) {
+      var shouldRescore = confirm(
+        "Score parameters have been changed for " + changedDatasets.length + " dataset(s).\n\n" +
+        "Do you want to re-score all submissions (including model solutions) for the affected dataset(s)?\n\n" +
+        "Click OK to save changes AND re-score, or Cancel to save changes WITHOUT re-scoring."
+      );
+      if (shouldRescore) {
+        // Add hidden field with dataset IDs to re-score
+        // Server will trigger re-scoring only after successful commit
+        $(this).append('<input type="hidden" name="rescore_datasets" value="' + changedDatasets.join(',') + '" />');
+      }
+    }
+    return true;
+  });
 });
 
 window.toggleMultipleDeleteMode = function(dataset_id) {
@@ -596,6 +637,183 @@ window.filterTestcases = function(dataset_id) {
           <td><textarea name="score_type_parameters_{{ dataset.id }}">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea></td>
         </tr>
       </table>
+      <div class="hr"></div>
+    </div>
+
+  <!-- Model Solutions for this dataset -->
+
+  <h4 id="title_model_solutions_{{ dataset.id }}" class="toggling_on">Model Solutions
+{% if admin.permission_all %}
+    [<a href="{{ url("dataset", dataset.id, "model_solutions", "add") }}">add</a>]
+{% endif %}
+  </h4>
+    <div id="model_solutions_{{ dataset.id }}" class="task_dataset_model_solutions">
+      <p>Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.</p>
+{% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
+      <p>
+        <strong>Reevaluate all model solutions:</strong>
+        <button type="button" onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+                         'EvaluationService', 0,
+                         'invalidate_model_solutions', {
+                         'dataset_id': {{ dataset.id }},
+                         'level': 'compilation'},
+                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                         );"
+                title="Compilation" >C</button>
+        <button type="button" onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+                         'EvaluationService', 0,
+                         'invalidate_model_solutions', {
+                         'dataset_id': {{ dataset.id }},
+                         'level': 'evaluation'},
+                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                         );"
+                title="Evaluation" >E</button>
+        <button type="button" onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+                         'ScoringService', 0,
+                         'invalidate_model_solutions', {
+                         'dataset_id': {{ dataset.id }}},
+                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                         );"
+                title="Score" >S</button>
+      </p>
+{% endif %}
+      <table class="bordered" style="text-align:center">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Description</th>
+            <th>Language</th>
+            <th>Expected Score Range</th>
+            <th>Actual Score</th>
+            <th>In Range?</th>
+            <th>Status</th>
+            <th>Comment</th>
+            <th>Reevaluate</th>
+            <th>Ops</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if dataset.model_solution_metas|length == 0 %}
+          <tr>
+            <td colspan="10">No model solutions yet</td>
+          </tr>
+          {% else %}
+          {% for meta in dataset.model_solution_metas %}
+          {% set submission = meta.submission %}
+          {% set msr = submission.get_result(dataset) %}
+          <tr id="model_solution_{{ meta.id }}">
+            <td style="font-weight:bold;">{{ loop.index }}</td>
+            <td><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></td>
+            <td>{{ submission.language if submission.language else "N/A" }}</td>
+            <td>{{ "%.2f"|format(meta.expected_score_min) }} - {{ "%.2f"|format(meta.expected_score_max) }}</td>
+            <td>
+              {% if msr and msr.score is not none %}
+              {{ "%.2f"|format(msr.score) }}
+              {% else %}
+              N/A
+              {% endif %}
+            </td>
+            <td>
+              {% set score_in_range = meta.is_score_in_range() %}
+              {% if score_in_range is none %}
+              <span style="color: gray;">Not scored</span>
+              {% elif score_in_range %}
+              <span style="color: green;">✓ Yes</span>
+              {% else %}
+              <span style="color: red;">✗ No</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if msr is none %}
+              Not evaluated
+              {% elif not msr.compiled() %}
+              Compiling...
+              {% elif msr.compilation_failed() %}
+              Compilation failed
+              {% elif not msr.evaluated() %}
+              Evaluating...
+              {% elif msr.evaluation_failed() %}
+              Evaluation system error
+              {% elif not msr.scored() %}
+              Scoring...
+              {% else %}
+              Scored
+              {% endif %}
+            </td>
+            <td>
+              {{ submission.comment if submission.comment else "" }}
+            </td>
+            <td>
+            {{ macro_reevaluation_buttons.reevaluation_buttons(
+                 admin.permission_all,
+                 url("task", task.id),
+                 submission_id=submission.id,
+                 dataset_id=dataset.id) }}
+            </td>
+            <td>
+              <a href="{{ url("model_solution", meta.id, "edit") }}">Edit</a>
+{% if admin.permission_all %}
+              | <a onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');">Delete</a>
+{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
+
+{% if dataset.id in subtask_info and dataset.model_solution_metas|length > 0 %}
+      <h5 style="margin-top: 20px;">Subtask Score Validation</h5>
+      <table class="bordered" style="text-align:center">
+        <thead>
+          <tr>
+            <th>Model Solution</th>
+{% for st in subtask_info[dataset.id] %}
+            <th>{{ st.display_name }}</th>
+{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+{% for meta in dataset.model_solution_metas %}
+{% set msr = meta.submission.get_result(dataset) %}
+{% if msr and msr.scored() %}
+          <tr>
+            <td><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></td>
+{% for st in subtask_info[dataset.id] %}
+{% if st.max_score == 0 %}
+{% set outcomes = meta.get_subtask_testcase_outcomes(st.idx) %}
+            <td>
+{% if outcomes %}
+              <span style="font-family: monospace;">{{ outcomes|safe }}</span>
+{% else %}
+              <span style="color: gray;">N/A</span>
+{% endif %}
+            </td>
+{% else %}
+{% set status = meta.get_subtask_score_status(st.idx) %}
+{% set actual = meta.get_subtask_actual_score(st.idx) %}
+{% set st_key = st.idx|string %}
+{% set expected_min = meta.subtask_expected_scores[st_key].min if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
+{% set expected_max = meta.subtask_expected_scores[st_key].max if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
+            <td>
+{% if status == "not_configured" %}
+              <span style="color: gray;">Not configured</span>
+{% elif status == "in_range" %}
+              <span style="color: green;">✓ {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+{% elif status == "out_of_range" %}
+              <span style="color: red;">✗ {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+{% else %}
+              <span style="color: gray;">N/A</span>
+{% endif %}
+            </td>
+{% endif %}
+{% endfor %}
+          </tr>
+{% endif %}
+{% endfor %}
+        </tbody>
+      </table>
+{% endif %}
       <div class="hr"></div>
     </div>
 

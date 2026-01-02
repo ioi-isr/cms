@@ -112,6 +112,61 @@ CMS.AWSUtils.filename_to_lang = function(file_name) {
 }
 
 /**
+ * Enable/disable language options based on selected file extensions.
+ *
+ * options: jQuery collection or array-like of <option> elements.
+ * inputs: jQuery collection or array-like of <input type="file"> elements.
+ * languages: mapping { langName: { '.ext': true, ... }, ... }.
+ */
+CMS.AWSUtils.filter_languages = function(options, inputs, languages) {
+    languages = languages || {};
+
+    var exts = [];
+    for (var i = 0; i < inputs.length; i++) {
+        var value = inputs[i].value || "";
+        var lastDot = value.lastIndexOf(".");
+        if (lastDot !== -1) {
+            exts.push(value.slice(lastDot).toLowerCase());
+        }
+    }
+
+    var enabled = {};
+    var anyEnabled = false;
+    for (var lang in languages) {
+        var langExts = languages[lang];
+        if (!langExts) {
+            continue;
+        }
+        for (var j = 0; j < exts.length; j++) {
+            if (langExts[exts[j]]) {
+                enabled[lang] = true;
+                anyEnabled = true;
+                break;
+            }
+        }
+    }
+
+    var selectedDisabled = false;
+    for (var k = 0; k < options.length; k++) {
+        var option = options[k];
+        var shouldEnable = !anyEnabled || enabled[option.value];
+        option.disabled = !shouldEnable;
+        if (!shouldEnable && option.selected) {
+            selectedDisabled = true;
+        }
+    }
+
+    if (selectedDisabled) {
+        for (var m = 0; m < options.length; m++) {
+            if (!options[m].disabled) {
+                options[m].selected = true;
+                break;
+            }
+        }
+    }
+};
+
+/**
  * This is called when we receive file content, or an error message.
  *
  * file_name (string): the name of the requested file
@@ -1044,3 +1099,207 @@ CMS.AWSUtils.prototype.do_diff = function() {
     var show_diff = this.bind_func(this, this.show_diff);
     this.ajax_request(this.url("submission_diff", old_id, new_id), null, show_diff);
 }
+
+/**
+ * Model Solution Subtask Score Utilities
+ *
+ * These functions handle the auto-calculation of expected score ranges
+ * from subtask scores in model solution forms.
+ *
+ * Two modes are supported:
+ * 1. Simple mode (default): Uses form-scoped selectors with field names like
+ *    "subtask_{idx}_min", "expected_score_min", etc.
+ * 2. Multi-solution mode: Uses data-sol-id attributes and field names like
+ *    "sol_{solId}_st_{idx}_min", "sol_{solId}_score_min", etc.
+ */
+
+/**
+ * Update the expected score range inputs based on subtask score sums.
+ * Only updates if the auto-calculate checkbox is checked.
+ *
+ * @param {HTMLFormElement|string} formOrSolId - The form element (simple mode) or solution ID (multi mode)
+ * @param {Object} options - Optional configuration for field naming
+ * @param {function} options.subtaskMinName - Function(idx) returning subtask min field name
+ * @param {function} options.subtaskMaxName - Function(idx) returning subtask max field name
+ * @param {string} options.scoreMinName - Name of overall score min field
+ * @param {string} options.scoreMaxName - Name of overall score max field
+ * @param {string} options.subtaskMinSelector - CSS selector for subtask min inputs
+ * @param {string} options.subtaskMaxSelector - CSS selector for subtask max inputs
+ * @param {string} options.checkboxSelector - CSS selector for auto-calc checkbox
+ */
+CMS.AWSUtils.updateScoreRangeFromSubtasks = function(formOrSolId, options) {
+    options = options || {};
+    var form, checkbox, minInputs, maxInputs, scoreMinInput, scoreMaxInput;
+
+    if (typeof formOrSolId === 'string') {
+        // Multi-solution mode: formOrSolId is a solution ID
+        var solId = formOrSolId;
+        form = document;
+        checkbox = document.querySelector(options.checkboxSelector || '.calc-from-subtasks[data-sol-id="' + solId + '"]');
+        minInputs = document.querySelectorAll(options.subtaskMinSelector || '.subtask-min[data-sol-id="' + solId + '"]');
+        maxInputs = document.querySelectorAll(options.subtaskMaxSelector || '.subtask-max[data-sol-id="' + solId + '"]');
+        scoreMinInput = document.querySelector('input[name="' + (options.scoreMinName || 'sol_' + solId + '_score_min') + '"]');
+        scoreMaxInput = document.querySelector('input[name="' + (options.scoreMaxName || 'sol_' + solId + '_score_max') + '"]');
+    } else {
+        // Simple mode: formOrSolId is a form element
+        form = formOrSolId;
+        checkbox = form.querySelector('.calc-from-subtasks');
+        minInputs = form.querySelectorAll('.subtask-min');
+        maxInputs = form.querySelectorAll('.subtask-max');
+        scoreMinInput = form.querySelector('input[name="' + (options.scoreMinName || 'expected_score_min') + '"]');
+        scoreMaxInput = form.querySelector('input[name="' + (options.scoreMaxName || 'expected_score_max') + '"]');
+    }
+
+    if (!checkbox || !checkbox.checked) return;
+
+    var minSum = 0;
+    var maxSum = 0;
+    minInputs.forEach(function(input) {
+        minSum += parseFloat(input.value) || 0;
+    });
+    maxInputs.forEach(function(input) {
+        maxSum += parseFloat(input.value) || 0;
+    });
+
+    if (scoreMinInput) scoreMinInput.value = minSum.toFixed(2);
+    if (scoreMaxInput) scoreMaxInput.value = maxSum.toFixed(2);
+};
+
+/**
+ * Initialize model solution subtask score handlers for a page.
+ * Sets up event listeners for full/zero score buttons, auto-calculate
+ * checkbox, and subtask input changes.
+ *
+ * @param {Object} options - Optional configuration for field naming
+ * @param {boolean} options.multiSolution - If true, use multi-solution mode with data-sol-id
+ * @param {function} options.subtaskMinName - Function(idx, solId?) returning subtask min field name
+ * @param {function} options.subtaskMaxName - Function(idx, solId?) returning subtask max field name
+ * @param {function} options.scoreMinName - Function(solId?) returning overall score min field name
+ * @param {function} options.scoreMaxName - Function(solId?) returning overall score max field name
+ */
+CMS.AWSUtils.initModelSolutionSubtasks = function(options) {
+    options = options || {};
+    var multiSolution = options.multiSolution || false;
+
+    // Helper to get field names
+    var getSubtaskMinName = options.subtaskMinName || function(idx, solId) {
+        return multiSolution ? 'sol_' + solId + '_st_' + idx + '_min' : 'subtask_' + idx + '_min';
+    };
+    var getSubtaskMaxName = options.subtaskMaxName || function(idx, solId) {
+        return multiSolution ? 'sol_' + solId + '_st_' + idx + '_max' : 'subtask_' + idx + '_max';
+    };
+    var getScoreMinName = options.scoreMinName || function(solId) {
+        return multiSolution ? 'sol_' + solId + '_score_min' : 'expected_score_min';
+    };
+    var getScoreMaxName = options.scoreMaxName || function(solId) {
+        return multiSolution ? 'sol_' + solId + '_score_max' : 'expected_score_max';
+    };
+
+    // Helper to update score range
+    var updateScores = function(formOrSolId) {
+        CMS.AWSUtils.updateScoreRangeFromSubtasks(formOrSolId, {
+            scoreMinName: typeof formOrSolId === 'string' ? getScoreMinName(formOrSolId) : getScoreMinName(),
+            scoreMaxName: typeof formOrSolId === 'string' ? getScoreMaxName(formOrSolId) : getScoreMaxName()
+        });
+    };
+
+    // Full score button handler
+    document.querySelectorAll('.btn-full-score').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var maxScore = parseFloat(this.dataset.maxScore);
+            var minInput, maxInput, formOrSolId;
+
+            if (multiSolution) {
+                var solId = this.dataset.solId;
+                var stIdx = this.dataset.stIdx;
+                minInput = document.querySelector('input[name="' + getSubtaskMinName(stIdx, solId) + '"]');
+                maxInput = document.querySelector('input[name="' + getSubtaskMaxName(stIdx, solId) + '"]');
+                formOrSolId = solId;
+            } else {
+                var idx = this.dataset.idx;
+                var form = this.closest('form');
+                minInput = form.querySelector('input[name="' + getSubtaskMinName(idx) + '"]');
+                maxInput = form.querySelector('input[name="' + getSubtaskMaxName(idx) + '"]');
+                formOrSolId = form;
+            }
+
+            if (minInput) minInput.value = maxScore;
+            if (maxInput) maxInput.value = maxScore;
+            updateScores(formOrSolId);
+        });
+    });
+
+    // Zero score button handler
+    document.querySelectorAll('.btn-zero-score').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var minInput, maxInput, formOrSolId;
+
+            if (multiSolution) {
+                var solId = this.dataset.solId;
+                var stIdx = this.dataset.stIdx;
+                minInput = document.querySelector('input[name="' + getSubtaskMinName(stIdx, solId) + '"]');
+                maxInput = document.querySelector('input[name="' + getSubtaskMaxName(stIdx, solId) + '"]');
+                formOrSolId = solId;
+            } else {
+                var idx = this.dataset.idx;
+                var form = this.closest('form');
+                minInput = form.querySelector('input[name="' + getSubtaskMinName(idx) + '"]');
+                maxInput = form.querySelector('input[name="' + getSubtaskMaxName(idx) + '"]');
+                formOrSolId = form;
+            }
+
+            if (minInput) minInput.value = 0;
+            if (maxInput) maxInput.value = 0;
+            updateScores(formOrSolId);
+        });
+    });
+
+    // Calculate from subtasks checkbox handler
+    document.querySelectorAll('.calc-from-subtasks').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            var minInput, maxInput, formOrSolId;
+
+            if (multiSolution) {
+                var solId = this.dataset.solId;
+                minInput = document.querySelector('input[name="' + getScoreMinName(solId) + '"]');
+                maxInput = document.querySelector('input[name="' + getScoreMaxName(solId) + '"]');
+                formOrSolId = solId;
+            } else {
+                var form = this.closest('form');
+                minInput = form.querySelector('input[name="' + getScoreMinName() + '"]');
+                maxInput = form.querySelector('input[name="' + getScoreMaxName() + '"]');
+                formOrSolId = form;
+            }
+
+            if (this.checked) {
+                updateScores(formOrSolId);
+                if (minInput) minInput.readOnly = true;
+                if (maxInput) maxInput.readOnly = true;
+            } else {
+                if (minInput) minInput.readOnly = false;
+                if (maxInput) maxInput.readOnly = false;
+            }
+        });
+    });
+
+    // Update score range when subtask values change
+    document.querySelectorAll('.subtask-min, .subtask-max').forEach(function(input) {
+        input.addEventListener('input', function() {
+            var checkbox, formOrSolId;
+
+            if (multiSolution) {
+                var solId = this.dataset.solId;
+                checkbox = document.querySelector('.calc-from-subtasks[data-sol-id="' + solId + '"]');
+                formOrSolId = solId;
+            } else {
+                var form = this.closest('form');
+                checkbox = form.querySelector('.calc-from-subtasks');
+                formOrSolId = form;
+            }
+
+            if (checkbox && checkbox.checked) {
+                updateScores(formOrSolId);
+            }
+        });
+    });
+};

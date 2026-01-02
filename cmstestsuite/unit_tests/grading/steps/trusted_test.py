@@ -333,8 +333,14 @@ class TestCheckerStep(unittest.TestCase):
 
         ret = checker_step(self.sandbox, "c_dig", "i_dig", "co_dig", "o")
 
-        self.assertEqual(ret[:3], (False, None, None))
-        self.assertEqual(ret[3], {})
+        self.assertEqual(ret[0], False)
+        self.assertIsNone(ret[1])
+        # Error text is returned so it appears in last_evaluation_failure_text
+        self.assertIsNotNone(ret[2])
+        self.assertIn("Outcome is not a float", ret[2][0])
+        # Stats should contain stdout/stderr for debugging
+        self.assertIn("stdout", ret[3])
+        self.assertIn("stderr", ret[3])
         self.assertLoggedError()
 
     def test_invalid_checker_text(self):
@@ -343,8 +349,14 @@ class TestCheckerStep(unittest.TestCase):
 
         ret = checker_step(self.sandbox, "c_dig", "i_dig", "co_dig", "o")
 
-        self.assertEqual(ret[:3], (False, None, None))
-        self.assertEqual(ret[3], {})
+        self.assertEqual(ret[0], False)
+        self.assertIsNone(ret[1])
+        # Error text is returned so it appears in last_evaluation_failure_text
+        self.assertIsNotNone(ret[2])
+        self.assertIn("codec can't decode", ret[2][0])
+        # Stats should contain stdout/stderr for debugging
+        self.assertIn("stdout", ret[3])
+        self.assertIn("stderr", ret[3])
         self.assertLoggedError()
 
     def test_missing_checker_outcome(self):
@@ -353,8 +365,14 @@ class TestCheckerStep(unittest.TestCase):
 
         ret = checker_step(self.sandbox, "c_dig", "i_dig", "co_dig", "o")
 
-        self.assertEqual(ret[:3], (False, None, None))
-        self.assertEqual(ret[3], {})
+        self.assertEqual(ret[0], False)
+        self.assertIsNone(ret[1])
+        # Error text is returned so it appears in last_evaluation_failure_text
+        self.assertIsNotNone(ret[2])
+        self.assertIn("Missing checker output file", ret[2][0])
+        # Stats should contain whatever output we can collect for debugging
+        self.assertIn("stdout", ret[3])
+        self.assertIn("stderr", ret[3])
         self.assertLoggedError()
 
     def test_missing_checker_text(self):
@@ -363,8 +381,14 @@ class TestCheckerStep(unittest.TestCase):
 
         ret = checker_step(self.sandbox, "c_dig", "i_dig", "co_dig", "o")
 
-        self.assertEqual(ret[:3], (False, None, None))
-        self.assertEqual(ret[3], {})
+        self.assertEqual(ret[0], False)
+        self.assertIsNone(ret[1])
+        # Error text is returned so it appears in last_evaluation_failure_text
+        self.assertIsNotNone(ret[2])
+        self.assertIn("Missing checker output file", ret[2][0])
+        # Stats should contain whatever output we can collect for debugging
+        self.assertIn("stdout", ret[3])
+        self.assertIn("stderr", ret[3])
         self.assertLoggedError()
 
 

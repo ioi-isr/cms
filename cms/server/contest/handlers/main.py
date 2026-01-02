@@ -179,6 +179,9 @@ class RegistrationHandler(ContestHandler):
         if not re.match(r"^[A-Za-z0-9_-]+$", username):
             raise RegistrationError("invalid_username_chars", "username")
 
+        if username.startswith("__"):
+            raise RegistrationError("invalid_username_start", "username")
+
         # Validate password length
         if not self.MIN_PASSWORD_LENGTH <= len(password) \
                 <= self.MAX_INPUT_LENGTH:

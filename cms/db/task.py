@@ -40,6 +40,7 @@ from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
     FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED, FEEDBACK_LEVEL_OI_RESTRICTED
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
+from cms.grading.languagemanager import LANGUAGES
 from . import Codename, Filename, FilenameSchemaArray, Digest, Base, Contest
 
 import typing
@@ -48,6 +49,7 @@ if typing.TYPE_CHECKING:
     from cms.grading.tasktypes import TaskType
     from . import Submission, UserTest
     from .scorecache import ParticipationTaskScore
+    from .modelsolution import ModelSolutionMeta
 
 
 class Task(Base):
@@ -292,20 +294,25 @@ class Task(Base):
         passive_deletes=True,
         back_populates="task")
 
-    def get_allowed_languages(self) -> list[str] | None:
+    def get_allowed_languages(self) -> list[str]:
         """Get the list of allowed languages for this task.
 
         If the task has specific allowed languages configured, return those.
         Otherwise, return the contest's allowed languages.
 
-        return: list of allowed language names, or None if no contest is set
+        return: list of allowed language names (task-specific, contest-level,
+            or all languages if no contest is set)
         """
         # If task has specific language restrictions, use those
         if self.allowed_languages is not None:
             return self.allowed_languages
 
         # Otherwise, use contest language restrictions
-        return self.contest.languages if self.contest else None
+        return (
+            self.contest.languages
+            if self.contest
+            else [language.name for language in LANGUAGES]
+        )
 
     def set_default_output_only_submission_format(self) -> None:
         """
@@ -480,6 +487,12 @@ class Dataset(Base):
     testcases: dict[str, "Testcase"] = relationship(
         "Testcase",
         collection_class=attribute_mapped_collection("codename"),
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="dataset")
+
+    model_solution_metas: list["ModelSolutionMeta"] = relationship(
+        "ModelSolutionMeta",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="dataset")

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% import "macro/model_solution_subtasks.html" as ms %}
+
+{% block core %}
+{% include "fragments/model_solution_styles.html" %}
+
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Edit Model Solution</h1>
+</div>
+<form action="{{ url("model_solution", meta.id, "edit") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>Name:</td>
+      <td><input type="text" name="name" value="{{ meta.name }}" pattern="^(?!.*\.\.)([^/\\*?<>|:&quot;])+$" title="Cannot contain: / \ * ? < > | : &quot; or .." required /></td>
+      <td style="font-size: 0.9em; color: #666;">(identifier for export; changing may affect re-import matching)</td>
+    </tr>
+    <tr>
+      <td>Description:</td>
+      <td><input type="text" name="description" value="{{ meta.description }}" required /></td>
+    </tr>
+    <tr>
+      <td>Expected Score Min:</td>
+      <td><input type="number" step="0.01" min="0" name="expected_score_min" value="{{ meta.expected_score_min }}" class="ms-form-control" style="width: 100px;" required /></td>
+    </tr>
+    <tr>
+      <td>Expected Score Max:</td>
+      <td><input type="number" step="0.01" min="0" name="expected_score_max" value="{{ meta.expected_score_max }}" class="ms-form-control" style="width: 100px;" required /></td>
+    </tr>
+{% if subtasks %}
+    <tr>
+      <td></td>
+      <td>{{ ms.auto_calc_checkbox() }}</td>
+    </tr>
+    <tr>
+      <td colspan="2"><strong>Expected Subtask Scores:</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        {{ ms.subtask_table(subtasks, none, meta.subtask_expected_scores) }}
+      </td>
+    </tr>
+{% endif %}
+  </table>
+  <input type="submit" value="Update">
+  <input type="reset" value="Reset">
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize model solution subtask handlers (from aws_utils.js)
+    CMS.AWSUtils.initModelSolutionSubtasks();
+});
+</script>
+{% endblock core %}

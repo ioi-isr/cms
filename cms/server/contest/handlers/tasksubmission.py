@@ -204,6 +204,7 @@ class SubmissionStatusHandler(ContestHandler):
         SubmissionResult.COMPILING: N_("Compiling..."),
         SubmissionResult.COMPILATION_FAILED: N_("Compilation failed"),
         SubmissionResult.EVALUATING: N_("Evaluating..."),
+        SubmissionResult.EVALUATION_FAILED: N_("Evaluation system error"),
         SubmissionResult.SCORING: N_("Scoring..."),
         SubmissionResult.SCORED: N_("Evaluated"),
     }

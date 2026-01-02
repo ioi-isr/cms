@@ -48,6 +48,7 @@ from werkzeug.datastructures import LanguageAccept
 from werkzeug.http import parse_accept_header
 
 from cms.db import Contest
+from cms.server.util import exclude_internal_contests
 from cms.db.contest_folder import ContestFolder
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
 from cms.server import CommonRequestHandler
@@ -246,8 +247,10 @@ class ContestFolderBrowseHandler(BaseHandler):
         Excludes hidden folders and their descendants from the tree.
         """
         all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
-        all_contests = self.sql_session.query(Contest).order_by(Contest.name).all()
-        
+        all_contests = exclude_internal_contests(
+            self.sql_session.query(Contest)
+        ).order_by(Contest.name).all()
+
         folder_map = {}
         for folder in all_folders:
             folder_map[folder.id] = {
@@ -314,11 +317,10 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = (
+            contests = exclude_internal_contests(
                 self.sql_session.query(Contest)
                 .filter(Contest.folder_id.is_(None))
-                .all()
-            )
+            ).all()
         else:
             subfolders = (
                 self.sql_session.query(ContestFolder)
@@ -327,11 +329,10 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = (
+            contests = exclude_internal_contests(
                 self.sql_session.query(Contest)
                 .filter(Contest.folder == cur_folder)
-                .all()
-            )
+            ).all()
 
         # Build url helper for folder/contest entries
         def folder_href(f: ContestFolder) -> str:

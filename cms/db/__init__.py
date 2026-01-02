@@ -66,6 +66,8 @@ __all__ = [
     # usertest
     "UserTest", "UserTestFile", "UserTestManager", "UserTestResult",
     "UserTestExecutable",
+    "ModelSolutionMeta", "get_or_create_model_solution_participation",
+    "create_model_solution", "validate_model_solution_name",
     # printjob
     "PrintJob",
     "StatementView",
@@ -84,7 +86,7 @@ __all__ = [
 
 # Instantiate or import these objects.
 
-version = 47
+version = 48
 
 engine = create_engine(config.database.url, echo=config.database.debug,
                        pool_timeout=60, pool_recycle=120)
@@ -107,6 +109,9 @@ from .submission import Submission, File, Token, SubmissionResult, \
     Executable, Evaluation
 from .usertest import UserTest, UserTestFile, UserTestManager, \
     UserTestResult, UserTestExecutable
+from .modelsolution import ModelSolutionMeta, \
+    get_or_create_model_solution_participation, create_model_solution, \
+    validate_model_solution_name
 from .printjob import PrintJob
 from .statementview import StatementView
 from .scorecache import ParticipationTaskScore, ScoreHistory

@@ -45,8 +45,10 @@ from cms import utf8_decoder
 from cms.db.session import Session
 from cms.db import SessionGen, User, Team, Participation, Task, Contest
 from cms.db.filecacher import FileCacher
-from cmscontrib.importing import ImportDataError, update_contest, update_task
+from cmscontrib.importing import ImportDataError, update_contest, update_task, \
+    import_model_solutions
 from cmscontrib.loaders import choose_loader, build_epilog
+from cmscontrib.AddSubmission import maybe_send_notification
 from cmscontrib.loaders.base_loader import BaseLoader, ContestLoader
 
 
@@ -84,6 +86,9 @@ class ContestImporter:
         self.file_cacher = FileCacher()
 
         self.loader = loader_class(os.path.abspath(path), self.file_cacher)
+
+        # Track submission IDs for triggering evaluation after commit
+        self._imported_model_solution_submission_ids: list[int] = []
 
     def do_import(self):
         """Get the contest from the Loader and store it."""
@@ -138,6 +143,17 @@ class ContestImporter:
 
             session.commit()
             contest_id = contest.id
+
+        # Trigger evaluation for imported model solutions (after commit)
+        # This is a non-blocking attempt - if EvaluationService is not running,
+        # the model solutions will be picked up when it starts
+        for submission_id in self._imported_model_solution_submission_ids:
+            try:
+                maybe_send_notification(submission_id)
+            except Exception as e:
+                logger.warning(
+                    "Failed to notify EvaluationService about model solution "
+                    "submission %d: %s", submission_id, e)
 
         logger.info("Import finished (new contest id: %s).", contest_id)
         return True
@@ -209,6 +225,10 @@ class ContestImporter:
         task_loader = self.loader.get_task_loader(taskname)
         task: Task | None = session.query(Task).filter(Task.name == taskname).first()
 
+        # Track whether we should import model solutions
+        # (only when task is newly imported or updated)
+        should_import_model_solutions = False
+
         if task is None:
             # Task is not in the DB; if the user asked us to import it, we do
             # so, otherwise we return an error.
@@ -224,6 +244,7 @@ class ContestImporter:
                     "Could not import task \"%s\"." % taskname)
 
             session.add(task)
+            should_import_model_solutions = True
 
         elif not task_loader.task_has_changed():
             # Task is in the DB and has not changed, nothing to do.
@@ -239,6 +260,7 @@ class ContestImporter:
                     "Could not reimport task \"%s\"." % taskname)
             logger.info("Task \"%s\" data has changed, updating it.", taskname)
             update_task(task, new_task, get_statements=not self.no_statements)
+            should_import_model_solutions = True
 
         else:
             # Task is in the DB, has changed, and the user didn't ask to update
@@ -255,6 +277,22 @@ class ContestImporter:
 
         task.num = tasknum
         task.contest = contest
+
+        # Import model solutions if present and task was imported/updated
+        if should_import_model_solutions:
+            dataset = task.active_dataset
+            if dataset is not None and \
+                    hasattr(dataset, '_model_solutions_import_data') and \
+                    dataset._model_solutions_import_data:
+                try:
+                    import_model_solutions(
+                        session, task, dataset,
+                        dataset._model_solutions_import_data,
+                        track_submission_ids=self._imported_model_solution_submission_ids)
+                finally:
+                    # Clean up temporary attribute to avoid leaking it
+                    del dataset._model_solutions_import_data
+
         return task
 
     @staticmethod

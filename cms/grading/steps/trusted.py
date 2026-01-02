@@ -315,10 +315,16 @@ def checker_step(
         outcome, text = extract_outcome_and_text(sandbox)
     except ValueError as e:
         logger.error("Invalid output from checker: %s", e)
-        return False, None, None, stats
+        # Collect stdout/stderr for debugging (even though sandbox succeeded)
+        stats = _collect_trusted_output(sandbox, stats)
+        error_text = [f"Invalid checker output: {e} (see stdout/stderr in details)"]
+        return False, None, error_text, stats
     except FileNotFoundError as e:
         # This should not happen, as the redirect is handled by the sandbox.
         logger.error("Missing stdout or stderr file from checker: %s", e)
-        return False, None, None, stats
+        # Collect whatever output we can for debugging
+        stats = _collect_trusted_output(sandbox, stats)
+        error_text = [f"Missing checker output file: {e}"]
+        return False, None, error_text, stats
 
     return True, outcome, text, stats
