@@ -5,13 +5,6 @@
   <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Upload generator</h1>
 </div>
 
-{% set compiled_langs = [] %}
-{% for lang in LANGUAGES %}
-{% if lang.__class__.__name__ == 'CompiledLanguage' or lang.__class__.__bases__[0].__name__ == 'CompiledLanguage' %}
-{% do compiled_langs.append(lang) %}
-{% endif %}
-{% endfor %}
-
 <form enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "generators", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   <table>

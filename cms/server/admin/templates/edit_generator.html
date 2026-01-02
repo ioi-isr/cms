@@ -14,13 +14,13 @@
     <tr>
       <td>Input file names template (use * as a testcase codename, for example: input.* or *.in):</td>
       <td>
-        <input type="text" name="input_filename_template" value="{{ generator.input_filename_template }}">
+        <input type="text" name="input_filename_template" value="{{ generator.input_filename_template }}" pattern=".*\*.*" required title="Template must contain * placeholder">
       </td>
     </tr>
     <tr>
       <td>Output file names template (use * as a testcase codename, for example: output.* or *.out):</td>
       <td>
-        <input type="text" name="output_filename_template" value="{{ generator.output_filename_template }}">
+        <input type="text" name="output_filename_template" value="{{ generator.output_filename_template }}" pattern=".*\*.*" required title="Template must contain * placeholder">
       </td>
     </tr>
   </table>
