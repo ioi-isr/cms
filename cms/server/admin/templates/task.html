@@ -640,12 +640,10 @@ window.filterTestcases = function(dataset_id) {
 
       {% if subtask_info.get(dataset.id) %}
       {% set ds_ns = namespace(total_not_validated=0,
-                               has_validators=false,
                                not_validated_codenames=[]) %}
       {% for subtask in subtask_info[dataset.id] %}
         {% set validator = dataset.subtask_validators.get(subtask.idx) %}
         {% if validator %}
-          {% set ds_ns.has_validators = true %}
           {% if validator.validation_results %}
             {% set results_codenames = [] %}
             {% for r in validator.validation_results %}

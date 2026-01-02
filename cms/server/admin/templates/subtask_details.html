@@ -349,10 +349,10 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           {% endif %}
           <td>{{ tc_info.codename }}</td>
           <td>
-            <a href="javascript:void(0);" onclick="utils.show_file('input_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename)) }}')">Show input</a>
+            <a href="javascript:void(0);" onclick="utils.show_file('input_' + {{ tc_info.codename|tojson|forceescape }}, {{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename))|tojson|forceescape }})">Show input</a>
           </td>
           <td>
-            <a href="javascript:void(0);" onclick="utils.show_file('output_{{ tc_info.codename }}','{{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename)) }}')">Show output</a>
+            <a href="javascript:void(0);" onclick="utils.show_file('output_' + {{ tc_info.codename|tojson|forceescape }}, {{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename))|tojson|forceescape }})">Show output</a>
           </td>
           {% if validator %}
           <td>
@@ -414,7 +414,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     <td>Validator:</td>
     <td>
       {% if validator %}
-        <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
+        <a href="javascript:void(0);" onclick="utils.show_file({{ validator.filename|tojson|forceescape }}, {{ url("file", validator.digest, validator.filename)|tojson|forceescape }})">{{ validator.filename }}</a>
         {% if validator.executable_digest %}
           <span style="color: green;">(compiled)</span>
         {% else %}
