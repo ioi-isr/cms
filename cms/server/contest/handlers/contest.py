@@ -361,44 +361,14 @@ class ContestHandler(BaseHandler):
         return: True if the current user can access the task.
 
         """
-        # Only apply visibility filtering for training day contests
-        training_day = self.contest.training_day
-        if training_day is None:
-            return True
-
-        # If task has no visibility restrictions, it's visible to all
-        if not task.visible_to_tags:
-            return True
-
         # Must be logged in to access restricted tasks
         if self.current_user is None:
-            return False
+            return not task.visible_to_tags
 
-        # Find the student record for this participation
-        # Note: Student records are linked to the managing contest participation,
-        # not the training day participation. So we need to find the user's
-        # participation in the managing contest first.
-        managing_contest = training_day.training_program.managing_contest
-        managing_participation = self.sql_session.query(Participation).filter(
-            Participation.contest_id == managing_contest.id,
-            Participation.user_id == self.current_user.user_id
-        ).first()
-
-        if managing_participation is None:
-            return False
-
-        student = self.sql_session.query(Student).filter(
-            Student.participation_id == managing_participation.id,
-            Student.training_program_id == training_day.training_program_id
-        ).first()
-
-        if student is None:
-            return False
-
-        # Check if student has any matching tag
-        student_tags_set = set(student.student_tags)
-        task_tags_set = set(task.visible_to_tags)
-        return bool(student_tags_set & task_tags_set)
+        from cms.server.util import can_access_task
+        return can_access_task(
+            self.sql_session, task, self.current_user, self.contest.training_day
+        )
 
     def get_visible_tasks(self) -> list[Task]:
         """Return the list of tasks visible to the current user.

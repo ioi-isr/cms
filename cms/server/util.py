@@ -41,12 +41,68 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session
+from cms.db import Session, Student, Task, Participation
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
+if typing.TYPE_CHECKING:
+    from cms.db import Contest, TrainingDay
 
 logger = logging.getLogger(__name__)
+
+
+def can_access_task(sql_session: Session, task: "Task", participation: "Participation",
+                    training_day: "TrainingDay | None") -> bool:
+    """Check if a participation can access the given task.
+
+    For training day contests, tasks may have visibility restrictions
+    based on student tags. A task is accessible if:
+    - The task has no visible_to_tags (empty list = visible to all)
+    - The student has at least one tag matching the task's visible_to_tags
+
+    For non-training-day contests, all tasks are accessible.
+
+    sql_session: the database session.
+    task: the task to check access for.
+    participation: the participation to check access for.
+    training_day: the training day if this is a training day contest, else None.
+
+    return: True if the participation can access the task.
+
+    """
+    # Only apply visibility filtering for training day contests
+    if training_day is None:
+        return True
+
+    # If task has no visibility restrictions, it's visible to all
+    if not task.visible_to_tags:
+        return True
+
+    # Find the student record for this participation
+    # Note: Student records are linked to the managing contest participation,
+    # not the training day participation. So we need to find the user's
+    # participation in the managing contest first.
+    managing_contest = training_day.training_program.managing_contest
+    managing_participation = sql_session.query(Participation).filter(
+        Participation.contest_id == managing_contest.id,
+        Participation.user_id == participation.user_id
+    ).first()
+
+    if managing_participation is None:
+        return False
+
+    student = sql_session.query(Student).filter(
+        Student.participation_id == managing_participation.id,
+        Student.training_program_id == training_day.training_program_id
+    ).first()
+
+    if student is None:
+        return False
+
+    # Check if student has any matching tag
+    student_tags_set = set(student.student_tags)
+    task_tags_set = set(task.visible_to_tags)
+    return bool(student_tags_set & task_tags_set)
 
 
 # TODO: multi_contest is only relevant for CWS
