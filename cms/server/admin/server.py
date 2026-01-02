@@ -164,6 +164,8 @@ class AdminWebServer(WebService):
             queries['max_evaluations'] = not_evaluated.filter(
                 SubmissionResult.evaluation_tries >=
                 EvaluationService.EvaluationService.MAX_EVALUATION_TRIES)
+            queries['evaluation_fail'] = evaluated.filter(
+                SubmissionResult.filter_evaluation_failed())
             queries['scoring'] = evaluated.filter(
                 not_(SubmissionResult.filter_scored()))
             queries['scored'] = evaluated.filter(
@@ -189,6 +191,5 @@ class AdminWebServer(WebService):
                 *(queries[key] for key in keys[1:])).all()
 
         stats = {key: value for value, key in results}
-        stats['compiling'] += 2 * stats['total'] - sum(stats.values())
 
         return stats

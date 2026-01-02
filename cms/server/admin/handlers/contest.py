@@ -32,6 +32,7 @@ from datetime import timedelta
 
 from cms import ServiceCoord, get_service_shards, get_service_address
 from cms.db import Contest, Participation, Submission, Task, ContestFolder
+from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 from sqlalchemy import func
 
@@ -98,6 +99,9 @@ class AddContestHandler(
 
             self.get_string(attrs, "name", empty=None)
             assert attrs.get("name") is not None, "No contest name specified."
+            assert not attrs.get("name").startswith("__"), \
+                "Contest name cannot start with '__' " \
+                "(reserved for system contests)."
             attrs["description"] = attrs["name"]
 
             # Create the contest.
@@ -143,6 +147,9 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_string(attrs, "description")
 
             assert attrs.get("name") is not None, "No contest name specified."
+            assert not attrs.get("name").startswith("__"), \
+                "Contest name cannot start with '__' " \
+                "(reserved for system contests)."
 
             allowed_localizations: str = self.get_argument("allowed_localizations", "")
             if allowed_localizations:
@@ -287,10 +294,10 @@ class RemoveContestHandler(BaseHandler):
         self.render_params_for_remove_confirmation(submission_query)
         
         self.r_params["task_count"] = len(contest.tasks)
-        self.r_params["other_contests"] = self.sql_session.query(Contest)\
-            .filter(Contest.id != contest.id)\
-            .order_by(Contest.name)\
-            .all()
+        self.r_params["other_contests"] = exclude_internal_contests(
+            self.sql_session.query(Contest)
+            .filter(Contest.id != contest.id)
+        ).order_by(Contest.name).all()
         
         self.render("contest_remove.html", **self.r_params)
 

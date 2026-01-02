@@ -112,6 +112,8 @@
             Evaluating...
           {% elif status == SubmissionResult.SCORING %}
             Scoring...
+          {% elif status == SubmissionResult.EVALUATION_FAILED %}
+            Evaluation system error
           {% elif status == SubmissionResult.SCORED %}
             {% if st is defined %}
               {% set max_score = st.max_score %}
@@ -163,8 +165,10 @@
                 {{- sr.compilation_sandbox_paths[loop.index0] -}}
               </a>
             {% endfor %}
-          {% else %}
+          {% elif sr.compilation_sandbox_paths %}
             {{ sr.compilation_sandbox_paths|join(" ") }}
+          {% else %}
+            N/A
           {% endif %}
 
           <button onclick="cmsrpc_request(
@@ -186,7 +190,97 @@
       </tr>
       <tr>
         <td>Failures during evaluation</td>
-        <td>{{ sr.evaluation_tries }}</td>
+        <td>
+          {{ sr.evaluation_tries }}
+          {% if sr.evaluation_tries > 0 %}
+          <div id="title_evaluation_failure_details" class="toggling_off">
+            <button type="button" onclick="utils.toggle('evaluation_failure_details')">Details</button>
+            <div id="evaluation_failure_details" style="display: none; margin-top: 10px;">
+              <table class="nested bordered">
+                {% if sr.last_evaluation_failure_details %}
+                <tr>
+                  <td><strong>Exit status</strong></td>
+                  <td>{{ sr.last_evaluation_failure_details.get('exit_status', 'N/A') }}</td>
+                </tr>
+                {% if sr.last_evaluation_failure_details.get('signal') %}
+                <tr>
+                  <td><strong>Signal</strong></td>
+                  <td>{{ sr.last_evaluation_failure_details.get('signal')|format_signal }}</td>
+                </tr>
+                {% endif %}
+                {% if sr.last_evaluation_failure_details.get('execution_time') is not none %}
+                <tr>
+                  <td><strong>Execution time</strong></td>
+                  <td>{{ sr.last_evaluation_failure_details.get('execution_time') }} s</td>
+                </tr>
+                {% endif %}
+                {% if sr.last_evaluation_failure_details.get('execution_memory') is not none %}
+                <tr>
+                  <td><strong>Memory used</strong></td>
+                  <td>{{ (sr.last_evaluation_failure_details.get('execution_memory') // (1024 * 1024)) }} MiB</td>
+                </tr>
+                {% endif %}
+                {% if sr.last_evaluation_failure_details.get('stdout') %}
+                <tr>
+                  <td><strong>Standard output</strong></td>
+                  <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stdout') }}</pre></td>
+                </tr>
+                {% endif %}
+                {% if sr.last_evaluation_failure_details.get('stderr') %}
+                <tr>
+                  <td><strong>Standard error</strong></td>
+                  <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stderr') }}</pre></td>
+                </tr>
+                {% endif %}
+                {% endif %}
+                {% if sr.last_evaluation_failure_text is not none %}
+                <tr>
+                  <td><strong>Error text</strong></td>
+                  <td>{{ sr.last_evaluation_failure_text|format_status_text }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                  <td><strong>Worker shard</strong></td>
+                  <td>{% if sr.last_evaluation_failure_shard is not none %}{{ sr.last_evaluation_failure_shard }}{% else %}N/A{% endif %}</td>
+                </tr>
+                <tr>
+                  <td><strong>Sandbox</strong></td>
+                  <td>
+                    {% if sr.last_evaluation_failure_sandbox_digests %}
+                      {% for sandbox_digest in sr.last_evaluation_failure_sandbox_digests %}
+                        {%- set filename = "submission_%s_evaluation_failure_sandbox_%s.tar.gz"|format(sr.submission_id, loop.index) -%}
+                        <a href="{{ url("file", sandbox_digest, filename) }}">
+                          {{- sr.last_evaluation_failure_sandbox_paths[loop.index0] -}}
+                        </a>
+                      {% endfor %}
+                    {% elif sr.last_evaluation_failure_sandbox_paths %}
+                      {{ sr.last_evaluation_failure_sandbox_paths|join(" ") }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+
+                    <button onclick="cmsrpc_request(
+                                     'EvaluationService', 0,
+                                     'invalidate_submission', {
+                                       'submission_id': {{ s.id }},
+                                       'dataset_id': {{ shown_dataset.id }},
+                                       'level': 'evaluation',
+                                       'archive_sandbox': true
+                                     },
+                                     function(response) { utils.redirect_if_ok('{{ url("submission", s.id, shown_dataset.id) }}', response); }
+                    );"
+                    {% if not admin.permission_all %}
+                    disabled
+                    {% endif %}>
+                      Rerun and archive
+                    </button>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          {% endif %}
+        </td>
       </tr>
         {% set t, m = sr.get_max_evaluation_resources() %}
       <tr>
@@ -297,8 +391,10 @@
                   {{- ev.evaluation_sandbox_paths[loop.index0] -}}
                 </a>
               {% endfor %}
-            {% else %}
+            {% elif ev.evaluation_sandbox_paths %}
               {{ ev.evaluation_sandbox_paths|join(" ") }}
+            {% else %}
+              N/A
             {% endif %}
 
             <button

@@ -292,6 +292,7 @@ class SubmissionResult(Base):
     EVALUATING = 3
     SCORING = 4
     SCORED = 5
+    EVALUATION_FAILED = 6
 
     __tablename__ = 'submission_results'
     __table_args__ = (
@@ -370,10 +371,12 @@ class SubmissionResult(Base):
         nullable=True)
 
     # Evaluation outcome (can be None = yet to evaluate, "ok" =
-    # evaluation successful). At any time, this should be equal to
-    # evaluations != [].
+    # evaluation successful, "fail" = evaluation failed due to system
+    # error like checker/manager crash). When "ok", all testcases have
+    # been evaluated successfully. For "fail" state, evaluations may be
+    # partial or empty depending on when the failure occurred.
     evaluation_outcome: str | None = Column(
-        Enum("ok", name="evaluation_outcome"),
+        Enum("ok", "fail", name="evaluation_outcome"),
         nullable=True)
 
     # Number of failures during evaluation.
@@ -381,6 +384,27 @@ class SubmissionResult(Base):
         Integer,
         nullable=False,
         default=0)
+
+    # Information about the last evaluation failure (for debugging).
+    # These fields store details about why the last evaluation attempt failed,
+    # which helps admins diagnose issues with checkers or managers.
+    last_evaluation_failure_text: list[str] | None = Column(
+        ARRAY(String),
+        nullable=True)
+    last_evaluation_failure_shard: int | None = Column(
+        Integer,
+        nullable=True)
+    last_evaluation_failure_sandbox_paths: list[str] | None = Column(
+        ARRAY(Unicode),
+        nullable=True)
+    last_evaluation_failure_sandbox_digests: list[str] | None = Column(
+        ARRAY(String),
+        nullable=True)
+    # JSONB field storing detailed failure information including:
+    # exit_status, signal, execution_time, execution_memory, stdout, stderr
+    last_evaluation_failure_details: object | None = Column(
+        JSONB,
+        nullable=True)
 
     # Score as computed by ScoringService. Null means not yet scored.
     score: float | None = Column(
@@ -441,6 +465,8 @@ class SubmissionResult(Base):
             return SubmissionResult.COMPILING
         elif self.compilation_failed():
             return SubmissionResult.COMPILATION_FAILED
+        elif self.evaluation_failed():
+            return SubmissionResult.EVALUATION_FAILED
         elif not self.evaluated():
             return SubmissionResult.EVALUATING
         elif not self.scored():
@@ -538,10 +564,32 @@ class SubmissionResult(Base):
         """
         return SubmissionResult.compilation_outcome == "ok"
 
+    def evaluation_failed(self) -> bool:
+        """Return whether the submission result failed evaluation.
+
+        return: True if the evaluation failed due to a system error
+            (e.g., checker/manager crash), False if not yet evaluated
+            or evaluation was successful.
+
+        """
+        return self.evaluation_outcome == "fail"
+
+    @staticmethod
+    def filter_evaluation_failed():
+        """Return a filtering expression for submission results failing
+        evaluation.
+
+        """
+        return SubmissionResult.evaluation_outcome == "fail"
+
+
     def evaluated(self) -> bool:
         """Return whether the submission result has been evaluated.
 
-        return: True if evaluated, False otherwise.
+        This returns True if evaluation is terminal (either success or failure),
+        meaning no more evaluation operations should be scheduled.
+
+        return: True if evaluated (terminal state), False otherwise.
 
         """
         return self.evaluation_outcome is not None
@@ -550,8 +598,27 @@ class SubmissionResult(Base):
     def filter_evaluated():
         """Return a filtering lambda for evaluated submission results.
 
+        This filters for terminal evaluation state (either success or failure).
+
         """
         return SubmissionResult.evaluation_outcome.isnot(None)
+
+    def evaluation_succeeded(self) -> bool:
+        """Return whether the submission result was evaluated successfully.
+
+        return: True if evaluation succeeded, False if not yet evaluated
+            or evaluation failed.
+
+        """
+        return self.evaluation_outcome == "ok"
+
+    @staticmethod
+    def filter_evaluation_succeeded():
+        """Return a filtering expression for submission results passing
+        evaluation.
+
+        """
+        return SubmissionResult.evaluation_outcome == "ok"
 
     def needs_scoring(self) -> bool:
         """Return whether the submission result needs to be scored.
@@ -609,6 +676,11 @@ class SubmissionResult(Base):
         self.invalidate_score()
         self.evaluation_outcome = None
         self.evaluation_tries = 0
+        self.last_evaluation_failure_text = None
+        self.last_evaluation_failure_shard = None
+        self.last_evaluation_failure_sandbox_paths = None
+        self.last_evaluation_failure_sandbox_digests = None
+        self.last_evaluation_failure_details = None
         if testcase_id:
             self.evaluations = [e for e in self.evaluations if e.testcase_id != testcase_id]
         else:
@@ -632,11 +704,13 @@ class SubmissionResult(Base):
         """
         self.compilation_outcome = "ok" if success else "fail"
 
-    def set_evaluation_outcome(self):
-        """Set the evaluation outcome (always ok now).
+    def set_evaluation_outcome(self, success: bool = True):
+        """Set the evaluation outcome based on success.
+
+        success: if the evaluation was successful.
 
         """
-        self.evaluation_outcome = "ok"
+        self.evaluation_outcome = "ok" if success else "fail"
 
 
 class Executable(Base):

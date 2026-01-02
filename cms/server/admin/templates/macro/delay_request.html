@@ -32,14 +32,15 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
       <strong>Reason:</strong> {{ req.reason }}<br>
       {% if req.status != 'pending' %}
         <strong>Status:</strong> {{ req.status }}
+        {% if req.status == 'rejected' and req.rejection_reason %}
+          <br><strong>Rejection Reason:</strong> {{ req.rejection_reason }}
+        {% endif %}
         {% if req.processed_timestamp %}
           <br><strong>Processed:</strong> {{ req.processed_timestamp|format_datetime }}
         {% endif %}
         {% if req.admin %}
           <br><strong>Processed by:</strong> {{ req.admin.name }}
         {% endif %}
-      {% else %}
-        <strong>Current Delay:</strong> {{ req.participation.delay_time.total_seconds()|int }} seconds<br>
       {% endif %}
     </div>
     {% if show_buttons and req.status == 'pending' and (admin.permission_all or admin.permission_messaging) %}
@@ -51,6 +52,9 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
         <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" style="display: inline;">
           {{ xsrf_form_html|safe }}
           <button type="submit" class="btn btn-danger">Reject</button>
+          <div style="display: inline-block; margin-right: 5px;">
+            <input type="text" name="rejection_reason" placeholder="Rejection reason (optional)" style="width: 250px;">
+          </div>
         </form>
       </div>
     {% endif %}

@@ -40,6 +40,7 @@ from . import CastingArray, Codename, Base, Admin, Contest
 import typing
 if typing.TYPE_CHECKING:
     from . import PrintJob, Submission, UserTest
+    from .scorecache import ParticipationTaskScore, ScoreHistory
 
 class User(Base):
     """Class to store a user.
@@ -316,6 +317,18 @@ class Participation(Base):
         passive_deletes=True,
         back_populates="participation")
 
+    task_scores: list["ParticipationTaskScore"] = relationship(
+        "ParticipationTaskScore",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="participation")
+
+    score_history: list["ScoreHistory"] = relationship(
+        "ScoreHistory",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="participation")
+
 
 class Message(Base):
     """Class to store a private message from the managers to the
@@ -491,6 +504,11 @@ class DelayRequest(Base):
     participation: Participation = relationship(
         Participation,
         back_populates="delay_requests")
+
+    # Reason for rejection (only set when status is 'rejected').
+    rejection_reason: str | None = Column(
+        Unicode,
+        nullable=True)
 
     # Admin that processed the request (or null if not processed yet or
     # if the admin has been later deleted). Admins only loosely "own" a

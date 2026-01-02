@@ -101,6 +101,10 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
       Evaluating...
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
+      {% elif status == SubmissionResult.EVALUATION_FAILED %}
+      Evaluation system error
+      <div id="evaluation_{{ s.id }}" style="display: none;">
+
       {% elif status == SubmissionResult.SCORING %}
       Scoring...
       <div id="evaluation_{{ s.id }}" style="display: none;">

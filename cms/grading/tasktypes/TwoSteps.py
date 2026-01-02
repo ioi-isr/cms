@@ -333,12 +333,16 @@ class TwoSteps(TaskType):
 
                 # Otherwise evaluate the output file.
                 else:
-                    box_success, outcome, text = eval_output(
+                    box_success, outcome, text, checker_stats = eval_output(
                         file_cacher, job,
                         TwoSteps.CHECKER_CODENAME
                         if self._uses_checker() else None,
                         user_output_path=second_sandbox.relative_path(
                             TwoSteps.OUTPUT_FILENAME))
+                    # On eval_output failure (sandbox error or checker crash),
+                    # use checker stats for debugging if available.
+                    if not box_success and checker_stats is not None:
+                        stats = checker_stats
 
         # Fill in the job with the results.
         job.success = box_success

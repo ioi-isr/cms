@@ -40,6 +40,8 @@ except:
 
 import tornado.web
 
+from sqlalchemy import and_, exists
+
 from cms.db import Contest, Message, Participation, Submission, User, Team
 from cmscommon.crypto import validate_password_strength
 from cmscommon.datetime import make_datetime
@@ -61,10 +63,13 @@ class ContestUsersHandler(BaseHandler):
         self.r_params["bulk_add_results"] = None
         self.r_params["unassigned_users"] = \
             self.sql_session.query(User)\
-                .filter(User.id.notin_(
-                    self.sql_session.query(Participation.user_id)
-                        .filter(Participation.contest == self.contest)
-                        .all()))\
+                .filter(~exists().where(
+                    and_(
+                        Participation.user_id == User.id,
+                        Participation.contest == self.contest
+                    )
+                ))\
+                .filter(~User.username.like(r'\_\_%', escape='\\'))\
                 .all()
         self.render("contest_users.html", **self.r_params)
 
@@ -154,7 +159,7 @@ class AddContestUserHandler(BaseHandler):
 
         try:
             user_id: str = self.get_argument("user_id")
-            assert user_id != "null", "Please select a valid user"
+            assert user_id != "", "Please select a valid user"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -244,10 +249,13 @@ class BulkAddContestUsersHandler(BaseHandler):
             self.r_params["users_added"] = users_added
             self.r_params["unassigned_users"] = \
                 self.sql_session.query(User)\
-                    .filter(User.id.notin_(
-                        self.sql_session.query(Participation.user_id)
-                            .filter(Participation.contest == self.contest)
-                            .all()))\
+                    .filter(~exists().where(
+                        and_(
+                            Participation.user_id == User.id,
+                            Participation.contest == self.contest
+                        )
+                    ))\
+                    .filter(~User.username.like(r'\_\_%', escape='\\'))\
                     .all()
             self.render("contest_users.html", **self.r_params)
 

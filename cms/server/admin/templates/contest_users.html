@@ -58,8 +58,8 @@
 <form action="{{ url("contest", contest.id, "users", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Add a new user:
-  <select name="user_id">
-    <option value="null" selected>Select a new user</option>
+  <select name="user_id" class="searchable-select">
+    <option value="" selected disabled hidden>Select a new user...</option>
     {% for u in unassigned_users %}
     <option value="{{ u.id }}">
       {{ u.username }}

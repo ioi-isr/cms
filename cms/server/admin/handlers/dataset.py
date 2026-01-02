@@ -43,20 +43,56 @@ except:
 
 import tornado.web
 
-from cms.db import Dataset, Manager, Message, Participation, \
+from cms import config
+from cms.db import Dataset, Generator, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
-from cms.grading.tasktypes import get_task_type_class
-from cms.grading.tasktypes.util import create_sandbox
-from cms.grading.languagemanager import filename_to_language
+from cms.grading.tasktypes.util import \
+    get_allowed_manager_basenames, compile_manager_bytes, create_sandbox
+from cms.grading.languagemanager import filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
-from cms.grading.steps.compilation import compilation_step
 from cms.grading.scoring import compute_changes_for_dataset
 from cmscommon.datetime import make_datetime
-from cmscommon.importers import import_testcases_from_zipfile
+from cmscommon.importers import import_testcases_from_zipfile, compile_template_regex
 from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def check_compiled_file_conflict(filename, allowed_basenames, existing_managers):
+    """Check if uploading a compiled file conflicts with existing source.
+
+    When a compiled file (no extension) is uploaded for a basename that has
+    an existing source file, this would conflict with auto-compilation.
+
+    Args:
+        filename: The filename being uploaded.
+        allowed_basenames: Set of basenames that are auto-compiled.
+        existing_managers: Dict or set of existing manager filenames.
+
+    Returns:
+        The conflicting source filename if a conflict exists, None otherwise.
+    """
+    base_noext = os.path.splitext(os.path.basename(filename))[0]
+    has_extension = "." in os.path.basename(filename)
+
+    if base_noext in allowed_basenames and not has_extension:
+        for existing_filename in existing_managers:
+            existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
+            existing_has_ext = "." in os.path.basename(existing_filename)
+            if existing_base == base_noext and existing_has_ext:
+                return existing_filename
+    return None
+
+
+def validate_template(template: str, name: str) -> str | None:
+    """Validate a filename template contains exactly one '*'.
+
+    Return an error message if invalid, None if valid.
+    """
+    if template.count('*') != 1:
+        return "%s template must contain exactly one '*'." % name.capitalize()
+    return None
 
 
 class DatasetSubmissionsHandler(BaseHandler):
@@ -378,134 +414,107 @@ class AddManagerHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        manager = self.request.files["manager"][0]
-        task_name = task.name
+        # Check if any files were uploaded
+        if "manager" not in self.request.files:
+            self.service.add_notification(
+                make_datetime(),
+                "No file selected",
+                "Please select at least one file to upload.")
+            self.redirect(fallback_page)
+            return
 
-        filename = manager["filename"]
-        body = manager["body"]
+        managers = self.request.files["manager"]
+        task_name = task.name
 
         # Decide which auto-compiled basenames are allowed for this task type.
         # Use TaskType constants to avoid hardcoding names and to avoid
         # compiling unintended files (e.g., manager.%l for TwoSteps).
-        allowed_compile_basenames: set[str] = set()
-        try:
-            tt_cls = get_task_type_class(dataset.task_type)
-            # Many task types (Batch, OutputOnly, TwoSteps, BatchAndOutput)
-            # define CHECKER_CODENAME = "checker"; only compile that.
-            if hasattr(tt_cls, "CHECKER_CODENAME"):
-                allowed_compile_basenames.add(getattr(tt_cls, "CHECKER_CODENAME"))
-            # Communication defines MANAGER_FILENAME = "manager"; allow that.
-            if hasattr(tt_cls, "MANAGER_FILENAME"):
-                allowed_compile_basenames.add(getattr(tt_cls, "MANAGER_FILENAME"))
-        except Exception:
-            # If anything goes wrong, fall back to not auto-compiling.
-            allowed_compile_basenames = set()
-        base_noext = os.path.splitext(os.path.basename(filename))[0]
+        allowed_compile_basenames = get_allowed_manager_basenames(dataset.task_type)
 
-        # compiled files (no extension) when a source file already exists.
-        has_extension = "." in os.path.basename(filename)
-        if (base_noext in allowed_compile_basenames and not has_extension):
-            for existing_filename in dataset.managers.keys():
-                existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
-                existing_has_ext = "." in os.path.basename(existing_filename)
-                if existing_base == base_noext and existing_has_ext:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Cannot upload compiled manager",
-                        ("A source file '%s' already exists for '%s'. "
-                         "Compiled files are auto-generated from source. "
-                         "Please upload the source file instead, or delete "
-                         "the existing source first." %
-                         (existing_filename, base_noext)))
-                    self.redirect(fallback_page)
-                    return
+        # Check all files for compiled file conflicts before processing
+        for manager in managers:
+            filename = manager["filename"]
+            base_noext = os.path.splitext(os.path.basename(filename))[0]
+
+            # Check if uploading a compiled file conflicts with existing source
+            conflicting_source = check_compiled_file_conflict(
+                filename, allowed_compile_basenames, dataset.managers.keys())
+            if conflicting_source is not None:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Cannot upload compiled manager",
+                    ("A source file '%s' already exists for '%s'. "
+                     "Compiled files are auto-generated from source. "
+                     "Please upload the source file instead, or delete "
+                     "the existing source first." %
+                     (conflicting_source, base_noext)))
+                self.redirect(fallback_page)
+                return
 
         self.sql_session.close()
 
-        # If a source file for a known compiled language is uploaded,
-        # compile it into an executable manager.
-        compiled_filename = None
-        compiled_bytes = None
-        try:
-            language = filename_to_language(filename)
-        except Exception:
-            language = None
+        def notify(title, text):
+            self.service.add_notification(make_datetime(), title, text)
 
-        if (language is not None
-                and isinstance(language, CompiledLanguage)
-                and base_noext in allowed_compile_basenames):
-            safe_src = os.path.basename(filename)
-            compiled_filename = base_noext
-            
-            sandbox = None
+        # Phase 1: Compile all files first, collecting results in memory.
+        # This ensures no files are stored in file_cacher if any compilation fails.
+        planned_entries: list[tuple[str, bytes]] = []  # (filename, content_bytes)
+        for manager in managers:
+            filename = manager["filename"]
+            body = manager["body"]
+            base_noext = os.path.splitext(os.path.basename(filename))[0]
+
+            # Always plan to store the original upload.
+            planned_entries.append((filename, body))
+
+            # If a source file for a known compiled language is uploaded,
+            # compile it into an executable manager.
+            language = filename_to_language(filename)
+
+            if (language is not None
+                    and isinstance(language, CompiledLanguage)
+                    and base_noext in allowed_compile_basenames):
+                compiled_filename = base_noext
+                success, compiled_bytes, _stats = compile_manager_bytes(
+                    self.service.file_cacher,
+                    filename,
+                    body,
+                    compiled_filename,
+                    sandbox_name="admin_compile",
+                    for_evaluation=True,
+                    notify=notify
+                )
+                
+                if not success:
+                    self.redirect(fallback_page)
+                    return
+
+                # Plan to store the compiled executable.
+                if compiled_bytes is not None:
+                    planned_entries.append((compiled_filename, compiled_bytes))
+
+        # Phase 2: All compilations succeeded, now store all files in file_cacher.
+        all_stored_entries: list[tuple[str, str]] = []  # (filename, digest)
+        for filename, content in planned_entries:
             try:
-                sandbox = create_sandbox(self.service.file_cacher, name="admin_compile")
-                
-                sandbox.create_file_from_string(safe_src, body)
-                
-                commands = language.get_compilation_commands(
-                    [safe_src], compiled_filename, for_evaluation=True)
-                
-                box_success, compilation_success, text, stats = \
-                    compilation_step(sandbox, commands)
-                
-                if not box_success:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Manager compilation failed",
-                        "Sandbox error during compilation. See logs for details.")
-                    self.redirect(fallback_page)
-                    return
-                
-                if not compilation_success:
-                    stdout = stats.get("stdout", "") if stats else ""
-                    stderr = stats.get("stderr", "") if stats else ""
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Manager compilation failed",
-                        ("Compilation failed. Command:%r\nStdout:\n%s\nStderr:\n%s" %
-                         (commands, stdout, stderr)))
-                    self.redirect(fallback_page)
-                    return
-                
-                compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
-                
+                digest = self.service.file_cacher.put_file_content(
+                    content, "Task manager for %s" % task_name)
+                all_stored_entries.append((filename, digest))
             except Exception as error:
+                logger.warning("Failed to store manager '%s'", filename, exc_info=True)
                 self.service.add_notification(
                     make_datetime(),
-                    "Manager compilation error",
-                    repr(error))
+                    "Manager storage failed",
+                    "Error storing '%s': %s" % (filename, repr(error)))
                 self.redirect(fallback_page)
                 return
-            finally:
-                if sandbox:
-                    sandbox.cleanup(delete=True)
 
-        # Store the appropriate content(s) into the file cache.
-        stored_entries: list[tuple[str, str]] = []  # (filename, digest)
-        try:
-            # Always store the original upload.
-            orig_digest = self.service.file_cacher.put_file_content(
-                body, "Task manager for %s" % task_name)
-            stored_entries.append((filename, orig_digest))
-            # If compilation happened, also store compiled executable.
-            if compiled_bytes is not None and compiled_filename is not None:
-                comp_digest = self.service.file_cacher.put_file_content(
-                    compiled_bytes, "Compiled task manager for %s" % task_name)
-                stored_entries.append((compiled_filename, comp_digest))
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(),
-                "Manager storage failed",
-                repr(error))
-            self.redirect(fallback_page)
-            return
-
+        # Phase 3: Update database with all manager records.
         self.sql_session = Session()
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        for fname, dig in stored_entries:
+        for fname, dig in all_stored_entries:
             existing_manager = dataset.managers.get(fname)
             if existing_manager is not None:
                 existing_manager.digest = dig
@@ -668,16 +677,30 @@ class AddTestcasesHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
+        # Check for empty file
+        if len(archive["body"]) == 0:
+            self.service.add_notification(
+                make_datetime(),
+                "Empty file",
+                "The selected archive is empty. Please select a non-empty zip file.")
+            self.redirect(fallback_page)
+            return
+
         public = self.get_argument("public", None) is not None
         overwrite = self.get_argument("overwrite", None) is not None
 
         # Get input/output file names templates, or use default ones.
         input_template: str = self.get_argument("input_template", "input.*")
         output_template: str = self.get_argument("output_template", "output.*")
-        input_re = re.compile(re.escape(input_template).replace("\\*",
-                              "(.*)") + "$")
-        output_re = re.compile(re.escape(output_template).replace("\\*",
-                               "(.*)") + "$")
+        
+        try:
+            input_re = compile_template_regex(input_template)
+            output_re = compile_template_regex(output_template)
+        except ValueError as e:
+            self.service.add_notification(
+                make_datetime(), "Invalid template", str(e))
+            self.redirect(fallback_page)
+            return
 
         fp = io.BytesIO(archive["body"])
         try:
@@ -731,6 +754,59 @@ class DeleteTestcaseHandler(BaseHandler):
         self.write("./%d" % task_id)
 
 
+class DeleteSelectedTestcasesHandler(BaseHandler):
+    """Delete multiple selected testcases from a dataset.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        task_id = task.id
+
+        # Collect selected testcase IDs from the request.
+        id_strings = self.get_arguments("testcase_id")
+
+        # If nothing was selected, just redirect back without doing anything.
+        if not id_strings:
+            self.write("./%d" % task_id)
+            return
+
+        testcases = []
+        for id_str in id_strings:
+            try:
+                tid = int(id_str)
+            except ValueError:
+                raise tornado.web.HTTPError(400)
+            tc = self.safe_get_item(Testcase, tid)
+
+            # Protect against mixing datasets.
+            if tc.dataset is not dataset:
+                raise tornado.web.HTTPError(400)
+
+            testcases.append(tc)
+
+        # Delete all selected testcases.
+        for tc in testcases:
+            self.sql_session.delete(tc)
+
+        # Handle OutputOnly tasks
+        if dataset.active and dataset.task_type == "OutputOnly":
+            for tc in testcases:
+                dataset.testcases.pop(tc.codename, None)
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
+
+        if self.try_commit():
+            # max_score and/or extra_headers might have changed.
+            self.service.proxy_service.reinitialize()
+        self.write("./%d" % task_id)
+
+
 class DownloadTestcasesHandler(BaseHandler):
     """Download all testcases in a zip file.
 
@@ -760,11 +836,14 @@ class DownloadTestcasesHandler(BaseHandler):
         output_template: str = self.get_argument("output_template", "output.*")
 
         # Template validations
-        if input_template.count('*') != 1 or output_template.count('*') != 1:
+        error = validate_template(input_template, "input")
+        if error is None:
+            error = validate_template(output_template, "output")
+        if error is not None:
             self.service.add_notification(
                 make_datetime(),
                 "Invalid template format",
-                "You must have exactly one '*' in input/output template.")
+                error)
             self.redirect(fallback_page)
             return
 
@@ -790,3 +869,444 @@ class DownloadTestcasesHandler(BaseHandler):
                         "attachment; filename=\"%s\"" % zip_filename)
 
         self.write(temp_file.getvalue())
+
+
+class AddGeneratorHandler(BaseHandler):
+    """Add a generator to a dataset.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.render("add_generator.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        fallback_page = self.url("dataset", dataset_id, "generators", "add")
+
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        task_name = task.name
+
+        generator_file = self.request.files.get("generator")
+        if not generator_file:
+            self.service.add_notification(
+                make_datetime(),
+                "No generator file",
+                "Please upload a generator source file.")
+            self.redirect(fallback_page)
+            return
+
+        generator_file = generator_file[0]
+        filename = generator_file["filename"]
+        body = generator_file["body"]
+
+        input_filename_template = self.get_argument(
+            "input_filename_template", "input.*").strip()
+        output_filename_template = self.get_argument(
+            "output_filename_template", "output.*").strip()
+
+        error = validate_template(input_filename_template, "input")
+        if error is None:
+            error = validate_template(output_filename_template, "output")
+        if error is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid template",
+                error)
+            self.redirect(fallback_page)
+            return
+
+        # Get language from form (explicit selection) instead of auto-detection
+        # This allows distinguishing between languages with the same extension
+        # (e.g., PyPy vs CPython for .py files)
+        language_name = self.get_argument("language", "").strip()
+        if not language_name:
+            # Fallback to auto-detection if no language selected
+            language = filename_to_language(filename)
+            if language is None:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Unknown language",
+                    "Could not detect language for file '%s'." % filename)
+                self.redirect(fallback_page)
+                return
+            language_name = language.name
+        else:
+            try:
+                language = get_language(language_name)
+            except KeyError:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Unknown language",
+                    "Language '%s' is not supported." % language_name)
+                self.redirect(fallback_page)
+                return
+
+        if not isinstance(language, CompiledLanguage):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid language",
+                "Generator must be a compiled language, not '%s'." %
+                language.name)
+            self.redirect(fallback_page)
+            return
+
+        self.sql_session.close()
+
+        compiled_filename = "generator"
+
+        def notify(title, text):
+            self.service.add_notification(make_datetime(), title, text)
+
+        success, compiled_bytes, _stats = compile_manager_bytes(
+            self.service.file_cacher,
+            filename,
+            body,
+            compiled_filename,
+            sandbox_name="admin_compile",
+            for_evaluation=True,
+            notify=notify,
+            language_name=language_name
+        )
+
+        if not success:
+            self.redirect(fallback_page)
+            return
+
+        try:
+            source_digest = self.service.file_cacher.put_file_content(
+                body, "Generator source for %s" % task_name)
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator storage failed",
+                "Error storing source: %s" % repr(error))
+            self.redirect(fallback_page)
+            return
+
+        executable_digest = None
+        if compiled_bytes is not None:
+            try:
+                executable_digest = self.service.file_cacher.put_file_content(
+                    compiled_bytes, "Compiled generator for %s" % task_name)
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Generator storage failed",
+                    "Error storing executable: %s" % repr(error))
+                self.redirect(fallback_page)
+                return
+
+        self.sql_session = Session()
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        existing_generator = dataset.generators.get(filename)
+        if existing_generator is not None:
+            existing_generator.digest = source_digest
+            existing_generator.executable_digest = executable_digest
+            existing_generator.input_filename_template = input_filename_template
+            existing_generator.output_filename_template = output_filename_template
+            existing_generator.language_name = language_name
+        else:
+            generator = Generator(
+                filename=filename,
+                digest=source_digest,
+                executable_digest=executable_digest,
+                input_filename_template=input_filename_template,
+                output_filename_template=output_filename_template,
+                language_name=language_name,
+                dataset=dataset)
+            self.sql_session.add(generator)
+
+        if self.try_commit():
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class EditGeneratorHandler(BaseHandler):
+    """Edit a generator's filename templates.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id, generator_id):
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.r_params["generator"] = generator
+        self.render("edit_generator.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, generator_id):
+        fallback_page = self.url("dataset", dataset_id, "generator",
+                                 generator_id, "edit")
+
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task = dataset.task
+
+        input_filename_template = self.get_argument(
+            "input_filename_template", "input.*").strip()
+        output_filename_template = self.get_argument(
+            "output_filename_template", "output.*").strip()
+
+        error = validate_template(input_filename_template, "input")
+        if error is None:
+            error = validate_template(output_filename_template, "output")
+        if error is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid template",
+                error)
+            self.redirect(fallback_page)
+            return
+
+        generator.input_filename_template = input_filename_template
+        generator.output_filename_template = output_filename_template
+
+        if self.try_commit():
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class DeleteGeneratorHandler(BaseHandler):
+    """Delete a generator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, dataset_id, generator_id):
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task_id = dataset.task_id
+        self.sql_session.delete(generator)
+
+        self.try_commit()
+        self.write("./%d" % task_id)
+
+
+class GenerateTestcasesHandler(BaseHandler):
+    """Generate testcases using a generator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id, generator_id):
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        if generator.executable_digest is None:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator not compiled",
+                "The generator has not been compiled successfully.")
+            self.redirect(self.url("task", dataset.task.id))
+            return
+
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.r_params["generator"] = generator
+        self.render("generate_testcases.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, generator_id):
+        fallback_page = self.url("dataset", dataset_id, "generator",
+                                 generator_id, "generate")
+
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        if generator.executable_digest is None:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator not compiled",
+                "The generator has not been compiled successfully.")
+            self.redirect(self.url("task", dataset.task.id))
+            return
+
+        task = dataset.task
+
+        overwrite = self.get_argument("overwrite", "") == "on"
+        public = self.get_argument("public", "") == "on"
+
+        input_template = generator.input_filename_template
+        output_template = generator.output_filename_template
+
+        self.sql_session.close()
+
+        # Use stored language_name if available, otherwise fall back to auto-detection
+        language = None
+        if generator.language_name:
+            try:
+                language = get_language(generator.language_name)
+            except KeyError:
+                logger.debug(
+                    "Stored language '%s' not found for generator %s, "
+                    "falling back to auto-detection",
+                    generator.language_name, generator.filename)
+        if language is None:
+            language = filename_to_language(generator.filename)
+
+        exe_name = "generator"
+        if language is not None and isinstance(language, CompiledLanguage):
+            exe_name += language.executable_extension
+
+        sandbox = None
+        try:
+            sandbox = create_sandbox(self.service.file_cacher,
+                                     name="admin_generate")
+
+            sandbox.create_file_from_storage(exe_name,
+                                             generator.executable_digest,
+                                             executable=True)
+
+            cmd = ["./" + exe_name]
+            if language is not None:
+                try:
+                    cmds = language.get_evaluation_commands(exe_name)
+                    if cmds:
+                        cmd = cmds[0]
+                except Exception as e:
+                    logger.debug(
+                        "get_evaluation_commands failed for %s: %s, using default",
+                        generator.filename, e)
+
+            # Set resource limits from config to prevent buggy generators
+            # from consuming system resources indefinitely
+            sandbox.timeout = config.sandbox.trusted_sandbox_max_time_s
+            sandbox.wallclock_timeout = config.sandbox.trusted_sandbox_max_time_s * 2
+            sandbox.address_space = \
+                config.sandbox.trusted_sandbox_max_memory_kib * 1024
+            sandbox.max_processes = config.sandbox.trusted_sandbox_max_processes
+
+            # Set stdout/stderr files so they are created during execution
+            sandbox.stdout_file = "stdout.txt"
+            sandbox.stderr_file = "stderr.txt"
+
+            box_success = sandbox.execute_without_std(cmd, wait=True)
+
+            # Read stdout/stderr (best-effort, may not exist)
+            stdout = ""
+            stderr = ""
+            try:
+                stdout = sandbox.get_file_to_string("stdout.txt", maxlen=65536)
+            except FileNotFoundError:
+                pass
+            try:
+                stderr = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
+            except FileNotFoundError:
+                pass
+
+            if not box_success:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Generator execution failed",
+                    "Sandbox error during execution.\nStdout:\n%s\nStderr:\n%s"
+                    % (stdout, stderr))
+                self.redirect(fallback_page)
+                return
+
+            exit_status = sandbox.get_exit_status()
+            if exit_status != sandbox.EXIT_OK:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Generator execution failed",
+                    "Exit status: %s\nStdout:\n%s\nStderr:\n%s" %
+                    (exit_status, stdout, stderr))
+                self.redirect(fallback_page)
+                return
+
+            input_re = compile_template_regex(input_template)
+            output_re = compile_template_regex(output_template)
+
+            temp_zip = io.BytesIO()
+            with zipfile.ZipFile(temp_zip, "w") as zf:
+                sandbox_home = sandbox.relative_path("")
+                for root, _dirs, files in os.walk(sandbox_home):
+                    for filename in files:
+                        if filename in [exe_name, "stdout.txt", "stderr.txt"]:
+                            continue
+                        rel_path = os.path.relpath(
+                            os.path.join(root, filename), sandbox_home)
+                        content = sandbox.get_file_to_string(rel_path, maxlen=None)
+                        zf.writestr(rel_path, content)
+
+            temp_zip.seek(0)
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator execution error",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+        finally:
+            if sandbox:
+                sandbox.cleanup(delete=True)
+
+        self.sql_session = Session()
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        try:
+            successful_subject, successful_text = import_testcases_from_zipfile(
+                self.sql_session,
+                self.service.file_cacher,
+                dataset,
+                temp_zip,
+                input_re,
+                output_re,
+                overwrite,
+                public)
+            self.service.add_notification(
+                make_datetime(),
+                successful_subject,
+                successful_text)
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Testcase import failed",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            # max_score and/or extra_headers might have changed.
+            self.service.proxy_service.reinitialize()
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)

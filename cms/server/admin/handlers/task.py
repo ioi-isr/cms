@@ -43,6 +43,7 @@ from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cms.grading.scoretypes import ScoreTypeGroup
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
+from .modelsolution import get_subtask_info
 
 
 logger = logging.getLogger(__name__)
@@ -120,13 +121,15 @@ class TaskHandler(BaseHandler):
             self.sql_session.query(Submission)\
                 .join(Task).filter(Task.id == task_id)\
                 .order_by(Submission.timestamp.desc()).all()
-        
+
         testcase_subtasks = {}
         subtask_names = {}
+        subtask_info = {}
         for dataset in task.datasets:
             try:
                 score_type_obj = dataset.score_type_object
                 if isinstance(score_type_obj, ScoreTypeGroup):
+                    # Build testcase -> subtask mapping
                     targets = score_type_obj.retrieve_target_testcases()
                     tc_to_subtasks = {}
                     for subtask_idx, testcase_list in enumerate(targets):
@@ -135,20 +138,21 @@ class TaskHandler(BaseHandler):
                                 tc_to_subtasks[tc_codename] = []
                             tc_to_subtasks[tc_codename].append(subtask_idx)
                     testcase_subtasks[dataset.id] = tc_to_subtasks
-                    
-                    # Extract subtask names from score type parameters
-                    # Parameters format: [[score, pattern, optional_name], ...]
-                    names = {}
-                    for idx, param in enumerate(score_type_obj.parameters):
-                        if len(param) >= 3 and param[2]:
-                            names[idx] = param[2]
-                    if names:
-                        subtask_names[dataset.id] = names
+
+                    # Use shared helper to get subtask info
+                    subtasks = get_subtask_info(dataset)
+                    if subtasks:
+                        subtask_info[dataset.id] = subtasks
+                        # Extract names dict for backward compatibility
+                        names = {st["idx"]: st["name"] for st in subtasks if st["name"]}
+                        if names:
+                            subtask_names[dataset.id] = names
             except Exception:
                 pass
-        
+
         self.r_params["testcase_subtasks"] = testcase_subtasks
         self.r_params["subtask_names"] = subtask_names
+        self.r_params["subtask_info"] = subtask_info
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -250,6 +254,35 @@ class TaskHandler(BaseHandler):
             # Update the task and score on RWS.
             self.service.proxy_service.dataset_updated(
                 task_id=task.id)
+
+            # Check if re-scoring was requested for changed score parameters
+            rescore_datasets_str = self.get_argument("rescore_datasets", "")
+            if rescore_datasets_str:
+                # Parse dataset IDs and validate they belong to this task
+                task_dataset_ids = {d.id for d in task.datasets}
+                rescore_count = 0
+                for dataset_id_str in rescore_datasets_str.split(","):
+                    dataset_id_str = dataset_id_str.strip()
+                    if not dataset_id_str:
+                        continue
+                    try:
+                        dataset_id = int(dataset_id_str)
+                    except ValueError:
+                        continue
+                    # Only re-score datasets that belong to this task
+                    if dataset_id in task_dataset_ids:
+                        # Invalidate all submissions (including model solutions)
+                        self.service.scoring_service.invalidate_submission(
+                            dataset_id=dataset_id)
+                        rescore_count += 1
+
+                if rescore_count > 0:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Re-scoring triggered",
+                        "Re-scoring has been triggered for %d dataset(s)." %
+                        rescore_count)
+
         self.redirect(self.url("task", task_id))
 
 
@@ -280,7 +313,26 @@ class AddStatementHandler(BaseHandler):
                 "The language code can be any string.")
             self.redirect(fallback_page)
             return
+
+        # Check if a file was uploaded
+        if "statement" not in self.request.files:
+            self.service.add_notification(
+                make_datetime(),
+                "No file selected",
+                "Please select a PDF file to upload.")
+            self.redirect(fallback_page)
+            return
+
         statement = self.request.files["statement"][0]
+
+        # Check for empty file
+        if len(statement["body"]) == 0:
+            self.service.add_notification(
+                make_datetime(),
+                "Empty file",
+                "The selected file is empty. Please select a non-empty PDF file.")
+            self.redirect(fallback_page)
+            return
         if not statement["filename"].endswith(".pdf"):
             self.service.add_notification(
                 make_datetime(),
@@ -360,30 +412,66 @@ class AddAttachmentHandler(BaseHandler):
 
         task = self.safe_get_item(Task, task_id)
 
-        attachment = self.request.files["attachment"][0]
-        task_name = task.name
-        self.sql_session.close()
-
-        try:
-            digest = self.service.file_cacher.put_file_content(
-                attachment["body"],
-                "Task attachment for %s" % task_name)
-        except Exception as error:
+        # Check if any files were uploaded
+        if "attachment" not in self.request.files:
             self.service.add_notification(
                 make_datetime(),
-                "Attachment storage failed",
-                repr(error))
+                "No file selected",
+                "Please select at least one file to upload.")
             self.redirect(fallback_page)
             return
 
-        # TODO verify that there's no other Attachment with that filename
-        # otherwise we'd trigger an IntegrityError for constraint violation
+        attachments = self.request.files["attachment"]
+
+        # Filter out empty files
+        non_empty_attachments = [a for a in attachments if len(a["body"]) > 0]
+        if not non_empty_attachments:
+            self.service.add_notification(
+                make_datetime(),
+                "Empty file(s)",
+                "The selected file(s) are empty. Please select non-empty files.")
+            self.redirect(fallback_page)
+            return
+
+        attachments = non_empty_attachments
+
+        # Check for conflicts with existing attachments before storing files
+        filenames_in_batch = [a["filename"] for a in attachments]
+        existing_filenames = set(task.attachments.keys())
+        conflicts = [f for f in filenames_in_batch if f in existing_filenames]
+        if conflicts:
+            self.service.add_notification(
+                make_datetime(),
+                "Attachment filename conflict",
+                "The following files already exist: %s" % ", ".join(conflicts))
+            self.redirect(fallback_page)
+            return
+
+        task_name = task.name
+        self.sql_session.close()
+
+        # Store all attachments in file cacher
+        stored_attachments = []
+        for attachment in attachments:
+            try:
+                digest = self.service.file_cacher.put_file_content(
+                    attachment["body"],
+                    "Task attachment for %s" % task_name)
+                stored_attachments.append((attachment["filename"], digest))
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Attachment storage failed",
+                    repr(error))
+                self.redirect(fallback_page)
+                return
 
         self.sql_session = Session()
         task = self.safe_get_item(Task, task_id)
 
-        attachment = Attachment(attachment["filename"], digest, task=task)
-        self.sql_session.add(attachment)
+        for filename, digest in stored_attachments:
+            attachment = Attachment(filename, digest, task=task)
+            self.sql_session.add(attachment)
 
         if self.try_commit():
             self.redirect(self.url("task", task_id))
@@ -565,19 +653,19 @@ class DefaultSubmissionFormatHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
         task = self.safe_get_item(Task, task_id)
-        
+
         if task.active_dataset is None:
             raise tornado.web.HTTPError(400, "Task has no active dataset")
         if task.active_dataset.task_type != "OutputOnly":
             raise tornado.web.HTTPError(
                 400, f"Task type must be OutputOnly, got {task.active_dataset.task_type}")
-        
+
         try:
             task.set_default_output_only_submission_format()
         except Exception as e:
             raise RuntimeError(
                 f"Couldn't create default submission format for task {task.id}") from e
-        
+
         if self.try_commit():
             self.service.proxy_service.reinitialize()
 

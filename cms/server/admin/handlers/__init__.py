@@ -53,7 +53,10 @@ from .contestdelayrequest import \
     EraseAllStartTimesHandler, \
     ResetAllIPAddressesHandler
 from .contestranking import \
-    RankingHandler
+    RankingHandler, \
+    ScoreHistoryHandler, \
+    ParticipationDetailHandler, \
+    ParticipationSubmissionsHandler
 from .contestsubmission import \
     ContestSubmissionsHandler, \
     ContestUserTestsHandler
@@ -79,7 +82,12 @@ from .dataset import \
     AddTestcaseHandler, \
     AddTestcasesHandler, \
     DeleteTestcaseHandler, \
-    DownloadTestcasesHandler
+    DeleteSelectedTestcasesHandler, \
+    DownloadTestcasesHandler, \
+    AddGeneratorHandler, \
+    EditGeneratorHandler, \
+    DeleteGeneratorHandler, \
+    GenerateTestcasesHandler
 from .main import \
     LoginHandler, \
     LogoutHandler, \
@@ -108,6 +116,10 @@ from .task import (
     RemoveTaskHandler,
     DefaultSubmissionFormatHandler,
 )
+from .import_handlers import (
+    ImportTaskHandler,
+    ImportContestHandler,
+)
 from .user import \
     AddUserHandler, \
     UserHandler, \
@@ -128,6 +140,12 @@ from .user import \
 from .usertest import \
     UserTestHandler, \
     UserTestFileHandler
+from .modelsolution import \
+    AddModelSolutionHandler, \
+    ModelSolutionHandler, \
+    EditModelSolutionHandler, \
+    DeleteModelSolutionHandler, \
+    ConfigureImportedModelSolutionsHandler
 from .folder import \
     FolderListHandler, \
     FolderHandler, \
@@ -155,6 +173,7 @@ HANDLERS = [
     (r"/contests", ContestListHandler),
     (r"/contests/([0-9]+)/remove", RemoveContestHandler),
     (r"/contests/add", AddContestHandler),
+    (r"/contests/import", ImportContestHandler),
     (r"/contest/([0-9]+)", ContestHandler),
     (r"/contest/([0-9]+)/export", ExportContestHandler),
     (r"/contest/([0-9]+)/overview", OverviewHandler),
@@ -209,13 +228,17 @@ HANDLERS = [
     # Contest's ranking
 
     (r"/contest/([0-9]+)/ranking", RankingHandler),
+    (r"/contest/([0-9]+)/ranking/history", ScoreHistoryHandler),
     (r"/contest/([0-9]+)/ranking/([a-z]+)", RankingHandler),
+    (r"/contest/([0-9]+)/user/([0-9]+)/detail", ParticipationDetailHandler),
+    (r"/contest/([0-9]+)/user/([0-9]+)/submissions", ParticipationSubmissionsHandler),
 
     # Tasks
 
     (r"/tasks", TaskListHandler),
     (r"/tasks/([0-9]+)/remove", RemoveTaskHandler),
     (r"/tasks/add", AddTaskHandler),
+    (r"/tasks/import", ImportTaskHandler),
     (r"/task/([0-9]+)", TaskHandler),
     (r"/task/([0-9]+)/export", ExportTaskHandler),
     (r"/task/([0-9]+)/submissions/download", DownloadTaskSubmissionsHandler),
@@ -239,7 +262,12 @@ HANDLERS = [
     (r"/dataset/([0-9]+)/testcases/add", AddTestcaseHandler),
     (r"/dataset/([0-9]+)/testcases/add_multiple", AddTestcasesHandler),
     (r"/dataset/([0-9]+)/testcase/([0-9]+)/delete", DeleteTestcaseHandler),
+    (r"/dataset/([0-9]+)/testcases/delete_selected", DeleteSelectedTestcasesHandler),
     (r"/dataset/([0-9]+)/testcases/download", DownloadTestcasesHandler),
+    (r"/dataset/([0-9]+)/generators/add", AddGeneratorHandler),
+    (r"/dataset/([0-9]+)/generator/([0-9]+)/edit", EditGeneratorHandler),
+    (r"/dataset/([0-9]+)/generator/([0-9]+)/delete", DeleteGeneratorHandler),
+    (r"/dataset/([0-9]+)/generator/([0-9]+)/generate", GenerateTestcasesHandler),
 
     # Users/Teams
 
@@ -284,6 +312,15 @@ HANDLERS = [
 
     (r"/user_test/([0-9]+)(?:/([0-9]+))?", UserTestHandler),
     (r"/user_test_file/([0-9]+)", UserTestFileHandler),
+
+    # Model Solutions
+
+
+    (r"/dataset/([0-9]+)/model_solutions/add", AddModelSolutionHandler),
+    (r"/model_solution/([0-9]+)(?:/([0-9]+))?", ModelSolutionHandler),
+    (r"/model_solution/([0-9]+)/edit", EditModelSolutionHandler),
+    (r"/model_solution/([0-9]+)/delete", DeleteModelSolutionHandler),
+    (r"/task/([0-9]+)/model_solutions/configure", ConfigureImportedModelSolutionsHandler),
 
     # The following prefixes are handled by WSGI middlewares:
     # * /rpc, defined in cms/io/web_service.py

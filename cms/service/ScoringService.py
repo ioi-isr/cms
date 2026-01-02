@@ -29,6 +29,7 @@ import logging
 
 from cms import ServiceCoord, config
 from cms.db import SessionGen, Submission, Dataset, get_submission_results
+from cms.grading.scorecache import update_score_cache, invalidate_score_cache
 from cms.io import Executor, TriggeredService, rpc_method
 from cms.io.priorityqueue import QueueEntry
 from cmscommon.datetime import make_datetime
@@ -103,6 +104,10 @@ class ScoringExecutor(Executor[ScoringOperation]):
 
             if submission_result.scored_at is None:
                 submission_result.scored_at = make_datetime()
+
+            # Update score cache for AWS ranking.
+            if dataset is submission.task.active_dataset:
+                update_score_cache(session, submission)
 
             # Store it.
             session.commit()
@@ -215,14 +220,73 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
             submission_results = \
                 get_submission_results(session, contest_id,
                                        participation_id, task_id,
-                                       submission_id, dataset_id).all()
+                                       submission_id, dataset_id,
+                                       include_model_solutions=True).all()
+
+            affected_pairs: set[tuple[int, int]] = set()
+            for sr in submission_results:
+                if sr.scored():
+                    sr.invalidate_score()
+                    temp_queue.append((
+                        ScoringOperation(sr.submission_id, sr.dataset_id),
+                        sr.submission.timestamp))
+                    affected_pairs.add(
+                        (sr.submission.participation_id, sr.submission.task_id))
+
+            for p_id, t_id in affected_pairs:
+                invalidate_score_cache(
+                    session,
+                    participation_id=p_id,
+                    task_id=t_id,
+                )
+
+            session.commit()
+
+        for item, timestamp in temp_queue:
+            self.enqueue(item, timestamp=timestamp)
+
+        logger.info("Invalidated %d submission results.", len(temp_queue))
+
+    @rpc_method
+    def invalidate_model_solutions(
+        self,
+        dataset_id: int,
+    ):
+        """Invalidate (and re-score) all model solutions for a dataset.
+
+        This method invalidates only model solutions (not regular submissions)
+        for the specified dataset. It's similar to invalidate_submission but
+        explicitly filters to only model solutions via ModelSolutionMeta.
+
+        Note: Model solutions don't update ranking or contest caches because
+        they are not part of any contest's scoring or ranking calculations.
+        They are only used for reference/validation purposes and don't affect
+        user scores or contest standings, so cache invalidation is unnecessary.
+
+        dataset_id: id of the dataset whose model solutions should be invalidated.
+
+        """
+        logger.info("Model solution invalidation request received for dataset %d.",
+                    dataset_id)
+
+        temp_queue = list()
+
+        with SessionGen() as session:
+            from cms.db import ModelSolutionMeta, SubmissionResult
+
+            submission_results = session.query(SubmissionResult).join(
+                Submission
+            ).join(
+                ModelSolutionMeta,
+                ModelSolutionMeta.submission_id == Submission.id
+            ).filter(
+                SubmissionResult.dataset_id == dataset_id,
+                ModelSolutionMeta.dataset_id == dataset_id
+            ).all()
 
             for sr in submission_results:
                 if sr.scored():
                     sr.invalidate_score()
-                    # We also save the timestamp of the submission, to
-                    # rescore them in order (for fairness, not for a
-                    # specific need).
                     temp_queue.append((
                         ScoringOperation(sr.submission_id, sr.dataset_id),
                         sr.submission.timestamp))
@@ -232,4 +296,4 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
         for item, timestamp in temp_queue:
             self.enqueue(item, timestamp=timestamp)
 
-        logger.info("Invalidated %d submission results.", len(temp_queue))
+        logger.info("Invalidated %d model solution results.", len(temp_queue))

@@ -29,7 +29,7 @@ import zipfile
 import yaml
 
 from cms.db import Contest, Task
-from cms.grading.languagemanager import SOURCE_EXTS
+from cms.grading.languagemanager import SOURCE_EXTS, get_language
 from cms.grading.tasktypes.util import get_allowed_manager_basenames
 from cmscommon.datetime import make_datetime
 
@@ -37,6 +37,27 @@ from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def _expand_codename_with_language(filename: str, language_name: str | None) -> str:
+    """Expand %l placeholder in filename to actual source extension.
+
+    filename: the filename, possibly ending with .%l
+    language_name: the language name (e.g., "C++17 / g++"), or None
+
+    return: the filename with .%l replaced by the actual extension,
+            or the original filename if no expansion is possible.
+    """
+    if not filename.endswith(".%l") or not language_name:
+        return filename
+    try:
+        language_obj = get_language(language_name)
+    except KeyError:
+        return filename
+    extension = language_obj.source_extension
+    if not extension:
+        return filename
+    return filename[:-3] + extension
 
 
 def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
@@ -48,16 +69,19 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     export_dir: Directory to export to
 
     Creates the following structure:
-    - task.yaml: Task configuration
+    - task.yaml: Task configuration (including model_solutions section)
     - statements/: Statement PDFs
     - attachments/: Task attachments
     - tests.zip: Testcases (input/output pairs)
     - managers/: Manager files (checker, grader, etc.)
+    - solutions/: Model solution source files (one subdirectory per solution)
+    - generators/: Generator source files (if any)
     """
 
     statements_dir = os.path.join(export_dir, "statements")
     attachments_dir = os.path.join(export_dir, "attachments")
     managers_dir = os.path.join(export_dir, "managers")
+    solutions_dir = os.path.join(export_dir, "solutions")
 
     os.makedirs(statements_dir, exist_ok=True)
     os.makedirs(attachments_dir, exist_ok=True)
@@ -158,19 +182,30 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
         task_config['task_type'] = dataset.task_type
         if dataset.task_type_parameters:
             if dataset.task_type in ("Batch", "BatchAndOutput") and len(dataset.task_type_parameters) >= 3:
+                # Export compilation parameter (alone/grader)
+                task_config['compilation'] = dataset.task_type_parameters[0]
                 task_config['infile'] = dataset.task_type_parameters[1][0]
                 task_config['outfile'] = dataset.task_type_parameters[1][1]
+                # Export output_eval parameter (diff/comparator/realprecision)
+                task_config['output_eval'] = dataset.task_type_parameters[2]
                 if len(dataset.task_type_parameters) >= 4 and dataset.task_type_parameters[2] == "realprecision":
                     task_config['exponent'] = dataset.task_type_parameters[3]
                 if dataset.task_type == "BatchAndOutput":
                     output_only_testcases = dataset.task_type_parameters[-1]
                     if output_only_testcases:
                         task_config['output_only_testcases'] = output_only_testcases
-            elif dataset.task_type == "OutputOnly" and len(dataset.task_type_parameters) >= 2:
-                if dataset.task_type_parameters[0] == "realprecision":
+            elif dataset.task_type == "OutputOnly" and len(dataset.task_type_parameters) >= 1:
+                # Export output_eval parameter for OutputOnly
+                task_config['output_eval'] = dataset.task_type_parameters[0]
+                if len(dataset.task_type_parameters) >= 2 and dataset.task_type_parameters[0] == "realprecision":
                     task_config['exponent'] = dataset.task_type_parameters[1]
+            elif dataset.task_type == "TwoSteps" and len(dataset.task_type_parameters) >= 1:
+                # Export output_eval parameter for TwoSteps
+                task_config['output_eval'] = dataset.task_type_parameters[0]
             elif dataset.task_type == "Communication" and len(dataset.task_type_parameters) >= 3:
                 task_config['num_processes'] = dataset.task_type_parameters[0]
+                # Export compilation parameter for Communication (alone/stub)
+                task_config['compilation'] = dataset.task_type_parameters[1]
                 task_config['user_io'] = dataset.task_type_parameters[2]
 
     if dataset.score_type:
@@ -188,11 +223,74 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
         if len(public_testcases) == len(testcases):
             task_config['public_testcases'] = 'all'
         else:
-            try:
-                public_indices = [int(tc) for tc in public_testcases]
-                task_config['public_testcases'] = ','.join(map(str, public_indices))
-            except ValueError:
-                task_config['public_testcases'] = ','.join(public_testcases)
+            # Use codenames directly - the import side handles both codenames and indices
+            task_config['public_testcases'] = ','.join(public_testcases)
+
+    # Export model solutions
+    if dataset.model_solution_metas:
+        os.makedirs(solutions_dir, exist_ok=True)
+        model_solutions_config = []
+
+        for meta in dataset.model_solution_metas:
+            submission = meta.submission
+            solution_config = {
+                'name': meta.name,
+                'description': meta.description,
+                'expected_score_min': meta.expected_score_min,
+                'expected_score_max': meta.expected_score_max,
+            }
+
+            if submission.language:
+                solution_config['language'] = submission.language
+
+            if meta.subtask_expected_scores:
+                solution_config['subtask_expected_scores'] = meta.subtask_expected_scores
+
+            # Export solution files
+            files_list = []
+            solution_subdir = os.path.join(solutions_dir, meta.name)
+            os.makedirs(solution_subdir, exist_ok=True)
+
+            for file_obj in submission.files.values():
+                # Expand %l placeholder to actual source extension
+                filename = _expand_codename_with_language(
+                    file_obj.filename, submission.language)
+
+                file_path = os.path.join(solution_subdir, filename)
+                file_cacher.get_file_to_path(file_obj.digest, file_path)
+                files_list.append(filename)
+
+            solution_config['files'] = files_list
+            model_solutions_config.append(solution_config)
+
+        if model_solutions_config:
+            task_config['model_solutions'] = model_solutions_config
+
+    # Export generators
+    if dataset.generators:
+        generators_dir = os.path.join(export_dir, "generators")
+        os.makedirs(generators_dir, exist_ok=True)
+        generators_config = []
+
+        for filename, generator in dataset.generators.items():
+            # Export generator source file
+            generator_path = os.path.join(generators_dir, filename)
+            file_cacher.get_file_to_path(generator.digest, generator_path)
+
+            # Add generator metadata to config
+            generator_config = {
+                'filename': filename,
+                'input_template': generator.input_filename_template,
+                'output_template': generator.output_filename_template,
+            }
+
+            if generator.language_name:
+                generator_config['language'] = generator.language_name
+
+            generators_config.append(generator_config)
+
+        if generators_config:
+            task_config['generators'] = generators_config
 
     task_yaml_path = os.path.join(export_dir, "task.yaml")
     with open(task_yaml_path, 'w', encoding='utf-8') as f:

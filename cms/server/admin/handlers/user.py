@@ -31,8 +31,10 @@ import csv
 import io
 import re
 
+from sqlalchemy import and_, exists
 from cms.db import Contest, Participation, Submission, Team, User
-from cmscommon.crypto import (parse_authentication, build_password, 
+from cms.server.util import exclude_internal_contests
+from cmscommon.crypto import (parse_authentication, 
                                hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
 
@@ -50,13 +52,16 @@ class UserHandler(BaseHandler):
             self.sql_session.query(Participation)\
                 .filter(Participation.user == user)\
                 .all()
-        self.r_params["unassigned_contests"] = \
-            self.sql_session.query(Contest)\
-                .filter(Contest.id.notin_(
-                    self.sql_session.query(Participation.contest_id)
-                        .filter(Participation.user == user)
-                        .all()))\
-                .all()
+        self.r_params["unassigned_contests"] = exclude_internal_contests(
+            self.sql_session.query(Contest).filter(
+                ~exists().where(
+                    and_(
+                        Participation.contest_id == Contest.id,
+                        Participation.user == user
+                    )
+                )
+            )
+        ).all()
         self.render("user.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -91,6 +96,8 @@ class UserHandler(BaseHandler):
 
             assert attrs.get("username") is not None, \
                 "No username specified."
+            assert not attrs.get("username").startswith("__"), \
+                "Username cannot start with '__' (reserved for system users)."
 
             # Update the user.
             user.set_attrs(attrs)
@@ -578,6 +585,8 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
 
             assert attrs.get("username") is not None, \
                 "No username specified."
+            assert not attrs.get("username").startswith("__"), \
+                "Username cannot start with '__' (reserved for system users)."
 
             # Validate password strength unless explicitly bypassed
             # (e.g., for imports or tests)
@@ -622,7 +631,7 @@ class AddParticipationHandler(BaseHandler):
 
         try:
             contest_id: str = self.get_argument("contest_id")
-            assert contest_id != "null", "Please select a valid contest"
+            assert contest_id != "", "Please select a valid contest"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -660,7 +669,7 @@ class EditParticipationHandler(BaseHandler):
         try:
             contest_id: str = self.get_argument("contest_id")
             operation: str = self.get_argument("operation")
-            assert contest_id != "null", "Please select a valid contest"
+            assert contest_id != "", "Please select a valid contest"
             assert operation in (
                 "Remove",
             ), "Please select a valid operation"

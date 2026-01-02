@@ -380,10 +380,11 @@ class Batch(TaskType):
         return outcome, text, output_file_params, stats, box_success, sandbox
 
     def _evaluate_step(self, job, file_cacher, output_file_params, outcome, text, stats, box_success, sandbox, extra_args):
+        checker_stats = None
         if box_success:
             assert (output_file_params is None) == (outcome is not None)
             if output_file_params is not None:
-                box_success, outcome, text = eval_output(
+                box_success, outcome, text, checker_stats = eval_output(
                     file_cacher, job,
                     self.CHECKER_CODENAME
                     if self._uses_checker() else None,
@@ -395,7 +396,13 @@ class Batch(TaskType):
         job.success = box_success
         job.outcome = str(outcome) if outcome is not None else None
         job.text = text
-        job.plus = stats
+        # On success, store user execution stats. On eval_output failure (sandbox
+        # error or checker crash), prefer checker stats if available (contains
+        # stdout/stderr for debugging), otherwise keep user execution stats.
+        if box_success:
+            job.plus = stats
+        else:
+            job.plus = checker_stats if checker_stats is not None else stats
 
         if sandbox is not None:
             delete_sandbox(sandbox, job)
