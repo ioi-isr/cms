@@ -92,6 +92,12 @@ def parse_score_range(min_str: str, max_str: str, context: str = "") -> tuple[fl
             msg = f"{msg} {context}"
         raise ValueError(msg)
 
+    if score_min < 0:
+        msg = "Minimum score cannot be negative"
+        if context:
+            msg = f"{msg} {context}"
+        raise ValueError(msg)
+
     return score_min, score_max
 
 

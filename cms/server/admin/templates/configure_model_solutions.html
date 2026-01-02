@@ -41,11 +41,11 @@
               <input type="text" name="sol_{{ sol.id }}_description" value="{{ sol.description }}" placeholder="Optional description" class="ms-form-control" style="width: 200px;" />
             </td>
             <td style="padding: 10px;">
-              <input type="number" step="0.01" name="sol_{{ sol.id }}_score_min" value="{{ sol.expected_score_min }}" class="ms-form-control" style="width: 80px;" />
+              <input type="number" min="0" step="0.01" name="sol_{{ sol.id }}_score_min" value="{{ sol.expected_score_min }}" class="ms-form-control" style="width: 80px;" />
             </td>
             <td style="padding: 10px;">
               <div style="display: flex; flex-direction: column; gap: 6px;">
-                <input type="number" step="0.01" name="sol_{{ sol.id }}_score_max" value="{{ sol.expected_score_max }}" class="ms-form-control" style="width: 80px;" />
+                <input type="number" min="0" step="0.01" name="sol_{{ sol.id }}_score_max" value="{{ sol.expected_score_max }}" class="ms-form-control" style="width: 80px;" />
 {% if subtasks %}
                 <label class="ms-auto-calc-label" style="margin-top: 4px;">
                   <input type="checkbox" class="ms-form-check-input calc-from-subtasks" data-sol-id="{{ sol.id }}" />
@@ -77,11 +77,11 @@
 {% for st in subtasks if st.max_score > 0 %}
           <div class="ms-subtask-group">
             <span class="ms-subtask-group-label">{{ st.display_name }}</span>
-            <input type="number" step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_min" 
+            <input type="number" min="0"  step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_min" 
                    value="{% if sol.subtask_expected_scores and sol.subtask_expected_scores[st.idx|string] %}{{ sol.subtask_expected_scores[st.idx|string].min }}{% else %}0{% endif %}" 
                    class="ms-subtask-input subtask-min" data-sol-id="{{ sol.id }}" placeholder="Min" title="Min (max: {{ st.max_score }})" />
             <span style="color: #6c757d;">-</span>
-            <input type="number" step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_max" 
+            <input type="number" min="0" step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_max" 
                    value="{% if sol.subtask_expected_scores and sol.subtask_expected_scores[st.idx|string] %}{{ sol.subtask_expected_scores[st.idx|string].max }}{% else %}{{ st.max_score }}{% endif %}" 
                    class="ms-subtask-input subtask-max" data-sol-id="{{ sol.id }}" placeholder="Max" title="Max (max: {{ st.max_score }})" />
             <div class="ms-btn-group">

@@ -30,8 +30,8 @@ current_values: optional dict mapping subtask idx (as string) to {min, max} valu
 {% set current_max = current_values[st_key].max if current_values and st_key in current_values else st.max_score %}
     <tr>
       <td>{{ st.display_name }}</td>
-      <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_min" value="{{ current_min }}" style="width: 80px;" class="subtask-min" {% if form_id %}data-form="{{ form_id }}"{% endif %} data-max-score="{{ st.max_score }}" /></td>
-      <td><input type="number" step="0.01" name="subtask_{{ st.idx }}_max" value="{{ current_max }}" style="width: 80px;" class="subtask-max" {% if form_id %}data-form="{{ form_id }}"{% endif %} data-max-score="{{ st.max_score }}" /></td>
+      <td><input type="number" step="0.01" min="0" name="subtask_{{ st.idx }}_min" value="{{ current_min }}" style="width: 80px;" class="subtask-min" {% if form_id %}data-form="{{ form_id }}"{% endif %} data-max-score="{{ st.max_score }}" /></td>
+      <td><input type="number" step="0.01" min="0" name="subtask_{{ st.idx }}_max" value="{{ current_max }}" style="width: 80px;" class="subtask-max" {% if form_id %}data-form="{{ form_id }}"{% endif %} data-max-score="{{ st.max_score }}" /></td>
       <td>
         {{ button_group(st.idx, st.max_score, form_id) }}
       </td>

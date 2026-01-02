@@ -31,6 +31,7 @@ import csv
 import io
 import re
 
+from sqlalchemy import and_, exists
 from cms.db import Contest, Participation, Submission, Team, User
 from cms.server.util import exclude_internal_contests
 from cmscommon.crypto import (parse_authentication, 
@@ -52,11 +53,14 @@ class UserHandler(BaseHandler):
                 .filter(Participation.user == user)\
                 .all()
         self.r_params["unassigned_contests"] = exclude_internal_contests(
-            self.sql_session.query(Contest)
-                .filter(Contest.id.notin_(
-                    self.sql_session.query(Participation.contest_id)
-                        .filter(Participation.user == user)
-                        .all()))
+            self.sql_session.query(Contest).filter(
+                ~exists().where(
+                    and_(
+                        Participation.contest_id == Contest.id,
+                        Participation.user == user
+                    )
+                )
+            )
         ).all()
         self.render("user.html", **self.r_params)
 
