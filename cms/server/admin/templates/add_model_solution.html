@@ -24,7 +24,7 @@
   <table>
     <tr>
       <td>Name:</td>
-      <td><input type="text" name="name" pattern="[^/\\*?<>|:&quot;]+" title="Cannot contain: / \ * ? < > | : &quot;" required /></td>
+      <td><input type="text" name="name" pattern="^(?!.*\.\.)([^/\\*?<>|:&quot;])+$" title="Cannot contain: / \ * ? < > | : &quot; or .." required /></td>
       <td style="font-size: 0.9em; color: #666;">(identifier for export, e.g., 'intended', 'bruteforce')</td>
     </tr>
     <tr>
@@ -84,7 +84,7 @@
   <table>
     <tr>
       <td>Name:</td>
-      <td><input type="text" name="name" pattern="[^/\\*?<>|:&quot;]+" title="Cannot contain: / \ * ? < > | : &quot;" required /></td>
+      <td><input type="text" name="name" pattern="^(?!.*\.\.)([^/\\*?<>|:&quot;])+$" title="Cannot contain: / \ * ? < > | : &quot; or .." required /></td>
       <td style="font-size: 0.9em; color: #666;">(identifier for export, e.g., 'intended', 'bruteforce')</td>
     </tr>
     <tr>

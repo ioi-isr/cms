@@ -1745,7 +1745,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         if name in solutions and solutions[name]["files"]:
             logger.warning(
                 "Multiple definitions for model solution '%s' in solutions "
-                "folder; merging files (subdirectories take precedence)", name)
+                "folder; merging files (flat files take precedence)", name)
 
         entry = solutions.setdefault(name, {"files": {}, "language": None})
         entry["files"].update(files)
