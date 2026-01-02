@@ -162,9 +162,9 @@ class TaskHandler(BaseHandler):
                                     tc_to_subtasks[tc_codename] = []
                                 tc_to_subtasks[tc_codename].append(subtask_idx)
                         testcase_subtasks[dataset.id] = tc_to_subtasks
-                    except Exception as e:
-                        # If retrieve_target_testcases fails, just skip the mapping
-                        # but keep the subtask_info populated
+                    except ValueError as e:
+                        # If retrieve_target_testcases fails due to bad parameters/regexes,
+                        # just skip the mapping but keep the subtask_info populated
                         logger.debug(
                             "Could not build testcase-to-subtask mapping for "
                             "dataset %d: %s", dataset.id, e)
