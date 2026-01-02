@@ -65,6 +65,23 @@ logger = logging.getLogger(__name__)
 _running_validations: dict[int, dict] = {}
 
 
+def set_sandbox_resource_limits(sandbox):
+    """Set resource limits for a sandbox to prevent runaway processes.
+
+    This function applies the same resource limits used for generators
+    to validators and other sandboxed processes to ensure consistency
+    and prevent system resource exhaustion.
+
+    Args:
+        sandbox: The sandbox object to configure
+    """
+    sandbox.timeout = config.sandbox.trusted_sandbox_max_time_s
+    sandbox.wallclock_timeout = config.sandbox.trusted_sandbox_max_time_s * 2
+    sandbox.address_space = \
+        config.sandbox.trusted_sandbox_max_memory_kib * 1024
+    sandbox.max_processes = config.sandbox.trusted_sandbox_max_processes
+
+
 def check_compiled_file_conflict(filename, allowed_basenames, existing_managers):
     """Check if uploading a compiled file conflicts with existing source.
 
@@ -1211,13 +1228,8 @@ class GenerateTestcasesHandler(BaseHandler):
                         "get_evaluation_commands failed for %s: %s, using default",
                         generator.filename, e)
 
-            # Set resource limits from config to prevent buggy generators
-            # from consuming system resources indefinitely
-            sandbox.timeout = config.sandbox.trusted_sandbox_max_time_s
-            sandbox.wallclock_timeout = config.sandbox.trusted_sandbox_max_time_s * 2
-            sandbox.address_space = \
-                config.sandbox.trusted_sandbox_max_memory_kib * 1024
-            sandbox.max_processes = config.sandbox.trusted_sandbox_max_processes
+            # Apply resource limits to prevent runaway generators
+            set_sandbox_resource_limits(sandbox)
 
             # Set stdout/stderr files so they are created during execution
             sandbox.stdout_file = "stdout.txt"
@@ -1364,8 +1376,13 @@ def _run_validator(file_cacher, filename, executable_digest, testcase_data):
                     cmds = language.get_evaluation_commands(exe_name)
                     if cmds:
                         cmd = cmds[0] + ["input.txt", "output.txt"]
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "get_evaluation_commands failed for validator %s: %s, using default",
+                        filename, e)
+
+            # Apply resource limits to prevent runaway validators
+            set_sandbox_resource_limits(sandbox)
 
             # Provide input via stdin so validators can read from either
             # input.txt file or stdin (output is still read from output.txt)

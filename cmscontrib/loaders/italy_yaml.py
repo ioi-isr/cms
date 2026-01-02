@@ -26,6 +26,7 @@
 import logging
 import os
 import os.path
+import re
 import tempfile
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -1892,7 +1893,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     error_messages.append("%s: %s" % (title, text))
                     self._notify(title, text)
 
-                success, compiled_bytes, stats = compile_manager_bytes(
+                success, compiled_bytes, _stats = compile_manager_bytes(
                     self.file_cacher,
                     filename,
                     source_body,
