@@ -620,8 +620,9 @@ class PasswordResetRequestHandler(ContestHandler):
 
         self.sql_session.commit()
 
-        reset_url = self.request.protocol + "://" + self.request.host + \
-            self.contest_url("password_reset_confirm", token)
+        # Use absolute URL for reset URL - contest_url gives relative path, so get absolute version
+        relative_path = self.contest_url("password_reset_confirm", token)
+        reset_url = self.request.protocol + "://" + self.request.host + relative_path.lstrip(".")
 
         email_sent = self._send_reset_email(user.email, reset_url)
 
