@@ -28,6 +28,7 @@
 from datetime import datetime, timedelta
 from ipaddress import IPv4Network, IPv6Network
 
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import ARRAY, CIDR
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, \
@@ -53,7 +54,7 @@ class User(Base):
         Index(
             'ix_users_password_reset_token',
             'password_reset_token',
-            postgresql_where='password_reset_token IS NOT NULL'
+            postgresql_where=text('password_reset_token IS NOT NULL')
         ),
     )
 

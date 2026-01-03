@@ -651,6 +651,17 @@ class PasswordResetRequestHandler(ContestHandler):
 
             user = users_by_email[0]
 
+        # Check if user participates in this contest
+        participation = self.sql_session.query(Participation).filter(
+            Participation.user_id == user.id,
+            Participation.contest_id == self.contest.id
+        ).first()
+        if participation is None:
+            self.render("password_reset_request.html",
+                        error_message=N_("No user found with that username or email."),
+                        **self.r_params)
+            return
+
         if not user.email:
             self.render("password_reset_request.html",
                         error_message=N_("This user does not have an email address configured. Please contact an administrator."),
