@@ -692,6 +692,7 @@ class PasswordResetRequestHandler(ContestHandler):
         if email_sent:
             self.render("password_reset_request_sent.html",
                         email=user.email,
+                        token_expiration_hours=self.token_expiration_hours,
                         **self.r_params)
         else:
             self.render("password_reset_request.html",
