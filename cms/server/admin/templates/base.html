@@ -263,6 +263,13 @@ $(document).ready(initSidebarEvents);
           {{ get_hex_random_key() }}
         </div>
         {% endif %}
+        {% if pending_password_resets > 0 %}
+        <div class="secret_notice notice-pending">
+          <a href="{{ url("users") }}">
+            {{ pending_password_resets }} pending password reset{% if pending_password_resets > 1 %}s{% endif %}
+          </a>
+        </div>
+        {% endif %}
         <ul class="menu">
         {% if contest is none %}
           <li class="menu_entry"><a class="menu_link" href="{{ url() }}">Overview</a></li>

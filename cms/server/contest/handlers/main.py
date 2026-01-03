@@ -28,11 +28,17 @@
 
 """
 
+import html
 import ipaddress
 import json
 import logging
 import os.path
 import re
+import secrets
+import smtplib
+from datetime import timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import collections
 
@@ -158,10 +164,18 @@ class RegistrationHandler(ContestHandler):
             username = self.get_argument("username")
             password = self.get_argument("password")
             email = self.get_argument("email")
-            if len(email) == 0:
-                email = None
         except tornado.web.MissingArgumentError:
             raise RegistrationError("missing_field")
+
+        # Validate email - required and RFC 5322 compliant format check
+        if not email or len(email) == 0:
+            raise RegistrationError("missing_email", "email")
+        # RFC 5322 compliant email regex (case-insensitive)
+        email_regex = r'''^(?:[a-z0-9!#$%&'*+\x2f=?^_`\x7b-\x7d~\x2d]+(?:\.[a-z0-9!#$%&'*+\x2f=?^_`\x7b-\x7d~\x2d]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9\x2d]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9\x2d]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9\x2d]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$'''
+        if not re.match(email_regex, email, re.IGNORECASE):
+            raise RegistrationError("invalid_email", "email")
+        if len(email) > self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_email", "email")
 
         # Validate first name
         if not 1 <= len(first_name) <= self.MAX_INPUT_LENGTH:
@@ -542,3 +556,334 @@ class TranslationHandler(ContestHandler):
                     translation_result=translation_result,
                     error_message=error_message,
                     **self.r_params)
+
+
+class PasswordResetRequestHandler(ContestHandler):
+    """Handler for requesting a password reset.
+
+    Accepts username/email from user, validates that the user exists and has
+    an email address, generates a secure token, and sends an email with the
+    reset link.
+
+    Implements per-username rate limiting to prevent abuse (inbox flooding,
+    SMTP load). Rate limiting is configurable via config.email.password_reset.
+    """
+
+    _rate_limit_cache: dict[str, list[float]] = {}
+
+    @property
+    def token_expiration_hours(self) -> int:
+        """Get token expiration hours from config."""
+        return config.email.password_reset.token_expiration_hours
+
+    @property
+    def rate_limit_max_requests(self) -> int:
+        """Get rate limit max requests from config."""
+        return config.email.password_reset.rate_limit_max_requests
+
+    @property
+    def rate_limit_window_seconds(self) -> int:
+        """Get rate limit window in seconds from config."""
+        return config.email.password_reset.rate_limit_window_seconds
+
+    def _is_rate_limited(self, username: str) -> bool:
+        """Check if the username has exceeded the rate limit.
+
+        Returns True if rate limited, False otherwise.
+        Cleans up expired entries from the cache.
+        """
+        now = make_timestamp(self.timestamp)
+        window_start = now - self.rate_limit_window_seconds
+
+        if username in self._rate_limit_cache:
+            self._rate_limit_cache[username] = [
+                ts for ts in self._rate_limit_cache[username]
+                if ts > window_start
+            ]
+            if len(self._rate_limit_cache[username]) >= self.rate_limit_max_requests:
+                return True
+
+        return False
+
+    def _record_request(self, username: str) -> None:
+        """Record a password reset request for rate limiting."""
+        now = make_timestamp(self.timestamp)
+        if username not in self._rate_limit_cache:
+            self._rate_limit_cache[username] = []
+        self._rate_limit_cache[username].append(now)
+
+    @multi_contest
+    def get(self):
+        self.render("password_reset_request.html", **self.r_params)
+
+    @multi_contest
+    def post(self):
+        username_or_email = self.get_argument("username_or_email", "")
+
+        if not username_or_email:
+            self.render("password_reset_request.html",
+                        error_message=N_("Please enter your username or email."),
+                        **self.r_params)
+            return
+
+        # First try exact username match
+        user = self.sql_session.query(User).filter(
+            User.username == username_or_email
+        ).first()
+
+        # If no username match, try email
+        if user is None:
+            users_by_email = self.sql_session.query(User).filter(
+                User.email == username_or_email
+            ).all()
+
+            if len(users_by_email) == 0:
+                self.render("password_reset_request.html",
+                            error_message=N_("No user found with that username or email."),
+                            **self.r_params)
+                return
+
+            if len(users_by_email) > 1:
+                self.render("password_reset_request.html",
+                            error_message=N_("Multiple users share this email address. Please contact an administrator."),
+                            **self.r_params)
+                return
+
+            user = users_by_email[0]
+
+        # Check if user participates in this contest
+        participation = self.sql_session.query(Participation).filter(
+            Participation.user_id == user.id,
+            Participation.contest_id == self.contest.id
+        ).first()
+        if participation is None:
+            self.render("password_reset_request.html",
+                        error_message=N_("No user found with that username or email."),
+                        **self.r_params)
+            return
+
+        if not user.email:
+            self.render("password_reset_request.html",
+                        error_message=N_("This user does not have an email address configured. Please contact an administrator."),
+                        **self.r_params)
+            return
+
+        if self._is_rate_limited(user.username):
+            self.render("password_reset_request.html",
+                        error_message=N_("Too many password reset requests. Please try again later."),
+                        **self.r_params)
+            return
+
+        self._record_request(user.username)
+
+        token = secrets.token_urlsafe(16)
+        user.password_reset_token = token
+        user.password_reset_token_expires = self.timestamp + timedelta(
+            hours=self.token_expiration_hours)
+
+        self.sql_session.commit()
+
+        # Use absolute URL for reset URL - contest_url gives relative path, so get absolute version
+        relative_path = self.contest_url("password_reset_confirm", token)
+        reset_url = self.request.protocol + "://" + self.request.host + relative_path.lstrip(".")
+
+        email_sent = self._send_reset_email(user.email, reset_url)
+
+        if email_sent:
+            self.render("password_reset_request_sent.html",
+                        email=user.email,
+                        **self.r_params)
+        else:
+            self.render("password_reset_request.html",
+                        error_message=N_("Failed to send reset email. Please contact an administrator."),
+                        **self.r_params)
+
+    def _send_reset_email(self, email: str, reset_url: str) -> bool:
+        """Send password reset email via SMTP.
+
+        Returns True if email was sent successfully, False otherwise.
+        Uses configurable email templates from config.email.password_reset.
+        Sends both plain text and HTML versions for maximum compatibility.
+        """
+        smtp_config = config.smtp
+        if not smtp_config.server or not smtp_config.sender_address:
+            logger.warning("SMTP not configured, cannot send password reset email")
+            return False
+
+        email_config = config.email
+        pr_config = email_config.password_reset
+
+        # Template placeholders
+        placeholders = {
+            "system_name": email_config.system_name,
+            "reset_url": reset_url,
+            "token_expiration_hours": self.token_expiration_hours,
+        }
+
+        try:
+            # Format templates with placeholders
+            subject = pr_config.subject.format_map(placeholders)
+            text_body = pr_config.text.format_map(placeholders)
+
+            # Create multipart message for text + HTML
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = smtp_config.sender_address
+            msg["To"] = email
+
+            # Attach plain text part first (lower priority)
+            msg.attach(MIMEText(text_body, "plain"))
+
+            # Attach HTML part if configured (higher priority)
+            # Use html.escape() for security best practices
+            if pr_config.html:
+                html_placeholders = {
+                    "system_name": html.escape(str(placeholders["system_name"])),
+                    "reset_url": html.escape(str(placeholders["reset_url"])),
+                    "token_expiration_hours": placeholders["token_expiration_hours"],
+                }
+                html_body = pr_config.html.format_map(html_placeholders)
+                msg.attach(MIMEText(html_body, "html"))
+
+            if smtp_config.use_tls:
+                server = smtplib.SMTP(smtp_config.server, smtp_config.port)
+                server.starttls()
+            else:
+                server = smtplib.SMTP(smtp_config.server, smtp_config.port)
+
+            try:
+                if smtp_config.username and smtp_config.password:
+                    server.login(smtp_config.username, smtp_config.password)
+                server.sendmail(smtp_config.sender_address, [email], msg.as_string())
+            finally:
+                server.quit()
+            return True
+        except KeyError as e:
+            logger.error("Invalid placeholder in email template: %s", e)
+            return False
+        except (smtplib.SMTPException, OSError):
+            logger.exception("Failed to send password reset email")
+            return False
+
+
+class PasswordResetConfirmHandler(ContestHandler):
+    """Handler for confirming a password reset.
+
+    Validates the token from the URL parameter, shows a password reset form,
+    and on submission stores the new password hash for admin approval.
+
+    """
+
+    MIN_PASSWORD_LENGTH = 6
+    MAX_INPUT_LENGTH = 50
+
+    @property
+    def token_expiration_hours(self) -> int:
+        """Get token expiration hours from config."""
+        return config.email.password_reset.token_expiration_hours
+
+    @multi_contest
+    def get(self, token: str):
+        user = self._validate_token(token)
+        if user is None:
+            self.render("password_reset_invalid.html",
+                        token_expiration_hours=self.token_expiration_hours,
+                        **self.r_params)
+            return
+
+        self.render("password_reset_confirm.html",
+                    token=token,
+                    username=user.username,
+                    MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                    **self.r_params)
+
+    @multi_contest
+    def post(self, token: str):
+        user = self._validate_token(token)
+        if user is None:
+            self.render("password_reset_invalid.html",
+                        token_expiration_hours=self.token_expiration_hours,
+                        **self.r_params)
+            return
+
+        password = self.get_argument("password", "")
+        password_confirm = self.get_argument("password_confirm", "")
+
+        if not password:
+            self.render("password_reset_confirm.html",
+                        token=token,
+                        username=user.username,
+                        MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                        error_message=N_("Please enter a password."),
+                        **self.r_params)
+            return
+
+        if password != password_confirm:
+            self.render("password_reset_confirm.html",
+                        token=token,
+                        username=user.username,
+                        MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                        error_message=N_("Passwords do not match."),
+                        **self.r_params)
+            return
+
+        if not self.MIN_PASSWORD_LENGTH <= len(password) <= self.MAX_INPUT_LENGTH:
+            self.render("password_reset_confirm.html",
+                        token=token,
+                        username=user.username,
+                        MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                        error_message=N_("Password must be between %d and %d characters.") % (
+                            self.MIN_PASSWORD_LENGTH, self.MAX_INPUT_LENGTH),
+                        **self.r_params)
+            return
+
+        try:
+            user_inputs = [user.username]
+            if user.email:
+                user_inputs.append(user.email)
+            validate_password_strength(password, user_inputs)
+        except WeakPasswordError:
+            self.render("password_reset_confirm.html",
+                        token=token,
+                        username=user.username,
+                        MIN_PASSWORD_LENGTH=self.MIN_PASSWORD_LENGTH,
+                        error_message=N_("Password is too weak. Please choose a stronger password."),
+                        **self.r_params)
+            return
+
+        user.password_reset_new_hash = hash_password(password, method="bcrypt")
+        user.password_reset_pending = True
+        user.password_reset_token = None
+        user.password_reset_token_expires = None
+
+        self.sql_session.commit()
+
+        self.render("password_reset_pending.html",
+                    username=user.username,
+                    **self.r_params)
+
+    def _validate_token(self, token: str) -> User | None:
+        """Validate the password reset token.
+
+        Returns the user if the token is valid and not expired, None otherwise.
+        Uses constant-time comparison for defense in depth against timing attacks.
+        """
+        user = self.sql_session.query(User).filter(
+            User.password_reset_token == token
+        ).first()
+
+        if user is None:
+            return None
+
+        # Constant-time comparison for defense in depth
+        # (high-entropy tokens already make timing attacks impractical)
+        if not secrets.compare_digest(user.password_reset_token, token):
+            return None
+
+        if user.password_reset_token_expires is None:
+            return None
+
+        if user.password_reset_token_expires < self.timestamp:
+            return None
+
+        return user

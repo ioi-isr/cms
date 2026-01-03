@@ -367,6 +367,9 @@ class BaseHandler(CommonRequestHandler):
                 Contest.folder_id.is_(None)
             )
         ).order_by(Contest.name).all()
+        params["pending_password_resets"] = self.sql_session.query(User)\
+            .filter(User.password_reset_pending.is_(True))\
+            .count()
         return params
 
     def write_error(self, status_code, **kwargs):

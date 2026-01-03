@@ -695,3 +695,101 @@ class EditParticipationHandler(BaseHandler):
 
         # Maybe they'll want to do this again (for another contest).
         self.redirect(fallback_page)
+
+
+class ClearResetTokenHandler(BaseHandler):
+    """Clear a user's password reset token and any pending reset state.
+
+    This allows admins to invalidate a password reset link and clear any
+    pending approval state, effectively canceling the entire reset process.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, user_id):
+        fallback_page = self.url("user", user_id)
+
+        user = self.safe_get_item(User, user_id)
+
+        user.password_reset_token = None
+        user.password_reset_token_expires = None
+        user.password_reset_pending = False
+        user.password_reset_new_hash = None
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Password reset cleared",
+                "The password reset token and pending state for user %s has been cleared." % user.username
+            )
+
+        self.redirect(fallback_page)
+
+
+class ApprovePasswordResetHandler(BaseHandler):
+    """Approve a pending password reset.
+
+    This copies the pending password hash to the user's password field.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, user_id):
+        fallback_page = self.url("user", user_id)
+
+        user = self.safe_get_item(User, user_id)
+
+        if not user.password_reset_pending or not user.password_reset_new_hash:
+            self.service.add_notification(
+                make_datetime(),
+                "No pending password reset",
+                "User %s does not have a pending password reset." % user.username
+            )
+            self.redirect(fallback_page)
+            return
+
+        user.password = user.password_reset_new_hash
+        user.password_reset_pending = False
+        user.password_reset_new_hash = None
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Password reset approved",
+                "The password reset for user %s has been approved." % user.username
+            )
+            self.service.proxy_service.reinitialize()
+
+        self.redirect(fallback_page)
+
+
+class DenyPasswordResetHandler(BaseHandler):
+    """Deny a pending password reset.
+
+    This clears the pending password reset without changing the user's password.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, user_id):
+        fallback_page = self.url("user", user_id)
+
+        user = self.safe_get_item(User, user_id)
+
+        if not user.password_reset_pending:
+            self.service.add_notification(
+                make_datetime(),
+                "No pending password reset",
+                "User %s does not have a pending password reset." % user.username
+            )
+            self.redirect(fallback_page)
+            return
+
+        user.password_reset_pending = False
+        user.password_reset_new_hash = None
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Password reset denied",
+                "The password reset for user %s has been denied." % user.username
+            )
+
+        self.redirect(fallback_page)

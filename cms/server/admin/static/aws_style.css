@@ -1138,3 +1138,63 @@ th.diff-only, td.diff-only {
 table.diff-open th.diff-only, table.diff-open td.diff-only {
     display: table-cell;
 }
+
+/* Password reset panel styles */
+.panel-warning {
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #fcf8e3;
+    border: 1px solid #faebcc;
+    border-radius: 4px;
+}
+
+.panel-warning h2 {
+    margin-top: 0;
+    color: #8a6d3b;
+}
+
+.panel-warning p {
+    color: #8a6d3b;
+}
+
+.panel-info {
+    padding: 10px;
+    margin-bottom: 15px;
+    background-color: #d9edf7;
+    border: 1px solid #bce8f1;
+    border-radius: 4px;
+}
+
+.btn-success {
+    background-color: #5cb85c;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.btn-danger {
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.btn-warning {
+    background-color: #f0ad4e;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+/* Sidebar pending notice - uses orange/amber color that works on blue sidebar */
+.notice-pending {
+    background-color: #f59e0b;
+    border-color: #d97706;
+}
+
+.notice-pending a {
+    color: white;
+}

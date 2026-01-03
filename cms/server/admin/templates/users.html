@@ -6,6 +6,43 @@
   <h1>Users list</h1>
 </div>
 
+{% set pending_users = user_list|selectattr("password_reset_pending")|list %}
+{% if pending_users|length > 0 %}
+<div class="panel-warning">
+  <h2>Pending Password Resets ({{ pending_users|length }})</h2>
+  <p>The following users have submitted password reset requests awaiting approval:</p>
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>First name</th>
+        <th>Last name</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in pending_users|sort(attribute="username") %}
+      <tr>
+        <td><a href="{{ url("user", u.id) }}">{{ u.username }}</a></td>
+        <td>{{ u.first_name }}</td>
+        <td>{{ u.last_name }}</td>
+        <td>
+          <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Approve password reset for ' + {{ u.username|tojson }} + '?');">
+            {{ xsrf_form_html|safe }}
+            <input type="submit" value="Approve" class="btn-success" />
+          </form>
+          <form action="{{ url("user", u.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Deny password reset for ' + {{ u.username|tojson }} + '?');">
+            {{ xsrf_form_html|safe }}
+            <input type="submit" value="Deny" class="btn-danger" />
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <div style="margin-bottom: 10px;">
   <a href="{{ url("users", "export") }}" class="btn btn-primary">Export to CSV</a>
   <a href="{{ url("users", "import") }}" class="btn btn-primary">Import from CSV</a>

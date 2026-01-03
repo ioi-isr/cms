@@ -220,3 +220,51 @@ listen_port = 8811
 #bot_token = "..."
 #chat_id = "..."
 
+# SMTP configuration for sending password reset emails.
+# If not configured, password reset emails cannot be sent automatically,
+# but admins can still manually share reset links from the admin interface.
+[smtp]
+server = "smtp.example.com"
+port = 25
+#username = "your_smtp_username"
+# WARNING: Password will be stored in plain text. Ensure this file has
+# restricted permissions (chmod 600) and is not committed to version control.
+# Consider using environment variables for sensitive values in production.
+#password = "your_smtp_password"
+#use_tls = true
+sender_address = "no-reply@example.com"
+
+
+# Email configuration for customizing email templates.
+# The system_name is used in email subjects and bodies.
+[email]
+system_name = "CMS"
+
+# Password reset email templates.
+# Supported placeholders: {system_name}, {reset_url}, {token_expiration_hours}
+# Note: Literal braces must be escaped as {{ and }} in templates.
+[email.password_reset]
+# Token expiration time in hours (default: 2)
+token_expiration_hours = 2
+# Rate limiting: max requests per username within the time window (default: 3)
+rate_limit_max_requests = 3
+# Rate limiting: time window in seconds (default: 900 = 15 minutes)
+rate_limit_window_seconds = 900
+subject = "[{system_name}] Password reset request"
+text = """
+You (or someone else) requested a password reset for {system_name}.
+
+Click the following link to reset your password:
+{reset_url}
+
+This link expires in {token_expiration_hours} hours.
+
+If you didn't request this, you can ignore this email.
+"""
+html = """
+<p>You (or someone else) requested a password reset for <b>{system_name}</b>.</p>
+<p><a href="{reset_url}">Reset your password</a></p>
+<p>This link expires in {token_expiration_hours} hours.</p>
+<p>If you didn't request this, you can ignore this email.</p>
+"""
+

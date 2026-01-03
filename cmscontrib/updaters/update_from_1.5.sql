@@ -161,6 +161,15 @@ ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participa
 
 ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+-- Password reset feature: add password reset fields to users table
+ALTER TABLE public.users ADD COLUMN password_reset_token character varying;
+ALTER TABLE public.users ADD COLUMN password_reset_token_expires timestamp without time zone;
+ALTER TABLE public.users ADD COLUMN password_reset_pending boolean NOT NULL DEFAULT false;
+ALTER TABLE public.users ADD COLUMN password_reset_new_hash character varying;
+ALTER TABLE public.users ALTER COLUMN password_reset_pending DROP DEFAULT;
+-- Partial index for efficient token lookups (only indexes non-null tokens)
+CREATE INDEX ix_users_password_reset_token ON public.users USING btree (password_reset_token) WHERE password_reset_token IS NOT NULL;
+
 -- https://github.com/ioi-isr/cms/pull/73
 CREATE TABLE public.participation_task_scores (
     id integer NOT NULL,
