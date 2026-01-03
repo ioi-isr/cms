@@ -264,8 +264,8 @@ $(document).ready(initSidebarEvents);
         </div>
         {% endif %}
         {% if pending_password_resets > 0 %}
-        <div class="secret_notice" style="background-color: #fcf8e3; border-color: #faebcc;">
-          <a href="{{ url("users") }}" style="color: #8a6d3b;">
+        <div class="secret_notice notice-pending">
+          <a href="{{ url("users") }}">
             {{ pending_password_resets }} pending password reset{% if pending_password_resets > 1 %}s{% endif %}
           </a>
         </div>

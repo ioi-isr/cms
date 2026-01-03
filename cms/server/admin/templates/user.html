@@ -64,22 +64,22 @@
 <h2 id="title_password_reset" class="toggling_on">Password Reset</h2>
 <div id="password_reset">
   {% if user.password_reset_pending %}
-  <div class="alert alert-warning" style="padding: 10px; margin-bottom: 15px; background-color: #fcf8e3; border: 1px solid #faebcc; border-radius: 4px;">
+  <div class="panel-warning">
     <strong>Pending Password Reset</strong>
     <p>This user has submitted a password reset request that is awaiting approval.</p>
-    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Approve password reset for {{ user.username }}?');">
+    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Approve password reset for ' + {{ user.username|tojson }} + '?');">
       {{ xsrf_form_html|safe }}
-      <input type="submit" value="Approve Reset" class="btn btn-success" />
+      <input type="submit" value="Approve Reset" class="btn-success" />
     </form>
-    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Deny password reset for {{ user.username }}?');">
+    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Deny password reset for ' + {{ user.username|tojson }} + '?');">
       {{ xsrf_form_html|safe }}
-      <input type="submit" value="Deny Reset" class="btn btn-danger" />
+      <input type="submit" value="Deny Reset" class="btn-danger" />
     </form>
   </div>
   {% endif %}
 
   {% if user.password_reset_token and user.password_reset_token_expires %}
-  <div class="alert alert-info" style="padding: 10px; margin-bottom: 15px; background-color: #d9edf7; border: 1px solid #bce8f1; border-radius: 4px;">
+  <div class="panel-info">
     <strong>Active Password Reset Token</strong>
     <p>A password reset link is active for this user. Copy and share the reset URL below if email delivery failed.</p>
     <table>
@@ -94,14 +94,16 @@
           {% endif %}
           </small>
           {% else %}
-          <code style="word-break: break-all;">/password_reset_confirm/{{ user.password_reset_token }}</code>
-          <br><small>(Relative path - prepend your CWS server address)</small>
+          <div class="alert alert-warning" style="padding: 5px; margin: 5px 0; background-color: #fcf8e3; border: 1px solid #faebcc; border-radius: 4px;">
+            <strong>Note:</strong> This user has no contest participations. Password reset links require a contest context.
+            <br>Please add a participation for this user first, then the reset URL will be available.
+          </div>
           {% endif %}
         </td>
       </tr>
       <tr>
         <td><strong>Expires:</strong></td>
-        <td>{{ user.password_reset_token_expires }}</td>
+        <td>{{ user.password_reset_token_expires|format_datetime }}</td>
       </tr>
     </table>
     <p style="margin-top: 10px;">

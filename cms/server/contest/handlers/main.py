@@ -28,6 +28,7 @@
 
 """
 
+import html
 import ipaddress
 import json
 import logging
@@ -564,9 +565,52 @@ class PasswordResetRequestHandler(ContestHandler):
     an email address, generates a secure token, and sends an email with the
     reset link.
 
+    Implements per-username rate limiting to prevent abuse (inbox flooding,
+    SMTP load). Rate limiting is configurable via config.email.password_reset.
     """
 
-    TOKEN_EXPIRATION_HOURS = 2
+    _rate_limit_cache: dict[str, list[float]] = {}
+
+    @property
+    def token_expiration_hours(self) -> int:
+        """Get token expiration hours from config."""
+        return config.email.password_reset.token_expiration_hours
+
+    @property
+    def rate_limit_max_requests(self) -> int:
+        """Get rate limit max requests from config."""
+        return config.email.password_reset.rate_limit_max_requests
+
+    @property
+    def rate_limit_window_seconds(self) -> int:
+        """Get rate limit window in seconds from config."""
+        return config.email.password_reset.rate_limit_window_seconds
+
+    def _is_rate_limited(self, username: str) -> bool:
+        """Check if the username has exceeded the rate limit.
+
+        Returns True if rate limited, False otherwise.
+        Cleans up expired entries from the cache.
+        """
+        now = make_timestamp(self.timestamp)
+        window_start = now - self.rate_limit_window_seconds
+
+        if username in self._rate_limit_cache:
+            self._rate_limit_cache[username] = [
+                ts for ts in self._rate_limit_cache[username]
+                if ts > window_start
+            ]
+            if len(self._rate_limit_cache[username]) >= self.rate_limit_max_requests:
+                return True
+
+        return False
+
+    def _record_request(self, username: str) -> None:
+        """Record a password reset request for rate limiting."""
+        now = make_timestamp(self.timestamp)
+        if username not in self._rate_limit_cache:
+            self._rate_limit_cache[username] = []
+        self._rate_limit_cache[username].append(now)
 
     @multi_contest
     def get(self):
@@ -613,10 +657,18 @@ class PasswordResetRequestHandler(ContestHandler):
                         **self.r_params)
             return
 
+        if self._is_rate_limited(user.username):
+            self.render("password_reset_request.html",
+                        error_message=N_("Too many password reset requests. Please try again later."),
+                        **self.r_params)
+            return
+
+        self._record_request(user.username)
+
         token = secrets.token_urlsafe(16)
         user.password_reset_token = token
         user.password_reset_token_expires = self.timestamp + timedelta(
-            hours=self.TOKEN_EXPIRATION_HOURS)
+            hours=self.token_expiration_hours)
 
         self.sql_session.commit()
 
@@ -654,7 +706,7 @@ class PasswordResetRequestHandler(ContestHandler):
         placeholders = {
             "system_name": email_config.system_name,
             "reset_url": reset_url,
-            "token_expiration_hours": self.TOKEN_EXPIRATION_HOURS,
+            "token_expiration_hours": self.token_expiration_hours,
         }
 
         try:
@@ -672,8 +724,14 @@ class PasswordResetRequestHandler(ContestHandler):
             msg.attach(MIMEText(text_body, "plain"))
 
             # Attach HTML part if configured (higher priority)
+            # Use html.escape() for security best practices
             if pr_config.html:
-                html_body = pr_config.html.format_map(placeholders)
+                html_placeholders = {
+                    "system_name": html.escape(str(placeholders["system_name"])),
+                    "reset_url": html.escape(str(placeholders["reset_url"])),
+                    "token_expiration_hours": placeholders["token_expiration_hours"],
+                }
+                html_body = pr_config.html.format_map(html_placeholders)
                 msg.attach(MIMEText(html_body, "html"))
 
             if smtp_config.use_tls:
@@ -708,11 +766,18 @@ class PasswordResetConfirmHandler(ContestHandler):
     MIN_PASSWORD_LENGTH = 6
     MAX_INPUT_LENGTH = 50
 
+    @property
+    def token_expiration_hours(self) -> int:
+        """Get token expiration hours from config."""
+        return config.email.password_reset.token_expiration_hours
+
     @multi_contest
     def get(self, token: str):
         user = self._validate_token(token)
         if user is None:
-            self.render("password_reset_invalid.html", **self.r_params)
+            self.render("password_reset_invalid.html",
+                        token_expiration_hours=self.token_expiration_hours,
+                        **self.r_params)
             return
 
         self.render("password_reset_confirm.html",
@@ -725,7 +790,9 @@ class PasswordResetConfirmHandler(ContestHandler):
     def post(self, token: str):
         user = self._validate_token(token)
         if user is None:
-            self.render("password_reset_invalid.html", **self.r_params)
+            self.render("password_reset_invalid.html",
+                        token_expiration_hours=self.token_expiration_hours,
+                        **self.r_params)
             return
 
         password = self.get_argument("password", "")

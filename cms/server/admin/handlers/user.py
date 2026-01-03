@@ -698,9 +698,10 @@ class EditParticipationHandler(BaseHandler):
 
 
 class ClearResetTokenHandler(BaseHandler):
-    """Clear a user's password reset token.
+    """Clear a user's password reset token and any pending reset state.
 
-    This allows admins to invalidate a password reset link.
+    This allows admins to invalidate a password reset link and clear any
+    pending approval state, effectively canceling the entire reset process.
     """
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -711,12 +712,14 @@ class ClearResetTokenHandler(BaseHandler):
 
         user.password_reset_token = None
         user.password_reset_token_expires = None
+        user.password_reset_pending = False
+        user.password_reset_new_hash = None
 
         if self.try_commit():
             self.service.add_notification(
                 make_datetime(),
-                "Password reset token cleared",
-                "The password reset token for user %s has been cleared." % user.username
+                "Password reset cleared",
+                "The password reset token and pending state for user %s has been cleared." % user.username
             )
 
         self.redirect(fallback_page)

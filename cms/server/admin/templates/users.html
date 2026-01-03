@@ -8,9 +8,9 @@
 
 {% set pending_users = user_list|selectattr("password_reset_pending")|list %}
 {% if pending_users|length > 0 %}
-<div style="padding: 15px; margin-bottom: 15px; background-color: #fcf8e3; border: 1px solid #faebcc; border-radius: 4px;">
-  <h2 style="margin-top: 0; color: #8a6d3b;">Pending Password Resets ({{ pending_users|length }})</h2>
-  <p style="color: #8a6d3b;">The following users have submitted password reset requests awaiting approval:</p>
+<div class="panel-warning">
+  <h2>Pending Password Resets ({{ pending_users|length }})</h2>
+  <p>The following users have submitted password reset requests awaiting approval:</p>
   <table class="bordered">
     <thead>
       <tr>
@@ -27,13 +27,13 @@
         <td>{{ u.first_name }}</td>
         <td>{{ u.last_name }}</td>
         <td>
-          <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Approve password reset for {{ u.username }}?');">
+          <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Approve password reset for ' + {{ u.username|tojson }} + '?');">
             {{ xsrf_form_html|safe }}
-            <input type="submit" value="Approve" style="background-color: #5cb85c; color: white; border: none; padding: 3px 8px; cursor: pointer;" />
+            <input type="submit" value="Approve" class="btn-success" />
           </form>
-          <form action="{{ url("user", u.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Deny password reset for {{ u.username }}?');">
+          <form action="{{ url("user", u.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Deny password reset for ' + {{ u.username|tojson }} + '?');">
             {{ xsrf_form_html|safe }}
-            <input type="submit" value="Deny" style="background-color: #d9534f; color: white; border: none; padding: 3px 8px; cursor: pointer;" />
+            <input type="submit" value="Deny" class="btn-danger" />
           </form>
         </td>
       </tr>

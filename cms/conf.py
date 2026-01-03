@@ -203,6 +203,12 @@ class PasswordResetEmailConfig:
         "<p>This link expires in {token_expiration_hours} hours.</p>\n"
         "<p>If you didn't request this, you can ignore this email.</p>"
     )
+    # Token expiration time in hours
+    token_expiration_hours: int = 2
+    # Rate limiting: max requests per username within the time window
+    rate_limit_max_requests: int = 3
+    # Rate limiting: time window in seconds
+    rate_limit_window_seconds: int = 900
 
 
 @dataclass()
