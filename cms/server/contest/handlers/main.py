@@ -36,6 +36,7 @@ import re
 import secrets
 import smtplib
 from datetime import timedelta
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import collections
@@ -637,23 +638,42 @@ class PasswordResetRequestHandler(ContestHandler):
         """Send password reset email via SMTP.
 
         Returns True if email was sent successfully, False otherwise.
+        Uses configurable email templates from config.email.password_reset.
+        Sends both plain text and HTML versions for maximum compatibility.
         """
         smtp_config = config.smtp
         if not smtp_config.server or not smtp_config.sender_address:
             logger.warning("SMTP not configured, cannot send password reset email")
             return False
 
+        email_config = config.email
+        pr_config = email_config.password_reset
+
+        # Template placeholders
+        placeholders = {
+            "system_name": email_config.system_name,
+            "reset_url": reset_url,
+            "token_expiration_hours": self.TOKEN_EXPIRATION_HOURS,
+        }
+
         try:
-            subject_prefix = smtp_config.email_subject_prefix or "CMS"
-            msg = MIMEText(
-                f"You have requested a password reset for your {subject_prefix} account.\n\n"
-                f"Click the following link to reset your password:\n{reset_url}\n\n"
-                f"This link will expire in {self.TOKEN_EXPIRATION_HOURS} hours.\n\n"
-                f"If you did not request this reset, please ignore this email."
-            )
-            msg["Subject"] = f"{subject_prefix} - Password Reset Request"
+            # Format templates with placeholders
+            subject = pr_config.subject.format_map(placeholders)
+            text_body = pr_config.text.format_map(placeholders)
+
+            # Create multipart message for text + HTML
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
             msg["From"] = smtp_config.sender_address
             msg["To"] = email
+
+            # Attach plain text part first (lower priority)
+            msg.attach(MIMEText(text_body, "plain"))
+
+            # Attach HTML part if configured (higher priority)
+            if pr_config.html:
+                html_body = pr_config.html.format_map(placeholders)
+                msg.attach(MIMEText(html_body, "html"))
 
             if smtp_config.use_tls:
                 server = smtplib.SMTP(smtp_config.server, smtp_config.port)
@@ -668,6 +688,9 @@ class PasswordResetRequestHandler(ContestHandler):
             finally:
                 server.quit()
             return True
+        except KeyError as e:
+            logger.error("Invalid placeholder in email template: %s", e)
+            return False
         except (smtplib.SMTPException, OSError):
             logger.exception("Failed to send password reset email")
             return False
@@ -764,12 +787,18 @@ class PasswordResetConfirmHandler(ContestHandler):
         """Validate the password reset token.
 
         Returns the user if the token is valid and not expired, None otherwise.
+        Uses constant-time comparison for defense in depth against timing attacks.
         """
         user = self.sql_session.query(User).filter(
             User.password_reset_token == token
         ).first()
 
         if user is None:
+            return None
+
+        # Constant-time comparison for defense in depth
+        # (high-entropy tokens already make timing attacks impractical)
+        if not secrets.compare_digest(user.password_reset_token, token):
             return None
 
         if user.password_reset_token_expires is None:

@@ -27,11 +27,11 @@
         <td>{{ u.first_name }}</td>
         <td>{{ u.last_name }}</td>
         <td>
-          <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;">
+          <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Approve password reset for {{ u.username }}?');">
             {{ xsrf_form_html|safe }}
             <input type="submit" value="Approve" style="background-color: #5cb85c; color: white; border: none; padding: 3px 8px; cursor: pointer;" />
           </form>
-          <form action="{{ url("user", u.id, "deny_password_reset") }}" method="POST" style="display:inline;">
+          <form action="{{ url("user", u.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Deny password reset for {{ u.username }}?');">
             {{ xsrf_form_html|safe }}
             <input type="submit" value="Deny" style="background-color: #d9534f; color: white; border: none; padding: 3px 8px; cursor: pointer;" />
           </form>

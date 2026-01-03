@@ -67,11 +67,11 @@
   <div class="alert alert-warning" style="padding: 10px; margin-bottom: 15px; background-color: #fcf8e3; border: 1px solid #faebcc; border-radius: 4px;">
     <strong>Pending Password Reset</strong>
     <p>This user has submitted a password reset request that is awaiting approval.</p>
-    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;">
+    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Approve password reset for {{ user.username }}?');">
       {{ xsrf_form_html|safe }}
       <input type="submit" value="Approve Reset" class="btn btn-success" />
     </form>
-    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;">
+    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Deny password reset for {{ user.username }}?');">
       {{ xsrf_form_html|safe }}
       <input type="submit" value="Deny Reset" class="btn btn-danger" />
     </form>
@@ -88,7 +88,11 @@
         <td>
           {% if participations|length > 0 %}
           <code style="word-break: break-all;">/{{ participations[0].contest.name }}/password_reset_confirm/{{ user.password_reset_token }}</code>
-          <br><small>(Relative path - prepend your CWS server address, e.g., https://your-cws-server.com)</small>
+          <br><small>(Relative path - prepend your CWS server address, e.g., https://your-cws-server.com)
+          {% if participations|length > 1 %}
+          <br>Note: This user participates in multiple contests. The reset URL works for any contest they're registered in.
+          {% endif %}
+          </small>
           {% else %}
           <code style="word-break: break-all;">/password_reset_confirm/{{ user.password_reset_token }}</code>
           <br><small>(Relative path - prepend your CWS server address)</small>

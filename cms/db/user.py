@@ -31,7 +31,7 @@ from ipaddress import IPv4Network, IPv6Network
 from sqlalchemy.dialects.postgresql import ARRAY, CIDR
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, \
-    UniqueConstraint
+    UniqueConstraint, Index
 from sqlalchemy.types import Boolean, Integer, String, Unicode, DateTime, \
     Interval
 
@@ -48,6 +48,14 @@ class User(Base):
     """
 
     __tablename__ = 'users'
+    __table_args__ = (
+        # Partial index for efficient token lookups during password reset
+        Index(
+            'ix_users_password_reset_token',
+            'password_reset_token',
+            postgresql_where='password_reset_token IS NOT NULL'
+        ),
+    )
 
     # Auto increment primary key.
     id: int = Column(
