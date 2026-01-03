@@ -34,6 +34,7 @@ import re
 import zipfile
 
 import collections
+import gevent
 
 try:
     collections.MutableMapping
@@ -45,7 +46,8 @@ import tornado.web
 
 from cms import config
 from cms.db import Dataset, Generator, Manager, Message, Participation, \
-    Session, Submission, Task, Testcase
+    Session, Submission, SubtaskValidationResult, SubtaskValidator, Task, \
+    Testcase
 from cms.grading.tasktypes.util import \
     get_allowed_manager_basenames, compile_manager_bytes, create_sandbox
 from cms.grading.languagemanager import filename_to_language, get_language
@@ -57,6 +59,27 @@ from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+# Track running validation jobs by dataset_id
+# Each entry contains: {"status": "running"|"completed"|"error", "progress": str, "result": str}
+_running_validations: dict[int, dict] = {}
+
+
+def set_sandbox_resource_limits(sandbox):
+    """Set resource limits for a sandbox to prevent runaway processes.
+
+    This function applies the same resource limits used for generators
+    to validators and other sandboxed processes to ensure consistency
+    and prevent system resource exhaustion.
+
+    Args:
+        sandbox: The sandbox object to configure
+    """
+    sandbox.timeout = config.sandbox.trusted_sandbox_max_time_s
+    sandbox.wallclock_timeout = config.sandbox.trusted_sandbox_max_time_s * 2
+    sandbox.address_space = \
+        config.sandbox.trusted_sandbox_max_memory_kib * 1024
+    sandbox.max_processes = config.sandbox.trusted_sandbox_max_processes
 
 
 def check_compiled_file_conflict(filename, allowed_basenames, existing_managers):
@@ -1205,13 +1228,8 @@ class GenerateTestcasesHandler(BaseHandler):
                         "get_evaluation_commands failed for %s: %s, using default",
                         generator.filename, e)
 
-            # Set resource limits from config to prevent buggy generators
-            # from consuming system resources indefinitely
-            sandbox.timeout = config.sandbox.trusted_sandbox_max_time_s
-            sandbox.wallclock_timeout = config.sandbox.trusted_sandbox_max_time_s * 2
-            sandbox.address_space = \
-                config.sandbox.trusted_sandbox_max_memory_kib * 1024
-            sandbox.max_processes = config.sandbox.trusted_sandbox_max_processes
+            # Apply resource limits to prevent runaway generators
+            set_sandbox_resource_limits(sandbox)
 
             # Set stdout/stderr files so they are created during execution
             sandbox.stdout_file = "stdout.txt"
@@ -1310,3 +1328,1015 @@ class GenerateTestcasesHandler(BaseHandler):
             self.redirect(self.url("task", task.id))
         else:
             self.redirect(fallback_page)
+
+
+def _run_validator(file_cacher, filename, executable_digest, testcase_data):
+    """Run a validator against testcases and return validation results.
+
+    This is the shared core logic for running validators, used by both
+    synchronous (AddSubtaskValidatorHandler) and background (RerunSubtaskValidatorsHandler)
+    code paths.
+
+    Args:
+        file_cacher: FileCacher instance for accessing stored files
+        filename: Validator source filename (used to determine language)
+        executable_digest: Digest of the compiled validator executable
+        testcase_data: List of dicts with keys: id, input, output
+
+    Returns:
+        List of dicts with keys: testcase_id, passed, exit_status, exit_code, stderr
+        - passed: True if validator ran successfully and returned exit code 0
+        - exit_status: Sandbox exit status ('ok', 'timeout', 'signal', etc.)
+        - exit_code: Exit code from validator (when exit_status is 'ok' or 'nonzero return')
+        Raises Exception on error (caller handles notification/logging)
+    """
+    language = filename_to_language(filename)
+
+    exe_name = "validator"
+    if language is not None and isinstance(language, CompiledLanguage):
+        exe_name += language.executable_extension
+
+    validation_results = []
+    sandbox = None
+
+    try:
+        for tc_data in testcase_data:
+            sandbox = create_sandbox(file_cacher, name="admin_validate")
+
+            sandbox.create_file_from_storage(exe_name, executable_digest, executable=True)
+            sandbox.create_file_from_storage("input.txt", tc_data["input"])
+            sandbox.create_file_from_storage("output.txt", tc_data["output"])
+
+            cmd = ["./" + exe_name, "input.txt", "output.txt"]
+            if language is not None:
+                try:
+                    cmds = language.get_evaluation_commands(exe_name)
+                    if cmds:
+                        cmd = cmds[0] + ["input.txt", "output.txt"]
+                except Exception as e:
+                    logger.debug(
+                        "get_evaluation_commands failed for validator %s: %s, using default",
+                        filename, e)
+
+            # Apply resource limits to prevent runaway validators
+            set_sandbox_resource_limits(sandbox)
+
+            # Provide input via stdin so validators can read from either
+            # input.txt file or stdin (output is still read from output.txt)
+            sandbox.stdin_file = "input.txt"
+            sandbox.stdout_file = "stdout.txt"
+            sandbox.stderr_file = "stderr.txt"
+
+            box_success = sandbox.execute_without_std(cmd, wait=True)
+
+            stderr = ""
+            try:
+                stderr_bytes = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
+                stderr = stderr_bytes.decode("utf-8", errors="replace")
+            except FileNotFoundError:
+                pass
+
+            passed = False
+            exit_status = None
+            exit_code = None
+
+            if box_success:
+                exit_status = sandbox.get_exit_status()
+                exit_code = sandbox.get_exit_code()
+                # Passed only if validator ran to completion with exit code 0
+                if exit_status == sandbox.EXIT_OK and exit_code == 0:
+                    passed = True
+                elif exit_status == sandbox.EXIT_NONZERO_RETURN:
+                    # Validator ran to completion but returned non-zero (testcase failed)
+                    passed = False
+            else:
+                # Sandbox itself failed - this is an error condition
+                exit_status = "sandbox error"
+
+            validation_results.append({
+                "testcase_id": tc_data["id"],
+                "passed": passed,
+                "exit_status": exit_status,
+                "exit_code": exit_code,
+                "stderr": stderr[:4096] if stderr else None
+            })
+
+            sandbox.cleanup(delete=True)
+            sandbox = None
+
+    finally:
+        if sandbox:
+            sandbox.cleanup(delete=True)
+
+    return validation_results
+
+
+def _store_validation_results(sql_session, validator, dataset, validation_results):
+    """Store validation results in the database, replacing any existing results.
+
+    Args:
+        sql_session: SQLAlchemy session
+        validator: SubtaskValidator instance
+        dataset: Dataset instance
+        validation_results: List of dicts with keys: testcase_id, passed,
+                           exit_status, exit_code, stderr
+
+    Returns:
+        Tuple of (passed_count, failed_count, error_count)
+    """
+    for result in validator.validation_results:
+        sql_session.delete(result)
+    sql_session.flush()
+
+    testcase_ids = [r["testcase_id"] for r in validation_results]
+    testcases_by_id = {tc.id: tc for tc in dataset.testcases.values()
+                      if tc.id in testcase_ids}
+
+    for result_data in validation_results:
+        testcase = testcases_by_id.get(result_data["testcase_id"])
+        if testcase is None:
+            continue
+        result = SubtaskValidationResult(
+            validator=validator,
+            testcase=testcase,
+            passed=result_data["passed"],
+            exit_status=result_data.get("exit_status"),
+            exit_code=result_data.get("exit_code"),
+            stderr=result_data["stderr"]
+        )
+        sql_session.add(result)
+
+    passed_count = 0
+    failed_count = 0
+    error_count = 0
+    for r in validation_results:
+        exit_status = r.get("exit_status")
+        if r["passed"]:
+            passed_count += 1
+        elif exit_status in ("ok", "nonzero return", None):
+            # Validator ran to completion but returned non-zero
+            failed_count += 1
+        else:
+            # Validator had an error (timeout, signal, sandbox error, etc.)
+            error_count += 1
+    return passed_count, failed_count, error_count
+
+
+class AddSubtaskValidatorHandler(BaseHandler):
+    """Add or replace a subtask validator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, subtask_index):
+        fallback_page = self.url("task", "0")
+
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
+        subtask_index = int(subtask_index)
+
+        validator_file = self.request.files.get("validator")
+        if not validator_file:
+            self.service.add_notification(
+                make_datetime(),
+                "No validator file provided",
+                "Please upload a validator source file.")
+            self.redirect(fallback_page)
+            return
+
+        validator_file = validator_file[0]
+        filename = validator_file["filename"]
+        body = validator_file["body"]
+
+        # Get testcases before closing session
+        testcases = list(dataset.testcases.values())
+
+        self.sql_session.close()
+
+        language = filename_to_language(filename)
+
+        if language is None or not isinstance(language, CompiledLanguage):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid validator file",
+                "Validator must be a compilable source file.")
+            self.redirect(fallback_page)
+            return
+
+        def notify(title, text):
+            self.service.add_notification(make_datetime(), title, text)
+
+        success, compiled_bytes, _stats = compile_manager_bytes(
+            self.service.file_cacher,
+            filename,
+            body,
+            "validator",
+            sandbox_name="admin_compile_validator",
+            for_evaluation=True,
+            notify=notify
+        )
+
+        if not success:
+            self.redirect(fallback_page)
+            return
+
+        try:
+            source_digest = self.service.file_cacher.put_file_content(
+                body, "Subtask validator source for %s" % task.name)
+            executable_digest = None
+            if compiled_bytes is not None:
+                executable_digest = self.service.file_cacher.put_file_content(
+                    compiled_bytes, "Subtask validator executable for %s" % task.name)
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Validator storage failed",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+
+        self.sql_session = Session()
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        existing_validator = dataset.subtask_validators.get(subtask_index)
+        if existing_validator is not None:
+            existing_validator.filename = filename
+            existing_validator.digest = source_digest
+            existing_validator.executable_digest = executable_digest
+            for result in existing_validator.validation_results:
+                self.sql_session.delete(result)
+            validator = existing_validator
+        else:
+            validator = SubtaskValidator(
+                dataset=dataset,
+                subtask_index=subtask_index,
+                filename=filename,
+                digest=source_digest,
+                executable_digest=executable_digest
+            )
+            self.sql_session.add(validator)
+
+        if not self.try_commit():
+            self.redirect(fallback_page)
+            return
+
+        # Auto-run validation if compilation succeeded
+        if executable_digest is None:
+            self.service.add_notification(
+                make_datetime(),
+                "Validator uploaded",
+                "Validator for subtask %d uploaded but compilation failed." % subtask_index)
+            self.redirect(self.url("task", task.id))
+            return
+
+        # Run validation in background (non-blocking)
+        dataset_id_int = int(dataset_id)
+
+        if dataset_id_int in _running_validations:
+            status = _running_validations[dataset_id_int].get("status")
+            if status == "running":
+                self.service.add_notification(
+                    make_datetime(),
+                    "Validator uploaded",
+                    "Validator for subtask %d uploaded. Validation already running - "
+                    "will need to rerun validators after current run completes." % subtask_index)
+                self.redirect(self.url("task", task.id))
+                return
+
+        # Convert testcases to dict format for background validation
+        testcase_data = [{"id": tc.id, "input": tc.input, "output": tc.output}
+                         for tc in testcases]
+
+        validator_data = [{
+            "id": validator.id,
+            "filename": filename,
+            "executable_digest": executable_digest,
+            "subtask_index": subtask_index
+        }]
+
+        _running_validations[dataset_id_int] = {
+            "status": "running",
+            "progress": "Starting validation...",
+            "result": None
+        }
+
+        gevent.spawn(
+            _run_validators_background,
+            self.service,
+            self.service.file_cacher,
+            dataset_id_int,
+            validator_data,
+            testcase_data
+        )
+
+        self.service.add_notification(
+            make_datetime(),
+            "Validator uploaded",
+            "Validator for subtask %d uploaded. Running validation on %d testcases "
+            "in background." % (subtask_index, len(testcase_data)))
+        self.redirect(self.url("task", task.id))
+
+
+class DeleteSubtaskValidatorHandler(BaseHandler):
+    """Delete a subtask validator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, dataset_id, validator_id):
+        validator = self.safe_get_item(SubtaskValidator, validator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if validator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task_id = dataset.task_id
+        self.sql_session.delete(validator)
+
+        if self.try_commit():
+            self.write("./%d" % task_id)
+
+
+class SubtaskDetailsHandler(BaseHandler):
+    """Show testcase details for a subtask, with optional validation results.
+
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, dataset_id, subtask_index):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        subtask_index = int(subtask_index)
+
+        task = dataset.task
+        self.contest = task.contest
+
+        from cms.grading.scoretypes import ScoreTypeGroup
+
+        validator = dataset.subtask_validators.get(subtask_index)
+
+        subtask_testcases = []
+        other_testcases = []
+        subtask_name = None
+        subtask_regex = None
+        uses_regex = False
+        suggested_prefix = None
+
+        try:
+            score_type_obj = dataset.score_type_object
+            if isinstance(score_type_obj, ScoreTypeGroup):
+                targets = score_type_obj.retrieve_target_testcases()
+                if subtask_index < len(targets):
+                    subtask_tc_codenames = set(targets[subtask_index])
+                else:
+                    subtask_tc_codenames = set()
+
+                # Get subtask name and regex from score type parameters
+                if subtask_index < len(score_type_obj.parameters):
+                    param = score_type_obj.parameters[subtask_index]
+                    if len(param) >= 2:
+                        # Check if the second parameter is a regex (string) or count (int)
+                        if isinstance(param[1], str):
+                            subtask_regex = param[1]
+                            uses_regex = True
+                            # Extract suggested prefix from regex patterns
+                            import re
+                            match = re.search(r'\.\*(?P<term>[^|)]*?)\.\*', subtask_regex)
+                            if match:
+                                # Unescape the term (in case it was escaped)
+                                suggested_prefix = re.sub(r'\\(.)', r'\1', match.group('term'))
+                    if len(param) >= 3 and param[2]:
+                        subtask_name = param[2]
+            else:
+                subtask_tc_codenames = set()
+        except Exception:
+            subtask_tc_codenames = set()
+
+        results_by_testcase = {}
+        if validator:
+            results_by_testcase = {r.testcase_id: r for r in validator.validation_results}
+
+        for codename, testcase in sorted(dataset.testcases.items()):
+            result = results_by_testcase.get(testcase.id)
+            tc_info = {
+                "codename": codename,
+                "testcase": testcase,
+                "result": result
+            }
+            if codename in subtask_tc_codenames:
+                subtask_testcases.append(tc_info)
+            else:
+                other_testcases.append(tc_info)
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.r_params["validator"] = validator
+        self.r_params["subtask_index"] = subtask_index
+        self.r_params["subtask_name"] = subtask_name
+        self.r_params["subtask_regex"] = subtask_regex
+        self.r_params["uses_regex"] = uses_regex
+        self.r_params["suggested_prefix"] = suggested_prefix
+        self.r_params["subtask_testcases"] = subtask_testcases
+        self.r_params["other_testcases"] = other_testcases
+        self.render("subtask_details.html", **self.r_params)
+
+
+class UpdateSubtaskRegexHandler(BaseHandler):
+    """Update the regex pattern for a subtask in the score type parameters.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, subtask_index):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        subtask_index = int(subtask_index)
+
+        fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+
+        new_regex = self.get_argument("regex", "")
+        if not new_regex:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid regex",
+                "Regex pattern cannot be empty.")
+            self.redirect(fallback_page)
+            return
+
+        # Validate the regex
+        try:
+            re.compile(new_regex)
+        except re.error as e:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid regex",
+                "The regex pattern is invalid: %s" % str(e))
+            self.redirect(fallback_page)
+            return
+
+        # Update the score type parameters
+        params = dataset.score_type_parameters
+        if not isinstance(params, list) or subtask_index >= len(params):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid subtask",
+                "Subtask index %d is out of range." % subtask_index)
+            self.redirect(fallback_page)
+            return
+
+        # Check that the current parameter uses regex (string), not count (int)
+        if len(params[subtask_index]) < 2 or not isinstance(params[subtask_index][1], str):
+            self.service.add_notification(
+                make_datetime(),
+                "Cannot update regex",
+                "This subtask uses testcase count, not regex pattern.")
+            self.redirect(fallback_page)
+            return
+
+        # Create a new list to trigger SQLAlchemy change detection
+        new_params = [list(p) for p in params]
+        new_params[subtask_index][1] = new_regex
+        dataset.score_type_parameters = new_params
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Regex updated",
+                "Subtask %d regex updated to: %s" % (subtask_index, new_regex))
+        self.redirect(fallback_page)
+
+
+class UpdateSubtaskNameHandler(BaseHandler):
+    """Update the name for a subtask in the score type parameters."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, subtask_index):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        subtask_index = int(subtask_index)
+
+        fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+
+        new_name = self.get_argument("name", "").strip()
+        if not new_name:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid name",
+                "Subtask name cannot be empty.")
+            self.redirect(fallback_page)
+            return
+
+        params = dataset.score_type_parameters
+        if not isinstance(params, list) or subtask_index >= len(params):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid subtask",
+                "Subtask index %d is out of range." % subtask_index)
+            self.redirect(fallback_page)
+            return
+
+        # Create a new list to trigger SQLAlchemy change detection and ensure space for the name
+        new_params = [list(p) for p in params]
+        while len(new_params[subtask_index]) < 3:
+            new_params[subtask_index].append(None)
+        new_params[subtask_index][2] = new_name
+        dataset.score_type_parameters = new_params
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Subtask name updated",
+                "Subtask %d name set to: %s" % (subtask_index, new_name))
+        self.redirect(fallback_page)
+
+
+class RenameTestcaseHandler(BaseHandler):
+    """Rename a testcase's codename.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, testcase_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        testcase = self.safe_get_item(Testcase, testcase_id)
+        task = dataset.task
+
+        # Protect against URLs providing incompatible parameters.
+        if testcase.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        # Support redirect back to subtask details page if subtask_index is provided
+        subtask_index = self.get_argument("subtask_index", None)
+        if subtask_index is not None:
+            fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+        else:
+            fallback_page = self.url("task", task.id)
+
+        new_codename = self.get_argument("new_codename", "").strip()
+        if not new_codename:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid codename",
+                "Codename cannot be empty.")
+            self.redirect(fallback_page)
+            return
+
+        old_codename = testcase.codename
+
+        # Check if the new codename already exists in this dataset
+        if new_codename != old_codename and new_codename in dataset.testcases:
+            self.service.add_notification(
+                make_datetime(),
+                "Codename already exists",
+                "A testcase with codename '%s' already exists in this dataset." % new_codename)
+            self.redirect(fallback_page)
+            return
+
+        # Update the codename
+        # First remove from the collection (keyed by old codename)
+        del dataset.testcases[old_codename]
+        # Update the codename
+        testcase.codename = new_codename
+        # Re-add to the collection (keyed by new codename)
+        dataset.testcases[new_codename] = testcase
+
+        # Update submission format for OutputOnly tasks
+        if dataset.active and dataset.task_type == "OutputOnly":
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Testcase renamed",
+                "Testcase renamed from '%s' to '%s'." % (old_codename, new_codename))
+        self.redirect(fallback_page)
+
+
+def _validate_codename_mapping(dataset, testcases, new_codenames):
+    """Validate that a codename mapping doesn't create conflicts.
+
+    Args:
+        dataset: The dataset containing the testcases
+        testcases: List of testcases being renamed
+        new_codenames: Dict mapping testcase.id to new codename
+
+    Returns:
+        (is_valid, error_message) tuple. If is_valid is True, error_message is None.
+    """
+    testcase_set = set(testcases)
+    seen_codenames = {}
+
+    for tc in testcases:
+        new_codename = new_codenames.get(tc.id)
+        if new_codename is None:
+            continue
+
+        # Check for duplicates within the mapping itself
+        if new_codename in seen_codenames:
+            return (False, "Renaming would create duplicate codename '%s'." % new_codename)
+        seen_codenames[new_codename] = tc
+
+        # Check for conflicts with existing testcases not in the selection
+        if new_codename in dataset.testcases:
+            existing_tc = dataset.testcases[new_codename]
+            if existing_tc not in testcase_set:
+                return (False, "Renaming would create duplicate codename '%s'." % new_codename)
+
+    return (True, None)
+
+
+def _apply_codename_mapping(dataset, testcases, new_codenames):
+    """Apply a codename mapping to testcases using two-phase approach.
+
+    This uses a two-phase approach to safely handle cases where a new codename
+    equals another selected testcase's old codename.
+
+    Args:
+        dataset: The dataset containing the testcases
+        testcases: List of testcases being renamed
+        new_codenames: Dict mapping testcase.id to new codename
+
+    Returns:
+        Number of testcases actually renamed (where codename changed)
+    """
+    # Phase 1: Remove all old codenames for testcases that are changing
+    changing_testcases = []
+    for tc in testcases:
+        new_codename = new_codenames.get(tc.id)
+        if new_codename is not None and tc.codename != new_codename:
+            del dataset.testcases[tc.codename]
+            changing_testcases.append((tc, new_codename))
+
+    # Phase 2: Update codenames and re-add to dataset
+    for tc, new_codename in changing_testcases:
+        tc.codename = new_codename
+        dataset.testcases[new_codename] = tc
+
+    return len(changing_testcases)
+
+
+class BatchRenameTestcasesHandler(BaseHandler):
+    """Batch rename testcases - add prefix or remove common substring.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        # Support redirect back to subtask details page if subtask_index is provided
+        subtask_index = self.get_argument("subtask_index", None)
+        if subtask_index is not None:
+            fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+        else:
+            fallback_page = self.url("task", task.id)
+
+        # Get the operation type and value
+        operation = self.get_argument("operation", "")
+        value = self.get_argument("value", "")
+
+        # Collect selected testcase IDs from the request
+        id_strings = self.get_arguments("testcase_id")
+
+        if not id_strings:
+            self.service.add_notification(
+                make_datetime(),
+                "No testcases selected",
+                "Please select at least one testcase.")
+            self.redirect(fallback_page)
+            return
+
+        if operation not in ("add_prefix", "remove_substring"):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid operation",
+                "Unknown operation: %s" % operation)
+            self.redirect(fallback_page)
+            return
+
+        # Gather testcases
+        testcases = []
+        for id_str in id_strings:
+            try:
+                tid = int(id_str)
+            except ValueError:
+                raise tornado.web.HTTPError(400)
+            tc = self.safe_get_item(Testcase, tid)
+
+            # Protect against mixing datasets
+            if tc.dataset is not dataset:
+                raise tornado.web.HTTPError(400)
+
+            testcases.append(tc)
+
+        if operation == "add_prefix":
+            # Add prefix to all selected testcases
+            if not value:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid prefix",
+                    "Prefix cannot be empty.")
+                self.redirect(fallback_page)
+                return
+
+            # Build the new codename mapping
+            # Skip adding prefix if codename already starts with it
+            new_codenames = {}
+            for tc in testcases:
+                if tc.codename.startswith(value):
+                    new_codenames[tc.id] = tc.codename  # Keep original
+                else:
+                    new_codenames[tc.id] = value + tc.codename
+
+            # Validate the mapping for conflicts
+            is_valid, error_msg = _validate_codename_mapping(dataset, testcases, new_codenames)
+            if not is_valid:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Codename conflict",
+                    error_msg)
+                self.redirect(fallback_page)
+                return
+
+            # Apply the rename using two-phase approach
+            renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
+
+            # Update submission format for OutputOnly tasks
+            if dataset.active and dataset.task_type == "OutputOnly":
+                try:
+                    task.set_default_output_only_submission_format()
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Couldn't create default submission format for task {task.id}, "
+                        f"dataset {dataset.id}") from e
+
+            # Check if user wants to update the subtask regex
+            update_regex = self.get_argument("update_regex", "") == "true"
+            regex_updated = False
+            regex_already_exists = False
+            if update_regex and subtask_index is not None:
+                try:
+                    subtask_idx = int(subtask_index)
+                    score_type_obj = dataset.score_type_object
+                    if hasattr(score_type_obj, 'parameters'):
+                        params = list(score_type_obj.parameters)
+                        if 0 <= subtask_idx < len(params):
+                            param = list(params[subtask_idx])
+                            # Check if using regex (string pattern)
+                            if len(param) >= 2 and isinstance(param[1], str):
+                                old_regex = param[1]
+                                # Add a term to match testcases containing the prefix
+                                # Use .*prefix.* pattern to match substring
+                                import re
+                                new_term = ".*%s.*" % re.escape(value)
+                                # Check if the term already exists in the regex
+                                if new_term in old_regex:
+                                    regex_already_exists = True
+                                else:
+                                    # Combine with existing regex using |
+                                    new_regex = "(%s)|(%s)" % (old_regex, new_term)
+                                    param[1] = new_regex
+                                    params[subtask_idx] = param
+                                    dataset.score_type_parameters = params
+                                    regex_updated = True
+                except (ValueError, AttributeError, IndexError):
+                    pass
+
+            if self.try_commit():
+                msg = "Added prefix '%s' to %d testcases." % (value, renamed_count)
+                if regex_updated:
+                    msg += " Subtask regex updated to match testcases containing '%s'." % value
+                elif regex_already_exists:
+                    msg += " Regex term for '%s' already exists in the pattern." % value
+                self.service.add_notification(
+                    make_datetime(),
+                    "Testcases renamed",
+                    msg)
+
+        elif operation == "remove_substring":
+            # Remove a common substring from all selected testcases
+            substring = value
+
+            if not substring:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid substring",
+                    "Substring cannot be empty.")
+                self.redirect(fallback_page)
+                return
+
+            # Check that all selected testcases contain the substring and build mapping
+            new_codenames = {}
+            for tc in testcases:
+                if substring not in tc.codename:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Substring not found",
+                        "Testcase '%s' does not contain substring '%s'." % (tc.codename, substring))
+                    self.redirect(fallback_page)
+                    return
+                # Remove first occurrence of substring
+                new_codename = tc.codename.replace(substring, "", 1)
+                if not new_codename:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Invalid result",
+                        "Removing substring from '%s' would result in empty codename." % tc.codename)
+                    self.redirect(fallback_page)
+                    return
+                new_codenames[tc.id] = new_codename
+
+            # Validate the mapping for conflicts
+            is_valid, error_msg = _validate_codename_mapping(dataset, testcases, new_codenames)
+            if not is_valid:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Codename conflict",
+                    error_msg)
+                self.redirect(fallback_page)
+                return
+
+            # Apply the rename using two-phase approach
+            renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
+
+            # Update submission format for OutputOnly tasks
+            if dataset.active and dataset.task_type == "OutputOnly":
+                try:
+                    task.set_default_output_only_submission_format()
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Couldn't create default submission format for task {task.id}, "
+                        f"dataset {dataset.id}") from e
+
+            if self.try_commit():
+                self.service.add_notification(
+                    make_datetime(),
+                    "Testcases renamed",
+                    "Removed substring '%s' from %d testcases." % (substring, renamed_count))
+
+        self.redirect(fallback_page)
+
+
+def _run_validators_background(service, file_cacher, dataset_id, validator_data, testcase_data):
+    """Background task to run validators with incremental commits.
+
+    This function runs in a gevent greenlet and commits results per validator,
+    so partial progress is saved even if the task is interrupted.
+    """
+    global _running_validations
+
+    total_passed = 0
+    total_failed = 0
+    total_errors = 0
+    validators_run = 0
+    errors = []
+
+    try:
+        for i, vdata in enumerate(validator_data):
+            _running_validations[dataset_id]["progress"] = \
+                "Running validator %d/%d (subtask %d)..." % (
+                    i + 1, len(validator_data), vdata["subtask_index"])
+
+            try:
+                validation_results = _run_validator(
+                    file_cacher, vdata["filename"], vdata["executable_digest"], testcase_data)
+            except Exception as error:
+                logger.exception("Validation execution error for validator %d: %s",
+                                 vdata["id"], repr(error))
+                errors.append("Validator %d: %s" % (vdata["subtask_index"], repr(error)))
+                continue
+
+            sql_session = Session()
+            try:
+                validator = sql_session.query(SubtaskValidator).get(vdata["id"])
+                if validator is None:
+                    continue
+
+                dataset = sql_session.query(Dataset).get(dataset_id)
+                if dataset is None:
+                    continue
+
+                passed_count, failed_count, error_count = _store_validation_results(
+                    sql_session, validator, dataset, validation_results)
+
+                sql_session.commit()
+
+                total_passed += passed_count
+                total_failed += failed_count
+                total_errors += error_count
+                validators_run += 1
+
+            except Exception as error:
+                logger.exception("Database error for validator %d: %s",
+                                 vdata["id"], repr(error))
+                errors.append("Validator %d DB error: %s" % (vdata["subtask_index"], repr(error)))
+                sql_session.rollback()
+            finally:
+                sql_session.close()
+
+        msg = "Reran %d validators: %d passed, %d failed" % (
+            validators_run, total_passed, total_failed)
+        if total_errors > 0:
+            msg += ", %d errors" % total_errors
+        msg += "."
+        if errors:
+            msg += " Errors: " + "; ".join(errors)
+
+        _running_validations[dataset_id]["status"] = "completed"
+        _running_validations[dataset_id]["result"] = msg
+        _running_validations[dataset_id]["progress"] = "Completed"
+
+        service.add_notification(make_datetime(), "Validation complete", msg)
+
+    except Exception as error:
+        logger.exception("Background validation failed: %s", repr(error))
+        _running_validations[dataset_id]["status"] = "error"
+        _running_validations[dataset_id]["result"] = repr(error)
+        _running_validations[dataset_id]["progress"] = "Error"
+        service.add_notification(
+            make_datetime(), "Validation error",
+            "Background validation failed: %s" % repr(error))
+
+
+class RerunSubtaskValidatorsHandler(BaseHandler):
+    """Rerun all subtask validators for a dataset.
+
+    Runs validators in a background greenlet with incremental commits,
+    so the page can be reloaded without losing progress.
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset_id = int(dataset_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
+        if dataset_id in _running_validations:
+            status = _running_validations[dataset_id].get("status")
+            if status == "running":
+                self.service.add_notification(
+                    make_datetime(),
+                    "Validation in progress",
+                    "Validators are already running for this dataset. " +
+                    _running_validations[dataset_id].get("progress", ""))
+                self.redirect(fallback_page)
+                return
+
+        validators = list(dataset.subtask_validators.values())
+        if not validators:
+            self.service.add_notification(
+                make_datetime(),
+                "No validators",
+                "No subtask validators found for this dataset.")
+            self.redirect(fallback_page)
+            return
+
+        validator_data = []
+        for v in validators:
+            if v.executable_digest is not None:
+                validator_data.append({
+                    "id": v.id,
+                    "filename": v.filename,
+                    "executable_digest": v.executable_digest,
+                    "subtask_index": v.subtask_index
+                })
+
+        if not validator_data:
+            self.service.add_notification(
+                make_datetime(),
+                "No compiled validators",
+                "No validators have been compiled successfully.")
+            self.redirect(fallback_page)
+            return
+
+        testcase_data = []
+        for tc in dataset.testcases.values():
+            testcase_data.append({
+                "id": tc.id,
+                "input": tc.input,
+                "output": tc.output
+            })
+
+        _running_validations[dataset_id] = {
+            "status": "running",
+            "progress": "Starting validation...",
+            "result": None
+        }
+
+        gevent.spawn(
+            _run_validators_background,
+            self.service,
+            self.service.file_cacher,
+            dataset_id,
+            validator_data,
+            testcase_data
+        )
+
+        self.service.add_notification(
+            make_datetime(),
+            "Validation started",
+            "Running %d validators on %d testcases in background. "
+            "You can safely navigate away - progress will be saved." % (
+                len(validator_data), len(testcase_data)))
+        self.redirect(self.url("task", task.id))
