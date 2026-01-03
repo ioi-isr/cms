@@ -401,4 +401,8 @@ ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_valida
 
 ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_testcase_id_fkey FOREIGN KEY (testcase_id) REFERENCES public.testcases(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+-- Add source_digest and source_extension columns to statements table for storing source files (DOC/DOCX/TEX)
+ALTER TABLE public.statements ADD COLUMN source_digest public.digest;
+ALTER TABLE public.statements ADD COLUMN source_extension character varying;
+
 COMMIT;
