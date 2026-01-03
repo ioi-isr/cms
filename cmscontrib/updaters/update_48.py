@@ -31,9 +31,12 @@ metadata table rather than parallel infrastructure.
 Additionally, it adds the generators table for storing test generators
 that can generate testcases programmatically.
 
-Finally, it adds the SubtaskValidator and SubtaskValidationResult tables
+It also adds the SubtaskValidator and SubtaskValidationResult tables
 for storing subtask validators and their validation results. These allow
 admins to validate that testcases meet specific subtask requirements.
+
+Finally, it adds the source_digest and source_extension fields to Statement
+objects, allowing storage of source files (DOC/DOCX/TEX) alongside PDF statements.
 
 """
 
@@ -54,5 +57,8 @@ class Updater:
                 v["last_evaluation_failure_sandbox_paths"] = None
                 v["last_evaluation_failure_sandbox_digests"] = None
                 v["last_evaluation_failure_details"] = None
+            elif v["_class"] == "Statement":
+                v["source_digest"] = None
+                v["source_extension"] = None
 
         return self.objs

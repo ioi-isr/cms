@@ -367,6 +367,18 @@ class Statement(Base):
         Digest,
         nullable=False)
 
+    # Digest of the source file (e.g., .doc, .docx, .tex) used to create the PDF.
+    # This is optional - statements can be uploaded without a source file.
+    source_digest: str | None = Column(
+        Digest,
+        nullable=True)
+
+    # File extension of the source file (e.g., ".doc", ".docx", ".tex").
+    # Stored to enable proper filename when downloading the source file.
+    source_extension: str | None = Column(
+        Unicode,
+        nullable=True)
+
 
 class Attachment(Base):
     """Class to store additional files to give to the user together
