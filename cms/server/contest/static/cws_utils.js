@@ -43,11 +43,6 @@ CMS.CWSUtils = function(url_root, contest_root, contest_name, timestamp, timezon
     this.remaining_div = null;
     this.unread_count = localStorage.getItem(this.contest_name + "_unread_count");
     this.unread_count = this.unread_count !== null ? parseInt(this.unread_count) : 0;
-
-    // Ask permission for desktop notifications
-    if ("Notification" in window) {
-        Notification.requestPermission();
-    }
 };
 
 
@@ -132,18 +127,15 @@ CMS.CWSUtils.prototype.desktop_notification = function(type, timestamp,
         return;
     }
 
-    // Ask again, if it was not explicitly denied
-    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
+    // Only show notification if permission was granted
+    if (Notification.permission !== "granted") {
+        return;
     }
 
-    // Create notification
-    if (Notification.permission === "granted") {
-        new Notification(subject, {
-            "body": text,
-            "icon": this.url("static", "favicon.ico")
-        });
-    }
+    new Notification(subject, {
+        "body": text,
+        "icon": this.url("static", "favicon.ico")
+    });
 };
 
 
@@ -386,4 +378,18 @@ CMS.CWSUtils.filter_languages = function (options, inputs, languages) {
         }
     }
 };
+
+
+// Request notification permission on first user interaction.
+// This is required by Firefox which only allows permission requests
+// from inside a short running user-generated event handler.
+if ("Notification" in window && Notification.permission === "default") {
+    var cmsRequestNotificationPermissionOnFirstClick = function() {
+        if (Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+        document.removeEventListener("click", cmsRequestNotificationPermissionOnFirstClick);
+    };
+    document.addEventListener("click", cmsRequestNotificationPermissionOnFirstClick);
+}
 
