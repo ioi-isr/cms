@@ -30,7 +30,7 @@ from sqlalchemy.types import Integer
 from . import Base
 
 if typing.TYPE_CHECKING:
-    from . import Contest, TrainingProgram, Task
+    from . import Contest, TrainingProgram, Task, TrainingDayGroup
 
 
 class TrainingDay(Base):
@@ -81,4 +81,10 @@ class TrainingDay(Base):
         "Task",
         back_populates="training_day",
         order_by="Task.training_day_num",
+    )
+
+    groups: list["TrainingDayGroup"] = relationship(
+        "TrainingDayGroup",
+        back_populates="training_day",
+        cascade="all, delete-orphan",
     )

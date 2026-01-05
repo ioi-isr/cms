@@ -228,4 +228,48 @@ a.username-link:hover {
 </div>
 {% endif %}
 
+{% if ineligible_students is defined and ineligible_students|length > 0 %}
+<h2 id="title_ineligible_students_section" class="toggling_on">Ineligible Students</h2>
+<div id="ineligible_students_section">
+  <p class="hint">These students cannot participate in this training day because they do not have exactly one main group tag. Edit their tags to fix this.</p>
+  <table class="table table-striped table-bordered">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Username</th>
+        <th>Current Main Group Tags</th>
+        <th>Reason</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for item in ineligible_students %}
+      {% set student = item.student %}
+      <tr class="missed">
+        <td>{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}</td>
+        <td>{{ student.participation.user.username }}</td>
+        <td>
+          {% if item.matching_tags %}
+            {{ item.matching_tags|join(', ') }}
+          {% else %}
+            <em>(none)</em>
+          {% endif %}
+        </td>
+        <td>
+          {% if item.reason == 'no main group' %}
+            No main group tag
+          {% else %}
+            Multiple main group tags
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url("training_program", contest.training_day.training_program.id, "student", student.id, "tags") }}" class="btn btn-small">Edit Tags</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 {% endblock core %}

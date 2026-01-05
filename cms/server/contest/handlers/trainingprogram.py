@@ -28,6 +28,7 @@ import tornado.web
 from cms.db import Participation, Submission, SubmissionResult
 from cms.server import multi_contest
 from cms.server.contest.phase_management import compute_actual_phase
+from cms.server.util import check_training_day_eligibility
 from .contest import ContestHandler
 
 
@@ -110,11 +111,28 @@ class TrainingProgramOverviewHandler(ContestHandler):
             if td_participation is None:
                 continue
 
+            # Check eligibility - skip training days the student is ineligible for
+            is_eligible, main_group, _ = check_training_day_eligibility(
+                self.sql_session, td_participation, training_day
+            )
+            if not is_eligible:
+                continue
+
+            # Determine effective start/end times (per-group timing)
+            contest_start = td_contest.start
+            contest_stop = td_contest.stop
+
+            if main_group is not None:
+                if main_group.start_time is not None:
+                    contest_start = main_group.start_time
+                if main_group.end_time is not None:
+                    contest_stop = main_group.end_time
+
             # Compute actual phase for this training day
             actual_phase, _current_phase_begin, _current_phase_end, valid_phase_begin, _valid_phase_end = compute_actual_phase(
                 self.timestamp,
-                td_contest.start,
-                td_contest.stop,
+                contest_start,
+                contest_stop,
                 td_contest.analysis_start if td_contest.analysis_enabled else None,
                 td_contest.analysis_stop if td_contest.analysis_enabled else None,
                 td_contest.per_user_time,
@@ -128,13 +146,13 @@ class TrainingProgramOverviewHandler(ContestHandler):
             if actual_phase >= 1:
                 continue
 
-            # Calculate user-specific start time
-            user_start_time = td_contest.start + td_participation.delay_time
+            # Calculate user-specific start time (group start + delay)
+            user_start_time = contest_start + td_participation.delay_time
 
             # Calculate duration
             duration = td_contest.per_user_time \
                 if td_contest.per_user_time is not None else \
-                td_contest.stop - td_contest.start
+                contest_stop - contest_start
 
             # Check if training starts within 6 hours (21600 seconds)
             six_hours_from_now = self.timestamp + timedelta(hours=6)

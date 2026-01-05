@@ -21,10 +21,15 @@ Training programs organize year-long training with multiple sessions.
 Each training program has a managing contest that handles all submissions.
 """
 
+from datetime import datetime as dt
+
 import tornado.web
 
+from sqlalchemy import func
+
 from cms.db import Contest, TrainingProgram, Participation, Submission, \
-    User, Task, Question, Announcement, Student, Team, TrainingDay
+    User, Task, Question, Announcement, Student, Team, TrainingDay, \
+    TrainingDayGroup
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -1333,6 +1338,14 @@ class AddTrainingDayHandler(BaseHandler):
             .filter(Question.ignored.is_(False))\
             .count()
 
+        # Get all student tags for the tagify select dropdown
+        tags_query = self.sql_session.query(
+            func.unnest(Student.student_tags).label("tag")
+        ).filter(
+            Student.training_program_id == training_program.id
+        ).distinct()
+        self.r_params["all_student_tags"] = sorted([row.tag for row in tags_query.all()])
+
         self.render("add_training_day.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -1382,6 +1395,52 @@ class AddTrainingDayHandler(BaseHandler):
                 program_end_year = training_program.managing_contest.stop.year
                 contest_kwargs["stop"] = dt(program_end_year + 1, 1, 1, 0, 0)
 
+            # Parse main group configuration (if any)
+            group_tags = self.get_arguments("group_tag_name[]")
+            group_starts = self.get_arguments("group_start_time[]")
+            group_ends = self.get_arguments("group_end_time[]")
+            group_alphabeticals = self.get_arguments("group_alphabetical[]")
+
+            # Collect valid groups and their times for defaulting
+            groups_to_create = []
+            group_start_times = []
+            group_end_times = []
+
+            for i, tag in enumerate(group_tags):
+                tag = tag.strip()
+                if not tag:
+                    continue
+
+                group_start = None
+                group_end = None
+
+                if i < len(group_starts) and group_starts[i].strip():
+                    group_start = dt.strptime(group_starts[i].strip(), "%Y-%m-%dT%H:%M")
+                    group_start_times.append(group_start)
+
+                if i < len(group_ends) and group_ends[i].strip():
+                    group_end = dt.strptime(group_ends[i].strip(), "%Y-%m-%dT%H:%M")
+                    group_end_times.append(group_end)
+
+                # Validate group end is not before start
+                if group_start and group_end and group_end < group_start:
+                    raise ValueError(f"End time must be after start time for group '{tag}'")
+
+                alphabetical = str(i) in group_alphabeticals
+
+                groups_to_create.append({
+                    "tag_name": tag,
+                    "start_time": group_start,
+                    "end_time": group_end,
+                    "alphabetical_task_order": alphabetical,
+                })
+
+            # Default training start/end from group times if not specified
+            if not start_str and group_start_times:
+                contest_kwargs["start"] = min(group_start_times)
+            if not stop_str and group_end_times:
+                contest_kwargs["stop"] = max(group_end_times)
+
             contest = Contest(**contest_kwargs)
             self.sql_session.add(contest)
             self.sql_session.flush()
@@ -1393,6 +1452,27 @@ class AddTrainingDayHandler(BaseHandler):
                 position=position,
             )
             self.sql_session.add(training_day)
+
+            # Create main groups
+            seen_tags = set()
+            for group_data in groups_to_create:
+                if group_data["tag_name"] in seen_tags:
+                    raise ValueError(f"Duplicate tag '{group_data['tag_name']}'")
+                seen_tags.add(group_data["tag_name"])
+
+                # Validate group times are within contest bounds
+                if group_data["start_time"] and contest_kwargs.get("start"):
+                    if group_data["start_time"] < contest_kwargs["start"]:
+                        raise ValueError(f"Group '{group_data['tag_name']}' start time cannot be before training day start")
+                if group_data["end_time"] and contest_kwargs.get("stop"):
+                    if group_data["end_time"] > contest_kwargs["stop"]:
+                        raise ValueError(f"Group '{group_data['tag_name']}' end time cannot be after training day end")
+
+                group = TrainingDayGroup(
+                    training_day=training_day,
+                    **group_data
+                )
+                self.sql_session.add(group)
 
             # Auto-add participations for all students in the training program
             # Training days are for all students, so we create participations
@@ -1485,3 +1565,159 @@ class RemoveTrainingDayHandler(BaseHandler):
 
         self.try_commit()
         self.write("../../training_days")
+
+
+class AddTrainingDayGroupHandler(BaseHandler):
+    """Add a main group to a training day."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id: str):
+        contest = self.safe_get_item(Contest, contest_id)
+        training_day = contest.training_day
+
+        if training_day is None:
+            raise tornado.web.HTTPError(404, "Not a training day contest")
+
+        fallback_page = self.url("contest", contest_id)
+
+        try:
+            tag_name = self.get_argument("tag_name")
+            if not tag_name or not tag_name.strip():
+                raise ValueError("Tag name is required")
+
+            # Strip whitespace before duplicate check to avoid bypass
+            tag_name = tag_name.strip()
+
+            # Check if tag is already used
+            existing = self.sql_session.query(TrainingDayGroup)\
+                .filter(TrainingDayGroup.training_day == training_day)\
+                .filter(TrainingDayGroup.tag_name == tag_name)\
+                .first()
+            if existing:
+                raise ValueError(f"Tag '{tag_name}' is already a main group")
+
+            # Parse optional start and end times
+            start_str = self.get_argument("start_time", "")
+            end_str = self.get_argument("end_time", "")
+
+            group_kwargs: dict = {
+                "training_day": training_day,
+                "tag_name": tag_name,
+                "alphabetical_task_order": self.get_argument("alphabetical_task_order", None) is not None,
+            }
+
+            if start_str:
+                group_kwargs["start_time"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+
+            if end_str:
+                group_kwargs["end_time"] = dt.strptime(end_str, "%Y-%m-%dT%H:%M")
+
+            # Validate that end is not before start
+            if "start_time" in group_kwargs and "end_time" in group_kwargs:
+                if group_kwargs["end_time"] < group_kwargs["start_time"]:
+                    raise ValueError("End time must be after start time")
+
+            # Validate group times are within contest bounds
+            if "start_time" in group_kwargs and contest.start:
+                if group_kwargs["start_time"] < contest.start:
+                    raise ValueError(f"Group start time cannot be before training day start ({contest.start})")
+            if "end_time" in group_kwargs and contest.stop:
+                if group_kwargs["end_time"] > contest.stop:
+                    raise ValueError(f"Group end time cannot be after training day end ({contest.stop})")
+
+            group = TrainingDayGroup(**group_kwargs)
+            self.sql_session.add(group)
+
+        except Exception as error:
+            self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        self.try_commit()
+        self.redirect(fallback_page)
+
+
+class UpdateTrainingDayGroupsHandler(BaseHandler):
+    """Update all main groups for a training day."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id: str):
+        contest = self.safe_get_item(Contest, contest_id)
+        training_day = contest.training_day
+
+        if training_day is None:
+            raise tornado.web.HTTPError(404, "Not a training day contest")
+
+        fallback_page = self.url("contest", contest_id)
+
+        try:
+            group_ids = self.get_arguments("group_id[]")
+            start_times = self.get_arguments("start_time[]")
+            end_times = self.get_arguments("end_time[]")
+
+            if len(group_ids) != len(start_times) or len(group_ids) != len(end_times):
+                raise ValueError("Mismatched form data")
+
+            for i, group_id in enumerate(group_ids):
+                group = self.safe_get_item(TrainingDayGroup, group_id)
+                if group.training_day_id != training_day.id:
+                    raise ValueError(f"Group {group_id} does not belong to this training day")
+
+                # Parse start time
+                start_str = start_times[i].strip()
+                if start_str:
+                    group.start_time = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+                else:
+                    group.start_time = None
+
+                # Parse end time
+                end_str = end_times[i].strip()
+                if end_str:
+                    group.end_time = dt.strptime(end_str, "%Y-%m-%dT%H:%M")
+                else:
+                    group.end_time = None
+
+                # Validate end is not before start
+                if group.start_time and group.end_time:
+                    if group.end_time < group.start_time:
+                        raise ValueError(f"End time must be after start time for group '{group.tag_name}'")
+
+                # Validate group times are within contest bounds
+                if group.start_time and contest.start:
+                    if group.start_time < contest.start:
+                        raise ValueError(f"Group '{group.tag_name}' start time cannot be before training day start")
+                if group.end_time and contest.stop:
+                    if group.end_time > contest.stop:
+                        raise ValueError(f"Group '{group.tag_name}' end time cannot be after training day end")
+
+                # Update alphabetical task order (checkbox - present means checked)
+                group.alphabetical_task_order = self.get_argument(f"alphabetical_{group_id}", None) is not None
+
+        except Exception as error:
+            self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        self.try_commit()
+        self.redirect(fallback_page)
+
+
+class RemoveTrainingDayGroupHandler(BaseHandler):
+    """Remove a main group from a training day."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id: str, group_id: str):
+        contest = self.safe_get_item(Contest, contest_id)
+        training_day = contest.training_day
+
+        if training_day is None:
+            raise tornado.web.HTTPError(404, "Not a training day contest")
+
+        group = self.safe_get_item(TrainingDayGroup, group_id)
+
+        if group.training_day_id != training_day.id:
+            raise tornado.web.HTTPError(404, "Group does not belong to this training day")
+
+        self.sql_session.delete(group)
+        self.try_commit()
+        self.redirect(self.url("contest", contest_id))

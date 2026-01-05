@@ -39,7 +39,7 @@ import typing
 import collections
 
 from cms.db.user import Participation
-from cms.server.util import Url
+from cms.server.util import Url, check_training_day_eligibility
 
 try:
     collections.MutableMapping
@@ -81,6 +81,8 @@ class ContestHandler(BaseHandler):
         self.contest: Contest
         self.training_program: TrainingProgram | None = None
         self.impersonated_by_admin = False
+        # Cached eligibility check result to avoid duplicate queries
+        self._eligibility_cache: tuple[bool, "TrainingDayGroup | None", list[str]] | None = None
 
     def prepare(self):
         self.choose_contest()
@@ -107,6 +109,18 @@ class ContestHandler(BaseHandler):
         # Run render_params() now, not at the beginning of the request,
         # because we need contest_name
         self.r_params = self.render_params()
+
+        # Check eligibility for training day contests AFTER r_params is set
+        # so that error pages can render properly
+        if self.current_user is not None:
+            training_day = self.contest.training_day
+            is_eligible, _, _ = self.get_eligibility()
+            if not is_eligible and training_day is not None:
+                raise tornado.web.HTTPError(
+                    403,
+                    "You are not eligible for this training day. "
+                    "Please contact an administrator to fix your group assignment."
+                )
 
     def choose_contest(self):
         """Fill self.contest using contest passed as argument or path.
@@ -282,8 +296,25 @@ class ContestHandler(BaseHandler):
             ret["participation"] = participation
             ret["user"] = participation.user
 
+            # Check eligibility for training day contests with main groups
+            training_day = self.contest.training_day
+            is_eligible, main_group, matching_tags = self.get_eligibility()
+
+            ret["main_group"] = main_group
+            ret["ineligible_for_training_day"] = not is_eligible
+
+            # Determine effective start/end times (per-group timing)
+            contest_start = self.contest.start
+            contest_stop = self.contest.stop
+
+            if main_group is not None:
+                if main_group.start_time is not None:
+                    contest_start = main_group.start_time
+                if main_group.end_time is not None:
+                    contest_stop = main_group.end_time
+
             res = compute_actual_phase(
-                self.timestamp, self.contest.start, self.contest.stop,
+                self.timestamp, contest_start, contest_stop,
                 self.contest.analysis_start if self.contest.analysis_enabled
                 else None,
                 self.contest.analysis_stop if self.contest.analysis_enabled
@@ -323,6 +354,24 @@ class ContestHandler(BaseHandler):
         ret["visible_tasks"] = self.get_visible_tasks()
 
         return ret
+
+    def get_eligibility(self) -> tuple[bool, "TrainingDayGroup | None", list[str]]:
+        """Get cached eligibility check result for the current user.
+
+        Returns cached result if available, otherwise performs the check
+        and caches it for subsequent calls.
+
+        return: tuple of (is_eligible, main_group, matching_tags)
+
+        """
+        if self._eligibility_cache is not None:
+            return self._eligibility_cache
+
+        training_day = self.contest.training_day
+        self._eligibility_cache = check_training_day_eligibility(
+            self.sql_session, self.current_user, training_day
+        )
+        return self._eligibility_cache
 
     def get_login_url(self):
         """The login url depends on the contest name, so we can't just
@@ -373,13 +422,23 @@ class ContestHandler(BaseHandler):
     def get_visible_tasks(self) -> list[Task]:
         """Return the list of tasks visible to the current user.
 
-        For training day contests, filters tasks based on visibility tags.
+        For training day contests, filters tasks based on visibility tags
+        and sorts them based on the main group's task_order setting.
         For non-training-day contests, returns all tasks.
 
         return: list of tasks the current user can access.
 
         """
-        return [task for task in self.contest.get_tasks() if self.can_access_task(task)]
+        tasks = [task for task in self.contest.get_tasks() if self.can_access_task(task)]
+
+        # Apply per-group task ordering for training day contests
+        training_day = self.contest.training_day
+        if training_day is not None and self.current_user is not None:
+            is_eligible, main_group, _ = self.get_eligibility()
+            if main_group is not None and main_group.alphabetical_task_order:
+                tasks = sorted(tasks, key=lambda t: t.name)
+
+        return tasks
 
     def get_submission(self, task: Task, opaque_id: str | int) -> Submission | None:
         """Return the num-th contestant's submission on the given task.

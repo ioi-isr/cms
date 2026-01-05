@@ -46,9 +46,84 @@ from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
 if typing.TYPE_CHECKING:
-    from cms.db import Contest, TrainingDay
+    from cms.db import Contest, TrainingDay, TrainingDayGroup
 
 logger = logging.getLogger(__name__)
+
+
+def get_student_for_training_day(
+    sql_session: Session,
+    participation: "Participation",
+    training_day: "TrainingDay"
+) -> "Student | None":
+    """Get the student record for a participation in a training day.
+
+    sql_session: the database session.
+    participation: the participation to look up.
+    training_day: the training day.
+
+    return: the Student record, or None if not found.
+
+    """
+    # Single query with join instead of two separate queries
+    managing_contest = training_day.training_program.managing_contest
+    return sql_session.query(Student).join(
+        Participation, Student.participation_id == Participation.id
+    ).filter(
+        Participation.contest_id == managing_contest.id,
+        Participation.user_id == participation.user_id,
+        Student.training_program_id == training_day.training_program_id
+    ).first()
+
+
+def check_training_day_eligibility(
+    sql_session: Session,
+    participation: "Participation",
+    training_day: "TrainingDay | None"
+) -> tuple[bool, "TrainingDayGroup | None", list[str]]:
+    """Check if a participation is eligible for a training day.
+
+    A student is eligible if:
+    - The training day has no main groups configured (all students eligible), OR
+    - The student has exactly one main group tag
+
+    sql_session: the database session.
+    participation: the participation to check.
+    training_day: the training day to check, or None for non-training-day contests.
+
+    return: tuple of (is_eligible, main_group, matching_tags)
+        - is_eligible: True if the student can participate
+        - main_group: the TrainingDayGroup if exactly one match, else None
+        - matching_tags: list of main group tags the student has
+
+    """
+    if training_day is None:
+        return True, None, []
+
+    # If no main groups configured, all students are eligible
+    if not training_day.groups:
+        return True, None, []
+
+    # Find the student record
+    student = get_student_for_training_day(sql_session, participation, training_day)
+
+    if student is None:
+        # No student record means they're not in the training program
+        return False, None, []
+
+    # Build dict for O(1) lookup of groups by tag name
+    groups_by_tag = {g.tag_name: g for g in training_day.groups}
+
+    # Find which main group tags the student has
+    student_tags = set(student.student_tags or [])
+    matching_tags = sorted(student_tags & groups_by_tag.keys())
+
+    # Eligible only if exactly one main group tag
+    if len(matching_tags) == 1:
+        # O(1) lookup instead of O(n) scan
+        return True, groups_by_tag[matching_tags[0]], matching_tags
+
+    return False, None, matching_tags
 
 
 def can_access_task(sql_session: Session, task: "Task", participation: "Participation",

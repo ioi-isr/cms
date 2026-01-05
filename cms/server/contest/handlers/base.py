@@ -187,19 +187,26 @@ class BaseHandler(CommonRequestHandler):
         return ret
 
     def write_error(self, status_code, **kwargs):
-        if "exc_info" in kwargs and \
-                kwargs["exc_info"][0] != tornado.web.HTTPError:
+        error_message = None
+        if "exc_info" in kwargs:
             exc_info = kwargs["exc_info"]
-            logger.error(
-                "Uncaught exception (%r) while processing a request: %s",
-                exc_info[1], ''.join(traceback.format_exception(*exc_info)))
+            if exc_info[0] == tornado.web.HTTPError:
+                # Extract the reason/log_message from HTTPError
+                http_error = exc_info[1]
+                if http_error.log_message:
+                    error_message = http_error.log_message
+            else:
+                logger.error(
+                    "Uncaught exception (%r) while processing a request: %s",
+                    exc_info[1], ''.join(traceback.format_exception(*exc_info)))
 
         # We assume that if r_params is defined then we have at least
         # the data we need to display a basic template with the error
         # information. If r_params is not defined (i.e. something went
         # *really* bad) we simply return a basic textual error notice.
         if self.r_params is not None:
-            self.render("error.html", status_code=status_code, **self.r_params)
+            self.render("error.html", status_code=status_code,
+                        error_message=error_message, **self.r_params)
         else:
             self.write("A critical error has occurred :-(")
             self.finish()

@@ -31,9 +31,10 @@
 from datetime import timedelta
 
 from cms import ServiceCoord, get_service_shards, get_service_address
-from cms.db import Contest, Participation, Submission, Task, ContestFolder
-from cmscommon.datetime import make_datetime
+from cms.db import Contest, Participation, Submission, Task, ContestFolder, TrainingDay, Student
+from sqlalchemy.orm import joinedload
 from sqlalchemy import func
+from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleContestHandler, SimpleHandler, \
     require_permission
@@ -129,7 +130,16 @@ class AddContestHandler(
 class ContestHandler(SimpleContestHandler("contest.html")):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id: str):
-        self.contest = self.safe_get_item(Contest, contest_id)
+        self.contest = self.sql_session.query(Contest)\
+            .options(
+                joinedload(Contest.training_day)
+                .joinedload(TrainingDay.groups)
+            )\
+            .filter(Contest.id == contest_id)\
+            .one_or_none()
+        
+        if self.contest is None:
+            raise tornado.web.HTTPError(404)
 
         self.r_params = self.render_params()
         self.r_params["all_folders"] = (
@@ -137,6 +147,19 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             .order_by(ContestFolder.name)
             .all()
         )
+
+        all_student_tags: list[str] = []
+        training_day = self.contest.training_day
+        if training_day is not None:
+            training_program = training_day.training_program
+            tags_query = self.sql_session.query(
+                func.unnest(Student.student_tags).label("tag")
+            ).filter(
+                Student.training_program_id == training_program.id
+            ).distinct()
+            all_student_tags = sorted([row.tag for row in tags_query.all()])
+        self.r_params["all_student_tags"] = all_student_tags
+
         self.render("contest.html", **self.r_params)
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, contest_id: str):

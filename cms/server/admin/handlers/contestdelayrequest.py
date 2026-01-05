@@ -35,7 +35,7 @@ except:
 from sqlalchemy import not_
 import tornado.web
 
-from cms.db import Contest, DelayRequest, Participation
+from cms.db import Contest, DelayRequest, Participation, Student
 from cms.server.contest.phase_management import compute_actual_phase
 from cmscommon.datetime import make_datetime, utc
 from .base import BaseHandler, require_permission
@@ -123,6 +123,27 @@ class DelaysAndExtraTimesHandler(BaseHandler):
             .filter(Participation.contest_id == contest_id)\
             .order_by(DelayRequest.request_timestamp.desc())\
             .all()
+
+        # For training day contests, compute ineligible students
+        self.r_params["ineligible_students"] = []
+        training_day = self.contest.training_day
+        if training_day is not None and len(training_day.groups) > 0:
+            main_group_tags = {g.tag_name for g in training_day.groups}
+            training_program = training_day.training_program
+
+            # Find students with 0 or >1 main group tags
+            ineligible = []
+            for student in training_program.students:
+                student_tags = set(student.student_tags or [])
+                matching_tags = student_tags & main_group_tags
+                if len(matching_tags) != 1:
+                    ineligible.append({
+                        'student': student,
+                        'matching_tags': sorted(matching_tags),
+                        'reason': 'no main group' if len(matching_tags) == 0 else 'multiple main groups',
+                    })
+            self.r_params["ineligible_students"] = ineligible
+
         self.render("delays_and_extra_times.html", **self.r_params)
 
 
