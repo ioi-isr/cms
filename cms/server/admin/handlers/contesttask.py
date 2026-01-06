@@ -26,6 +26,7 @@
 """
 
 from cms.db import Contest, Task
+from cms.server.util import get_all_student_tags
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -62,10 +63,7 @@ class ContestTasksHandler(BaseHandler):
                     .all()
             
             # Get all student tags for autocomplete (for task visibility tags)
-            all_tags_set: set[str] = set()
-            for student in training_program.students:
-                all_tags_set.update(student.student_tags)
-            self.r_params["all_student_tags"] = sorted(all_tags_set)
+            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
         else:
             # For regular contests, show all unassigned tasks
             self.r_params["unassigned_tasks"] = \

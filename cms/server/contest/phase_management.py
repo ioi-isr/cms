@@ -31,6 +31,43 @@ if typing.TYPE_CHECKING:
     from cms.server.contest.handlers.contest import ContestHandler
 
 
+def compute_effective_times(
+    contest_start: datetime,
+    contest_stop: datetime,
+    delay_time: timedelta,
+    main_group_start: datetime | None = None,
+    main_group_end: datetime | None = None,
+) -> tuple[datetime, datetime]:
+    """Compute effective start and stop times for a user.
+
+    For training days with per-group times:
+    - If user has no delay, use main group's start/end time
+    - If user has delay, use contest start/stop (delays are relative to contest start)
+
+    contest_start: the contest's start time.
+    contest_stop: the contest's stop time.
+    delay_time: how much the user's start is delayed.
+    main_group_start: optional per-group start time for training days.
+    main_group_end: optional per-group end time for training days.
+
+    return: tuple of (effective_start, effective_stop).
+
+    """
+    has_delay = delay_time > timedelta()
+
+    if has_delay or main_group_start is None:
+        effective_start = contest_start
+    else:
+        effective_start = main_group_start
+
+    if has_delay or main_group_end is None:
+        effective_stop = contest_stop
+    else:
+        effective_stop = main_group_end
+
+    return effective_start, effective_stop
+
+
 def compute_actual_phase(
     timestamp: datetime,
     contest_start: datetime,
@@ -112,19 +149,9 @@ def compute_actual_phase(
     assert delay_time >= timedelta()
     assert extra_time >= timedelta()
 
-    # For training days with per-group times:
-    # - If user has no delay, use main group's start/end time
-    # - If user has delay, use contest start + delay (delays are relative to contest start)
-    has_delay = delay_time > timedelta()
-    if has_delay or main_group_start is None:
-        effective_start = contest_start
-    else:
-        effective_start = main_group_start
-
-    if has_delay or main_group_end is None:
-        effective_stop = contest_stop
-    else:
-        effective_stop = main_group_end
+    effective_start, effective_stop = compute_effective_times(
+        contest_start, contest_stop, delay_time,
+        main_group_start, main_group_end)
 
     earliest_permitted_start = effective_start + delay_time
     latest_permitted_stop = effective_stop + delay_time + extra_time

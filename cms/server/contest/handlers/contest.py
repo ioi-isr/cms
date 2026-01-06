@@ -56,7 +56,7 @@ from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
 from cmscommon.datetime import get_timezone
 from .base import BaseHandler, add_ip_to_list
-from ..phase_management import compute_actual_phase
+from ..phase_management import compute_actual_phase, compute_effective_times
 
 
 logger = logging.getLogger(__name__)
@@ -304,17 +304,21 @@ class ContestHandler(BaseHandler):
             ret["ineligible_for_training_day"] = not is_eligible
 
             # Determine effective start/end times (per-group timing)
-            contest_start = self.contest.start
-            contest_stop = self.contest.stop
+            # These are used by templates to show the correct times to users
+            main_group_start = main_group.start_time if main_group else None
+            main_group_end = main_group.end_time if main_group else None
+            contest_start, contest_stop = compute_effective_times(
+                self.contest.start, self.contest.stop,
+                participation.delay_time,
+                main_group_start, main_group_end)
 
-            if main_group is not None:
-                if main_group.start_time is not None:
-                    contest_start = main_group.start_time
-                if main_group.end_time is not None:
-                    contest_stop = main_group.end_time
+            # Pass effective times to templates so they can display correct times
+            # for training day contests with per-group timing
+            ret["effective_start"] = contest_start
+            ret["effective_stop"] = contest_stop
 
             res = compute_actual_phase(
-                self.timestamp, contest_start, contest_stop,
+                self.timestamp, self.contest.start, self.contest.stop,
                 self.contest.analysis_start if self.contest.analysis_enabled
                 else None,
                 self.contest.analysis_stop if self.contest.analysis_enabled

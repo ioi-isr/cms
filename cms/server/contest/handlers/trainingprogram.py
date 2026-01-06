@@ -27,7 +27,7 @@ import tornado.web
 
 from cms.db import Participation, Submission, SubmissionResult
 from cms.server import multi_contest
-from cms.server.contest.phase_management import compute_actual_phase
+from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
 from cms.server.util import check_training_day_eligibility
 from .contest import ContestHandler
 
@@ -119,17 +119,15 @@ class TrainingProgramOverviewHandler(ContestHandler):
                 continue
 
             # Determine effective start/end times (per-group timing)
-            contest_start = td_contest.start
-            contest_stop = td_contest.stop
-
-            if main_group is not None:
-                if main_group.start_time is not None:
-                    contest_start = main_group.start_time
-                if main_group.end_time is not None:
-                    contest_stop = main_group.end_time
+            main_group_start = main_group.start_time if main_group else None
+            main_group_end = main_group.end_time if main_group else None
+            contest_start, contest_stop = compute_effective_times(
+                td_contest.start, td_contest.stop,
+                td_participation.delay_time,
+                main_group_start, main_group_end)
 
             # Compute actual phase for this training day
-            actual_phase, _current_phase_begin, _current_phase_end, valid_phase_begin, _valid_phase_end = compute_actual_phase(
+            actual_phase, _, _, _, _ = compute_actual_phase(
                 self.timestamp,
                 contest_start,
                 contest_stop,
@@ -165,7 +163,6 @@ class TrainingProgramOverviewHandler(ContestHandler):
                 "participation": td_participation,
                 "has_started": has_started,
                 "user_start_time": user_start_time,
-                "valid_phase_begin": valid_phase_begin,
                 "duration": duration,
                 "can_enter_soon": can_enter_soon,
             })

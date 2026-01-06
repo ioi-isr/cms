@@ -37,7 +37,7 @@ import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation, Student
 from cms.server.contest.phase_management import compute_actual_phase
-from cms.server.util import check_training_day_eligibility
+from cms.server.util import check_training_day_eligibility, get_all_student_tags
 from cmscommon.datetime import make_datetime, utc
 from .base import BaseHandler, require_permission
 
@@ -190,20 +190,21 @@ class DelaysAndExtraTimesHandler(BaseHandler):
         self.r_params["delay_request_warnings"] = delay_request_warnings
 
         # For training day contests, compute ineligible students
+        # Note: We use "ineligible_training_program" instead of "training_program" to avoid
+        # conflicting with base.html's sidebar logic which shows training program sidebar
+        # when "training_program" is defined. We want to show the contest sidebar for
+        # training day contests.
         self.r_params["ineligible_students"] = []
         self.r_params["all_student_tags"] = []
-        self.r_params["training_program"] = None
+        self.r_params["ineligible_training_program"] = None
         training_day = self.contest.training_day
         if training_day is not None and len(training_day.groups) > 0:
             main_group_tags = {g.tag_name for g in training_day.groups}
             training_program = training_day.training_program
-            self.r_params["training_program"] = training_program
+            self.r_params["ineligible_training_program"] = training_program
 
-            # Collect all unique student tags for autocomplete
-            all_tags_set: set[str] = set()
-            for s in training_program.students:
-                all_tags_set.update(s.student_tags or [])
-            self.r_params["all_student_tags"] = sorted(all_tags_set)
+            # Collect all unique student tags for autocomplete (using shared utility)
+            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
 
             # Find students with 0 or >1 main group tags
             ineligible = []

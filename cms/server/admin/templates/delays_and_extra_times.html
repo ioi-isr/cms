@@ -272,7 +272,7 @@ a.username-link:hover {
                  class="student-tags-editable"
                  name="student_tags"
                  value="{{ (student.student_tags or [])|join(', ') }}"
-                 data-save-url="{{ url("training_program", training_program.id, "student", student.participation.user.id, "tags") }}"
+                 data-save-url="{{ url("training_program", ineligible_training_program.id, "student", student.participation.user.id, "tags") }}"
                  style="width: 100%;"/>
         </td>
       </tr>

@@ -30,6 +30,7 @@ from sqlalchemy import func
 from cms.db import Contest, TrainingProgram, Participation, Submission, \
     User, Task, Question, Announcement, Student, Team, TrainingDay, \
     TrainingDayGroup
+from cms.server.util import get_all_student_tags
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -577,18 +578,12 @@ class StudentHandler(BaseHandler):
         self.render_params_for_submissions(submission_query, page)
         
         # Get all unique student tags from this training program for autocomplete
-        all_students = training_program.students
-        all_tags_set: set[str] = set()
-        for s in all_students:
-            all_tags_set.update(s.student_tags)
-        all_tags = sorted(all_tags_set)
-        
         self.r_params["training_program"] = training_program
         self.r_params["participation"] = participation
         self.r_params["student"] = student
         self.r_params["selected_user"] = participation.user
         self.r_params["teams"] = self.sql_session.query(Team).all()
-        self.r_params["all_student_tags"] = all_tags
+        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == managing_contest.id)\

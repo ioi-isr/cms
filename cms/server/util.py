@@ -46,9 +46,27 @@ from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
 if typing.TYPE_CHECKING:
-    from cms.db import Contest, TrainingDay, TrainingDayGroup
+    from cms.db import Contest, TrainingDay, TrainingDayGroup, TrainingProgram
 
 logger = logging.getLogger(__name__)
+
+
+def get_all_student_tags(training_program: "TrainingProgram") -> list[str]:
+    """Get all unique student tags from a training program's students.
+
+    This is a shared utility to avoid duplicating tag collection logic
+    across multiple handlers.
+
+    training_program: the training program to get tags from.
+
+    return: sorted list of unique student tags.
+
+    """
+    all_tags_set: set[str] = set()
+    for student in training_program.students:
+        if student.student_tags:
+            all_tags_set.update(student.student_tags)
+    return sorted(all_tags_set)
 
 
 def get_student_for_training_day(
