@@ -37,6 +37,7 @@ import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation, Student
 from cms.server.contest.phase_management import compute_actual_phase
+from cms.server.util import check_training_day_eligibility
 from cmscommon.datetime import make_datetime, utc
 from .base import BaseHandler, require_permission
 
@@ -49,7 +50,7 @@ def get_participation_main_group(contest, participation):
     
     Args:
         contest: The Contest object
-        participation: The Participation object
+        participation: The Participation object (in the training day contest)
     
     Returns:
         TrainingDayGroup or None: The main group if found, None otherwise
@@ -61,8 +62,10 @@ def get_participation_main_group(contest, participation):
     main_group_tags = {g.tag_name: g for g in training_day.groups}
     training_program = training_day.training_program
     
+    # Student.participation_id refers to the managing contest participation,
+    # not the training day contest participation. Match by user_id instead.
     for student in training_program.students:
-        if student.participation_id == participation.id:
+        if student.participation.user_id == participation.user_id:
             student_tags = set(student.student_tags or [])
             matching_tags = student_tags & set(main_group_tags.keys())
             if len(matching_tags) == 1:
@@ -130,7 +133,7 @@ class DelaysAndExtraTimesHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["timezone"] = utc
-        
+
         participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
             .filter(not_(Participation.hidden))\
@@ -140,6 +143,14 @@ class DelaysAndExtraTimesHandler(BaseHandler):
         # Compute status for each participation
         participation_statuses = []
         for participation in participations:
+            # For training day contests, check eligibility and skip ineligible students
+            if self.contest.training_day is not None:
+                is_eligible, _, _ = check_training_day_eligibility(
+                    self.sql_session, participation, self.contest.training_day
+                )
+                if not is_eligible:
+                    continue  # Skip ineligible students
+
             main_group = get_participation_main_group(self.contest, participation)
             main_group_start = main_group.start_time if main_group else None
             main_group_end = main_group.end_time if main_group else None
