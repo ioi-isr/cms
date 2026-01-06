@@ -1,28 +1,7 @@
 {% extends "base.html" %}
 
-{% block js %}
-// Initialize read-only Tagify for student tags display
-function initStudentTagsDisplay() {
-    document.querySelectorAll('.student-tags-display').forEach(function(input) {
-        if (!input.value.trim()) return;
-
-        new Tagify(input, {
-            delimiters: ",",
-            readonly: true,
-            editTags: false,
-            // Output as comma-separated values instead of JSON
-            originalInputValueFormat: function(valuesArr) {
-                return valuesArr.map(function(item) {
-                    return item.value;
-                }).join(', ');
-            }
-        });
-    });
-}
-{% endblock js %}
-
 {% block js_init %}
-initStudentTagsDisplay();
+CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
 {% endblock js_init %}
 
 {% block core %}

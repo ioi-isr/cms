@@ -1,6 +1,6 @@
 {# This macro should be imported "with context". #}
 
-{% macro delay_request(req, user_id=None, show_buttons=True) %}
+{% macro delay_request(req, user_id=None, show_buttons=True, warning=None) %}
 {#
 Render one delay request by a participant.
 
@@ -9,6 +9,7 @@ user_id (int|None): if we are rendering one of the delay requests on a single us
     page, this is the user's id. if we are rendering one of the delay requests on
     the contest attendance page, then None.
 show_buttons (bool): whether to show approve/reject buttons for pending requests.
+warning (dict|None): if provided, contains 'group_name' and 'group_start' for warning display.
 #}
 <div class="notification {% if req.status == 'approved' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
   <div class="notification_msg">
@@ -28,6 +29,12 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
     <div class="notification_text">
       {% if user_id is none %}
       <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
+      {% endif %}
+      {% if warning %}
+      <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 8px; margin: 8px 0; border-radius: 4px;">
+        <strong style="color: #856404;">Warning:</strong> Requested start time is earlier than the student's group start time.
+        <br>Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.
+      </div>
       {% endif %}
       <strong>Reason:</strong> {{ req.reason }}<br>
       {% if req.status != 'pending' %}

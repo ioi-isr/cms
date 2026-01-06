@@ -44,13 +44,44 @@ from .base import BaseHandler, require_permission
 logger = logging.getLogger(__name__)
 
 
-def compute_participation_status(contest, participation, timestamp):
+def get_participation_main_group(contest, participation):
+    """Get the main group for a participation in a training day contest.
+    
+    Args:
+        contest: The Contest object
+        participation: The Participation object
+    
+    Returns:
+        TrainingDayGroup or None: The main group if found, None otherwise
+    """
+    training_day = contest.training_day
+    if training_day is None or len(training_day.groups) == 0:
+        return None
+    
+    main_group_tags = {g.tag_name: g for g in training_day.groups}
+    training_program = training_day.training_program
+    
+    for student in training_program.students:
+        if student.participation_id == participation.id:
+            student_tags = set(student.student_tags or [])
+            matching_tags = student_tags & set(main_group_tags.keys())
+            if len(matching_tags) == 1:
+                return main_group_tags[list(matching_tags)[0]]
+            break
+    
+    return None
+
+
+def compute_participation_status(contest, participation, timestamp,
+                                  main_group_start=None, main_group_end=None):
     """Compute the status class and label for a participation.
     
     Args:
         contest: The Contest object
         participation: The Participation object
         timestamp: The current timestamp
+        main_group_start: Optional per-group start time for training days
+        main_group_end: Optional per-group end time for training days
     
     Returns:
         tuple: (status_class, status_label)
@@ -65,6 +96,8 @@ def compute_participation_status(contest, participation, timestamp):
         participation.starting_time,
         participation.delay_time,
         participation.extra_time,
+        main_group_start,
+        main_group_end,
     )
     
     if participation.starting_time is None:
@@ -107,29 +140,59 @@ class DelaysAndExtraTimesHandler(BaseHandler):
         # Compute status for each participation
         participation_statuses = []
         for participation in participations:
+            main_group = get_participation_main_group(self.contest, participation)
+            main_group_start = main_group.start_time if main_group else None
+            main_group_end = main_group.end_time if main_group else None
+            
             status_class, status_label = compute_participation_status(
-                self.contest, participation, self.timestamp
+                self.contest, participation, self.timestamp,
+                main_group_start, main_group_end
             )
             
             participation_statuses.append({
                 'participation': participation,
                 'status_class': status_class,
                 'status_label': status_label,
+                'main_group': main_group,
             })
         
         self.r_params["participation_statuses"] = participation_statuses
-        self.r_params["delay_requests"] = self.sql_session.query(DelayRequest)\
+        delay_requests = self.sql_session.query(DelayRequest)\
             .join(Participation)\
             .filter(Participation.contest_id == contest_id)\
             .order_by(DelayRequest.request_timestamp.desc())\
             .all()
+        
+        # Compute warnings for delay requests where requested start is earlier than group start
+        delay_request_warnings = {}
+        for req in delay_requests:
+            if req.status == 'pending':
+                main_group = get_participation_main_group(self.contest, req.participation)
+                if main_group and main_group.start_time:
+                    if req.requested_start_time < main_group.start_time:
+                        delay_request_warnings[req.id] = {
+                            'group_name': main_group.tag_name,
+                            'group_start': main_group.start_time,
+                        }
+        
+        self.r_params["delay_requests"] = delay_requests
+        self.r_params["delay_request_warnings"] = delay_request_warnings
 
         # For training day contests, compute ineligible students
         self.r_params["ineligible_students"] = []
+        self.r_params["all_student_tags"] = []
+        self.r_params["training_program"] = None
         training_day = self.contest.training_day
         if training_day is not None and len(training_day.groups) > 0:
             main_group_tags = {g.tag_name for g in training_day.groups}
             training_program = training_day.training_program
+            self.r_params["training_program"] = training_program
+
+            # Collect all unique student tags for autocomplete
+            all_tags_set: set[str] = set()
+            for s in training_program.students:
+                all_tags_set.update(s.student_tags or [])
+            self.r_params["all_student_tags"] = sorted(all_tags_set)
 
             # Find students with 0 or >1 main group tags
             ineligible = []
@@ -280,9 +343,15 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
             starting_time = participation.starting_time.strftime('%Y-%m-%d %H:%M:%S') if participation.starting_time else '-'
             delay_seconds = int(participation.delay_time.total_seconds())
             
+            main_group = get_participation_main_group(self.contest, participation)
+            main_group_start = main_group.start_time if main_group else None
+            main_group_end = main_group.end_time if main_group else None
+            
             if participation.delay_time.total_seconds() > 0:
                 planned_start = self.contest.start + participation.delay_time
                 planned_start_str = planned_start.strftime('%Y-%m-%d %H:%M:%S')
+            elif main_group_start:
+                planned_start_str = main_group_start.strftime('%Y-%m-%d %H:%M:%S')
             else:
                 planned_start_str = self.contest.start.strftime('%Y-%m-%d %H:%M:%S')
             
@@ -291,7 +360,8 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
             
             # Compute status for this participation
             _, status_label = compute_participation_status(
-                self.contest, participation, self.timestamp
+                self.contest, participation, self.timestamp,
+                main_group_start, main_group_end
             )
             
             writer.writerow([

@@ -1141,6 +1141,30 @@ CMS.AWSUtils.initRemovePage = function(config) {
 
 
 /**
+ * Initializes read-only Tagify display on input element(s).
+ * Used to display tags in a visually consistent way without editing capability.
+ *
+ * inputSelector (string): CSS selector for the input element(s).
+ */
+CMS.AWSUtils.initReadOnlyTagify = function(inputSelector) {
+    document.querySelectorAll(inputSelector).forEach(function(input) {
+        if (!input.value.trim()) return;
+
+        new Tagify(input, {
+            delimiters: ",",
+            readonly: true,
+            editTags: false,
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.map(function(item) {
+                    return item.value;
+                }).join(', ');
+            }
+        });
+    });
+};
+
+
+/**
  * Initializes Tagify on input element(s) with confirmation dialogs and save-on-confirm.
  * Provides a unified interface for tag inputs across the admin interface.
  * 

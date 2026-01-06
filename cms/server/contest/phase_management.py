@@ -41,6 +41,8 @@ def compute_actual_phase(
     starting_time: datetime | None,
     delay_time: timedelta,
     extra_time: timedelta,
+    main_group_start: datetime | None = None,
+    main_group_end: datetime | None = None,
 ) -> tuple[int, datetime | None, datetime | None, datetime | None, datetime | None]:
     """Determine the current phase and when the active phase is.
 
@@ -85,6 +87,12 @@ def compute_actual_phase(
     delay_time: how much the user's start is delayed.
     extra_time: how much extra time is given to the user at
         the end.
+    main_group_start: optional per-group start time for training days.
+        If provided and user has no delay, this is used instead of
+        contest_start for calculating the user's start time.
+    main_group_end: optional per-group end time for training days.
+        If provided and user has no delay, this is used instead of
+        contest_stop for calculating the user's end time.
 
     return: 5 items: an integer (in [-2, +2]) and two pairs of
         datetimes (or None) defining two intervals.
@@ -104,8 +112,22 @@ def compute_actual_phase(
     assert delay_time >= timedelta()
     assert extra_time >= timedelta()
 
-    earliest_permitted_start = contest_start + delay_time
-    latest_permitted_stop = contest_stop + delay_time + extra_time
+    # For training days with per-group times:
+    # - If user has no delay, use main group's start/end time
+    # - If user has delay, use contest start + delay (delays are relative to contest start)
+    has_delay = delay_time > timedelta()
+    if has_delay or main_group_start is None:
+        effective_start = contest_start
+    else:
+        effective_start = main_group_start
+
+    if has_delay or main_group_end is None:
+        effective_stop = contest_stop
+    else:
+        effective_stop = main_group_end
+
+    earliest_permitted_start = effective_start + delay_time
+    latest_permitted_stop = effective_stop + delay_time + extra_time
 
     if starting_time is None:
         if earliest_permitted_start <= timestamp <= latest_permitted_stop:
