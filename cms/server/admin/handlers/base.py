@@ -48,11 +48,11 @@ except:
 
 import tornado.web
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Query, subqueryload
+from sqlalchemy.orm import Query, selectinload, subqueryload
 
 from cms import __version__, config
 from cms.db import Admin, Contest, ContestFolder, DelayRequest, Participation, \
-    Question, Submission, SubmissionResult, Task, Team, TrainingProgram, User, UserTest
+    Question, Submission, SubmissionResult, Task, Team, TrainingDay, TrainingProgram, User, UserTest
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
@@ -413,6 +413,10 @@ class BaseHandler(CommonRequestHandler):
             Contest.folder_id.is_(None)
         ).filter(~Contest.name.like(r'\_\_%', escape='\\')).filter(~Contest.training_day.has()).order_by(Contest.name).all()
         params["training_program_list"] = self.sql_session.query(TrainingProgram)\
+            .options(
+                selectinload(TrainingProgram.training_days)
+                .selectinload(TrainingDay.contest)
+            )\
             .order_by(TrainingProgram.name).all()
         return params
 

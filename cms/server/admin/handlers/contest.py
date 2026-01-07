@@ -30,6 +30,8 @@
 
 from datetime import timedelta
 
+import tornado.web
+
 from cms import ServiceCoord, get_service_shards, get_service_address
 from cms.db import Contest, Participation, Submission, Task, ContestFolder, TrainingDay, Student
 from sqlalchemy.orm import joinedload

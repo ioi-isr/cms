@@ -26,6 +26,26 @@ document.addEventListener('DOMContentLoaded', function() {
         tagify.DOM.scope.classList.add('tagify-tag-select');
     }
 });
+
+function removeMainGroup(url, xsrfToken) {
+    if (!confirm('Remove this main group?')) {
+        return;
+    }
+    var formData = new FormData();
+    formData.append('_xsrf', xsrfToken);
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    }).then(function(response) {
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('Failed to remove main group');
+        }
+    }).catch(function(error) {
+        alert('Error: ' + error);
+    });
+}
 </script>
 
 {% if contest.training_day.groups|length > 0 %}
@@ -58,10 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }}/>
         </td>
         <td>
-          <form action="{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}" method="POST" style="display:inline;">
-            {{ xsrf_form_html|safe }}
-            <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('Remove this main group?');">Remove</button>
-          </form>
+          <button type="button" class="btn btn-danger btn-small" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}', '{{ xsrf_token }}');"{% if not admin.permission_all %} disabled{% endif %}>Remove</button>
         </td>
       </tr>
       {% endfor %}

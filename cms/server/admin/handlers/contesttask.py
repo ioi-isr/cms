@@ -150,6 +150,13 @@ class ContestTasksHandler(BaseHandler):
                 task.training_day_num = 0
 
             elif operation == self.MOVE_BOTTOM:
+                # Compute target index BEFORE modifying the DB to avoid race condition.
+                # Count tasks in training day excluding the current task.
+                new_index = self.sql_session.query(Task)\
+                    .filter(Task.training_day == training_day)\
+                    .filter(Task.id != task.id)\
+                    .count()
+
                 task.training_day_num = None
                 self.sql_session.flush()
 
@@ -162,8 +169,7 @@ class ContestTasksHandler(BaseHandler):
                     t.training_day_num -= 1
                     self.sql_session.flush()
 
-                self.sql_session.flush()
-                task.training_day_num = len(training_day.tasks) - 1
+                task.training_day_num = new_index
 
             # Swap training_day_num values, if needed
             if task2 is not None:
@@ -219,6 +225,13 @@ class ContestTasksHandler(BaseHandler):
                 task.num = 0
 
             elif operation == self.MOVE_BOTTOM:
+                # Compute target index BEFORE modifying the DB to avoid race condition.
+                # Count tasks in contest excluding the current task.
+                new_index = self.sql_session.query(Task)\
+                    .filter(Task.contest == self.contest)\
+                    .filter(Task.id != task.id)\
+                    .count()
+
                 task.num = None
                 self.sql_session.flush()
 
@@ -231,8 +244,7 @@ class ContestTasksHandler(BaseHandler):
                     t.num -= 1
                     self.sql_session.flush()
 
-                self.sql_session.flush()
-                task.num = len(self.contest.tasks) - 1
+                task.num = new_index
 
             # Swap task.num values, if needed
             if task2 is not None:

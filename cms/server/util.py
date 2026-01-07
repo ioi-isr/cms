@@ -193,7 +193,7 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
         return False
 
     # Check if student has any matching tag
-    student_tags_set = set(student.student_tags)
+    student_tags_set = set(student.student_tags or [])
     task_tags_set = set(task.visible_to_tags)
     return bool(student_tags_set & task_tags_set)
 

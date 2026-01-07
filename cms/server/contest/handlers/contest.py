@@ -50,7 +50,7 @@ except:
 import tornado.web
 
 from cms import config, TOKEN_MODE_MIXED
-from cms.db import Contest, Student, Submission, Task, TrainingProgram, UserTest, contest
+from cms.db import Contest, Student, Submission, Task, TrainingDayGroup, TrainingProgram, UserTest, contest
 from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
