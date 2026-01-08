@@ -145,8 +145,11 @@ def copy_shared_static_files():
     for filename in SHARED_STATIC_FILES:
         src_path = os.path.join(src_dir, filename)
         dst_path = os.path.join(dst_dir, filename)
-        if os.path.exists(src_path):
-            shutil.copy2(src_path, dst_path)
+        if not os.path.exists(src_path):
+            raise FileNotFoundError(
+                f"Required shared static file not found: {src_path}"
+            )
+        shutil.copy2(src_path, dst_path)
 
 
 # We piggyback the translation catalogs compilation onto build since
