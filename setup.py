@@ -30,9 +30,19 @@
 
 import os
 import re
+import shutil
 
 from setuptools import setup, find_packages
 from setuptools.command.build import build
+
+
+# Files to copy from cmsranking/static/ to cms/server/admin/static/js/
+# These files are shared between the ranking server and admin interface
+SHARED_STATIC_FILES = [
+    "Chart.js",
+    "HistoryStore.js",
+    "UserDetail.js",
+]
 
 
 PACKAGE_DATA = {
@@ -116,11 +126,39 @@ def find_version():
     raise RuntimeError("Unable to find version string.")
 
 
+def copy_shared_static_files():
+    """Copy shared static files from cmsranking to admin interface.
+
+    These files (Chart.js, HistoryStore.js, UserDetail.js) are used by both
+    the ranking server and the admin interface. We copy them during build
+    to avoid file duplication in the repository while ensuring they're
+    available in both locations after installation.
+    """
+    src_dir = os.path.join(os.path.dirname(__file__), "cmsranking", "static")
+    dst_dir = os.path.join(
+        os.path.dirname(__file__), "cms", "server", "admin", "static", "js"
+    )
+
+    # Create destination directory if it doesn't exist
+    os.makedirs(dst_dir, exist_ok=True)
+
+    for filename in SHARED_STATIC_FILES:
+        src_path = os.path.join(src_dir, filename)
+        dst_path = os.path.join(dst_dir, filename)
+        if os.path.exists(src_path):
+            shutil.copy2(src_path, dst_path)
+
+
 # We piggyback the translation catalogs compilation onto build since
 # the po and mofiles will be part of the package data for cms.locale,
-# which is collected at this stage.
+# which is collected at this stage. We also copy shared static files
+# from cmsranking to the admin interface.
 class build_with_l10n(build):
     sub_commands = [('compile_catalog', None)] + build.sub_commands
+
+    def run(self):
+        copy_shared_static_files()
+        super().run()
 
 
 setup(
