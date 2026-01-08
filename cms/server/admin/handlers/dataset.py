@@ -60,8 +60,10 @@ from .base import BaseHandler, require_permission
 
 logger = logging.getLogger(__name__)
 
-# Track running validation jobs by dataset_id
-# Each entry contains: {"status": "running"|"completed"|"error", "progress": str, "result": str}
+# Track running validation jobs by validator_id
+# Each entry contains: {"status": "running"|"completed"|"error"|"cancelled",
+#                       "progress": str, "result": str}
+# Keyed by validator_id to allow multiple validators to run in parallel
 _running_validations: dict[int, dict] = {}
 
 
@@ -507,7 +509,7 @@ class AddManagerHandler(BaseHandler):
                     for_evaluation=True,
                     notify=notify
                 )
-                
+
                 if not success:
                     self.redirect(fallback_page)
                     return
@@ -521,14 +523,16 @@ class AddManagerHandler(BaseHandler):
         for filename, content in planned_entries:
             try:
                 digest = self.service.file_cacher.put_file_content(
-                    content, "Task manager for %s" % task_name)
+                    content, "Task manager for %s" % task_name
+                )
                 all_stored_entries.append((filename, digest))
             except Exception as error:
                 logger.warning("Failed to store manager '%s'", filename, exc_info=True)
                 self.service.add_notification(
                     make_datetime(),
                     "Manager storage failed",
-                    "Error storing '%s': %s" % (filename, repr(error)))
+                    "Error storing '%s': %s" % (filename, repr(error)),
+                )
                 self.redirect(fallback_page)
                 return
 
@@ -552,9 +556,8 @@ class AddManagerHandler(BaseHandler):
 
 
 class DeleteManagerHandler(BaseHandler):
-    """Delete a manager.
+    """Delete a manager."""
 
-    """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, dataset_id, manager_id):
         manager = self.safe_get_item(Manager, manager_id)
@@ -588,9 +591,8 @@ class DeleteManagerHandler(BaseHandler):
 
 
 class AddTestcaseHandler(BaseHandler):
-    """Add a testcase to a dataset.
+    """Add a testcase to a dataset."""
 
-    """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -616,9 +618,8 @@ class AddTestcaseHandler(BaseHandler):
             output = self.request.files["output"][0]
         except KeyError:
             self.service.add_notification(
-                make_datetime(),
-                "Invalid data",
-                "Please fill both input and output.")
+                make_datetime(), "Invalid data", "Please fill both input and output."
+            )
             self.redirect(fallback_page)
             return
 
@@ -627,19 +628,16 @@ class AddTestcaseHandler(BaseHandler):
         self.sql_session.close()
 
         try:
-            input_digest = \
-                self.service.file_cacher.put_file_content(
-                    input_["body"],
-                    "Testcase input for task %s" % task_name)
-            output_digest = \
-                self.service.file_cacher.put_file_content(
-                    output["body"],
-                    "Testcase output for task %s" % task_name)
+            input_digest = self.service.file_cacher.put_file_content(
+                input_["body"], "Testcase input for task %s" % task_name
+            )
+            output_digest = self.service.file_cacher.put_file_content(
+                output["body"], "Testcase output for task %s" % task_name
+            )
         except Exception as error:
             self.service.add_notification(
-                make_datetime(),
-                "Testcase storage failed",
-                repr(error))
+                make_datetime(), "Testcase storage failed", repr(error)
+            )
             self.redirect(fallback_page)
             return
 
@@ -648,7 +646,8 @@ class AddTestcaseHandler(BaseHandler):
         task = dataset.task
 
         testcase = Testcase(
-            codename, public, input_digest, output_digest, dataset=dataset)
+            codename, public, input_digest, output_digest, dataset=dataset
+        )
         self.sql_session.add(testcase)
 
         if dataset.active and dataset.task_type == "OutputOnly":
@@ -657,7 +656,8 @@ class AddTestcaseHandler(BaseHandler):
             except Exception as e:
                 raise RuntimeError(
                     f"Couldn't create default submission format for task {task.id}, "
-                    f"dataset {dataset.id}") from e
+                    f"dataset {dataset.id}"
+                ) from e
 
         if self.try_commit():
             # max_score and/or extra_headers might have changed.
@@ -668,9 +668,8 @@ class AddTestcaseHandler(BaseHandler):
 
 
 class AddTestcasesHandler(BaseHandler):
-    """Add several testcases to a dataset.
+    """Add several testcases to a dataset."""
 
-    """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -684,8 +683,7 @@ class AddTestcasesHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = \
-            self.url("dataset", dataset_id, "testcases", "add_multiple")
+        fallback_page = self.url("dataset", dataset_id, "testcases", "add_multiple")
 
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
@@ -694,9 +692,8 @@ class AddTestcasesHandler(BaseHandler):
             archive = self.request.files["archive"][0]
         except KeyError:
             self.service.add_notification(
-                make_datetime(),
-                "Invalid data",
-                "Please choose tests archive.")
+                make_datetime(), "Invalid data", "Please choose tests archive."
+            )
             self.redirect(fallback_page)
             return
 
@@ -705,7 +702,8 @@ class AddTestcasesHandler(BaseHandler):
             self.service.add_notification(
                 make_datetime(),
                 "Empty file",
-                "The selected archive is empty. Please select a non-empty zip file.")
+                "The selected archive is empty. Please select a non-empty zip file.",
+            )
             self.redirect(fallback_page)
             return
 
@@ -715,7 +713,7 @@ class AddTestcasesHandler(BaseHandler):
         # Get input/output file names templates, or use default ones.
         input_template: str = self.get_argument("input_template", "input.*")
         output_template: str = self.get_argument("output_template", "output.*")
-        
+
         try:
             input_re = compile_template_regex(input_template)
             output_re = compile_template_regex(output_template)
@@ -1482,6 +1480,134 @@ def _store_validation_results(sql_session, validator, dataset, validation_result
     return passed_count, failed_count, error_count
 
 
+def _run_single_validator(service, file_cacher, validator_id, dataset_id,
+                          filename, executable_digest, subtask_index,
+                          testcase_data, progress_prefix="",
+                          send_notification=True):
+    """Run a single validator and store results.
+
+    This function handles the core validation logic for a single validator.
+    It can be called directly for single validator runs or from the batch
+    function for multiple validators.
+
+    Args:
+        service: The service object for notifications
+        file_cacher: FileCacher for accessing files
+        validator_id: ID of the validator to run
+        dataset_id: ID of the dataset
+        filename: Validator filename
+        executable_digest: Digest of the compiled validator
+        subtask_index: Index of the subtask being validated
+        testcase_data: List of testcase dicts with id, input, output
+        progress_prefix: Optional prefix for progress messages (e.g., "1/3: ")
+        send_notification: Whether to send notifications (default True)
+
+    Returns:
+        Tuple of (passed_count, failed_count, error_count, error_message)
+        where error_message is None on success or a string on error.
+    """
+    global _running_validations
+
+    # Check if cancelled before starting
+    if validator_id in _running_validations:
+        if _running_validations[validator_id].get("status") == "cancelled":
+            return (0, 0, 0, None)
+
+    _running_validations[validator_id]["progress"] = \
+        "%sRunning validator for subtask %d..." % (progress_prefix, subtask_index)
+
+    try:
+        validation_results = _run_validator(
+            file_cacher, filename, executable_digest, testcase_data)
+    except Exception as error:
+        logger.exception("Validation execution error for validator %d: %s",
+                         validator_id, repr(error))
+        _running_validations[validator_id]["status"] = "error"
+        _running_validations[validator_id]["result"] = repr(error)
+        _running_validations[validator_id]["progress"] = "Error"
+        if send_notification:
+            service.add_notification(
+                make_datetime(), "Validation error",
+                "Validator for subtask %d failed: %s" % (subtask_index, repr(error)))
+        return (0, 0, 0, "Validator %d: %s" % (subtask_index, repr(error)))
+
+    # Check if cancelled before storing results
+    if validator_id in _running_validations:
+        if _running_validations[validator_id].get("status") == "cancelled":
+            return (0, 0, 0, None)
+
+    sql_session = Session()
+    try:
+        validator = sql_session.query(SubtaskValidator).get(validator_id)
+        if validator is None:
+            _running_validations[validator_id]["status"] = "cancelled"
+            _running_validations[validator_id]["progress"] = "Validator deleted"
+            return (0, 0, 0, None)
+
+        dataset = sql_session.query(Dataset).get(dataset_id)
+        if dataset is None:
+            _running_validations[validator_id]["status"] = "error"
+            _running_validations[validator_id]["progress"] = "Dataset not found"
+            return (0, 0, 0, "Validator %d: Dataset not found" % subtask_index)
+
+        passed_count, failed_count, error_count = _store_validation_results(
+            sql_session, validator, dataset, validation_results)
+
+        sql_session.commit()
+
+        msg = "Subtask %d: %d passed, %d failed" % (subtask_index, passed_count, failed_count)
+        if error_count > 0:
+            msg += ", %d errors" % error_count
+
+        _running_validations[validator_id]["status"] = "completed"
+        _running_validations[validator_id]["result"] = msg
+        _running_validations[validator_id]["progress"] = "Completed"
+
+        if send_notification:
+            service.add_notification(make_datetime(), "Validation complete", msg)
+
+        return (passed_count, failed_count, error_count, None)
+
+    except Exception as error:
+        logger.exception("Database error for validator %d: %s",
+                         validator_id, repr(error))
+        _running_validations[validator_id]["status"] = "error"
+        _running_validations[validator_id]["result"] = repr(error)
+        _running_validations[validator_id]["progress"] = "Database error"
+        sql_session.rollback()
+        if send_notification:
+            service.add_notification(
+                make_datetime(), "Validation error",
+                "Database error for subtask %d: %s" % (subtask_index, repr(error)))
+        return (0, 0, 0, "Validator %d DB error: %s" % (subtask_index, repr(error)))
+    finally:
+        sql_session.close()
+
+
+def _run_validator_background(service, file_cacher, validator_id, dataset_id,
+                              filename, executable_digest, subtask_index,
+                              testcase_data):
+    """Background task to run a single validator.
+
+    This function runs in a gevent greenlet and is keyed by validator_id,
+    allowing multiple validators to run in parallel.
+    """
+    try:
+        _run_single_validator(
+            service, file_cacher, validator_id, dataset_id,
+            filename, executable_digest, subtask_index, testcase_data,
+            progress_prefix="", send_notification=True)
+    except Exception as error:
+        logger.exception("Background validation failed: %s", repr(error))
+        if validator_id in _running_validations:
+            _running_validations[validator_id]["status"] = "error"
+            _running_validations[validator_id]["result"] = repr(error)
+            _running_validations[validator_id]["progress"] = "Error"
+        service.add_notification(
+            make_datetime(), "Validation error",
+            "Background validation failed: %s" % repr(error))
+
+
 class AddSubtaskValidatorHandler(BaseHandler):
     """Add or replace a subtask validator.
 
@@ -1592,16 +1718,18 @@ class AddSubtaskValidatorHandler(BaseHandler):
             return
 
         # Run validation in background (non-blocking)
+        validator_id = validator.id
         dataset_id_int = int(dataset_id)
 
-        if dataset_id_int in _running_validations:
-            status = _running_validations[dataset_id_int].get("status")
+        # Check if this specific validator is already running
+        if validator_id in _running_validations:
+            status = _running_validations[validator_id].get("status")
             if status == "running":
                 self.service.add_notification(
                     make_datetime(),
                     "Validator uploaded",
-                    "Validator for subtask %d uploaded. Validation already running - "
-                    "will need to rerun validators after current run completes." % subtask_index)
+                    "Validator for subtask %d uploaded. Validation already running for "
+                    "this validator - will need to rerun after current run completes." % subtask_index)
                 self.redirect(self.url("task", task.id))
                 return
 
@@ -1609,25 +1737,21 @@ class AddSubtaskValidatorHandler(BaseHandler):
         testcase_data = [{"id": tc.id, "input": tc.input, "output": tc.output}
                          for tc in testcases]
 
-        validator_data = [{
-            "id": validator.id,
-            "filename": filename,
-            "executable_digest": executable_digest,
-            "subtask_index": subtask_index
-        }]
-
-        _running_validations[dataset_id_int] = {
+        _running_validations[validator_id] = {
             "status": "running",
             "progress": "Starting validation...",
             "result": None
         }
 
         gevent.spawn(
-            _run_validators_background,
+            _run_validator_background,
             self.service,
             self.service.file_cacher,
+            validator_id,
             dataset_id_int,
-            validator_data,
+            filename,
+            executable_digest,
+            subtask_index,
             testcase_data
         )
 
@@ -1650,6 +1774,11 @@ class DeleteSubtaskValidatorHandler(BaseHandler):
 
         if validator.dataset is not dataset:
             raise tornado.web.HTTPError(404)
+
+        # Mark any running validation for this validator as cancelled
+        validator_id_int = int(validator_id)
+        if validator_id_int in _running_validations:
+            _running_validations[validator_id_int]["status"] = "cancelled"
 
         task_id = dataset.task_id
         self.sql_session.delete(validator)
@@ -1698,7 +1827,7 @@ class SubtaskDetailsHandler(BaseHandler):
                         if isinstance(param[1], str):
                             subtask_regex = param[1]
                             uses_regex = True
-                            # Extract suggested prefix from regex patterns
+                            # Extract suggested prefix from regex patterns like ".*prefix.*"
                             import re
                             match = re.search(r'\.\*(?P<term>[^|)]*?)\.\*', subtask_regex)
                             if match:
@@ -1913,39 +2042,6 @@ class RenameTestcaseHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
-def _validate_codename_mapping(dataset, testcases, new_codenames):
-    """Validate that a codename mapping doesn't create conflicts.
-
-    Args:
-        dataset: The dataset containing the testcases
-        testcases: List of testcases being renamed
-        new_codenames: Dict mapping testcase.id to new codename
-
-    Returns:
-        (is_valid, error_message) tuple. If is_valid is True, error_message is None.
-    """
-    testcase_set = set(testcases)
-    seen_codenames = {}
-
-    for tc in testcases:
-        new_codename = new_codenames.get(tc.id)
-        if new_codename is None:
-            continue
-
-        # Check for duplicates within the mapping itself
-        if new_codename in seen_codenames:
-            return (False, "Renaming would create duplicate codename '%s'." % new_codename)
-        seen_codenames[new_codename] = tc
-
-        # Check for conflicts with existing testcases not in the selection
-        if new_codename in dataset.testcases:
-            existing_tc = dataset.testcases[new_codename]
-            if existing_tc not in testcase_set:
-                return (False, "Renaming would create duplicate codename '%s'." % new_codename)
-
-    return (True, None)
-
-
 def _apply_codename_mapping(dataset, testcases, new_codenames):
     """Apply a codename mapping to testcases using two-phase approach.
 
@@ -1976,10 +2072,80 @@ def _apply_codename_mapping(dataset, testcases, new_codenames):
     return len(changing_testcases)
 
 
-class BatchRenameTestcasesHandler(BaseHandler):
-    """Batch rename testcases - add prefix or remove common substring.
+def _batch_rename_testcases(
+    handler, dataset, task, testcases, codename_modifier, fallback_page
+):
+    """Common logic for batch renaming testcases.
 
+    Args:
+        handler: The request handler (for notifications, commit, redirect)
+        dataset: The dataset containing the testcases
+        task: The task owning the dataset
+        testcases: List of testcases to rename
+        codename_modifier: Function(testcase) -> (new_codename, error_msg)
+                          Returns new codename or (None, error_msg) on failure
+        fallback_page: URL to redirect to
+
+    Returns:
+        (success, renamed_count) tuple. If success is False, handler has
+        already been redirected with an error notification.
     """
+    # Build the new codename mapping
+    testcase_set = set(testcases)
+    new_codenames = {}
+    seen_codenames = {}  # new_codename -> tc, for duplicate detection
+
+    for tc in testcases:
+        new_codename, error_msg = codename_modifier(tc)
+        if error_msg is not None:
+            handler.service.add_notification(make_datetime(), "Rename error", error_msg)
+            handler.redirect(fallback_page)
+            return (False, 0)
+
+        # Check for duplicates within the mapping itself
+        if new_codename in seen_codenames:
+            handler.service.add_notification(
+                make_datetime(),
+                "Codename conflict",
+                "Renaming would create duplicate codename '%s'." % new_codename,
+            )
+            handler.redirect(fallback_page)
+            return (False, 0)
+        seen_codenames[new_codename] = tc
+
+        # Check for conflicts with existing testcases not in the selection
+        if new_codename in dataset.testcases:
+            existing_tc = dataset.testcases[new_codename]
+            if existing_tc not in testcase_set:
+                handler.service.add_notification(
+                    make_datetime(),
+                    "Codename conflict",
+                    "Renaming would create duplicate codename '%s'." % new_codename,
+                )
+                handler.redirect(fallback_page)
+                return (False, 0)
+
+        new_codenames[tc.id] = new_codename
+
+    # Apply the rename using two-phase approach
+    renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
+
+    # Update submission format for OutputOnly tasks
+    if dataset.active and dataset.task_type == "OutputOnly":
+        try:
+            task.set_default_output_only_submission_format()
+        except Exception as e:
+            raise RuntimeError(
+                f"Couldn't create default submission format for task {task.id}, "
+                f"dataset {dataset.id}"
+            ) from e
+
+    return (True, renamed_count)
+
+
+class BatchRenameTestcasesHandler(BaseHandler):
+    """Batch rename testcases - add prefix or remove common substring."""
+
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -1988,7 +2154,9 @@ class BatchRenameTestcasesHandler(BaseHandler):
         # Support redirect back to subtask details page if subtask_index is provided
         subtask_index = self.get_argument("subtask_index", None)
         if subtask_index is not None:
-            fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+            fallback_page = self.url(
+                "dataset", dataset_id, "subtask", subtask_index, "details"
+            )
         else:
             fallback_page = self.url("task", task.id)
 
@@ -2003,7 +2171,8 @@ class BatchRenameTestcasesHandler(BaseHandler):
             self.service.add_notification(
                 make_datetime(),
                 "No testcases selected",
-                "Please select at least one testcase.")
+                "Please select at least one testcase.",
+            )
             self.redirect(fallback_page)
             return
 
@@ -2011,7 +2180,8 @@ class BatchRenameTestcasesHandler(BaseHandler):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid operation",
-                "Unknown operation: %s" % operation)
+                "Unknown operation: %s" % operation,
+            )
             self.redirect(fallback_page)
             return
 
@@ -2034,42 +2204,27 @@ class BatchRenameTestcasesHandler(BaseHandler):
             # Add prefix to all selected testcases
             if not value:
                 self.service.add_notification(
-                    make_datetime(),
-                    "Invalid prefix",
-                    "Prefix cannot be empty.")
+                    make_datetime(), "Invalid prefix", "Prefix cannot be empty."
+                )
                 self.redirect(fallback_page)
                 return
 
-            # Build the new codename mapping
-            # Skip adding prefix if codename already starts with it
-            new_codenames = {}
-            for tc in testcases:
+            def add_prefix_modifier(tc):
+                # Skip adding prefix if codename already starts with it
                 if tc.codename.startswith(value):
-                    new_codenames[tc.id] = tc.codename  # Keep original
-                else:
-                    new_codenames[tc.id] = value + tc.codename
+                    return (tc.codename, None)
+                return (value + tc.codename, None)
 
-            # Validate the mapping for conflicts
-            is_valid, error_msg = _validate_codename_mapping(dataset, testcases, new_codenames)
-            if not is_valid:
-                self.service.add_notification(
-                    make_datetime(),
-                    "Codename conflict",
-                    error_msg)
-                self.redirect(fallback_page)
+            success, renamed_count = _batch_rename_testcases(
+                self,
+                dataset,
+                task,
+                testcases,
+                add_prefix_modifier,
+                fallback_page,
+            )
+            if not success:
                 return
-
-            # Apply the rename using two-phase approach
-            renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
-
-            # Update submission format for OutputOnly tasks
-            if dataset.active and dataset.task_type == "OutputOnly":
-                try:
-                    task.set_default_output_only_submission_format()
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Couldn't create default submission format for task {task.id}, "
-                        f"dataset {dataset.id}") from e
 
             # Check if user wants to update the subtask regex
             update_regex = self.get_argument("update_regex", "") == "true"
@@ -2079,7 +2234,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 try:
                     subtask_idx = int(subtask_index)
                     score_type_obj = dataset.score_type_object
-                    if hasattr(score_type_obj, 'parameters'):
+                    if hasattr(score_type_obj, "parameters"):
                         params = list(score_type_obj.parameters)
                         if 0 <= subtask_idx < len(params):
                             param = list(params[subtask_idx])
@@ -2089,6 +2244,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
                                 # Add a term to match testcases containing the prefix
                                 # Use .*prefix.* pattern to match substring
                                 import re
+
                                 new_term = ".*%s.*" % re.escape(value)
                                 # Check if the term already exists in the regex
                                 if new_term in old_regex:
@@ -2106,13 +2262,13 @@ class BatchRenameTestcasesHandler(BaseHandler):
             if self.try_commit():
                 msg = "Added prefix '%s' to %d testcases." % (value, renamed_count)
                 if regex_updated:
-                    msg += " Subtask regex updated to match testcases containing '%s'." % value
+                    msg += (
+                        " Subtask regex updated to match testcases containing '%s'."
+                        % value
+                    )
                 elif regex_already_exists:
                     msg += " Regex term for '%s' already exists in the pattern." % value
-                self.service.add_notification(
-                    make_datetime(),
-                    "Testcases renamed",
-                    msg)
+                self.service.add_notification(make_datetime(), "Testcases renamed", msg)
 
         elif operation == "remove_substring":
             # Remove a common substring from all selected testcases
@@ -2120,54 +2276,37 @@ class BatchRenameTestcasesHandler(BaseHandler):
 
             if not substring:
                 self.service.add_notification(
-                    make_datetime(),
-                    "Invalid substring",
-                    "Substring cannot be empty.")
+                    make_datetime(), "Invalid substring", "Substring cannot be empty."
+                )
                 self.redirect(fallback_page)
                 return
 
-            # Check that all selected testcases contain the substring and build mapping
-            new_codenames = {}
-            for tc in testcases:
+            def remove_substring_modifier(tc):
                 if substring not in tc.codename:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Substring not found",
-                        "Testcase '%s' does not contain substring '%s'." % (tc.codename, substring))
-                    self.redirect(fallback_page)
-                    return
-                # Remove first occurrence of substring
+                    return (
+                        None,
+                        "Testcase '%s' does not contain substring '%s'."
+                        % (tc.codename, substring),
+                    )
                 new_codename = tc.codename.replace(substring, "", 1)
                 if not new_codename:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Invalid result",
-                        "Removing substring from '%s' would result in empty codename." % tc.codename)
-                    self.redirect(fallback_page)
-                    return
-                new_codenames[tc.id] = new_codename
+                    return (
+                        None,
+                        "Removing substring from '%s' would result in empty codename."
+                        % tc.codename,
+                    )
+                return (new_codename, None)
 
-            # Validate the mapping for conflicts
-            is_valid, error_msg = _validate_codename_mapping(dataset, testcases, new_codenames)
-            if not is_valid:
-                self.service.add_notification(
-                    make_datetime(),
-                    "Codename conflict",
-                    error_msg)
-                self.redirect(fallback_page)
+            success, renamed_count = _batch_rename_testcases(
+                self,
+                dataset,
+                task,
+                testcases,
+                remove_substring_modifier,
+                fallback_page,
+            )
+            if not success:
                 return
-
-            # Apply the rename using two-phase approach
-            renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
-
-            # Update submission format for OutputOnly tasks
-            if dataset.active and dataset.task_type == "OutputOnly":
-                try:
-                    task.set_default_output_only_submission_format()
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Couldn't create default submission format for task {task.id}, "
-                        f"dataset {dataset.id}") from e
 
             if self.try_commit():
                 self.service.add_notification(
@@ -2178,14 +2317,14 @@ class BatchRenameTestcasesHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
-def _run_validators_background(service, file_cacher, dataset_id, validator_data, testcase_data):
-    """Background task to run validators with incremental commits.
+def _run_validators_batch_background(service, file_cacher, dataset_id,
+                                     validator_data, testcase_data):
+    """Background task to run multiple validators sequentially.
 
     This function runs in a gevent greenlet and commits results per validator,
-    so partial progress is saved even if the task is interrupted.
+    so partial progress is saved even if the task is interrupted. Each validator
+    is tracked by its own validator_id in _running_validations.
     """
-    global _running_validations
-
     total_passed = 0
     total_failed = 0
     total_errors = 0
@@ -2194,46 +2333,21 @@ def _run_validators_background(service, file_cacher, dataset_id, validator_data,
 
     try:
         for i, vdata in enumerate(validator_data):
-            _running_validations[dataset_id]["progress"] = \
-                "Running validator %d/%d (subtask %d)..." % (
-                    i + 1, len(validator_data), vdata["subtask_index"])
+            progress_prefix = "%d/%d: " % (i + 1, len(validator_data))
 
-            try:
-                validation_results = _run_validator(
-                    file_cacher, vdata["filename"], vdata["executable_digest"], testcase_data)
-            except Exception as error:
-                logger.exception("Validation execution error for validator %d: %s",
-                                 vdata["id"], repr(error))
-                errors.append("Validator %d: %s" % (vdata["subtask_index"], repr(error)))
-                continue
+            passed, failed, errs, error_msg = _run_single_validator(
+                service, file_cacher, vdata["id"], dataset_id,
+                vdata["filename"], vdata["executable_digest"],
+                vdata["subtask_index"], testcase_data,
+                progress_prefix=progress_prefix, send_notification=False)
 
-            sql_session = Session()
-            try:
-                validator = sql_session.query(SubtaskValidator).get(vdata["id"])
-                if validator is None:
-                    continue
-
-                dataset = sql_session.query(Dataset).get(dataset_id)
-                if dataset is None:
-                    continue
-
-                passed_count, failed_count, error_count = _store_validation_results(
-                    sql_session, validator, dataset, validation_results)
-
-                sql_session.commit()
-
-                total_passed += passed_count
-                total_failed += failed_count
-                total_errors += error_count
+            if error_msg:
+                errors.append(error_msg)
+            else:
+                total_passed += passed
+                total_failed += failed
+                total_errors += errs
                 validators_run += 1
-
-            except Exception as error:
-                logger.exception("Database error for validator %d: %s",
-                                 vdata["id"], repr(error))
-                errors.append("Validator %d DB error: %s" % (vdata["subtask_index"], repr(error)))
-                sql_session.rollback()
-            finally:
-                sql_session.close()
 
         msg = "Reran %d validators: %d passed, %d failed" % (
             validators_run, total_passed, total_failed)
@@ -2243,17 +2357,10 @@ def _run_validators_background(service, file_cacher, dataset_id, validator_data,
         if errors:
             msg += " Errors: " + "; ".join(errors)
 
-        _running_validations[dataset_id]["status"] = "completed"
-        _running_validations[dataset_id]["result"] = msg
-        _running_validations[dataset_id]["progress"] = "Completed"
-
         service.add_notification(make_datetime(), "Validation complete", msg)
 
     except Exception as error:
         logger.exception("Background validation failed: %s", repr(error))
-        _running_validations[dataset_id]["status"] = "error"
-        _running_validations[dataset_id]["result"] = repr(error)
-        _running_validations[dataset_id]["progress"] = "Error"
         service.add_notification(
             make_datetime(), "Validation error",
             "Background validation failed: %s" % repr(error))
@@ -2263,7 +2370,8 @@ class RerunSubtaskValidatorsHandler(BaseHandler):
     """Rerun all subtask validators for a dataset.
 
     Runs validators in a background greenlet with incremental commits,
-    so the page can be reloaded without losing progress.
+    so the page can be reloaded without losing progress. Each validator
+    is tracked by its own validator_id in _running_validations.
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
@@ -2271,17 +2379,6 @@ class RerunSubtaskValidatorsHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
         fallback_page = self.url("task", task.id)
-
-        if dataset_id in _running_validations:
-            status = _running_validations[dataset_id].get("status")
-            if status == "running":
-                self.service.add_notification(
-                    make_datetime(),
-                    "Validation in progress",
-                    "Validators are already running for this dataset. " +
-                    _running_validations[dataset_id].get("progress", ""))
-                self.redirect(fallback_page)
-                return
 
         validators = list(dataset.subtask_validators.values())
         if not validators:
@@ -2293,8 +2390,15 @@ class RerunSubtaskValidatorsHandler(BaseHandler):
             return
 
         validator_data = []
+        running_validators = []
         for v in validators:
             if v.executable_digest is not None:
+                # Check if this specific validator is already running
+                if v.id in _running_validations:
+                    status = _running_validations[v.id].get("status")
+                    if status == "running":
+                        running_validators.append(v.subtask_index)
+                        continue
                 validator_data.append({
                     "id": v.id,
                     "filename": v.filename,
@@ -2302,11 +2406,18 @@ class RerunSubtaskValidatorsHandler(BaseHandler):
                     "subtask_index": v.subtask_index
                 })
 
+        if running_validators:
+            self.service.add_notification(
+                make_datetime(),
+                "Some validators already running",
+                "Validators for subtasks %s are already running. "
+                "Skipping those and running the rest." % running_validators)
+
         if not validator_data:
             self.service.add_notification(
                 make_datetime(),
-                "No compiled validators",
-                "No validators have been compiled successfully.")
+                "No validators to run",
+                "No validators available to run (either none compiled or all already running).")
             self.redirect(fallback_page)
             return
 
@@ -2318,14 +2429,16 @@ class RerunSubtaskValidatorsHandler(BaseHandler):
                 "output": tc.output
             })
 
-        _running_validations[dataset_id] = {
-            "status": "running",
-            "progress": "Starting validation...",
-            "result": None
-        }
+        # Initialize running status for each validator
+        for vdata in validator_data:
+            _running_validations[vdata["id"]] = {
+                "status": "running",
+                "progress": "Starting validation...",
+                "result": None
+            }
 
         gevent.spawn(
-            _run_validators_background,
+            _run_validators_batch_background,
             self.service,
             self.service.file_cacher,
             dataset_id,
@@ -2336,7 +2449,6 @@ class RerunSubtaskValidatorsHandler(BaseHandler):
         self.service.add_notification(
             make_datetime(),
             "Validation started",
-            "Running %d validators on %d testcases in background. "
-            "You can safely navigate away - progress will be saved." % (
+            "Running %d validators on %d testcases in background." % (
                 len(validator_data), len(testcase_data)))
         self.redirect(self.url("task", task.id))
