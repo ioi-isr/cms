@@ -366,6 +366,8 @@ CREATE INDEX ix_subtask_validators_dataset_id ON public.subtask_validators USING
 
 ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES public.datasets(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_subtask_index_check CHECK ((subtask_index >= 0));
+
 -- Add subtask_validation_results table for storing validation results
 CREATE TABLE public.subtask_validation_results (
     id integer NOT NULL,
@@ -400,5 +402,7 @@ CREATE INDEX ix_subtask_validation_results_testcase_id ON public.subtask_validat
 ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_validator_id_fkey FOREIGN KEY (validator_id) REFERENCES public.subtask_validators(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_testcase_id_fkey FOREIGN KEY (testcase_id) REFERENCES public.testcases(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_exit_code_check CHECK (((exit_code IS NULL) OR (exit_code >= 0)));
 
 COMMIT;
