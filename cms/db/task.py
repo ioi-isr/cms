@@ -504,6 +504,13 @@ class Dataset(Base):
         passive_deletes=True,
         back_populates="dataset")
 
+    subtask_validators: dict[int, "SubtaskValidator"] = relationship(
+        "SubtaskValidator",
+        collection_class=attribute_mapped_collection("subtask_index"),
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="dataset")
+
     @property
     def active(self) -> bool:
         """Shorthand for detecting if the dataset is active.
@@ -746,4 +753,120 @@ class Generator(Base):
     # with the same file extension (e.g., PyPy vs CPython for .py files).
     language_name: str | None = Column(
         String,
+        nullable=True)
+
+
+class SubtaskValidator(Base):
+    """Class to store validators for subtasks in a dataset.
+
+    A subtask validator is a compiled program that validates testcases
+    for a specific subtask. It receives the input and output files and
+    returns whether the testcase is valid (exit code 0 = valid).
+
+    """
+    __tablename__ = 'subtask_validators'
+    __table_args__ = (
+        UniqueConstraint("dataset_id", "subtask_index"),
+        CheckConstraint("subtask_index >= 0"),
+    )
+
+    # Auto increment primary key.
+    id: int = Column(
+        Integer,
+        primary_key=True)
+
+    # Dataset (id and object) owning the validator.
+    dataset_id: int = Column(
+        Integer,
+        ForeignKey(Dataset.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    dataset: Dataset = relationship(
+        Dataset,
+        back_populates="subtask_validators")
+
+    # Index of the subtask this validator is for (0-indexed).
+    subtask_index: int = Column(
+        Integer,
+        nullable=False)
+
+    # Filename of the source file.
+    filename: str = Column(
+        Filename,
+        nullable=False)
+
+    # Digest of the source file.
+    digest: str = Column(
+        Digest,
+        nullable=False)
+
+    # Digest of the compiled executable (None if compilation failed).
+    executable_digest: str | None = Column(
+        Digest,
+        nullable=True)
+
+    # Relationship to validation results
+    validation_results: list["SubtaskValidationResult"] = relationship(
+        "SubtaskValidationResult",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="validator")
+
+
+class SubtaskValidationResult(Base):
+    """Class to store the result of validating a testcase with a subtask validator.
+
+    """
+    __tablename__ = 'subtask_validation_results'
+    __table_args__ = (
+        UniqueConstraint("validator_id", "testcase_id"),
+        CheckConstraint("exit_code IS NULL OR exit_code >= 0"),
+    )
+
+    # Auto increment primary key.
+    id: int = Column(
+        Integer,
+        primary_key=True)
+
+    # Validator (id and object) that produced this result.
+    validator_id: int = Column(
+        Integer,
+        ForeignKey(SubtaskValidator.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    validator: SubtaskValidator = relationship(
+        SubtaskValidator,
+        back_populates="validation_results")
+
+    # Testcase (id and object) that was validated.
+    testcase_id: int = Column(
+        Integer,
+        ForeignKey(Testcase.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    testcase: Testcase = relationship(Testcase)
+
+    # Whether the testcase passed validation.
+    passed: bool = Column(
+        Boolean,
+        nullable=False)
+
+    # Sandbox exit status (e.g., 'ok', 'timeout', 'signal', 'sandbox error').
+    # Used to distinguish between validator failure (rejected testcase) and
+    # validator error (runtime error, timeout, etc.).
+    exit_status: str | None = Column(
+        Unicode,
+        nullable=True)
+
+    # Exit code from the validator (when exit_status is 'ok' or 'nonzero return').
+    exit_code: int | None = Column(
+        Integer,
+        nullable=True)
+
+    # Standard error output from the validator (for debugging).
+    stderr: str | None = Column(
+        Unicode,
         nullable=True)

@@ -271,6 +271,47 @@ def _update_list_with_key(
             old_list.remove(old_dict[k])
 
 
+def _update_subtask_validators(old_dict, new_dict, parent=None):
+    """Update subtask validators, clearing validation results when changed.
+
+    When a validator's content (digest or executable_digest) changes, we
+    replace the validator object entirely rather than updating in place.
+    This leverages the DB cascade (ON DELETE CASCADE) to efficiently delete
+    all associated validation results, which is faster than loading them
+    into memory and clearing them via ORM.
+    """
+    for key in set(old_dict.keys()) | set(new_dict.keys()):
+        if key in new_dict:
+            if key not in old_dict:
+                # Move new validator to old_dict
+                temp = new_dict[key]
+                del new_dict[key]
+                old_dict[key] = temp
+            else:
+                # Check if validator content changed
+                old_val = old_dict[key]
+                new_val = new_dict[key]
+                content_changed = (
+                    old_val.digest != new_val.digest
+                    or old_val.executable_digest != new_val.executable_digest
+                )
+
+                if content_changed:
+                    # Replace the validator entirely to trigger cascade delete
+                    # of validation results via DB foreign key constraint
+                    del old_dict[key]
+                    temp = new_dict[key]
+                    del new_dict[key]
+                    old_dict[key] = temp
+                else:
+                    # Content unchanged, just update scalar columns
+                    # (filename might have changed)
+                    _update_columns(old_val, new_val)
+        else:
+            # Delete validator not in new_dict (cascade will delete results)
+            del old_dict[key]
+
+
 def update_dataset(old_dataset: Dataset, new_dataset: Dataset, parent=None):
     """Update old_dataset with information from new_dataset"""
     _update_object(old_dataset, new_dataset, {
@@ -284,6 +325,9 @@ def update_dataset(old_dataset: Dataset, new_dataset: Dataset, parent=None):
         # via _model_solutions_import_data because they require creating
         # Submission objects and triggering evaluation.
         Dataset.model_solution_metas: False,
+        # Subtask validators are updated with a custom function that handles
+        # clearing validation results when validator content changes.
+        Dataset.subtask_validators: _update_subtask_validators,
     }, parent=parent)
 
     # Copy temporary import data attribute from new_dataset to old_dataset.
