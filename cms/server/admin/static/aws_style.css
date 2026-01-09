@@ -1121,6 +1121,14 @@ body.admin .validator-unvalidated::before {
     color: #9ca3af;
 }
 
+body.admin .validator-running {
+    color: #1d4ed8;
+    font-style: italic;
+}
+body.admin .validator-running::before {
+    color: #2563eb;
+}
+
 body.admin #notifications .notification {
     background-color: #F7CBFE;
     border: 0.143em solid #E475FF;

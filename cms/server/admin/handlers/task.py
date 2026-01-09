@@ -44,6 +44,7 @@ from cms.grading.scoretypes import ScoreTypeGroup
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
 from .modelsolution import get_subtask_info
+from .subtask_validators import get_running_validator_ids
 
 
 logger = logging.getLogger(__name__)
@@ -174,6 +175,7 @@ class TaskHandler(BaseHandler):
         self.r_params["testcase_subtasks"] = testcase_subtasks
         self.r_params["subtask_names"] = subtask_names
         self.r_params["subtask_info"] = subtask_info
+        self.r_params["running_validator_ids"] = get_running_validator_ids()
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

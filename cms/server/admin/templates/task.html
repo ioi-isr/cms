@@ -640,11 +640,14 @@ window.filterTestcases = function(dataset_id) {
 
       {% if subtask_info.get(dataset.id) %}
       {% set ds_ns = namespace(total_not_validated=0,
-                               not_validated_codenames=[]) %}
+                               not_validated_codenames=[],
+                               any_validator_running=false) %}
       {% for subtask in subtask_info[dataset.id] %}
         {% set validator = dataset.subtask_validators.get(subtask.idx) %}
         {% if validator %}
-          {% if validator.validation_results %}
+          {% if validator.id in running_validator_ids %}
+            {% set ds_ns.any_validator_running = true %}
+          {% elif validator.validation_results %}
             {% set results_codenames = [] %}
             {% for r in validator.validation_results %}
               {% set _ = results_codenames.append(r.testcase.codename) %}
@@ -666,7 +669,9 @@ window.filterTestcases = function(dataset_id) {
       {% set ds_ns.total_not_validated = ds_ns.not_validated_codenames|length %}
       <h4>Subtask Validators<span class="info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid."></span>
       </h4>
-      {% if ds_ns.total_not_validated > 0 %}
+      {% if ds_ns.any_validator_running %}
+      <p style="color: #2196F3;"><strong>Validating...</strong> One or more validators are currently running. Refresh the page to see updated results.</p>
+      {% elif ds_ns.total_not_validated > 0 %}
       <p style="color: orange;"><strong>Warning:</strong> {{ ds_ns.total_not_validated }} testcase(s) have not been validated. Click "rerun validators" to validate them.</p>
       [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
       {% endif %}
@@ -737,7 +742,9 @@ window.filterTestcases = function(dataset_id) {
             </td>
             <td>
               {{ ns.subtask_tc_count }}
-              {% if validator and validator.validation_results|length > 0 %}
+              {% if validator and validator.id in running_validator_ids %}
+                (<span class="validator-status validator-running">Validating...</span>)
+              {% elif validator and validator.validation_results|length > 0 %}
                 ({% if ns.subtask_failed == 0 and ns.subtask_error == 0 and ns.subtask_not_validated == 0 %}
                   <span class="validator-status validator-pass">all {{ ns.subtask_passed }} passed</span>
                 {% else %}
