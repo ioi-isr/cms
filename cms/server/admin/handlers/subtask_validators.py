@@ -810,6 +810,20 @@ class UpdateSubtaskRegexHandler(BaseHandler):
                 make_datetime(),
                 "Regex updated",
                 "Subtask %d regex updated to: %s" % (subtask_index, new_regex))
+
+            # Check if re-scoring was requested
+            rescore = self.get_argument("rescore", "")
+            if rescore:
+                # Invalidate all submissions (including model solutions)
+                self.service.scoring_service.invalidate_submission(
+                    dataset_id=dataset.id
+                )
+                self.service.add_notification(
+                    make_datetime(),
+                    "Re-scoring triggered",
+                    "Re-scoring has been triggered for all submissions.",
+                )
+
         self.redirect(fallback_page)
 
 
