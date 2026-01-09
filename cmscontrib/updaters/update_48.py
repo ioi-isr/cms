@@ -23,18 +23,6 @@ This version adds the last_evaluation_failure_* fields to SubmissionResult
 to store details about why evaluation attempts failed, helping admins
 diagnose issues with checkers or managers.
 
-It also adds the ModelSolutionMeta table for storing metadata about
-model solutions. Model solutions are implemented as regular Submissions
-owned by a special hidden system Participation, requiring only a small
-metadata table rather than parallel infrastructure.
-
-Additionally, it adds the generators table for storing test generators
-that can generate testcases programmatically.
-
-Finally, it adds the SubtaskValidator and SubtaskValidationResult tables
-for storing subtask validators and their validation results. These allow
-admins to validate that testcases meet specific subtask requirements.
-
 """
 
 

@@ -934,20 +934,22 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 raise LoaderValidationError(error_msg)
         else:
             evaluation_param = "comparator" if checker_found else "diff"
-        
+
         exponent = load(conf, None, "exponent")
         if exponent is not None:
             try:
                 exponent = int(exponent)
                 if exponent < 0:
-                    error_msg = "exponent must be a non-negative integer, got: %d" % exponent
+                    error_msg = (
+                        "exponent must be a non-negative integer, got: %d" % exponent
+                    )
                     logger.error(error_msg)
                     raise LoaderValidationError(error_msg)
             except (ValueError, TypeError) as e:
                 error_msg = "exponent must be an integer, got: %s" % exponent
                 logger.error(error_msg)
                 raise LoaderValidationError(error_msg) from e
-            
+
             if evaluation_param == "comparator":
                 logger.warning(
                     "Both checker and exponent specified. Checker takes precedence, "
@@ -1180,17 +1182,18 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     io_type = None
             logger.info("Task type Communication")
             args["task_type"] = "Communication"
-            
+
             # Detect if stubs exist for file-based compilation detection
             stubs_found = False
             if os.path.isdir(os.path.join(self.path, "sol")):
                 for lang in LANGUAGES:
                     stub_name = os.path.join(
-                        self.path, "sol", "stub%s" % lang.source_extension)
+                        self.path, "sol", "stub%s" % lang.source_extension
+                    )
                     if os.path.exists(stub_name):
                         stubs_found = True
                         break
-            
+
             # Determine compilation parameter: use explicit if specified, otherwise detect
             if explicit_compilation is not None:
                 if explicit_compilation in ("alone", "stub"):
@@ -1202,23 +1205,27 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     raise LoaderValidationError(error_msg)
             else:
                 comm_compilation = "stub" if stubs_found else "alone"
-            
+
             # Determine default io_type based on compilation
             default_io = "fifo_io" if comm_compilation == "stub" else "std_io"
-            args["task_type_parameters"] = \
-                [num_processes, comm_compilation, io_type or default_io]
-            
+            args["task_type_parameters"] = [
+                num_processes,
+                comm_compilation,
+                io_type or default_io,
+            ]
+
             # Look for manager in legacy locations or managers folder
             manager_found = False
-            paths = [os.path.join(self.path, "check", "manager"),
-                     os.path.join(self.path, "cor", "manager")]
+            paths = [
+                os.path.join(self.path, "check", "manager"),
+                os.path.join(self.path, "cor", "manager"),
+            ]
             for path in paths:
                 if os.path.exists(path):
                     digest = self.file_cacher.put_file_from_path(
-                        path,
-                        "Manager for task %s" % task.name)
-                    args["managers"] += [
-                        Manager("manager", digest)]
+                        path, "Manager for task %s" % task.name
+                    )
+                    args["managers"] += [Manager("manager", digest)]
                     manager_found = True
                     break
 
@@ -1227,10 +1234,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 manager_path = os.path.join(self.path, managers_folder, "manager")
                 if os.path.exists(manager_path):
                     digest = self.file_cacher.put_file_from_path(
-                        manager_path,
-                        "Manager for task %s" % task.name)
-                    args["managers"] += [
-                        Manager("manager", digest)]
+                        manager_path, "Manager for task %s" % task.name
+                    )
+                    args["managers"] += [Manager("manager", digest)]
                     manager_found = True
 
             if not manager_found:
@@ -1240,27 +1246,25 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             if os.path.isdir(os.path.join(self.path, "sol")):
                 for lang in LANGUAGES:
                     stub_name = os.path.join(
-                        self.path, "sol", "stub%s" % lang.source_extension)
+                        self.path, "sol", "stub%s" % lang.source_extension
+                    )
                     if os.path.exists(stub_name):
                         digest = self.file_cacher.put_file_from_path(
                             stub_name,
-                            "Stub for task %s and language %s" % (
-                                task.name, lang.name))
+                            "Stub for task %s and language %s" % (task.name, lang.name),
+                        )
                         args["managers"] += [
-                            Manager(
-                                "stub%s" % lang.source_extension, digest)]
+                            Manager("stub%s" % lang.source_extension, digest)
+                        ]
                     elif comm_compilation == "stub":
-                        logger.warning("Stub for language %s not "
-                                       "found.", lang.name)
+                        logger.warning("Stub for language %s not found.", lang.name)
                 for other_filename in os.listdir(os.path.join(self.path, "sol")):
-                    if any(other_filename.endswith(header)
-                           for header in HEADER_EXTS):
+                    if any(other_filename.endswith(header) for header in HEADER_EXTS):
                         digest = self.file_cacher.put_file_from_path(
                             os.path.join(self.path, "sol", other_filename),
-                            "Stub %s for task %s" % (other_filename,
-                                                     task.name))
-                        args["managers"] += [
-                            Manager(other_filename, digest)]
+                            "Stub %s for task %s" % (other_filename, task.name),
+                        )
+                        args["managers"] += [Manager(other_filename, digest)]
 
         # Helper to set up TwoSteps task type
         def setup_twosteps():
@@ -1279,27 +1283,43 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             ]
 
             if evaluation_param == "realprecision":
-                args["task_type_parameters"].append(exponent if exponent is not None else 6)
+                args["task_type_parameters"].append(
+                    exponent if exponent is not None else 6
+                )
 
-            output_only_testcases = load(conf, None, "output_only_testcases",
-                                         conv=lambda x: "" if x is None else x)
-            output_optional_testcases = load(conf, None, "output_optional_testcases",
-                                         conv=lambda x: "" if x is None else x)
+            output_only_testcases = load(
+                conf,
+                None,
+                "output_only_testcases",
+                conv=lambda x: "" if x is None else x,
+            )
+            output_optional_testcases = load(
+                conf,
+                None,
+                "output_optional_testcases",
+                conv=lambda x: "" if x is None else x,
+            )
             if len(output_only_testcases) > 0 or len(output_optional_testcases) > 0:
                 args["task_type"] = "BatchAndOutput"
                 output_only_codenames = set()
                 if len(output_only_testcases) > 0:
-                    output_only_codenames = \
-                        {"%03d" % int(x.strip()) for x in output_only_testcases.split(',')}
-                    args["task_type_parameters"].append(','.join(output_only_codenames))
+                    output_only_codenames = {
+                        "%03d" % int(x.strip())
+                        for x in output_only_testcases.split(",")
+                    }
+                    args["task_type_parameters"].append(",".join(output_only_codenames))
                 else:
                     args["task_type_parameters"].append("")
                 output_codenames = set()
                 if len(output_optional_testcases) > 0:
-                    output_codenames = \
-                        {"%03d" % int(x.strip()) for x in output_optional_testcases.split(',')}
+                    output_codenames = {
+                        "%03d" % int(x.strip())
+                        for x in output_optional_testcases.split(",")
+                    }
                 output_codenames.update(output_only_codenames)
-                task.submission_format.extend(["output_%s.txt" % s for s in sorted(output_codenames)])
+                task.submission_format.extend(
+                    ["output_%s.txt" % s for s in sorted(output_codenames)]
+                )
             # If task_type is explicitly BatchAndOutput but no output_only_testcases specified
             elif configured_type == "BatchAndOutput":
                 args["task_type"] = "BatchAndOutput"
@@ -1320,8 +1340,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 setup_output_only()
             else:
                 # Check for Communication task via manager file presence
-                paths = [os.path.join(self.path, "check", "manager"),
-                         os.path.join(self.path, "cor", "manager")]
+                paths = [
+                    os.path.join(self.path, "check", "manager"),
+                    os.path.join(self.path, "cor", "manager"),
+                ]
                 is_communication = any(os.path.exists(path) for path in paths)
                 if is_communication:
                     setup_communication()
@@ -1330,9 +1352,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     setup_batch()
         else:
             # Unknown task_type - raise error
-            error_msg = ("Unknown task_type '%s' (expected one of: "
-                         "Batch, BatchAndOutput, OutputOnly, Communication, TwoSteps)"
-                         % configured_type)
+            error_msg = (
+                "Unknown task_type '%s' (expected one of: "
+                "Batch, BatchAndOutput, OutputOnly, Communication, TwoSteps)"
+                % configured_type
+            )
             logger.error(error_msg)
             raise LoaderValidationError(error_msg)
 
@@ -1341,40 +1365,52 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         source_type, source_path = detect_testcase_sources(self.path)
 
-        if source_type == 'legacy':
+        if source_type == "legacy":
             # Legacy input/output folders
             for i in range(n_input):
                 input_digest = self.file_cacher.put_file_from_path(
                     os.path.join(self.path, "input", "input%d.txt" % i),
-                    "Input %d for task %s" % (i, task.name))
+                    "Input %d for task %s" % (i, task.name),
+                )
                 output_digest = self.file_cacher.put_file_from_path(
                     os.path.join(self.path, "output", "output%d.txt" % i),
-                    "Output %d for task %s" % (i, task.name))
+                    "Output %d for task %s" % (i, task.name),
+                )
                 test_codename = "%03d" % i
                 args["testcases"] += [
-                    Testcase(test_codename, True, input_digest, output_digest)]
+                    Testcase(test_codename, True, input_digest, output_digest)
+                ]
                 if args["task_type"] == "OutputOnly":
                     task.attachments.set(
-                        Attachment("input_%s.txt" % test_codename, input_digest))
+                        Attachment("input_%s.txt" % test_codename, input_digest)
+                    )
                 elif args["task_type"] == "BatchAndOutput":
-                    if output_codenames is not None and test_codename in output_codenames:
+                    if (
+                        output_codenames is not None
+                        and test_codename in output_codenames
+                    ):
                         task.attachments.set(
-                            Attachment("input_%s.txt" % test_codename, input_digest))
-        elif source_type in ('zip', 'folder'):
+                            Attachment("input_%s.txt" % test_codename, input_digest)
+                        )
+        elif source_type in ("zip", "folder"):
             testcases_temp_dir = None
-            
+
             try:
-                if source_type == 'zip':
+                if source_type == "zip":
                     testcases_temp_dir = tempfile.mkdtemp(prefix="cms_testcases_")
-                    with zipfile.ZipFile(source_path, 'r') as zip_ref:
+                    with zipfile.ZipFile(source_path, "r") as zip_ref:
                         safe_extract_zip(zip_ref, testcases_temp_dir)
-                    
+
                     contents = os.listdir(testcases_temp_dir)
-                    if len(contents) == 1 and os.path.isdir(os.path.join(testcases_temp_dir, contents[0])):
+                    if len(contents) == 1 and os.path.isdir(
+                        os.path.join(testcases_temp_dir, contents[0])
+                    ):
                         testcases_dir = os.path.join(testcases_temp_dir, contents[0])
                     else:
                         testcases_dir = testcases_temp_dir
-                    logger.info("Extracted testcases from %s", os.path.basename(source_path))
+                    logger.info(
+                        "Extracted testcases from %s", os.path.basename(source_path)
+                    )
                 else:
                     testcases_dir = source_path
 
@@ -1389,48 +1425,61 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     input_re = compile_template_regex(input_template)
                     output_re = compile_template_regex(output_template)
                     paired_testcases = pair_testcases_in_directory(
-                        testcases_dir, input_re, output_re)
+                        testcases_dir, input_re, output_re
+                    )
                 except ValueError as e:
                     error_msg = str(e)
                     logger.error(error_msg)
                     raise LoaderValidationError(error_msg) from e
 
-                if n_input == 0 and not os.path.exists(os.path.join(self.path, "gen", "GEN")):
+                if n_input == 0 and not os.path.exists(
+                    os.path.join(self.path, "gen", "GEN")
+                ):
                     n_input = len(paired_testcases)
                     logger.info("Discovered %d testcases from templates", n_input)
 
                 if len(paired_testcases) != n_input:
-                    error_msg = ("Testcase count mismatch: found %d testcases but expected %d" %
-                                 (len(paired_testcases), n_input))
+                    error_msg = (
+                        "Testcase count mismatch: found %d testcases but expected %d"
+                        % (len(paired_testcases), n_input)
+                    )
                     logger.error(error_msg)
                     raise LoaderValidationError(error_msg)
 
                 # Load testcases
                 for codename, (input_path, output_path) in paired_testcases.items():
                     input_digest = self.file_cacher.put_file_from_path(
-                        input_path,
-                        "Input %s for task %s" % (codename, task.name))
+                        input_path, "Input %s for task %s" % (codename, task.name)
+                    )
                     output_digest = self.file_cacher.put_file_from_path(
-                        output_path,
-                        "Output %s for task %s" % (codename, task.name))
+                        output_path, "Output %s for task %s" % (codename, task.name)
+                    )
                     args["testcases"] += [
-                        Testcase(codename, True, input_digest, output_digest)]
+                        Testcase(codename, True, input_digest, output_digest)
+                    ]
                     if args["task_type"] == "OutputOnly":
                         task.attachments.set(
-                            Attachment("input_%s.txt" % codename, input_digest))
+                            Attachment("input_%s.txt" % codename, input_digest)
+                        )
                     elif args["task_type"] == "BatchAndOutput":
-                        if output_codenames is not None and codename in output_codenames:
+                        if (
+                            output_codenames is not None
+                            and codename in output_codenames
+                        ):
                             task.attachments.set(
-                                Attachment("input_%s.txt" % codename, input_digest))
+                                Attachment("input_%s.txt" % codename, input_digest)
+                            )
             finally:
                 if testcases_temp_dir:
                     import shutil
+
                     shutil.rmtree(testcases_temp_dir, ignore_errors=True)
         else:
             # No testcase source found - check if this is a generator-based task
             generators_yaml = conf.get("generators", []) or []
             generators_folder = find_first_existing_dir(
-                self.path, ["generators", "Generators", "generator", "Generator"])
+                self.path, ["generators", "Generators", "generator", "Generator"]
+            )
             has_generators = bool(generators_yaml) or generators_folder is not None
 
             if has_generators:
@@ -1438,23 +1487,31 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 logger.warning(
                     "No testcases found for task %s, but generators are present; "
                     "importing dataset with zero testcases (expected to be generated later)",
-                    task.name)
+                    task.name,
+                )
             elif n_input and n_input > 0:
                 # n_input is explicitly set but no testcases or generators found - this is an error
-                error_msg = ("No testcases found, but n_input=%d in config. "
-                             "Expected input/output folders or tests/testcases folder/zip."
-                             % n_input)
+                error_msg = (
+                    "No testcases found, but n_input=%d in config. "
+                    "Expected input/output folders or tests/testcases folder/zip."
+                    % n_input
+                )
                 logger.error(error_msg)
                 raise LoaderValidationError(error_msg)
             else:
                 # Allow tasks with no testcases (n_input is 0 or not set)
                 logger.warning(
                     "No testcases found for task %s; importing dataset with zero testcases",
-                    task.name)
+                    task.name,
+                )
             # args["testcases"] was initialized to [] above, just fall through
 
-        public_testcases = load(conf, None, ["public_testcases", "risultati"],
-                                conv=lambda x: "" if x is None else x)
+        public_testcases = load(
+            conf,
+            None,
+            ["public_testcases", "risultati"],
+            conv=lambda x: "" if x is None else x,
+        )
         if public_testcases == "all":
             for t in args["testcases"]:
                 t.public = True
@@ -1463,8 +1520,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 t.public = False
 
             # Parse tokens - support both codenames (new) and indices (legacy)
-            tokens = [tok.strip() for tok in public_testcases.split(",")
-                      if tok.strip()]
+            tokens = [tok.strip() for tok in public_testcases.split(",") if tok.strip()]
             # Build codename lookup while testcases is still a list
             tc_by_codename = {tc.codename: tc for tc in args["testcases"]}
 
@@ -1479,15 +1535,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 try:
                     idx = int(tok)
                 except ValueError:
-                    logger.warning(
-                        "Invalid public_testcases token '%s', ignoring", tok)
+                    logger.warning("Invalid public_testcases token '%s', ignoring", tok)
                     continue
 
                 if 0 <= idx < len(args["testcases"]):
                     args["testcases"][idx].public = True
                 else:
-                    logger.warning(
-                        "public_testcases index %s out of range", tok)
+                    logger.warning("public_testcases index %s out of range", tok)
 
         args["testcases"] = dict((tc.codename, tc) for tc in args["testcases"])
         args["managers"] = dict((mg.filename, mg) for mg in args["managers"])
@@ -1556,9 +1610,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Find solutions directory (supports alternative names)
         solutions_folder = find_first_existing_dir(
-            self.path, ["solutions", "Solutions", "solution", "Solution"])
-        solutions_dir = (os.path.join(self.path, solutions_folder)
-                         if solutions_folder is not None else None)
+            self.path, ["solutions", "Solutions", "solution", "Solution"]
+        )
+        solutions_dir = (
+            os.path.join(self.path, solutions_folder)
+            if solutions_folder is not None
+            else None
+        )
 
         model_solutions_yaml = conf.get("model_solutions", []) or []
 
@@ -1567,7 +1625,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Phase 1: Discover all model solutions from filesystem
         fs_solutions = self._discover_model_solutions_from_fs(
-            solutions_dir, submission_format, is_single_file_task, task_name)
+            solutions_dir, submission_format, is_single_file_task, task_name
+        )
 
         # Phase 2: Parse YAML metadata
         yaml_meta_by_name = {}
@@ -1592,24 +1651,29 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
             if not fs_info["files"]:
                 logger.warning(
-                    "Model solution '%s' has no files in solutions folder", name)
+                    "Model solution '%s' has no files in solutions folder", name
+                )
                 continue
 
             # Use YAML metadata if available, otherwise use defaults
             sol_data = {
                 "name": name,
                 "description": meta["description"] if meta else "",
-                "language": (meta.get("language") if meta and meta.get("language")
-                             else fs_info["language"]),
-                "subtask_expected_scores": (meta.get("subtask_expected_scores")
-                                            if meta else None),
+                "language": (
+                    meta.get("language")
+                    if meta and meta.get("language")
+                    else fs_info["language"]
+                ),
+                "subtask_expected_scores": (
+                    meta.get("subtask_expected_scores") if meta else None
+                ),
                 "files": fs_info["files"],
                 "has_metadata": meta is not None,
             }
             if meta:
                 sol_data["expected_score_min"] = meta.get("expected_score_min")
                 sol_data["expected_score_max"] = meta.get("expected_score_max")
-            
+
             result.append(sol_data)
 
         # Warn about YAML entries with no matching filesystem solution
@@ -1617,7 +1681,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             if name not in fs_solutions:
                 logger.warning(
                     "Model solution '%s' is defined in task.yaml but has no "
-                    "files in solutions folder", name)
+                    "files in solutions folder",
+                    name,
+                )
 
         if result:
             logger.info("Found %d model solution(s) to import", len(result))
@@ -1653,9 +1719,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Find generators directory (supports alternative names)
         generators_folder = find_first_existing_dir(
-            self.path, ["generators", "Generators", "generator", "Generator"])
-        generators_dir = (os.path.join(self.path, generators_folder)
-                          if generators_folder is not None else None)
+            self.path, ["generators", "Generators", "generator", "Generator"]
+        )
+        generators_dir = (
+            os.path.join(self.path, generators_folder)
+            if generators_folder is not None
+            else None
+        )
 
         generators_yaml = conf.get("generators", []) or []
 
@@ -1671,7 +1741,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 continue
             yaml_meta_by_filename[filename] = {
                 "input_template": gen_conf.get("input_template", base_input_template),
-                "output_template": gen_conf.get("output_template", base_output_template),
+                "output_template": gen_conf.get(
+                    "output_template", base_output_template
+                ),
                 "language": gen_conf.get("language"),
             }
 
@@ -1688,7 +1760,8 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 _, ext = os.path.splitext(filename)
                 if ext not in SOURCE_EXTS:
                     logger.warning(
-                        "Skipping non-source file '%s' in generators folder", filename)
+                        "Skipping non-source file '%s' in generators folder", filename
+                    )
                     continue
 
                 # Get language from YAML metadata if available, otherwise auto-detect
@@ -1703,7 +1776,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                         logger.warning(
                             "Unknown language '%s' for generator '%s', "
                             "falling back to auto-detection",
-                            yaml_language_name, filename)
+                            yaml_language_name,
+                            filename,
+                        )
                         language = filename_to_language(filename)
                 else:
                     # Auto-detect language from filename
@@ -1712,13 +1787,17 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 if language is None:
                     logger.warning(
                         "Could not detect language for generator '%s', skipping",
-                        filename)
+                        filename,
+                    )
                     continue
 
                 if not isinstance(language, CompiledLanguage):
                     logger.warning(
                         "Generator '%s' must be a compiled language, not '%s', "
-                        "skipping", filename, language.name)
+                        "skipping",
+                        filename,
+                        language.name,
+                    )
                     continue
 
                 # Compile the generator using compile_manager_source
@@ -1733,12 +1812,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     notify=self._notify,
                     raise_on_error=False,
                     language_name=language.name,
-                    kind="Generator"
+                    kind="Generator",
                 )
 
                 if result_digests is None:
-                    logger.warning(
-                        "Failed to compile generator '%s'", filename)
+                    logger.warning("Failed to compile generator '%s'", filename)
                     continue
 
                 source_digest, executable_digest = result_digests
@@ -1746,7 +1824,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 # Get templates from YAML metadata or use config defaults
                 # (meta was already fetched above for language detection)
                 input_template = meta["input_template"] if meta else base_input_template
-                output_template = meta["output_template"] if meta else base_output_template
+                output_template = (
+                    meta["output_template"] if meta else base_output_template
+                )
 
                 # Create Generator object directly
                 generator = Generator(
@@ -1766,7 +1846,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 if filename not in fs_files:
                     logger.warning(
                         "Generator '%s' is defined in task.yaml but not found "
-                        "in generators folder", filename)
+                        "in generators folder",
+                        filename,
+                    )
 
         if result:
             logger.info("Found %d generator(s) to import", len(result))
@@ -1799,9 +1881,13 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         """
         # Find validators directory (supports alternative names)
         validators_folder = find_first_existing_dir(
-            self.path, ["validators", "Validators", "validator", "Validator"])
-        validators_dir = (os.path.join(self.path, validators_folder)
-                          if validators_folder is not None else None)
+            self.path, ["validators", "Validators", "validator", "Validator"]
+        )
+        validators_dir = (
+            os.path.join(self.path, validators_folder)
+            if validators_folder is not None
+            else None
+        )
 
         validators_yaml = conf.get("validators", []) or []
 
@@ -1819,13 +1905,21 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             if subtask_index is None:
                 logger.warning(
                     "Validator entry for '%s' missing 'subtask_index' field, skipping",
-                    filename)
+                    filename,
+                )
                 continue
             yaml_meta_by_filename[filename] = {
                 "subtask_index": subtask_index,
             }
 
         result = {}
+        # If validators are declared in YAML but no directory found, log warning and continue
+        if validators_yaml and not validators_dir:
+            logger.warning(
+                "Validators are declared in task.yaml but no validators folder was found; "
+                "Looked for: validators/, Validators/, validator/, Validator/;"
+                "skipping validators import"
+            )
 
         # Discover validators from filesystem
         if validators_dir and os.path.isdir(validators_dir):
@@ -1838,15 +1932,11 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                 _, ext = os.path.splitext(filename)
                 if ext not in SOURCE_EXTS:
                     logger.warning(
-                        "Skipping non-source file '%s' in validators folder", filename)
+                        "Skipping non-source file '%s' in validators folder", filename
+                    )
                     continue
 
-                # Check if it's a compiled language
-                try:
-                    language = filename_to_language(filename)
-                except Exception:
-                    language = None
-
+                language = filename_to_language(filename)
                 if language is None:
                     logger.warning(
                         "Could not detect language for validator '%s', skipping",
@@ -1889,8 +1979,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
                 error_messages = []
 
-                def capture_error(title, text):
-                    error_messages.append("%s: %s" % (title, text))
+                # Define capture_error outside loop to avoid closure binding issues
+                def capture_error(title, text, _err=error_messages):
+                    _err.append("%s: %s" % (title, text))
                     self._notify(title, text)
 
                 success, compiled_bytes, _stats = compile_manager_bytes(

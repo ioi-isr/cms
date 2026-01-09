@@ -26,19 +26,19 @@ window.filterTestcases = function(tableId, filter) {
   updateSelectAllState(tableId);
 };
 
-window.promptRename = function(datasetId, testcaseId, currentCodename, subtaskIndex) {
+window.promptRename = function(renameUrl, testcaseId, currentCodename, subtaskIndex) {
   var newCodename = prompt('Enter new codename for testcase:', currentCodename);
   if (newCodename && newCodename !== currentCodename) {
     var form = document.createElement('form');
     form.method = 'POST';
-    form.action = '/dataset/' + datasetId + '/testcase/' + testcaseId + '/rename';
-    
+    form.action = renameUrl.replace('TESTCASE_ID', testcaseId);
+
     var input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'new_codename';
     input.value = newCodename;
     form.appendChild(input);
-    
+
     // Add subtask_index to redirect back to subtask details page
     if (subtaskIndex !== undefined) {
       var subtaskInput = document.createElement('input');
@@ -47,13 +47,13 @@ window.promptRename = function(datasetId, testcaseId, currentCodename, subtaskIn
       subtaskInput.value = subtaskIndex;
       form.appendChild(subtaskInput);
     }
-    
+
     var xsrf = document.createElement('input');
     xsrf.type = 'hidden';
     xsrf.name = '_xsrf';
     xsrf.value = document.querySelector('input[name="_xsrf"]').value;
     form.appendChild(xsrf);
-    
+
     document.body.appendChild(form);
     form.submit();
   }
@@ -79,7 +79,7 @@ window.updateSelectAllState = function(tableId) {
   if (!table) return;
   var masterCheckbox = table.querySelector('.select-all-checkbox');
   if (!masterCheckbox) return;
-  
+
   var visibleCheckboxes = [];
   var rows = table.querySelectorAll('tbody tr[data-status]');
   rows.forEach(function(row) {
@@ -90,17 +90,17 @@ window.updateSelectAllState = function(tableId) {
       }
     }
   });
-  
+
   if (visibleCheckboxes.length === 0) {
     masterCheckbox.checked = false;
     masterCheckbox.indeterminate = false;
     return;
   }
-  
+
   var checkedCount = visibleCheckboxes.filter(function(cb) { return cb.checked; }).length;
   masterCheckbox.checked = checkedCount === visibleCheckboxes.length;
   masterCheckbox.indeterminate = checkedCount > 0 && checkedCount < visibleCheckboxes.length;
-  
+
   updateBatchActionsVisibility(tableId);
 };
 
@@ -109,10 +109,10 @@ window.updateBatchActionsVisibility = function(tableId) {
   if (!table) return;
   var actionsDiv = document.getElementById(tableId + '_batch_actions');
   if (!actionsDiv) return;
-  
+
   var checkedBoxes = table.querySelectorAll('.tc-select-checkbox:checked');
   actionsDiv.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
-  
+
   var countSpan = actionsDiv.querySelector('.selected-count');
   if (countSpan) {
     countSpan.textContent = checkedBoxes.length;
@@ -142,10 +142,10 @@ window.getSelectedCodenames = function(tableId) {
 window.findCommonSubstring = function(strings) {
   if (strings.length === 0) return '';
   if (strings.length === 1) return strings[0];
-  
+
   // Find the longest common substring that appears in all strings
   var shortest = strings.reduce(function(a, b) { return a.length <= b.length ? a : b; });
-  
+
   // Try all substrings of the shortest string, starting from longest
   for (var len = shortest.length; len > 0; len--) {
     for (var start = 0; start <= shortest.length - len; start++) {
@@ -165,22 +165,22 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
     alert('No testcases selected.');
     return;
   }
-  
+
   var defaultPrefix = suggestedPrefix || '';
   var prefix = prompt('Enter prefix to add to selected testcases:', defaultPrefix);
   if (!prefix) return;
-  
+
   // Ask if user wants to update the subtask regex
   // Accept both boolean true and string 'true' for backwards compatibility
   var updateRegex = false;
   if (usesRegex === true || usesRegex === 'true') {
     updateRegex = confirm('Do you also want to update the subtask regex to match testcases containing "' + prefix + '" as a substring?');
   }
-  
+
   var form = document.createElement('form');
   form.method = 'POST';
   form.action = url;
-  
+
   ids.forEach(function(id) {
     var input = document.createElement('input');
     input.type = 'hidden';
@@ -188,19 +188,19 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
     input.value = id;
     form.appendChild(input);
   });
-  
+
   var opInput = document.createElement('input');
   opInput.type = 'hidden';
   opInput.name = 'operation';
   opInput.value = 'add_prefix';
   form.appendChild(opInput);
-  
+
   var valInput = document.createElement('input');
   valInput.type = 'hidden';
   valInput.name = 'value';
   valInput.value = prefix;
   form.appendChild(valInput);
-  
+
   // Add update_regex flag if user agreed
   if (updateRegex) {
     var regexInput = document.createElement('input');
@@ -209,7 +209,7 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
     regexInput.value = 'true';
     form.appendChild(regexInput);
   }
-  
+
   // Add subtask_index to redirect back to subtask details page
   if (subtaskIndex !== undefined) {
     var subtaskInput = document.createElement('input');
@@ -218,13 +218,18 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
     subtaskInput.value = subtaskIndex;
     form.appendChild(subtaskInput);
   }
-  
+
+  var xsrfElem = document.querySelector('input[name="_xsrf"]');
+  if (!xsrfElem) {
+    alert('CSRF token missing; cannot submit form.');
+    return;
+  }
   var xsrf = document.createElement('input');
   xsrf.type = 'hidden';
   xsrf.name = '_xsrf';
-  xsrf.value = document.querySelector('input[name="_xsrf"]').value;
+  xsrf.value = xsrfElem.value;
   form.appendChild(xsrf);
-  
+
   document.body.appendChild(form);
   form.submit();
 };
@@ -235,24 +240,24 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     alert('No testcases selected.');
     return;
   }
-  
+
   var codenames = getSelectedCodenames(tableId);
   var commonSubstring = findCommonSubstring(codenames);
-  
+
   var substring = prompt('Enter the substring to remove from selected testcases (detected: "' + commonSubstring + '"):', commonSubstring);
   if (substring === null || substring === '') return;
-  
+
   // Verify all selected testcases contain the substring
   var allContain = codenames.every(function(c) { return c.indexOf(substring) !== -1; });
   if (!allContain) {
     alert('Not all selected testcases contain the substring "' + substring + '".');
     return;
   }
-  
+
   var form = document.createElement('form');
   form.method = 'POST';
   form.action = url;
-  
+
   ids.forEach(function(id) {
     var input = document.createElement('input');
     input.type = 'hidden';
@@ -260,19 +265,19 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     input.value = id;
     form.appendChild(input);
   });
-  
+
   var opInput = document.createElement('input');
   opInput.type = 'hidden';
   opInput.name = 'operation';
   opInput.value = 'remove_substring';
   form.appendChild(opInput);
-  
+
   var valInput = document.createElement('input');
   valInput.type = 'hidden';
   valInput.name = 'value';
   valInput.value = substring;
   form.appendChild(valInput);
-  
+
   // Add subtask_index to redirect back to subtask details page
   if (subtaskIndex !== undefined) {
     var subtaskInput = document.createElement('input');
@@ -281,13 +286,18 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     subtaskInput.value = subtaskIndex;
     form.appendChild(subtaskInput);
   }
-  
+
+  var xsrfElem = document.querySelector('input[name="_xsrf"]');
+  if (!xsrfElem) {
+    alert('CSRF token missing; cannot submit form.');
+    return;
+  }
   var xsrf = document.createElement('input');
   xsrf.type = 'hidden';
   xsrf.name = '_xsrf';
-  xsrf.value = document.querySelector('input[name="_xsrf"]').value;
+  xsrf.value = xsrfElem.value;
   form.appendChild(xsrf);
-  
+
   document.body.appendChild(form);
   form.submit();
 };
@@ -379,7 +389,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           {% endif %}
           {% if admin.permission_all %}
           <td>
-            <a href="javascript:void(0);" onclick="promptRename({{ dataset.id }}, {{ tc_info.testcase.id }}, {{ tc_info.codename|tojson|forceescape }}, {{ subtask_index }})">rename</a>
+            <a href="javascript:void(0);" onclick="promptRename({{ url("dataset", dataset.id, "testcase", "TESTCASE_ID", "rename")|tojson|forceescape }}, {{ tc_info.testcase.id }}, {{ tc_info.codename|tojson|forceescape }}, {{ subtask_index }})">rename</a>
           </td>
           {% endif %}
         </tr>

@@ -672,8 +672,10 @@ window.filterTestcases = function(dataset_id) {
       {% if ds_ns.any_validator_running %}
       <p style="color: #2196F3;"><strong>Validating...</strong> One or more validators are currently running. Refresh the page to see updated results.</p>
       {% elif ds_ns.total_not_validated > 0 %}
-      <p style="color: orange;"><strong>Warning:</strong> {{ ds_ns.total_not_validated }} testcase(s) have not been validated. Click "rerun validators" to validate them.</p>
-      [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
+        <p style="color: orange;"><strong>Warning:</strong> {{ ds_ns.total_not_validated }} testcase(s) have not been validated. Click "rerun validators" to validate them.</p>
+        {% if admin.permission_all %}
+          [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
+        {% endif %}
       {% endif %}
       <table class="bordered subtask-validators">
         <thead>

@@ -263,7 +263,7 @@ def _store_validation_results(sql_session, validator, dataset, validation_result
     Returns:
         Tuple of (passed_count, failed_count, error_count)
     """
-    for result in validator.validation_results:
+    for result in list(validator.validation_results):
         sql_session.delete(result)
     sql_session.flush()
 
@@ -532,8 +532,11 @@ class AddSubtaskValidatorHandler(BaseHandler):
         filename = validator_file["filename"]
         body = validator_file["body"]
 
-        # Get testcases before closing session
-        testcases = list(dataset.testcases.values())
+        # Get testcases and convert to dict format before closing session
+        testcase_data = [
+            {"id": tc.id, "input": tc.input, "output": tc.output}
+            for tc in dataset.testcases.values()
+        ]
 
         self.sql_session.close()
 
@@ -616,10 +619,6 @@ class AddSubtaskValidatorHandler(BaseHandler):
                 "Validator for subtask %d uploaded but compilation failed." % subtask_index)
             self.redirect(self.url("task", task.id))
             return
-
-        # Convert testcases to dict format for background validation
-        testcase_data = [{"id": tc.id, "input": tc.input, "output": tc.output}
-                         for tc in testcases]
 
         # Run validation in background (will cancel any existing run)
         run_validator_in_background(

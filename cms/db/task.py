@@ -766,7 +766,8 @@ class SubtaskValidator(Base):
     """
     __tablename__ = 'subtask_validators'
     __table_args__ = (
-        UniqueConstraint('dataset_id', 'subtask_index'),
+        UniqueConstraint("dataset_id", "subtask_index"),
+        CheckConstraint("subtask_index >= 0"),
     )
 
     # Auto increment primary key.
@@ -819,7 +820,8 @@ class SubtaskValidationResult(Base):
     """
     __tablename__ = 'subtask_validation_results'
     __table_args__ = (
-        UniqueConstraint('validator_id', 'testcase_id'),
+        UniqueConstraint("validator_id", "testcase_id"),
+        CheckConstraint("exit_code IS NULL OR exit_code >= 0"),
     )
 
     # Auto increment primary key.

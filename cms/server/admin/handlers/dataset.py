@@ -1595,7 +1595,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
                                     regex_already_exists = True
                                 else:
                                     # Combine with existing regex using |
-                                    new_regex = "(%s)|(%s)" % (old_regex, new_term)
+                                    new_regex = "(?:%s)|(?:%s)" % (old_regex, new_term)
                                     param[1] = new_regex
                                     params[subtask_idx] = param
                                     dataset.score_type_parameters = params
