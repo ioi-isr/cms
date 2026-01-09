@@ -48,10 +48,15 @@ window.promptRename = function(renameUrl, testcaseId, currentCodename, subtaskIn
       form.appendChild(subtaskInput);
     }
 
+    var xsrfElem = document.querySelector('input[name="_xsrf"]');
+    if (!xsrfElem) {
+      alert('CSRF token missing; cannot submit form.');
+      return;
+    }
     var xsrf = document.createElement('input');
     xsrf.type = 'hidden';
     xsrf.name = '_xsrf';
-    xsrf.value = document.querySelector('input[name="_xsrf"]').value;
+    xsrf.value = xsrfElem.value;
     form.appendChild(xsrf);
 
     document.body.appendChild(form);
@@ -381,7 +386,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           </td>
           <td>
             {% if tc_info.result and tc_info.result.stderr %}
-              {{ tc_info.result.stderr }}
+              <pre class="stderr-output">{{ tc_info.result.stderr | e }}</pre>
             {% else %}
               -
             {% endif %}

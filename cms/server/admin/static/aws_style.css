@@ -1357,3 +1357,18 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .notice-pending a {
     color: white;
 }
+
+/* Stderr output in validator results */
+.stderr-output {
+    margin: 0;
+    padding: 4px 8px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 0.85em;
+    max-width: 300px;
+    max-height: 100px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}

@@ -27,6 +27,7 @@ import re
 
 import gevent
 from gevent.lock import RLock
+from gevent.pool import Pool
 
 import tornado.web
 
@@ -51,6 +52,14 @@ logger = logging.getLogger(__name__)
 #   "greenlet": gevent.Greenlet - the greenlet object for cancellation
 _running_validations: dict[int, dict] = {}
 _running_validations_lock = RLock()
+
+# Global concurrency limiter for validator operations
+# Configurable: maximum number of validators running concurrently
+# Adjust this value based on system resources and typical validator load
+# Higher values = more parallel validation but higher resource usage
+# Lower values = less resource contention but slower overall validation
+_VALIDATOR_CONCURRENCY_LIMIT = 8
+_validator_pool = Pool(size=_VALIDATOR_CONCURRENCY_LIMIT)
 
 
 def get_running_validator_ids() -> set[int]:
@@ -235,17 +244,13 @@ def _run_validator(file_cacher, filename, executable_digest, testcase_data):
                 logger.debug("Sandbox cleanup error (non-fatal): %s", cleanup_error)
             sandbox = None
 
-    except gevent.GreenletExit:
-        # Re-raise; finally block handles cleanup
-        raise
-
     finally:
         # Cleanup any remaining sandbox (e.g., if cancelled mid-loop)
         if sandbox:
             try:
                 sandbox.cleanup(delete=True)
             except Exception:
-                pass
+                logger.debug("Final sandbox cleanup failed (non-fatal)")
 
     return validation_results
 
@@ -263,11 +268,13 @@ def _store_validation_results(sql_session, validator, dataset, validation_result
     Returns:
         Tuple of (passed_count, failed_count, error_count)
     """
-    for result in list(validator.validation_results):
-        sql_session.delete(result)
+    # Bulk delete existing results for this validator
+    sql_session.query(SubtaskValidationResult).filter(
+        SubtaskValidationResult.validator_id == validator.id
+    ).delete(synchronize_session=False)
     sql_session.flush()
 
-    testcase_ids = [r["testcase_id"] for r in validation_results]
+    testcase_ids = {r["testcase_id"] for r in validation_results}
     testcases_by_id = {tc.id: tc for tc in dataset.testcases.values()
                       if tc.id in testcase_ids}
 
@@ -292,11 +299,11 @@ def _store_validation_results(sql_session, validator, dataset, validation_result
         exit_status = r.get("exit_status")
         if r["passed"]:
             passed_count += 1
-        elif exit_status in ("ok", "nonzero return", None):
+        elif exit_status in ("ok", "nonzero return"):
             # Validator ran to completion but returned non-zero
             failed_count += 1
         else:
-            # Validator had an error (timeout, signal, sandbox error, etc.)
+            # Validator had an error (timeout, signal, sandbox error, None, etc.)
             error_count += 1
     return passed_count, failed_count, error_count
 
@@ -383,8 +390,8 @@ def _run_single_validator_task(service, file_cacher, validator_id, dataset_id,
         return (0, 0, 0, None)
 
     except Exception as error:
-        logger.exception("Validation execution error for validator %d: %s",
-                         validator_id, repr(error))
+        logger.exception("Validation execution error for validator %d",
+                         validator_id)
         _update_validation_status(
             validator_id, status="error", result=repr(error), progress="Error")
         if send_notification:
@@ -436,8 +443,8 @@ def _run_single_validator_task(service, file_cacher, validator_id, dataset_id,
         return (0, 0, 0, None)
 
     except Exception as error:
-        logger.exception("Database error for validator %d: %s",
-                         validator_id, repr(error))
+        logger.exception("Database error for validator %d",
+                         validator_id)
         _update_validation_status(
             validator_id, status="error", result=repr(error), progress="Database error")
         sql_session.rollback()
@@ -484,7 +491,7 @@ def run_validator_in_background(service, file_cacher, validator_id, dataset_id,
             ):
                 return
 
-        greenlet = gevent.spawn(
+        greenlet = _validator_pool.spawn(
             _run_single_validator_task,
             service,
             file_cacher,
@@ -518,6 +525,32 @@ class AddSubtaskValidatorHandler(BaseHandler):
         fallback_page = self.url("task", task.id)
 
         subtask_index = int(subtask_index)
+
+        # Validate subtask_index is non-negative
+        if subtask_index < 0:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid subtask index",
+                "Subtask index must be non-negative, got %d." % subtask_index,
+            )
+            self.redirect(fallback_page)
+            return
+
+        # For Group score types, validate subtask_index is within range
+        from cms.grading.scoretypes import ScoreTypeGroup
+
+        score_type_obj = dataset.score_type_object
+        if isinstance(score_type_obj, ScoreTypeGroup):
+            targets = score_type_obj.retrieve_target_testcases()
+            if subtask_index >= len(targets):
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid subtask index",
+                    "Subtask index %d is out of range. Task has %d subtasks (0-%d)."
+                    % (subtask_index, len(targets), len(targets) - 1),
+                )
+                self.redirect(fallback_page)
+                return
 
         validator_file = self.request.files.get("validator")
         if not validator_file:

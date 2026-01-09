@@ -1908,6 +1908,17 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     filename,
                 )
                 continue
+            # Validate subtask_index is a non-negative integer
+            try:
+                subtask_index = int(subtask_index)
+                if subtask_index < 0:
+                    raise ValueError("subtask_index must be non-negative")
+            except (ValueError, TypeError) as e:
+                logger.warning(
+                    "Validator entry for '%s' has invalid subtask_index '%s': %s, skipping",
+                    filename, val_conf.get("subtask_index"), e,
+                )
+                continue
             yaml_meta_by_filename[filename] = {
                 "subtask_index": subtask_index,
             }
