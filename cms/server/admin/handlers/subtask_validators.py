@@ -45,12 +45,9 @@ logger = logging.getLogger(__name__)
 
 
 # Track running validation jobs by validator_id
-# Each entry contains:
-#   "status": "running"|"completed"|"error"|"cancelled"
-#   "progress": str - current progress message
-#   "result": str - final result message
-#   "greenlet": gevent.Greenlet - the greenlet object for cancellation
-_running_validations: dict[int, dict] = {}
+# Maps validator_id to the greenlet running the validation.
+# Entries are removed when validation completes (success, error, or cancellation).
+_running_validations: dict[int, gevent.Greenlet] = {}
 _running_validations_lock = RLock()
 
 # Global concurrency limiter for validator operations
@@ -68,29 +65,24 @@ def get_running_validator_ids() -> set[int]:
     This is used by the UI to show "Validating..." status.
     """
     with _running_validations_lock:
-        return {
-            vid for vid, info in _running_validations.items()
-            if info.get("status") == "running"
-        }
+        return set(_running_validations.keys())
 
 
 def is_validator_running(validator_id: int) -> bool:
     """Check if a specific validator is currently running."""
     with _running_validations_lock:
-        return (validator_id in _running_validations and
-                _running_validations[validator_id].get("status") == "running")
+        return validator_id in _running_validations
 
 
 def cancel_validator(validator_id: int) -> bool:
-    """Cancel a running validator by marking it as cancelled.
+    """Cancel a running validator.
 
     This function does NOT wait for the greenlet to finish. Instead, it:
-    1. Marks the validator as cancelled
-    2. Sets greenlet to None so a new greenlet can take over
-    3. Calls kill() to schedule GreenletExit (will be raised at next yield)
+    1. Removes the validator from the tracking dict
+    2. Calls kill() to schedule GreenletExit (will be raised at next yield)
 
-    The old greenlet will check _check_if_cancelled() and stop processing.
-    It will also be unable to update status since its greenlet doesn't match.
+    The old greenlet will check _check_if_cancelled() and stop processing
+    since its entry has been removed.
 
     Returns True if the validator was running and was cancelled,
     False if it wasn't running.
@@ -99,16 +91,8 @@ def cancel_validator(validator_id: int) -> bool:
         if validator_id not in _running_validations:
             return False
 
-        info = _running_validations[validator_id]
-        if info.get("status") != "running":
-            return False
-
-        greenlet = info.get("greenlet")
+        greenlet = _running_validations.pop(validator_id)
         if greenlet is not None and not greenlet.dead:
-            info["status"] = "cancelled"
-            info["progress"] = "Cancelled"
-            info["greenlet"] = None
-
             # Schedule GreenletExit to be raised in the old greenlet
             # This is non-blocking - the exception will be raised at the next yield
             greenlet.kill(block=False)
@@ -308,44 +292,40 @@ def _store_validation_results(sql_session, validator, dataset, validation_result
     return passed_count, failed_count, error_count
 
 
-def _update_validation_status(validator_id, **kwargs):
-    """Helper to update validation status with proper locking.
+def _clear_running_validation(validator_id):
+    """Remove a validator from the running validations dict.
 
-    Only updates if the current greenlet is the active one for this validator.
-    This prevents a cancelled/replaced greenlet from overwriting the status
+    Only removes if the current greenlet is the active one for this validator.
+    This prevents a cancelled/replaced greenlet from removing the entry
     of a newly started greenlet.
     """
     with _running_validations_lock:
         if validator_id not in _running_validations:
             return
 
-        # Only allow the current greenlet to update the status.
+        # Only allow the current greenlet to remove the entry.
         # If the greenlet in the dict is different, it means we have been
         # replaced/cancelled and a new job has started.
-        current_record = _running_validations[validator_id]
-        if current_record.get("greenlet") != gevent.getcurrent():
-            return
-
-        current_record.update(kwargs)
+        if _running_validations[validator_id] == gevent.getcurrent():
+            del _running_validations[validator_id]
 
 
 def _check_if_cancelled(validator_id):
     """Check if a validator has been cancelled. Returns True if cancelled.
 
-    Also returns True if the current greenlet is not the active one for this
-    validator (meaning we've been replaced by a new run).
+    Returns True if the entry has been removed from _running_validations
+    (meaning we've been cancelled) or if the current greenlet is not the
+    active one for this validator (meaning we've been replaced by a new run).
     """
     with _running_validations_lock:
         if validator_id not in _running_validations:
-            return True  # If record is gone, stop running
-
-        current_record = _running_validations[validator_id]
+            return True  # If record is gone, we've been cancelled
 
         # If I am not the active greenlet, I am effectively cancelled
-        if current_record.get("greenlet") != gevent.getcurrent():
+        if _running_validations[validator_id] != gevent.getcurrent():
             return True
 
-        return current_record.get("status") == "cancelled"
+        return False
 
 
 def _run_single_validator_task(service, file_cacher, validator_id, dataset_id,
@@ -376,24 +356,18 @@ def _run_single_validator_task(service, file_cacher, validator_id, dataset_id,
         if _check_if_cancelled(validator_id):
             return (0, 0, 0, None)
 
-        _update_validation_status(
-            validator_id,
-            progress="Running validator for subtask %d..." % subtask_index)
-
         validation_results = _run_validator(
             file_cacher, filename, executable_digest, testcase_data)
 
     except gevent.GreenletExit:
         # Greenlet was killed - this is expected for cancellation
         logger.info("Validator %d was cancelled", validator_id)
-        _update_validation_status(validator_id, status="cancelled", progress="Cancelled")
         return (0, 0, 0, None)
 
     except Exception as error:
         logger.exception("Validation execution error for validator %d",
                          validator_id)
-        _update_validation_status(
-            validator_id, status="error", result=repr(error), progress="Error")
+        _clear_running_validation(validator_id)
         if send_notification:
             service.add_notification(
                 make_datetime(), "Validation error",
@@ -408,14 +382,12 @@ def _run_single_validator_task(service, file_cacher, validator_id, dataset_id,
     try:
         validator = sql_session.query(SubtaskValidator).get(validator_id)
         if validator is None:
-            _update_validation_status(
-                validator_id, status="cancelled", progress="Validator deleted")
+            _clear_running_validation(validator_id)
             return (0, 0, 0, None)
 
         dataset = sql_session.query(Dataset).get(dataset_id)
         if dataset is None:
-            _update_validation_status(
-                validator_id, status="error", progress="Dataset not found")
+            _clear_running_validation(validator_id)
             return (0, 0, 0, "Validator %d: Dataset not found" % subtask_index)
 
         passed_count, failed_count, error_count = _store_validation_results(
@@ -427,8 +399,7 @@ def _run_single_validator_task(service, file_cacher, validator_id, dataset_id,
         if error_count > 0:
             msg += ", %d errors" % error_count
 
-        _update_validation_status(
-            validator_id, status="completed", result=msg, progress="Completed")
+        _clear_running_validation(validator_id)
 
         if send_notification:
             service.add_notification(make_datetime(), "Validation complete", msg)
@@ -439,14 +410,12 @@ def _run_single_validator_task(service, file_cacher, validator_id, dataset_id,
         # Greenlet was killed during database operations
         logger.info("Validator %d was cancelled during DB operations", validator_id)
         sql_session.rollback()
-        _update_validation_status(validator_id, status="cancelled", progress="Cancelled")
         return (0, 0, 0, None)
 
     except Exception as error:
         logger.exception("Database error for validator %d",
                          validator_id)
-        _update_validation_status(
-            validator_id, status="error", result=repr(error), progress="Database error")
+        _clear_running_validation(validator_id)
         sql_session.rollback()
         if send_notification:
             service.add_notification(
@@ -480,16 +449,11 @@ def run_validator_in_background(service, file_cacher, validator_id, dataset_id,
     # Cancel any existing run for this validator
     cancel_validator(validator_id)
 
-    # Initialize the running status with lock and spawn greenlet atomically
+    # Spawn greenlet and register it atomically
     with _running_validations_lock:
         # Double-check that no other greenlet started while we were waiting
         if validator_id in _running_validations:
-            existing = _running_validations[validator_id]
-            if (
-                existing.get("status") == "running"
-                and existing.get("greenlet") is not None
-            ):
-                return
+            return
 
         greenlet = _validator_pool.spawn(
             _run_single_validator_task,
@@ -504,12 +468,7 @@ def run_validator_in_background(service, file_cacher, validator_id, dataset_id,
             send_notification,
         )
 
-        _running_validations[validator_id] = {
-            "status": "running",
-            "progress": "Starting validation...",
-            "result": None,
-            "greenlet": greenlet,
-        }
+        _running_validations[validator_id] = greenlet
 
 
 class AddSubtaskValidatorHandler(BaseHandler):

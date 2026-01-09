@@ -1982,42 +1982,24 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                         result[subtask_index].filename)
                     continue
 
-                # Compile the validator using compile_manager_source pattern
-                with open(file_path, 'rb') as f:
-                    source_body = f.read()
-
-                compiled_filename = "validator"
-
-                error_messages = []
-
-                # Define capture_error outside loop to avoid closure binding issues
-                def capture_error(title, text, _err=error_messages):
-                    _err.append("%s: %s" % (title, text))
-                    self._notify(title, text)
-
-                success, compiled_bytes, _stats = compile_manager_bytes(
+                # Compile the validator using compile_manager_source helper
+                compile_result = compile_manager_source(
                     self.file_cacher,
+                    file_path,
                     filename,
-                    source_body,
-                    compiled_filename,
-                    sandbox_name="loader_compile",
-                    for_evaluation=True,
-                    notify=capture_error
+                    "validator",
+                    task_name,
+                    notify=self._notify,
+                    raise_on_error=False,
+                    kind="Validator"
                 )
 
-                if not success or compiled_bytes is None:
+                if compile_result is None:
                     logger.warning(
-                        "Failed to compile validator '%s': %s",
-                        filename, error_messages[0] if error_messages else "unknown error")
+                        "Failed to compile validator '%s'", filename)
                     continue
 
-                # Store source and compiled executable
-                source_digest = self.file_cacher.put_file_content(
-                    source_body,
-                    "Validator source %s for task %s" % (filename, task_name))
-                executable_digest = self.file_cacher.put_file_content(
-                    compiled_bytes,
-                    "Compiled validator %s for task %s" % (filename, task_name))
+                source_digest, executable_digest = compile_result
 
                 # Create SubtaskValidator object directly
                 validator = SubtaskValidator(
