@@ -30,7 +30,7 @@ from sqlalchemy.types import Integer
 from . import Base
 
 if typing.TYPE_CHECKING:
-    from . import Contest, TrainingProgram, Task, TrainingDayGroup
+    from . import Contest, TrainingProgram, Task, TrainingDayGroup, Submission
 
 
 class TrainingDay(Base):
@@ -87,4 +87,9 @@ class TrainingDay(Base):
         "TrainingDayGroup",
         back_populates="training_day",
         cascade="all, delete-orphan",
+    )
+
+    submissions: list["Submission"] = relationship(
+        "Submission",
+        back_populates="training_day",
     )
