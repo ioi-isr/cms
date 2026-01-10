@@ -24,8 +24,16 @@ import logging
 import zipfile
 
 import tornado.web
+from sqlalchemy.orm import joinedload
 
-from cms.db import Contest, Participation, Submission, Task
+from cms.db import (
+    Contest,
+    Participation,
+    Submission,
+    Task,
+    TrainingProgram,
+    TrainingDay,
+)
 from cms.grading.languagemanager import safe_get_lang_filename
 from .base import BaseHandler, require_permission
 
@@ -33,14 +41,44 @@ from .base import BaseHandler, require_permission
 logger = logging.getLogger(__name__)
 
 
+def sanitize_path_component(name: str) -> str:
+    """Sanitize a string to be safe for use as a path component in zip files.
+
+    Replaces characters that could cause path traversal or other issues:
+    - Forward/backward slashes (path separators)
+    - Null bytes
+    - Other problematic characters like : * ? " < > |
+
+    name: the string to sanitize
+
+    return: sanitized string safe for use in file paths
+    """
+    # Characters that are problematic in file paths
+    unsafe_chars = '/\\:*?"<>|\x00'
+    result = name
+    for char in unsafe_chars:
+        result = result.replace(char, '_')
+    # Also strip leading/trailing whitespace and dots
+    result = result.strip(' .')
+    # Return a default if the result is empty
+    return result if result else "unnamed"
+
+
+def get_source_folder(submission):
+    """Get the source folder name for a submission."""
+    if submission.training_day_id is not None:
+        return sanitize_path_component(submission.training_day.contest.description)
+    return "task_archive"
+
+
 def get_submission_status(submission, dataset):
     """Get the status string for a submission.
-    
+
     submission: the Submission object
     dataset: the Dataset to evaluate against
-    
+
     return: status string (e.g., "compiling", "95.0pts", "compilationFailed")
-    
+
     """
     result = submission.get_result(dataset)
     if result is None:
@@ -60,25 +98,25 @@ def get_submission_status(submission, dataset):
 
 def write_submission_files(zip_file, submission, base_path_parts, file_cacher):
     """Write all files from a submission to the zip file.
-    
+
     zip_file: ZipFile object to write to
     submission: the Submission object
     base_path_parts: list of path components (e.g., ["username", "taskname"])
     file_cacher: FileCacher instance to retrieve file content
-    
+
     """
     dataset = submission.task.active_dataset
     status = get_submission_status(submission, dataset)
     timestamp = submission.timestamp.strftime("%Y%m%d_%H%M%S")
     official_folder = "official" if submission.official else "unofficial"
-    
-    path_parts = base_path_parts + [official_folder]
-    
+
+    path_parts = [*base_path_parts, official_folder]
+
     for filename, file_obj in submission.files.items():
         real_filename = safe_get_lang_filename(submission.language, filename)
         prefixed_filename = f"{timestamp}_{status}_{real_filename}"
-        file_path = "/".join(path_parts + [prefixed_filename])
-        
+        file_path = "/".join([*path_parts, prefixed_filename])
+
         try:
             file_content = file_cacher.get_file_content(file_obj.digest)
             zip_file.writestr(file_path, file_content)
@@ -89,20 +127,20 @@ def write_submission_files(zip_file, submission, base_path_parts, file_cacher):
 
 def build_zip(submissions, base_path_builder, file_cacher):
     """Build a zip file containing all submissions.
-    
+
     submissions: list of Submission objects
     base_path_builder: function that takes a submission and returns list of path parts
     file_cacher: FileCacher instance to retrieve file content
-    
+
     return: BytesIO object containing the zip file
-    
+
     """
     zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for submission in sorted(submissions, key=lambda s: s.timestamp):
             base_path_parts = base_path_builder(submission)
             write_submission_files(zip_file, submission, base_path_parts, file_cacher)
-    
+
     return zip_buffer
 
 
@@ -123,10 +161,11 @@ class DownloadTaskSubmissionsHandler(BaseHandler):
             return [submission.participation.user.username]
 
         zip_buffer = build_zip(submissions, base_path_builder, self.service.file_cacher)
-        
+
         self.set_header("Content-Type", "application/zip")
-        self.set_header("Content-Disposition",
-                        f'attachment; filename="{task.name}_submissions.zip"')
+        self.set_header(
+            "Content-Disposition", f'attachment; filename="{task.name}_submissions.zip"'
+        )
         self.write(zip_buffer.getvalue())
         self.finish()
 
@@ -134,21 +173,37 @@ class DownloadTaskSubmissionsHandler(BaseHandler):
 class DownloadUserContestSubmissionsHandler(BaseHandler):
     """Download all submissions for a specific user in a contest as a zip file.
 
+    For training day contests, only downloads submissions made via that
+    training day (filtered by training_day_id).
     """
+
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id, user_id):
         self.contest = self.safe_get_item(Contest, contest_id)
-        participation = self.sql_session.query(Participation)\
-            .filter(Participation.contest_id == contest_id)\
-            .filter(Participation.user_id == user_id)\
+        participation = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == contest_id)
+            .filter(Participation.user_id == user_id)
             .first()
+        )
 
         if participation is None:
             raise tornado.web.HTTPError(404)
 
-        submissions = self.sql_session.query(Submission)\
-            .filter(Submission.participation_id == participation.id)\
-            .all()
+        # For training day contests, only download submissions made via that training day
+        if self.contest.training_day is not None:
+            submissions = (
+                self.sql_session.query(Submission)
+                .filter(Submission.participation_id == participation.id)
+                .filter(Submission.training_day_id == self.contest.training_day.id)
+                .all()
+            )
+        else:
+            submissions = (
+                self.sql_session.query(Submission)
+                .filter(Submission.participation_id == participation.id)
+                .all()
+            )
 
         username = participation.user.username
         contest_name = self.contest.name
@@ -157,10 +212,12 @@ class DownloadUserContestSubmissionsHandler(BaseHandler):
             return [submission.task.name]
 
         zip_buffer = build_zip(submissions, base_path_builder, self.service.file_cacher)
-        
+
         self.set_header("Content-Type", "application/zip")
-        self.set_header("Content-Disposition",
-                        f'attachment; filename="{username}_{contest_name}_submissions.zip"')
+        self.set_header(
+            "Content-Disposition",
+            f'attachment; filename="{username}_{contest_name}_submissions.zip"',
+        )
         self.write(zip_buffer.getvalue())
         self.finish()
 
@@ -168,23 +225,129 @@ class DownloadUserContestSubmissionsHandler(BaseHandler):
 class DownloadContestSubmissionsHandler(BaseHandler):
     """Download all submissions for a contest as a zip file.
 
+    For training day contests, only downloads submissions made via that
+    training day (filtered by training_day_id).
     """
+
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
         self.contest = self.safe_get_item(Contest, contest_id)
 
-        submissions = self.sql_session.query(Submission)\
-            .join(Task)\
-            .filter(Task.contest_id == contest_id)\
-            .all()
+        # For training day contests, only download submissions made via that training day
+        if self.contest.training_day is not None:
+            submissions = (
+                self.sql_session.query(Submission)
+                .filter(Submission.training_day_id == self.contest.training_day.id)
+                .all()
+            )
+        else:
+            # For regular contests and training program managing contests
+            submissions = (
+                self.sql_session.query(Submission)
+                .join(Task)
+                .filter(Task.contest_id == contest_id)
+                .all()
+            )
 
         def base_path_builder(submission):
             return [submission.participation.user.username, submission.task.name]
 
         zip_buffer = build_zip(submissions, base_path_builder, self.service.file_cacher)
-        
+
+        self.set_header("Content-Type", "application/zip")
+        self.set_header(
+            "Content-Disposition",
+            f'attachment; filename="{self.contest.name}_all_submissions.zip"',
+        )
+        self.write(zip_buffer.getvalue())
+        self.finish()
+
+
+class DownloadTrainingProgramSubmissionsHandler(BaseHandler):
+    """Download all submissions for a training program as a zip file.
+
+    The folder structure is: user/task/source/official-unofficial/files
+    where source is either "task_archive" or the training day description.
+    """
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        self.contest = managing_contest
+
+        # Get all submissions for the managing contest
+        submissions = (
+            self.sql_session.query(Submission)
+            .join(Task)
+            .filter(Task.contest_id == managing_contest.id)
+            .options(
+                joinedload(Submission.training_day).joinedload(TrainingDay.contest)
+            )
+            .all()
+        )
+
+        def base_path_builder(submission):
+            source_folder = get_source_folder(submission)
+            return [
+                submission.participation.user.username,
+                submission.task.name,
+                source_folder,
+            ]
+
+        zip_buffer = build_zip(submissions, base_path_builder, self.service.file_cacher)
+
+        self.set_header("Content-Type", "application/zip")
+        self.set_header(
+            "Content-Disposition",
+            f'attachment; filename="{training_program.name}_all_submissions.zip"',
+        )
+        self.write(zip_buffer.getvalue())
+        self.finish()
+
+
+class DownloadTrainingProgramStudentSubmissionsHandler(BaseHandler):
+    """Download all submissions for a specific student in a training program.
+
+    The folder structure is: task/source/official-unofficial/files
+    where source is either "task_archive" or the training day description.
+    """
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id, user_id):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        self.contest = managing_contest
+
+        participation = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == managing_contest.id)
+            .filter(Participation.user_id == user_id)
+            .first()
+        )
+
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        submissions = (
+            self.sql_session.query(Submission)
+            .filter(Submission.participation_id == participation.id)
+            .options(
+                joinedload(Submission.training_day).joinedload(TrainingDay.contest)
+            )
+            .all()
+        )
+
+        username = participation.user.username
+
+        def base_path_builder(submission):
+            source_folder = get_source_folder(submission)
+            return [submission.task.name, source_folder]
+
+        zip_buffer = build_zip(submissions, base_path_builder, self.service.file_cacher)
+
         self.set_header("Content-Type", "application/zip")
         self.set_header("Content-Disposition",
-                        f'attachment; filename="{self.contest.name}_all_submissions.zip"')
+                        f'attachment; filename="{username}_{training_program.name}_submissions.zip"')
         self.write(zip_buffer.getvalue())
         self.finish()

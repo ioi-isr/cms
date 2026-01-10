@@ -588,4 +588,14 @@ ALTER TABLE ONLY public.training_day_groups
 -- Add GIN index on student_tags for efficient querying
 CREATE INDEX ix_students_student_tags_gin ON public.students USING gin (student_tags);
 
+-- Add training_day_id to submissions table to track which training day a submission was made via
+-- If NULL, the submission was made directly to the task archive or via a regular contest
+-- When set, the submission was made via a training day's contest interface
+ALTER TABLE public.submissions ADD COLUMN training_day_id integer;
+
+ALTER TABLE ONLY public.submissions
+    ADD CONSTRAINT submissions_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+CREATE INDEX ix_submissions_training_day_id ON public.submissions USING btree (training_day_id);
+
 COMMIT;
