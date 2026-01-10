@@ -2,7 +2,7 @@
 {% import 'macro/pages.html' as macro_pages %}
 
 
-{% macro rows(admin, url, page_url, submissions, page, pages, dataset=none, timezone=none) -%}
+{% macro rows(admin, url, page_url, submissions, page, pages, dataset=none, timezone=none, show_training_day=false) -%}
 {#
 Render a table of submission data.
 
@@ -17,6 +17,8 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
     the active one.
 timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
     use the system default.
+show_training_day (bool): if true, show a column indicating which training day
+    the submission was made via (for training program submissions view).
 #}
 {% if pages == 0 %}
 <p>No submissions found.</p>
@@ -41,6 +43,9 @@ timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
       <th>Time</th>
       <th>User</th>
       <th>Task</th>
+      {% if show_training_day %}
+      <th>Source</th>
+      {% endif %}
       <th>Status</th>
       <th>Latency</th>
       <th>Files</th>
@@ -52,7 +57,7 @@ timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
   </thead>
   <tbody>
     {% for s in submissions|sort(attribute="timestamp")|reverse %}
-      {{ row(admin, url, s, dataset, timezone) }}
+      {{ row(admin, url, s, dataset, timezone, show_training_day) }}
     {% endfor %}
   </tbody>
 </table>
@@ -60,7 +65,7 @@ timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
 {%- endmacro %}
 
 
-{% macro row(admin, url, s, dataset=None, timezone=none) -%}
+{% macro row(admin, url, s, dataset=None, timezone=none, show_training_day=false) -%}
 {#
 Render a table's row containing a submission data.
 
@@ -71,6 +76,8 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
     the active one.
 timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
     use the system default.
+show_training_day (bool): if true, show a column indicating which training day
+    the submission was made via (for training program submissions view).
 #}
 
 {% if dataset is none %}
@@ -91,6 +98,19 @@ timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
   <td><a href="{{ url("submission", s.id) }}">{{ s.timestamp|format_datetime_with_timezone(timezone) }}</a></td>
   <td><a href="{{ url("contest", s.participation.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a></td>
   <td><a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a></td>
+  {% if show_training_day %}
+  <td>
+    {% if s.training_day is not none %}
+      {% if s.training_day.contest is not none %}
+      <a href="{{ url("contest", s.training_day.contest.id) }}">{{ s.training_day.contest.description }}</a>
+      {% else %}
+      [Deleted Training Day]
+      {% endif %}
+    {% else %}
+    Task Archive
+    {% endif %}
+  </td>
+  {% endif %}
   <td>
     {% if status == SubmissionResult.COMPILING %}
     Compiling...

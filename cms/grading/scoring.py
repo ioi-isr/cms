@@ -27,7 +27,7 @@ from collections import namedtuple
 
 from sqlalchemy.orm import joinedload
 
-from cms.db import Submission, Dataset, Participation, Task
+from cms.db import Submission, Dataset, Participation, Task, TrainingDay
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
 
@@ -109,6 +109,7 @@ def task_score(
     public: bool = False,
     only_tokened: bool = False,
     rounded: bool = False,
+    training_day: TrainingDay | None = None,
 ) -> tuple[float, bool]:
     """Return the score of a contest's user on a task.
 
@@ -123,6 +124,8 @@ def task_score(
         would obtain if all non-tokened submissions scored 0.0, or equivalently
         had not been scored yet).
     rounded: if True, round the score to the task's score_precision.
+    training_day: if provided, only consider submissions made via this
+        training day (filters by training_day_id).
 
     return: the score of user on task, and True if not
         all submissions of the participation in the task have been scored.
@@ -144,6 +147,8 @@ def task_score(
 
     submissions = [s for s in participation.submissions
                    if s.task is task and s.official]
+    if training_day is not None:
+        submissions = [s for s in submissions if s.training_day_id == training_day.id]
     if len(submissions) == 0:
         return 0.0, False
 

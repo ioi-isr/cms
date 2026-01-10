@@ -460,11 +460,25 @@ class ContestHandler(BaseHandler):
             not found).
 
         """
-        return self.sql_session.query(Submission) \
-            .filter(Submission.participation == self.current_user) \
-            .filter(Submission.task == task) \
-            .filter(Submission.opaque_id == int(opaque_id)) \
+        from cms.db.training_day import get_managing_participation
+
+        participation = self.current_user
+        training_day = self.contest.training_day
+
+        if training_day is not None:
+            managing_participation = get_managing_participation(
+                self.sql_session, training_day, participation.user
+            )
+            if managing_participation is not None:
+                participation = managing_participation
+
+        return (
+            self.sql_session.query(Submission)
+            .filter(Submission.participation == participation)
+            .filter(Submission.task == task)
+            .filter(Submission.opaque_id == int(opaque_id))
             .first()
+        )
 
     def get_user_test(self, task: Task, user_test_num: int) -> UserTest | None:
         """Return the num-th contestant's test on the given task.
