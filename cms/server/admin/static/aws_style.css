@@ -1140,13 +1140,22 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* Student tags display styling */
+/* Note: Tagify replaces the input with its own .tagify wrapper,
+   so we target .tagify for the actual styling */
 .student-tags-display {
     border: none;
     background: transparent;
     width: 100%;
 }
 
+.student-tags-display + .tagify,
+.tagify.student-tags-display {
+    border: none;
+    background: transparent;
+    width: 100%;
+}
+
 .no-tags-indicator {
-    color: #999;
+    color: #64748B;  /* Improved contrast for WCAG AA compliance */
     font-style: italic;
 }

@@ -39,7 +39,7 @@ import typing
 import collections
 
 from cms.db.user import Participation
-from cms.server.util import Url, check_training_day_eligibility
+from cms.server.util import Url, can_access_task, check_training_day_eligibility
 
 try:
     collections.MutableMapping
@@ -423,7 +423,6 @@ class ContestHandler(BaseHandler):
         if self.current_user is None:
             return not task.visible_to_tags
 
-        from cms.server.util import can_access_task
         return can_access_task(
             self.sql_session, task, self.current_user, self.contest.training_day
         )

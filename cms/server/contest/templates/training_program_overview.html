@@ -8,7 +8,7 @@
 <div class="span9">
 
 <div class="page-header">
-    <h1>{{ training_program.description }}</h1>
+    <h1>{{ training_program.description if training_program.description else training_program.name }}</h1>
 </div>
 
 {% if upcoming_training_days|length > 0 %}
@@ -65,7 +65,7 @@
     {% if td_info.contest.allow_delay_requests %}
     <div id="delay-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-modal-label-{{ loop.index }}" aria-hidden="true">
         <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
             <h3 id="delay-modal-label-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} - {{ td_info.contest.description }}</h3>
         </div>
         <div class="modal-body">
@@ -80,7 +80,7 @@
     {% if td_info.participation.delay_requests|length > 0 %}
     <div id="delay-requests-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-requests-modal-label-{{ loop.index }}" aria-hidden="true">
         <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
             <h3 id="delay-requests-modal-label-{{ loop.index }}">{% trans %}Your Delay Requests{% endtrans %} - {{ td_info.contest.description }}</h3>
         </div>
         <div class="modal-body">
@@ -240,8 +240,14 @@
 .training-day-delay-group > .btn { float: none; margin: 0; }
 .training-day-delay-btn { flex: 1 1 auto; min-width: 0; width: 100%; }
 .training-day-delay-group.single .training-day-delay-btn { width: 220px; }
-.training-day-requests-btn { flex: 0 0 44px; width: 44px; }
-.training-day-requests-btn { text-align: center; padding: 6px 0; font-size: 12px; line-height: 16px; }
+.training-day-requests-btn {
+    flex: 0 0 44px;
+    width: 44px;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 12px;
+    line-height: 16px;
+}
 .filter-btn {
     transition: all 0.2s ease;
 }
@@ -319,14 +325,23 @@ function updateCountdowns() {
     var serverNow = serverTimestamp + elapsed;
 
     countdowns.forEach(function(el) {
-        var startTime = parseFloat(el.getAttribute('data-start-time'));
+        var startTimeAttr = el.getAttribute('data-start-time');
+        if (!startTimeAttr) return;
+        var startTime = parseFloat(startTimeAttr);
+        if (isNaN(startTime)) return;
+
         var diff = startTime - serverNow;
 
+        var daysEl = el.querySelector('.countdown-days');
+        var hoursEl = el.querySelector('.countdown-hours');
+        var minutesEl = el.querySelector('.countdown-minutes');
+        var secondsEl = el.querySelector('.countdown-seconds');
+
         if (diff <= 0) {
-            el.querySelector('.countdown-days').textContent = '0';
-            el.querySelector('.countdown-hours').textContent = '0';
-            el.querySelector('.countdown-minutes').textContent = '0';
-            el.querySelector('.countdown-seconds').textContent = '0';
+            if (daysEl) daysEl.textContent = '0';
+            if (hoursEl) hoursEl.textContent = '0';
+            if (minutesEl) minutesEl.textContent = '0';
+            if (secondsEl) secondsEl.textContent = '0';
             if (!reloadScheduled) {
                 reloadScheduled = true;
                 checkAndMaybeReload(startTime);
@@ -339,10 +354,10 @@ function updateCountdowns() {
         var minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         var seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-        el.querySelector('.countdown-days').textContent = days;
-        el.querySelector('.countdown-hours').textContent = hours;
-        el.querySelector('.countdown-minutes').textContent = minutes;
-        el.querySelector('.countdown-seconds').textContent = seconds;
+        if (daysEl) daysEl.textContent = days;
+        if (hoursEl) hoursEl.textContent = hours;
+        if (minutesEl) minutesEl.textContent = minutes;
+        if (secondsEl) secondsEl.textContent = seconds;
     });
 }
 

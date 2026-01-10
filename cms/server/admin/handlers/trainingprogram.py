@@ -713,7 +713,7 @@ class StudentTagsHandler(BaseHandler):
 
         try:
             tags_str = self.get_argument("student_tags", "")
-            tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+            tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
             student.student_tags = deduplicate_preserving_order(tags)
 
             if self.try_commit():

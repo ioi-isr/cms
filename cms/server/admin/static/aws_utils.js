@@ -1108,9 +1108,9 @@ CMS.AWSUtils.initRemovePage = function(config) {
         targetSelectEl.disabled = true;
     }
 
-    // Attach the remove function to the window for onclick access
-    // Use namespacing to avoid collisions
-    window.cmsDoRemove = function () {
+    // Attach the remove function to CMS.AWSUtils namespace to avoid global pollution
+    // Also attach to window for backward compatibility with onclick handlers
+    CMS.AWSUtils.cmsDoRemove = function () {
         var url = config.removeUrl;
 
         if (config.hasTaskOptions) {
@@ -1142,9 +1142,11 @@ CMS.AWSUtils.initRemovePage = function(config) {
         }
 
         if (confirm('Are you sure you want to remove this?')) {
-            window.location.href = url;
+            CMS.AWSUtils.ajax_delete(url);
         }
     };
+    // Backward compatibility alias
+    window.cmsDoRemove = CMS.AWSUtils.cmsDoRemove;
 };
 
 

@@ -259,7 +259,7 @@ class ContestFolderBrowseHandler(BaseHandler):
         """
         all_folders = (
             self.sql_session.query(ContestFolder)
-            .filter(ContestFolder.hidden == False)
+            .filter(not_(ContestFolder.hidden))
             .all()
         )
         all_contests = (
@@ -317,7 +317,7 @@ class ContestFolderBrowseHandler(BaseHandler):
                     self.sql_session.query(ContestFolder)
                     .filter(ContestFolder.name == seg)
                     .filter(ContestFolder.parent == parent)
-                    .filter(ContestFolder.hidden == False)
+                    .filter(not_(ContestFolder.hidden))
                     .first()
                 )
                 if cur_folder is None:
