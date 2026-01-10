@@ -24,13 +24,28 @@ import logging
 import zipfile
 
 import tornado.web
+from sqlalchemy.orm import joinedload
 
-from cms.db import Contest, Participation, Submission, Task, TrainingProgram
+from cms.db import (
+    Contest,
+    Participation,
+    Submission,
+    Task,
+    TrainingProgram,
+    TrainingDay,
+)
 from cms.grading.languagemanager import safe_get_lang_filename
 from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_source_folder(submission):
+    """Get the source folder name for a submission."""
+    if submission.training_day_id is not None:
+        return submission.training_day.contest.description
+    return "task_archive"
 
 
 def get_submission_status(submission, dataset):
@@ -72,12 +87,12 @@ def write_submission_files(zip_file, submission, base_path_parts, file_cacher):
     timestamp = submission.timestamp.strftime("%Y%m%d_%H%M%S")
     official_folder = "official" if submission.official else "unofficial"
 
-    path_parts = base_path_parts + [official_folder]
+    path_parts = [*base_path_parts, official_folder]
 
     for filename, file_obj in submission.files.items():
         real_filename = safe_get_lang_filename(submission.language, filename)
         prefixed_filename = f"{timestamp}_{status}_{real_filename}"
-        file_path = "/".join(path_parts + [prefixed_filename])
+        file_path = "/".join([*path_parts, prefixed_filename])
 
         try:
             file_content = file_cacher.get_file_content(file_obj.digest)
@@ -243,15 +258,14 @@ class DownloadTrainingProgramSubmissionsHandler(BaseHandler):
             self.sql_session.query(Submission)
             .join(Task)
             .filter(Task.contest_id == managing_contest.id)
+            .options(
+                joinedload(Submission.training_day).joinedload(TrainingDay.contest)
+            )
             .all()
         )
 
         def base_path_builder(submission):
-            # Determine the source folder name
-            if submission.training_day_id is not None:
-                source_folder = submission.training_day.contest.description
-            else:
-                source_folder = "task_archive"
+            source_folder = get_source_folder(submission)
             return [
                 submission.participation.user.username,
                 submission.task.name,
@@ -295,17 +309,16 @@ class DownloadTrainingProgramStudentSubmissionsHandler(BaseHandler):
         submissions = (
             self.sql_session.query(Submission)
             .filter(Submission.participation_id == participation.id)
+            .options(
+                joinedload(Submission.training_day).joinedload(TrainingDay.contest)
+            )
             .all()
         )
 
         username = participation.user.username
 
         def base_path_builder(submission):
-            # Determine the source folder name
-            if submission.training_day_id is not None:
-                source_folder = submission.training_day.contest.description
-            else:
-                source_folder = "task_archive"
+            source_folder = get_source_folder(submission)
             return [submission.task.name, source_folder]
 
         zip_buffer = build_zip(submissions, base_path_builder, self.service.file_cacher)

@@ -92,4 +92,5 @@ class TrainingDay(Base):
     submissions: list["Submission"] = relationship(
         "Submission",
         back_populates="training_day",
+        passive_deletes=True,
     )

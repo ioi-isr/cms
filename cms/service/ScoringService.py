@@ -116,10 +116,14 @@ class ScoringExecutor(Executor[ScoringOperation]):
                 # submissions made via that specific training day.
                 if submission.training_day_id is not None:
                     training_day = submission.training_day
-                    training_day_participation = session.query(Participation).filter(
-                        Participation.contest == training_day.contest,
-                        Participation.user == submission.participation.user,
-                    ).first()
+                    training_day_participation = (
+                        session.query(Participation)
+                        .filter(
+                            Participation.contest_id == training_day.contest_id,
+                            Participation.user_id == submission.participation.user_id,
+                        )
+                        .one_or_none()
+                    )
                     if training_day_participation is not None:
                         invalidate_score_cache(
                             session,
