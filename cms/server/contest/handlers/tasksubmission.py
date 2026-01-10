@@ -202,6 +202,7 @@ class TaskSubmissionsHandler(ContestHandler):
                     .filter(Submission.training_day_id == training_day.id)
                     .options(joinedload(Submission.token))
                     .options(joinedload(Submission.results))
+                    .options(joinedload(Submission.training_day))
                     .all()
                 )
         else:
@@ -212,6 +213,7 @@ class TaskSubmissionsHandler(ContestHandler):
                 .filter(Submission.task == task)
                 .options(joinedload(Submission.token))
                 .options(joinedload(Submission.results))
+                .options(joinedload(Submission.training_day))
                 .all()
             )
 

@@ -41,10 +41,33 @@ from .base import BaseHandler, require_permission
 logger = logging.getLogger(__name__)
 
 
+def sanitize_path_component(name: str) -> str:
+    """Sanitize a string to be safe for use as a path component in zip files.
+
+    Replaces characters that could cause path traversal or other issues:
+    - Forward/backward slashes (path separators)
+    - Null bytes
+    - Other problematic characters like : * ? " < > |
+
+    name: the string to sanitize
+
+    return: sanitized string safe for use in file paths
+    """
+    # Characters that are problematic in file paths
+    unsafe_chars = '/\\:*?"<>|\x00'
+    result = name
+    for char in unsafe_chars:
+        result = result.replace(char, '_')
+    # Also strip leading/trailing whitespace and dots
+    result = result.strip(' .')
+    # Return a default if the result is empty
+    return result if result else "unnamed"
+
+
 def get_source_folder(submission):
     """Get the source folder name for a submission."""
     if submission.training_day_id is not None:
-        return submission.training_day.contest.description
+        return sanitize_path_component(submission.training_day.contest.description)
     return "task_archive"
 
 
