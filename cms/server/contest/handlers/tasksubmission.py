@@ -69,6 +69,23 @@ def N_(msgid):
     return msgid
 
 
+def _get_managing_participation(sql_session, training_day, user):
+    """Get the managing contest participation for a user in a training day.
+
+    training_day: the training day.
+    user: the user to look up.
+
+    return: the Participation in the managing contest, or None if not found.
+    """
+    managing_contest = training_day.training_program.managing_contest
+    return (
+        sql_session.query(Participation)
+        .filter(Participation.contest == managing_contest)
+        .filter(Participation.user == user)
+        .first()
+    )
+
+
 class SubmitHandler(ContestHandler):
     """Handles the received submissions.
 
@@ -109,12 +126,8 @@ class SubmitHandler(ContestHandler):
         submission_participation = participation
         if training_day is not None:
             # This is a training day submission - use managing contest participation
-            managing_contest = training_day.training_program.managing_contest
-            managing_participation = (
-                self.sql_session.query(Participation)
-                .filter(Participation.contest == managing_contest)
-                .filter(Participation.user == participation.user)
-                .first()
+            managing_participation = _get_managing_participation(
+                self.sql_session, training_day, participation.user
             )
             if managing_participation is None:
                 # User doesn't have a participation in the managing contest
@@ -182,14 +195,11 @@ class TaskSubmissionsHandler(ContestHandler):
         # For training day context: submissions are stored with managing contest
         # participation, so we need to find that participation and filter by
         # training_day_id
+        managing_participation = None
         if training_day is not None:
             # Get the managing contest participation for this user
-            managing_contest = training_day.training_program.managing_contest
-            managing_participation = (
-                self.sql_session.query(Participation)
-                .filter(Participation.contest == managing_contest)
-                .filter(Participation.user == participation.user)
-                .first()
+            managing_participation = _get_managing_participation(
+                self.sql_session, training_day, participation.user
             )
             if managing_participation is None:
                 submissions = []
@@ -200,6 +210,7 @@ class TaskSubmissionsHandler(ContestHandler):
                     .filter(Submission.participation == managing_participation)
                     .filter(Submission.task == task)
                     .filter(Submission.training_day_id == training_day.id)
+                    .order_by(Submission.timestamp.desc())
                     .options(joinedload(Submission.token))
                     .options(joinedload(Submission.results))
                     .options(joinedload(Submission.training_day))
@@ -211,6 +222,7 @@ class TaskSubmissionsHandler(ContestHandler):
                 self.sql_session.query(Submission)
                 .filter(Submission.participation == participation)
                 .filter(Submission.task == task)
+                .order_by(Submission.timestamp.desc())
                 .options(joinedload(Submission.token))
                 .options(joinedload(Submission.results))
                 .options(joinedload(Submission.training_day))
@@ -231,17 +243,24 @@ class TaskSubmissionsHandler(ContestHandler):
                         )
                     training_day_submissions[s.training_day_id][1].append(s)
 
+        # Use managing_participation for score/token/count calculations in
+        # training-day context, since submissions are stored there
+        score_participation = (
+            managing_participation if managing_participation is not None
+            else participation
+        )
+
         public_score, is_public_score_partial = task_score(
-            participation, task, public=True, rounded=True)
+            score_participation, task, public=True, rounded=True)
         tokened_score, is_tokened_score_partial = task_score(
-            participation, task, only_tokened=True, rounded=True)
+            score_participation, task, only_tokened=True, rounded=True)
         # These two should be the same, anyway.
         is_score_partial = is_public_score_partial or is_tokened_score_partial
 
         submissions_left_contest = None
         if self.contest.max_submission_number is not None:
             submissions_c = \
-                get_submission_count(self.sql_session, participation,
+                get_submission_count(self.sql_session, score_participation,
                                      contest=self.contest)
             submissions_left_contest = \
                 self.contest.max_submission_number - submissions_c
@@ -262,7 +281,7 @@ class TaskSubmissionsHandler(ContestHandler):
         if submissions_left is not None:
             submissions_left = max(0, submissions_left)
 
-        tokens_info = tokens_available(participation, task, self.timestamp)
+        tokens_info = tokens_available(score_participation, task, self.timestamp)
 
         download_allowed = self.contest.submissions_download_allowed
         self.render("task_submissions.html",
