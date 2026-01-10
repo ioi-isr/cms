@@ -737,6 +737,9 @@ def _get_sorted_official_submissions(
     For training day participations, submissions are stored with the managing
     contest's participation, so we need to query from there and filter by
     training_day_id.
+
+    Raises:
+        ValueError: When managing participation is None for training days
     """
     from cms.db.training_day import get_managing_participation
 
@@ -749,7 +752,12 @@ def _get_sorted_official_submissions(
         )
 
         if managing_participation is None:
-            return []
+            # User doesn't have a participation in the managing contest
+            # This indicates a configuration or data integrity issue
+            raise ValueError(
+                f"User {participation.user_id} does not have participation in managing contest "
+                f"{training_day.training_program.managing_contest_id} for training day {training_day.id}"
+            )
 
         return session.query(Submission).filter(
             Submission.participation_id == managing_participation.id,

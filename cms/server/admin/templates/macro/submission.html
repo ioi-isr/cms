@@ -97,7 +97,11 @@ show_training_day (bool): if true, show a column indicating which training day
   {% if show_training_day %}
   <td>
     {% if s.training_day is not none %}
-    <a href="{{ url("contest", s.training_day.contest.id) }}">{{ s.training_day.contest.description }}</a>
+      {% if s.training_day.contest is not none %}
+      <a href="{{ url("contest", s.training_day.contest.id) }}">{{ s.training_day.contest.description }}</a>
+      {% else %}
+      [Deleted Training Day]
+      {% endif %}
     {% else %}
     Task Archive
     {% endif %}

@@ -285,8 +285,8 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
                     # For training day submissions, also add the training day
                     # participation to the affected pairs so its cache gets
                     # invalidated too.
-                    if sr.submission.training_day_id is not None:
-                        training_day = sr.submission.training_day
+                    training_day = sr.submission.training_day
+                    if training_day is not None and training_day.contest_id is not None:
                         cache_key = (training_day.contest_id,
                                      sr.submission.participation.user_id)
                         if cache_key not in training_day_participation_cache:

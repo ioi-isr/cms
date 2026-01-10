@@ -36,7 +36,7 @@ import collections
 
 from cms.db.task import Task
 from cms.db.user import Participation
-from cms.db.training_day import get_managing_participation
+from cms.db.training_day import get_managing_participation, TrainingDay
 
 try:
     collections.MutableMapping
@@ -199,7 +199,11 @@ class TaskSubmissionsHandler(ContestHandler):
                     .order_by(Submission.timestamp.desc())
                     .options(joinedload(Submission.token))
                     .options(joinedload(Submission.results))
-                    .options(joinedload(Submission.training_day))
+                    .options(
+                        joinedload(Submission.training_day).joinedload(
+                            TrainingDay.contest
+                        )
+                    )
                     .all()
                 )
         else:
@@ -211,7 +215,9 @@ class TaskSubmissionsHandler(ContestHandler):
                 .order_by(Submission.timestamp.desc())
                 .options(joinedload(Submission.token))
                 .options(joinedload(Submission.results))
-                .options(joinedload(Submission.training_day))
+                .options(
+                    joinedload(Submission.training_day).joinedload(TrainingDay.contest)
+                )
                 .all()
             )
 
@@ -237,9 +243,19 @@ class TaskSubmissionsHandler(ContestHandler):
         )
 
         public_score, is_public_score_partial = task_score(
-            score_participation, task, public=True, rounded=True)
+            score_participation,
+            task,
+            public=True,
+            rounded=True,
+            training_day=training_day,
+        )
         tokened_score, is_tokened_score_partial = task_score(
-            score_participation, task, only_tokened=True, rounded=True)
+            score_participation,
+            task,
+            only_tokened=True,
+            rounded=True,
+            training_day=training_day,
+        )
         # These two should be the same, anyway.
         is_score_partial = is_public_score_partial or is_tokened_score_partial
 
@@ -253,8 +269,10 @@ class TaskSubmissionsHandler(ContestHandler):
 
         submissions_left_task = None
         if task.max_submission_number is not None:
-            submissions_left_task = \
-                task.max_submission_number - len(submissions)
+            submissions_t = get_submission_count(
+                self.sql_session, score_participation, task=task
+            )
+            submissions_left_task = task.max_submission_number - submissions_t
 
         submissions_left = submissions_left_contest
         if submissions_left_task is not None and \
