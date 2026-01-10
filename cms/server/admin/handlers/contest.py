@@ -36,6 +36,7 @@ from cms import ServiceCoord, get_service_shards, get_service_address
 from cms.db import Contest, Participation, Submission, Task, ContestFolder, TrainingDay, Student
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
+from cms.server.util import get_all_student_tags
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleContestHandler, SimpleHandler, \
@@ -44,9 +45,9 @@ from .base import BaseHandler, SimpleContestHandler, SimpleHandler, \
 
 def remove_contest_with_action(session, contest, action, target_contest=None):
     """Remove contest with specified action for tasks.
-    
+
     This is a standalone helper function that can be called from tests.
-    
+
     Args:
         session: SQLAlchemy session
         contest: Contest object to remove
@@ -56,11 +57,13 @@ def remove_contest_with_action(session, contest, action, target_contest=None):
     if action == "move":
         if target_contest is None:
             raise ValueError("Target contest must be specified when moving tasks")
-        
-        tasks = session.query(Task)\
-            .filter(Task.contest == contest)\
-            .order_by(Task.num, Task.id)\
+
+        tasks = (
+            session.query(Task)
+            .filter(Task.contest == contest)
+            .order_by(Task.num, Task.id)
             .all()
+        )
 
         # Phase 1: clear nums on moving tasks to avoid duplicate (contest_id, num).
         for task in tasks:
@@ -68,26 +71,28 @@ def remove_contest_with_action(session, contest, action, target_contest=None):
         session.flush()
 
         # Phase 2: append after current max num in target, preserving gaps.
-        max_num = session.query(func.max(Task.num))\
-            .filter(Task.contest == target_contest)\
+        max_num = (
+            session.query(func.max(Task.num))
+            .filter(Task.contest == target_contest)
             .scalar()
+        )
         base_num = (max_num or -1) + 1
 
         for i, task in enumerate(tasks):
             task.contest = target_contest
             task.num = base_num + i
         session.flush()
-        
+
     elif action == "detach":
         tasks = session.query(Task)\
             .filter(Task.contest == contest)\
             .all()
-        
+
         for task in tasks:
             task.contest = None
             task.num = None
         session.flush()
-    
+
     session.delete(contest)
     session.flush()
 
@@ -139,30 +144,24 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             )\
             .filter(Contest.id == contest_id)\
             .one_or_none()
-        
+
         if self.contest is None:
             raise tornado.web.HTTPError(404)
 
         self.r_params = self.render_params()
         self.r_params["all_folders"] = (
-            self.sql_session.query(ContestFolder)
-            .order_by(ContestFolder.name)
-            .all()
+            self.sql_session.query(ContestFolder).order_by(ContestFolder.name).all()
         )
 
         all_student_tags: list[str] = []
         training_day = self.contest.training_day
         if training_day is not None:
             training_program = training_day.training_program
-            tags_query = self.sql_session.query(
-                func.unnest(Student.student_tags).label("tag")
-            ).filter(
-                Student.training_program_id == training_program.id
-            ).distinct()
-            all_student_tags = sorted([row.tag for row in tags_query.all()])
+            all_student_tags = get_all_student_tags(training_program)
         self.r_params["all_student_tags"] = all_student_tags
 
         self.render("contest.html", **self.r_params)
+
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, contest_id: str):
         contest = self.safe_get_item(Contest, contest_id)
@@ -176,15 +175,17 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_string(attrs, "description")
 
             assert attrs.get("name") is not None, "No contest name specified."
-            assert not attrs.get("name").startswith("__"), \
-                "Contest name cannot start with '__' " \
-                "(reserved for system contests)."
+            assert not attrs.get("name").startswith("__"), (
+                "Contest name cannot start with '__' (reserved for system contests)."
+            )
 
             allowed_localizations: str = self.get_argument("allowed_localizations", "")
             if allowed_localizations:
-                attrs["allowed_localizations"] = \
-                    [x.strip() for x in allowed_localizations.split(",")
-                     if len(x) > 0 and not x.isspace()]
+                attrs["allowed_localizations"] = [
+                    x.strip()
+                    for x in allowed_localizations.split(",")
+                    if len(x) > 0 and not x.isspace()
+                ]
             else:
                 attrs["allowed_localizations"] = []
 
@@ -246,7 +247,8 @@ class ContestHandler(SimpleContestHandler("contest.html")):
 
         except Exception as error:
             self.service.add_notification(
-                make_datetime(), "Invalid field(s).", repr(error))
+                make_datetime(), "Invalid field(s).", repr(error)
+            )
             self.redirect(self.url("contest", contest_id))
             return
 
@@ -257,9 +259,8 @@ class ContestHandler(SimpleContestHandler("contest.html")):
 
 
 class OverviewHandler(BaseHandler):
-    """Home page handler, with queue and workers statuses.
+    """Home page handler, with queue and workers statuses."""
 
-    """
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id: str | None = None):
         if contest_id is not None:
@@ -280,7 +281,8 @@ class ResourcesListHandler(BaseHandler):
         services = get_service_shards("ResourceService")
         for i in range(services):
             self.r_params["resource_addresses"][i] = get_service_address(
-                ServiceCoord("ResourceService", i)).ip
+                ServiceCoord("ResourceService", i)
+            ).ip
         self.render("resourceslist.html", **self.r_params)
 
 
@@ -303,7 +305,8 @@ class ContestListHandler(SimpleHandler("contests.html")):
             self.redirect(asking_page)
         else:
             self.service.add_notification(
-                make_datetime(), "Invalid operation %s" % operation, "")
+                make_datetime(), "Invalid operation %s" % operation, ""
+            )
             self.redirect(self.url("contests"))
 
 
@@ -316,13 +319,15 @@ class RemoveContestHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, contest_id):
         contest = self.safe_get_item(Contest, contest_id)
-        submission_query = self.sql_session.query(Submission)\
-            .join(Submission.participation)\
+        submission_query = (
+            self.sql_session.query(Submission)
+            .join(Submission.participation)
             .filter(Participation.contest == contest)
+        )
 
         self.contest = contest
         self.render_params_for_remove_confirmation(submission_query)
-        
+
         self.r_params["task_count"] = len(contest.tasks)
         self.r_params["other_contests"] = self.sql_session.query(Contest)\
             .filter(Contest.id != contest.id)\
@@ -330,43 +335,46 @@ class RemoveContestHandler(BaseHandler):
             .filter(~Contest.training_day.has())\
             .order_by(Contest.name)\
             .all()
-        
+
         self.render("contest_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, contest_id):
         """Handle DELETE request with task handling options."""
         contest = self.safe_get_item(Contest, contest_id)
-        
+
         try:
             action = self.get_argument("action", "detach")
             assert action in ["move", "detach", "delete_all"], \
                 "Invalid action specified"
-            
+
             target_contest_id = None
             if action == "move":
                 target_contest_id = self.get_argument("target_contest_id", None)
-                assert target_contest_id, \
+                assert target_contest_id, (
                     "Target contest must be specified when moving tasks"
-                assert target_contest_id != str(contest_id), \
+                )
+                assert target_contest_id != str(contest_id), (
                     "Target contest cannot be the same as the contest being deleted"
-            
+                )
+
             self._remove_contest_with_action(contest, action, target_contest_id)
-            
+
         except Exception as error:
             self.service.add_notification(
-                make_datetime(), "Error removing contest", repr(error))
+                make_datetime(), "Error removing contest", repr(error)
+            )
             self.write("error")
             return
-        
+
         # Maybe they'll want to do this again (for another contest)
         self.write("../../contests")
-    
+
     def _remove_contest_with_action(self, contest, action, target_contest_id):
         """Remove contest with specified action for tasks.
-        
+
         This is a thin wrapper that calls the standalone helper function.
-        
+
         contest: Contest object to remove
         action: One of "move", "detach", or "delete_all"
         target_contest_id: ID of target contest (required if action is "move")
@@ -374,12 +382,13 @@ class RemoveContestHandler(BaseHandler):
         target_contest = None
         if action == "move":
             target_contest = self.safe_get_item(Contest, target_contest_id)
-        
+
         remove_contest_with_action(self.sql_session, contest, action, target_contest)
-        
+
         if self.try_commit():
             self.service.proxy_service.reinitialize()
             self.service.add_notification(
-                make_datetime(), 
+                make_datetime(),
                 "Contest removed successfully",
-                f"Contest removed with action: {action}")
+                f"Contest removed with action: {action}",
+            )

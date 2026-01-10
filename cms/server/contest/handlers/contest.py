@@ -297,8 +297,8 @@ class ContestHandler(BaseHandler):
             ret["user"] = participation.user
 
             # Check eligibility for training day contests with main groups
-            training_day = self.contest.training_day
-            is_eligible, main_group, matching_tags = self.get_eligibility()
+            _training_day = self.contest.training_day
+            is_eligible, main_group, _matching_tags = self.get_eligibility()
 
             ret["main_group"] = main_group
             ret["ineligible_for_training_day"] = not is_eligible
@@ -438,7 +438,7 @@ class ContestHandler(BaseHandler):
         # Apply per-group task ordering for training day contests
         training_day = self.contest.training_day
         if training_day is not None and self.current_user is not None:
-            is_eligible, main_group, _ = self.get_eligibility()
+            _is_eligible, main_group, _ = self.get_eligibility()
             if main_group is not None and main_group.alphabetical_task_order:
                 tasks = sorted(tasks, key=lambda t: t.name)
 

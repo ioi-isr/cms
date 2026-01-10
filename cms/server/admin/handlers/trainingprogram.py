@@ -30,7 +30,7 @@ from sqlalchemy import func
 from cms.db import Contest, TrainingProgram, Participation, Submission, \
     User, Task, Question, Announcement, Student, Team, TrainingDay, \
     TrainingDayGroup
-from cms.server.util import get_all_student_tags
+from cms.server.util import get_all_student_tags, deduplicate_preserving_order
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -536,33 +536,33 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
 
 class StudentHandler(BaseHandler):
     """Shows and edits details of a single student in a training program.
-    
+
     Similar to ParticipationHandler but includes student tags.
     """
-    
+
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str, user_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
         self.contest = managing_contest
-        
+
         participation: Participation | None = (
             self.sql_session.query(Participation)
             .filter(Participation.contest_id == managing_contest.id)
             .filter(Participation.user_id == user_id)
             .first()
         )
-        
+
         if participation is None:
             raise tornado.web.HTTPError(404)
-        
+
         student: Student | None = (
             self.sql_session.query(Student)
             .filter(Student.participation == participation)
             .filter(Student.training_program == training_program)
             .first()
         )
-        
+
         if student is None:
             student = Student(
                 training_program=training_program,
@@ -571,12 +571,13 @@ class StudentHandler(BaseHandler):
             )
             self.sql_session.add(student)
             self.try_commit()
-        
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.participation == participation)
+
+        submission_query = self.sql_session.query(Submission).filter(
+            Submission.participation == participation
+        )
         page = int(self.get_query_argument("page", "0"))
         self.render_params_for_submissions(submission_query, page)
-        
+
         # Get all unique student tags from this training program for autocomplete
         self.r_params["training_program"] = training_program
         self.r_params["participation"] = participation
@@ -591,40 +592,42 @@ class StudentHandler(BaseHandler):
             .filter(Question.ignored.is_(False))\
             .count()
         self.render("student.html", **self.r_params)
-    
+
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str, user_id: str):
-        fallback_page = self.url("training_program", training_program_id, "student", user_id, "edit")
-        
+        fallback_page = self.url(
+            "training_program", training_program_id, "student", user_id, "edit"
+        )
+
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
         self.contest = managing_contest
-        
+
         participation: Participation | None = (
             self.sql_session.query(Participation)
             .filter(Participation.contest_id == managing_contest.id)
             .filter(Participation.user_id == user_id)
             .first()
         )
-        
+
         if participation is None:
             raise tornado.web.HTTPError(404)
-        
+
         student: Student | None = (
             self.sql_session.query(Student)
             .filter(Student.participation == participation)
             .filter(Student.training_program == training_program)
             .first()
         )
-        
+
         if student is None:
             student = Student(
                 training_program=training_program,
                 participation=participation,
-                student_tags=[]
+                student_tags=[],
             )
             self.sql_session.add(student)
-        
+
         try:
             attrs = participation.get_attrs()
             self.get_password(attrs, participation.password, True)
@@ -635,7 +638,7 @@ class StudentHandler(BaseHandler):
             self.get_bool(attrs, "hidden")
             self.get_bool(attrs, "unrestricted")
             participation.set_attrs(attrs)
-            
+
             self.get_string(attrs, "team")
             team_code = attrs["team"]
             if team_code:
@@ -647,24 +650,18 @@ class StudentHandler(BaseHandler):
                 participation.team = team
             else:
                 participation.team = None
-            
+
             tags_str = self.get_argument("student_tags", "")
             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
-            # Remove duplicates while preserving order
-            seen: set[str] = set()
-            unique_tags: list[str] = []
-            for tag in tags:
-                if tag not in seen:
-                    seen.add(tag)
-                    unique_tags.append(tag)
-            student.student_tags = unique_tags
-            
+            student.student_tags = deduplicate_preserving_order(tags)
+
         except Exception as error:
             self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
+                make_datetime(), "Invalid field(s)", repr(error)
+            )
             self.redirect(fallback_page)
             return
-        
+
         if self.try_commit():
             self.service.proxy_service.reinitialize()
         self.redirect(fallback_page)
@@ -708,18 +705,10 @@ class StudentTagsHandler(BaseHandler):
         try:
             tags_str = self.get_argument("student_tags", "")
             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
-
-            # Remove duplicates while preserving order
-            seen: set[str] = set()
-            unique_tags: list[str] = []
-            for tag in tags:
-                if tag not in seen:
-                    seen.add(tag)
-                    unique_tags.append(tag)
-            student.student_tags = unique_tags
+            student.student_tags = deduplicate_preserving_order(tags)
 
             if self.try_commit():
-                self.write({"success": True, "tags": unique_tags})
+                self.write({"success": True, "tags": student.student_tags})
             else:
                 self.set_status(500)
                 self.write({"error": "Failed to save"})

@@ -30,7 +30,7 @@ warning (dict|None): if provided, contains 'group_name' and 'group_start' for wa
       {% if user_id is none %}
       <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
       {% endif %}
-      {% if warning %}
+      {% if warning and warning.group_name is defined and warning.group_start is defined %}
       <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 8px; margin: 8px 0; border-radius: 4px;">
         <strong style="color: #856404;">Warning:</strong> Requested start time is earlier than the student's group start time.
         <br>Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.

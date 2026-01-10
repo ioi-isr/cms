@@ -47,21 +47,21 @@ logger = logging.getLogger(__name__)
 
 def get_participation_main_group(contest, participation):
     """Get the main group for a participation in a training day contest.
-    
+
     Args:
         contest: The Contest object
         participation: The Participation object (in the training day contest)
-    
+
     Returns:
         TrainingDayGroup or None: The main group if found, None otherwise
     """
     training_day = contest.training_day
     if training_day is None or len(training_day.groups) == 0:
         return None
-    
+
     main_group_tags = {g.tag_name: g for g in training_day.groups}
     training_program = training_day.training_program
-    
+
     # Student.participation_id refers to the managing contest participation,
     # not the training day contest participation. Match by user_id instead.
     for student in training_program.students:
@@ -69,23 +69,23 @@ def get_participation_main_group(contest, participation):
             student_tags = set(student.student_tags or [])
             matching_tags = student_tags & set(main_group_tags.keys())
             if len(matching_tags) == 1:
-                return main_group_tags[list(matching_tags)[0]]
+                return main_group_tags[next(iter(matching_tags))]
             break
-    
+
     return None
 
 
 def compute_participation_status(contest, participation, timestamp,
                                   main_group_start=None, main_group_end=None):
     """Compute the status class and label for a participation.
-    
+
     Args:
         contest: The Contest object
         participation: The Participation object
         timestamp: The current timestamp
         main_group_start: Optional per-group start time for training days
         main_group_end: Optional per-group end time for training days
-    
+
     Returns:
         tuple: (status_class, status_label)
     """
@@ -102,7 +102,7 @@ def compute_participation_status(contest, participation, timestamp,
         main_group_start,
         main_group_end,
     )
-    
+
     if participation.starting_time is None:
         if actual_phase == -2:
             status_class = "pre-contest"
@@ -119,7 +119,7 @@ def compute_participation_status(contest, participation, timestamp,
     else:
         status_class = "finished"
         status_label = "Finished"
-    
+
     return status_class, status_label
 
 
@@ -139,7 +139,7 @@ class DelaysAndExtraTimesHandler(BaseHandler):
             .filter(not_(Participation.hidden))\
             .order_by(Participation.id)\
             .all()
-        
+
         # Compute status for each participation
         participation_statuses = []
         for participation in participations:
@@ -154,26 +154,26 @@ class DelaysAndExtraTimesHandler(BaseHandler):
             main_group = get_participation_main_group(self.contest, participation)
             main_group_start = main_group.start_time if main_group else None
             main_group_end = main_group.end_time if main_group else None
-            
+
             status_class, status_label = compute_participation_status(
                 self.contest, participation, self.timestamp,
                 main_group_start, main_group_end
             )
-            
+
             participation_statuses.append({
                 'participation': participation,
                 'status_class': status_class,
                 'status_label': status_label,
                 'main_group': main_group,
             })
-        
+
         self.r_params["participation_statuses"] = participation_statuses
         delay_requests = self.sql_session.query(DelayRequest)\
             .join(Participation)\
             .filter(Participation.contest_id == contest_id)\
             .order_by(DelayRequest.request_timestamp.desc())\
             .all()
-        
+
         # Compute warnings for delay requests where requested start is earlier than group start
         delay_request_warnings = {}
         for req in delay_requests:
@@ -185,7 +185,7 @@ class DelaysAndExtraTimesHandler(BaseHandler):
                             'group_name': main_group.tag_name,
                             'group_start': main_group.start_time,
                         }
-        
+
         self.r_params["delay_requests"] = delay_requests
         self.r_params["delay_request_warnings"] = delay_request_warnings
 
@@ -256,12 +256,12 @@ class DelayRequestApproveHandler(DelayRequestActionHandler):
         participation = delay_request.participation
         contest_start = participation.contest.start
         requested_start = delay_request.requested_start_time
-        
+
         delay_seconds = (requested_start - contest_start).total_seconds()
-        
+
         if delay_seconds > 0:
             participation.delay_time = timedelta(seconds=delay_seconds)
-        
+
         delay_request.status = 'approved'
         delay_request.processed_timestamp = make_datetime()
         delay_request.admin = self.current_user
@@ -339,7 +339,7 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
 
         output = io.StringIO()
         writer = csv.writer(output)
-        
+
         writer.writerow([
             'User',
             'Username',
@@ -350,15 +350,15 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
             'Extra Time (seconds)',
             'Status'
         ])
-        
+
         for participation in participations:
             starting_time = participation.starting_time.strftime('%Y-%m-%d %H:%M:%S') if participation.starting_time else '-'
             delay_seconds = int(participation.delay_time.total_seconds())
-            
+
             main_group = get_participation_main_group(self.contest, participation)
             main_group_start = main_group.start_time if main_group else None
             main_group_end = main_group.end_time if main_group else None
-            
+
             if participation.delay_time.total_seconds() > 0:
                 planned_start = self.contest.start + participation.delay_time
                 planned_start_str = planned_start.strftime('%Y-%m-%d %H:%M:%S')
@@ -366,16 +366,16 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
                 planned_start_str = main_group_start.strftime('%Y-%m-%d %H:%M:%S')
             else:
                 planned_start_str = self.contest.start.strftime('%Y-%m-%d %H:%M:%S')
-            
+
             extra_seconds = int(participation.extra_time.total_seconds())
             ip_addresses = participation.starting_ip_addresses if participation.starting_ip_addresses else '-'
-            
+
             # Compute status for this participation
             _, status_label = compute_participation_status(
                 self.contest, participation, self.timestamp,
                 main_group_start, main_group_end
             )
-            
+
             writer.writerow([
                 f"{participation.user.first_name} {participation.user.last_name}",
                 participation.user.username,
@@ -386,13 +386,13 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
                 extra_seconds,
                 status_label
             ])
-        
+
         start_date = self.contest.start.strftime('%Y%m%d')
         contest_slug = re.sub(r'[^A-Za-z0-9_-]+', '_', self.contest.name)
         filename = f"{start_date}_{contest_slug}_attendance.csv"
-        
+
         self.set_header('Content-Type', 'text/csv')
-        self.set_header('Content-Disposition', 
+        self.set_header('Content-Disposition',
                        f'attachment; filename="{filename}"')
         self.write(output.getvalue())
         self.finish()
@@ -405,26 +405,26 @@ class RemoveAllDelaysAndExtraTimesHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def post(self, contest_id):
         ref = self.url("contest", contest_id, "delays_and_extra_times")
-        
+
         self.contest = self.safe_get_item(Contest, contest_id)
-        
+
         participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
             .all()
-        
+
         count = 0
         for participation in participations:
             if participation.delay_time.total_seconds() > 0 or participation.extra_time.total_seconds() > 0:
                 participation.delay_time = timedelta()
                 participation.extra_time = timedelta()
                 count += 1
-        
+
         if self.try_commit():
             logger.info("All delays and extra times removed for contest %s by admin %s (%d participations affected)",
                        self.contest.name,
                        self.current_user.name,
                        count)
-        
+
         self.redirect(ref)
 
 
@@ -435,25 +435,25 @@ class EraseAllStartTimesHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def post(self, contest_id):
         ref = self.url("contest", contest_id, "delays_and_extra_times")
-        
+
         self.contest = self.safe_get_item(Contest, contest_id)
-        
+
         participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
             .all()
-        
+
         count = 0
         for participation in participations:
             if participation.starting_time is not None:
                 participation.starting_time = None
                 count += 1
-        
+
         if self.try_commit():
             logger.info("All starting times erased for contest %s by admin %s (%d participations affected)",
                        self.contest.name,
                        self.current_user.name,
                        count)
-        
+
         self.redirect(ref)
 
 
@@ -464,23 +464,23 @@ class ResetAllIPAddressesHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def post(self, contest_id):
         ref = self.url("contest", contest_id, "delays_and_extra_times")
-        
+
         self.contest = self.safe_get_item(Contest, contest_id)
-        
+
         participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
             .all()
-        
+
         count = 0
         for participation in participations:
             if participation.starting_ip_addresses is not None:
                 participation.starting_ip_addresses = None
                 count += 1
-        
+
         if self.try_commit():
             logger.info("All IP addresses reset for contest %s by admin %s (%d participations affected)",
                        self.contest.name,
                        self.current_user.name,
                        count)
-        
+
         self.redirect(ref)

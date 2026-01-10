@@ -26,7 +26,7 @@
                 <strong>{% trans %}Duration:{% endtrans %}</strong> {{ (td_info.duration.total_seconds() // 3600)|int }}h{% if (td_info.duration.total_seconds() % 3600) // 60 > 0 %} {{ ((td_info.duration.total_seconds() % 3600) // 60)|int }}m{% endif %}
             </div>
         </div>
-        
+
         {% if td_info.has_started %}
         <div class="training-day-status">
             <div class="countdown-display live-pill">
@@ -46,22 +46,22 @@
             </div>
         </div>
         {% endif %}
-        
+
         <div class="training-day-actions">
             {% if td_info.has_started or td_info.can_enter_soon %}
             <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn training-day-enter-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
             {% endif %}
             {% if td_info.contest.allow_delay_requests %}
-            <div class="btn-group training-day-delay-group{% if td_info.participation.delay_requests|length == 0 %} single{% endif %}">
-                <button type="button" class="btn btn-warning training-day-btn training-day-delay-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
+            <div class="btn-group training-day-delay-group{% if td_info.participation.delay_requests|length == 0 %} single{% endif %}" role="group" aria-label="{% trans %}Delay request actions{% endtrans %}">
+                <button type="button" class="btn btn-warning training-day-btn training-day-delay-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}" aria-label="{% trans %}Request a delay for this training day{% endtrans %}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
                 {% if td_info.participation.delay_requests|length > 0 %}
-                <button type="button" class="btn btn-info training-day-btn training-day-requests-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans %}View Requests{% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
+                <button type="button" class="btn btn-info training-day-btn training-day-requests-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans %}View {{ td_info.participation.delay_requests|length }} delay request(s){% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
                 {% endif %}
             </div>
             {% endif %}
         </div>
     </div>
-    
+
     {% if td_info.contest.allow_delay_requests %}
     <div id="delay-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-modal-label-{{ loop.index }}" aria-hidden="true">
         <div class="modal-header">
@@ -76,7 +76,7 @@
         </div>
     </div>
     {% endif %}
-    
+
     {% if td_info.participation.delay_requests|length > 0 %}
     <div id="delay-requests-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-requests-modal-label-{{ loop.index }}" aria-hidden="true">
         <div class="modal-header">
@@ -99,7 +99,7 @@
 
 <div class="training-program-summary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 25px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
     <p style="font-size: 16px; opacity: 0.9; margin-bottom: 20px;">{{ training_program.description }}</p>
-    
+
     <div style="display: flex; gap: 40px; align-items: center; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 200px;">
             <div style="font-size: 48px; font-weight: bold;">
@@ -317,11 +317,11 @@ function updateCountdowns() {
     var countdowns = document.querySelectorAll('.countdown');
     var elapsed = new Date().getTime() - clientLoadTime;
     var serverNow = serverTimestamp + elapsed;
-    
+
     countdowns.forEach(function(el) {
         var startTime = parseFloat(el.getAttribute('data-start-time'));
         var diff = startTime - serverNow;
-        
+
         if (diff <= 0) {
             el.querySelector('.countdown-days').textContent = '0';
             el.querySelector('.countdown-hours').textContent = '0';
@@ -333,12 +333,12 @@ function updateCountdowns() {
             }
             return;
         }
-        
+
         var days = Math.floor(diff / (1000 * 60 * 60 * 24));
         var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         var minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         var seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        
+
         el.querySelector('.countdown-days').textContent = days;
         el.querySelector('.countdown-hours').textContent = hours;
         el.querySelector('.countdown-minutes').textContent = minutes;
@@ -359,7 +359,7 @@ function filterTasks(filter) {
             row.style.display = 'none';
         }
     });
-    
+
     document.querySelectorAll('.filter-btn').forEach(function(btn) {
         btn.classList.remove('active');
         if (btn.getAttribute('data-filter') === filter) {
@@ -374,17 +374,17 @@ function sortTable(columnIndex) {
     var tbody = table.querySelector('tbody');
     var rows = Array.from(tbody.querySelectorAll('tr'));
     var headers = table.querySelectorAll('th');
-    
+
     sortDirection[columnIndex] = !sortDirection[columnIndex];
     var ascending = sortDirection[columnIndex];
-    
+
     headers.forEach(function(h, i) {
         h.classList.remove('sort-asc', 'sort-desc');
         if (i === columnIndex) {
             h.classList.add(ascending ? 'sort-asc' : 'sort-desc');
         }
     });
-    
+
     rows.sort(function(a, b) {
         var aVal, bVal;
         if (columnIndex === 2) {
@@ -394,12 +394,12 @@ function sortTable(columnIndex) {
             aVal = a.cells[columnIndex].textContent.trim().toLowerCase();
             bVal = b.cells[columnIndex].textContent.trim().toLowerCase();
         }
-        
+
         if (aVal < bVal) return ascending ? -1 : 1;
         if (aVal > bVal) return ascending ? 1 : -1;
         return 0;
     });
-    
+
     rows.forEach(function(row) {
         tbody.appendChild(row);
     });

@@ -172,22 +172,7 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
         return True
 
     # Find the student record for this participation
-    # Note: Student records are linked to the managing contest participation,
-    # not the training day participation. So we need to find the user's
-    # participation in the managing contest first.
-    managing_contest = training_day.training_program.managing_contest
-    managing_participation = sql_session.query(Participation).filter(
-        Participation.contest_id == managing_contest.id,
-        Participation.user_id == participation.user_id
-    ).first()
-
-    if managing_participation is None:
-        return False
-
-    student = sql_session.query(Student).filter(
-        Student.participation_id == managing_participation.id,
-        Student.training_program_id == training_day.training_program_id
-    ).first()
+    student = get_student_for_training_day(sql_session, participation, training_day)
 
     if student is None:
         return False
@@ -367,3 +352,21 @@ class CommonRequestHandler(RequestHandler):
     @property
     def service(self):
         return self.application.service
+
+
+def deduplicate_preserving_order(items: list[str]) -> list[str]:
+    """Remove duplicates from a list while preserving order.
+
+    Args:
+        items: List of strings that may contain duplicates
+
+    Returns:
+        List of strings with duplicates removed, preserving original order
+    """
+    seen: set[str] = set()
+    unique: list[str] = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            unique.append(item)
+    return unique
