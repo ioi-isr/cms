@@ -46,7 +46,7 @@ from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
 if typing.TYPE_CHECKING:
-    from cms.db import Contest, TrainingDay, TrainingDayGroup, TrainingProgram
+    from cms.db import TrainingDay, TrainingDayGroup, TrainingProgram
 
 logger = logging.getLogger(__name__)
 
@@ -130,10 +130,10 @@ def check_training_day_eligibility(
         return False, None, []
 
     # Build dict for O(1) lookup of groups by tag name
-    groups_by_tag = {g.tag_name: g for g in training_day.groups}
+    groups_by_tag = {g.tag_name.lower(): g for g in training_day.groups}
 
     # Find which main group tags the student has
-    student_tags = set(student.student_tags or [])
+    student_tags = {tag.lower() for tag in (student.student_tags or [])}
     matching_tags = sorted(student_tags & groups_by_tag.keys())
 
     # Eligible only if exactly one main group tag
@@ -178,8 +178,8 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
         return False
 
     # Check if student has any matching tag
-    student_tags_set = set(student.student_tags or [])
-    task_tags_set = set(task.visible_to_tags)
+    student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
+    task_tags_set = {tag.lower() for tag in task.visible_to_tags}
     return bool(student_tags_set & task_tags_set)
 
 

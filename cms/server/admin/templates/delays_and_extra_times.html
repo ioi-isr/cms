@@ -6,7 +6,7 @@
 utils.show_page("pending_delay_requests", 1);
 utils.show_page("all_delay_requests", 1);
 
-{% if ineligible_students is defined and ineligible_students|length > 0 %}
+{% if ineligible_students is defined and ineligible_students|length > 0 and all_student_tags is defined %}
 CMS.AWSUtils.initReadOnlyTagify('.main-group-tags-display');
 
 CMS.AWSUtils.initTagify({
@@ -110,7 +110,7 @@ a.username-link:hover {
   <div id="paged_content_pending_delay_requests">
   {% for req in delay_requests %}
     {% if req.status == 'pending' %}
-      {{ macro_delay_request.delay_request(req, warning=delay_request_warnings.get(req.id)) }}
+      {{ macro_delay_request.delay_request(req, warning=(delay_request_warnings or {}).get(req.id)) }}
     {% endif %}
   {% endfor %}
   </div>
@@ -217,7 +217,7 @@ a.username-link:hover {
           {{ xsrf_form_html|safe }}
           <button type="submit" class="btn btn-warning btn-small">
             {% if participation.delay_time.total_seconds() == 0 %}
-              Remove extra time 
+              Remove extra time
             {% elif participation.extra_time.total_seconds() == 0 %}
               Remove delay
             {% else %}

@@ -1088,24 +1088,29 @@ CMS.AWSUtils.initDateTimeValidation = function(formSelector, startSelector, stop
  */
 CMS.AWSUtils.initRemovePage = function(config) {
     if (config.hasTaskOptions) {
+        // Cache DOM elements and check they exist
+        var targetSelectEl = document.getElementById(config.targetSelectId);
+        var moveRadioEl = document.getElementById('action_move');
+        if (!targetSelectEl || !moveRadioEl) return;
+
         // Enable/disable the target dropdown based on the selected action
         document.querySelectorAll('input[name="action"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
-                var targetSelect = document.getElementById(config.targetSelectId);
-                if (document.getElementById('action_move').checked) {
-                    targetSelect.disabled = false;
+                if (moveRadioEl.checked) {
+                    targetSelectEl.disabled = false;
                 } else {
-                    targetSelect.disabled = true;
+                    targetSelectEl.disabled = true;
                 }
             });
         });
 
         // Initialize the dropdown state
-        document.getElementById(config.targetSelectId).disabled = true;
+        targetSelectEl.disabled = true;
     }
 
     // Attach the remove function to the window for onclick access
-    window.doRemove = function() {
+    // Use namespacing to avoid collisions
+    window.cmsDoRemove = function () {
         var url = config.removeUrl;
 
         if (config.hasTaskOptions) {
@@ -1126,16 +1131,19 @@ CMS.AWSUtils.initRemovePage = function(config) {
             url += '?action=' + encodeURIComponent(selectedAction);
 
             if (selectedAction === 'move') {
-                var targetId = document.getElementById(config.targetSelectId).value;
-                if (!targetId) {
-                    alert('Please select a target ' + config.targetLabel + '.');
+                var targetSelect = document.getElementById(config.targetSelectId);
+                if (targetSelect && targetSelect.value) {
+                    url += '&' + config.targetParamName + '=' + encodeURIComponent(targetSelect.value);
+                } else {
+                    alert('Please select a ' + config.targetLabel + ' to move tasks to.');
                     return;
                 }
-                url += '&' + config.targetParamName + '=' + encodeURIComponent(targetId);
             }
         }
 
-        CMS.AWSUtils.ajax_delete(url);
+        if (confirm('Are you sure you want to remove this?')) {
+            window.location.href = url;
+        }
     };
 };
 
@@ -1147,6 +1155,11 @@ CMS.AWSUtils.initRemovePage = function(config) {
  * inputSelector (string): CSS selector for the input element(s).
  */
 CMS.AWSUtils.initReadOnlyTagify = function(inputSelector) {
+    // Defensive check for Tagify library
+    if (typeof Tagify === 'undefined') {
+        return;
+    }
+
     document.querySelectorAll(inputSelector).forEach(function(input) {
         if (!input.value.trim()) return;
 
@@ -1167,7 +1180,7 @@ CMS.AWSUtils.initReadOnlyTagify = function(inputSelector) {
 /**
  * Initializes Tagify on input element(s) with confirmation dialogs and save-on-confirm.
  * Provides a unified interface for tag inputs across the admin interface.
- * 
+ *
  * All tag operations (add, edit, remove) require confirmation before saving.
  * Automatic removals (like duplicate detection) do not require confirmation but still save.
  *

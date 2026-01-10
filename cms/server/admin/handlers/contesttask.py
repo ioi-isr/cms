@@ -26,7 +26,7 @@
 """
 
 from cms.db import Contest, Task
-from cms.server.util import get_all_student_tags
+from cms.server.util import get_all_student_tags, deduplicate_preserving_order
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -61,7 +61,7 @@ class ContestTasksHandler(BaseHandler):
                     .filter(Task.training_day_id.is_(None))\
                     .order_by(Task.num)\
                     .all()
-            
+
             # Get all student tags for autocomplete (for task visibility tags)
             self.r_params["all_student_tags"] = get_all_student_tags(training_program)
         else:
@@ -323,24 +323,47 @@ class TaskVisibilityHandler(BaseHandler):
 
         try:
             visible_to_tags_str = self.get_argument("visible_to_tags", "")
-            visible_to_tags = [tag.strip() for tag in visible_to_tags_str.split(",") if tag.strip()]
+            incoming_tags = [
+                tag.strip() for tag in visible_to_tags_str.split(",") if tag.strip()
+            ]
+
+            # Get allowed tags from training program
+            training_program = training_day.training_program
+            allowed_tags = set(get_all_student_tags(training_program))
+
+            # Validate and filter tags against allowed set
+            invalid_tags = [tag for tag in incoming_tags if tag not in allowed_tags]
+            valid_tags = [tag for tag in incoming_tags if tag in allowed_tags]
+
+            # Return error if there are invalid tags
+            if invalid_tags:
+                self.set_status(400)
+                self.write(
+                    {
+                        "error": f"Invalid tags: {', '.join(invalid_tags)}",
+                        "tags": task.visible_to_tags or [],
+                        "invalid_tags": invalid_tags,
+                    }
+                )
+                return
 
             # Remove duplicates while preserving order
-            seen: set[str] = set()
-            unique_tags: list[str] = []
-            for tag in visible_to_tags:
-                if tag not in seen:
-                    seen.add(tag)
-                    unique_tags.append(tag)
+            unique_tags = deduplicate_preserving_order(valid_tags)
 
             task.visible_to_tags = unique_tags
 
             if self.try_commit():
-                self.write({"success": True, "tags": unique_tags})
+                response_data = {
+                    "success": True,
+                    "tags": unique_tags,
+                }
+                self.write(response_data)
             else:
                 self.set_status(500)
-                self.write({"error": "Failed to save"})
+                self.write(
+                    {"error": "Failed to save", "tags": task.visible_to_tags or []}
+                )
 
         except (ValueError, KeyError) as error:
             self.set_status(400)
-            self.write({"error": str(error)})
+            self.write({"error": str(error), "tags": task.visible_to_tags or []})

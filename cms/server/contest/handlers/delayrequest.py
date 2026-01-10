@@ -21,6 +21,7 @@
 
 import logging
 from datetime import datetime
+from urllib.parse import unquote
 
 import collections
 try:
@@ -52,9 +53,22 @@ class DelayRequestHandler(ContestHandler):
     def post(self):
         # Get the redirect URL (for training program integration)
         next_url = self.get_argument("next", "").strip()
+
         # Validate next_url is a safe absolute path (prevent open redirects)
-        # Must start with "/" but not "//" (scheme-relative), and must not contain "://"
-        if next_url and (not next_url.startswith("/") or next_url.startswith("//") or "://" in next_url):
+        # Check both raw and decoded values to catch encoded scheme-relative paths
+        decoded_next_url = unquote(next_url)
+
+        def is_safe_url(url):
+            """Check if URL is safe for redirect (absolute path only)."""
+            return (
+                url.startswith("/")
+                and not url.startswith("//")
+                and not url.startswith("///")
+                and "://" not in url
+            )
+
+        # Only use next_url if BOTH raw and decoded values pass validation
+        if next_url and not (is_safe_url(next_url) and is_safe_url(decoded_next_url)):
             next_url = ""
         redirect_url = next_url if next_url else self.contest_url("communication")
 
@@ -92,7 +106,7 @@ class DelayRequestHandler(ContestHandler):
                 local_dt = tz.localize(naive_dt, is_dst=None)
             else:
                 local_dt = naive_dt.replace(tzinfo=tz)
-            
+
             utc_dt = local_dt.astimezone(utc)
             requested_start_time = utc_dt.replace(tzinfo=None)
         except Exception as e:

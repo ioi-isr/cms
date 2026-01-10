@@ -28,6 +28,7 @@ from cms.server import multi_contest
 from cms.server.contest.authentication import validate_login
 from cms.server.contest.submission import \
     UnacceptableSubmission, accept_submission
+from cms.server.util import can_access_task
 from .contest import ContestHandler, api_login_required
 from ..phase_management import actual_phase_required
 
@@ -103,6 +104,12 @@ class ApiTaskListHandler(ApiContestHandler):
         contest = self.contest
         tasks = []
         for task in contest.get_tasks():
+            # Check task visibility for training day contests
+            if not can_access_task(
+                self.sql_session, task, self.current_user, contest.training_day
+            ):
+                continue
+
             name = task.name
             statements = [s for s in task.statements]
             sub_format = task.submission_format
@@ -122,6 +129,13 @@ class ApiSubmitHandler(ApiContestHandler):
     def post(self, task_name: str):
         task = self.get_task(task_name)
         if task is None:
+            self.json({"error": "Task not found"}, 404)
+            return
+
+        # Check task visibility for training day contests
+        if not can_access_task(
+            self.sql_session, task, self.current_user, self.contest.training_day
+        ):
             self.json({"error": "Task not found"}, 404)
             return
 
@@ -174,6 +188,13 @@ class ApiSubmissionListHandler(ApiContestHandler):
     def get(self, task_name: str):
         task = self.get_task(task_name)
         if task is None:
+            self.json({"error": "Not found"}, 404)
+            return
+
+        # Check task visibility for training day contests
+        if not can_access_task(
+            self.sql_session, task, self.current_user, self.contest.training_day
+        ):
             self.json({"error": "Not found"}, 404)
             return
         submissions: list[Submission] = (

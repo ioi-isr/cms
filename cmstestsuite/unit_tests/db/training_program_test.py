@@ -65,12 +65,13 @@ class TestTrainingProgram(DatabaseMixin, unittest.TestCase):
 
         with self.assertRaises(IntegrityError):
             self.session.commit()
+        self.session.rollback()
 
     def test_training_program_name_is_unique(self):
         """Test that training program names must be unique."""
         managing_contest1 = self.add_contest(name="contest1")
         managing_contest2 = self.add_contest(name="contest2")
-        
+
         program1 = TrainingProgram(
             name="duplicate_name",
             description="First Program",
@@ -88,11 +89,12 @@ class TestTrainingProgram(DatabaseMixin, unittest.TestCase):
 
         with self.assertRaises(IntegrityError):
             self.session.commit()
+        self.session.rollback()
 
     def test_training_program_managing_contest_is_unique(self):
         """Test that each contest can manage at most one training program."""
         managing_contest = self.add_contest(name="shared_contest")
-        
+
         program1 = TrainingProgram(
             name="program1",
             description="First Program",
@@ -110,6 +112,7 @@ class TestTrainingProgram(DatabaseMixin, unittest.TestCase):
 
         with self.assertRaises(IntegrityError):
             self.session.commit()
+        self.session.rollback()
 
     def test_contest_training_program_relationship(self):
         """Test bidirectional relationship between contest and training program."""

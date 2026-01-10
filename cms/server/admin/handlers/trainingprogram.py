@@ -107,26 +107,33 @@ class TrainingProgramHandler(BaseHandler):
             # Sync description to managing contest
             training_program.managing_contest.description = attrs["description"]
 
-            from datetime import datetime as dt
-
             # Parse and update start/stop times on managing contest
             start_str = self.get_argument("start", "")
             stop_str = self.get_argument("stop", "")
 
             if start_str:
-                training_program.managing_contest.start = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+                training_program.managing_contest.start = dt.strptime(
+                    start_str, "%Y-%m-%dT%H:%M"
+                )
 
             if stop_str:
-                training_program.managing_contest.stop = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
+                training_program.managing_contest.stop = dt.strptime(
+                    stop_str, "%Y-%m-%dT%H:%M"
+                )
 
             # Validate that stop is not before start (only if both are set)
-            if (training_program.managing_contest.start is not None and
-                    training_program.managing_contest.stop is not None and
-                    training_program.managing_contest.stop < training_program.managing_contest.start):
+            if (
+                training_program.managing_contest.start is not None
+                and training_program.managing_contest.stop is not None
+                and training_program.managing_contest.stop
+                < training_program.managing_contest.start
+            ):
                 raise ValueError("End time must be after start time")
 
         except Exception as error:
-            self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error)
+            )
             self.redirect(fallback)
             return
 
@@ -134,7 +141,9 @@ class TrainingProgramHandler(BaseHandler):
         self.redirect(fallback)
 
 
-class AddTrainingProgramHandler(SimpleHandler("add_training_program.html", permission_all=True)):
+class AddTrainingProgramHandler(
+    SimpleHandler("add_training_program.html", permission_all=True)
+):
     """Add a new training program."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -155,8 +164,6 @@ class AddTrainingProgramHandler(SimpleHandler("add_training_program.html", permi
             description = self.get_argument("description", "")
             if not description or not description.strip():
                 description = name
-
-            from datetime import datetime as dt
 
             # Parse optional start and stop times from datetime-local inputs
             start_str = self.get_argument("start", "")
@@ -265,7 +272,6 @@ class RemoveTrainingProgramHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str):
-        from sqlalchemy import func
 
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
@@ -652,7 +658,7 @@ class StudentHandler(BaseHandler):
                 participation.team = None
 
             tags_str = self.get_argument("student_tags", "")
-            tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+            tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
             student.student_tags = deduplicate_preserving_order(tags)
 
         except Exception as error:
@@ -672,6 +678,9 @@ class StudentTagsHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str, user_id: str):
+        # Set JSON content type for all responses
+        self.set_header("Content-Type", "application/json")
+
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
 
@@ -985,7 +994,7 @@ class TrainingProgramRankingHandler(BaseHandler):
             p.task_statuses = []
             total_score = 0.0
             partial = False
-            for task in self.contest.tasks:
+            for task in self.contest.get_tasks():
                 t_score, t_partial = task_score(p, task, rounded=True)
                 has_submissions = any(s.task_id == task.id and s.official
                                      for s in p.submissions)
@@ -996,10 +1005,14 @@ class TrainingProgramRankingHandler(BaseHandler):
                         partial=t_partial,
                         has_submissions=has_submissions,
                         has_opened=has_opened,
+                        can_access=True,
                     )
                 )
                 total_score += t_score
                 partial = partial or t_partial
+
+            # Ensure task_statuses align with template header order
+            assert len(self.contest.get_tasks()) == len(p.task_statuses)
             total_score = round(total_score, self.contest.score_precision)
             p.total_score = (total_score, partial)
 
@@ -1346,8 +1359,6 @@ class AddTrainingDayHandler(BaseHandler):
             description = self.get_argument("description", "")
             if not description or not description.strip():
                 description = name
-
-            from datetime import datetime as dt
 
             # Parse optional start and stop times from datetime-local inputs
             # Format from HTML5 datetime-local: YYYY-MM-DDTHH:MM

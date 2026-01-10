@@ -93,6 +93,14 @@ function addGroupRow() {
 
     var alphaCell = document.createElement('td');
     alphaCell.style.textAlign = 'center';
+
+    // Add hidden input for stable group ID
+    var groupIdInput = document.createElement('input');
+    groupIdInput.type = 'hidden';
+    groupIdInput.name = 'group_id[]';
+    groupIdInput.value = groupRowIndex;
+    alphaCell.appendChild(groupIdInput);
+
     var alphaInput = document.createElement('input');
     alphaInput.type = 'checkbox';
     alphaInput.name = 'group_alphabetical[]';

@@ -61,9 +61,9 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
         <td>{{ u.last_name }}</td>
         <td>
           {% if student.student_tags %}
-          <input type="text" class="student-tags-display" value="{{ student.student_tags|join(", ") }}" readonly style="border: none; background: transparent; width: 100%;"/>
+          <input type="text" class="student-tags-display" value="{{ student.student_tags|join(", ") }}" readonly/>
           {% else %}
-          <span style="color: #999; font-style: italic;">No tags</span>
+          <span class="no-tags-indicator">No tags</span>
           {% endif %}
         </td>
       </tr>

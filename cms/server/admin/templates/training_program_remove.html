@@ -32,12 +32,12 @@
       {% endfor %}
     </select>
   </label>
-  
+
   <label style="display: block; margin-bottom: 10px;">
     <input type="radio" name="action" value="detach">
     Remove tasks from training program but keep them in the system (tasks will not belong to any contest)
   </label>
-  
+
   <label style="display: block; margin-bottom: 10px; color: red; font-weight: bold;">
     <input type="radio" name="action" value="delete_all">
     Delete all tasks from the system
@@ -46,7 +46,7 @@
 {% endif %}
 
 <br>
-<a onclick="doRemove();" class="button-link">Yes, remove</a>
+<a onclick="cmsDoRemove();" class="button-link">Yes, remove</a>
 <a href="{{ url("training_program", training_program.id) }}" class="button-link">No, cancel</a>
 
 <script>

@@ -78,7 +78,7 @@ function removeMainGroup(url, xsrfToken) {
           <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }}/>
         </td>
         <td>
-          <button type="button" class="btn btn-danger btn-small" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}', '{{ xsrf_token }}');"{% if not admin.permission_all %} disabled{% endif %}>Remove</button>
+          <button type="button" class="btn btn-danger btn-small" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}', '{{ handler.xsrf_token }}');"{% if not admin.permission_all %} disabled{% endif %}>Remove</button>
         </td>
       </tr>
       {% endfor %}

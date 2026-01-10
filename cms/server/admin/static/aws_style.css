@@ -223,7 +223,7 @@ ul.normal_list {
     padding-top: 6px;
     border-top: 1px solid rgba(148, 163, 184, 0.08);
 }
-    
+
 .sidebar-section:first-child {
     border-top: none;
     padding-top: 0;
@@ -254,7 +254,7 @@ ul.normal_list {
 .sidebar-section-title a:hover {
     color: var(--sidebar-text-bright);
 }
-    
+
 .sidebar-section-title:hover,
 .sidebar-section-title:focus {
     border-color: var(--sidebar-hover-border);
@@ -491,7 +491,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     line-height: 1.35;
     color: #dce3ec;
 }
-    
+
 .menu {
     list-style: none;
     margin: 0;
@@ -1137,4 +1137,16 @@ th.diff-only, td.diff-only {
 }
 table.diff-open th.diff-only, table.diff-open td.diff-only {
     display: table-cell;
+}
+
+/* Student tags display styling */
+.student-tags-display {
+    border: none;
+    background: transparent;
+    width: 100%;
+}
+
+.no-tags-indicator {
+    color: #999;
+    font-style: italic;
 }

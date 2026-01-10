@@ -55,7 +55,7 @@
             <div class="btn-group training-day-delay-group{% if td_info.participation.delay_requests|length == 0 %} single{% endif %}" role="group" aria-label="{% trans %}Delay request actions{% endtrans %}">
                 <button type="button" class="btn btn-warning training-day-btn training-day-delay-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}" aria-label="{% trans %}Request a delay for this training day{% endtrans %}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
                 {% if td_info.participation.delay_requests|length > 0 %}
-                <button type="button" class="btn btn-info training-day-btn training-day-requests-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans %}View {{ td_info.participation.delay_requests|length }} delay request(s){% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
+                  <button type="button" class="btn btn-info training-day-btn training-day-requests-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans count=td_info.participation.delay_requests|length %}View {{ count }} delay request(s){% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
                 {% endif %}
             </div>
             {% endif %}

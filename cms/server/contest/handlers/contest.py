@@ -318,13 +318,18 @@ class ContestHandler(BaseHandler):
             ret["effective_stop"] = contest_stop
 
             res = compute_actual_phase(
-                self.timestamp, self.contest.start, self.contest.stop,
-                self.contest.analysis_start if self.contest.analysis_enabled
-                else None,
-                self.contest.analysis_stop if self.contest.analysis_enabled
-                else None,
-                self.contest.per_user_time, participation.starting_time,
-                participation.delay_time, participation.extra_time)
+                self.timestamp,
+                self.contest.start,
+                self.contest.stop,
+                self.contest.analysis_start if self.contest.analysis_enabled else None,
+                self.contest.analysis_stop if self.contest.analysis_enabled else None,
+                self.contest.per_user_time,
+                participation.starting_time,
+                participation.delay_time,
+                participation.extra_time,
+                main_group_start,
+                main_group_end,
+            )
 
             ret["actual_phase"], ret["current_phase_begin"], \
                 ret["current_phase_end"], ret["valid_phase_begin"], \
