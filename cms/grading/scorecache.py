@@ -732,7 +732,33 @@ def _get_sorted_official_submissions(
     participation: Participation,
     task: Task,
 ) -> list[Submission]:
-    """Get official submissions for a task, sorted by timestamp."""
+    """Get official submissions for a task, sorted by timestamp.
+
+    For training day participations, submissions are stored with the managing
+    contest's participation, so we need to query from there and filter by
+    training_day_id.
+    """
+    training_day = participation.contest.training_day
+    if training_day is not None:
+        # This is a training day participation - submissions are stored with
+        # the managing contest's participation
+        managing_contest = training_day.training_program.managing_contest
+        managing_participation = session.query(Participation).filter(
+            Participation.contest_id == managing_contest.id,
+            Participation.user_id == participation.user_id,
+        ).first()
+
+        if managing_participation is None:
+            return []
+
+        return session.query(Submission).filter(
+            Submission.participation_id == managing_participation.id,
+            Submission.task_id == task.id,
+            Submission.training_day_id == training_day.id,
+            Submission.official.is_(True)
+        ).order_by(Submission.timestamp.asc()).all()
+
+    # Regular contest - query submissions directly
     return session.query(Submission).filter(
         Submission.participation_id == participation.id,
         Submission.task_id == task.id,
