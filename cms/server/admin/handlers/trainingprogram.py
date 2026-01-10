@@ -1124,6 +1124,9 @@ class TrainingProgramSubmissionsHandler(BaseHandler):
         page = int(self.get_query_argument("page", "0"))
         self.render_params_for_submissions(query, page)
 
+        # Show training day column for training program submissions
+        self.r_params["is_training_program"] = True
+
         self.render("contest_submissions.html", **self.r_params)
 
 
