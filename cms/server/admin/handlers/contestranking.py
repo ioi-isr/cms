@@ -40,13 +40,14 @@ from cms.db import Contest, Participation, ScoreHistory, \
     Submission, SubmissionResult, Task
 
 from cms.grading.scorecache import get_cached_score_entry, ensure_valid_history
+from cms.server.util import can_access_task
 from .base import BaseHandler, require_permission
 
 logger = logging.getLogger(__name__)
 
 
 TaskStatus = namedtuple(
-    "TaskStatus", ["score", "partial", "has_submissions", "has_opened"]
+    "TaskStatus", ["score", "partial", "has_submissions", "has_opened", "can_access"]
 )
 
 
@@ -123,6 +124,15 @@ class RankingHandler(BaseHandler):
             for sv in p.statement_views:
                 statement_views_set.add((sv.participation_id, sv.task_id))
 
+        # Build lookup for task accessibility based on visibility tags.
+        training_day = self.contest.training_day
+        can_access_by_pt = {}  # (participation_id, task_id) -> bool
+        for p in self.contest.participations:
+            for task in self.contest.get_tasks():
+                can_access_by_pt[(p.id, task.id)] = can_access_task(
+                    self.sql_session, task, p, training_day
+                )
+
         # Preprocess participations: get data about teams, scores
         # Use the score cache to get score and has_submissions.
         # partial is computed via SQL aggregation above for correctness.
@@ -140,7 +150,7 @@ class RankingHandler(BaseHandler):
             task_statuses = []
             total_score = 0.0
             partial = False
-            for task in self.contest.tasks:
+            for task in self.contest.get_tasks():
                 # Get the cache entry with score and has_submissions
                 cache_entry = get_cached_score_entry(self.sql_session, p, task)
                 t_score = round(cache_entry.score, task.score_precision)
@@ -149,12 +159,14 @@ class RankingHandler(BaseHandler):
                 t_partial = partial_by_pt.get((p.id, task.id), False)
 
                 has_opened = (p.id, task.id) in statement_views_set
+                can_access = can_access_by_pt.get((p.id, task.id), True)
                 task_statuses.append(
                     TaskStatus(
                         score=t_score,
                         partial=t_partial,
                         has_submissions=has_submissions,
                         has_opened=has_opened,
+                        can_access=can_access,
                     )
                 )
                 total_score += t_score
@@ -199,7 +211,7 @@ class RankingHandler(BaseHandler):
             row = ["Username", "User"]
             if show_teams:
                 row.append("Team")
-            for task in contest.tasks:
+            for task in contest.get_tasks():
                 row.append(task.name)
                 if include_partial:
                     row.append("P")
@@ -219,7 +231,7 @@ class RankingHandler(BaseHandler):
                        "%s %s" % (p.user.first_name, p.user.last_name)]
                 if show_teams:
                     row.append(p.team.name if p.team else "")
-                assert len(contest.tasks) == len(p.task_statuses)
+                assert len(contest.get_tasks()) == len(p.task_statuses)
                 for status in p.task_statuses:
                     row.append(status.score)
                     if include_partial:
@@ -239,6 +251,8 @@ class RankingHandler(BaseHandler):
     @staticmethod
     def _status_indicator(status: TaskStatus) -> str:
         star = "*" if status.partial else ""
+        if not status.can_access:
+            return "N/A"
         if not status.has_submissions:
             return "X" if not status.has_opened else "-"
         if not status.has_opened:

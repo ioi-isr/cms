@@ -41,7 +41,7 @@ from . import Codename, Base, Admin
 from .contest_folder import ContestFolder
 import typing
 if typing.TYPE_CHECKING:
-    from . import Task, Participation, TrainingProgram
+    from . import Task, Participation, TrainingProgram, TrainingDay
 
 
 class Contest(Base):
@@ -130,6 +130,12 @@ class Contest(Base):
         Boolean,
         nullable=False,
         default=False)
+
+    # Whether contestants can submit delay requests.
+    allow_delay_requests: bool = Column(
+        Boolean,
+        nullable=False,
+        default=True)
 
     # Whether to enforce that the IP address of the request matches
     # the IP address or subnet specified for the participation (if
@@ -317,6 +323,42 @@ class Contest(Base):
         back_populates="managing_contest",
         uselist=False,
     )
+
+    # Optional training day that this contest represents.
+    # If set, this contest is a training day within a training program.
+    training_day: "TrainingDay | None" = relationship(
+        "TrainingDay",
+        back_populates="contest",
+        uselist=False,
+    )
+
+    def get_tasks(self) -> list["Task"]:
+        """Return the tasks for this contest.
+
+        If this contest is a training day, return the training day's tasks.
+        Otherwise, return the contest's own tasks.
+
+        This allows training days to have their own task list separate from
+        the contest's task list, while still allowing contestants to see
+        the tasks when they enter the training day's contest.
+        """
+        if self.training_day is not None:
+            return self.training_day.tasks
+        return self.tasks
+
+    def task_belongs_here(self, task: "Task") -> bool:
+        """Check if a task belongs to this contest.
+
+        For regular contests, the task must have contest_id == self.id.
+        For training day contests, the task must have training_day_id == self.training_day.id.
+
+        This is used to validate that a task is accessible from this contest,
+        which is important for training days where tasks have contest_id pointing
+        to the managing contest but are served through the training day's contest.
+        """
+        if self.training_day is not None:
+            return task.training_day_id == self.training_day.id
+        return task.contest_id == self.id
 
     def phase(self, timestamp: datetime) -> int:
         """Return: -1 if contest isn't started yet at time timestamp,
