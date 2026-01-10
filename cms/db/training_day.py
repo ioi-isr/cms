@@ -23,14 +23,41 @@ It wraps a Contest and includes its position within the training program.
 
 import typing
 
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
 from sqlalchemy.types import Integer
 
 from . import Base
 
 if typing.TYPE_CHECKING:
-    from . import Contest, TrainingProgram, Task, TrainingDayGroup, Submission
+    from . import Contest, TrainingProgram, Task, TrainingDayGroup, Submission, Participation, User
+
+
+def get_managing_participation(
+    session: Session,
+    training_day: "TrainingDay",
+    user: "User",
+) -> "Participation | None":
+    """Get the managing contest participation for a user in a training day.
+
+    Training day submissions are stored with the managing contest's participation,
+    not the training day's participation. This helper finds the managing contest
+    participation for a given user.
+
+    session: the database session.
+    training_day: the training day.
+    user: the user to look up.
+
+    return: the Participation in the managing contest, or None if not found.
+    """
+    from . import Participation
+    managing_contest = training_day.training_program.managing_contest
+    return (
+        session.query(Participation)
+        .filter(Participation.contest_id == managing_contest.id)
+        .filter(Participation.user_id == user.id)
+        .first()
+    )
 
 
 class TrainingDay(Base):

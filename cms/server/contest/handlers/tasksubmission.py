@@ -36,6 +36,7 @@ import collections
 
 from cms.db.task import Task
 from cms.db.user import Participation
+from cms.db.training_day import get_managing_participation
 
 try:
     collections.MutableMapping
@@ -67,23 +68,6 @@ logger = logging.getLogger(__name__)
 # Dummy function to mark translatable strings.
 def N_(msgid):
     return msgid
-
-
-def _get_managing_participation(sql_session, training_day, user):
-    """Get the managing contest participation for a user in a training day.
-
-    training_day: the training day.
-    user: the user to look up.
-
-    return: the Participation in the managing contest, or None if not found.
-    """
-    managing_contest = training_day.training_program.managing_contest
-    return (
-        sql_session.query(Participation)
-        .filter(Participation.contest == managing_contest)
-        .filter(Participation.user == user)
-        .first()
-    )
 
 
 class SubmitHandler(ContestHandler):
@@ -126,7 +110,7 @@ class SubmitHandler(ContestHandler):
         submission_participation = participation
         if training_day is not None:
             # This is a training day submission - use managing contest participation
-            managing_participation = _get_managing_participation(
+            managing_participation = get_managing_participation(
                 self.sql_session, training_day, participation.user
             )
             if managing_participation is None:
@@ -198,11 +182,13 @@ class TaskSubmissionsHandler(ContestHandler):
         managing_participation = None
         if training_day is not None:
             # Get the managing contest participation for this user
-            managing_participation = _get_managing_participation(
+            managing_participation = get_managing_participation(
                 self.sql_session, training_day, participation.user
             )
             if managing_participation is None:
-                submissions = []
+                # User doesn't have a participation in the managing contest -
+                # reject early to be consistent with SubmitHandler.post()
+                raise tornado.web.HTTPError(403)
             else:
                 # Only show submissions made via this training day
                 submissions: list[Submission] = (
