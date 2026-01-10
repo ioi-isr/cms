@@ -263,9 +263,12 @@ class ContestFolderBrowseHandler(BaseHandler):
             .filter(not_(ContestFolder.hidden))
             .all()
         )
-        all_contests = exclude_internal_contests(
-            self.sql_session.query(Contest)
-        ).filter(Contest.training_day is None).order_by(Contest.name).all()
+        all_contests = (
+            exclude_internal_contests(self.sql_session.query(Contest))
+            .filter(~Contest.training_day.has())
+            .order_by(Contest.name)
+            .all()
+        )
 
         folder_map = {}
         for folder in all_folders:
@@ -334,10 +337,13 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = exclude_internal_contests(
-                self.sql_session.query(Contest)
-                .filter(Contest.folder_id.is_(None))
-            ).filter(Contest.training_day is None).all()
+            contests = (
+                exclude_internal_contests(
+                    self.sql_session.query(Contest).filter(Contest.folder_id.is_(None))
+                )
+                .filter(~Contest.training_day.has())
+                .all()
+            )
         else:
             subfolders = (
                 self.sql_session.query(ContestFolder)
@@ -346,10 +352,13 @@ class ContestFolderBrowseHandler(BaseHandler):
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = exclude_internal_contests(
-                self.sql_session.query(Contest)
-                .filter(Contest.folder == cur_folder)
-            ).filter(Contest.training_day is None).all()
+            contests = (
+                exclude_internal_contests(
+                    self.sql_session.query(Contest).filter(Contest.folder == cur_folder)
+                )
+                .filter(~Contest.training_day.has())
+                .all()
+            )
 
         # Query training programs (only at root level, not in folders)
         if cur_folder is None:

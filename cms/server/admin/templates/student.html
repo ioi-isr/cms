@@ -31,10 +31,10 @@ CMS.AWSUtils.initTagify({
     Reevaluate all {{ submission_count }} submissions for this student in this training program (for all datasets)
     {{ macro_reevaluation_buttons.reevaluation_buttons(
            admin.permission_all,
-           url("training_program", training_program.id, "student", participation.user_id, "edit"),
+           url("training_program", training_program.id, "student", selected_user.id, "edit"),
            participation_id=participation.id) }}
     <br/>
-    <a href="{{ url("contest", training_program.managing_contest.id, "user", participation.user_id, "submissions", "download") }}">Download all submissions</a>
+    <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "submissions", "download") }}">Download all submissions</a>
   </p>
 
   {{ macro_submission.rows(

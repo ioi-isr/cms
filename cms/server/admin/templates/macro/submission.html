@@ -2,7 +2,7 @@
 {% import 'macro/pages.html' as macro_pages %}
 
 
-{% macro rows(admin, url, page_url, submissions, page, pages, dataset=none) -%}
+{% macro rows(admin, url, page_url, submissions, page, pages, dataset=none, show_training_day=false) -%}
 {#
 Render a table of submission data.
 
@@ -15,6 +15,8 @@ page (int): 0-based number of the current page.
 pages (int): total number of pages.
 dataset (Dataset|None): the dataset to show results for, or if not defined use
     the active one.
+show_training_day (bool): if true, show a column indicating which training day
+    the submission was made via (for training program submissions view).
 #}
 {% if pages == 0 %}
 <p>No submissions found.</p>
@@ -39,6 +41,9 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
       <th>Time</th>
       <th>User</th>
       <th>Task</th>
+      {% if show_training_day %}
+      <th>Source</th>
+      {% endif %}
       <th>Status</th>
       <th>Latency</th>
       <th>Files</th>
@@ -50,7 +55,7 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
   </thead>
   <tbody>
     {% for s in submissions|sort(attribute="timestamp")|reverse %}
-      {{ row(admin, url, s, dataset) }}
+      {{ row(admin, url, s, dataset, show_training_day) }}
     {% endfor %}
   </tbody>
 </table>
@@ -58,7 +63,7 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
 {%- endmacro %}
 
 
-{% macro row(admin, url, s, dataset=None) -%}
+{% macro row(admin, url, s, dataset=None, show_training_day=false) -%}
 {#
 Render a table's row containing a submission data.
 
@@ -67,6 +72,8 @@ url (Url): the URL instance referring to the root of AWS.
 s (Submission): the submission to render.
 dataset (Dataset|None): the dataset to show results for, or if not defined use
     the active one.
+show_training_day (bool): if true, show a column indicating which training day
+    the submission was made via (for training program submissions view).
 #}
 
 {% if dataset is none %}
@@ -87,6 +94,19 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
   <td><a href="{{ url("submission", s.id) }}">{{ s.timestamp }}</a></td>
   <td><a href="{{ url("contest", s.participation.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a></td>
   <td><a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a></td>
+  {% if show_training_day %}
+  <td>
+    {% if s.training_day is not none %}
+      {% if s.training_day.contest is not none %}
+      <a href="{{ url("contest", s.training_day.contest.id) }}">{{ s.training_day.contest.description }}</a>
+      {% else %}
+      [Deleted Training Day]
+      {% endif %}
+    {% else %}
+    Task Archive
+    {% endif %}
+  </td>
+  {% endif %}
   <td>
     {% if status == SubmissionResult.COMPILING %}
     Compiling...

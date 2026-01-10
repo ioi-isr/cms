@@ -39,7 +39,7 @@ from sqlalchemy.types import Integer, Float, String, Unicode, DateTime, Enum, \
 
 from cmscommon.datetime import make_datetime
 from . import Filename, FilenameSchema, Digest, Base, Participation, Task, \
-    Dataset, Testcase
+    Dataset, Testcase, TrainingDay
 
 
 class Submission(Base):
@@ -83,6 +83,21 @@ class Submission(Base):
         index=True)
     task: Task = relationship(
         Task,
+        back_populates="submissions")
+
+    # Training day (id and object) that this submission was submitted via.
+    # If None, the submission was made directly to the task archive or
+    # via a regular contest (not a training day).
+    # When set, the submission was made via a training day's contest interface,
+    # but the participation points to the managing contest's participation.
+    training_day_id: int | None = Column(
+        Integer,
+        ForeignKey(TrainingDay.id,
+                   onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        index=True)
+    training_day: TrainingDay | None = relationship(
+        TrainingDay,
         back_populates="submissions")
 
     # Time of the submission.
