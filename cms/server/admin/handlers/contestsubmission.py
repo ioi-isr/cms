@@ -55,8 +55,10 @@ class ContestSubmissionsHandler(BaseHandler):
         page = int(self.get_query_argument("page", 0))
         self.render_params_for_submissions(query, page)
 
-        # Pass flag to template to show training day column for training programs
+        # Pass flag and training_program to template for training programs
         self.r_params["is_training_program"] = is_training_program
+        if is_training_program:
+            self.r_params["training_program"] = contest.training_program
 
         self.render("contest_submissions.html", **self.r_params)
 
