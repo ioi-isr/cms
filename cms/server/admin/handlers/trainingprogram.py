@@ -1375,14 +1375,7 @@ class AddTrainingDayHandler(BaseHandler):
                 contest_kwargs["start"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
             else:
                 # Default to after training program end year (so contestants can't start until configured)
-                # Handle case where stop is None by falling back to start or current year
-                managing_contest = training_program.managing_contest
-                if managing_contest.stop is not None:
-                    program_end_year = managing_contest.stop.year
-                elif managing_contest.start is not None:
-                    program_end_year = managing_contest.start.year
-                else:
-                    program_end_year = dt.now().year
+                program_end_year = training_program.managing_contest.stop.year
                 default_date = dt(program_end_year + 1, 1, 1, 0, 0)
                 contest_kwargs["start"] = default_date
                 # Also set analysis_start/stop to satisfy Contest check constraints
@@ -1394,14 +1387,7 @@ class AddTrainingDayHandler(BaseHandler):
                 contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
             else:
                 # Default stop to same as start when not specified
-                # Handle case where stop is None by falling back to start or current year
-                managing_contest = training_program.managing_contest
-                if managing_contest.stop is not None:
-                    program_end_year = managing_contest.stop.year
-                elif managing_contest.start is not None:
-                    program_end_year = managing_contest.start.year
-                else:
-                    program_end_year = dt.now().year
+                program_end_year = training_program.managing_contest.stop.year
                 contest_kwargs["stop"] = dt(program_end_year + 1, 1, 1, 0, 0)
 
             # Parse main group configuration (if any)
