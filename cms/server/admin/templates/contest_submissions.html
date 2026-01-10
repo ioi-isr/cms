@@ -15,7 +15,11 @@
            url("contest", contest.id, "submissions"),
            contest_id=contest.id) }}
     <br/>
+    {% if is_training_program|default(false) %}
+    <a href="{{ url("training_program", training_program.id, "submissions", "download") }}">Download all submissions</a>
+    {% else %}
     <a href="{{ url("contest", contest.id, "submissions", "download") }}">Download all submissions</a>
+    {% endif %}
   </p>
 
   {{ macro_submission.rows(
@@ -25,7 +29,8 @@
          submissions,
          submission_page,
          submission_pages,
-         timezone=timezone) }}
+         timezone=timezone,
+         show_training_day=is_training_program|default(false)) }}
 </div>
 
 {% endblock core %}
