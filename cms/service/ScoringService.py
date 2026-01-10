@@ -28,7 +28,8 @@
 import logging
 
 from cms import ServiceCoord, config
-from cms.db import SessionGen, Submission, Dataset, get_submission_results
+from cms.db import SessionGen, Submission, Dataset, Participation, \
+    get_submission_results
 from cms.grading.scorecache import update_score_cache, invalidate_score_cache
 from cms.io import Executor, TriggeredService, rpc_method
 from cms.io.priorityqueue import QueueEntry
@@ -108,6 +109,23 @@ class ScoringExecutor(Executor[ScoringOperation]):
             # Update score cache for AWS ranking.
             if dataset is submission.task.active_dataset:
                 update_score_cache(session, submission)
+
+                # For training day submissions, also invalidate the training day
+                # participation's cache so it gets rebuilt with only training day
+                # submissions. This ensures training day rankings reflect only
+                # submissions made via that specific training day.
+                if submission.training_day_id is not None:
+                    training_day = submission.training_day
+                    training_day_participation = session.query(Participation).filter(
+                        Participation.contest == training_day.contest,
+                        Participation.user == submission.participation.user,
+                    ).first()
+                    if training_day_participation is not None:
+                        invalidate_score_cache(
+                            session,
+                            participation_id=training_day_participation.id,
+                            task_id=submission.task_id,
+                        )
 
             # Store it.
             session.commit()
@@ -232,6 +250,19 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
                         sr.submission.timestamp))
                     affected_pairs.add(
                         (sr.submission.participation_id, sr.submission.task_id))
+
+                    # For training day submissions, also add the training day
+                    # participation to the affected pairs so its cache gets
+                    # invalidated too.
+                    if sr.submission.training_day_id is not None:
+                        training_day = sr.submission.training_day
+                        training_day_participation = session.query(Participation).filter(
+                            Participation.contest == training_day.contest,
+                            Participation.user == sr.submission.participation.user,
+                        ).first()
+                        if training_day_participation is not None:
+                            affected_pairs.add(
+                                (training_day_participation.id, sr.submission.task_id))
 
             for p_id, t_id in affected_pairs:
                 invalidate_score_cache(

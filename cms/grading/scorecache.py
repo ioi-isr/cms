@@ -222,10 +222,6 @@ def update_score_cache(
     pair of the given submission using O(1) incremental updates instead
     of recomputing from all submissions.
 
-    For training day submissions (where training_day_id is set), this also
-    updates the training day participation's cache so that training day
-    rankings reflect only submissions made via that training day.
-
     IMPORTANT - Locking and Transaction Behavior:
     This function acquires a PostgreSQL advisory lock (pg_advisory_xact_lock)
     for the (participation_id, task_id) pair. The lock is transaction-scoped
@@ -289,13 +285,6 @@ def update_score_cache(
         _add_history_entry(
             session, participation, task, submission,
             cache_entry.score
-        )
-
-    # For training day submissions, also update the training day participation's cache
-    # This ensures training day rankings reflect only submissions made via that training day
-    if submission.training_day_id is not None:
-        _update_training_day_participation_cache(
-            session, submission, submission_result, task
         )
 
 
@@ -862,133 +851,3 @@ def _rebuild_history(
         if new_score != current_score:
             _add_history_entry(session, participation, task, s, new_score)
             current_score = new_score
-
-
-def _update_training_day_participation_cache(
-    session: Session,
-    submission: Submission,
-    submission_result: "SubmissionResult",
-    task: Task,
-) -> None:
-    """Update the training day participation's cache for a training day submission.
-
-    For submissions made via a training day, we need to update the cache for
-    the training day contest's participation (in addition to the managing
-    contest participation which is updated by the main update_score_cache).
-
-    This ensures that training day rankings only reflect submissions made
-    via that specific training day.
-
-    session: the database session.
-    submission: the submission that was just scored (must have training_day_id set).
-    submission_result: the scored submission result.
-    task: the task the submission is for.
-
-    """
-    from cms.db import SubmissionResult
-
-    training_day = submission.training_day
-    if training_day is None:
-        return
-
-    # Find the user's participation in the training day's contest
-    training_day_contest = training_day.contest
-    user = submission.participation.user
-
-    training_day_participation = session.query(Participation).filter(
-        Participation.contest == training_day_contest,
-        Participation.user == user,
-    ).first()
-
-    if training_day_participation is None:
-        return
-
-    # Acquire advisory lock for the training day participation
-    _acquire_cache_lock(session, training_day_participation.id, task.id)
-
-    cache_entry = _get_or_create_cache_entry(
-        session, training_day_participation, task
-    )
-    old_score = cache_entry.score
-
-    # For training day cache, we need to compute the score based only on
-    # submissions made via this training day. We can't use incremental update
-    # directly because the cache tracks all submissions, but we need to filter.
-    # Instead, we rebuild from training day submissions only.
-    _update_training_day_cache_entry_from_submissions(
-        session, cache_entry, training_day_participation, task, training_day
-    )
-
-    cache_entry.last_update = _utc_now()
-
-    # For training day caches, we don't maintain history as it's less critical
-    # and would require filtering submissions by training_day_id
-
-
-def _update_training_day_cache_entry_from_submissions(
-    session: Session,
-    cache_entry: ParticipationTaskScore,
-    participation: Participation,
-    task: Task,
-    training_day: "TrainingDay",
-) -> None:
-    """Update a training day cache entry by recomputing from training day submissions.
-
-    This is similar to _update_cache_entry_from_submissions but filters
-    submissions to only those made via the specified training day.
-
-    """
-    from cms.db import TrainingDay
-
-    dataset = task.active_dataset
-    if dataset is None:
-        cache_entry.score = 0.0
-        cache_entry.has_submissions = False
-        cache_entry.last_submission_timestamp = None
-        cache_entry.subtask_max_scores = {}
-        cache_entry.max_tokened_score = 0.0
-        cache_entry.history_valid = True
-        cache_entry.created_at = _utc_now()
-        return
-
-    # Get all official submissions for this task made via this training day
-    # The submission's participation is the managing contest participation,
-    # but we filter by training_day_id
-    submissions = (
-        session.query(Submission)
-        .filter(Submission.task == task)
-        .filter(Submission.official.is_(True))
-        .filter(Submission.training_day_id == training_day.id)
-        .filter(Submission.participation.has(
-            Participation.user_id == participation.user_id
-        ))
-        .order_by(Submission.timestamp)
-        .all()
-    )
-
-    accumulator = ScoreAccumulator()
-
-    for s in submissions:
-        sr = s.get_result(dataset)
-        if sr is None or not sr.scored():
-            continue
-
-        score = sr.score
-        if score is None:
-            continue
-
-        accumulator.process_submission(
-            score=score,
-            score_details=sr.score_details,
-            timestamp=s.timestamp,
-            tokened=s.tokened(),
-            score_mode=task.score_mode,
-        )
-
-    cache_entry.score = accumulator.compute_final_score(task)
-    cache_entry.has_submissions = accumulator.has_submissions
-    cache_entry.last_submission_timestamp = accumulator.last_submission_timestamp
-    cache_entry.subtask_max_scores = accumulator.subtask_max_scores
-    cache_entry.max_tokened_score = accumulator.max_tokened_score
-    cache_entry.history_valid = True
-    cache_entry.created_at = _utc_now()
