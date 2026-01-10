@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% macro task_html(status) -%}
-    {%- if not status.has_submissions -%}
+    {%- if not status.can_access -%}
+        <span class="indicator">🚫</span><span class="score-only">{{ status.score }}{% if status.partial %}*{% endif %}</span>
+    {%- elif not status.has_submissions -%}
         {%- if not status.has_opened -%}
             <span class="indicator">🙈</span><span class="score-only">{{ status.score }}{% if status.partial %}*{% endif %}</span>
         {%- else -%}
@@ -32,7 +34,7 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
       {% if show_teams %}
       <th>Team</th>
       {% endif %}
-      {% for task in contest.tasks %}
+      {% for task in contest.get_tasks() %}
       <th data-sort-settings="numeric reversed"><a href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
       {% endfor %}
       <th data-sort-settings="numeric reversed">Global</th>

@@ -21,10 +21,16 @@ Training programs organize year-long training with multiple sessions.
 Each training program has a managing contest that handles all submissions.
 """
 
+from datetime import datetime as dt
+
 import tornado.web
 
+from sqlalchemy import func
+
 from cms.db import Contest, TrainingProgram, Participation, Submission, \
-    User, Task, Question, Announcement, Student, Team
+    User, Task, Question, Announcement, Student, Team, TrainingDay, \
+    TrainingDayGroup
+from cms.server.util import get_all_student_tags, deduplicate_preserving_order
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -100,8 +106,34 @@ class TrainingProgramHandler(BaseHandler):
 
             # Sync description to managing contest
             training_program.managing_contest.description = attrs["description"]
+
+            # Parse and update start/stop times on managing contest
+            start_str = self.get_argument("start", "")
+            stop_str = self.get_argument("stop", "")
+
+            if start_str:
+                training_program.managing_contest.start = dt.strptime(
+                    start_str, "%Y-%m-%dT%H:%M"
+                )
+
+            if stop_str:
+                training_program.managing_contest.stop = dt.strptime(
+                    stop_str, "%Y-%m-%dT%H:%M"
+                )
+
+            # Validate that stop is not before start (only if both are set)
+            if (
+                training_program.managing_contest.start is not None
+                and training_program.managing_contest.stop is not None
+                and training_program.managing_contest.stop
+                < training_program.managing_contest.start
+            ):
+                raise ValueError("End time must be after start time")
+
         except Exception as error:
-            self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error)
+            )
             self.redirect(fallback)
             return
 
@@ -109,7 +141,9 @@ class TrainingProgramHandler(BaseHandler):
         self.redirect(fallback)
 
 
-class AddTrainingProgramHandler(SimpleHandler("add_training_program.html", permission_all=True)):
+class AddTrainingProgramHandler(
+    SimpleHandler("add_training_program.html", permission_all=True)
+):
     """Add a new training program."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -131,12 +165,29 @@ class AddTrainingProgramHandler(SimpleHandler("add_training_program.html", permi
             if not description or not description.strip():
                 description = name
 
-            # Create the managing contest with name prefixed by "__"
-            managing_contest_name = "__" + name
-            managing_contest = Contest(
-                name=managing_contest_name,
-                description=description,
-            )
+            # Parse optional start and stop times from datetime-local inputs
+            start_str = self.get_argument("start", "")
+            stop_str = self.get_argument("stop", "")
+
+            contest_kwargs: dict = {
+                "name": "__" + name,
+                "description": description,
+                "allow_delay_requests": False,
+            }
+
+            if start_str:
+                contest_kwargs["start"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+
+            if stop_str:
+                contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
+
+            # Validate that stop is not before start
+            if "start" in contest_kwargs and "stop" in contest_kwargs:
+                if contest_kwargs["stop"] < contest_kwargs["start"]:
+                    raise ValueError("End time must be after start time")
+
+            # Create the managing contest
+            managing_contest = Contest(**contest_kwargs)
             self.sql_session.add(managing_contest)
 
             # Create the training program
@@ -184,26 +235,110 @@ class RemoveTrainingProgramHandler(BaseHandler):
             .filter(Participation.contest == managing_contest)
             .count()
         )
+        training_day_contest_ids = [td.contest_id for td in training_program.training_days]
+        self.r_params["training_day_count"] = len(training_day_contest_ids)
+        self.r_params["training_day_participation_count"] = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .count()
+            if training_day_contest_ids else 0
+        )
         self.r_params["submission_count"] = (
             self.sql_session.query(Submission)
             .join(Participation)
             .filter(Participation.contest == managing_contest)
             .count()
         )
+        self.r_params["training_day_submission_count"] = (
+            self.sql_session.query(Submission)
+            .join(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .count()
+            if training_day_contest_ids else 0
+        )
         self.r_params["task_count"] = len(managing_contest.tasks)
+
+        # Other contests available to move tasks into (excluding training day contests)
+        self.r_params["other_contests"] = (
+            self.sql_session.query(Contest)
+            .filter(Contest.id != managing_contest.id)
+            .filter(~Contest.name.like(r'\_\_%', escape='\\'))
+            .filter(~Contest.training_day.has())
+            .order_by(Contest.name)
+            .all()
+        )
 
         self.render("training_program_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str):
+
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
 
-        # Delete the training program first (it will cascade to nothing else)
+        action = self.get_argument("action", "delete_all")
+        target_contest_id = self.get_argument("target_contest_id", None)
+
+        # Handle tasks before deleting the training program
+        tasks = (
+            self.sql_session.query(Task)
+            .filter(Task.contest == managing_contest)
+            .order_by(Task.num)
+            .all()
+        )
+
+        if action == "move":
+            if not target_contest_id:
+                raise tornado.web.HTTPError(400, "Target contest is required")
+            target_contest = self.safe_get_item(Contest, target_contest_id)
+
+            # Phase 1: clear nums on moving tasks (and detach training day links)
+            # so we can reassign without violating the unique constraint.
+            for task in tasks:
+                task.num = None
+                task.training_day = None
+                task.training_day_num = None
+            self.sql_session.flush()
+
+            # Phase 2: append after current max num in target, preserving gaps.
+            max_num = (
+                self.sql_session.query(func.max(Task.num))
+                .filter(Task.contest == target_contest)
+                .scalar()
+            )
+            base_num = (max_num or -1) + 1
+
+            for i, task in enumerate(tasks):
+                task.contest = target_contest
+                task.num = base_num + i
+            self.sql_session.flush()
+
+        elif action == "detach":
+            for task in tasks:
+                task.contest = None
+                task.num = None
+                task.training_day = None
+                task.training_day_num = None
+            self.sql_session.flush()
+
+        elif action == "delete_all":
+            for task in tasks:
+                self.sql_session.delete(task)
+            self.sql_session.flush()
+        else:
+            raise tornado.web.HTTPError(400, "Invalid action")
+
+        # Delete all training days (and their contests/participations).
+        for training_day in list(training_program.training_days):
+            td_contest = training_day.contest
+            self.sql_session.delete(training_day)
+            self.sql_session.delete(td_contest)
+
+        # Delete the training program (tasks already handled above)
         self.sql_session.delete(training_program)
 
         # Then delete the managing contest (this cascades to participations,
-        # submissions, tasks, etc.)
+        # submissions, etc. - tasks already handled above)
         self.sql_session.delete(managing_contest)
 
         self.try_commit()
@@ -299,6 +434,14 @@ class AddTrainingProgramStudentHandler(BaseHandler):
         )
         self.sql_session.add(student)
 
+        # Also add the student to all existing training days
+        for training_day in training_program.training_days:
+            td_participation = Participation(
+                contest=training_day.contest,
+                user=user
+            )
+            self.sql_session.add(td_participation)
+
         if self.try_commit():
             self.service.proxy_service.reinitialize()
 
@@ -328,10 +471,29 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
             .filter(Submission.participation == participation)
         self.render_params_for_remove_confirmation(submission_query)
 
+        # Count submissions and participations from training days
+        training_day_contest_ids = [td.contest_id for td in training_program.training_days]
+        training_day_participations = (
+        self.sql_session.query(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .filter(Participation.user == user)
+            .count()
+        )
+
+        training_day_submissions = (
+            self.sql_session.query(Submission)
+            .join(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .filter(Participation.user == user)
+            .count()
+        )
+
         self.r_params["user"] = user
         self.r_params["training_program"] = training_program
         self.r_params["contest"] = managing_contest
         self.r_params["unanswered"] = 0
+        self.r_params["training_day_submissions"] = training_day_submissions
+        self.r_params["training_day_participations"] = training_day_participations
         self.render("training_program_student_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -361,6 +523,17 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
 
         self.sql_session.delete(participation)
 
+        # Also delete participations from all training days
+        for training_day in training_program.training_days:
+            td_participation: Participation | None = (
+                self.sql_session.query(Participation)
+                .filter(Participation.contest == training_day.contest)
+                .filter(Participation.user == user)
+                .first()
+            )
+            if td_participation is not None:
+                self.sql_session.delete(td_participation)
+
         if self.try_commit():
             self.service.proxy_service.reinitialize()
 
@@ -369,33 +542,33 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
 
 class StudentHandler(BaseHandler):
     """Shows and edits details of a single student in a training program.
-    
+
     Similar to ParticipationHandler but includes student tags.
     """
-    
+
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str, user_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
         self.contest = managing_contest
-        
+
         participation: Participation | None = (
             self.sql_session.query(Participation)
             .filter(Participation.contest_id == managing_contest.id)
             .filter(Participation.user_id == user_id)
             .first()
         )
-        
+
         if participation is None:
             raise tornado.web.HTTPError(404)
-        
+
         student: Student | None = (
             self.sql_session.query(Student)
             .filter(Student.participation == participation)
             .filter(Student.training_program == training_program)
             .first()
         )
-        
+
         if student is None:
             student = Student(
                 training_program=training_program,
@@ -404,17 +577,20 @@ class StudentHandler(BaseHandler):
             )
             self.sql_session.add(student)
             self.try_commit()
-        
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.participation == participation)
+
+        submission_query = self.sql_session.query(Submission).filter(
+            Submission.participation == participation
+        )
         page = int(self.get_query_argument("page", "0"))
         self.render_params_for_submissions(submission_query, page)
-        
+
+        # Get all unique student tags from this training program for autocomplete
         self.r_params["training_program"] = training_program
         self.r_params["participation"] = participation
         self.r_params["student"] = student
         self.r_params["selected_user"] = participation.user
         self.r_params["teams"] = self.sql_session.query(Team).all()
+        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == managing_contest.id)\
@@ -422,40 +598,42 @@ class StudentHandler(BaseHandler):
             .filter(Question.ignored.is_(False))\
             .count()
         self.render("student.html", **self.r_params)
-    
+
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str, user_id: str):
-        fallback_page = self.url("training_program", training_program_id, "student", user_id, "edit")
-        
+        fallback_page = self.url(
+            "training_program", training_program_id, "student", user_id, "edit"
+        )
+
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
         self.contest = managing_contest
-        
+
         participation: Participation | None = (
             self.sql_session.query(Participation)
             .filter(Participation.contest_id == managing_contest.id)
             .filter(Participation.user_id == user_id)
             .first()
         )
-        
+
         if participation is None:
             raise tornado.web.HTTPError(404)
-        
+
         student: Student | None = (
             self.sql_session.query(Student)
             .filter(Student.participation == participation)
             .filter(Student.training_program == training_program)
             .first()
         )
-        
+
         if student is None:
             student = Student(
                 training_program=training_program,
                 participation=participation,
-                student_tags=[]
+                student_tags=[],
             )
             self.sql_session.add(student)
-        
+
         try:
             attrs = participation.get_attrs()
             self.get_password(attrs, participation.password, True)
@@ -466,7 +644,7 @@ class StudentHandler(BaseHandler):
             self.get_bool(attrs, "hidden")
             self.get_bool(attrs, "unrestricted")
             participation.set_attrs(attrs)
-            
+
             self.get_string(attrs, "team")
             team_code = attrs["team"]
             if team_code:
@@ -478,20 +656,75 @@ class StudentHandler(BaseHandler):
                 participation.team = team
             else:
                 participation.team = None
-            
+
             tags_str = self.get_argument("student_tags", "")
-            tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
-            student.student_tags = tags
-            
+            tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
+            student.student_tags = deduplicate_preserving_order(tags)
+
         except Exception as error:
             self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
+                make_datetime(), "Invalid field(s)", repr(error)
+            )
             self.redirect(fallback_page)
             return
-        
+
         if self.try_commit():
             self.service.proxy_service.reinitialize()
         self.redirect(fallback_page)
+
+
+class StudentTagsHandler(BaseHandler):
+    """Handler for updating student tags via AJAX."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, user_id: str):
+        # Set JSON content type for all responses
+        self.set_header("Content-Type", "application/json")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == managing_contest.id)
+            .filter(Participation.user_id == user_id)
+            .first()
+        )
+
+        if participation is None:
+            self.set_status(404)
+            self.write({"error": "Participation not found"})
+            return
+
+        student: Student | None = (
+            self.sql_session.query(Student)
+            .filter(Student.participation == participation)
+            .filter(Student.training_program == training_program)
+            .first()
+        )
+
+        if student is None:
+            student = Student(
+                training_program=training_program,
+                participation=participation,
+                student_tags=[]
+            )
+            self.sql_session.add(student)
+
+        try:
+            tags_str = self.get_argument("student_tags", "")
+            tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
+            student.student_tags = deduplicate_preserving_order(tags)
+
+            if self.try_commit():
+                self.write({"success": True, "tags": student.student_tags})
+            else:
+                self.set_status(500)
+                self.write({"error": "Failed to save"})
+
+        except Exception as error:
+            self.set_status(400)
+            self.write({"error": str(error)})
 
 
 class TrainingProgramTasksHandler(BaseHandler):
@@ -553,6 +786,14 @@ class TrainingProgramTasksHandler(BaseHandler):
         task_num = task.num
 
         if operation == self.REMOVE_FROM_PROGRAM:
+            # If the task is in a training day, redirect to confirmation page
+            if task.training_day is not None:
+                asking_page = self.url(
+                    "training_program", training_program_id, "task", task_id, "remove"
+                )
+                self.redirect(asking_page)
+                return
+
             task.contest = None
             task.num = None
 
@@ -649,6 +890,73 @@ class AddTrainingProgramTaskHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
+class RemoveTrainingProgramTaskHandler(BaseHandler):
+    """Confirm and remove a task from a training program.
+
+    This handler is used when a task is assigned to a training day,
+    to warn the user that the task will also be removed from the training day.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, training_program_id: str, task_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        task = self.safe_get_item(Task, task_id)
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["task"] = task
+        self.r_params["unanswered"] = 0
+
+        self.render("training_program_task_remove.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, training_program_id: str, task_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        task = self.safe_get_item(Task, task_id)
+        task_num = task.num
+
+        # Remove from training day if assigned
+        if task.training_day is not None:
+            training_day = task.training_day
+            training_day_num = task.training_day_num
+            task.training_day = None
+            task.training_day_num = None
+
+            self.sql_session.flush()
+
+            # Reorder remaining tasks in the training day
+            for t in self.sql_session.query(Task)\
+                         .filter(Task.training_day == training_day)\
+                         .filter(Task.training_day_num > training_day_num)\
+                         .order_by(Task.training_day_num)\
+                         .all():
+                t.training_day_num -= 1
+                self.sql_session.flush()
+
+        # Remove from training program
+        task.contest = None
+        task.num = None
+
+        self.sql_session.flush()
+
+        # Reorder remaining tasks in the training program
+        for t in self.sql_session.query(Task)\
+                     .filter(Task.contest == managing_contest)\
+                     .filter(Task.num > task_num)\
+                     .order_by(Task.num)\
+                     .all():
+            t.num -= 1
+            self.sql_session.flush()
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+
+        self.write("../../tasks")
+
+
 class TrainingProgramRankingHandler(BaseHandler):
     """Show ranking for a training program."""
 
@@ -686,7 +994,7 @@ class TrainingProgramRankingHandler(BaseHandler):
             p.task_statuses = []
             total_score = 0.0
             partial = False
-            for task in self.contest.tasks:
+            for task in self.contest.get_tasks():
                 t_score, t_partial = task_score(p, task, rounded=True)
                 has_submissions = any(s.task_id == task.id and s.official
                                      for s in p.submissions)
@@ -697,10 +1005,14 @@ class TrainingProgramRankingHandler(BaseHandler):
                         partial=t_partial,
                         has_submissions=has_submissions,
                         has_opened=has_opened,
+                        can_access=True,
                     )
                 )
                 total_score += t_score
                 partial = partial or t_partial
+
+            # Ensure task_statuses align with template header order
+            assert len(self.contest.get_tasks()) == len(p.task_statuses)
             total_score = round(total_score, self.contest.score_precision)
             p.total_score = (total_score, partial)
 
@@ -916,3 +1228,491 @@ class TrainingProgramQuestionsHandler(BaseHandler):
             .count()
 
         self.render("questions.html", **self.r_params)
+
+
+class TrainingProgramTrainingDaysHandler(BaseHandler):
+    """List and manage training days in a training program."""
+    REMOVE = "Remove"
+    MOVE_UP = "up by 1"
+    MOVE_DOWN = "down by 1"
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        self.render("training_program_training_days.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        fallback_page = self.url("training_program", training_program_id, "training_days")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        try:
+            training_day_id: str = self.get_argument("training_day_id")
+            operation: str = self.get_argument("operation")
+            assert operation in (
+                self.REMOVE,
+                self.MOVE_UP,
+                self.MOVE_DOWN,
+            ), "Please select a valid operation"
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            self.service.add_notification(
+                make_datetime(), "Invalid training day", "Training day does not belong to this program")
+            self.redirect(fallback_page)
+            return
+
+        if operation == self.REMOVE:
+            asking_page = self.url(
+                "training_program", training_program_id,
+                "training_day", training_day_id, "remove"
+            )
+            self.redirect(asking_page)
+            return
+
+        elif operation == self.MOVE_UP:
+            training_day2 = self.sql_session.query(TrainingDay)\
+                .filter(TrainingDay.training_program == training_program)\
+                .filter(TrainingDay.position == training_day.position - 1)\
+                .first()
+
+            if training_day2 is not None:
+                tmp_a, tmp_b = training_day.position, training_day2.position
+                training_day.position, training_day2.position = None, None
+                self.sql_session.flush()
+                training_day.position, training_day2.position = tmp_b, tmp_a
+
+        elif operation == self.MOVE_DOWN:
+            training_day2 = self.sql_session.query(TrainingDay)\
+                .filter(TrainingDay.training_program == training_program)\
+                .filter(TrainingDay.position == training_day.position + 1)\
+                .first()
+
+            if training_day2 is not None:
+                tmp_a, tmp_b = training_day.position, training_day2.position
+                training_day.position, training_day2.position = None, None
+                self.sql_session.flush()
+                training_day.position, training_day2.position = tmp_b, tmp_a
+
+        self.try_commit()
+        self.redirect(fallback_page)
+
+
+class AddTrainingDayHandler(BaseHandler):
+    """Add a new training day to a training program."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+
+        # Get all student tags for the tagify select dropdown
+        tags_query = self.sql_session.query(
+            func.unnest(Student.student_tags).label("tag")
+        ).filter(
+            Student.training_program_id == training_program.id
+        ).distinct()
+        self.r_params["all_student_tags"] = sorted([row.tag for row in tags_query.all()])
+
+        self.render("add_training_day.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        fallback_page = self.url("training_program", training_program_id, "training_days", "add")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        try:
+            name = self.get_argument("name")
+            if not name or not name.strip():
+                raise ValueError("Name is required")
+
+            description = self.get_argument("description", "")
+            if not description or not description.strip():
+                description = name
+
+            # Parse optional start and stop times from datetime-local inputs
+            # Format from HTML5 datetime-local: YYYY-MM-DDTHH:MM
+            start_str = self.get_argument("start", "")
+            stop_str = self.get_argument("stop", "")
+
+            contest_kwargs: dict = {
+                "name": name,
+                "description": description,
+            }
+
+            if start_str:
+                # Convert from datetime-local format (YYYY-MM-DDTHH:MM) to datetime
+                contest_kwargs["start"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+            else:
+                # Default to after training program end year (so contestants can't start until configured)
+                program_end_year = training_program.managing_contest.stop.year
+                default_date = dt(program_end_year + 1, 1, 1, 0, 0)
+                contest_kwargs["start"] = default_date
+                # Also set analysis_start/stop to satisfy Contest check constraints
+                # (stop <= analysis_start and analysis_start <= analysis_stop)
+                contest_kwargs["analysis_start"] = default_date
+                contest_kwargs["analysis_stop"] = default_date
+
+            if stop_str:
+                contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
+            else:
+                # Default stop to same as start when not specified
+                program_end_year = training_program.managing_contest.stop.year
+                contest_kwargs["stop"] = dt(program_end_year + 1, 1, 1, 0, 0)
+
+            # Parse main group configuration (if any)
+            group_tags = self.get_arguments("group_tag_name[]")
+            group_starts = self.get_arguments("group_start_time[]")
+            group_ends = self.get_arguments("group_end_time[]")
+            group_alphabeticals = self.get_arguments("group_alphabetical[]")
+
+            # Collect valid groups and their times for defaulting
+            groups_to_create = []
+            group_start_times = []
+            group_end_times = []
+
+            for i, tag in enumerate(group_tags):
+                tag = tag.strip()
+                if not tag:
+                    continue
+
+                group_start = None
+                group_end = None
+
+                if i < len(group_starts) and group_starts[i].strip():
+                    group_start = dt.strptime(group_starts[i].strip(), "%Y-%m-%dT%H:%M")
+                    group_start_times.append(group_start)
+
+                if i < len(group_ends) and group_ends[i].strip():
+                    group_end = dt.strptime(group_ends[i].strip(), "%Y-%m-%dT%H:%M")
+                    group_end_times.append(group_end)
+
+                # Validate group end is not before start
+                if group_start and group_end and group_end < group_start:
+                    raise ValueError(f"End time must be after start time for group '{tag}'")
+
+                alphabetical = str(i) in group_alphabeticals
+
+                groups_to_create.append({
+                    "tag_name": tag,
+                    "start_time": group_start,
+                    "end_time": group_end,
+                    "alphabetical_task_order": alphabetical,
+                })
+
+            # Default training start/end from group times if not specified
+            if not start_str and group_start_times:
+                contest_kwargs["start"] = min(group_start_times)
+            if not stop_str and group_end_times:
+                contest_kwargs["stop"] = max(group_end_times)
+
+            contest = Contest(**contest_kwargs)
+            self.sql_session.add(contest)
+            self.sql_session.flush()
+
+            position = len(training_program.training_days)
+            training_day = TrainingDay(
+                training_program=training_program,
+                contest=contest,
+                position=position,
+            )
+            self.sql_session.add(training_day)
+
+            # Create main groups
+            seen_tags = set()
+            for group_data in groups_to_create:
+                if group_data["tag_name"] in seen_tags:
+                    raise ValueError(f"Duplicate tag '{group_data['tag_name']}'")
+                seen_tags.add(group_data["tag_name"])
+
+                # Validate group times are within contest bounds
+                if group_data["start_time"] and contest_kwargs.get("start"):
+                    if group_data["start_time"] < contest_kwargs["start"]:
+                        raise ValueError(f"Group '{group_data['tag_name']}' start time cannot be before training day start")
+                if group_data["end_time"] and contest_kwargs.get("stop"):
+                    if group_data["end_time"] > contest_kwargs["stop"]:
+                        raise ValueError(f"Group '{group_data['tag_name']}' end time cannot be after training day end")
+
+                group = TrainingDayGroup(
+                    training_day=training_day,
+                    **group_data
+                )
+                self.sql_session.add(group)
+
+            # Auto-add participations for all students in the training program
+            # Training days are for all students, so we create participations
+            # in the training day's contest for each student
+            for student in training_program.students:
+                user = student.participation.user
+                participation = Participation(contest=contest, user=user)
+                self.sql_session.add(participation)
+
+        except Exception as error:
+            self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            self.redirect(self.url("training_program", training_program_id, "training_days"))
+        else:
+            self.redirect(fallback_page)
+
+
+class RemoveTrainingDayHandler(BaseHandler):
+    """Confirm and remove a training day from a training program."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, training_program_id: str, training_day_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+        managing_contest = training_program.managing_contest
+
+        if training_day.training_program_id != training_program.id:
+            raise tornado.web.HTTPError(404)
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["training_day"] = training_day
+        self.r_params["contest"] = managing_contest
+        self.r_params["unanswered"] = 0
+
+        # Stats for warning message
+        self.r_params["task_count"] = len(training_day.tasks)
+        self.r_params["participation_count"] = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == training_day.contest_id)
+            .count()
+        )
+        self.r_params["submission_count"] = (
+            self.sql_session.query(Submission)
+            .join(Participation)
+            .filter(Participation.contest_id == training_day.contest_id)
+            .count()
+        )
+
+        self.render("training_day_remove.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, training_program_id: str, training_day_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            raise tornado.web.HTTPError(404)
+
+        contest = training_day.contest
+        position = training_day.position
+
+        # Always detach tasks from the training day - they stay in the training program.
+        # The database FK has ON DELETE SET NULL, but we also clear training_day_num
+        # explicitly to remove stale ordering metadata.
+        tasks = (
+            self.sql_session.query(Task)
+            .filter(Task.training_day == training_day)
+            .order_by(Task.training_day_num)
+            .all()
+        )
+
+        for task in tasks:
+            task.training_day = None
+            task.training_day_num = None
+
+        self.sql_session.flush()
+
+        self.sql_session.delete(training_day)
+        self.sql_session.delete(contest)
+
+        self.sql_session.flush()
+
+        for td in training_program.training_days:
+            if td.position is not None and position is not None and td.position > position:
+                td.position -= 1
+
+        self.try_commit()
+        self.write("../../training_days")
+
+
+class AddTrainingDayGroupHandler(BaseHandler):
+    """Add a main group to a training day."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id: str):
+        contest = self.safe_get_item(Contest, contest_id)
+        training_day = contest.training_day
+
+        if training_day is None:
+            raise tornado.web.HTTPError(404, "Not a training day contest")
+
+        fallback_page = self.url("contest", contest_id)
+
+        try:
+            tag_name = self.get_argument("tag_name")
+            if not tag_name or not tag_name.strip():
+                raise ValueError("Tag name is required")
+
+            # Strip whitespace before duplicate check to avoid bypass
+            tag_name = tag_name.strip()
+
+            # Check if tag is already used
+            existing = self.sql_session.query(TrainingDayGroup)\
+                .filter(TrainingDayGroup.training_day == training_day)\
+                .filter(TrainingDayGroup.tag_name == tag_name)\
+                .first()
+            if existing:
+                raise ValueError(f"Tag '{tag_name}' is already a main group")
+
+            # Parse optional start and end times
+            start_str = self.get_argument("start_time", "")
+            end_str = self.get_argument("end_time", "")
+
+            group_kwargs: dict = {
+                "training_day": training_day,
+                "tag_name": tag_name,
+                "alphabetical_task_order": self.get_argument("alphabetical_task_order", None) is not None,
+            }
+
+            if start_str:
+                group_kwargs["start_time"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+
+            if end_str:
+                group_kwargs["end_time"] = dt.strptime(end_str, "%Y-%m-%dT%H:%M")
+
+            # Validate that end is not before start
+            if "start_time" in group_kwargs and "end_time" in group_kwargs:
+                if group_kwargs["end_time"] < group_kwargs["start_time"]:
+                    raise ValueError("End time must be after start time")
+
+            # Validate group times are within contest bounds
+            if "start_time" in group_kwargs and contest.start:
+                if group_kwargs["start_time"] < contest.start:
+                    raise ValueError(f"Group start time cannot be before training day start ({contest.start})")
+            if "end_time" in group_kwargs and contest.stop:
+                if group_kwargs["end_time"] > contest.stop:
+                    raise ValueError(f"Group end time cannot be after training day end ({contest.stop})")
+
+            group = TrainingDayGroup(**group_kwargs)
+            self.sql_session.add(group)
+
+        except Exception as error:
+            self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        self.try_commit()
+        self.redirect(fallback_page)
+
+
+class UpdateTrainingDayGroupsHandler(BaseHandler):
+    """Update all main groups for a training day."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id: str):
+        contest = self.safe_get_item(Contest, contest_id)
+        training_day = contest.training_day
+
+        if training_day is None:
+            raise tornado.web.HTTPError(404, "Not a training day contest")
+
+        fallback_page = self.url("contest", contest_id)
+
+        try:
+            group_ids = self.get_arguments("group_id[]")
+            start_times = self.get_arguments("start_time[]")
+            end_times = self.get_arguments("end_time[]")
+
+            if len(group_ids) != len(start_times) or len(group_ids) != len(end_times):
+                raise ValueError("Mismatched form data")
+
+            for i, group_id in enumerate(group_ids):
+                group = self.safe_get_item(TrainingDayGroup, group_id)
+                if group.training_day_id != training_day.id:
+                    raise ValueError(f"Group {group_id} does not belong to this training day")
+
+                # Parse start time
+                start_str = start_times[i].strip()
+                if start_str:
+                    group.start_time = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+                else:
+                    group.start_time = None
+
+                # Parse end time
+                end_str = end_times[i].strip()
+                if end_str:
+                    group.end_time = dt.strptime(end_str, "%Y-%m-%dT%H:%M")
+                else:
+                    group.end_time = None
+
+                # Validate end is not before start
+                if group.start_time and group.end_time:
+                    if group.end_time < group.start_time:
+                        raise ValueError(f"End time must be after start time for group '{group.tag_name}'")
+
+                # Validate group times are within contest bounds
+                if group.start_time and contest.start:
+                    if group.start_time < contest.start:
+                        raise ValueError(f"Group '{group.tag_name}' start time cannot be before training day start")
+                if group.end_time and contest.stop:
+                    if group.end_time > contest.stop:
+                        raise ValueError(f"Group '{group.tag_name}' end time cannot be after training day end")
+
+                # Update alphabetical task order (checkbox - present means checked)
+                group.alphabetical_task_order = self.get_argument(f"alphabetical_{group_id}", None) is not None
+
+        except Exception as error:
+            self.service.add_notification(make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        self.try_commit()
+        self.redirect(fallback_page)
+
+
+class RemoveTrainingDayGroupHandler(BaseHandler):
+    """Remove a main group from a training day."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id: str, group_id: str):
+        contest = self.safe_get_item(Contest, contest_id)
+        training_day = contest.training_day
+
+        if training_day is None:
+            raise tornado.web.HTTPError(404, "Not a training day contest")
+
+        group = self.safe_get_item(TrainingDayGroup, group_id)
+
+        if group.training_day_id != training_day.id:
+            raise tornado.web.HTTPError(404, "Group does not belong to this training day")
+
+        self.sql_session.delete(group)
+        self.try_commit()
+        self.redirect(self.url("contest", contest_id))

@@ -8,7 +8,7 @@
 <form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Add a new task:
-  <select name="task_id">
+  <select name="task_id" class="searchable-select">
     <option value="null" selected>Select a new task</option>
     {% for t in unassigned_tasks %}
     <option value="{{ t.id }}">
@@ -61,6 +61,7 @@
         <th></th>
         <th>Name</th>
         <th>Title</th>
+        <th>Training Day</th>
       </tr>
     </thead>
     <tbody>
@@ -71,6 +72,11 @@
         </td>
         <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
         <td>{{ t.title }}</td>
+        <td>
+          {% if t.training_day is not none %}
+          <a href="{{ url("contest", t.training_day.contest.id) }}">{{ t.training_day.contest.name }}</a>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

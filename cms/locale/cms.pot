@@ -1042,6 +1042,9 @@ msgstr ""
 msgid "Approved"
 msgstr ""
 
+msgid "Admin Configured"
+msgstr ""
+
 msgid "Before you can view the tasks and participate in the contest, you must click the button below to register your participation."
 msgstr ""
 

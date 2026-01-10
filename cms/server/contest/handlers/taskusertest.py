@@ -85,7 +85,10 @@ class UserTestInterfaceHandler(ContestHandler):
             user_tests_left_contest = \
                 self.contest.max_user_test_number - user_test_c
 
-        for task in self.contest.tasks:
+        tasks = self.contest.get_tasks()
+        # Filter tasks by visibility for training day contests
+        tasks = [task for task in tasks if self.can_access_task(task)]
+        for task in tasks:
             if self.get_argument("task_name", None) == task.name:
                 default_task = task
             user_tests[task.id] = self.sql_session.query(UserTest)\
@@ -108,8 +111,8 @@ class UserTestInterfaceHandler(ContestHandler):
             if user_tests_left[task.id] is not None:
                 user_tests_left[task.id] = max(0, user_tests_left[task.id])
 
-        if default_task is None and len(self.contest.tasks) > 0:
-            default_task = self.contest.tasks[0]
+        if default_task is None and len(tasks) > 0:
+            default_task = tasks[0]
 
         self.render("test_interface.html", default_task=default_task,
                     user_tests=user_tests, user_tests_left=user_tests_left,
@@ -129,6 +132,10 @@ class UserTestHandler(ContestHandler):
 
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         query_args = dict()
@@ -175,6 +182,10 @@ class UserTestStatusHandler(ContestHandler):
 
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         user_test = self.get_user_test(task, user_test_num)
@@ -232,6 +243,10 @@ class UserTestDetailsHandler(ContestHandler):
         if task is None:
             raise tornado.web.HTTPError(404)
 
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
+            raise tornado.web.HTTPError(404)
+
         user_test = self.get_user_test(task, user_test_num)
         if user_test is None:
             raise tornado.web.HTTPError(404)
@@ -255,6 +270,10 @@ class UserTestIOHandler(FileHandler):
 
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         user_test = self.get_user_test(task, user_test_num)
@@ -289,6 +308,10 @@ class UserTestFileHandler(FileHandler):
 
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         user_test = self.get_user_test(task, user_test_num)

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training Days of <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
+</div>
+
+<p>
+  <a href="{{ url("training_program", training_program.id, "training_days", "add") }}">Add a new training day</a>
+</p>
+
+<form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  Remove selected training day:
+  <input type="submit" name="operation"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+         value="Remove" />
+
+  <br>
+
+  Move selected training day:
+  <input type="submit" name="operation"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+         value="up by 1" />
+  <input type="submit" name="operation"
+{% if not admin.permission_all %}
+         disabled
+{% endif %}
+         value="down by 1" />
+
+  <table class="bordered" id="training_days_table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Start</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for td in training_program.training_days %}
+      <tr>
+        <td>
+          <input type="radio" name="training_day_id" value="{{ td.id }}"/>
+        </td>
+        <td><a href="{{ url("contest", td.contest.id) }}">{{ td.contest.name }}</a></td>
+        <td>{{ td.contest.description }}</td>
+        <td>
+          {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
+            {{ td.contest.start.strftime("%Y-%m-%d %H:%M") }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4">(no training days yet)</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    $(document).ready(function() {
+      CMS.AWSUtils.init_table_sort($("#training_days_table"), false, 3, false);
+    });
+  </script>
+</form>
+{% endblock core %}

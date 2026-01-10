@@ -10,6 +10,11 @@
     <h1>{% trans status_code=status_code %}Error {{ status_code }}{% endtrans %}</h1>
 </div>
 
+{% if error_message %}
+<p>
+{{ error_message }}
+</p>
+{% else %}
 <p>
 {% trans %}An error occured while the server was handling your request.{% endtrans %}
 </p>
@@ -21,6 +26,7 @@
 <p>
 {% trans %}If you encountered this error during normal usage, please notify the contest administrators.{% endtrans %}
 </p>
+{% endif %}
 
 </div>
 {% endblock body %}

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Add Training Day to <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
+</div>
+
+<form action="{{ url("training_program", training_program.id, "training_days", "add") }}" method="POST" name="add_training_day">
+  {{ xsrf_form_html|safe }}
+  <table class="sub_table">
+    <tr>
+      <td>Name (codename)</td>
+      <td><input type="text" name="name" required/></td>
+      <td class="hint">A unique identifier for the training day contest</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td><input type="text" name="description"/></td>
+      <td class="hint">Human-readable description (defaults to name if empty)</td>
+    </tr>
+    <tr>
+      <td>
+        <span class="info" title="When the training day starts. If not specified and groups have start times, defaults to the earliest group start time."></span>
+        Start time (UTC)
+      </td>
+      <td><input type="datetime-local" name="start"/></td>
+      <td class="hint">When the training day starts (optional, defaults to earliest group time)</td>
+    </tr>
+    <tr>
+      <td>
+        <span class="info" title="When the training day ends. If not specified and groups have end times, defaults to the latest group end time."></span>
+        End time (UTC)
+      </td>
+      <td><input type="datetime-local" name="stop"/></td>
+      <td class="hint">When the training day ends (optional, defaults to latest group time)</td>
+    </tr>
+  </table>
+
+  <h2>Main Groups Configuration</h2>
+  <p class="hint">Configure which student tags represent main groups for this training day. Students must have exactly one main group tag to participate. Leave empty if all students can participate.</p>
+
+  <table class="sub_table" id="main-groups-table">
+    <thead>
+      <tr>
+        <th>Tag Name</th>
+        <th>Start Time (UTC)</th>
+        <th>End Time (UTC)</th>
+        <th>Alphabetical Task Order</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="groups-tbody">
+    </tbody>
+  </table>
+
+  <button type="button" id="add-group-btn" class="btn btn-small">+ Add Main Group</button>
+
+  <br/><br/>
+  <input type="submit" value="Create"/>
+</form>
+
+<script>
+var allStudentTags = {{ all_student_tags | tojson }};
+var groupRowIndex = 0;
+
+function addGroupRow() {
+    var tbody = document.getElementById('groups-tbody');
+    var row = document.createElement('tr');
+    row.id = 'group-row-' + groupRowIndex;
+
+    var tagCell = document.createElement('td');
+    var tagInput = document.createElement('input');
+    tagInput.type = 'text';
+    tagInput.name = 'group_tag_name[]';
+    tagInput.placeholder = 'Select a student tag';
+    tagInput.style.width = '160px';
+    tagCell.appendChild(tagInput);
+    row.appendChild(tagCell);
+
+    var startCell = document.createElement('td');
+    var startInput = document.createElement('input');
+    startInput.type = 'datetime-local';
+    startInput.name = 'group_start_time[]';
+    startCell.appendChild(startInput);
+    row.appendChild(startCell);
+
+    var endCell = document.createElement('td');
+    var endInput = document.createElement('input');
+    endInput.type = 'datetime-local';
+    endInput.name = 'group_end_time[]';
+    endCell.appendChild(endInput);
+    row.appendChild(endCell);
+
+    var alphaCell = document.createElement('td');
+    alphaCell.style.textAlign = 'center';
+
+    // Add hidden input for stable group ID
+    var groupIdInput = document.createElement('input');
+    groupIdInput.type = 'hidden';
+    groupIdInput.name = 'group_id[]';
+    groupIdInput.value = groupRowIndex;
+    alphaCell.appendChild(groupIdInput);
+
+    var alphaInput = document.createElement('input');
+    alphaInput.type = 'checkbox';
+    alphaInput.name = 'group_alphabetical[]';
+    alphaInput.value = groupRowIndex;
+    alphaCell.appendChild(alphaInput);
+    row.appendChild(alphaCell);
+
+    var actionsCell = document.createElement('td');
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-danger btn-small';
+    removeBtn.textContent = 'Remove';
+    removeBtn.onclick = function() { row.remove(); };
+    actionsCell.appendChild(removeBtn);
+    row.appendChild(actionsCell);
+
+    tbody.appendChild(row);
+
+    // Initialize Tagify on the new input
+    if (typeof Tagify !== 'undefined') {
+        var tagify = new Tagify(tagInput, {
+            mode: 'select',
+            whitelist: allStudentTags,
+            enforceWhitelist: true,
+            dropdown: {
+                maxItems: 20,
+                enabled: 0,
+                closeOnSelect: true
+            },
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.length ? valuesArr[0].value : '';
+            }
+        });
+        tagify.DOM.scope.style.width = '160px';
+    }
+
+    groupRowIndex++;
+}
+
+document.getElementById('add-group-btn').addEventListener('click', addGroupRow);
+
+CMS.AWSUtils.initDateTimeValidation(
+  'form[name="add_training_day"]',
+  'input[name="start"]',
+  'input[name="stop"]'
+);
+</script>
+
+<p>
+  <a href="{{ url("training_program", training_program.id, "training_days") }}">Back to training days</a>
+</p>
+{% endblock core %}

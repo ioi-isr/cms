@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block js_init %}
+CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
+{% endblock js_init %}
+
 {% block core %}
 <div class="core_title">
   <h1>Students list</h1>
@@ -56,7 +60,11 @@
         <td>{{ u.first_name }}</td>
         <td>{{ u.last_name }}</td>
         <td>
-          {{ student.student_tags|join(", ") }}
+          {% if student.student_tags %}
+          <input type="text" class="student-tags-display" value="{{ student.student_tags|join(", ") }}" readonly/>
+          {% else %}
+          <span class="no-tags-indicator">No tags</span>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}
