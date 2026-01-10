@@ -208,7 +208,7 @@ def accept_submission(
 
     """
     contest = participation.contest
-    assert task.contest is contest
+    assert contest.task_belongs_here(task)
 
     # Check whether the contestant is allowed to submit.
 
@@ -373,7 +373,7 @@ def accept_user_test(
 
     """
     contest = participation.contest
-    assert task.contest is contest
+    assert contest.task_belongs_here(task)
 
     # Check whether the task is testable.
 

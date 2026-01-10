@@ -39,8 +39,15 @@ class ContestSubmissionsHandler(BaseHandler):
         contest = self.safe_get_item(Contest, contest_id)
         self.contest = contest
 
-        query = self.sql_session.query(Submission).join(Task)\
-            .filter(Task.contest == contest)
+        # For training day contests, tasks have training_day_id set
+        # but contest_id points to the managing contest.
+        # We need to filter by training_day_id for training day contests.
+        if contest.training_day is not None:
+            query = self.sql_session.query(Submission).join(Task)\
+                .filter(Task.training_day_id == contest.training_day.id)
+        else:
+            query = self.sql_session.query(Submission).join(Task)\
+                .filter(Task.contest == contest)
         page = int(self.get_query_argument("page", 0))
         self.render_params_for_submissions(query, page)
 
@@ -56,8 +63,15 @@ class ContestUserTestsHandler(BaseHandler):
         contest = self.safe_get_item(Contest, contest_id)
         self.contest = contest
 
-        query = self.sql_session.query(UserTest).join(Task)\
-            .filter(Task.contest == contest)
+        # For training day contests, tasks have training_day_id set
+        # but contest_id points to the managing contest.
+        # We need to filter by training_day_id for training day contests.
+        if contest.training_day is not None:
+            query = self.sql_session.query(UserTest).join(Task)\
+                .filter(Task.training_day_id == contest.training_day.id)
+        else:
+            query = self.sql_session.query(UserTest).join(Task)\
+                .filter(Task.contest == contest)
         page = int(self.get_query_argument("page", 0))
         self.render_params_for_user_tests(query, page)
 

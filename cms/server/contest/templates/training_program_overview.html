@@ -1,4 +1,5 @@
 {% extends "contest.html" %}
+{% from "macro/delay_request.html" import delay_request_form, delay_request_list with context %}
 
 {% set page = "training_overview" %}
 
@@ -7,12 +8,98 @@
 <div class="span9">
 
 <div class="page-header">
-    <h1>{{ training_program.name }}</h1>
+    <h1>{{ training_program.description if training_program.description else training_program.name }}</h1>
 </div>
+
+{% if upcoming_training_days|length > 0 %}
+<h2 class="tp-section-heading">{% trans %}Upcoming Training Days{% endtrans %}</h2>
+
+<div class="training-day-list">
+{% for td_info in upcoming_training_days %}
+    <div class="training-day-card {% if td_info.has_started %}started{% else %}upcoming{% endif %}">
+        <div class="training-day-meta">
+            <h3 class="training-day-title">{{ td_info.contest.description }}</h3>
+            <div class="training-day-detail">
+                <strong>{% trans %}Start:{% endtrans %}</strong> {{ td_info.user_start_time|format_datetime_smart }}
+            </div>
+            <div class="training-day-detail">
+                <strong>{% trans %}Duration:{% endtrans %}</strong> {{ (td_info.duration.total_seconds() // 3600)|int }}h{% if (td_info.duration.total_seconds() % 3600) // 60 > 0 %} {{ ((td_info.duration.total_seconds() % 3600) // 60)|int }}m{% endif %}
+            </div>
+        </div>
+
+        {% if td_info.has_started %}
+        <div class="training-day-status">
+            <div class="countdown-display live-pill">
+                <span class="countdown-running">⬤ {% trans %}LIVE{% endtrans %}</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="training-day-status">
+            <div class="training-day-countdown-label">{% trans %}Starts in:{% endtrans %}</div>
+            <div class="countdown training-day-countdown" data-start-time="{{ td_info.user_start_time.timestamp() * 1000 }}">
+                <span class="countdown-text training-day-countdown-text">
+                    <span class="countdown-days">--</span>d
+                    <span class="countdown-hours">--</span>h
+                    <span class="countdown-minutes">--</span>m
+                    <span class="countdown-seconds">--</span>s
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="training-day-actions">
+            {% if td_info.has_started or td_info.can_enter_soon %}
+            <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn training-day-enter-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
+            {% endif %}
+            {% if td_info.contest.allow_delay_requests %}
+            <div class="btn-group training-day-delay-group{% if td_info.participation.delay_requests|length == 0 %} single{% endif %}" role="group" aria-label="{% trans %}Delay request actions{% endtrans %}">
+                <button type="button" class="btn btn-warning training-day-btn training-day-delay-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}" aria-label="{% trans %}Request a delay for this training day{% endtrans %}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
+                {% if td_info.participation.delay_requests|length > 0 %}
+                  <button type="button" class="btn btn-info training-day-btn training-day-requests-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans count=td_info.participation.delay_requests|length %}View {{ count }} delay request(s){% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if td_info.contest.allow_delay_requests %}
+    <div id="delay-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-modal-label-{{ loop.index }}" aria-hidden="true">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
+            <h3 id="delay-modal-label-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} - {{ td_info.contest.description }}</h3>
+        </div>
+        <div class="modal-body">
+            <p class="text-info" style="margin-bottom: 15px;">
+                {% trans %}Current start time:{% endtrans %} <strong>{{ td_info.user_start_time|format_datetime_smart }}</strong>
+            </p>
+            {{ delay_request_form(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop.index, inline=True, next_url="/" ~ training_program.name ~ "/training_overview") }}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if td_info.participation.delay_requests|length > 0 %}
+    <div id="delay-requests-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-requests-modal-label-{{ loop.index }}" aria-hidden="true">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
+            <h3 id="delay-requests-modal-label-{{ loop.index }}">{% trans %}Your Delay Requests{% endtrans %} - {{ td_info.contest.description }}</h3>
+        </div>
+        <div class="modal-body">
+            {{ delay_request_list(td_info.participation.delay_requests) }}
+        </div>
+        <div class="modal-footer">
+            <button class="btn" data-dismiss="modal" aria-hidden="true">{% trans %}Close{% endtrans %}</button>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+</div>
+{% endif %}
+
+<h2 style="margin-bottom: 15px;">{% trans %}Statistics{% endtrans %}</h2>
 
 <div class="training-program-summary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 25px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
     <p style="font-size: 16px; opacity: 0.9; margin-bottom: 20px;">{{ training_program.description }}</p>
-    
+
     <div style="display: flex; gap: 40px; align-items: center; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 200px;">
             <div style="font-size: 48px; font-weight: bold;">
@@ -104,6 +191,63 @@
 </div>
 
 <style>
+.tp-section-heading {
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+}
+.training-day-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+.training-day-card {
+    background: #fff;
+    border-left: 4px solid transparent;
+    border-radius: 8px;
+    padding: 20px 25px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+    transition: all 0.3s ease;
+}
+.training-day-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.training-day-card.started { border-left-color: #28a745; }
+.training-day-card.upcoming { border-left-color: #0d6efd; }
+.training-day-meta { flex: 1; min-width: 250px; }
+.training-day-title { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #333; }
+.training-day-detail { font-size: 14px; color: #666; margin-bottom: 4px; }
+.training-day-status { text-align: center; flex: 0 0 auto; }
+.training-day-status-label { font-size: 13px; color: #28a745; font-weight: 600; margin-bottom: 8px; }
+.countdown-display { display: inline-block; border-radius: 8px; padding: 10px 15px; }
+.countdown-running { font-size: 16px; font-weight: 700; color: white; letter-spacing: 1px; }
+.live-pill { background: #dc3545; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); animation: pulse 2s ease-in-out infinite; }
+.training-day-countdown-label { font-size: 13px; color: #666; margin-bottom: 8px; }
+.training-day-countdown { display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px; }
+.training-day-countdown-text { font-size: 16px; font-weight: 600; color: #0d6efd; }
+.training-day-btn { font-weight: 600; padding: 9px 16px; font-size: 14px; line-height: 18px; text-align: center; }
+.training-day-actions { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; align-items: flex-end; }
+.training-day-enter-btn { width: 220px; box-sizing: border-box; }
+.training-day-delay-group { display: inline-flex; align-items: stretch; width: 220px; flex-shrink: 0; }
+.training-day-delay-group > .btn { float: none; margin: 0; }
+.training-day-delay-btn { flex: 1 1 auto; min-width: 0; width: 100%; }
+.training-day-delay-group.single .training-day-delay-btn { width: 220px; }
+.training-day-requests-btn {
+    flex: 0 0 44px;
+    width: 44px;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 12px;
+    line-height: 16px;
+}
 .filter-btn {
     transition: all 0.2s ease;
 }
@@ -129,6 +273,10 @@
     content: '\2193';
     opacity: 1;
 }
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); }
+    50% { box-shadow: 0 2px 16px rgba(220, 53, 69, 0.6); }
+}
 </style>
 
 <script>
@@ -141,10 +289,80 @@
         else if (status === 'partial') partialCount++;
         else unsolvedCount++;
     });
-    document.getElementById('solved-count').textContent = solvedCount;
-    document.getElementById('partial-count').textContent = partialCount;
-    document.getElementById('unsolved-count').textContent = unsolvedCount;
+    var solvedEl = document.getElementById('solved-count');
+    if (solvedEl) solvedEl.textContent = solvedCount;
+    var partialEl = document.getElementById('partial-count');
+    if (partialEl) partialEl.textContent = partialCount;
+    var unsolvedEl = document.getElementById('unsolved-count');
+    if (unsolvedEl) unsolvedEl.textContent = unsolvedCount;
 })();
+
+// Server timestamp for timezone-correct countdown
+var serverTimestamp = {{ server_timestamp.timestamp() * 1000 }};
+var clientLoadTime = new Date().getTime();
+var reloadScheduled = false;
+var reloadBackoffMs = 1000;
+
+async function checkAndMaybeReload(startTimeMs) {
+    try {
+        const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
+        const dateHeader = res.headers.get('Date');
+        const serverNow = dateHeader ? Date.parse(dateHeader) : NaN;
+        if (!Number.isNaN(serverNow) && serverNow < startTimeMs) {
+            reloadBackoffMs = Math.min(reloadBackoffMs * 2, 30000);
+            setTimeout(function() { checkAndMaybeReload(startTimeMs); }, reloadBackoffMs);
+            return;
+        }
+    } catch (e) {
+        // fall through to reload
+    }
+    window.location.reload();
+}
+
+function updateCountdowns() {
+    var countdowns = document.querySelectorAll('.countdown');
+    var elapsed = new Date().getTime() - clientLoadTime;
+    var serverNow = serverTimestamp + elapsed;
+
+    countdowns.forEach(function(el) {
+        var startTimeAttr = el.getAttribute('data-start-time');
+        if (!startTimeAttr) return;
+        var startTime = parseFloat(startTimeAttr);
+        if (isNaN(startTime)) return;
+
+        var diff = startTime - serverNow;
+
+        var daysEl = el.querySelector('.countdown-days');
+        var hoursEl = el.querySelector('.countdown-hours');
+        var minutesEl = el.querySelector('.countdown-minutes');
+        var secondsEl = el.querySelector('.countdown-seconds');
+
+        if (diff <= 0) {
+            if (daysEl) daysEl.textContent = '0';
+            if (hoursEl) hoursEl.textContent = '0';
+            if (minutesEl) minutesEl.textContent = '0';
+            if (secondsEl) secondsEl.textContent = '0';
+            if (!reloadScheduled) {
+                reloadScheduled = true;
+                checkAndMaybeReload(startTime);
+            }
+            return;
+        }
+
+        var days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        var minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        var seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        if (daysEl) daysEl.textContent = days;
+        if (hoursEl) hoursEl.textContent = hours;
+        if (minutesEl) minutesEl.textContent = minutes;
+        if (secondsEl) secondsEl.textContent = seconds;
+    });
+}
+
+updateCountdowns();
+setInterval(updateCountdowns, 1000);
 
 function filterTasks(filter) {
     var rows = document.querySelectorAll('#task-table tbody tr');
@@ -156,7 +374,7 @@ function filterTasks(filter) {
             row.style.display = 'none';
         }
     });
-    
+
     document.querySelectorAll('.filter-btn').forEach(function(btn) {
         btn.classList.remove('active');
         if (btn.getAttribute('data-filter') === filter) {
@@ -171,17 +389,17 @@ function sortTable(columnIndex) {
     var tbody = table.querySelector('tbody');
     var rows = Array.from(tbody.querySelectorAll('tr'));
     var headers = table.querySelectorAll('th');
-    
+
     sortDirection[columnIndex] = !sortDirection[columnIndex];
     var ascending = sortDirection[columnIndex];
-    
+
     headers.forEach(function(h, i) {
         h.classList.remove('sort-asc', 'sort-desc');
         if (i === columnIndex) {
             h.classList.add(ascending ? 'sort-asc' : 'sort-desc');
         }
     });
-    
+
     rows.sort(function(a, b) {
         var aVal, bVal;
         if (columnIndex === 2) {
@@ -191,12 +409,12 @@ function sortTable(columnIndex) {
             aVal = a.cells[columnIndex].textContent.trim().toLowerCase();
             bVal = b.cells[columnIndex].textContent.trim().toLowerCase();
         }
-        
+
         if (aVal < bVal) return ascending ? -1 : 1;
         if (aVal > bVal) return ascending ? 1 : -1;
         return 0;
     });
-    
+
     rows.forEach(function(row) {
         tbody.appendChild(row);
     });

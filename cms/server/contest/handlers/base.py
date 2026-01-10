@@ -29,11 +29,11 @@
 
 """
 
-import json
 import logging
 import traceback
 
 import collections
+from sqlalchemy import not_
 
 from cms.db.user import Participation
 
@@ -73,7 +73,7 @@ def parse_ip_list(ip_string):
     """
     if not ip_string:
         return []
-    return [ip.strip() for ip in ip_string.split(',') if ip.strip()]
+    return [ip.strip() for ip in ip_string.split(",") if ip.strip()]
 
 
 def add_ip_to_list(ip_string, new_ip):
@@ -89,7 +89,7 @@ def add_ip_to_list(ip_string, new_ip):
     ips = parse_ip_list(ip_string)
     if new_ip not in ips:
         ips.append(new_ip)
-    return ', '.join(ips)
+    return ", ".join(ips)
 
 
 class BaseHandler(CommonRequestHandler):
@@ -98,6 +98,7 @@ class BaseHandler(CommonRequestHandler):
     This will also handle the contest list on the homepage.
 
     """
+
     current_user: Participation | None
     service: "ContestWebServer"
     api_request: bool
@@ -125,9 +126,7 @@ class BaseHandler(CommonRequestHandler):
             self.write(chunk)
 
     def prepare(self):
-        """This method is executed at the beginning of each request.
-
-        """
+        """This method is executed at the beginning of each request."""
         super().prepare()
         self.setup_locale()
 
@@ -135,21 +134,20 @@ class BaseHandler(CommonRequestHandler):
         lang_codes = list(self.available_translations.keys())
 
         browser_langs = parse_accept_header(
-            self.request.headers.get("Accept-Language", ""),
-            LanguageAccept).values()
+            self.request.headers.get("Accept-Language", ""), LanguageAccept
+        ).values()
         automatic_lang = choose_language_code(browser_langs, lang_codes)
         if automatic_lang is None:
             automatic_lang = lang_codes[0]
-        self.automatic_translation = \
-            self.available_translations[automatic_lang]
+        self.automatic_translation = self.available_translations[automatic_lang]
 
         cookie_lang = self.get_cookie("language", None)
         if cookie_lang is not None:
-            chosen_lang = \
-                choose_language_code([cookie_lang, automatic_lang], lang_codes)
+            chosen_lang = choose_language_code(
+                [cookie_lang, automatic_lang], lang_codes
+            )
             if chosen_lang == cookie_lang:
-                self.cookie_translation = \
-                    self.available_translations[cookie_lang]
+                self.cookie_translation = self.available_translations[cookie_lang]
         else:
             chosen_lang = automatic_lang
         self.translation = self.available_translations[chosen_lang]
@@ -188,19 +186,32 @@ class BaseHandler(CommonRequestHandler):
         return ret
 
     def write_error(self, status_code, **kwargs):
-        if "exc_info" in kwargs and \
-                kwargs["exc_info"][0] != tornado.web.HTTPError:
+        error_message = None
+        if "exc_info" in kwargs:
             exc_info = kwargs["exc_info"]
-            logger.error(
-                "Uncaught exception (%r) while processing a request: %s",
-                exc_info[1], ''.join(traceback.format_exception(*exc_info)))
+            if exc_info[0] == tornado.web.HTTPError:
+                # Extract the reason/log_message from HTTPError
+                http_error = exc_info[1]
+                if http_error.log_message:
+                    error_message = http_error.log_message
+            else:
+                logger.error(
+                    "Uncaught exception (%r) while processing a request: %s",
+                    exc_info[1],
+                    "".join(traceback.format_exception(*exc_info)),
+                )
 
         # We assume that if r_params is defined then we have at least
         # the data we need to display a basic template with the error
         # information. If r_params is not defined (i.e. something went
         # *really* bad) we simply return a basic textual error notice.
         if self.r_params is not None:
-            self.render("error.html", status_code=status_code, **self.r_params)
+            self.render(
+                "error.html",
+                status_code=status_code,
+                error_message=error_message,
+                **self.r_params,
+            )
         else:
             self.write("A critical error has occurred :-(")
             self.finish()
@@ -220,9 +231,9 @@ class BaseHandler(CommonRequestHandler):
         if arg == "":
             return default
 
-        if arg == '0':
+        if arg == "0":
             return False
-        elif arg == '1':
+        elif arg == "1":
             return True
         else:
             raise ValueError(f"Cannot parse boolean argument {name}")
@@ -245,11 +256,16 @@ class ContestFolderBrowseHandler(BaseHandler):
         """Build complete folder tree with contests for client-side navigation.
 
         Excludes hidden folders and their descendants from the tree.
+        Also excludes training day contests (contests that belong to a training day).
         """
-        all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
+        all_folders = (
+            self.sql_session.query(ContestFolder)
+            .filter(not_(ContestFolder.hidden))
+            .all()
+        )
         all_contests = exclude_internal_contests(
             self.sql_session.query(Contest)
-        ).order_by(Contest.name).all()
+        ).filter(Contest.training_day is None).order_by(Contest.name).all()
 
         folder_map = {}
         for folder in all_folders:
@@ -259,14 +275,14 @@ class ContestFolderBrowseHandler(BaseHandler):
                 "description": folder.description,
                 "parent_id": folder.parent_id,
                 "children": [],
-                "contests": []
+                "contests": [],
             }
 
         for contest in all_contests:
             contest_data = {
                 "name": contest.name,
                 "description": contest.description,
-                "stop": contest.stop.isoformat() if contest.stop else None
+                "stop": contest.stop.isoformat() if contest.stop else None,
             }
             if contest.folder_id and contest.folder_id in folder_map:
                 folder_map[contest.folder_id]["contests"].append(contest_data)
@@ -298,7 +314,7 @@ class ContestFolderBrowseHandler(BaseHandler):
                     self.sql_session.query(ContestFolder)
                     .filter(ContestFolder.name == seg)
                     .filter(ContestFolder.parent == parent)
-                    .filter(ContestFolder.hidden == False)
+                    .filter(not_(ContestFolder.hidden))
                     .first()
                 )
                 if cur_folder is None:
@@ -309,30 +325,31 @@ class ContestFolderBrowseHandler(BaseHandler):
             cur_folder = None
 
         # Subfolders (exclude hidden folders)
+        # Contests exclude managing contests (starting with __) and training day contests
         if cur_folder is None:
             subfolders = (
                 self.sql_session.query(ContestFolder)
                 .filter(ContestFolder.parent_id.is_(None))
-                .filter(ContestFolder.hidden == False)
+                .filter(not_(ContestFolder.hidden))
                 .order_by(ContestFolder.name)
                 .all()
             )
             contests = exclude_internal_contests(
                 self.sql_session.query(Contest)
                 .filter(Contest.folder_id.is_(None))
-            ).all()
+            ).filter(Contest.training_day is None).all()
         else:
             subfolders = (
                 self.sql_session.query(ContestFolder)
                 .filter(ContestFolder.parent == cur_folder)
-                .filter(ContestFolder.hidden == False)
+                .filter(not_(ContestFolder.hidden))
                 .order_by(ContestFolder.name)
                 .all()
             )
             contests = exclude_internal_contests(
                 self.sql_session.query(Contest)
                 .filter(Contest.folder == cur_folder)
-            ).all()
+            ).filter(Contest.training_day is None).all()
 
         # Query training programs (only at root level, not in folders)
         if cur_folder is None:
