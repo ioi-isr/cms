@@ -104,7 +104,9 @@ from .submission import \
 from .submissiondownload import \
     DownloadTaskSubmissionsHandler, \
     DownloadUserContestSubmissionsHandler, \
-    DownloadContestSubmissionsHandler
+    DownloadContestSubmissionsHandler, \
+    DownloadTrainingProgramSubmissionsHandler, \
+    DownloadTrainingProgramStudentSubmissionsHandler
 from .task import (
     AddTaskHandler,
     TaskHandler,
@@ -338,6 +340,8 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/ranking", TrainingProgramRankingHandler),
     (r"/training_program/([0-9]+)/ranking/([a-z]+)", TrainingProgramRankingHandler),
     (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
+    (r"/training_program/([0-9]+)/submissions/download", DownloadTrainingProgramSubmissionsHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/submissions/download", DownloadTrainingProgramStudentSubmissionsHandler),
     (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
     (r"/training_program/([0-9]+)/announcement/([0-9]+)", TrainingProgramAnnouncementHandler),
     (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),

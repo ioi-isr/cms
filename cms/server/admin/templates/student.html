@@ -34,7 +34,7 @@ CMS.AWSUtils.initTagify({
            url("training_program", training_program.id, "student", participation.user_id, "edit"),
            participation_id=participation.id) }}
     <br/>
-    <a href="{{ url("contest", training_program.managing_contest.id, "user", participation.user_id, "submissions", "download") }}">Download all submissions</a>
+    <a href="{{ url("training_program", training_program.id, "student", participation.user_id, "submissions", "download") }}">Download all submissions</a>
   </p>
 
   {{ macro_submission.rows(
