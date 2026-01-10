@@ -62,7 +62,8 @@ from .contestsubmission import \
     ContestUserTestsHandler
 from .contesttask import \
     ContestTasksHandler, \
-    AddContestTaskHandler
+    AddContestTaskHandler, \
+    TaskVisibilityHandler
 from .contestuser import \
     ContestUsersHandler, \
     RemoveParticipationHandler, \
@@ -177,12 +178,20 @@ from .trainingprogram import \
     RemoveTrainingProgramStudentHandler, \
     TrainingProgramTasksHandler, \
     AddTrainingProgramTaskHandler, \
+    RemoveTrainingProgramTaskHandler, \
     TrainingProgramRankingHandler, \
     TrainingProgramSubmissionsHandler, \
     TrainingProgramAnnouncementsHandler, \
     TrainingProgramAnnouncementHandler, \
     TrainingProgramQuestionsHandler, \
-    StudentHandler
+    StudentHandler, \
+    StudentTagsHandler, \
+    TrainingProgramTrainingDaysHandler, \
+    AddTrainingDayHandler, \
+    RemoveTrainingDayHandler, \
+    AddTrainingDayGroupHandler, \
+    UpdateTrainingDayGroupsHandler, \
+    RemoveTrainingDayGroupHandler
 
 
 HANDLERS = [
@@ -223,6 +232,7 @@ HANDLERS = [
 
     (r"/contest/([0-9]+)/tasks", ContestTasksHandler),
     (r"/contest/([0-9]+)/tasks/add", AddContestTaskHandler),
+    (r"/contest/([0-9]+)/task_visibility/([0-9]+)", TaskVisibilityHandler),
 
     # Contest's submissions / user tests
 
@@ -347,14 +357,24 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/students/add", AddTrainingProgramStudentHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/remove", RemoveTrainingProgramStudentHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/edit", StudentHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/tags", StudentTagsHandler),
     (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
     (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),
+    (r"/training_program/([0-9]+)/task/([0-9]+)/remove", RemoveTrainingProgramTaskHandler),
     (r"/training_program/([0-9]+)/ranking", TrainingProgramRankingHandler),
     (r"/training_program/([0-9]+)/ranking/([a-z]+)", TrainingProgramRankingHandler),
     (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
     (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
     (r"/training_program/([0-9]+)/announcement/([0-9]+)", TrainingProgramAnnouncementHandler),
     (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
+    (r"/training_program/([0-9]+)/training_days", TrainingProgramTrainingDaysHandler),
+    (r"/training_program/([0-9]+)/training_days/add", AddTrainingDayHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/remove", RemoveTrainingDayHandler),
+
+    # Training day groups (main groups configuration on contest page)
+    (r"/contest/([0-9]+)/training_day_group/add", AddTrainingDayGroupHandler),
+    (r"/contest/([0-9]+)/training_day_groups/update", UpdateTrainingDayGroupsHandler),
+    (r"/contest/([0-9]+)/training_day_group/([0-9]+)/remove", RemoveTrainingDayGroupHandler),
 
     # Admins
 

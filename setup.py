@@ -53,6 +53,7 @@ PACKAGE_DATA = {
         "admin/static/jq/*.*",
         "admin/static/js/*.*",
         "admin/static/sh/*.*",
+        "admin/static/tagify/*.*",
         "admin/static/tomselect/css/*.*",
         "admin/static/tomselect/js/*.*",
         "admin/templates/*.*",

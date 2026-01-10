@@ -5,6 +5,21 @@
 {% import 'macro/question.html' as macro_question with context %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
 
+{% block js_init %}
+CMS.AWSUtils.initTagify({
+    inputSelector: 'input[name="student_tags"]',
+    whitelist: {{ all_student_tags | tojson }},
+    getSaveUrl: function() {
+        return '{{ url("training_program", training_program.id, "student", selected_user.id, "tags") }}';
+    },
+    saveParamName: 'student_tags',
+    placeholder: 'Type tags',
+    editable: true,
+    pattern: /^[^,]+$/,
+    invalidMessage: 'Tags cannot contain commas.'
+});
+{% endblock js_init %}
+
 {% block core %}
 <h1>
   Student <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
@@ -41,11 +56,11 @@
     <table>
       <tr>
         <td>
-          <span class="info" title="Comma-separated list of tags for this student (e.g., beginner, advanced, python). Used to control which training questions they see."></span>
+          <span class="info" title="Tags for this student (e.g., beginner, advanced). Used to control which training questions they see. Double-click a tag to edit it."></span>
           Student Tags
         </td>
-        <td>
-          <input type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}" placeholder="e.g. beginner, python" style="width: 100%"/>
+        <td style="min-width: 300px;">
+          <input type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}"/>
         </td>
       </tr>
       <tr>

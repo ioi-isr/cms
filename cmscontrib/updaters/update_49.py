@@ -20,7 +20,11 @@
 Used by DumpImporter and DumpUpdater.
 
 This version adds the TrainingProgram table for organizing year-long
-training programs with multiple training sessions.
+training programs with multiple training sessions, and the TrainingDay 
+table for organizing training days within a training program,
+linking contests to training programs.
+This includes TrainingDayGroup table for per-group configuration
+of training days (main groups with custom timing and task ordering).
 
 """
 
@@ -32,5 +36,5 @@ class Updater:
         self.objs = data
 
     def run(self):
-        # No data migration needed for new table
+        # No data migration needed for new tables
         return self.objs
