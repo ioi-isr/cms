@@ -26,7 +26,7 @@ import typing
 
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
-from sqlalchemy.schema import Column, ForeignKey
+from sqlalchemy.schema import Column, ForeignKey, Index
 from sqlalchemy.types import Integer, Unicode
 
 from . import Base
@@ -43,6 +43,10 @@ class Student(Base):
     "advanced").
     """
     __tablename__ = "students"
+    __table_args__ = (
+        Index("ix_students_student_tags_gin", "student_tags",
+              postgresql_using="gin"),
+    )
 
     id: int = Column(Integer, primary_key=True)
 

@@ -39,7 +39,7 @@ import typing
 import collections
 
 from cms.db.user import Participation
-from cms.server.util import Url
+from cms.server.util import Url, can_access_task, check_training_day_eligibility
 
 try:
     collections.MutableMapping
@@ -50,13 +50,13 @@ except:
 import tornado.web
 
 from cms import config, TOKEN_MODE_MIXED
-from cms.db import Contest, Submission, Task, TrainingProgram, UserTest, contest
+from cms.db import Contest, Student, Submission, Task, TrainingDayGroup, TrainingProgram, UserTest, contest
 from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
 from cmscommon.datetime import get_timezone
 from .base import BaseHandler, add_ip_to_list
-from ..phase_management import compute_actual_phase
+from ..phase_management import compute_actual_phase, compute_effective_times
 
 
 logger = logging.getLogger(__name__)
@@ -81,6 +81,8 @@ class ContestHandler(BaseHandler):
         self.contest: Contest
         self.training_program: TrainingProgram | None = None
         self.impersonated_by_admin = False
+        # Cached eligibility check result to avoid duplicate queries
+        self._eligibility_cache: tuple[bool, "TrainingDayGroup | None", list[str]] | None = None
 
     def prepare(self):
         self.choose_contest()
@@ -107,6 +109,18 @@ class ContestHandler(BaseHandler):
         # Run render_params() now, not at the beginning of the request,
         # because we need contest_name
         self.r_params = self.render_params()
+
+        # Check eligibility for training day contests AFTER r_params is set
+        # so that error pages can render properly
+        if self.current_user is not None:
+            training_day = self.contest.training_day
+            is_eligible, _, _ = self.get_eligibility()
+            if not is_eligible and training_day is not None:
+                raise tornado.web.HTTPError(
+                    403,
+                    "You are not eligible for this training day. "
+                    "Please contact an administrator to fix your group assignment."
+                )
 
     def _raise_404_for_internal_contest(self):
         """Prepare error context and raise 404 for internal contests."""
@@ -180,6 +194,9 @@ class ContestHandler(BaseHandler):
         - if username/password authentication is enabled, and the cookie
           is valid, the corresponding participation is returned, and the
           cookie is refreshed.
+        - for training day contests: if the user is authenticated to the
+          parent training program's managing contest, they are automatically
+          authenticated to the training day contest as well.
 
         After finding the participation, IP login and hidden users
         restrictions are checked.
@@ -211,6 +228,40 @@ class ContestHandler(BaseHandler):
             self.timestamp, cookie,
             authorization_header,
             ip_address)
+
+        # For training day contests: if direct authentication failed,
+        # try to authenticate via the parent training program's managing contest.
+        # This allows users logged into the training program to automatically
+        # access training day contests without re-authenticating.
+        if participation is None and self.contest.training_day is not None:
+            training_program = self.contest.training_day.training_program
+            managing_contest = training_program.managing_contest
+
+            # Try to authenticate using the managing contest's cookie
+            managing_cookie_name = managing_contest.name + "_login"
+            managing_cookie = self.get_secure_cookie(managing_cookie_name)
+
+            if managing_cookie is not None:
+                # Authenticate against the managing contest
+                managing_participation, _, managing_impersonated = authenticate_request(
+                    self.sql_session, managing_contest,
+                    self.timestamp, managing_cookie,
+                    None,  # No authorization header for fallback
+                    ip_address)
+
+                if managing_participation is not None:
+                    # User is authenticated to the managing contest.
+                    # Find their participation in this training day's contest.
+                    participation = (
+                        self.sql_session.query(Participation)
+                        .filter(Participation.contest == self.contest)
+                        .filter(Participation.user == managing_participation.user)
+                        .first()
+                    )
+                    if participation is not None:
+                        impersonated = managing_impersonated
+                        # Don't set a cookie for the training day contest -
+                        # authentication is always via the managing contest
 
         if cookie is None:
             self.clear_cookie(cookie_name)
@@ -245,14 +296,40 @@ class ContestHandler(BaseHandler):
             ret["participation"] = participation
             ret["user"] = participation.user
 
+            # Check eligibility for training day contests with main groups
+            _training_day = self.contest.training_day
+            is_eligible, main_group, _matching_tags = self.get_eligibility()
+
+            ret["main_group"] = main_group
+            ret["ineligible_for_training_day"] = not is_eligible
+
+            # Determine effective start/end times (per-group timing)
+            # These are used by templates to show the correct times to users
+            main_group_start = main_group.start_time if main_group else None
+            main_group_end = main_group.end_time if main_group else None
+            contest_start, contest_stop = compute_effective_times(
+                self.contest.start, self.contest.stop,
+                participation.delay_time,
+                main_group_start, main_group_end)
+
+            # Pass effective times to templates so they can display correct times
+            # for training day contests with per-group timing
+            ret["effective_start"] = contest_start
+            ret["effective_stop"] = contest_stop
+
             res = compute_actual_phase(
-                self.timestamp, self.contest.start, self.contest.stop,
-                self.contest.analysis_start if self.contest.analysis_enabled
-                else None,
-                self.contest.analysis_stop if self.contest.analysis_enabled
-                else None,
-                self.contest.per_user_time, participation.starting_time,
-                participation.delay_time, participation.extra_time)
+                self.timestamp,
+                self.contest.start,
+                self.contest.stop,
+                self.contest.analysis_start if self.contest.analysis_enabled else None,
+                self.contest.analysis_stop if self.contest.analysis_enabled else None,
+                self.contest.per_user_time,
+                participation.starting_time,
+                participation.delay_time,
+                participation.extra_time,
+                main_group_start,
+                main_group_end,
+            )
 
             ret["actual_phase"], ret["current_phase_begin"], \
                 ret["current_phase_end"], ret["valid_phase_begin"], \
@@ -276,13 +353,34 @@ class ContestHandler(BaseHandler):
         # some information about token configuration
         ret["tokens_contest"] = self.contest.token_mode
 
-        t_tokens = set(t.token_mode for t in self.contest.tasks)
+        t_tokens = set(t.token_mode for t in self.contest.get_tasks())
         if len(t_tokens) == 1:
             ret["tokens_tasks"] = next(iter(t_tokens))
         else:
             ret["tokens_tasks"] = TOKEN_MODE_MIXED
 
+        # For training day contests, filter tasks based on visibility tags
+        ret["visible_tasks"] = self.get_visible_tasks()
+
         return ret
+
+    def get_eligibility(self) -> tuple[bool, "TrainingDayGroup | None", list[str]]:
+        """Get cached eligibility check result for the current user.
+
+        Returns cached result if available, otherwise performs the check
+        and caches it for subsequent calls.
+
+        return: tuple of (is_eligible, main_group, matching_tags)
+
+        """
+        if self._eligibility_cache is not None:
+            return self._eligibility_cache
+
+        training_day = self.contest.training_day
+        self._eligibility_cache = check_training_day_eligibility(
+            self.sql_session, self.current_user, training_day
+        )
+        return self._eligibility_cache
 
     def get_login_url(self):
         """The login url depends on the contest name, so we can't just
@@ -299,10 +397,56 @@ class ContestHandler(BaseHandler):
         return: the corresponding task object, if found.
 
         """
-        return self.sql_session.query(Task) \
-            .filter(Task.contest == self.contest) \
-            .filter(Task.name == task_name) \
-            .one_or_none()
+        # For training day contests, tasks are linked via training_day_id
+        # rather than contest_id. Use get_tasks() to get the correct task list.
+        for task in self.contest.get_tasks():
+            if task.name == task_name:
+                return task
+        return None
+
+    def can_access_task(self, task: Task) -> bool:
+        """Check if the current user can access the given task.
+
+        For training day contests, tasks may have visibility restrictions
+        based on student tags. A task is accessible if:
+        - The task has no visible_to_tags (empty list = visible to all)
+        - The student has at least one tag matching the task's visible_to_tags
+
+        For non-training-day contests, all tasks are accessible.
+
+        task: the task to check access for.
+
+        return: True if the current user can access the task.
+
+        """
+        # Must be logged in to access restricted tasks
+        if self.current_user is None:
+            return not task.visible_to_tags
+
+        return can_access_task(
+            self.sql_session, task, self.current_user, self.contest.training_day
+        )
+
+    def get_visible_tasks(self) -> list[Task]:
+        """Return the list of tasks visible to the current user.
+
+        For training day contests, filters tasks based on visibility tags
+        and sorts them based on the main group's task_order setting.
+        For non-training-day contests, returns all tasks.
+
+        return: list of tasks the current user can access.
+
+        """
+        tasks = [task for task in self.contest.get_tasks() if self.can_access_task(task)]
+
+        # Apply per-group task ordering for training day contests
+        training_day = self.contest.training_day
+        if training_day is not None and self.current_user is not None:
+            _is_eligible, main_group, _ = self.get_eligibility()
+            if main_group is not None and main_group.alphabetical_task_order:
+                tasks = sorted(tasks, key=lambda t: t.name)
+
+        return tasks
 
     def get_submission(self, task: Task, opaque_id: str | int) -> Submission | None:
         """Return the num-th contestant's submission on the given task.
