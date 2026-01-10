@@ -321,6 +321,9 @@ class TaskVisibilityHandler(BaseHandler):
             self.write({"error": "Task does not belong to this training day"})
             return
 
+        # Capture original tags before modifying to return correct state on error
+        original_tags = task.visible_to_tags or []
+
         try:
             visible_to_tags_str = self.get_argument("visible_to_tags", "")
             incoming_tags = [
@@ -361,9 +364,9 @@ class TaskVisibilityHandler(BaseHandler):
             else:
                 self.set_status(500)
                 self.write(
-                    {"error": "Failed to save", "tags": task.visible_to_tags or []}
+                    {"error": "Failed to save", "tags": original_tags}
                 )
 
         except (ValueError, KeyError) as error:
             self.set_status(400)
-            self.write({"error": str(error), "tags": task.visible_to_tags or []})
+            self.write({"error": str(error), "tags": original_tags})

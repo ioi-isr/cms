@@ -65,6 +65,7 @@ class DelayRequestHandler(ContestHandler):
                 and not url.startswith("//")
                 and not url.startswith("///")
                 and "://" not in url
+                and "\\" not in url  # Reject backslashes to prevent protocol-relative redirects
             )
 
         # Only use next_url if BOTH raw and decoded values pass validation

@@ -46,7 +46,6 @@ from cms.grading.languagemanager import get_language
 from cms.server import multi_contest
 from cms.server.contest.submission import get_submission_count, \
     TestingNotAllowed, UnacceptableUserTest, accept_user_test
-from cms.server.util import can_access_task
 from cmscommon.crypto import encrypt_number
 from cmscommon.mimetypes import get_type_for_file_name
 from .contest import ContestHandler, FileHandler, api_login_required
@@ -87,6 +86,8 @@ class UserTestInterfaceHandler(ContestHandler):
                 self.contest.max_user_test_number - user_test_c
 
         tasks = self.contest.get_tasks()
+        # Filter tasks by visibility for training day contests
+        tasks = [task for task in tasks if self.can_access_task(task)]
         for task in tasks:
             if self.get_argument("task_name", None) == task.name:
                 default_task = task
@@ -134,9 +135,7 @@ class UserTestHandler(ContestHandler):
             raise tornado.web.HTTPError(404)
 
         # Check task visibility for training day contests
-        if not can_access_task(
-            self.sql_session, task, self.current_user, self.contest.training_day
-        ):
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         query_args = dict()
@@ -186,9 +185,7 @@ class UserTestStatusHandler(ContestHandler):
             raise tornado.web.HTTPError(404)
 
         # Check task visibility for training day contests
-        if not can_access_task(
-            self.sql_session, task, self.current_user, self.contest.training_day
-        ):
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         user_test = self.get_user_test(task, user_test_num)
@@ -247,9 +244,7 @@ class UserTestDetailsHandler(ContestHandler):
             raise tornado.web.HTTPError(404)
 
         # Check task visibility for training day contests
-        if not can_access_task(
-            self.sql_session, task, self.current_user, self.contest.training_day
-        ):
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         user_test = self.get_user_test(task, user_test_num)
@@ -278,9 +273,7 @@ class UserTestIOHandler(FileHandler):
             raise tornado.web.HTTPError(404)
 
         # Check task visibility for training day contests
-        if not can_access_task(
-            self.sql_session, task, self.current_user, self.contest.training_day
-        ):
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         user_test = self.get_user_test(task, user_test_num)
@@ -318,9 +311,7 @@ class UserTestFileHandler(FileHandler):
             raise tornado.web.HTTPError(404)
 
         # Check task visibility for training day contests
-        if not can_access_task(
-            self.sql_session, task, self.current_user, self.contest.training_day
-        ):
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         user_test = self.get_user_test(task, user_test_num)
