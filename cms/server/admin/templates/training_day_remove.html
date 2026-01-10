@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Remove Training Day</h1>
+</div>
+
+{% if admin.permission_all %}
+<p>
+  Are you sure you want to remove the training day
+  <strong>{{ training_day.contest.name }}</strong>
+  from training program
+  <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>?
+</p>
+
+<p>
+  <strong>Warning:</strong> This will remove {{ participation_count }} participation(s) and {{ submission_count }} submission(s)
+  from the training day contest.
+  <br>
+  This operation cannot be undone.
+</p>
+
+{% if task_count > 0 %}
+<p>
+  The training day has {{ task_count }} task(s) assigned. These tasks will remain in the training program
+  but will no longer be assigned to any training day.
+</p>
+{% endif %}
+
+<br>
+<a onclick="cmsDoRemove();" class="button-link">Yes, remove training day</a>
+<a href="{{ url("training_program", training_program.id, "training_days") }}" class="button-link">No, cancel</a>
+
+<script>
+CMS.AWSUtils.initRemovePage({
+  removeUrl: '{{ url("training_program", training_program.id, "training_day", training_day.id, "remove") }}',
+  hasTaskOptions: false
+});
+</script>
+
+{% else %}
+You do not have permission to remove a training day.
+{% endif %}
+
+{% endblock core %}

@@ -207,6 +207,25 @@ class TaskHandler(BaseHandler):
 
             self.get_string(attrs, "score_mode")
 
+            # Process visible_to_tags for training day tasks
+            # Only update if the parameter is explicitly present in the request
+            # (to avoid clobbering when editing from the general task page)
+            visible_to_tags_str = self.get_argument("visible_to_tags", None)
+            if visible_to_tags_str is not None:
+                visible_to_tags = [
+                    tag.strip().lower()
+                    for tag in visible_to_tags_str.split(",")
+                    if tag.strip()
+                ]
+                # Remove duplicates while preserving order
+                seen: set[str] = set()
+                unique_tags: list[str] = []
+                for tag in visible_to_tags:
+                    if tag not in seen:
+                        seen.add(tag)
+                        unique_tags.append(tag)
+                attrs["visible_to_tags"] = unique_tags
+
             # Update the task.
             task.set_attrs(attrs)
 
@@ -662,9 +681,18 @@ class DefaultSubmissionFormatHandler(BaseHandler):
 
         try:
             task.set_default_output_only_submission_format()
-        except Exception as e:
-            raise RuntimeError(
-                f"Couldn't create default submission format for task {task.id}") from e
+        except Exception:
+            logger.error(
+                "Couldn't create default submission format for task %s "
+                "(dataset %s, type %s)",
+                task.id,
+                task.active_dataset.id,
+                task.active_dataset.task_type,
+                exc_info=True
+            )
+            raise tornado.web.HTTPError(
+                500, f"Couldn't create default submission format for task {task.id}"
+            )
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()

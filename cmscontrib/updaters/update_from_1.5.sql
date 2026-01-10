@@ -405,4 +405,110 @@ CREATE UNIQUE INDEX ix_students_participation_id ON public.students USING btree 
 ALTER TABLE ONLY public.students
     ALTER COLUMN student_tags DROP DEFAULT;
 
+-- Training days table for organizing training days within a training program
+CREATE TABLE public.training_days (
+    id integer NOT NULL,
+    training_program_id integer NOT NULL,
+    contest_id integer NOT NULL,
+    "position" integer
+);
+
+CREATE SEQUENCE public.training_days_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.training_days_id_seq OWNED BY public.training_days.id;
+
+ALTER TABLE ONLY public.training_days
+    ALTER COLUMN id SET DEFAULT nextval('public.training_days_id_seq'::regclass);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_training_program_id_fkey FOREIGN KEY (training_program_id) REFERENCES public.training_programs(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_contest_id_fkey FOREIGN KEY (contest_id) REFERENCES public.contests(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_training_days_training_program_id ON public.training_days USING btree (training_program_id);
+
+CREATE UNIQUE INDEX ix_training_days_contest_id ON public.training_days USING btree (contest_id);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_training_program_id_position_key UNIQUE (training_program_id, "position");
+
+-- Add training_day_id and training_day_num to tasks table for training day-specific tasks
+-- Tasks keep their contest_id (managing contest) and can also be assigned to a training day
+ALTER TABLE public.tasks ADD COLUMN training_day_id integer;
+ALTER TABLE public.tasks ADD COLUMN training_day_num integer;
+
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+CREATE INDEX ix_tasks_training_day_id ON public.tasks USING btree (training_day_id);
+
+-- Ensure a task's position is unique within a training day
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_training_day_id_training_day_num_key UNIQUE (training_day_id, training_day_num);
+
+-- https://github.com/ioi-isr/cms/pull/83 - Add allow_delay_requests to contests
+ALTER TABLE public.contests ADD COLUMN allow_delay_requests boolean NOT NULL DEFAULT true;
+ALTER TABLE public.contests ALTER COLUMN allow_delay_requests DROP DEFAULT;
+
+-- Set allow_delay_requests=false for existing training program managing contests
+UPDATE public.contests SET allow_delay_requests = false WHERE id IN (
+    SELECT managing_contest_id FROM public.training_programs
+);
+
+-- Add visible_to_tags column to tasks for controlling task visibility based on student tags
+-- If empty, the task is visible to all students. If set, only students with at least one matching tag can see the task.
+ALTER TABLE public.tasks ADD COLUMN visible_to_tags character varying[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.tasks ALTER COLUMN visible_to_tags DROP DEFAULT;
+
+-- Training day groups table for per-group configuration of training days
+-- Each group (identified by a student tag) can have its own start/end times and task display order
+CREATE TABLE public.training_day_groups (
+    id integer NOT NULL,
+    training_day_id integer NOT NULL,
+    tag_name character varying NOT NULL,
+    start_time timestamp without time zone,
+    end_time timestamp without time zone,
+    alphabetical_task_order boolean NOT NULL DEFAULT false
+);
+
+CREATE SEQUENCE public.training_day_groups_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.training_day_groups_id_seq OWNED BY public.training_day_groups.id;
+
+ALTER TABLE ONLY public.training_day_groups
+    ALTER COLUMN id SET DEFAULT nextval('public.training_day_groups_id_seq'::regclass);
+
+ALTER TABLE ONLY public.training_day_groups
+    ADD CONSTRAINT training_day_groups_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.training_day_groups
+    ADD CONSTRAINT training_day_groups_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_training_day_groups_training_day_id ON public.training_day_groups USING btree (training_day_id);
+
+ALTER TABLE ONLY public.training_day_groups
+    ADD CONSTRAINT training_day_groups_training_day_id_tag_name_key UNIQUE (training_day_id, tag_name);
+
+ALTER TABLE ONLY public.training_day_groups
+    ALTER COLUMN alphabetical_task_order DROP DEFAULT;
+
+-- Add GIN index on student_tags for efficient querying
+CREATE INDEX ix_students_student_tags_gin ON public.students USING gin (student_tags);
+
 COMMIT;

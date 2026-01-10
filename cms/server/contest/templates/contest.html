@@ -181,7 +181,7 @@ $(document).ready(function () {
                                 </a>
                             </li>
     {% if (actual_phase >= 0 and participation.starting_time is not none) or participation.unrestricted %}
-        {% for t_iter in contest.tasks %}
+        {% for t_iter in visible_tasks %}
                             <li class="nav-header">
                                 {{ t_iter.name }}
                             </li>

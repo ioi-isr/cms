@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Remove Task from Training Program</h1>
+</div>
+
+{% if admin.permission_all %}
+<p>
+  Are you sure you want to remove task {{ task.name }} from training program {{ training_program.name }}?
+  {% if task.training_day %}
+  <br>
+  <strong>Warning:</strong> This task is also assigned to training day "{{ task.training_day.contest.description }}". Removing it from the training program will also remove it from the training day.
+  {% endif %}
+  <br>
+  This operation cannot be undone.
+</p>
+<br>
+<a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "task", task.id, "remove") }}');" class="button-link">Yes, remove</a>
+<a href="{{ url("training_program", training_program.id, "tasks") }}" class="button-link">No</a>
+
+{% else %}
+You do not have permission to remove a task from a training program.
+{% endif %}
+
+{% endblock core %}

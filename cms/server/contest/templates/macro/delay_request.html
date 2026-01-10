@@ -1,0 +1,84 @@
+{# This macro should be imported "with context". #}
+
+{% macro delay_request_form(action_url, xsrf_form_html, timezone, now, form_id=None, inline=False, next_url=None) %}
+{#
+Render a delay request form.
+
+action_url (str): the URL to submit the form to.
+xsrf_form_html (str): the XSRF token HTML.
+timezone: the user's timezone object.
+now: the current datetime.
+form_id (str|None): optional ID for the form element.
+inline (bool): if True, renders a more compact inline version for modals.
+next_url (str|None): optional URL to redirect to after form submission.
+#}
+<form class="form-horizontal" action="{{ action_url }}" method="POST"{% if form_id %} id="{{ form_id }}"{% endif %}>
+    {{ xsrf_form_html|safe }}
+    {% if next_url %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+    {% endif %}
+    <fieldset>
+        <div class="control-group">
+            <label class="control-label" for="input_requested_start_time{% if form_id %}_{{ form_id }}{% endif %}">{% trans %}Requested Start Time{% endtrans %}</label>
+            <div class="controls">
+                <input type="datetime-local" name="requested_start_time" id="input_requested_start_time{% if form_id %}_{{ form_id }}{% endif %}" class="input-xlarge" required>
+                {% if not inline %}
+                <span class="help-block">
+                    {% trans %}Select the date and time when you want to start the contest{% endtrans %}
+                    (in your timezone: {{ timezone.tzname(now) }})
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="input_reason{% if form_id %}_{{ form_id }}{% endif %}">{% trans %}Reason{% endtrans %}</label>
+            <div class="controls">
+                <textarea id="input_reason{% if form_id %}_{{ form_id }}{% endif %}" class="input-xlarge" name="reason" rows="{% if inline %}3{% else %}5{% endif %}" maxlength="2000" required></textarea>
+                {% if not inline %}
+                <span class="help-block">{% trans %}Please explain why you need a delay{% endtrans %}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="control-group">
+            <div class="controls">
+                <button type="submit" class="btn btn-primary">{% trans %}Submit Delay Request{% endtrans %}</button>
+                <button type="reset" class="btn">{% trans %}Reset{% endtrans %}</button>
+            </div>
+        </div>
+    </fieldset>
+</form>
+{% endmacro %}
+
+{% macro delay_request_list(delay_requests) %}
+{#
+Render a list of delay requests.
+
+delay_requests: list of DelayRequest objects.
+#}
+{% if delay_requests|length > 0 %}
+<div class="delay_request_list">
+    {% for req in delay_requests|reverse %}
+    <div class="delay_request">
+        <h4 class="subject">{% trans %}Delay Request{% endtrans %}</h4>
+        <span class="timestamp">{{ req.request_timestamp|format_datetime_smart }}</span>
+        <div class="body">
+            <strong>{% trans %}Requested Start Time:{% endtrans %}</strong> {{ req.requested_start_time|format_datetime_smart }}<br>
+            <strong>{% trans %}Reason:{% endtrans %}</strong> {{ req.reason }}<br>
+            <strong>{% trans %}Status:{% endtrans %}</strong> 
+            {% if req.status == 'pending' %}
+                <span class="label label-warning">{% trans %}Pending{% endtrans %}</span>
+            {% elif req.status == 'approved' %}
+                <span class="label label-success">{% trans %}Approved{% endtrans %}</span>
+            {% elif req.status == 'rejected' %}
+                <span class="label label-important">{% trans %}Rejected{% endtrans %}</span>
+                {% if req.rejection_reason %}
+                    <br><strong>{% trans %}Rejection Reason:{% endtrans %}</strong> {{ req.rejection_reason }}
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    <hr style="margin: 20px 0;">
+    {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}

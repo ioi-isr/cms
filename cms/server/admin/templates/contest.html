@@ -7,6 +7,9 @@
 
 {% include "fragments/overload_warning.html" %}
 
+<!-- Training day groups configuration (shown at top for training day contests) -->
+{% include "fragments/training_day_groups.html" %}
+
 <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
 <form enctype="multipart/form-data" action="{{ url("contest", contest.id) }}" method="POST" name="edit_contest" style="display:inline;">
   {{ xsrf_form_html|safe }}
@@ -76,6 +79,15 @@
       </td>
       <td>
         <input type="checkbox" id="allow_questions" name="allow_questions" {{ "checked" if contest.allow_questions else "" }}/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span class="info" title="If checked, contestants will be able to submit delay requests for this contest."></span>
+        <label for="allow_delay_requests">Allow delay requests</label>
+      </td>
+      <td>
+        <input type="checkbox" id="allow_delay_requests" name="allow_delay_requests" {{ "checked" if contest.allow_delay_requests else "" }}/>
       </td>
     </tr>
     <tr>
@@ -317,7 +329,8 @@
       </td>
       <td><input type="text" name="analysis_stop" value="{{ contest.analysis_stop }}"></td>
     </tr>
-  </table>
+
+    </table>
   <input type="submit"
          value="Update"
 {% if not admin.permission_all %}
@@ -327,6 +340,7 @@
   <input type="reset" value="Reset">
   <a href="{{ url("contest", contest.id, "export") }}"> ⇩ Export </a>
 </form>
+
 <form action="{{ url("contests") }}" method="POST" style="display:inline;">
     {{ xsrf_form_html|safe }}
     <input type="hidden" name="contest_id" value="{{ contest.id }}"/>
@@ -338,6 +352,5 @@
 {% endif %}
          />
 </form>
-
 
 {% endblock core %}
