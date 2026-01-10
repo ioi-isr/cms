@@ -20,11 +20,15 @@
 Used by DumpImporter and DumpUpdater.
 
 This version adds the TrainingProgram table for organizing year-long
-training programs with multiple training sessions, and the TrainingDay 
+training programs with multiple training sessions, and the TrainingDay
 table for organizing training days within a training program,
 linking contests to training programs.
 This includes TrainingDayGroup table for per-group configuration
 of training days (main groups with custom timing and task ordering).
+It also adds the training_day_id field to Submission to track which
+training day a submission was made via. When submitting via a training day,
+the submission's participation points to the managing contest's participation,
+but the training_day_id records which training day interface was used.
 
 """
 
@@ -36,5 +40,10 @@ class Updater:
         self.objs = data
 
     def run(self):
-        # No data migration needed for new tables
+        for k, v in self.objs.items():
+            if k.startswith("_"):
+                continue
+            if v.get("_class") == "Submission":
+                v.setdefault("training_day_id", None)
+
         return self.objs
