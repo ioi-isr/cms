@@ -43,8 +43,7 @@ from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cms.grading.scoretypes import ScoreTypeGroup
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
-from .modelsolution import get_subtask_info
-from .subtask_validators import get_running_validator_ids
+from cms.grading.subtask_validation import get_running_validator_ids
 
 
 logger = logging.getLogger(__name__)
@@ -150,7 +149,7 @@ class TaskHandler(BaseHandler):
                         subtask_names[dataset.id] = names
                     if subtasks:
                         subtask_info[dataset.id] = subtasks
-                    
+
                     # Now try to get testcase-to-subtask mapping
                     # This may fail if there are no testcases, but subtask_info
                     # should still be populated from above

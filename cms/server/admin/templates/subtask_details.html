@@ -454,7 +454,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
   <tr>
     <td>Regex pattern:</td>
     <td>
-      <code>{{ subtask_regex }}</code>
+      <code>{{ subtask_regex|tojson|forceescape }}</code>
       {% if admin.permission_all %}
       [<a href="javascript:void(0);" onclick="document.getElementById('regex_edit_row').style.display = 'table-row'; this.parentElement.parentElement.style.display = 'none';">edit</a>]
       {% endif %}
@@ -465,7 +465,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     <td>
       <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "regex") }}" style="display: inline;">
         {{ xsrf_form_html|safe }}
-        <input type="text" name="regex" value="{{ subtask_regex }}" size="40" />
+        <input type="text" name="regex" value="{{ subtask_regex|tojson|forceescape }}" size="40" />
         <label style="margin-left: 10px;">
           <input type="checkbox" name="rescore" value="1" />
           Re-score all submissions

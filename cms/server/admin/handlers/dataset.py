@@ -51,29 +51,13 @@ from cms.grading.tasktypes.util import \
 from cms.grading.languagemanager import filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
 from cms.grading.scoring import compute_changes_for_dataset
+from cms.grading.subtask_validation import set_sandbox_resource_limits
 from cmscommon.datetime import make_datetime
 from cmscommon.importers import import_testcases_from_zipfile, compile_template_regex
 from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
-
-
-def set_sandbox_resource_limits(sandbox):
-    """Set resource limits for a sandbox to prevent runaway processes.
-
-    This function applies the same resource limits used for generators
-    to validators and other sandboxed processes to ensure consistency
-    and prevent system resource exhaustion.
-
-    Args:
-        sandbox: The sandbox object to configure
-    """
-    sandbox.timeout = config.sandbox.trusted_sandbox_max_time_s
-    sandbox.wallclock_timeout = config.sandbox.trusted_sandbox_max_time_s * 2
-    sandbox.address_space = \
-        config.sandbox.trusted_sandbox_max_memory_kib * 1024
-    sandbox.max_processes = config.sandbox.trusted_sandbox_max_processes
 
 
 def check_compiled_file_conflict(filename, allowed_basenames, existing_managers):
@@ -1589,19 +1573,21 @@ class BatchRenameTestcasesHandler(BaseHandler):
                                 # Use .*prefix.* pattern to match substring
                                 import re
 
-                                new_term = ".*%s.*" % re.escape(value)
+                                new_term = ".*%s(?#CMS)" % re.escape(value)
                                 # Check if the term already exists in the regex
                                 if new_term in old_regex:
                                     regex_already_exists = True
                                 else:
                                     # Combine with existing regex using |
-                                    new_regex = "(?:%s)|(?:%s)" % (old_regex, new_term)
+                                    new_regex = "%s|%s" % (old_regex, new_term)
                                     param[1] = new_regex
                                     params[subtask_idx] = param
                                     dataset.score_type_parameters = params
                                     regex_updated = True
-                except (ValueError, AttributeError, IndexError):
-                    pass
+                except (ValueError, AttributeError, IndexError) as e:
+                    logger.warning(
+                        "Could not update regex for subtask %s: %s", subtask_index, e
+                    )
 
             if self.try_commit():
                 msg = "Added prefix '%s' to %d testcases." % (value, renamed_count)

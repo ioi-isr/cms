@@ -90,14 +90,14 @@ from .dataset import \
     GenerateTestcasesHandler, \
     RenameTestcaseHandler, \
     BatchRenameTestcasesHandler
-from .subtask_validators import \
-    AddSubtaskValidatorHandler, \
-    DeleteSubtaskValidatorHandler, \
-    SubtaskDetailsHandler, \
-    UpdateSubtaskRegexHandler, \
-    UpdateSubtaskNameHandler, \
-    RerunSubtaskValidatorsHandler, \
-    get_running_validator_ids
+from .subtask_validators import (
+    AddSubtaskValidatorHandler,
+    DeleteSubtaskValidatorHandler,
+    SubtaskDetailsHandler,
+    UpdateSubtaskRegexHandler,
+    UpdateSubtaskNameHandler,
+    RerunSubtaskValidatorsHandler,
+)
 from .main import \
     LoginHandler, \
     LogoutHandler, \
