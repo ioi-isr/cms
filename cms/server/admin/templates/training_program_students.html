@@ -48,11 +48,10 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
       <tr>
         <th></th>
         <th>Username</th>
-        <th>First name</th>
-        <th>Last name</th>
+        <th>First Name</th>
+        <th>Last Name</th>
         <th>Student Tags</th>
         <th>Task Archive Progress</th>
-        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -75,13 +74,10 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
         </td>
         <td>
           {% if progress.task_count > 0 %}
-          {{ "%.1f"|format(progress.percentage) }}% ({{ "%.1f"|format(progress.total_score) }}/{{ "%.1f"|format(progress.max_score) }})
+          {{ "%.1f"|format(progress.percentage) }}% ({{ "%.1f"|format(progress.total_score) }}/{{ "%.1f"|format(progress.max_score) }}) [<a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}">details</a>]
           {% else %}
-          No tasks
+          No tasks [<a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}">details</a>]
           {% endif %}
-        </td>
-        <td>
-          <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" class="btn btn-sm">Task Archive</a>
         </td>
       </tr>
       {% endfor %}

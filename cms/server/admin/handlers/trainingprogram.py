@@ -29,8 +29,8 @@ from sqlalchemy import func
 
 from cms.db import Contest, TrainingProgram, Participation, Submission, \
     User, Task, Question, Announcement, Student, StudentTask, Team, \
-    TrainingDay, TrainingDayGroup, ParticipationTaskScore
-from cms.server.util import get_all_student_tags, deduplicate_preserving_order
+    TrainingDay, TrainingDayGroup
+from cms.server.util import get_all_student_tags, deduplicate_preserving_order, calculate_task_archive_progress
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -373,36 +373,12 @@ class TrainingProgramStudentsHandler(BaseHandler):
                 .filter(~User.username.like(r'\_\_%', escape='\\'))\
                 .all()
 
-        # Calculate task archive progress for each student
+        # Calculate task archive progress for each student using shared utility
         student_progress = {}
         for student in training_program.students:
-            participation = student.participation
-            student_task_ids = {st.task_id for st in student.student_tasks}
-
-            # Build a map of task_id -> cached score for this participation
-            cached_scores = {}
-            for pts in participation.task_scores:
-                cached_scores[pts.task_id] = pts.score
-
-            total_score = 0.0
-            max_score = 0.0
-            task_count = len(student_task_ids)
-
-            for task in managing_contest.get_tasks():
-                if task.id not in student_task_ids:
-                    continue
-                max_task_score = task.active_dataset.score_type_object.max_score \
-                    if task.active_dataset else 100.0
-                max_score += max_task_score
-                total_score += cached_scores.get(task.id, 0.0)
-
-            percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
-            student_progress[student.id] = {
-                "total_score": total_score,
-                "max_score": max_score,
-                "percentage": percentage,
-                "task_count": task_count,
-            }
+            student_progress[student.id] = calculate_task_archive_progress(
+                student, student.participation, managing_contest
+            )
 
         self.r_params["student_progress"] = student_progress
 

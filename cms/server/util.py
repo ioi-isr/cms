@@ -41,7 +41,7 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session, Contest, Student, Task, Participation
+from cms.db import Session, Contest, Student, Task, Participation, ParticipationTaskScore
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
@@ -191,6 +191,52 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
     student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
     task_tags_set = {tag.lower() for tag in task.visible_to_tags}
     return bool(student_tags_set & task_tags_set)
+
+
+def calculate_task_archive_progress(
+    student: "Student",
+    participation: "Participation",
+    contest: "Contest"
+) -> dict:
+    """Calculate task archive progress for a student.
+
+    This is a shared utility used by both the admin students page and
+    the contest training program overview page.
+
+    student: the Student object (with student_tasks relationship).
+    participation: the Participation object (with task_scores relationship).
+    contest: the Contest object (managing contest for the training program).
+
+    return: dict with total_score, max_score, percentage, task_count.
+
+    """
+    student_task_ids = {st.task_id for st in student.student_tasks}
+
+    # Build a map of task_id -> cached score for this participation
+    cached_scores = {}
+    for pts in participation.task_scores:
+        cached_scores[pts.task_id] = pts.score
+
+    total_score = 0.0
+    max_score = 0.0
+    task_count = len(student_task_ids)
+
+    for task in contest.get_tasks():
+        if task.id not in student_task_ids:
+            continue
+        max_task_score = task.active_dataset.score_type_object.max_score \
+            if task.active_dataset else 100.0
+        max_score += max_task_score
+        total_score += cached_scores.get(task.id, 0.0)
+
+    percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
+
+    return {
+        "total_score": total_score,
+        "max_score": max_score,
+        "percentage": percentage,
+        "task_count": task_count,
+    }
 
 
 # TODO: multi_contest is only relevant for CWS
