@@ -196,7 +196,8 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
 def calculate_task_archive_progress(
     student: "Student",
     participation: "Participation",
-    contest: "Contest"
+    contest: "Contest",
+    include_task_details: bool = False
 ) -> dict:
     """Calculate task archive progress for a student.
 
@@ -206,11 +207,15 @@ def calculate_task_archive_progress(
     student: the Student object (with student_tasks relationship).
     participation: the Participation object (with task_scores relationship).
     contest: the Contest object (managing contest for the training program).
+    include_task_details: if True, include per-task breakdown in task_scores list.
 
     return: dict with total_score, max_score, percentage, task_count.
+            If include_task_details is True, also includes task_scores list.
 
     """
-    student_task_ids = {st.task_id for st in student.student_tasks}
+    # Build maps for efficient lookup
+    student_tasks_map = {st.task_id: st for st in student.student_tasks}
+    student_task_ids = set(student_tasks_map.keys())
 
     # Build a map of task_id -> cached score for this participation
     cached_scores = {}
@@ -220,6 +225,7 @@ def calculate_task_archive_progress(
     total_score = 0.0
     max_score = 0.0
     task_count = len(student_task_ids)
+    task_scores = [] if include_task_details else None
 
     for task in contest.get_tasks():
         if task.id not in student_task_ids:
@@ -227,16 +233,32 @@ def calculate_task_archive_progress(
         max_task_score = task.active_dataset.score_type_object.max_score \
             if task.active_dataset else 100.0
         max_score += max_task_score
-        total_score += cached_scores.get(task.id, 0.0)
+        best_score = cached_scores.get(task.id, 0.0)
+        total_score += best_score
+
+        if include_task_details:
+            student_task = student_tasks_map.get(task.id)
+            task_scores.append({
+                "task": task,
+                "score": best_score,
+                "max_score": max_task_score,
+                "source_training_day": student_task.source_training_day if student_task else None,
+                "assigned_at": student_task.assigned_at if student_task else None,
+            })
 
     percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
 
-    return {
+    result = {
         "total_score": total_score,
         "max_score": max_score,
         "percentage": percentage,
         "task_count": task_count,
     }
+
+    if include_task_details:
+        result["task_scores"] = task_scores
+
+    return result
 
 
 # TODO: multi_contest is only relevant for CWS

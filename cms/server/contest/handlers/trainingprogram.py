@@ -25,10 +25,10 @@ from datetime import timedelta
 
 import tornado.web
 
-from cms.db import Participation, ParticipationTaskScore, Student, StudentTask
+from cms.db import Participation, Student
 from cms.server import multi_contest
 from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
-from cms.server.util import check_training_day_eligibility
+from cms.server.util import check_training_day_eligibility, calculate_task_archive_progress
 from .contest import ContestHandler
 
 
@@ -64,49 +64,21 @@ class TrainingProgramOverviewHandler(ContestHandler):
             .first()
         )
 
-        # Get the tasks assigned to this student (from StudentTask records)
-        # If no student record exists, show no tasks
-        student_task_ids = set()
-        student_tasks_map = {}  # task_id -> StudentTask for source info
+        # Calculate task archive progress using shared utility
         if student is not None:
-            for st in student.student_tasks:
-                student_task_ids.add(st.task_id)
-                student_tasks_map[st.task_id] = st
-
-        # Calculate total score and max score based on assigned tasks only
-        # Use the ParticipationTaskScore cache for efficient score lookup
-        total_score = 0.0
-        max_score = 0.0
-        task_scores = []
-
-        # Build a map of task_id -> cached score for this participation
-        cached_scores = {}
-        for pts in participation.task_scores:
-            cached_scores[pts.task_id] = pts.score
-
-        for task in contest.get_tasks():
-            # Only include tasks that are in the student's task archive
-            if task.id not in student_task_ids:
-                continue
-            max_task_score = task.active_dataset.score_type_object.max_score \
-                if task.active_dataset else 100.0
-            max_score += max_task_score
-
-            # Get best score from the cache (defaults to 0.0 if not cached)
-            best_score = cached_scores.get(task.id, 0.0)
-
-            total_score += best_score
-            student_task = student_tasks_map.get(task.id)
-            task_scores.append({
-                "task": task,
-                "score": best_score,
-                "max_score": max_task_score,
-                "source_training_day": student_task.source_training_day if student_task else None,
-                "assigned_at": student_task.assigned_at if student_task else None,
-            })
-
-        # Calculate percentage
-        percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
+            progress = calculate_task_archive_progress(
+                student, participation, contest, include_task_details=True
+            )
+            total_score = progress["total_score"]
+            max_score = progress["max_score"]
+            percentage = progress["percentage"]
+            task_scores = progress["task_scores"]
+        else:
+            # No student record - show no tasks
+            total_score = 0.0
+            max_score = 0.0
+            percentage = 0.0
+            task_scores = []
 
         # Get upcoming training days for this user
         upcoming_training_days = []
