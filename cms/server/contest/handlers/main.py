@@ -392,12 +392,12 @@ class StartHandler(ContestHandler):
 
         for task in visible_tasks:
             if task.id not in existing_task_ids:
-                student_task = StudentTask(
-                    student_id=student.id,
-                    task_id=task.id,
-                    source_training_day_id=training_day.id,
-                    assigned_at=self.timestamp,
-                )
+                # Note: CMS Base.__init__ skips foreign key columns, so we must
+                # set them as attributes after creating the object
+                student_task = StudentTask(assigned_at=self.timestamp)
+                student_task.student_id = student.id
+                student_task.task_id = task.id
+                student_task.source_training_day_id = training_day.id
                 self.sql_session.add(student_task)
                 logger.info(
                     "Added task %s to student %s from training day %s",

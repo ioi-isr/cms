@@ -1822,12 +1822,12 @@ class AddStudentTaskHandler(BaseHandler):
                 raise ValueError("Task is already assigned to this student")
 
             # Create the StudentTask record (manual assignment, no training day)
-            student_task = StudentTask(
-                student_id=student.id,
-                task_id=task.id,
-                source_training_day_id=None,
-                assigned_at=make_datetime(),
-            )
+            # Note: CMS Base.__init__ skips foreign key columns, so we must
+            # set them as attributes after creating the object
+            student_task = StudentTask(assigned_at=make_datetime())
+            student_task.student_id = student.id
+            student_task.task_id = task.id
+            student_task.source_training_day_id = None
             self.sql_session.add(student_task)
 
         except Exception as error:
@@ -1972,12 +1972,12 @@ class BulkAssignTaskHandler(BaseHandler):
                     .first()
                 )
                 if existing is None:
-                    student_task = StudentTask(
-                        student_id=student.id,
-                        task_id=task.id,
-                        source_training_day_id=None,
-                        assigned_at=make_datetime(),
-                    )
+                    # Note: CMS Base.__init__ skips foreign key columns, so we must
+                    # set them as attributes after creating the object
+                    student_task = StudentTask(assigned_at=make_datetime())
+                    student_task.student_id = student.id
+                    student_task.task_id = task.id
+                    student_task.source_training_day_id = None
                     self.sql_session.add(student_task)
                     assigned_count += 1
 
