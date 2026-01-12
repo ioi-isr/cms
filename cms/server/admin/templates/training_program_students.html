@@ -11,6 +11,10 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
 
 {% include "fragments/overload_warning.html" %}
 
+<p>
+  <a href="{{ url("training_program", training_program.id, "bulk_assign_task") }}">Bulk Assign Task by Tag</a>
+</p>
+
 <form action="{{ url("training_program", training_program.id, "students", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Add a new student:

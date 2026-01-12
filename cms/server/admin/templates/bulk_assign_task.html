@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block core %}
+<h1>
+  Bulk Assign Task in <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+</h1>
+
+<p>
+  <a href="{{ url("training_program", training_program.id, "students") }}">Back to students list</a>
+</p>
+
+<h2 id="title_bulk_assign" class="toggling_on">Bulk Assign Task by Tag</h2>
+<div id="bulk_assign">
+  <p>
+    This will assign the selected task to all students who have the specified tag.
+    Students who already have the task assigned will be skipped.
+  </p>
+  <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
+    {{ xsrf_form_html|safe }}
+    <table class="bordered">
+      <tr>
+        <td>
+          <span class="info" title="Select a task to assign to students."></span>
+          Task
+        </td>
+        <td>
+          <select name="task_id">
+            <option value="null" selected>-- Select a task --</option>
+            {% for task in all_tasks %}
+            <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="Enter a tag. All students with this tag will have the task assigned to them."></span>
+          Student Tag
+        </td>
+        <td>
+          <input type="text" name="tag" list="tags_list" placeholder="Enter a tag" />
+          <datalist id="tags_list">
+            {% for tag in all_student_tags %}
+            <option value="{{ tag }}">
+            {% endfor %}
+          </datalist>
+        </td>
+      </tr>
+    </table>
+    <input type="submit" value="Assign Task to All Students with Tag" {% if not admin.permission_all %}disabled{% endif %} />
+  </form>
+  <div class="hr"></div>
+</div>
+
+<h2 id="title_available_tags" class="toggling_on">Available Tags</h2>
+<div id="available_tags">
+  {% if all_student_tags %}
+  <p>The following tags are currently in use:</p>
+  <ul>
+    {% for tag in all_student_tags %}
+    <li>{{ tag }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No student tags have been defined yet.</p>
+  {% endif %}
+  <div class="hr"></div>
+</div>
+
+{% endblock core %}

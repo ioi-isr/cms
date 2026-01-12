@@ -25,7 +25,7 @@ from datetime import timedelta
 
 import tornado.web
 
-from cms.db import Participation, Submission, SubmissionResult
+from cms.db import Participation, Student, StudentTask, Submission, SubmissionResult
 from cms.server import multi_contest
 from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
 from cms.server.util import check_training_day_eligibility
@@ -54,12 +54,34 @@ class TrainingProgramOverviewHandler(ContestHandler):
             # This URL only makes sense for training programs; return 404
             raise tornado.web.HTTPError(404)
 
-        # Calculate total score and max score
+        # Find the student record for this user in the training program
+        student = (
+            self.sql_session.query(Student)
+            .join(Participation, Student.participation_id == Participation.id)
+            .filter(Participation.contest_id == contest.id)
+            .filter(Participation.user_id == participation.user_id)
+            .filter(Student.training_program_id == training_program.id)
+            .first()
+        )
+
+        # Get the tasks assigned to this student (from StudentTask records)
+        # If no student record exists, show no tasks
+        student_task_ids = set()
+        student_tasks_map = {}  # task_id -> StudentTask for source info
+        if student is not None:
+            for st in student.student_tasks:
+                student_task_ids.add(st.task_id)
+                student_tasks_map[st.task_id] = st
+
+        # Calculate total score and max score based on assigned tasks only
         total_score = 0.0
         max_score = 0.0
         task_scores = []
 
         for task in contest.get_tasks():
+            # Only include tasks that are in the student's task archive
+            if task.id not in student_task_ids:
+                continue
             max_task_score = task.active_dataset.score_type_object.max_score \
                 if task.active_dataset else 100.0
             max_score += max_task_score
@@ -86,10 +108,13 @@ class TrainingProgramOverviewHandler(ContestHandler):
                         best_score = max(best_score, result.score)
 
             total_score += best_score
+            student_task = student_tasks_map.get(task.id)
             task_scores.append({
                 "task": task,
                 "score": best_score,
                 "max_score": max_task_score,
+                "source_training_day": student_task.source_training_day if student_task else None,
+                "assigned_at": student_task.assigned_at if student_task else None,
             })
 
         # Calculate percentage

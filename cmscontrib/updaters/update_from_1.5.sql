@@ -521,4 +521,48 @@ ALTER TABLE ONLY public.submissions
 
 CREATE INDEX ix_submissions_training_day_id ON public.submissions USING btree (training_day_id);
 
+-- Student tasks table for tracking which tasks each student has access to in the task archive
+-- Tasks can be assigned automatically when a student starts a training day, or manually by an admin
+CREATE TABLE public.student_tasks (
+    id integer NOT NULL,
+    student_id integer NOT NULL,
+    task_id integer NOT NULL,
+    source_training_day_id integer,
+    assigned_at timestamp without time zone NOT NULL
+);
+
+CREATE SEQUENCE public.student_tasks_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.student_tasks_id_seq OWNED BY public.student_tasks.id;
+
+ALTER TABLE ONLY public.student_tasks
+    ALTER COLUMN id SET DEFAULT nextval('public.student_tasks_id_seq'::regclass);
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_student_id_task_id_key UNIQUE (student_id, task_id);
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_source_training_day_id_fkey FOREIGN KEY (source_training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+CREATE INDEX ix_student_tasks_student_id ON public.student_tasks USING btree (student_id);
+
+CREATE INDEX ix_student_tasks_task_id ON public.student_tasks USING btree (task_id);
+
+CREATE INDEX ix_student_tasks_source_training_day_id ON public.student_tasks USING btree (source_training_day_id);
+
 COMMIT;

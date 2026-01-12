@@ -52,9 +52,9 @@ __all__ = [
     "metadata", "Base",
     # fsobject
     "FSObject", "LargeObject",
-    # contest
-    "Contest", "Announcement", "ContestFolder", "TrainingProgram", "Student",
-    "TrainingDay", "TrainingDayGroup",
+        # contest
+        "Contest", "Announcement", "ContestFolder", "TrainingProgram", "Student",
+        "TrainingDay", "TrainingDayGroup", "StudentTask",
     # user
     "User", "Team", "Participation", "Message", "Question", "DelayRequest",
     # admin
@@ -88,7 +88,7 @@ __all__ = [
 
 # Instantiate or import these objects.
 
-version = 49
+version = 50
 
 engine = create_engine(config.database.url, echo=config.database.debug,
                        pool_timeout=60, pool_recycle=120)
@@ -109,6 +109,7 @@ from .training_program import TrainingProgram
 from .training_day import TrainingDay
 from .training_day_group import TrainingDayGroup
 from .student import Student
+from .student_task import StudentTask
 from .user import User, Team, Participation, Message, Question, DelayRequest
 from .task import Task, Statement, Attachment, Dataset, Manager, Testcase, \
     Generator
