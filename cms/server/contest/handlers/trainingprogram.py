@@ -25,7 +25,7 @@ from datetime import timedelta
 
 import tornado.web
 
-from cms.db import Participation, Student, StudentTask, Submission, SubmissionResult
+from cms.db import Participation, ParticipationTaskScore, Student, StudentTask
 from cms.server import multi_contest
 from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
 from cms.server.util import check_training_day_eligibility
@@ -74,9 +74,15 @@ class TrainingProgramOverviewHandler(ContestHandler):
                 student_tasks_map[st.task_id] = st
 
         # Calculate total score and max score based on assigned tasks only
+        # Use the ParticipationTaskScore cache for efficient score lookup
         total_score = 0.0
         max_score = 0.0
         task_scores = []
+
+        # Build a map of task_id -> cached score for this participation
+        cached_scores = {}
+        for pts in participation.task_scores:
+            cached_scores[pts.task_id] = pts.score
 
         for task in contest.get_tasks():
             # Only include tasks that are in the student's task archive
@@ -86,26 +92,8 @@ class TrainingProgramOverviewHandler(ContestHandler):
                 if task.active_dataset else 100.0
             max_score += max_task_score
 
-            # Get best submission score for this task (only official submissions)
-            best_score = 0.0
-            submissions = (
-                self.sql_session.query(Submission)
-                .filter(Submission.participation == participation)
-                .filter(Submission.task == task)
-                .filter(Submission.official.is_(True))
-                .all()
-            )
-
-            for submission in submissions:
-                if task.active_dataset:
-                    result = (
-                        self.sql_session.query(SubmissionResult)
-                        .filter(SubmissionResult.submission == submission)
-                        .filter(SubmissionResult.dataset == task.active_dataset)
-                        .first()
-                    )
-                    if result and result.score is not None:
-                        best_score = max(best_score, result.score)
+            # Get best score from the cache (defaults to 0.0 if not cached)
+            best_score = cached_scores.get(task.id, 0.0)
 
             total_score += best_score
             student_task = student_tasks_map.get(task.id)

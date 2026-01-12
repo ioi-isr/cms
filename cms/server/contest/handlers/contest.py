@@ -412,6 +412,9 @@ class ContestHandler(BaseHandler):
         - The task has no visible_to_tags (empty list = visible to all)
         - The student has at least one tag matching the task's visible_to_tags
 
+        For training programs (managing contests), tasks are only accessible
+        if the student has an associated StudentTask record.
+
         For non-training-day contests, all tasks are accessible.
 
         task: the task to check access for.
@@ -422,6 +425,22 @@ class ContestHandler(BaseHandler):
         # Must be logged in to access restricted tasks
         if self.current_user is None:
             return not task.visible_to_tags
+
+        # For training programs, check if student has a StudentTask record
+        if self.training_program is not None:
+            student = (
+                self.sql_session.query(Student)
+                .join(Participation, Student.participation_id == Participation.id)
+                .filter(Participation.contest_id == self.contest.id)
+                .filter(Participation.user_id == self.current_user.user_id)
+                .filter(Student.training_program_id == self.training_program.id)
+                .first()
+            )
+            if student is None:
+                return False
+            # Check if task is in student's task archive
+            student_task_ids = {st.task_id for st in student.student_tasks}
+            return task.id in student_task_ids
 
         return can_access_task(
             self.sql_session, task, self.current_user, self.contest.training_day
