@@ -51,11 +51,14 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
         <th>First name</th>
         <th>Last name</th>
         <th>Student Tags</th>
+        <th>Task Archive Progress</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for student in training_program.students|sort(attribute="participation.user.username") %}
       {% set u = student.participation.user %}
+      {% set progress = student_progress.get(student.id, {}) %}
       <tr>
         <td>
           <input type="radio" name="user_id" value="{{ u.id }}"/>
@@ -69,6 +72,16 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
           {% else %}
           <span class="no-tags-indicator">No tags</span>
           {% endif %}
+        </td>
+        <td>
+          {% if progress.task_count > 0 %}
+          {{ "%.1f"|format(progress.percentage) }}% ({{ "%.1f"|format(progress.total_score) }}/{{ "%.1f"|format(progress.max_score) }})
+          {% else %}
+          No tasks
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" class="btn btn-sm">Task Archive</a>
         </td>
       </tr>
       {% endfor %}
