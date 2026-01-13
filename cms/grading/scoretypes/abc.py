@@ -393,9 +393,11 @@ class ScoreTypeGroup(ScoreTypeAlone):
 
         for st_idx, parameter in enumerate(self.parameters):
             target = targets[st_idx]
-            score += parameter[0]
+            # Use max(parameter[0], 0.0) to handle negative subtask scores.
+            # Negative scores can only reduce the total, not increase the max.
+            score += max(parameter[0], 0.0)
             if all(self.public_testcases[tc_idx] for tc_idx in target):
-                public_score += parameter[0]
+                public_score += max(parameter[0], 0.0)
             headers += ["Subtask %d (%g)" % (st_idx, parameter[0])]
 
         return score, public_score, headers
