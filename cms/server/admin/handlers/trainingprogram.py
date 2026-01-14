@@ -388,7 +388,7 @@ class TrainingProgramStudentsHandler(BaseHandler):
     def post(self, training_program_id: str):
         fallback_page = self.url("training_program", training_program_id, "students")
 
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        self.safe_get_item(TrainingProgram, training_program_id)
 
         try:
             user_id = self.get_argument("user_id")
@@ -1950,41 +1950,42 @@ class BulkAssignTaskHandler(BaseHandler):
             if task_id == "null":
                 raise ValueError("Please select a task")
 
-            tag = self.get_argument("tag", "").strip().lower()
-            if not tag:
+            tag_name = self.get_argument("tag", "").strip().lower()
+            if not tag_name:
                 raise ValueError("Please enter a tag")
 
             task = self.safe_get_item(Task, task_id)
 
             # Find all students with the given tag
-            students_with_tag = (
+            matching_students = (
                 self.sql_session.query(Student)
                 .filter(Student.training_program == training_program)
+                .filter(Student.student_tags.any(tag_name))
                 .all()
             )
 
-            # Filter to students that have the tag
-            matching_students = [
-                s for s in students_with_tag if tag in s.student_tags
-            ]
-
             if not matching_students:
-                raise ValueError(f"No students found with tag '{tag}'")
+                raise ValueError(f"No students found with tag '{tag_name}'")
+
+            # We want to know which of these specific students already have this task.
+            student_ids = [s.id for s in matching_students]
+
+            already_assigned_ids = set(
+                row[0]
+                for row in self.sql_session.query(StudentTask.student_id)
+                .filter(StudentTask.task_id == task.id)
+                .filter(StudentTask.student_id.in_(student_ids))
+                .all()
+            )
 
             # Assign task to each matching student (if not already assigned)
             assigned_count = 0
-            for student in matching_students:
-                existing = (
-                    self.sql_session.query(StudentTask)
-                    .filter(StudentTask.student_id == student.id)
-                    .filter(StudentTask.task_id == task.id)
-                    .first()
-                )
-                if existing is None:
+            for student_id in student_ids:
+                if student_id not in already_assigned_ids:
                     # Note: CMS Base.__init__ skips foreign key columns, so we must
                     # set them as attributes after creating the object
                     student_task = StudentTask(assigned_at=make_datetime())
-                    student_task.student_id = student.id
+                    student_task.student_id = student_id
                     student_task.task_id = task.id
                     student_task.source_training_day_id = None
                     self.sql_session.add(student_task)
@@ -2001,7 +2002,7 @@ class BulkAssignTaskHandler(BaseHandler):
             self.service.add_notification(
                 make_datetime(),
                 "Bulk assignment complete",
-                f"Task '{task.name}' assigned to {assigned_count} students with tag '{tag}'"
+                f"Task '{task.name}' assigned to {assigned_count} students with tag '{tag_name}'",
             )
 
         self.redirect(fallback_page)

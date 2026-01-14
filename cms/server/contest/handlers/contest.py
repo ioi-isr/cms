@@ -50,11 +50,21 @@ except:
 import tornado.web
 
 from cms import config, TOKEN_MODE_MIXED
-from cms.db import Contest, Student, Submission, Task, TrainingDayGroup, TrainingProgram, UserTest, contest
+from cms.db import (
+    Contest,
+    Student,
+    StudentTask,
+    Submission,
+    Task,
+    TrainingDayGroup,
+    TrainingProgram,
+    UserTest,
+)
 from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
 from cmscommon.datetime import get_timezone
+from sqlalchemy import exists, and_
 from .base import BaseHandler, add_ip_to_list
 from ..phase_management import compute_actual_phase, compute_effective_times
 
@@ -428,19 +438,20 @@ class ContestHandler(BaseHandler):
 
         # For training programs, check if student has a StudentTask record
         if self.training_program is not None:
-            student = (
-                self.sql_session.query(Student)
-                .join(Participation, Student.participation_id == Participation.id)
-                .filter(Participation.contest_id == self.contest.id)
-                .filter(Participation.user_id == self.current_user.user_id)
-                .filter(Student.training_program_id == self.training_program.id)
-                .first()
-            )
-            if student is None:
-                return False
-            # Check if task is in student's task archive
-            student_task_ids = {st.task_id for st in student.student_tasks}
-            return task.id in student_task_ids
+            task_access_exists = self.sql_session.query(
+                exists().where(
+                    and_(
+                        StudentTask.task_id == task.id,
+                        StudentTask.student_id == Student.id,
+                        Student.participation_id == Participation.id,
+                        Participation.contest_id == self.contest.id,
+                        Participation.user_id == self.current_user.user_id,
+                        Student.training_program_id == self.training_program.id,
+                    )
+                )
+            ).scalar()
+
+            return task_access_exists
 
         return can_access_task(
             self.sql_session, task, self.current_user, self.contest.training_day

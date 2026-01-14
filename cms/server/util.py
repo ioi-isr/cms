@@ -41,7 +41,7 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session, Contest, Student, Task, Participation, ParticipationTaskScore
+from cms.db import Session, Contest, Student, Task, Participation
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
@@ -224,12 +224,13 @@ def calculate_task_archive_progress(
 
     total_score = 0.0
     max_score = 0.0
-    task_count = len(student_task_ids)
+    task_count = 0
     task_scores = [] if include_task_details else None
 
     for task in contest.get_tasks():
         if task.id not in student_task_ids:
             continue
+        task_count += 1
         max_task_score = task.active_dataset.score_type_object.max_score \
             if task.active_dataset else 100.0
         max_score += max_task_score
