@@ -219,6 +219,10 @@ def instrument_cms_toolbox(env: Environment):
 def format_datetime(ctx: Context, dt: datetime):
     translation: Translation = ctx.get("translation", DEFAULT_TRANSLATION)
     timezone: tzinfo = ctx.get("timezone", local_tz)
+    # CMS stores datetimes as naive UTC, so we need to attach UTC timezone
+    # before converting to the target timezone for display
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=utc)
     return translation.format_datetime(dt, timezone)
 
 
@@ -226,6 +230,8 @@ def format_datetime(ctx: Context, dt: datetime):
 def format_time(ctx: Context, dt: datetime):
     translation: Translation = ctx.get("translation", DEFAULT_TRANSLATION)
     timezone: tzinfo = ctx.get("timezone", local_tz)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=utc)
     return translation.format_time(dt, timezone)
 
 
@@ -234,6 +240,8 @@ def format_datetime_smart(ctx: Context, dt: datetime):
     translation: Translation = ctx.get("translation", DEFAULT_TRANSLATION)
     now: datetime = ctx.get("now", make_datetime())
     timezone: tzinfo = ctx.get("timezone", local_tz)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=utc)
     return translation.format_datetime_smart(dt, now, timezone)
 
 
