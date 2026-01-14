@@ -31,7 +31,8 @@ import babel.dates
 
 __all__ = [
     "make_datetime", "make_timestamp",
-    "get_timezone", "get_system_timezone",
+    "get_timezone", "get_system_timezone", "get_timezone_name",
+    "utc_to_local", "local_to_utc", "format_datetime_for_input",
 
     "utc", "local_tz",
     ]
@@ -107,3 +108,73 @@ def get_system_timezone() -> str:
     if hasattr(local_tz, 'zone'):
         return local_tz.zone
     return local_tz.tzname(make_datetime())
+
+
+def get_timezone_name(tz: tzinfo) -> str:
+    """Return the name of the given timezone.
+
+    tz: a timezone object.
+
+    return: the "best" description of the timezone, in a format like
+        "Europe/Rome", "CET", "UTC", etc.
+
+    """
+    if hasattr(tz, 'key'):
+        return tz.key
+    if hasattr(tz, 'zone'):
+        return tz.zone
+    return tz.tzname(make_datetime())
+
+
+def utc_to_local(dt: datetime | None, tz: tzinfo) -> datetime | None:
+    """Convert a naive UTC datetime to a naive local datetime in the given timezone.
+
+    dt: a naive datetime in UTC, or None.
+    tz: the target timezone.
+
+    return: a naive datetime in the target timezone, or None if dt is None.
+
+    """
+    if dt is None:
+        return None
+    # Attach UTC timezone info, convert to target timezone, then strip tzinfo
+    utc_dt = dt.replace(tzinfo=utc)
+    local_dt = utc_dt.astimezone(tz)
+    return local_dt.replace(tzinfo=None)
+
+
+def local_to_utc(dt: datetime, tz: tzinfo) -> datetime:
+    """Convert a naive local datetime to a naive UTC datetime.
+
+    dt: a naive datetime in the given timezone.
+    tz: the source timezone.
+
+    return: a naive datetime in UTC.
+
+    """
+    # Attach timezone info, convert to UTC, then strip tzinfo
+    if hasattr(tz, "localize"):
+        # pytz timezones need localize() for proper DST handling
+        local_dt = tz.localize(dt, is_dst=None)
+    else:
+        local_dt = dt.replace(tzinfo=tz)
+    utc_dt = local_dt.astimezone(utc)
+    return utc_dt.replace(tzinfo=None)
+
+
+def format_datetime_for_input(dt: datetime | None, tz: tzinfo) -> str:
+    """Format a UTC datetime for display in an input field, converted to local timezone.
+
+    dt: a naive datetime in UTC, or None.
+    tz: the target timezone for display.
+
+    return: a string in "YYYY-MM-DD HH:MM:SS" format in the target timezone,
+            or empty string if dt is None.
+
+    """
+    if dt is None:
+        return ""
+    local_dt = utc_to_local(dt, tz)
+    if local_dt is None:
+        return ""
+    return local_dt.strftime("%Y-%m-%d %H:%M:%S")

@@ -6,13 +6,6 @@
 {% import 'macro/delay_request.html' as macro_delay_request with context %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
 
-{% block js_init %}
-CMS.AWSUtils.Timezone.setupDatetimeInputs(
-    ['starting_time'],
-    '#participation_info form'
-);
-{% endblock js_init %}
-
 {% block core %}
 <h1>
   Participation of <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
@@ -101,9 +94,9 @@ CMS.AWSUtils.Timezone.setupDatetimeInputs(
         <td>
           <span class="info" title="Time of first login during this contest, used for USACO-style contests.
                                     Example: '2015-12-31 15:00:00'."></span>
-          Time of first login (in <span class="timezone-label">local time</span>)
+          Time of first login (in {{ timezone_name }})
         </td>
-        <td><input type="text" name="starting_time" value="{{ participation.starting_time if participation.starting_time is not none else "" }}"></td>
+        <td><input type="text" name="starting_time" value="{{ participation.starting_time|format_datetime_input(timezone) }}"></td>
       </tr>
       <tr>
         <td>

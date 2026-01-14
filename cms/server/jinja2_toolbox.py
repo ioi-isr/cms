@@ -41,7 +41,7 @@ from cms.grading.languagemanager import get_language, safe_get_lang_filename
 from cms.locale import Translation, DEFAULT_TRANSLATION
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
-from cmscommon.datetime import make_datetime, make_timestamp, utc, local_tz
+from cmscommon.datetime import make_datetime, make_timestamp, utc, local_tz, format_datetime_for_input
 from cmscommon.mimetypes import get_type_for_file_name, get_icon_for_type
 
 
@@ -228,6 +228,18 @@ def format_datetime_with_timezone(ctx: Context, dt: datetime, timezone: tzinfo):
     return translation.format_datetime(dt, timezone)
 
 
+def format_datetime_input(dt: datetime | None, timezone: tzinfo) -> str:
+    """Format a UTC datetime for display in an input field, converted to local timezone.
+    
+    dt: a naive datetime in UTC, or None.
+    timezone: the target timezone for display.
+    
+    return: a string in "YYYY-MM-DD HH:MM:SS" format in the target timezone,
+            or empty string if dt is None.
+    """
+    return format_datetime_for_input(dt, timezone)
+
+
 @contextfilter
 def format_time(ctx: Context, dt: datetime):
     translation: Translation = ctx.get("translation", DEFAULT_TRANSLATION)
@@ -287,6 +299,7 @@ def instrument_formatting_toolbox(env: Environment):
     env.filters["format_duration"] = format_duration
     env.filters["format_size"] = format_size
     env.filters["format_datetime_with_timezone"] = format_datetime_with_timezone
+    env.filters["format_datetime_input"] = format_datetime_input
     env.filters["format_decimal"] = format_decimal
     env.filters["format_locale"] = format_locale
 
