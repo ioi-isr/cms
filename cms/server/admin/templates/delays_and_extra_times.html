@@ -152,14 +152,14 @@ a.username-link:hover {
       <td>{{ participation.delay_time.total_seconds()|int }}</td>
       <td>
         {% if participation.delay_time.total_seconds() > 0 %}
-          <span data-utc-datetime="{{ (contest.start + participation.delay_time).strftime('%Y-%m-%d %H:%M:%S') }}">{{ (contest.start + participation.delay_time)|format_datetime }}</span>
+          {{ (contest.start + participation.delay_time)|format_datetime }}
         {% else %}
-          <span data-utc-datetime="{{ contest.start.strftime('%Y-%m-%d %H:%M:%S') }}">{{ contest.start|format_datetime }}</span>
+          {{ contest.start|format_datetime }}
         {% endif %}
       </td>
       <td>
         {% if participation.starting_time %}
-          <span data-utc-datetime="{{ participation.starting_time.strftime('%Y-%m-%d %H:%M:%S') }}">{{ participation.starting_time|format_datetime }}</span>
+          {{ participation.starting_time|format_datetime }}
         {% else %}
           -
         {% endif %}

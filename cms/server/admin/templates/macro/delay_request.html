@@ -16,18 +16,18 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
       {% if user_id is none %}
         <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">{{ req.participation.user.username }}</a> &mdash;
       {% endif %}
-      <span data-utc-datetime="{{ req.request_timestamp.strftime('%Y-%m-%d %H:%M:%S') }}">{{ req.request_timestamp|format_datetime }}</span>
+      {{ req.request_timestamp|format_datetime }}
     </div>
     <div class="notification_subject">
       {% if user_id is none %}
       <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }}
       {% else %}
-      <strong>Requested Start Time:</strong> <span data-utc-datetime="{{ req.requested_start_time.strftime('%Y-%m-%d %H:%M:%S') }}">{{ req.requested_start_time|format_datetime }}</span>
+      <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}
       {% endif %}
     </div>
     <div class="notification_text">
       {% if user_id is none %}
-      <strong>Requested Start Time:</strong> <span data-utc-datetime="{{ req.requested_start_time.strftime('%Y-%m-%d %H:%M:%S') }}">{{ req.requested_start_time|format_datetime }}</span><br>
+      <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
       {% endif %}
       <strong>Reason:</strong> {{ req.reason }}<br>
       {% if req.status != 'pending' %}
@@ -36,7 +36,7 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
           <br><strong>Rejection Reason:</strong> {{ req.rejection_reason }}
         {% endif %}
         {% if req.processed_timestamp %}
-          <br><strong>Processed:</strong> <span data-utc-datetime="{{ req.processed_timestamp.strftime('%Y-%m-%d %H:%M:%S') }}">{{ req.processed_timestamp|format_datetime }}</span>
+          <br><strong>Processed:</strong> {{ req.processed_timestamp|format_datetime }}
         {% endif %}
         {% if req.admin %}
           <br><strong>Processed by:</strong> {{ req.admin.name }}

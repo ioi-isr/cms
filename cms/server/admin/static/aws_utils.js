@@ -1376,32 +1376,6 @@ CMS.AWSUtils.Timezone = {
     },
 
     /**
-     * Convert all elements with data-utc-datetime attribute to local timezone.
-     * The attribute value should be a UTC datetime string.
-     */
-    convertAllToLocal: function () {
-        var self = this;
-        document.querySelectorAll('[data-utc-datetime]').forEach(function(el) {
-            var utcStr = el.getAttribute('data-utc-datetime');
-            var p = self.getParts(utcStr);
-            if (p) {
-                var date = new Date(p.main.replace(' ', 'T') + 'Z');
-                var localMain = date.toLocaleString(undefined, {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: 'numeric',
-                    second: 'numeric',
-                    hour12: false,
-                });
-
-                el.textContent = localMain + p.frac;
-            }
-        });
-    },
-
-    /**
      * Update timezone label elements with the browser's timezone name.
      */
     updateTimezoneLabels: function() {

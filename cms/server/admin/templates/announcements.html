@@ -41,7 +41,7 @@
           <div class="announcement_remove">
             <a onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}'); ">Remove</a>
           </div>
-          <div class="notification_timestamp"><span data-utc-datetime="{{ msg.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}">{{ msg.timestamp|format_datetime }}</span></div>
+          <div class="notification_timestamp">{{ msg.timestamp|format_datetime }}</div>
           <div class="notification_subject">{{ msg.subject }}</div>
           <div class="notification_text">{{ msg.text | markdown }}</div>
           <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
