@@ -15,6 +15,8 @@ page (int): 0-based number of the current page.
 pages (int): total number of pages.
 dataset (Dataset|None): the dataset to show results for, or if not defined use
     the active one.
+timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
+    use the system default.
 #}
 {% if pages == 0 %}
 <p>No submissions found.</p>
@@ -67,6 +69,8 @@ url (Url): the URL instance referring to the root of AWS.
 s (Submission): the submission to render.
 dataset (Dataset|None): the dataset to show results for, or if not defined use
     the active one.
+timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
+    use the system default.
 #}
 
 {% if dataset is none %}

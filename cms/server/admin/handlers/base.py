@@ -59,7 +59,7 @@ from cms.grading.tasktypes import get_task_type_class
 from cms.server import CommonRequestHandler, FileHandlerMixin
 from cms.server.util import exclude_internal_contests
 from cmscommon.crypto import hash_password, parse_authentication
-from cmscommon.datetime import make_datetime, local_tz, get_timezone
+from cmscommon.datetime import make_datetime, get_timezone, local_to_utc, format_datetime_for_input, get_timezone_name
 if typing.TYPE_CHECKING:
     from cms.server.admin import AdminWebServer
 
@@ -135,6 +135,23 @@ def parse_datetime(value: str) -> datetime:
         value += ".0"
     try:
         return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+    except:
+        raise ValueError("Can't cast %s to datetime." % value)
+
+
+def parse_datetime_with_timezone(value: str, tz) -> datetime:
+    """Parse a datetime in the given timezone and convert to UTC.
+    
+    value: a datetime string in "YYYY-MM-DD HH:MM:SS" format.
+    tz: the timezone the datetime is in.
+    
+    return: a naive datetime in UTC.
+    """
+    if '.' not in value:
+        value += ".0"
+    try:
+        local_dt = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+        return local_to_utc(local_dt, tz)
     except:
         raise ValueError("Can't cast %s to datetime." % value)
 
@@ -371,7 +388,9 @@ class BaseHandler(CommonRequestHandler):
             .filter(User.password_reset_pending.is_(True))\
             .count()
         # Add timezone for datetime formatting (contest-specific if available)
-        params["timezone"] = get_timezone(None, self.contest)
+        tz = get_timezone(None, self.contest)
+        params["timezone"] = tz
+        params["timezone_name"] = get_timezone_name(tz)
         return params
 
     def write_error(self, status_code, **kwargs):
@@ -420,6 +439,22 @@ class BaseHandler(CommonRequestHandler):
     get_timedelta_min = argument_reader(parse_timedelta_min)
 
     get_datetime = argument_reader(parse_datetime)
+
+    def get_datetime_with_timezone(self, dest: dict, name: str):
+        """Parse a datetime in the contest timezone and convert to UTC.
+
+        dest: a place to store the result.
+        name: the name of the argument and of the item.
+
+        """
+        value = self.get_argument(name, None)
+        if value is None:
+            return
+        if len(value) == 0:
+            dest[name] = None
+        else:
+            tz = get_timezone(None, self.contest)
+            dest[name] = parse_datetime_with_timezone(value, tz)
 
     get_ip_networks = argument_reader(parse_ip_networks)
 

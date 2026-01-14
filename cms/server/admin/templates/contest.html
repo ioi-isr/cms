@@ -1,12 +1,5 @@
 {% extends "base.html" %}
 
-{% block js_init %}
-CMS.AWSUtils.Timezone.setupDatetimeInputs(
-    ['start', 'stop', 'analysis_start', 'analysis_stop'],
-    'form[name="edit_contest"]'
-);
-{% endblock js_init %}
-
 {% block core %}
 <div class="core_title">
   <h1>Contest configuration</h1>
@@ -226,19 +219,19 @@ CMS.AWSUtils.Timezone.setupDatetimeInputs(
     <tr><td colspan=2><h2>Times</h2></td></tr>
     <tr>
       <td>
-        <span class="info" title="Start time of the contest in your local timezone.
+        <span class="info" title="Start time of the contest in {{ timezone_name }} timezone.
                                   Example: '2015-12-31 15:00:00'."></span>
-        Start time (in <span class="timezone-label">local time</span>)
+        Start time (in {{ timezone_name }})
       </td>
-      <td><input type="text" name="start" value="{{ contest.start }}"></td>
+      <td><input type="text" name="start" value="{{ contest.start|format_datetime_input(timezone) }}"></td>
     </tr>
     <tr>
       <td>
-        <span class="info" title="End time of the contest in your local timezone.
+        <span class="info" title="End time of the contest in {{ timezone_name }} timezone.
                                   Example: '2015-12-31 18:00:00'."></span>
-        End time (in <span class="timezone-label">local time</span>)
+        End time (in {{ timezone_name }})
       </td>
-      <td><input type="text" name="stop" value="{{ contest.stop }}"></td>
+      <td><input type="text" name="stop" value="{{ contest.stop|format_datetime_input(timezone) }}"></td>
     </tr>
     <tr>
       <td>
@@ -310,19 +303,19 @@ CMS.AWSUtils.Timezone.setupDatetimeInputs(
     </tr>
     <tr>
       <td>
-        <span class="info" title="Start time of the analysis mode in your local timezone.
+        <span class="info" title="Start time of the analysis mode in {{ timezone_name }} timezone.
                                   Example: '2015-12-31 15:00:00'."></span>
-        Analysis mode start time (in <span class="timezone-label">local time</span>)
+        Analysis mode start time (in {{ timezone_name }})
       </td>
-      <td><input type="text" name="analysis_start" value="{{ contest.analysis_start }}"></td>
+      <td><input type="text" name="analysis_start" value="{{ contest.analysis_start|format_datetime_input(timezone) }}"></td>
     </tr>
     <tr>
       <td>
-        <span class="info" title="End time of the analysis mode in your local timezone.
+        <span class="info" title="End time of the analysis mode in {{ timezone_name }} timezone.
                                   Example: '2015-12-31 18:00:00'."></span>
-        Analysis mode end time (in <span class="timezone-label">local time</span>)
+        Analysis mode end time (in {{ timezone_name }})
       </td>
-      <td><input type="text" name="analysis_stop" value="{{ contest.analysis_stop }}"></td>
+      <td><input type="text" name="analysis_stop" value="{{ contest.analysis_stop|format_datetime_input(timezone) }}"></td>
     </tr>
   </table>
   <input type="submit"

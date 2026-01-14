@@ -329,7 +329,7 @@ class ParticipationHandler(BaseHandler):
             self.get_password(attrs, participation.password, True)
 
             self.get_ip_networks(attrs, "ip")
-            self.get_datetime(attrs, "starting_time")
+            self.get_datetime_with_timezone(attrs, "starting_time")
             self.get_timedelta_sec(attrs, "delay_time")
             self.get_timedelta_sec(attrs, "extra_time")
             self.get_bool(attrs, "hidden")
