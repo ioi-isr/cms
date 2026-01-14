@@ -637,18 +637,156 @@ window.filterTestcases = function(dataset_id) {
           <td><textarea name="score_type_parameters_{{ dataset.id }}">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea></td>
         </tr>
       </table>
+
+      {% if subtask_info.get(dataset.id) %}
+      {% set ds_ns = namespace(total_not_validated=0,
+                               not_validated_codenames=[],
+                               any_validator_running=false) %}
+      {% for subtask in subtask_info[dataset.id] %}
+        {% set validator = dataset.subtask_validators.get(subtask.idx) %}
+        {% if validator %}
+          {% if validator.id in running_validator_ids %}
+            {% set ds_ns.any_validator_running = true %}
+          {% elif validator.validation_results %}
+            {% set results_codenames = [] %}
+            {% for r in validator.validation_results %}
+              {% set _ = results_codenames.append(r.testcase.codename) %}
+            {% endfor %}
+            {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+              {% if tc_codename not in results_codenames and tc_codename not in ds_ns.not_validated_codenames %}
+                {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+              {% if tc_codename not in ds_ns.not_validated_codenames %}
+                {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      {% set ds_ns.total_not_validated = ds_ns.not_validated_codenames|length %}
+      <h4>Subtask Validators<span class="info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid."></span>
+      </h4>
+      {% if ds_ns.any_validator_running %}
+      <p style="color: #2196F3;"><strong>Validating...</strong> One or more validators are currently running. Refresh the page to see updated results.</p>
+      {% elif ds_ns.total_not_validated > 0 %}
+        <p style="color: orange;"><strong>Warning:</strong> {{ ds_ns.total_not_validated }} testcase(s) have not been validated. Click "rerun validators" to validate them.</p>
+        {% if admin.permission_all %}
+          [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
+        {% endif %}
+      {% endif %}
+      <table class="bordered subtask-validators">
+        <thead>
+          <tr>
+            <th>Subtask</th>
+            <th>Validator</th>
+            <th>Tests</th>
+            <th>Additional Tests Passed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for subtask in subtask_info[dataset.id] %}
+          {% set validator = dataset.subtask_validators.get(subtask.idx) %}
+          {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, subtask_error=0, subtask_not_validated=0, other_passed=0) %}
+          {% set results_by_tc = {} %}
+          {% if validator and validator.validation_results %}
+            {% for r in validator.validation_results %}
+              {% set _ = results_by_tc.update({r.testcase.codename: r}) %}
+            {% endfor %}
+          {% endif %}
+          {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+            {% set tc_subtasks = testcase_subtasks.get(dataset.id, {}).get(tc_codename, []) %}
+            {% set has_result = results_by_tc.get(tc_codename) %}
+            {% if subtask.idx in tc_subtasks %}
+              {% set ns.subtask_tc_count = ns.subtask_tc_count + 1 %}
+              {% if has_result %}
+                {% if has_result.passed %}
+                  {% set ns.subtask_passed = ns.subtask_passed + 1 %}
+                {% elif has_result.exit_status in ['ok', 'nonzero return', none] %}
+                  {% set ns.subtask_failed = ns.subtask_failed + 1 %}
+                {% else %}
+                  {% set ns.subtask_error = ns.subtask_error + 1 %}
+                {% endif %}
+              {% else %}
+                {% set ns.subtask_not_validated = ns.subtask_not_validated + 1 %}
+              {% endif %}
+            {% else %}
+              {% set ns.other_tc_count = ns.other_tc_count + 1 %}
+              {% if has_result and has_result.passed %}
+                {% set ns.other_passed = ns.other_passed + 1 %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          <tr>
+            <td>{{ subtask.display_name }}</td>
+            <td>
+              {% if admin.permission_all %}
+              {# File input uses form attribute to associate with validator form placed outside the main task form #}
+              <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
+              {% endif %}
+              {% if validator %}
+                <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
+                {% if validator.executable_digest is none %}
+                  <span class="validator-status validator-error">(compilation failed)</span>
+                {% endif %}
+                {% if admin.permission_all %}
+                [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">replace</a>]
+                [<a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>]
+                {% endif %}
+              {% else %}
+                <span class="validator-status validator-missing">No validator</span>
+                {% if admin.permission_all %}
+                [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">add</a>]
+                {% endif %}
+              {% endif %}
+            </td>
+            <td>
+              {{ ns.subtask_tc_count }}
+              {% if validator and validator.id in running_validator_ids %}
+                (<span class="validator-status validator-running">Validating...</span>)
+              {% elif validator and validator.validation_results|length > 0 %}
+                ({% if ns.subtask_failed == 0 and ns.subtask_error == 0 and ns.subtask_not_validated == 0 %}
+                  <span class="validator-status validator-pass">all {{ ns.subtask_passed }} passed</span>
+                {% else %}
+                  {% set has_prev = false %}
+                  {% if ns.subtask_passed > 0 %}<span class="validator-status validator-pass">{{ ns.subtask_passed }} passed</span>{% set has_prev = true %}{% endif %}
+                  {% if ns.subtask_failed > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-fail">{{ ns.subtask_failed }} failed</span>{% set has_prev = true %}{% endif %}
+                  {% if ns.subtask_error > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-error">{{ ns.subtask_error }} error</span>{% set has_prev = true %}{% endif %}
+                  {% if ns.subtask_not_validated > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-unvalidated">{{ ns.subtask_not_validated }} not validated</span>{% endif %}
+                {% endif %})
+              {% elif validator %}
+                (<span class="validator-status validator-unvalidated">not validated</span>)
+              {% endif %}
+              [<a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}">details</a>]
+            </td>
+            <td>
+              {% if validator and validator.validation_results|length > 0 %}
+                {{ ns.other_passed }} / {{ ns.other_tc_count }}
+              {% elif validator %}
+                <em>Not validated</em>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
       <div class="hr"></div>
     </div>
 
   <!-- Model Solutions for this dataset -->
 
-  <h4 id="title_model_solutions_{{ dataset.id }}" class="toggling_on">Model Solutions
+  <h4 id="title_model_solutions_{{ dataset.id }}" class="toggling_on">Model Solutions<span class="info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly."></span>
 {% if admin.permission_all %}
     [<a href="{{ url("dataset", dataset.id, "model_solutions", "add") }}">add</a>]
 {% endif %}
   </h4>
     <div id="model_solutions_{{ dataset.id }}" class="task_dataset_model_solutions">
-      <p>Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.</p>
 {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
       <p>
         <strong>Reevaluate all model solutions:</strong>
@@ -953,6 +1091,23 @@ window.filterTestcases = function(dataset_id) {
   <input type="reset" value="Reset" />
   <a href="{{ url("task", task.id, "export") }}"> ⇩ Export </a>
 </form>
+
+{# Validator upload forms - placed outside the main task form to avoid nested form issues #}
+{% if admin.permission_all %}
+{% for dataset in task.datasets %}
+{% if subtask_info.get(dataset.id) %}
+{% for subtask in subtask_info[dataset.id] %}
+<form id="validator_form_{{ dataset.id }}_{{ subtask.idx }}" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx|string, "validator", "add") }}" enctype="multipart/form-data" style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
+{% endfor %}
+<form id="rerun_validators_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "validators", "rerun") }}" style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
+{% endif %}
+{% endfor %}
+{% endif %}
+
 <form action="{{ url("tasks") }}" method="POST" style="display:inline;">
     {{ xsrf_form_html|safe }}
     <input type="hidden" name="task_id" value="{{ task.id }}"/>

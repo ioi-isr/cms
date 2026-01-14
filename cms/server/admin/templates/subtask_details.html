@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+
+{% block js_init %}
+window.filterTestcases = function(tableId, filter) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var rows = table.querySelectorAll('tbody tr[data-status]');
+  rows.forEach(function(row) {
+    var status = row.getAttribute('data-status');
+    if (filter === 'all' || status === filter) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  var buttons = table.parentElement.querySelectorAll('.filter-btn');
+  buttons.forEach(function(btn) {
+    if (btn.getAttribute('data-filter') === filter) {
+      btn.style.fontWeight = 'bold';
+      btn.style.textDecoration = 'underline';
+    } else {
+      btn.style.fontWeight = 'normal';
+      btn.style.textDecoration = 'none';
+    }
+  });
+  updateSelectAllState(tableId);
+};
+
+window.promptRename = function(renameUrl, testcaseId, currentCodename, subtaskIndex) {
+  var newCodename = prompt('Enter new codename for testcase:', currentCodename);
+  if (newCodename && newCodename !== currentCodename) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = renameUrl.replace('TESTCASE_ID', testcaseId);
+
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'new_codename';
+    input.value = newCodename;
+    form.appendChild(input);
+
+    // Add subtask_index to redirect back to subtask details page
+    if (subtaskIndex !== undefined) {
+      var subtaskInput = document.createElement('input');
+      subtaskInput.type = 'hidden';
+      subtaskInput.name = 'subtask_index';
+      subtaskInput.value = subtaskIndex;
+      form.appendChild(subtaskInput);
+    }
+
+    var xsrfElem = document.querySelector('input[name="_xsrf"]');
+    if (!xsrfElem) {
+      alert('CSRF token missing; cannot submit form.');
+      return;
+    }
+    var xsrf = document.createElement('input');
+    xsrf.type = 'hidden';
+    xsrf.name = '_xsrf';
+    xsrf.value = xsrfElem.value;
+    form.appendChild(xsrf);
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+};
+
+window.toggleSelectAll = function(tableId, masterCheckbox) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var rows = table.querySelectorAll('tbody tr[data-status]');
+  rows.forEach(function(row) {
+    if (row.style.display !== 'none') {
+      var checkbox = row.querySelector('.tc-select-checkbox');
+      if (checkbox) {
+        checkbox.checked = masterCheckbox.checked;
+      }
+    }
+  });
+  updateBatchActionsVisibility(tableId);
+};
+
+window.updateSelectAllState = function(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var masterCheckbox = table.querySelector('.select-all-checkbox');
+  if (!masterCheckbox) return;
+
+  var visibleCheckboxes = [];
+  var rows = table.querySelectorAll('tbody tr[data-status]');
+  rows.forEach(function(row) {
+    if (row.style.display !== 'none') {
+      var checkbox = row.querySelector('.tc-select-checkbox');
+      if (checkbox) {
+        visibleCheckboxes.push(checkbox);
+      }
+    }
+  });
+
+  if (visibleCheckboxes.length === 0) {
+    masterCheckbox.checked = false;
+    masterCheckbox.indeterminate = false;
+    return;
+  }
+
+  var checkedCount = visibleCheckboxes.filter(function(cb) { return cb.checked; }).length;
+  masterCheckbox.checked = checkedCount === visibleCheckboxes.length;
+  masterCheckbox.indeterminate = checkedCount > 0 && checkedCount < visibleCheckboxes.length;
+
+  updateBatchActionsVisibility(tableId);
+};
+
+window.updateBatchActionsVisibility = function(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var actionsDiv = document.getElementById(tableId + '_batch_actions');
+  if (!actionsDiv) return;
+
+  var checkedBoxes = table.querySelectorAll('.tc-select-checkbox:checked');
+  actionsDiv.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
+
+  var countSpan = actionsDiv.querySelector('.selected-count');
+  if (countSpan) {
+    countSpan.textContent = checkedBoxes.length;
+  }
+};
+
+window.getSelectedTestcaseIds = function(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return [];
+  var ids = [];
+  table.querySelectorAll('.tc-select-checkbox:checked').forEach(function(cb) {
+    ids.push(cb.value);
+  });
+  return ids;
+};
+
+window.getSelectedCodenames = function(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return [];
+  var codenames = [];
+  table.querySelectorAll('.tc-select-checkbox:checked').forEach(function(cb) {
+    codenames.push(cb.getAttribute('data-codename'));
+  });
+  return codenames;
+};
+
+window.findCommonSubstring = function(strings) {
+  if (strings.length === 0) return '';
+  if (strings.length === 1) return strings[0];
+
+  // Find the longest common substring that appears in all strings
+  var shortest = strings.reduce(function(a, b) { return a.length <= b.length ? a : b; });
+
+  // Try all substrings of the shortest string, starting from longest
+  for (var len = shortest.length; len > 0; len--) {
+    for (var start = 0; start <= shortest.length - len; start++) {
+      var candidate = shortest.substring(start, start + len);
+      var allContain = strings.every(function(s) { return s.indexOf(candidate) !== -1; });
+      if (allContain) {
+        return candidate;
+      }
+    }
+  }
+  return '';
+};
+
+window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRegex, suggestedPrefix) {
+  var ids = getSelectedTestcaseIds(tableId);
+  if (ids.length === 0) {
+    alert('No testcases selected.');
+    return;
+  }
+
+  var defaultPrefix = suggestedPrefix || '';
+  var prefix = prompt('Enter prefix to add to selected testcases:', defaultPrefix);
+  if (!prefix) return;
+
+  // Ask if user wants to update the subtask regex
+  // Accept both boolean true and string 'true' for backwards compatibility
+  var updateRegex = false;
+  if (usesRegex === true || usesRegex === 'true') {
+    updateRegex = confirm('Do you also want to update the subtask regex to match testcases containing "' + prefix + '" as a substring?');
+  }
+
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = url;
+
+  ids.forEach(function(id) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'testcase_id';
+    input.value = id;
+    form.appendChild(input);
+  });
+
+  var opInput = document.createElement('input');
+  opInput.type = 'hidden';
+  opInput.name = 'operation';
+  opInput.value = 'add_prefix';
+  form.appendChild(opInput);
+
+  var valInput = document.createElement('input');
+  valInput.type = 'hidden';
+  valInput.name = 'value';
+  valInput.value = prefix;
+  form.appendChild(valInput);
+
+  // Add update_regex flag if user agreed
+  if (updateRegex) {
+    var regexInput = document.createElement('input');
+    regexInput.type = 'hidden';
+    regexInput.name = 'update_regex';
+    regexInput.value = 'true';
+    form.appendChild(regexInput);
+  }
+
+  // Add subtask_index to redirect back to subtask details page
+  if (subtaskIndex !== undefined) {
+    var subtaskInput = document.createElement('input');
+    subtaskInput.type = 'hidden';
+    subtaskInput.name = 'subtask_index';
+    subtaskInput.value = subtaskIndex;
+    form.appendChild(subtaskInput);
+  }
+
+  var xsrfElem = document.querySelector('input[name="_xsrf"]');
+  if (!xsrfElem) {
+    alert('CSRF token missing; cannot submit form.');
+    return;
+  }
+  var xsrf = document.createElement('input');
+  xsrf.type = 'hidden';
+  xsrf.name = '_xsrf';
+  xsrf.value = xsrfElem.value;
+  form.appendChild(xsrf);
+
+  document.body.appendChild(form);
+  form.submit();
+};
+
+window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
+  var ids = getSelectedTestcaseIds(tableId);
+  if (ids.length === 0) {
+    alert('No testcases selected.');
+    return;
+  }
+
+  var codenames = getSelectedCodenames(tableId);
+  var commonSubstring = findCommonSubstring(codenames);
+
+  var substring = prompt('Enter the substring to remove from selected testcases (detected: "' + commonSubstring + '"):', commonSubstring);
+  if (substring === null || substring === '') return;
+
+  // Verify all selected testcases contain the substring
+  var allContain = codenames.every(function(c) { return c.indexOf(substring) !== -1; });
+  if (!allContain) {
+    alert('Not all selected testcases contain the substring "' + substring + '".');
+    return;
+  }
+
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = url;
+
+  ids.forEach(function(id) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'testcase_id';
+    input.value = id;
+    form.appendChild(input);
+  });
+
+  var opInput = document.createElement('input');
+  opInput.type = 'hidden';
+  opInput.name = 'operation';
+  opInput.value = 'remove_substring';
+  form.appendChild(opInput);
+
+  var valInput = document.createElement('input');
+  valInput.type = 'hidden';
+  valInput.name = 'value';
+  valInput.value = substring;
+  form.appendChild(valInput);
+
+  // Add subtask_index to redirect back to subtask details page
+  if (subtaskIndex !== undefined) {
+    var subtaskInput = document.createElement('input');
+    subtaskInput.type = 'hidden';
+    subtaskInput.name = 'subtask_index';
+    subtaskInput.value = subtaskIndex;
+    form.appendChild(subtaskInput);
+  }
+
+  var xsrfElem = document.querySelector('input[name="_xsrf"]');
+  if (!xsrfElem) {
+    alert('CSRF token missing; cannot submit form.');
+    return;
+  }
+  var xsrf = document.createElement('input');
+  xsrf.type = 'hidden';
+  xsrf.name = '_xsrf';
+  xsrf.value = xsrfElem.value;
+  form.appendChild(xsrf);
+
+  document.body.appendChild(form);
+  form.submit();
+};
+{% endblock js_init %}
+
+{% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) %}
+<div class="subtask-table-card">
+  <h3 class="subtask-section-title">{{ title }}</h3>
+  {% if testcases|length == 0 %}
+  <p class="muted">No testcases in this section.</p>
+  {% else %}
+  <div>
+    {% if validator %}
+    <p class="filter-row">
+      <span class="muted">Filter:</span>
+      <a href="javascript:void(0);" class="filter-btn" data-filter="all" onclick="filterTestcases('{{ table_id }}', 'all')" style="font-weight: bold; text-decoration: underline;">All</a> |
+      <a href="javascript:void(0);" class="filter-btn" data-filter="passed" onclick="filterTestcases('{{ table_id }}', 'passed')">Passed</a> |
+      <a href="javascript:void(0);" class="filter-btn" data-filter="failed" onclick="filterTestcases('{{ table_id }}', 'failed')">Failed</a> |
+      <a href="javascript:void(0);" class="filter-btn" data-filter="error" onclick="filterTestcases('{{ table_id }}', 'error')">Error</a> |
+      <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('{{ table_id }}', 'not_validated')">Not validated</a>
+    </p>
+    {% endif %}
+    <table id="{{ table_id }}" class="bordered">
+      <thead>
+        <tr>
+          {% if admin.permission_all %}
+          <th><input type="checkbox" class="select-all-checkbox" onclick="toggleSelectAll('{{ table_id }}', this)" title="Select all visible testcases"></th>
+          {% endif %}
+          <th>Codename</th>
+          <th>Input</th>
+          <th>Output</th>
+          {% if validator %}
+          <th>Status</th>
+          <th>Stderr</th>
+          {% endif %}
+          {% if admin.permission_all %}
+          <th>Ops</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for tc_info in testcases %}
+        {% set status = 'none' %}
+        {% if validator %}
+          {% if tc_info.result %}
+            {% if tc_info.result.passed %}
+              {% set status = 'passed' %}
+            {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
+              {% set status = 'failed' %}
+            {% else %}
+              {% set status = 'error' %}
+            {% endif %}
+          {% else %}
+            {% set status = 'not_validated' %}
+          {% endif %}
+        {% endif %}
+        <tr data-status="{{ status }}">
+          {% if admin.permission_all %}
+          <td><input type="checkbox" class="tc-select-checkbox" value="{{ tc_info.testcase.id }}" data-codename="{{ tc_info.codename }}" onchange="updateSelectAllState('{{ table_id }}')"></td>
+          {% endif %}
+          <td>{{ tc_info.codename }}</td>
+          <td>
+            <a href="javascript:void(0);" onclick="utils.show_file('input_' + {{ tc_info.codename|tojson|forceescape }}, {{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename))|tojson|forceescape }})">Show input</a>
+          </td>
+          <td>
+            <a href="javascript:void(0);" onclick="utils.show_file('output_' + {{ tc_info.codename|tojson|forceescape }}, {{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename))|tojson|forceescape }})">Show output</a>
+          </td>
+          {% if validator %}
+          <td>
+            {% if tc_info.result %}
+              {% if tc_info.result.passed %}
+                <span class="validator-status validator-pass">Passed</span>
+              {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
+                <span class="validator-status validator-fail">Failed</span>
+              {% else %}
+                <span class="validator-status validator-error">Error ({{ tc_info.result.exit_status }})</span>
+              {% endif %}
+            {% else %}
+              <span class="validator-status validator-unvalidated">Not validated</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if tc_info.result and tc_info.result.stderr %}
+              <pre class="stderr-output">{{ tc_info.result.stderr | e }}</pre>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          {% endif %}
+          {% if admin.permission_all %}
+          <td>
+            <a href="javascript:void(0);" onclick="promptRename({{ url("dataset", dataset.id, "testcase", "TESTCASE_ID", "rename")|tojson|forceescape }}, {{ tc_info.testcase.id }}, {{ tc_info.codename|tojson|forceescape }}, {{ subtask_index }})">rename</a>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if admin.permission_all %}
+    <div id="{{ table_id }}_batch_actions" class="batch-actions">
+      <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
+      <a href="javascript:void(0);" onclick="batchAddPrefix({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }}, {{ uses_regex|tojson|forceescape }}, {{ suggested_prefix|default("", true)|tojson|forceescape }})" style="margin-left: 10px;">Add prefix</a> |
+      <a href="javascript:void(0);" onclick="batchRemoveSubstring({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }})">Remove common substring</a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% block core %}
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }}{% if subtask_name %}: {{ subtask_name }}{% endif %} Tests</h1>
+</div>
+
+<h2>Subtask {{ subtask_index }}{% if subtask_name %} ({{ subtask_name }}){% endif %} Details</h2>
+
+{# Hidden form for XSRF token - used by JavaScript #}
+<form style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
+
+<table>
+  <tr>
+    <td>Validator:</td>
+    <td>
+      {% if validator %}
+        <a href="javascript:void(0);" onclick="utils.show_file({{ validator.filename|tojson|forceescape }}, {{ url("file", validator.digest, validator.filename)|tojson|forceescape }})">{{ validator.filename }}</a>
+        {% if validator.executable_digest %}
+          <span style="color: green;">(compiled)</span>
+        {% else %}
+          <span style="color: red;">(compilation failed)</span>
+        {% endif %}
+        {% if admin.permission_all %}
+        <input id="validator_file_replace" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
+        [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_replace').click();">replace</a>]
+        [<a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>]
+        {% endif %}
+      {% else %}
+        <em>No validator uploaded</em>
+        {% if admin.permission_all %}
+        <input id="validator_file_add" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
+        [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_add').click();">add</a>]
+        {% endif %}
+      {% endif %}
+    </td>
+  </tr>
+  {% if uses_regex %}
+  <tr>
+    <td>Regex pattern:</td>
+    <td>
+      <code>{{ subtask_regex|tojson|forceescape }}</code>
+      {% if admin.permission_all %}
+      [<a href="javascript:void(0);" onclick="document.getElementById('regex_edit_row').style.display = 'table-row'; this.parentElement.parentElement.style.display = 'none';">edit</a>]
+      {% endif %}
+    </td>
+  </tr>
+  <tr id="regex_edit_row" style="display: none;">
+    <td>Regex pattern:</td>
+    <td>
+      <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "regex") }}" style="display: inline;">
+        {{ xsrf_form_html|safe }}
+        <input type="text" name="regex" value="{{ subtask_regex|tojson|forceescape }}" size="40" />
+        <label style="margin-left: 10px;">
+          <input type="checkbox" name="rescore" value="1" />
+          Re-score all submissions
+        </label>
+        <button type="submit">Save</button>
+        <button type="button" onclick="document.getElementById('regex_edit_row').style.display = 'none'; document.getElementById('regex_edit_row').previousElementSibling.style.display = 'table-row';">Cancel</button>
+      </form>
+    </td>
+  </tr>
+  {% endif %}
+  <tr id="name_display_row">
+    <td>Name:</td>
+    <td>
+      {% if subtask_name %}
+        <code>{{ subtask_name }}</code>
+      {% else %}
+        <em>No name set</em>
+      {% endif %}
+      {% if admin.permission_all %}
+        {% if subtask_name %}
+        [<a href="javascript:void(0);" onclick="document.getElementById('name_edit_row').style.display = 'table-row'; document.getElementById('name_display_row').style.display = 'none';">edit</a>]
+        {% else %}
+        [<a href="javascript:void(0);" onclick="document.getElementById('name_edit_row').style.display = 'table-row'; document.getElementById('name_display_row').style.display = 'none';">add</a>]
+        {% endif %}
+      {% endif %}
+    </td>
+  </tr>
+  <tr id="name_edit_row" style="display: none;">
+    <td>Name:</td>
+    <td>
+      <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "name") }}" style="display: inline;">
+        {{ xsrf_form_html|safe }}
+        <input type="text" name="name" value="{{ subtask_name or "" }}" size="40" />
+        <button type="submit">Save</button>
+        <button type="button" onclick="document.getElementById('name_edit_row').style.display = 'none'; document.getElementById('name_display_row').style.display = 'table-row';">Cancel</button>
+      </form>
+    </td>
+  </tr>
+  <tr>
+    <td>Testcases in subtask:</td>
+    <td>{{ subtask_testcases|length }}</td>
+  </tr>
+  <tr>
+    <td>Additional testcases:</td>
+    <td>{{ other_testcases|length }}</td>
+  </tr>
+</table>
+
+{# Validator upload form placed outside the main content to avoid nesting issues #}
+{% if admin.permission_all %}
+<form id="validator_form" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "validator", "add") }}" enctype="multipart/form-data" style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
+{% endif %}
+
+{{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
+
+<div class="subtask-section-divider"></div>
+
+{{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
+
+<div class="hr"></div>
+<p>
+  <a href="{{ url("task", task.id) }}">Back to task</a>
+</p>
+{% endblock core %}
