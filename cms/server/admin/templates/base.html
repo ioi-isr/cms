@@ -100,6 +100,10 @@ function init()
 
     {% block js_init %}{% endblock js_init %}
 
+    // Convert all UTC times to local timezone system-wide
+    CMS.AWSUtils.Timezone.convertAllToLocal();
+    CMS.AWSUtils.Timezone.updateTimezoneLabels();
+
     // Initialize Tom Select on searchable select elements
     $('.searchable-select').each(function() {
         new TomSelect(this, {

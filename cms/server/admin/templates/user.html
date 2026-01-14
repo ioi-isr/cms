@@ -103,7 +103,7 @@
       </tr>
       <tr>
         <td><strong>Expires:</strong></td>
-        <td>{{ user.password_reset_token_expires|format_datetime }}</td>
+        <td><span data-utc-datetime="{{ user.password_reset_token_expires.strftime('%Y-%m-%d %H:%M:%S') }}">{{ user.password_reset_token_expires|format_datetime }}</span></td>
       </tr>
     </table>
     <p style="margin-top: 10px;">

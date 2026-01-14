@@ -6,6 +6,13 @@
 {% import 'macro/delay_request.html' as macro_delay_request with context %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
 
+{% block js_init %}
+CMS.AWSUtils.Timezone.setupDatetimeInputs(
+    ['starting_time'],
+    '#participation_info form'
+);
+{% endblock js_init %}
+
 {% block core %}
 <h1>
   Participation of <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
@@ -93,7 +100,7 @@
         <td>
           <span class="info" title="Time of first login during this contest, used for USACO-style contests.
                                     Example: '2015-12-31 15:00:00'."></span>
-          Time of first login (in UTC)
+          Time of first login (in <span class="timezone-label">local time</span>)
         </td>
         <td><input type="text" name="starting_time" value="{{ participation.starting_time if participation.starting_time is not none else "" }}"></td>
       </tr>
@@ -182,7 +189,7 @@
       {% for msg in participation.messages|reverse %}
       <div class="notification communication">
         <div class="notification_msg">
-          <div class="notification_timestamp">{{ msg.timestamp }}</div>
+          <div class="notification_timestamp"><span data-utc-datetime="{{ msg.timestamp.strftime('%Y-%m-%d %H:%M:%S.%f') }}">{{ msg.timestamp|format_datetime }}</span></div>
           <div class="notification_subject">{{ msg.subject }}</div>
           <div class="notification_text">{{ msg.text | markdown }}</div>
           <hr>
