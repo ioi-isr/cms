@@ -630,6 +630,9 @@ class BaseHandler(CommonRequestHandler):
 
         if self.r_params is None:
             self.r_params = self.render_params()
+        else:
+            # Ensure timezone is available even if r_params was already set
+            self.r_params["timezone"] = get_timezone(None, self.contest)
 
         # A page showing paginated submissions can use these
         # parameters: total number of submissions, submissions to
@@ -664,6 +667,9 @@ class BaseHandler(CommonRequestHandler):
 
         if self.r_params is None:
             self.r_params = self.render_params()
+        else:
+            # Ensure timezone is available even if r_params was already set
+            self.r_params["timezone"] = get_timezone(None, self.contest)
 
         self.r_params["user_test_count"] = count
         self.r_params["user_tests"] = \

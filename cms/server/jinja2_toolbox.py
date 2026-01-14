@@ -223,6 +223,12 @@ def format_datetime(ctx: Context, dt: datetime):
 
 
 @contextfilter
+def format_datetime_with_timezone(ctx: Context, dt: datetime, timezone: tzinfo):
+    translation: Translation = ctx.get("translation", DEFAULT_TRANSLATION)
+    return translation.format_datetime(dt, timezone)
+
+
+@contextfilter
 def format_time(ctx: Context, dt: datetime):
     translation: Translation = ctx.get("translation", DEFAULT_TRANSLATION)
     timezone: tzinfo = ctx.get("timezone", local_tz)
@@ -280,6 +286,7 @@ def instrument_formatting_toolbox(env: Environment):
     env.filters["format_timedelta"] = format_timedelta
     env.filters["format_duration"] = format_duration
     env.filters["format_size"] = format_size
+    env.filters["format_datetime_with_timezone"] = format_datetime_with_timezone
     env.filters["format_decimal"] = format_decimal
     env.filters["format_locale"] = format_locale
 
