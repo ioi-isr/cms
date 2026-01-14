@@ -137,6 +137,7 @@ class ContestHandler(SimpleContestHandler("contest.html")):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, contest_id: str):
         contest = self.safe_get_item(Contest, contest_id)
+        self.contest = contest
 
         old_start = contest.start
 
