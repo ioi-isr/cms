@@ -1,0 +1,13 @@
+{
+  "name": "cms-linting",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Linting tools for CMS JavaScript files",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  }
+}
