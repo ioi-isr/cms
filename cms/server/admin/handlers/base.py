@@ -141,10 +141,10 @@ def parse_datetime(value: str) -> datetime:
 
 def parse_datetime_with_timezone(value: str, tz) -> datetime:
     """Parse a datetime in the given timezone and convert to UTC.
-    
+
     value: a datetime string in "YYYY-MM-DD HH:MM:SS" format.
     tz: the timezone the datetime is in.
-    
+
     return: a naive datetime in UTC.
     """
     if '.' not in value:
@@ -152,8 +152,8 @@ def parse_datetime_with_timezone(value: str, tz) -> datetime:
     try:
         local_dt = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
         return local_to_utc(local_dt, tz)
-    except:
-        raise ValueError("Can't cast %s to datetime." % value)
+    except (ValueError, OverflowError) as err:
+        raise ValueError("Can't cast %s to datetime." % value) from err
 
 
 def parse_ip_networks(
@@ -667,7 +667,9 @@ class BaseHandler(CommonRequestHandler):
             self.r_params = self.render_params()
         else:
             # Ensure timezone is available even if r_params was already set
-            self.r_params["timezone"] = get_timezone(None, self.contest)
+            tz = get_timezone(None, self.contest)
+            self.r_params["timezone"] = tz
+            self.r_params["timezone_name"] = get_timezone_name(tz)
 
         # A page showing paginated submissions can use these
         # parameters: total number of submissions, submissions to
@@ -704,7 +706,9 @@ class BaseHandler(CommonRequestHandler):
             self.r_params = self.render_params()
         else:
             # Ensure timezone is available even if r_params was already set
-            self.r_params["timezone"] = get_timezone(None, self.contest)
+            tz = get_timezone(None, self.contest)
+            self.r_params["timezone"] = tz
+            self.r_params["timezone_name"] = get_timezone_name(tz)
 
         self.r_params["user_test_count"] = count
         self.r_params["user_tests"] = \
