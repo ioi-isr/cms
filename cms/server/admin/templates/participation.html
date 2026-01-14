@@ -189,7 +189,7 @@ CMS.AWSUtils.Timezone.setupDatetimeInputs(
       {% for msg in participation.messages|reverse %}
       <div class="notification communication">
         <div class="notification_msg">
-          <div class="notification_timestamp"><span data-utc-datetime="{{ msg.timestamp.strftime('%Y-%m-%d %H:%M:%S.%f') }}">{{ msg.timestamp|format_datetime }}</span></div>
+          <div class="notification_timestamp">{{ msg.timestamp|format_datetime }}</div>
           <div class="notification_subject">{{ msg.subject }}</div>
           <div class="notification_text">{{ msg.text | markdown }}</div>
           <hr>

@@ -59,7 +59,7 @@ from cms.grading.tasktypes import get_task_type_class
 from cms.server import CommonRequestHandler, FileHandlerMixin
 from cms.server.util import exclude_internal_contests
 from cmscommon.crypto import hash_password, parse_authentication
-from cmscommon.datetime import make_datetime
+from cmscommon.datetime import make_datetime, local_tz, get_timezone
 if typing.TYPE_CHECKING:
     from cms.server.admin import AdminWebServer
 
@@ -370,6 +370,8 @@ class BaseHandler(CommonRequestHandler):
         params["pending_password_resets"] = self.sql_session.query(User)\
             .filter(User.password_reset_pending.is_(True))\
             .count()
+        # Add timezone for datetime formatting (contest-specific if available)
+        params["timezone"] = get_timezone(None, self.contest)
         return params
 
     def write_error(self, status_code, **kwargs):

@@ -17,7 +17,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
       {% if user_id is none %}
         <a href="{{ url("contest", contest.id, "user", msg.participation.user.id, "edit") }}" title="{{ msg.participation.user.first_name }} {{ msg.participation.user.last_name }}">{{ msg.participation.user.username }}</a> &mdash;
       {% endif %}
-      <span data-utc-datetime="{{ msg.question_timestamp.strftime('%Y-%m-%d %H:%M:%S') }}">{{ msg.question_timestamp|format_datetime }}</span>
+      {{ msg.question_timestamp|format_datetime }}
     </div>
     <div class="notification_subject">{{ msg.subject }}</div>
     <div class="notification_text preserve_line_breaks">{{ msg.text }}</div>
