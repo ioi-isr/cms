@@ -106,10 +106,13 @@ class Sum(ScoreTypeAlone):
         """See ScoreType.max_score."""
         public_score = 0.0
         score = 0.0
+        # Use max(self.parameters, 0.0) to handle negative testcase scores.
+        # Negative scores can only reduce the total, not increase the max.
+        max_param = max(self.parameters, 0.0)
         for public in self.public_testcases.values():
             if public:
-                public_score += self.parameters
-            score += self.parameters
+                public_score += max_param
+            score += max_param
         return score, public_score, []
 
     def compute_score(self, submission_result):
