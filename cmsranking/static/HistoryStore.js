@@ -58,6 +58,11 @@ var HistoryStore = new function () {
             var time = data[i][2];
             var score = data[i][3];
 
+            // Skip if task no longer exists (e.g., removed from contest)
+            if (!DataStore.tasks[task]) {
+                continue;
+            }
+
             if (d[user]) {
                 d[user][task] = score;
 
