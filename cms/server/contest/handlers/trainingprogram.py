@@ -25,10 +25,10 @@ from datetime import timedelta
 
 import tornado.web
 
-from cms.db import Participation, Submission, SubmissionResult
+from cms.db import Participation, Student
 from cms.server import multi_contest
 from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
-from cms.server.util import check_training_day_eligibility
+from cms.server.util import check_training_day_eligibility, calculate_task_archive_progress
 from .contest import ContestHandler
 
 
@@ -54,46 +54,31 @@ class TrainingProgramOverviewHandler(ContestHandler):
             # This URL only makes sense for training programs; return 404
             raise tornado.web.HTTPError(404)
 
-        # Calculate total score and max score
-        total_score = 0.0
-        max_score = 0.0
-        task_scores = []
+        # Find the student record for this user in the training program
+        student = (
+            self.sql_session.query(Student)
+            .join(Participation, Student.participation_id == Participation.id)
+            .filter(Participation.contest_id == contest.id)
+            .filter(Participation.user_id == participation.user_id)
+            .filter(Student.training_program_id == training_program.id)
+            .first()
+        )
 
-        for task in contest.get_tasks():
-            max_task_score = task.active_dataset.score_type_object.max_score \
-                if task.active_dataset else 100.0
-            max_score += max_task_score
-
-            # Get best submission score for this task (only official submissions)
-            best_score = 0.0
-            submissions = (
-                self.sql_session.query(Submission)
-                .filter(Submission.participation == participation)
-                .filter(Submission.task == task)
-                .filter(Submission.official.is_(True))
-                .all()
+        # Calculate task archive progress using shared utility
+        if student is not None:
+            progress = calculate_task_archive_progress(
+                student, participation, contest, include_task_details=True
             )
-
-            for submission in submissions:
-                if task.active_dataset:
-                    result = (
-                        self.sql_session.query(SubmissionResult)
-                        .filter(SubmissionResult.submission == submission)
-                        .filter(SubmissionResult.dataset == task.active_dataset)
-                        .first()
-                    )
-                    if result and result.score is not None:
-                        best_score = max(best_score, result.score)
-
-            total_score += best_score
-            task_scores.append({
-                "task": task,
-                "score": best_score,
-                "max_score": max_task_score,
-            })
-
-        # Calculate percentage
-        percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
+            total_score = progress["total_score"]
+            max_score = progress["max_score"]
+            percentage = progress["percentage"]
+            task_scores = progress["task_scores"]
+        else:
+            # No student record - show no tasks
+            total_score = 0.0
+            max_score = 0.0
+            percentage = 0.0
+            task_scores = []
 
         # Get upcoming training days for this user
         upcoming_training_days = []

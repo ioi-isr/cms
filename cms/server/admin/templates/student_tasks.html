@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block core %}
+<h1>
+  Task Archive for <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+</h1>
+
+<p>
+  <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "edit") }}">Back to student details</a>
+</p>
+
+<h2 id="title_add_task" class="toggling_on">Add Task</h2>
+<div id="add_task">
+  <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks", "add") }}" method="POST">
+    {{ xsrf_form_html|safe }}
+    <table class="bordered">
+      <tr>
+        <td>
+          <span class="info" title="Select a task to add to this student's task archive. This will be marked as a manual assignment."></span>
+          Task
+        </td>
+        <td>
+          <select name="task_id">
+            <option value="null" selected>-- Select a task --</option>
+            {% for task in available_tasks %}
+            <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+    </table>
+    <input type="submit" value="Add Task" {% if not admin.permission_all %}disabled{% endif %} />
+  </form>
+  <div class="hr"></div>
+</div>
+
+<h2 id="title_assigned_tasks" class="toggling_on">Assigned Tasks ({{ student_tasks|length }})</h2>
+<div id="assigned_tasks">
+  {% if student_tasks %}
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Task</th>
+        <th>Source</th>
+        <th>Assigned At</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for st in student_tasks %}
+      <tr>
+        <td>
+          <a href="{{ url("task", st.task.id) }}">{{ st.task.name }}</a> - {{ st.task.title }}
+        </td>
+        <td>
+          {% if st.source_training_day %}
+            <a href="{{ url("contest", st.source_training_day.contest.id) }}">{{ st.source_training_day.contest.description }}</a>
+          {% else %}
+            <em>Manual assignment</em>
+          {% endif %}
+        </td>
+        <td>{{ st.assigned_at }}</td>
+        <td>
+          <form action="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "remove") }}" method="POST" style="display: inline;">
+            {{ xsrf_form_html|safe }}
+            <input type="submit" value="Remove" {% if not admin.permission_all %}disabled{% endif %} onclick="return confirm('Are you sure you want to remove this task from the student\\'s archive?');" />
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No tasks assigned to this student yet.</p>
+  {% endif %}
+  <div class="hr"></div>
+</div>
+
+{% endblock core %}

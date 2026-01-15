@@ -32,7 +32,7 @@ from sqlalchemy.types import Integer, Unicode
 from . import Base
 
 if typing.TYPE_CHECKING:
-    from . import TrainingProgram, Participation
+    from . import TrainingProgram, Participation, StudentTask
 
 
 class Student(Base):
@@ -79,4 +79,11 @@ class Student(Base):
     participation: "Participation" = relationship(
         "Participation",
         back_populates="student",
+    )
+
+    student_tasks: list["StudentTask"] = relationship(
+        "StudentTask",
+        back_populates="student",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
