@@ -50,6 +50,7 @@ if typing.TYPE_CHECKING:
     from . import Submission, UserTest, TrainingDay
     from .scorecache import ParticipationTaskScore
     from .modelsolution import ModelSolutionMeta
+    from .student_task import StudentTask
 
 
 class Task(Base):
@@ -320,6 +321,12 @@ class Task(Base):
 
     participation_scores: list["ParticipationTaskScore"] = relationship(
         "ParticipationTaskScore",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="task")
+
+    student_tasks: list["StudentTask"] = relationship(
+        "StudentTask",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="task")
