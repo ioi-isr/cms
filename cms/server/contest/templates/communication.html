@@ -135,7 +135,7 @@
                     <input type="datetime-local" name="requested_start_time" id="input_requested_start_time" class="input-xlarge" required>
                     <span class="help-block">
                         {% trans %}Select the date and time when you want to start the contest{% endtrans %}
-                        (in your timezone: {{ timezone.tzname(now) }})
+                        (in your timezone: {{ timezone.key|default(timezone.zone)|default(timezone.tzname(now)) }})
                     </span>
                 </div>
             </div>
