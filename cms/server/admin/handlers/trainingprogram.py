@@ -2216,7 +2216,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
         contest: Contest
     ) -> None:
         """Extract and store ranking data for all students."""
+        from sqlalchemy.orm import joinedload
+        from cms.grading.scoring import task_score
+
         training_program = training_day.training_program
+        managing_contest = training_program.managing_contest
+
+        # Get the tasks assigned to this training day
+        training_day_tasks = training_day.tasks
 
         for participation in contest.participations:
             # Find the student for this user in the training program
@@ -2233,27 +2240,43 @@ class ArchiveTrainingDayHandler(BaseHandler):
             if student is None:
                 continue
 
+            # Get the managing contest participation for this user
+            # Submissions are stored against the managing contest participation
+            managing_participation = (
+                self.sql_session.query(Participation)
+                .filter(Participation.contest_id == managing_contest.id)
+                .filter(Participation.user_id == participation.user_id)
+                .options(joinedload(Participation.submissions))
+                .options(joinedload("submissions.token"))
+                .options(joinedload("submissions.results"))
+                .first()
+            )
+
+            if managing_participation is None:
+                continue
+
             # Get all student tags (as list for array storage)
             student_tags = list(student.student_tags) if student.student_tags else []
 
-            # Get task scores from participation
+            # Get task scores using task_score function (same as ranking handler)
             task_scores = {}
-            for task in contest.tasks:
-                # Get the score for this task from ParticipationTaskScore
-                pts = (
-                    self.sql_session.query(ParticipationTaskScore)
-                    .filter(ParticipationTaskScore.participation_id == participation.id)
-                    .filter(ParticipationTaskScore.task_id == task.id)
-                    .first()
+            for task in training_day_tasks:
+                # Use task_score to compute the actual score, filtered by training day
+                score, _ = task_score(
+                    managing_participation, task,
+                    rounded=True, training_day=training_day
                 )
-                if pts is not None:
-                    task_scores[str(task.id)] = pts.score
+                if score > 0:
+                    task_scores[str(task.id)] = score
 
             # Get score history in RWS format: [[user_id, task_id, time, score], ...]
+            # Filter to only include history for tasks in this training day
             history = []
+            task_ids_in_training_day = {task.id for task in training_day_tasks}
             score_histories = (
                 self.sql_session.query(ScoreHistory)
-                .filter(ScoreHistory.participation_id == participation.id)
+                .filter(ScoreHistory.participation_id == managing_participation.id)
+                .filter(ScoreHistory.task_id.in_(task_ids_in_training_day))
                 .order_by(ScoreHistory.timestamp)
                 .all()
             )
