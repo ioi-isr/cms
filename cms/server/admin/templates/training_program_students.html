@@ -11,6 +11,10 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
 
 {% include "fragments/overload_warning.html" %}
 
+<p>
+  <a href="{{ url("training_program", training_program.id, "bulk_assign_task") }}">Bulk Assign Task by Tag</a>
+</p>
+
 <form action="{{ url("training_program", training_program.id, "students", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Add a new student:
@@ -44,14 +48,16 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
       <tr>
         <th></th>
         <th>Username</th>
-        <th>First name</th>
-        <th>Last name</th>
+        <th>First Name</th>
+        <th>Last Name</th>
         <th>Student Tags</th>
+        <th>Task Archive Progress</th>
       </tr>
     </thead>
     <tbody>
       {% for student in training_program.students|sort(attribute="participation.user.username") %}
       {% set u = student.participation.user %}
+      {% set progress = student_progress.get(student.id, {}) %}
       <tr>
         <td>
           <input type="radio" name="user_id" value="{{ u.id }}"/>
@@ -64,6 +70,13 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
           <input type="text" class="student-tags-display" value="{{ student.student_tags|join(", ") }}" readonly/>
           {% else %}
           <span class="no-tags-indicator">No tags</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if progress.task_count > 0 %}
+          {{ "%.1f"|format(progress.percentage) }}% ({{ "%.1f"|format(progress.total_score) }}/{{ "%.1f"|format(progress.max_score) }}) [<a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}">details</a>]
+          {% else %}
+          No tasks [<a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}">details</a>]
           {% endif %}
         </td>
       </tr>
