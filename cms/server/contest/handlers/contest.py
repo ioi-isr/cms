@@ -50,11 +50,21 @@ except:
 import tornado.web
 
 from cms import config, TOKEN_MODE_MIXED
-from cms.db import Contest, Student, Submission, Task, TrainingDayGroup, TrainingProgram, UserTest, contest
+from cms.db import (
+    Contest,
+    Student,
+    StudentTask,
+    Submission,
+    Task,
+    TrainingDayGroup,
+    TrainingProgram,
+    UserTest,
+)
 from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
 from cms.server.contest.authentication import authenticate_request
 from cmscommon.datetime import get_timezone
+from sqlalchemy import exists, and_
 from .base import BaseHandler, add_ip_to_list
 from ..phase_management import compute_actual_phase, compute_effective_times
 
@@ -412,6 +422,9 @@ class ContestHandler(BaseHandler):
         - The task has no visible_to_tags (empty list = visible to all)
         - The student has at least one tag matching the task's visible_to_tags
 
+        For training programs (managing contests), tasks are only accessible
+        if the student has an associated StudentTask record.
+
         For non-training-day contests, all tasks are accessible.
 
         task: the task to check access for.
@@ -422,6 +435,23 @@ class ContestHandler(BaseHandler):
         # Must be logged in to access restricted tasks
         if self.current_user is None:
             return not task.visible_to_tags
+
+        # For training programs, check if student has a StudentTask record
+        if self.training_program is not None:
+            task_access_exists = self.sql_session.query(
+                exists().where(
+                    and_(
+                        StudentTask.task_id == task.id,
+                        StudentTask.student_id == Student.id,
+                        Student.participation_id == Participation.id,
+                        Participation.contest_id == self.contest.id,
+                        Participation.user_id == self.current_user.user_id,
+                        Student.training_program_id == self.training_program.id,
+                    )
+                )
+            ).scalar()
+
+            return task_access_exists
 
         return can_access_task(
             self.sql_session, task, self.current_user, self.contest.training_day

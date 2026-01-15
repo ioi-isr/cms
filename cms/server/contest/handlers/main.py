@@ -55,7 +55,7 @@ import tornado.web
 from sqlalchemy.orm.exc import NoResultFound
 
 from cms import config
-from cms.db import PrintJob, User, Participation, Team
+from cms.db import PrintJob, User, Participation, Team, Student, StudentTask
 from cms.grading.languagemanager import get_language
 from cms.grading.steps import COMPILATION_MESSAGES, EVALUATION_MESSAGES
 from cms.server import multi_contest
@@ -384,9 +384,64 @@ class StartHandler(ContestHandler):
             participation.starting_ip_addresses, client_ip
         )
 
+        # For training day contests, add visible tasks to the student's task archive
+        training_day = self.contest.training_day
+        if training_day is not None:
+            self._add_training_day_tasks_to_student(training_day, participation)
+
         self.sql_session.commit()
 
         self.redirect(self.contest_url())
+
+    def _add_training_day_tasks_to_student(self, training_day, participation: Participation):
+        """Add visible tasks from a training day to the student's task archive.
+
+        When a student starts a training day, all tasks visible to them
+        (based on their tags) are added to their StudentTask records.
+
+        training_day: the training day being started.
+        participation: the user's participation in the training day contest.
+
+        """
+        # Find the student record for this user in the training program
+        training_program = training_day.training_program
+        managing_contest = training_program.managing_contest
+
+        student = (
+            self.sql_session.query(Student)
+            .join(Participation, Student.participation_id == Participation.id)
+            .filter(Participation.contest_id == managing_contest.id)
+            .filter(Participation.user_id == participation.user_id)
+            .filter(Student.training_program_id == training_program.id)
+            .first()
+        )
+
+        if student is None:
+            logger.warning(
+                "User %s started training day but has no student record",
+                participation.user.username
+            )
+            return
+
+        # Get the visible tasks for this student
+        visible_tasks = self.get_visible_tasks()
+
+        # Add each visible task to the student's task archive if not already present
+        existing_task_ids = {st.task_id for st in student.student_tasks}
+
+        for task in visible_tasks:
+            if task.id not in existing_task_ids:
+                # Note: CMS Base.__init__ skips foreign key columns, so we must
+                # set them as attributes after creating the object
+                student_task = StudentTask(assigned_at=self.timestamp)
+                student_task.student_id = student.id
+                student_task.task_id = task.id
+                student_task.source_training_day_id = training_day.id
+                self.sql_session.add(student_task)
+                logger.info(
+                    "Added task %s to student %s from training day %s",
+                    task.name, participation.user.username, training_day.contest.name
+                )
 
 
 class LogoutHandler(ContestHandler):
