@@ -25,6 +25,10 @@ CMS.AWSUtils.initTagify({
   Student <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
 </h1>
 
+<p>
+  <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks") }}">View/Manage Task Archive ({{ student.student_tasks|length }} tasks)</a>
+</p>
+
 <h2 id="title_submissions" class="toggling_on">Submissions</h2>
 <div id="submissions">
   <p>
