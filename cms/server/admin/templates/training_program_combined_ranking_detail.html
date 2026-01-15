@@ -188,7 +188,7 @@
 <div class="back-link">
   <a href="{{ url("training_program", training_program.id, "combined_ranking") }}{% if start_date or end_date %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}{% endif %}{% if start_date and end_date %}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}{% endif %}{% endif %}">&larr; Back to Combined Ranking</a>
   |
-  <a href="{{ url("training_program", training_program.id, "student", student.id, "edit") }}">Edit Student</a>
+  <a href="{{ url("training_program", training_program.id, "student", student.participation.user.id, "edit") }}">Edit Student</a>
 </div>
 
 {% if start_date or end_date %}

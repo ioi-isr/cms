@@ -232,7 +232,7 @@
       <tr>
         <th>
           {% if student.participation %}
-            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }} (<a href="{{ url('training_program', training_program.id, 'student', student.id, 'edit') }}">{{ student.participation.user.username }}</a>)
+            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }} (<a href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}">{{ student.participation.user.username }}</a>)
           {% else %}
             <span style="color:#9ca3af;">(Unknown)</span>
           {% endif %}
@@ -256,6 +256,7 @@
                   </div>
                 {% endif %}
 
+                {% if att.status != "missed" %}
                 <div class="location-row">
                   {% if att.location == "class" %}
                     <span class="location-icon">&#x1F3EB;</span> Class
@@ -269,6 +270,7 @@
                     <span class="location-icon">&#x2753;</span> Unknown
                   {% endif %}
                 </div>
+                {% endif %}
 
                 {% if att.delay_reasons %}
                   <div class="reason-text" title="{{ att.delay_reasons }}">

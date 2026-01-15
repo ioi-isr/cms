@@ -248,7 +248,7 @@
         <th>
           {% if student.participation %}
             {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
-            (<a href="{{ url('training_program', training_program.id, 'student', student.id, 'edit') }}">{{ student.participation.user.username }}</a>)
+            (<a href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}">{{ student.participation.user.username }}</a>)
             <a class="history-link" href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if start_date or end_date %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}{% endif %}{% if start_date and end_date %}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}{% endif %}{% endif %}" title="View score/rank history">[history]</a>
           {% else %}
             <span style="color:#9ca3af;">(Unknown)</span>
