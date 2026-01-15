@@ -18,15 +18,15 @@
 """Archived student ranking model for training days.
 
 ArchivedStudentRanking stores ranking data for students after a training day
-is archived. This includes the student's tag, task scores, and score history
+is archived. This includes the student's tags, task scores, and score history
 for rendering ranking graphs.
 """
 
 import typing
 
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
-from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
+from sqlalchemy.schema import Column, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.types import Integer, Unicode
 
 from . import Base
@@ -39,7 +39,7 @@ class ArchivedStudentRanking(Base):
     """Archived ranking data for a student in a training day.
 
     This stores immutable ranking information after a training day is
-    archived, including the student's tag during the training day,
+    archived, including the student's tags during the training day,
     their final scores for each task, and their score history in the
     format expected by the JavaScript ranking graph renderer.
     """
@@ -47,6 +47,8 @@ class ArchivedStudentRanking(Base):
     __table_args__ = (
         UniqueConstraint("training_day_id", "student_id",
                          name="archived_student_rankings_training_day_id_student_id_key"),
+        Index("ix_archived_student_rankings_student_tags_gin", "student_tags",
+              postgresql_using="gin"),
     )
 
     id: int = Column(Integer, primary_key=True)
@@ -65,10 +67,11 @@ class ArchivedStudentRanking(Base):
         index=True,
     )
 
-    # The tag the student had during this training day
-    tag_name: str | None = Column(
-        Unicode,
-        nullable=True,
+    # All tags the student had during this training day (stored as array for efficient filtering)
+    student_tags: list[str] = Column(
+        ARRAY(Unicode),
+        nullable=False,
+        default=list,
     )
 
     # Final scores for each task: {task_id: score}

@@ -623,7 +623,7 @@ CREATE TABLE public.archived_student_rankings (
     id integer NOT NULL,
     training_day_id integer NOT NULL,
     student_id integer NOT NULL,
-    tag_name character varying,
+    student_tags character varying[] NOT NULL DEFAULT '{}',
     task_scores jsonb,
     history jsonb
 );
@@ -656,5 +656,7 @@ ALTER TABLE ONLY public.archived_student_rankings
 CREATE INDEX ix_archived_student_rankings_training_day_id ON public.archived_student_rankings USING btree (training_day_id);
 
 CREATE INDEX ix_archived_student_rankings_student_id ON public.archived_student_rankings USING btree (student_id);
+
+CREATE INDEX ix_archived_student_rankings_student_tags_gin ON public.archived_student_rankings USING gin (student_tags);
 
 COMMIT;

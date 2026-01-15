@@ -2192,10 +2192,8 @@ class ArchiveTrainingDayHandler(BaseHandler):
             if student is None:
                 continue
 
-            # Get the student's tag (first tag if multiple)
-            tag_name = None
-            if student.student_tags and len(student.student_tags) > 0:
-                tag_name = student.student_tags[0]
+            # Get all student tags (as list for array storage)
+            student_tags = list(student.student_tags) if student.student_tags else []
 
             # Get task scores from participation
             task_scores = {}
@@ -2234,7 +2232,7 @@ class ArchiveTrainingDayHandler(BaseHandler):
 
             # Create archived ranking record
             archived_ranking = ArchivedStudentRanking(
-                tag_name=tag_name,
+                student_tags=student_tags,
                 task_scores=task_scores if task_scores else None,
                 history=history if history else None,
             )
