@@ -54,7 +54,7 @@ __all__ = [
     "FSObject", "LargeObject",
     # contest
     "Contest", "Announcement", "ContestFolder", "TrainingProgram", "Student",
-    "TrainingDay", "TrainingDayGroup",
+    "TrainingDay", "TrainingDayGroup", "StudentTask",
     # user
     "User", "Team", "Participation", "Message", "Question", "DelayRequest",
     # admin
@@ -109,6 +109,7 @@ from .training_program import TrainingProgram
 from .training_day import TrainingDay
 from .training_day_group import TrainingDayGroup
 from .student import Student
+from .student_task import StudentTask
 from .user import User, Team, Participation, Message, Question, DelayRequest
 from .task import Task, Statement, Attachment, Dataset, Manager, Testcase, \
     Generator
