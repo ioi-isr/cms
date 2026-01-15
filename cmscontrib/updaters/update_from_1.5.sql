@@ -623,7 +623,7 @@ CREATE TABLE public.archived_student_rankings (
     id integer NOT NULL,
     training_day_id integer NOT NULL,
     student_id integer NOT NULL,
-    student_tags character varying[] NOT NULL DEFAULT '{}',
+    student_tags character varying[] NOT NULL,
     task_scores jsonb,
     history jsonb
 );
