@@ -659,4 +659,7 @@ CREATE INDEX ix_archived_student_rankings_student_id ON public.archived_student_
 
 CREATE INDEX ix_archived_student_rankings_student_tags_gin ON public.archived_student_rankings USING gin (student_tags);
 
+-- Add start_time column to training_days for storing the contest start time after archiving
+ALTER TABLE public.training_days ADD COLUMN start_time timestamp without time zone;
+
 COMMIT;

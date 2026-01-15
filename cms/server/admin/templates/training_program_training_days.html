@@ -86,6 +86,7 @@
     <tr>
       <th>Name</th>
       <th>Description</th>
+      <th>Start</th>
     </tr>
   </thead>
   <tbody>
@@ -94,10 +95,17 @@
     <tr>
       <td>{{ td.name or "(no name)" }}</td>
       <td>{{ td.description or "(no description)" }}</td>
+      <td>
+        {% if td.start_time %}
+          {{ td.start_time.strftime("%Y-%m-%d %H:%M") }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
     </tr>
     {% else %}
     <tr>
-      <td colspan="2">(no archived training days)</td>
+      <td colspan="3">(no archived training days)</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -105,7 +113,7 @@
 
 <script>
   $(document).ready(function() {
-    CMS.AWSUtils.init_table_sort($("#archived_training_days_table"), false, 0, false);
+    CMS.AWSUtils.init_table_sort($("#archived_training_days_table"), false, 2, false);
   });
 </script>
 {% endblock core %}

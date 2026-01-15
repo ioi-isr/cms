@@ -25,11 +25,12 @@ import typing
 
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
-from sqlalchemy.types import Integer, Unicode
+from sqlalchemy.types import DateTime, Integer, Unicode
 
 from . import Base
 
 if typing.TYPE_CHECKING:
+    from datetime import datetime
     from . import Contest, TrainingProgram, Task, TrainingDayGroup, Submission, Participation, User
     from . import ArchivedAttendance, ArchivedStudentRanking
 
@@ -104,6 +105,13 @@ class TrainingDay(Base):
 
     description: str | None = Column(
         Unicode,
+        nullable=True,
+    )
+
+    # Start time is synced with contest while contest exists.
+    # After archiving (when contest is deleted), this field preserves the value.
+    start_time: "datetime | None" = Column(
+        DateTime,
         nullable=True,
     )
 

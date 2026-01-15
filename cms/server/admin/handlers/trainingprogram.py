@@ -2078,9 +2078,10 @@ class ArchiveTrainingDayHandler(BaseHandler):
         class_ips = set(self.get_arguments("class_ips"))
 
         try:
-            # Save name and description from contest before archiving
+            # Save name, description, and start_time from contest before archiving
             training_day.name = contest.name
             training_day.description = contest.description
+            training_day.start_time = contest.start
 
             # Archive attendance data for each student
             self._archive_attendance_data(training_day, contest, class_ips)
@@ -2117,10 +2118,13 @@ class ArchiveTrainingDayHandler(BaseHandler):
         training_program = training_day.training_program
 
         for participation in contest.participations:
-            # Find the student for this participation
+            # Find the student for this user in the training program
+            # Note: Student.participation_id points to the managing contest participation,
+            # not the training day participation, so we need to look up by user_id
             student = (
                 self.sql_session.query(Student)
-                .filter(Student.participation_id == participation.id)
+                .join(Participation)
+                .filter(Participation.user_id == participation.user_id)
                 .filter(Student.training_program_id == training_program.id)
                 .first()
             )
@@ -2186,10 +2190,13 @@ class ArchiveTrainingDayHandler(BaseHandler):
         training_program = training_day.training_program
 
         for participation in contest.participations:
-            # Find the student for this participation
+            # Find the student for this user in the training program
+            # Note: Student.participation_id points to the managing contest participation,
+            # not the training day participation, so we need to look up by user_id
             student = (
                 self.sql_session.query(Student)
-                .filter(Student.participation_id == participation.id)
+                .join(Participation)
+                .filter(Participation.user_id == participation.user_id)
                 .filter(Student.training_program_id == training_program.id)
                 .first()
             )
