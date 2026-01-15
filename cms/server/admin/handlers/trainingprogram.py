@@ -29,7 +29,8 @@ from sqlalchemy import func
 
 from cms.db import Contest, TrainingProgram, Participation, Submission, \
     User, Task, Question, Announcement, Student, StudentTask, Team, \
-    TrainingDay, TrainingDayGroup
+    TrainingDay, TrainingDayGroup, ArchivedAttendance, ArchivedStudentRanking, \
+    ScoreHistory
 from cms.server.util import get_all_student_tags, deduplicate_preserving_order, calculate_task_archive_progress
 from cmscommon.datetime import make_datetime
 
@@ -2006,3 +2007,305 @@ class BulkAssignTaskHandler(BaseHandler):
             )
 
         self.redirect(fallback_page)
+
+
+class ArchiveTrainingDayHandler(BaseHandler):
+    """Archive a training day, extracting attendance and ranking data."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, training_program_id: str, training_day_id: str):
+        """Show the archive confirmation page with IP selection."""
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            raise tornado.web.HTTPError(404, "Training day not in this program")
+
+        if training_day.contest is None:
+            raise tornado.web.HTTPError(400, "Training day is already archived")
+
+        contest = training_day.contest
+
+        # Get all participations with their IPs
+        # Count students per IP (only IPs with more than one student)
+        ip_counts: dict[str, int] = {}
+        for participation in contest.participations:
+            if participation.ip is not None:
+                for ip in participation.ip:
+                    ip_counts[ip] = ip_counts.get(ip, 0) + 1
+
+        # Filter to only IPs with more than one student
+        shared_ips = {ip: count for ip, count in ip_counts.items() if count > 1}
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["training_day"] = training_day
+        self.r_params["contest"] = contest
+        self.r_params["shared_ips"] = shared_ips
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == training_program.managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+        self.render("archive_training_day.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, training_day_id: str):
+        """Perform the archiving operation."""
+        fallback_page = self.url(
+            "training_program", training_program_id, "training_days"
+        )
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            raise tornado.web.HTTPError(404, "Training day not in this program")
+
+        if training_day.contest is None:
+            self.service.add_notification(
+                make_datetime(), "Error", "Training day is already archived"
+            )
+            self.redirect(fallback_page)
+            return
+
+        contest = training_day.contest
+
+        # Get selected class IPs from form
+        class_ips = set(self.get_arguments("class_ips"))
+
+        try:
+            # Save name and description from contest before archiving
+            training_day.name = contest.name
+            training_day.description = contest.description
+
+            # Archive attendance data for each student
+            self._archive_attendance_data(training_day, contest, class_ips)
+
+            # Archive ranking data for each student
+            self._archive_ranking_data(training_day, contest)
+
+            # Delete the contest (this will cascade delete participations)
+            self.sql_session.delete(contest)
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Archive failed", repr(error)
+            )
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Training day archived",
+                f"Training day '{training_day.name}' has been archived successfully"
+            )
+
+        self.redirect(fallback_page)
+
+    def _archive_attendance_data(
+        self,
+        training_day: TrainingDay,
+        contest: Contest,
+        class_ips: set[str]
+    ) -> None:
+        """Extract and store attendance data for all students."""
+        training_program = training_day.training_program
+
+        for participation in contest.participations:
+            # Find the student for this participation
+            student = (
+                self.sql_session.query(Student)
+                .filter(Student.participation_id == participation.id)
+                .filter(Student.training_program_id == training_program.id)
+                .first()
+            )
+
+            if student is None:
+                continue
+
+            # Determine status
+            if participation.starting_time is None:
+                status = "missed"
+            else:
+                status = "participated"
+
+            # Determine location based on IPs
+            location = None
+            if participation.ip is not None and len(participation.ip) > 0:
+                has_class_ip = any(ip in class_ips for ip in participation.ip)
+                has_home_ip = any(ip not in class_ips for ip in participation.ip)
+
+                if has_class_ip and has_home_ip:
+                    location = "both"
+                elif has_class_ip:
+                    location = "class"
+                elif has_home_ip:
+                    location = "home"
+
+            # Get delay time
+            delay_time = participation.delay_time
+
+            # Concatenate delay reasons from all delay requests
+            from cms.db import DelayRequest
+            delay_requests = (
+                self.sql_session.query(DelayRequest)
+                .filter(DelayRequest.participation_id == participation.id)
+                .all()
+            )
+            delay_reasons = None
+            if delay_requests:
+                reasons = [dr.reason for dr in delay_requests if dr.reason]
+                if reasons:
+                    delay_reasons = "; ".join(reasons)
+
+            # Create archived attendance record
+            archived_attendance = ArchivedAttendance(
+                status=status,
+                location=location,
+                delay_time=delay_time,
+                delay_reasons=delay_reasons,
+            )
+            archived_attendance.training_day_id = training_day.id
+            archived_attendance.student_id = student.id
+            self.sql_session.add(archived_attendance)
+
+    def _archive_ranking_data(
+        self,
+        training_day: TrainingDay,
+        contest: Contest
+    ) -> None:
+        """Extract and store ranking data for all students."""
+        training_program = training_day.training_program
+
+        for participation in contest.participations:
+            # Find the student for this participation
+            student = (
+                self.sql_session.query(Student)
+                .filter(Student.participation_id == participation.id)
+                .filter(Student.training_program_id == training_program.id)
+                .first()
+            )
+
+            if student is None:
+                continue
+
+            # Get the student's tag (first tag if multiple)
+            tag_name = None
+            if student.student_tags and len(student.student_tags) > 0:
+                tag_name = student.student_tags[0]
+
+            # Get task scores from participation
+            task_scores = {}
+            for task in contest.tasks:
+                # Get the score for this task from ParticipationTaskScore
+                from cms.db import ParticipationTaskScore
+                pts = (
+                    self.sql_session.query(ParticipationTaskScore)
+                    .filter(ParticipationTaskScore.participation_id == participation.id)
+                    .filter(ParticipationTaskScore.task_id == task.id)
+                    .first()
+                )
+                if pts is not None:
+                    task_scores[str(task.id)] = pts.score
+
+            # Get score history in RWS format: [[user_id, task_id, time, score], ...]
+            history = []
+            score_histories = (
+                self.sql_session.query(ScoreHistory)
+                .filter(ScoreHistory.participation_id == participation.id)
+                .order_by(ScoreHistory.time)
+                .all()
+            )
+            for sh in score_histories:
+                # Convert time to seconds since contest start
+                if contest.start is not None and sh.time is not None:
+                    time_offset = (sh.time - contest.start).total_seconds()
+                else:
+                    time_offset = 0
+                history.append([
+                    participation.user_id,
+                    sh.task_id,
+                    time_offset,
+                    sh.score
+                ])
+
+            # Create archived ranking record
+            archived_ranking = ArchivedStudentRanking(
+                tag_name=tag_name,
+                task_scores=task_scores if task_scores else None,
+                history=history if history else None,
+            )
+            archived_ranking.training_day_id = training_day.id
+            archived_ranking.student_id = student.id
+            self.sql_session.add(archived_ranking)
+
+
+class TrainingProgramAttendanceHandler(BaseHandler):
+    """Display attendance data for all archived training days."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        # Get date filter parameters
+        start_date_str = self.get_argument("start_date", None)
+        end_date_str = self.get_argument("end_date", None)
+
+        start_date = None
+        end_date = None
+        if start_date_str:
+            try:
+                start_date = dt.fromisoformat(start_date_str)
+            except ValueError:
+                pass
+        if end_date_str:
+            try:
+                end_date = dt.fromisoformat(end_date_str)
+            except ValueError:
+                pass
+
+        # Get all archived training days (those with contest_id = NULL)
+        archived_training_days = (
+            self.sql_session.query(TrainingDay)
+            .filter(TrainingDay.training_program_id == training_program.id)
+            .filter(TrainingDay.contest_id.is_(None))
+            .order_by(TrainingDay.position)
+            .all()
+        )
+
+        # Build attendance data structure
+        # {student_id: {training_day_id: attendance_record}}
+        attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
+        all_students: dict[int, Student] = {}
+
+        for td in archived_training_days:
+            for attendance in td.archived_attendances:
+                student_id = attendance.student_id
+                if student_id not in attendance_data:
+                    attendance_data[student_id] = {}
+                    all_students[student_id] = attendance.student
+                attendance_data[student_id][td.id] = attendance
+
+        # Sort students by username
+        sorted_students = sorted(
+            all_students.values(),
+            key=lambda s: s.participation.user.username if s.participation else ""
+        )
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["archived_training_days"] = archived_training_days
+        self.r_params["attendance_data"] = attendance_data
+        self.r_params["sorted_students"] = sorted_students
+        self.r_params["start_date"] = start_date
+        self.r_params["end_date"] = end_date
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == training_program.managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+        self.render("training_program_attendance.html", **self.r_params)

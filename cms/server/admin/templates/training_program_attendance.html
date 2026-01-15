@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Attendance for <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
+</div>
+
+<h2>Filter by Date</h2>
+<form action="{{ url("training_program", training_program.id, "attendance") }}" method="GET">
+  <label for="start_date">From:</label>
+  <input type="date" id="start_date" name="start_date" value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}" />
+  <label for="end_date">To:</label>
+  <input type="date" id="end_date" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
+  <input type="submit" value="Filter" />
+</form>
+
+<h2>Attendance Table</h2>
+
+{% if archived_training_days %}
+<div style="overflow-x: auto;">
+<table class="bordered" id="attendance_table">
+  <thead>
+    <tr>
+      <th rowspan="2">Student</th>
+      {% for td in archived_training_days %}
+      <th colspan="3">{{ td.name or "(no name)" }}</th>
+      {% endfor %}
+    </tr>
+    <tr>
+      {% for td in archived_training_days %}
+      <th>Status</th>
+      <th>Location</th>
+      <th>Reasons</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for student in sorted_students %}
+    <tr>
+      <td>
+        {% if student.participation %}
+          <a href="{{ url("training_program", training_program.id, "student", student.participation.user.id) }}">
+            {{ student.participation.user.username }}
+          </a>
+        {% else %}
+          (unknown)
+        {% endif %}
+      </td>
+      {% for td in archived_training_days %}
+        {% set att = attendance_data.get(student.id, {}).get(td.id) %}
+        {% if att %}
+          <td>
+            {% if att.status == "missed" %}
+              Missed
+            {% elif att.delay_time %}
+              Delayed ({{ "%.2f"|format(att.delay_time.total_seconds() / 3600) }}h)
+            {% else %}
+              On Time
+            {% endif %}
+          </td>
+          <td>{{ att.location or "-" }}</td>
+          <td>{{ att.delay_reasons or "-" }}</td>
+        {% else %}
+          <td>-</td>
+          <td>-</td>
+          <td>-</td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="{{ 1 + archived_training_days|length * 3 }}">(no attendance data)</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<script>
+  $(document).ready(function() {
+    CMS.AWSUtils.init_table_sort($("#attendance_table"), false, 0, false);
+  });
+</script>
+{% else %}
+<p><em>No archived training days found. Archive a training day to see attendance data here.</em></p>
+{% endif %}
+{% endblock core %}

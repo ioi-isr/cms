@@ -184,7 +184,9 @@ from .trainingprogram import \
     RemoveTrainingDayHandler, \
     AddTrainingDayGroupHandler, \
     UpdateTrainingDayGroupsHandler, \
-    RemoveTrainingDayGroupHandler
+    RemoveTrainingDayGroupHandler, \
+    ArchiveTrainingDayHandler, \
+    TrainingProgramAttendanceHandler
 
 
 HANDLERS = [
@@ -356,6 +358,8 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/training_days", TrainingProgramTrainingDaysHandler),
     (r"/training_program/([0-9]+)/training_days/add", AddTrainingDayHandler),
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/remove", RemoveTrainingDayHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/archive", ArchiveTrainingDayHandler),
+    (r"/training_program/([0-9]+)/attendance", TrainingProgramAttendanceHandler),
 
     # Training day groups (main groups configuration on contest page)
     (r"/contest/([0-9]+)/training_day_group/add", AddTrainingDayGroupHandler),

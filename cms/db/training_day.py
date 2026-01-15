@@ -25,12 +25,13 @@ import typing
 
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
-from sqlalchemy.types import Integer
+from sqlalchemy.types import Integer, Unicode
 
 from . import Base
 
 if typing.TYPE_CHECKING:
     from . import Contest, TrainingProgram, Task, TrainingDayGroup, Submission, Participation, User
+    from . import ArchivedAttendance, ArchivedStudentRanking
 
 
 def get_managing_participation(
@@ -81,16 +82,28 @@ class TrainingDay(Base):
         index=True,
     )
 
-    contest_id: int = Column(
+    contest_id: int | None = Column(
         Integer,
-        ForeignKey("contests.id", onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("contests.id", onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
         unique=True,
         index=True,
     )
 
     position: int | None = Column(
         Integer,
+        nullable=True,
+    )
+
+    # Name and description are synced with contest while contest exists.
+    # After archiving (when contest is deleted), these fields preserve the values.
+    name: str | None = Column(
+        Unicode,
+        nullable=True,
+    )
+
+    description: str | None = Column(
+        Unicode,
         nullable=True,
     )
 
@@ -120,4 +133,16 @@ class TrainingDay(Base):
         "Submission",
         back_populates="training_day",
         passive_deletes=True,
+    )
+
+    archived_attendances: list["ArchivedAttendance"] = relationship(
+        "ArchivedAttendance",
+        back_populates="training_day",
+        cascade="all, delete-orphan",
+    )
+
+    archived_student_rankings: list["ArchivedStudentRanking"] = relationship(
+        "ArchivedStudentRanking",
+        back_populates="training_day",
+        cascade="all, delete-orphan",
     )
