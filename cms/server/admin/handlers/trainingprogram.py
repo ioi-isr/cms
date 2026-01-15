@@ -2026,12 +2026,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
 
         contest = training_day.contest
 
-        # Get all participations with their IPs
+        # Get all participations with their starting IPs
         # Count students per IP (only IPs with more than one student)
         ip_counts: dict[str, int] = {}
         for participation in contest.participations:
-            if participation.ip is not None:
-                for ip in participation.ip:
+            if participation.starting_ip_addresses:
+                # Parse comma-separated IP addresses
+                ips = [ip.strip() for ip in participation.starting_ip_addresses.split(",") if ip.strip()]
+                for ip in ips:
                     ip_counts[ip] = ip_counts.get(ip, 0) + 1
 
         # Filter to only IPs with more than one student
@@ -2132,18 +2134,21 @@ class ArchiveTrainingDayHandler(BaseHandler):
             else:
                 status = "participated"
 
-            # Determine location based on IPs
+            # Determine location based on starting IPs
             location = None
-            if participation.ip is not None and len(participation.ip) > 0:
-                has_class_ip = any(ip in class_ips for ip in participation.ip)
-                has_home_ip = any(ip not in class_ips for ip in participation.ip)
+            if participation.starting_ip_addresses:
+                # Parse comma-separated IP addresses
+                ips = [ip.strip() for ip in participation.starting_ip_addresses.split(",") if ip.strip()]
+                if ips:
+                    has_class_ip = any(ip in class_ips for ip in ips)
+                    has_home_ip = any(ip not in class_ips for ip in ips)
 
-                if has_class_ip and has_home_ip:
-                    location = "both"
-                elif has_class_ip:
-                    location = "class"
-                elif has_home_ip:
-                    location = "home"
+                    if has_class_ip and has_home_ip:
+                        location = "both"
+                    elif has_class_ip:
+                        location = "class"
+                    elif has_home_ip:
+                        location = "home"
 
             # Get delay time
             delay_time = participation.delay_time
