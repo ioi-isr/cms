@@ -2226,13 +2226,13 @@ class ArchiveTrainingDayHandler(BaseHandler):
             score_histories = (
                 self.sql_session.query(ScoreHistory)
                 .filter(ScoreHistory.participation_id == participation.id)
-                .order_by(ScoreHistory.time)
+                .order_by(ScoreHistory.timestamp)
                 .all()
             )
             for sh in score_histories:
                 # Convert time to seconds since contest start
-                if contest.start is not None and sh.time is not None:
-                    time_offset = (sh.time - contest.start).total_seconds()
+                if contest.start is not None and sh.timestamp is not None:
+                    time_offset = (sh.timestamp - contest.start).total_seconds()
                 else:
                     time_offset = 0
                 history.append([

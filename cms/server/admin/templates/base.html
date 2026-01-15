@@ -310,7 +310,7 @@ $(document).ready(initSidebarEvents);
                 <a href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">{{ tp.name }}</a>
               </div>
               <ul class="folder-contents">
-                {% for td in tp.training_days %}
+                {% for td in tp.training_days if td.contest %}
                 <li class="sidebar-contest">
                   <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
                 </li>
