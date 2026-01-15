@@ -21,16 +21,32 @@ Training programs organize year-long training with multiple sessions.
 Each training program has a managing contest that handles all submissions.
 """
 
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
 
 import tornado.web
 
 from sqlalchemy import func
 
-from cms.db import Contest, TrainingProgram, Participation, Submission, \
-    User, Task, Question, Announcement, Student, StudentTask, Team, \
-    TrainingDay, TrainingDayGroup, ArchivedAttendance, ArchivedStudentRanking, \
-    ScoreHistory
+from cms.db import (
+    Contest,
+    TrainingProgram,
+    Participation,
+    Submission,
+    User,
+    Task,
+    Question,
+    Announcement,
+    Student,
+    StudentTask,
+    Team,
+    TrainingDay,
+    TrainingDayGroup,
+    ArchivedAttendance,
+    ArchivedStudentRanking,
+    ScoreHistory,
+    DelayRequest,
+    ParticipationTaskScore,
+)
 from cms.server.util import get_all_student_tags, deduplicate_preserving_order, calculate_task_archive_progress
 from cmscommon.datetime import make_datetime
 
@@ -446,6 +462,9 @@ class AddTrainingProgramStudentHandler(BaseHandler):
 
         # Also add the student to all existing training days
         for training_day in training_program.training_days:
+            # Skip training days that don't have a contest yet
+            if training_day.contest is None:
+                continue
             td_participation = Participation(
                 contest=training_day.contest,
                 user=user
@@ -2169,7 +2188,6 @@ class ArchiveTrainingDayHandler(BaseHandler):
             delay_time = participation.delay_time
 
             # Concatenate delay reasons from all delay requests
-            from cms.db import DelayRequest
             delay_requests = (
                 self.sql_session.query(DelayRequest)
                 .filter(DelayRequest.participation_id == participation.id)
@@ -2222,7 +2240,6 @@ class ArchiveTrainingDayHandler(BaseHandler):
             task_scores = {}
             for task in contest.tasks:
                 # Get the score for this task from ParticipationTaskScore
-                from cms.db import ParticipationTaskScore
                 pts = (
                     self.sql_session.query(ParticipationTaskScore)
                     .filter(ParticipationTaskScore.participation_id == participation.id)
@@ -2299,7 +2316,6 @@ class TrainingProgramAttendanceHandler(BaseHandler):
             query = query.filter(TrainingDay.start_time >= start_date)
         if end_date:
             # Add one day to end_date to include the entire end day
-            from datetime import timedelta
             query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
         archived_training_days = query.order_by(TrainingDay.start_time).all()
 

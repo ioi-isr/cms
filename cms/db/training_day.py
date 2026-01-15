@@ -120,7 +120,7 @@ class TrainingDay(Base):
         back_populates="training_days",
     )
 
-    contest: "Contest" = relationship(
+    contest: "Contest | None" = relationship(
         "Contest",
         back_populates="training_day",
     )

@@ -57,6 +57,12 @@
 
   <h2>Confirm Archive</h2>
   <p>
+    <label>
+      <input type="checkbox" name="confirm_archive" required />
+      I understand this action is irreversible and will permanently delete the contest
+    </label>
+  </p>
+  <p>
     <input type="submit" value="Archive Training Day"
 {% if not admin.permission_all %}
            disabled

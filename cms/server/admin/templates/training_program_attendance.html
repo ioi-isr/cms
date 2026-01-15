@@ -2,191 +2,309 @@
 
 {% block core %}
 <style>
-/* Status badge styles for attendance tracking */
-.attendance-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: bold;
-  border-radius: 3px;
-  color: white;
-  white-space: nowrap;
-}
+  /* --- Layout & Container --- */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
 
-.attendance-icon {
-  margin-right: 4px;
-}
+  .core_title h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: #111827;
+  }
 
-/* Status colors */
-.badge-on-time {
-  background-color: #28a745; /* Green */
-}
+  /* --- Filter Bar --- */
+  .filter-card {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
 
-.badge-delayed {
-  background-color: #ffc107; /* Yellow/amber */
-  color: #333;
-}
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-.badge-missed {
-  background-color: #dc3545; /* Red */
-}
+  .filter-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #4b5563;
+  }
 
-/* Location colors */
-.badge-class {
-  background-color: #17a2b8; /* Blue */
-}
+  .filter-input {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
 
-.badge-home {
-  background-color: #6f42c1; /* Purple */
-}
+  .btn-primary {
+    background-color: #0F766E;
+    color: white;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
 
-.badge-both {
-  background-color: #fd7e14; /* Orange */
-}
+  .btn-primary:hover { background-color: #0d655e; }
 
-.badge-unknown {
-  background-color: #6c757d; /* Gray */
-}
+  .btn-text {
+    color: #6b7280;
+    text-decoration: underline;
+    font-size: 0.85rem;
+    margin-left: auto;
+  }
 
-/* Column coloring for training days */
-.col-status {
-  background-color: rgba(40, 167, 69, 0.08); /* Light green tint */
-}
+  /* --- Data Table Wrapper --- */
+  .table-container {
+    overflow-x: auto;
+    max-height: 75vh;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    /* Ensures the white background spans full width even if table is small */
+    width: 100%;
+  }
 
-.col-location {
-  background-color: rgba(23, 162, 184, 0.08); /* Light blue tint */
-}
+  /* --- The Table --- */
+  .attendance-table {
+    /* FIXED: Changed from 100% to auto to prevent "Student Name" from stretching */
+    width: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    white-space: nowrap; /* Prevents awkward wrapping */
+  }
 
-.col-reasons {
-  background-color: rgba(108, 117, 125, 0.08); /* Light gray tint */
-}
+  .attendance-table th,
+  .attendance-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    vertical-align: top;
+  }
 
-/* Header styling for training days */
-.training-day-header {
-  background-color: #f8f9fa;
-  border-bottom: 2px solid #dee2e6;
-}
+  /* Sticky Header (Dates) */
+  .attendance-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: #f3f4f6;
+    z-index: 10;
+    color: #374151;
+    font-weight: 600;
+    text-align: left;
+    box-shadow: 0 1px 0 #e5e7eb;
+  }
 
-.training-day-date {
-  font-size: 11px;
-  font-weight: normal;
-  color: #6c757d;
-}
+  /* Sticky First Column (Students) */
+  .attendance-table tbody th {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 5;
+    text-align: left;
+    /* Reduced min-width slightly and added max-width control */
+    min-width: 160px;
+    max-width: 250px;
+    box-shadow: 1px 0 0 #e5e7eb;
+    /* Ensure long names truncate nicely instead of breaking layout */
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .attendance-table tbody tr:hover th {
+    background-color: #f9fafb;
+  }
+
+  /* Sticky Corner Fix */
+  .attendance-table thead th:first-child {
+    left: 0;
+    z-index: 20;
+    background-color: #f3f4f6;
+    min-width: 160px;
+  }
+
+  /* --- Cell Content Styling --- */
+  .date-header-main { font-size: 0.95rem; color: #111827; }
+  .date-header-sub { font-size: 0.75rem; color: #6b7280; font-weight: normal; margin-top: 2px; }
+
+  .cell-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px; /* Ensures data cells have enough breathing room */
+  }
+
+  /* Modern Badges */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: fit-content;
+  }
+
+  .status-on-time { background-color: #d1fae5; color: #065f46; }
+  .status-delayed { background-color: #fef3c7; color: #92400e; }
+  .status-missed  { background-color: #fee2e2; color: #991b1b; }
+  .status-unknown { background-color: #f3f4f6; color: #4b5563; }
+
+  .location-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: #4b5563;
+  }
+
+  .location-icon { font-size: 0.85rem; }
+
+  .reason-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+    background: #f9fafb;
+    border-left: 2px solid #d1d5db;
+    padding: 2px 6px;
+    margin-top: 2px;
+    white-space: normal; /* Allow reasons to wrap within the cell */
+    max-width: 200px;
+  }
+
+  .empty-cell { color: #d1d5db; font-size: 1.5rem; line-height: 0.5; }
 </style>
 
-<div class="core_title">
-  <h1>Attendance for <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
+<div class="core_title page-header">
+  <h1>Attendance: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
 </div>
 
-<h2>Filter by Date</h2>
-<form action="{{ url("training_program", training_program.id, "attendance") }}" method="GET">
-  <label for="start_date">From:</label>
-  <input type="date" id="start_date" name="start_date" value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}" />
-  <label for="end_date">To:</label>
-  <input type="date" id="end_date" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
-  <input type="submit" value="Filter" />
+<form action="{{ url('training_program', training_program.id, 'attendance') }}" method="GET" class="filter-card">
+  <div class="filter-group">
+    <label class="filter-label" for="start_date">From:</label>
+    <input type="date" id="start_date" class="filter-input" name="start_date" value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}" />
+  </div>
+  <div class="filter-group">
+    <label class="filter-label" for="end_date">To:</label>
+    <input type="date" id="end_date" class="filter-input" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
+  </div>
+  <button type="submit" class="btn-primary">Apply Filter</button>
+
   {% if start_date or end_date %}
-  <a href="{{ url("training_program", training_program.id, "attendance") }}" class="btn btn-small">Clear</a>
+  <a href="{{ url('training_program', training_program.id, 'attendance') }}" class="btn-text">Clear Filters</a>
   {% endif %}
 </form>
 
-<h2>Attendance Table</h2>
-
 {% if archived_training_days %}
-<div style="overflow-x: auto;">
-<table class="bordered" id="attendance_table">
-  <thead>
-    <tr>
-      <th rowspan="2">Student</th>
-      {% for td in archived_training_days %}
-      <th colspan="3" class="training-day-header">
-        {{ td.description or td.name or "(no name)" }}
-        {% if td.start_time %}
-        <br><span class="training-day-date">({{ td.start_time.strftime('%Y-%m-%d') }})</span>
-        {% endif %}
-      </th>
-      {% endfor %}
-    </tr>
-    <tr>
-      {% for td in archived_training_days %}
-      <th class="col-status">Status</th>
-      <th class="col-location">Location</th>
-      <th class="col-reasons">Reasons</th>
-      {% endfor %}
-    </tr>
-  </thead>
-  <tbody>
-    {% for student in sorted_students %}
-    <tr>
-      <td>
-        {% if student.participation %}
-          <a href="{{ url("training_program", training_program.id, "student", student.participation.user.id) }}">
-            {{ student.participation.user.username }}
-          </a>
-        {% else %}
-          (unknown)
-        {% endif %}
-      </td>
-      {% for td in archived_training_days %}
-        {% set att = attendance_data.get(student.id, {}).get(td.id) %}
-        {% if att %}
-          <td class="col-status">
-            {% if att.status == "missed" %}
-              <span class="attendance-badge badge-missed">
-                <span class="attendance-icon">&#x26D4;</span>Missed
-              </span>
-            {% elif att.delay_time %}
-              <span class="attendance-badge badge-delayed">
-                <span class="attendance-icon">&#x23F1;</span>Delayed ({{ "%.1f"|format(att.delay_time.total_seconds() / 3600) }}h)
-              </span>
+<div class="table-container">
+  <table class="attendance-table" id="attendance_table">
+    <thead>
+      <tr>
+        <th>Student Name</th>
+        {% for td in archived_training_days %}
+        <th>
+          <div class="date-header-main">{{ td.description or td.name or "Session" }}</div>
+          {% if td.start_time %}
+          <div class="date-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
+          {% endif %}
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in sorted_students %}
+      <tr>
+        <th>
+          {% if student.participation %}
+            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }} (<a href="{{ url('training_program', training_program.id, 'student', student.id, 'edit') }}">{{ student.participation.user.username }}</a>)
+          {% else %}
+            <span style="color:#9ca3af;">(Unknown)</span>
+          {% endif %}
+        </th>
+        {% for td in archived_training_days %}
+          {% set att = attendance_data.get(student.id, {}).get(td.id) %}
+          <td>
+            {% if att %}
+              <div class="cell-wrapper">
+                {% if att.status == "missed" %}
+                  <div class="status-badge status-missed">
+                    <span>&#x26D4; Missed</span>
+                  </div>
+                {% elif att.delay_time %}
+                  <div class="status-badge status-delayed">
+                    <span>&#x23F1; Delayed ({{ "%.1f"|format(att.delay_time.total_seconds() / 3600) }}h)</span>
+                  </div>
+                {% else %}
+                  <div class="status-badge status-on-time">
+                    <span>&#x2713; On Time</span>
+                  </div>
+                {% endif %}
+
+                <div class="location-row">
+                  {% if att.location == "class" %}
+                    <span class="location-icon">&#x1F3EB;</span> Class
+                  {% elif att.location == "home" %}
+                    <span class="location-icon">&#x1F3E0;</span> Home
+                  {% elif att.location == "both" %}
+                    <span class="location-icon">&#x21C4;</span> Both
+                  {% elif att.location %}
+                    <span>{{ att.location }}</span>
+                  {% else %}
+                    <span class="location-icon">&#x2753;</span> Unknown
+                  {% endif %}
+                </div>
+
+                {% if att.delay_reasons %}
+                  <div class="reason-text" title="{{ att.delay_reasons }}">
+                    {{ att.delay_reasons }}
+                  </div>
+                {% endif %}
+              </div>
             {% else %}
-              <span class="attendance-badge badge-on-time">
-                <span class="attendance-icon">&#x2713;</span>On Time
-              </span>
+              <span class="empty-cell">&middot;</span>
             {% endif %}
           </td>
-          <td class="col-location">
-            {% if att.location == "class" %}
-              <span class="attendance-badge badge-class">
-                <span class="attendance-icon">&#x1F3EB;</span>Class
-              </span>
-            {% elif att.location == "home" %}
-              <span class="attendance-badge badge-home">
-                <span class="attendance-icon">&#x1F3E0;</span>Home
-              </span>
-            {% elif att.location == "both" %}
-              <span class="attendance-badge badge-both">
-                <span class="attendance-icon">&#x21C4;</span>Both
-              </span>
-            {% elif att.location %}
-              <span class="attendance-badge badge-unknown">{{ att.location }}</span>
-            {% else %}
-              <span class="attendance-badge badge-unknown">-</span>
-            {% endif %}
-          </td>
-          <td class="col-reasons">{{ att.delay_reasons or "-" }}</td>
-        {% else %}
-          <td class="col-status">-</td>
-          <td class="col-location">-</td>
-          <td class="col-reasons">-</td>
-        {% endif %}
+        {% endfor %}
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="{{ 1 + archived_training_days|length }}" style="text-align:center; padding: 20px; color: #6b7280;">
+          No students found in this training program.
+        </td>
+      </tr>
       {% endfor %}
-    </tr>
-    {% else %}
-    <tr>
-      <td colspan="{{ 1 + archived_training_days|length * 3 }}">(no attendance data)</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    </tbody>
+  </table>
 </div>
 
 <script>
   $(document).ready(function() {
-    CMS.AWSUtils.init_table_sort($("#attendance_table"), false, 0, false);
+    if (CMS && CMS.AWSUtils) {
+        CMS.AWSUtils.init_table_sort($("#attendance_table"), false, 0, false);
+    }
   });
 </script>
+
 {% else %}
-<p><em>No archived training days found{% if start_date or end_date %} matching the selected date range{% endif %}. Archive a training day to see attendance data here.</em></p>
+  <div style="text-align: center; padding: 40px; background: #f9fafb; border-radius: 8px; border: 1px dashed #d1d5db;">
+    <h3 style="color: #4b5563; margin-bottom: 8px;">No Data Available</h3>
+    <p style="color: #6b7280;">No archived training days found matching your filter.</p>
+  </div>
 {% endif %}
 {% endblock core %}
