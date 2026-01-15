@@ -2139,20 +2139,31 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 status = "participated"
 
             # Determine location based on starting IPs
+            # If no class IPs were selected, everyone who participated is considered "home"
             location = None
-            if participation.starting_ip_addresses:
-                # Parse comma-separated IP addresses
-                ips = [ip.strip() for ip in participation.starting_ip_addresses.split(",") if ip.strip()]
-                if ips:
-                    has_class_ip = any(ip in class_ips for ip in ips)
-                    has_home_ip = any(ip not in class_ips for ip in ips)
+            if status == "participated":
+                if not class_ips:
+                    # No class IPs selected means everyone is at home
+                    location = "home"
+                elif participation.starting_ip_addresses:
+                    # Parse comma-separated IP addresses
+                    ips = [ip.strip() for ip in participation.starting_ip_addresses.split(",") if ip.strip()]
+                    if ips:
+                        has_class_ip = any(ip in class_ips for ip in ips)
+                        has_home_ip = any(ip not in class_ips for ip in ips)
 
-                    if has_class_ip and has_home_ip:
-                        location = "both"
-                    elif has_class_ip:
-                        location = "class"
-                    elif has_home_ip:
+                        if has_class_ip and has_home_ip:
+                            location = "both"
+                        elif has_class_ip:
+                            location = "class"
+                        elif has_home_ip:
+                            location = "home"
+                    else:
+                        # Participated but no IP recorded - assume home
                         location = "home"
+                else:
+                    # Participated but no IP recorded - assume home
+                    location = "home"
 
             # Get delay time
             delay_time = participation.delay_time
@@ -2278,13 +2289,19 @@ class TrainingProgramAttendanceHandler(BaseHandler):
                 pass
 
         # Get all archived training days (those with contest_id = NULL)
-        archived_training_days = (
+        # Apply date filtering if specified
+        query = (
             self.sql_session.query(TrainingDay)
             .filter(TrainingDay.training_program_id == training_program.id)
             .filter(TrainingDay.contest_id.is_(None))
-            .order_by(TrainingDay.position)
-            .all()
         )
+        if start_date:
+            query = query.filter(TrainingDay.start_time >= start_date)
+        if end_date:
+            # Add one day to end_date to include the entire end day
+            from datetime import timedelta
+            query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
+        archived_training_days = query.order_by(TrainingDay.start_time).all()
 
         # Build attendance data structure
         # {student_id: {training_day_id: attendance_record}}
