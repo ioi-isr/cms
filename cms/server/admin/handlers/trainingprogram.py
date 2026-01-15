@@ -2352,3 +2352,275 @@ class TrainingProgramAttendanceHandler(BaseHandler):
             .filter(Question.ignored.is_(False))\
             .count()
         self.render("training_program_attendance.html", **self.r_params)
+
+
+class TrainingProgramCombinedRankingHandler(BaseHandler):
+    """Display combined ranking data for all archived training days."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        start_date_str = self.get_argument("start_date", None)
+        end_date_str = self.get_argument("end_date", None)
+
+        start_date = None
+        end_date = None
+        if start_date_str:
+            try:
+                start_date = dt.fromisoformat(start_date_str)
+            except ValueError:
+                pass
+        if end_date_str:
+            try:
+                end_date = dt.fromisoformat(end_date_str)
+            except ValueError:
+                pass
+
+        query = (
+            self.sql_session.query(TrainingDay)
+            .filter(TrainingDay.training_program_id == training_program.id)
+            .filter(TrainingDay.contest_id.is_(None))
+        )
+        if start_date:
+            query = query.filter(TrainingDay.start_time >= start_date)
+        if end_date:
+            query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
+        archived_training_days = query.order_by(TrainingDay.start_time).all()
+
+        ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
+        all_students: dict[int, Student] = {}
+        training_day_tasks: dict[int, list[dict]] = {}
+
+        for td in archived_training_days:
+            task_scores_by_task: dict[int, dict] = {}
+            for ranking in td.archived_student_rankings:
+                student_id = ranking.student_id
+                if student_id not in ranking_data:
+                    ranking_data[student_id] = {}
+                    all_students[student_id] = ranking.student
+                ranking_data[student_id][td.id] = ranking
+
+                if ranking.task_scores:
+                    for task_id_str, score in ranking.task_scores.items():
+                        task_id = int(task_id_str)
+                        if task_id not in task_scores_by_task:
+                            task = self.sql_session.query(Task).get(task_id)
+                            if task:
+                                task_scores_by_task[task_id] = {
+                                    "id": task_id,
+                                    "name": task.name,
+                                    "title": task.title,
+                                }
+
+            training_day_tasks[td.id] = list(task_scores_by_task.values())
+
+        sorted_students = sorted(
+            all_students.values(),
+            key=lambda s: s.participation.user.username if s.participation else ""
+        )
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["archived_training_days"] = archived_training_days
+        self.r_params["ranking_data"] = ranking_data
+        self.r_params["sorted_students"] = sorted_students
+        self.r_params["training_day_tasks"] = training_day_tasks
+        self.r_params["start_date"] = start_date
+        self.r_params["end_date"] = end_date
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == training_program.managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+        self.render("training_program_combined_ranking.html", **self.r_params)
+
+
+class TrainingProgramCombinedRankingHistoryHandler(BaseHandler):
+    """Return score history for archived training days as JSON."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        import json
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        start_date_str = self.get_argument("start_date", None)
+        end_date_str = self.get_argument("end_date", None)
+
+        start_date = None
+        end_date = None
+        if start_date_str:
+            try:
+                start_date = dt.fromisoformat(start_date_str)
+            except ValueError:
+                pass
+        if end_date_str:
+            try:
+                end_date = dt.fromisoformat(end_date_str)
+            except ValueError:
+                pass
+
+        query = (
+            self.sql_session.query(TrainingDay)
+            .filter(TrainingDay.training_program_id == training_program.id)
+            .filter(TrainingDay.contest_id.is_(None))
+        )
+        if start_date:
+            query = query.filter(TrainingDay.start_time >= start_date)
+        if end_date:
+            query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
+        archived_training_days = query.order_by(TrainingDay.start_time).all()
+
+        result = []
+        for td in archived_training_days:
+            for ranking in td.archived_student_rankings:
+                if ranking.history:
+                    for entry in ranking.history:
+                        result.append([
+                            str(entry[0]),
+                            str(entry[1]),
+                            int(entry[2]),
+                            entry[3]
+                        ])
+
+        self.set_header("Content-Type", "application/json")
+        self.write(json.dumps(result))
+
+
+class TrainingProgramCombinedRankingDetailHandler(BaseHandler):
+    """Show detailed score/rank progress for a student across archived training days."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str, student_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        student = self.safe_get_item(Student, student_id)
+
+        start_date_str = self.get_argument("start_date", None)
+        end_date_str = self.get_argument("end_date", None)
+
+        start_date = None
+        end_date = None
+        if start_date_str:
+            try:
+                start_date = dt.fromisoformat(start_date_str)
+            except ValueError:
+                pass
+        if end_date_str:
+            try:
+                end_date = dt.fromisoformat(end_date_str)
+            except ValueError:
+                pass
+
+        query = (
+            self.sql_session.query(TrainingDay)
+            .filter(TrainingDay.training_program_id == training_program.id)
+            .filter(TrainingDay.contest_id.is_(None))
+        )
+        if start_date:
+            query = query.filter(TrainingDay.start_time >= start_date)
+        if end_date:
+            query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
+        archived_training_days = query.order_by(TrainingDay.start_time).all()
+
+        users_data = {}
+        for s in training_program.students:
+            if s.participation and s.participation.user:
+                users_data[str(s.participation.user_id)] = {
+                    "f_name": s.participation.user.first_name or "",
+                    "l_name": s.participation.user.last_name or "",
+                }
+
+        user_count = len(users_data)
+
+        contests_data = {}
+        tasks_data = {}
+        total_max_score = 0.0
+
+        for td in archived_training_days:
+            contest_key = f"td_{td.id}"
+            task_ids_in_contest = set()
+
+            for ranking in td.archived_student_rankings:
+                if ranking.task_scores:
+                    for task_id_str in ranking.task_scores.keys():
+                        task_ids_in_contest.add(int(task_id_str))
+
+            contest_tasks = []
+            contest_max_score = 0.0
+            for task_id in task_ids_in_contest:
+                task = self.sql_session.query(Task).get(task_id)
+                if task:
+                    max_score = 100.0
+                    extra_headers = []
+                    if task.active_dataset:
+                        try:
+                            score_type = task.active_dataset.score_type_object
+                            max_score = score_type.max_score
+                            extra_headers = score_type.ranking_headers
+                        except (KeyError, TypeError, AttributeError):
+                            pass
+
+                    task_key = str(task_id)
+                    tasks_data[task_key] = {
+                        "key": task_key,
+                        "name": task.title,
+                        "short_name": task.name,
+                        "contest": contest_key,
+                        "max_score": max_score,
+                        "score_precision": task.score_precision,
+                        "extra_headers": extra_headers,
+                    }
+                    contest_tasks.append(tasks_data[task_key])
+                    contest_max_score += max_score
+
+            td_name = td.description or td.name or "Training Day"
+            if td.start_time:
+                td_name += f" ({td.start_time.strftime('%Y-%m-%d')})"
+
+            contests_data[contest_key] = {
+                "key": contest_key,
+                "name": td_name,
+                "begin": int(td.start_time.timestamp()) if td.start_time else 0,
+                "end": int(td.start_time.timestamp()) + 18000 if td.start_time else 18000,
+                "max_score": contest_max_score,
+                "score_precision": 2,
+                "tasks": contest_tasks,
+            }
+            total_max_score += contest_max_score
+
+        contest_list = [contests_data[f"td_{td.id}"] for td in archived_training_days
+                        if f"td_{td.id}" in contests_data]
+
+        history_url = self.url(
+            "training_program", training_program_id, "combined_ranking", "history"
+        )
+        if start_date_str or end_date_str:
+            params = []
+            if start_date_str:
+                params.append(f"start_date={start_date_str}")
+            if end_date_str:
+                params.append(f"end_date={end_date_str}")
+            history_url += "?" + "&".join(params)
+
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["student"] = student
+        self.r_params["user_id"] = str(student.participation.user_id) if student.participation else "0"
+        self.r_params["user_count"] = user_count
+        self.r_params["users_data"] = users_data
+        self.r_params["tasks_data"] = tasks_data
+        self.r_params["contests_data"] = contests_data
+        self.r_params["contest_list"] = contest_list
+        self.r_params["total_max_score"] = total_max_score
+        self.r_params["history_url"] = history_url
+        self.r_params["start_date"] = start_date
+        self.r_params["end_date"] = end_date
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == training_program.managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+        self.render("training_program_combined_ranking_detail.html", **self.r_params)

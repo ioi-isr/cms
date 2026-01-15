@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block core %}
+<style>
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+
+  .core_title h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: #111827;
+  }
+
+  .filter-card {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filter-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #4b5563;
+  }
+
+  .filter-input {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .btn-primary {
+    background-color: #0F766E;
+    color: white;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+  .btn-primary:hover { background-color: #0d655e; }
+
+  .btn-text {
+    color: #6b7280;
+    text-decoration: underline;
+    font-size: 0.85rem;
+    margin-left: auto;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    max-height: 75vh;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    width: 100%;
+  }
+
+  .ranking-table {
+    width: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .ranking-table th,
+  .ranking-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    vertical-align: middle;
+  }
+
+  .ranking-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: #f3f4f6;
+    z-index: 10;
+    color: #374151;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 1px 0 #e5e7eb;
+  }
+
+  .ranking-table thead th.student-header {
+    text-align: left;
+  }
+
+  .ranking-table tbody th {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 5;
+    text-align: left;
+    min-width: 160px;
+    max-width: 250px;
+    box-shadow: 1px 0 0 #e5e7eb;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ranking-table tbody tr:hover th {
+    background-color: #f9fafb;
+  }
+
+  .ranking-table thead th:first-child {
+    left: 0;
+    z-index: 20;
+    background-color: #f3f4f6;
+    min-width: 160px;
+  }
+
+  .training-day-header {
+    background-color: #e0f2fe !important;
+    border-bottom: 2px solid #0ea5e9 !important;
+  }
+
+  .training-day-header-main {
+    font-size: 0.95rem;
+    color: #0369a1;
+    font-weight: 700;
+  }
+
+  .training-day-header-sub {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: normal;
+    margin-top: 2px;
+  }
+
+  .task-header {
+    background-color: #f0fdf4 !important;
+    font-size: 0.8rem;
+    color: #166534;
+  }
+
+  .total-header {
+    background-color: #fef3c7 !important;
+    font-size: 0.85rem;
+    color: #92400e;
+    font-weight: 700;
+  }
+
+  .score-cell {
+    text-align: center;
+    font-family: monospace;
+  }
+
+  .score-cell.task-score {
+    background-color: #f0fdf4;
+    color: #166534;
+  }
+
+  .score-cell.total-score {
+    background-color: #fef3c7;
+    color: #92400e;
+    font-weight: 600;
+  }
+
+  .empty-cell {
+    color: #d1d5db;
+    text-align: center;
+  }
+
+  .history-link {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-decoration: none;
+    margin-left: 4px;
+  }
+
+  .history-link:hover {
+    color: #374151;
+    text-decoration: underline;
+  }
+</style>
+
+<div class="core_title page-header">
+  <h1>Combined Ranking: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
+</div>
+
+<form action="{{ url('training_program', training_program.id, 'combined_ranking') }}" method="GET" class="filter-card">
+  <div class="filter-group">
+    <label class="filter-label" for="start_date">From:</label>
+    <input type="date" id="start_date" class="filter-input" name="start_date" value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}" />
+  </div>
+  <div class="filter-group">
+    <label class="filter-label" for="end_date">To:</label>
+    <input type="date" id="end_date" class="filter-input" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
+  </div>
+  <button type="submit" class="btn-primary">Apply Filter</button>
+
+  {% if start_date or end_date %}
+  <a href="{{ url('training_program', training_program.id, 'combined_ranking') }}" class="btn-text">Clear Filters</a>
+  {% endif %}
+</form>
+
+{% if archived_training_days %}
+<div class="table-container">
+  <table class="ranking-table" id="ranking_table">
+    <thead>
+      <tr>
+        <th class="student-header" rowspan="2">Student Name</th>
+        {% for td in archived_training_days %}
+        <th class="training-day-header" colspan="{{ (training_day_tasks.get(td.id, [])|length) + 1 }}">
+          <div class="training-day-header-main">{{ td.description or td.name or "Session" }}</div>
+          {% if td.start_time %}
+          <div class="training-day-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
+          {% endif %}
+        </th>
+        {% endfor %}
+      </tr>
+      <tr>
+        {% for td in archived_training_days %}
+          {% for task in training_day_tasks.get(td.id, []) %}
+          <th class="task-header" title="{{ task.title }}">{{ task.name }}</th>
+          {% endfor %}
+          <th class="total-header">Total</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in sorted_students %}
+      <tr>
+        <th>
+          {% if student.participation %}
+            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
+            (<a href="{{ url('training_program', training_program.id, 'student', student.id, 'edit') }}">{{ student.participation.user.username }}</a>)
+            <a class="history-link" href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if start_date or end_date %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}{% endif %}{% if start_date and end_date %}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}{% endif %}{% endif %}" title="View score/rank history">[history]</a>
+          {% else %}
+            <span style="color:#9ca3af;">(Unknown)</span>
+          {% endif %}
+        </th>
+        {% for td in archived_training_days %}
+          {% set ranking = ranking_data.get(student.id, {}).get(td.id) %}
+          {% for task in training_day_tasks.get(td.id, []) %}
+          <td class="score-cell task-score">
+            {% if ranking and ranking.task_scores and ranking.task_scores.get(task.id|string) is not none %}
+              {{ "%.1f"|format(ranking.task_scores.get(task.id|string)) }}
+            {% else %}
+              <span class="empty-cell">-</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td class="score-cell total-score">
+            {% if ranking and ranking.task_scores %}
+              {% set total = namespace(value=0) %}
+              {% for task in training_day_tasks.get(td.id, []) %}
+                {% if ranking.task_scores.get(task.id|string) is not none %}
+                  {% set total.value = total.value + ranking.task_scores.get(task.id|string) %}
+                {% endif %}
+              {% endfor %}
+              {{ "%.1f"|format(total.value) }}
+            {% else %}
+              <span class="empty-cell">-</span>
+            {% endif %}
+          </td>
+        {% endfor %}
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="{{ 1 + archived_training_days|length }}" style="text-align:center; padding: 20px; color: #6b7280;">
+          No students found in this training program.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  $(document).ready(function() {
+    if (CMS && CMS.AWSUtils) {
+        CMS.AWSUtils.init_table_sort($("#ranking_table"), false, 0, false);
+    }
+  });
+</script>
+
+{% else %}
+  <div style="text-align: center; padding: 40px; background: #f9fafb; border-radius: 8px; border: 1px dashed #d1d5db;">
+    <h3 style="color: #4b5563; margin-bottom: 8px;">No Data Available</h3>
+    <p style="color: #6b7280;">No archived training days found matching your filter.</p>
+  </div>
+{% endif %}
+{% endblock core %}
