@@ -2285,6 +2285,17 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 if can_access_task(self.sql_session, task, participation, training_day):
                     visible_tasks.append(task)
 
+            # Add visible tasks to student's StudentTask records if not already present
+            # This allows students who missed the training to still submit from home
+            existing_task_ids = {st.task_id for st in student.student_tasks}
+            for task in visible_tasks:
+                if task.id not in existing_task_ids:
+                    student_task = StudentTask(assigned_at=make_datetime())
+                    student_task.student_id = student.id
+                    student_task.task_id = task.id
+                    student_task.source_training_day_id = training_day.id
+                    self.sql_session.add(student_task)
+
             # Get task scores for ALL visible tasks (including 0 scores)
             # The presence of a task_id key indicates the task was visible
             task_scores: dict[str, float] = {}
