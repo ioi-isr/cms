@@ -2718,11 +2718,21 @@ class TrainingProgramCombinedRankingDetailHandler(BaseHandler):
             if td.start_time:
                 td_name += f" ({td.start_time.strftime('%Y-%m-%d')})"
 
+            # Calculate contest duration from history data or use default (5 hours)
+            # History times are stored as offsets from contest start, so we need
+            # begin=0 and end=max_time for the graph scale to be correct
+            student_ranking = student_rankings.get(td.id)
+            max_history_time = 18000  # Default 5 hours
+            if student_ranking and student_ranking.history:
+                for entry in student_ranking.history:
+                    if len(entry) > 2 and entry[2] > max_history_time:
+                        max_history_time = int(entry[2])
+
             contests_data[contest_key] = {
                 "key": contest_key,
                 "name": td_name,
-                "begin": int(td.start_time.timestamp()) if td.start_time else 0,
-                "end": int(td.start_time.timestamp()) + 18000 if td.start_time else 18000,
+                "begin": 0,
+                "end": max_history_time,
                 "max_score": contest_max_score,
                 "score_precision": 2,
                 "tasks": contest_tasks,
