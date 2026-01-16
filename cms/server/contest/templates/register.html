@@ -29,6 +29,8 @@ const registerFields = [
     "first_name",
     "last_name",
     "email",
+    "date_of_birth",
+    "picture",
     "password-confirm",
 ];
 
@@ -40,6 +42,10 @@ function clearErrors() {
     $("#password-confirm-input span.help-block").text("");
     $("#username-input").removeClass("error");
     $("#username-input span.help-block").text("");
+    $("#date_of_birth-input").removeClass("error");
+    $("#date_of_birth-input span.help-block").text("");
+    $("#picture-input").removeClass("error");
+    $("#picture-input span.help-block").text("");
 }
 
 $(document).ready(function() {
@@ -124,12 +130,18 @@ $(document).ready(function() {
             $("#password-confirm-input span.help-block").text("{% trans %}The passwords do not match!{% endtrans %}");
             $("#password-confirm").focus();
         } else {
-            var data = $(this).serialize();
+            var data = new FormData(this);
             var url = $(this).attr('action');
 
             $("#submit-button-loading").show();
 
-            $.post(url, data).done(function(data) {
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: data,
+                processData: false,
+                contentType: false
+            }).done(function(data) {
                 $("#signup-mask").hide();
                 $("#confirmed-mask").show();
                 $("#show-username").text(data);
@@ -200,6 +212,26 @@ $(document).ready(function() {
                         $("#email-input").addClass("error");
                         $("#email-input span.help-block").text("{% trans %}Email address is required.{% endtrans %}");
                         $("#email").focus();
+                    } else if (payload.code === "missing_date_of_birth" || payload.code === "invalid_date_of_birth") {
+                        $("#date_of_birth-input").addClass("error");
+                        $("#date_of_birth-input span.help-block").text("{% trans %}Please enter a valid date of birth.{% endtrans %}");
+                        $("#date_of_birth").focus();
+                    } else if (payload.code === "invalid_mime_type") {
+                        $("#picture-input").addClass("error");
+                        $("#picture-input span.help-block").text("{% trans %}Invalid image type. Allowed types: JPEG, PNG, GIF, WEBP.{% endtrans %}");
+                        $("#picture").focus();
+                    } else if (payload.code === "file_too_large") {
+                        $("#picture-input").addClass("error");
+                        $("#picture-input span.help-block").text("{% trans %}Image file is too large. Maximum size is 5MB.{% endtrans %}");
+                        $("#picture").focus();
+                    } else if (payload.code === "dimensions_too_large") {
+                        $("#picture-input").addClass("error");
+                        $("#picture-input span.help-block").text("{% trans %}Image dimensions are too large. Maximum is 1024x1024 pixels.{% endtrans %}");
+                        $("#picture").focus();
+                    } else if (payload.code === "invalid_image") {
+                        $("#picture-input").addClass("error");
+                        $("#picture-input span.help-block").text("{% trans %}The uploaded file is not a valid image.{% endtrans %}");
+                        $("#picture").focus();
                     } else {
                         // Generic fallback for missing_field or unknown errors
                         $("#password-input").addClass("error");
@@ -225,7 +257,7 @@ $(document).ready(function() {
             <li class="active" id="register-pill"><a href="#" data-toggle="tab">{% trans %}New user{% endtrans %}</a></li>
             <li id="join-pill"><a href="#" data-toggle="tab">{% trans %}Join contest{% endtrans %}</a></li>
         </ul>
-        <form id="signup" class="form-horizontal" action="{{ contest_url('register') }}">
+        <form id="signup" class="form-horizontal" action="{{ contest_url('register') }}" enctype="multipart/form-data">
             {{ xsrf_form_html|safe }}
             {% set next_page = handler.get_argument("next", none) %}
             {% if next_page is not none %}
@@ -250,6 +282,20 @@ $(document).ready(function() {
                         <label class="control-label" for="email">{% trans %}E-mail{% endtrans %}</label>
                         <div class="controls">
                             <input required minlength="5" maxlength="{{ MAX_INPUT_LENGTH }}" type="email" class="input-xlarge" name="email" id="email" autocomplete="email">
+                            <span class="help-block"></span>
+                        </div>
+                    </div>
+                    <div class="control-group" id="date_of_birth-input">
+                        <label class="control-label" for="date_of_birth">{% trans %}Date of birth{% endtrans %}</label>
+                        <div class="controls">
+                            <input required type="date" class="input-xlarge" name="date_of_birth" id="date_of_birth">
+                            <span class="help-block"></span>
+                        </div>
+                    </div>
+                    <div class="control-group" id="picture-input">
+                        <label class="control-label" for="picture">{% trans %}Profile picture{% endtrans %}</label>
+                        <div class="controls">
+                            <input type="file" class="input-xlarge" name="picture" id="picture" accept="image/jpeg,image/png,image/gif,image/webp">
                             <span class="help-block"></span>
                         </div>
                     </div>

@@ -336,4 +336,8 @@ CREATE INDEX ix_generators_dataset_id ON public.generators USING btree (dataset_
 
 ALTER TABLE ONLY public.generators ADD CONSTRAINT generators_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES public.datasets(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+-- Add date_of_birth and picture fields to users table
+ALTER TABLE public.users ADD COLUMN date_of_birth date;
+ALTER TABLE public.users ADD COLUMN picture public.digest;
+
 COMMIT;

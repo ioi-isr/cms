@@ -25,7 +25,7 @@
 
 """
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from ipaddress import IPv4Network, IPv6Network
 
 from sqlalchemy import text
@@ -34,10 +34,10 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, \
     UniqueConstraint, Index
 from sqlalchemy.types import Boolean, Integer, String, Unicode, DateTime, \
-    Interval
+    Interval, Date
 
 from cmscommon.crypto import generate_random_password, build_password
-from . import CastingArray, Codename, Base, Admin, Contest
+from . import CastingArray, Codename, Digest, Base, Admin, Contest
 import typing
 if typing.TYPE_CHECKING:
     from . import PrintJob, Submission, UserTest
@@ -127,6 +127,16 @@ class User(Base):
     # The new password hash waiting for admin approval.
     password_reset_new_hash: str | None = Column(
         Unicode,
+        nullable=True)
+
+    # Date of birth of the user.
+    date_of_birth: date | None = Column(
+        Date,
+        nullable=True)
+
+    # Profile picture of the user, stored as a digest in FileCacher.
+    picture: str | None = Column(
+        Digest,
         nullable=True)
 
     # These one-to-many relationships are the reversed directions of

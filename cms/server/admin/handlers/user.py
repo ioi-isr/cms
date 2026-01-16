@@ -30,12 +30,14 @@
 import csv
 import io
 import re
+from datetime import date
 
 from sqlalchemy import and_, exists
 from cms.db import Contest, Participation, Submission, Team, User
+from cms.server.picture_utils import process_picture, PictureValidationError
 from cms.server.util import exclude_internal_contests
-from cmscommon.crypto import (parse_authentication, 
-                               hash_password, validate_password_strength)
+from cmscommon.crypto import (parse_authentication,
+                              hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -93,6 +95,38 @@ class UserHandler(BaseHandler):
             self.get_password(attrs, user.password, False)
             self.get_string_list(attrs, "preferred_languages")
             self.get_string(attrs, "timezone", empty=None)
+
+            # Handle date of birth
+            date_of_birth_str = self.get_argument("date_of_birth", "")
+            if date_of_birth_str:
+                try:
+                    attrs["date_of_birth"] = date.fromisoformat(date_of_birth_str)
+                except ValueError:
+                    raise ValueError("Invalid date of birth format")
+            else:
+                attrs["date_of_birth"] = None
+
+            # Handle picture upload
+            if "picture" in self.request.files:
+                picture_file = self.request.files["picture"][0]
+                if picture_file["body"]:
+                    try:
+                        processed_data, _ = process_picture(
+                            picture_file["body"],
+                            picture_file["content_type"],
+                            square_mode="crop"
+                        )
+                        attrs["picture"] = self.service.file_cacher.put_file_content(
+                            processed_data,
+                            "Profile picture for %s" % attrs.get("username", "user")
+                        )
+                    except PictureValidationError as e:
+                        raise ValueError(e.message)
+
+            # Handle picture removal
+            remove_picture = self.get_argument("remove_picture", None)
+            if remove_picture == "1":
+                attrs["picture"] = None
 
             assert attrs.get("username") is not None, \
                 "No username specified."

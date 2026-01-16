@@ -36,7 +36,7 @@ import os.path
 import re
 import secrets
 import smtplib
-from datetime import timedelta
+from datetime import date, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -64,6 +64,7 @@ from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
+from cms.server.picture_utils import process_picture, PictureValidationError
 from cmscommon.crypto import hash_password, validate_password, \
     validate_password_strength, WeakPasswordError
 from cmscommon.datetime import make_datetime, make_timestamp
@@ -164,6 +165,7 @@ class RegistrationHandler(ContestHandler):
             username = self.get_argument("username")
             password = self.get_argument("password")
             email = self.get_argument("email")
+            date_of_birth_str = self.get_argument("date_of_birth")
         except tornado.web.MissingArgumentError:
             raise RegistrationError("missing_field")
 
@@ -213,6 +215,31 @@ class RegistrationHandler(ContestHandler):
         # Override password with its hash
         password = hash_password(password)
 
+        # Validate date of birth (required)
+        if not date_of_birth_str:
+            raise RegistrationError("missing_date_of_birth", "date_of_birth")
+        try:
+            date_of_birth = date.fromisoformat(date_of_birth_str)
+        except ValueError:
+            raise RegistrationError("invalid_date_of_birth", "date_of_birth")
+
+        # Process picture (optional)
+        picture_digest = None
+        if "picture" in self.request.files:
+            picture_file = self.request.files["picture"][0]
+            try:
+                processed_data, _ = process_picture(
+                    picture_file["body"],
+                    picture_file["content_type"],
+                    square_mode="crop"
+                )
+                picture_digest = self.service.file_cacher.put_file_content(
+                    processed_data,
+                    "Profile picture for %s" % username
+                )
+            except PictureValidationError as e:
+                raise RegistrationError(e.code, "picture")
+
         # Check if the username is available
         tot_users = self.sql_session.query(User)\
                         .filter(User.username == username).count()
@@ -221,7 +248,8 @@ class RegistrationHandler(ContestHandler):
             raise tornado.web.HTTPError(409)
 
         # Store new user
-        user = User(first_name, last_name, username, password, email=email)
+        user = User(first_name, last_name, username, password, email=email,
+                    date_of_birth=date_of_birth, picture=picture_digest)
         self.sql_session.add(user)
 
         return user
