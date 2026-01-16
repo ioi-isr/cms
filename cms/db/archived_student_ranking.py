@@ -24,7 +24,7 @@ for rendering ranking graphs.
 
 import typing
 
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.types import Integer, Unicode
@@ -75,7 +75,16 @@ class ArchivedStudentRanking(Base):
     )
 
     # Final scores for each task: {task_id: score}
+    # Includes all visible tasks (even with 0 score), not just non-zero scores.
+    # The presence of a task_id key indicates the task was visible to this student.
     task_scores: dict | None = Column(
+        JSONB,
+        nullable=True,
+    )
+
+    # Submissions for each task: {task_id: [{task, time, score, token, extra}, ...]}
+    # Format matches RWS submission format for rendering in UserDetail.js
+    submissions: dict | None = Column(
         JSONB,
         nullable=True,
     )

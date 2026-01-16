@@ -2214,13 +2214,48 @@ class ArchiveTrainingDayHandler(BaseHandler):
         training_day: TrainingDay,
         contest: Contest
     ) -> None:
-        """Extract and store ranking data for all students."""
+        """Extract and store ranking data for all students.
+
+        Stores on TrainingDay:
+        - archived_tasks_data: task metadata including extra_headers for submission table
+
+        Stores on ArchivedStudentRanking (per student):
+        - task_scores: scores for ALL visible tasks (including 0 scores)
+          The presence of a task_id key indicates the task was visible.
+        - submissions: submission data for each task in RWS format
+        - history: score history in RWS format
+        """
         from cms.grading.scorecache import get_cached_score_entry
 
         training_program = training_day.training_program
 
         # Get the tasks assigned to this training day
         training_day_tasks = training_day.tasks
+        training_day_task_ids = {task.id for task in training_day_tasks}
+
+        # Build and store tasks_data on the training day (same for all students)
+        # This preserves the scoring scheme as it was during the training day
+        archived_tasks_data: dict[str, dict] = {}
+        for task in training_day_tasks:
+            max_score = 100.0
+            extra_headers: list[str] = []
+            score_precision = task.score_precision
+            if task.active_dataset:
+                try:
+                    score_type = task.active_dataset.score_type_object
+                    max_score = score_type.max_score
+                    extra_headers = score_type.ranking_headers
+                except (KeyError, TypeError, AttributeError):
+                    pass
+
+            archived_tasks_data[str(task.id)] = {
+                "name": task.title,
+                "short_name": task.name,
+                "max_score": max_score,
+                "score_precision": score_precision,
+                "extra_headers": extra_headers,
+            }
+        training_day.archived_tasks_data = archived_tasks_data
 
         for participation in contest.participations:
             # Find the student for this user in the training program
@@ -2240,30 +2275,72 @@ class ArchiveTrainingDayHandler(BaseHandler):
             # Get all student tags (as list for array storage)
             student_tags = list(student.student_tags) if student.student_tags else []
 
-            # Get task scores using the score cache
-            # get_cached_score_entry handles training day participations correctly -
-            # it queries submissions from the managing contest filtered by training_day_id
-            task_scores = {}
-            for task in training_day_tasks:
+            # Determine which tasks were visible to this student during the training day
+            # A task is visible if the student has a StudentTask record for it
+            # with source_training_day_id matching this training day
+            visible_task_ids: list[int] = []
+            for st in student.student_tasks:
+                if st.task_id in training_day_task_ids:
+                    if st.source_training_day_id == training_day.id:
+                        visible_task_ids.append(st.task_id)
+
+            # Get task scores for ALL visible tasks (including 0 scores)
+            # The presence of a task_id key indicates the task was visible
+            task_scores: dict[str, float] = {}
+            submissions: dict[str, list[dict]] = {}
+
+            for task_id in visible_task_ids:
+                task = next((t for t in training_day_tasks if t.id == task_id), None)
+                if not task:
+                    continue
+
+                # Get score
                 cache_entry = get_cached_score_entry(
                     self.sql_session, participation, task
                 )
-                if cache_entry.score > 0:
-                    task_scores[str(task.id)] = cache_entry.score
+                task_scores[str(task_id)] = cache_entry.score
+
+                # Get submissions for this task in RWS format
+                task_submissions = (
+                    self.sql_session.query(Submission)
+                    .filter(Submission.participation_id == participation.id)
+                    .filter(Submission.task_id == task_id)
+                    .filter(Submission.training_day_id == training_day.id)
+                    .order_by(Submission.timestamp)
+                    .all()
+                )
+
+                submissions[str(task_id)] = []
+                for sub in task_submissions:
+                    result = sub.get_result()
+                    if result is None or not result.scored():
+                        continue
+
+                    if contest.start is not None and sub.timestamp is not None:
+                        time_offset = int(
+                            (sub.timestamp - contest.start).total_seconds()
+                        )
+                    else:
+                        time_offset = 0
+
+                    submissions[str(task_id)].append({
+                        "task": str(task_id),
+                        "time": time_offset,
+                        "score": result.score,
+                        "token": sub.tokened(),
+                        "extra": result.ranking_score_details or [],
+                    })
 
             # Get score history in RWS format: [[user_id, task_id, time, score], ...]
-            # ScoreHistory is stored with the training day participation
-            history = []
-            task_ids_in_training_day = {task.id for task in training_day_tasks}
+            history: list[list] = []
             score_histories = (
                 self.sql_session.query(ScoreHistory)
                 .filter(ScoreHistory.participation_id == participation.id)
-                .filter(ScoreHistory.task_id.in_(task_ids_in_training_day))
+                .filter(ScoreHistory.task_id.in_(training_day_task_ids))
                 .order_by(ScoreHistory.timestamp)
                 .all()
             )
             for sh in score_histories:
-                # Convert time to seconds since contest start
                 if contest.start is not None and sh.timestamp is not None:
                     time_offset = (sh.timestamp - contest.start).total_seconds()
                 else:
@@ -2279,6 +2356,7 @@ class ArchiveTrainingDayHandler(BaseHandler):
             archived_ranking = ArchivedStudentRanking(
                 student_tags=student_tags,
                 task_scores=task_scores if task_scores else None,
+                submissions=submissions if submissions else None,
                 history=history if history else None,
             )
             archived_ranking.training_day_id = training_day.id
@@ -2398,7 +2476,9 @@ class TrainingProgramCombinedRankingHandler(BaseHandler):
         training_day_tasks: dict[int, list[dict]] = {}
 
         for td in archived_training_days:
-            task_scores_by_task: dict[int, dict] = {}
+            # Collect all tasks that were visible to at least one student
+            # Use archived_tasks_data from training day (preserves original scoring scheme)
+            visible_tasks_by_id: dict[int, dict] = {}
             for ranking in td.archived_student_rankings:
                 student_id = ranking.student_id
                 if student_id not in ranking_data:
@@ -2406,19 +2486,30 @@ class TrainingProgramCombinedRankingHandler(BaseHandler):
                     all_students[student_id] = ranking.student
                 ranking_data[student_id][td.id] = ranking
 
+                # Collect all visible tasks from this student's task_scores keys
                 if ranking.task_scores:
-                    for task_id_str, score in ranking.task_scores.items():
+                    for task_id_str in ranking.task_scores.keys():
                         task_id = int(task_id_str)
-                        if task_id not in task_scores_by_task:
-                            task = self.sql_session.query(Task).get(task_id)
-                            if task:
-                                task_scores_by_task[task_id] = {
+                        if task_id not in visible_tasks_by_id:
+                            # Get task info from archived_tasks_data on training day
+                            if td.archived_tasks_data and task_id_str in td.archived_tasks_data:
+                                task_info = td.archived_tasks_data[task_id_str]
+                                visible_tasks_by_id[task_id] = {
                                     "id": task_id,
-                                    "name": task.name,
-                                    "title": task.title,
+                                    "name": task_info.get("short_name", ""),
+                                    "title": task_info.get("name", ""),
                                 }
+                            else:
+                                # Fallback to live task data
+                                task = self.sql_session.query(Task).get(task_id)
+                                if task:
+                                    visible_tasks_by_id[task_id] = {
+                                        "id": task_id,
+                                        "name": task.name,
+                                        "title": task.title,
+                                    }
 
-            training_day_tasks[td.id] = list(task_scores_by_task.values())
+            training_day_tasks[td.id] = list(visible_tasks_by_id.values())
 
         sorted_students = sorted(
             all_students.values(),
@@ -2539,26 +2630,54 @@ class TrainingProgramCombinedRankingDetailHandler(BaseHandler):
 
         user_count = len(users_data)
 
-        contests_data = {}
-        tasks_data = {}
+        contests_data: dict[str, dict] = {}
+        tasks_data: dict[str, dict] = {}
+        submissions_data: dict[str, list] = {}
         total_max_score = 0.0
+
+        # Find the student's ranking records to get their submissions
+        student_rankings: dict[int, ArchivedStudentRanking] = {}
+        for td in archived_training_days:
+            for ranking in td.archived_student_rankings:
+                if ranking.student_id == student.id:
+                    student_rankings[td.id] = ranking
+                    break
 
         for td in archived_training_days:
             contest_key = f"td_{td.id}"
-            task_ids_in_contest = set()
+            task_ids_in_contest: set[int] = set()
 
+            # Collect all visible task IDs from all students' task_scores keys
             for ranking in td.archived_student_rankings:
                 if ranking.task_scores:
-                    for task_id_str in ranking.task_scores.keys():
-                        task_ids_in_contest.add(int(task_id_str))
+                    task_ids_in_contest.update(int(k) for k in ranking.task_scores.keys())
+
+            # Get archived_tasks_data from training day
+            archived_tasks_data = td.archived_tasks_data or {}
 
             contest_tasks = []
             contest_max_score = 0.0
             for task_id in task_ids_in_contest:
-                task = self.sql_session.query(Task).get(task_id)
-                if task:
+                task_key = str(task_id)
+
+                # Use archived_tasks_data if available (preserves original scoring scheme)
+                if task_key in archived_tasks_data:
+                    task_info = archived_tasks_data[task_key]
+                    max_score = task_info.get("max_score", 100.0)
+                    extra_headers = task_info.get("extra_headers", [])
+                    score_precision = task_info.get("score_precision", 2)
+                    task_name = task_info.get("name", "")
+                    task_short_name = task_info.get("short_name", "")
+                else:
+                    # Fallback to live task data
+                    task = self.sql_session.query(Task).get(task_id)
+                    if not task:
+                        continue
                     max_score = 100.0
                     extra_headers = []
+                    score_precision = task.score_precision
+                    task_name = task.title
+                    task_short_name = task.name
                     if task.active_dataset:
                         try:
                             score_type = task.active_dataset.score_type_object
@@ -2567,18 +2686,23 @@ class TrainingProgramCombinedRankingDetailHandler(BaseHandler):
                         except (KeyError, TypeError, AttributeError):
                             pass
 
-                    task_key = str(task_id)
-                    tasks_data[task_key] = {
-                        "key": task_key,
-                        "name": task.title,
-                        "short_name": task.name,
-                        "contest": contest_key,
-                        "max_score": max_score,
-                        "score_precision": task.score_precision,
-                        "extra_headers": extra_headers,
-                    }
-                    contest_tasks.append(tasks_data[task_key])
-                    contest_max_score += max_score
+                tasks_data[task_key] = {
+                    "key": task_key,
+                    "name": task_name,
+                    "short_name": task_short_name,
+                    "contest": contest_key,
+                    "max_score": max_score,
+                    "score_precision": score_precision,
+                    "extra_headers": extra_headers,
+                }
+                contest_tasks.append(tasks_data[task_key])
+                contest_max_score += max_score
+
+                # Get submissions for this task from the student's ranking
+                student_ranking = student_rankings.get(td.id)
+                if student_ranking and student_ranking.submissions:
+                    task_submissions = student_ranking.submissions.get(task_key, [])
+                    submissions_data[task_key] = task_submissions
 
             td_name = td.description or td.name or "Training Day"
             if td.start_time:
@@ -2616,6 +2740,7 @@ class TrainingProgramCombinedRankingDetailHandler(BaseHandler):
         self.r_params["user_count"] = user_count
         self.r_params["users_data"] = users_data
         self.r_params["tasks_data"] = tasks_data
+        self.r_params["submissions_data"] = submissions_data
         self.r_params["contests_data"] = contests_data
         self.r_params["contest_list"] = contest_list
         self.r_params["total_max_score"] = total_max_score

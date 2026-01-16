@@ -61,10 +61,10 @@
           {% set ranking = ranking_data.get(student.id, {}).get(td.id) %}
           {% for task in training_day_tasks.get(td.id, []) %}
           <td class="score-cell task-score">
-            {% if ranking and ranking.task_scores and ranking.task_scores.get(task.id|string) is not none %}
+            {% if ranking and ranking.task_scores and task.id|string in ranking.task_scores %}
               {{ "%.1f"|format(ranking.task_scores.get(task.id|string)) }}
             {% else %}
-              <span class="empty-cell">-</span>
+              <span class="inaccessible-cell" title="Task was not accessible to this student">N/A</span>
             {% endif %}
           </td>
           {% endfor %}

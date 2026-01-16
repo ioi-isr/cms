@@ -625,6 +625,7 @@ CREATE TABLE public.archived_student_rankings (
     student_id integer NOT NULL,
     student_tags character varying[] NOT NULL,
     task_scores jsonb,
+    submissions jsonb,
     history jsonb
 );
 
@@ -661,5 +662,8 @@ CREATE INDEX ix_archived_student_rankings_student_tags_gin ON public.archived_st
 
 -- Add start_time column to training_days for storing the contest start time after archiving
 ALTER TABLE public.training_days ADD COLUMN start_time timestamp without time zone;
+
+-- Add archived_tasks_data column to training_days for storing task metadata after archiving
+ALTER TABLE public.training_days ADD COLUMN archived_tasks_data jsonb;
 
 COMMIT;

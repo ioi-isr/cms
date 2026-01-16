@@ -357,10 +357,7 @@ var DataStore = new function() {
 
     HistoryStore.request_update(UserDetail.history_callback);
 
-    UserDetail.submissions = {};
-    for (var t_id in DataStore.tasks) {
-      UserDetail.submissions[t_id] = [];
-    }
+    UserDetail.submissions = {{ submissions_data | tojson | safe }};
     UserDetail.data_fetched += 1;
     UserDetail.do_show();
   };

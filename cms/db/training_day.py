@@ -23,6 +23,7 @@ It wraps a Contest and includes its position within the training program.
 
 import typing
 
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
 from sqlalchemy.types import DateTime, Integer, Unicode
@@ -112,6 +113,14 @@ class TrainingDay(Base):
     # After archiving (when contest is deleted), this field preserves the value.
     start_time: "datetime | None" = Column(
         DateTime,
+        nullable=True,
+    )
+
+    # Task metadata at archive time: {task_id: {name, short_name, max_score, score_precision, extra_headers}}
+    # Preserves the scoring scheme as it was during the training day.
+    # Stored at training day level (not per-student) since it's the same for all students.
+    archived_tasks_data: dict | None = Column(
+        JSONB,
         nullable=True,
     )
 
