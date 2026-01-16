@@ -376,6 +376,7 @@ class ImportUsersHandler(BaseHandler):
                 user_data["existing_first_name"] = existing_user.first_name
                 user_data["existing_last_name"] = existing_user.last_name
                 user_data["existing_email"] = existing_user.email
+                user_data["existing_date_of_birth"] = existing_user.date_of_birth.isoformat() if existing_user.date_of_birth else None
                 user_data["existing_timezone"] = existing_user.timezone
                 existing_users.append(user_data)
             else:
@@ -669,6 +670,11 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
 
             self.get_password(attrs, None, False)
 
+            # Parse date of birth
+            date_of_birth_str = self.get_argument("date_of_birth", "").strip()
+            if date_of_birth_str:
+                attrs["date_of_birth"] = date.fromisoformat(date_of_birth_str)
+
             self.get_string(attrs, "timezone", empty=None)
 
             self.get_string_list(attrs, "preferred_languages")
@@ -676,6 +682,24 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
             # Create the user.
             user = User(**attrs)
             self.sql_session.add(user)
+
+            # Handle picture upload
+            if "picture" in self.request.files and len(self.request.files["picture"]) > 0:
+                picture_file = self.request.files["picture"][0]
+                if picture_file["body"]:
+                    content_type = picture_file.get("content_type", "application/octet-stream")
+                    try:
+                        processed_data = process_picture(picture_file["body"], content_type)
+                        digest = self.service.file_cacher.put_file_content(
+                            processed_data,
+                            "Picture for user %s" % attrs["username"]
+                        )
+                        user.picture = digest
+                    except PictureValidationError as e:
+                        self.service.add_notification(
+                            make_datetime(), "Picture upload failed", str(e))
+                        self.redirect(fallback_page)
+                        return
 
         except Exception as error:
             self.service.add_notification(
