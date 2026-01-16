@@ -188,8 +188,13 @@
           <script>
           document.getElementById('picture_input').addEventListener('change', function() {
             var removeCheckbox = document.getElementById('remove_picture');
-            if (removeCheckbox && this.files.length > 0) {
-              removeCheckbox.checked = false;
+            if (removeCheckbox) {
+              if (this.files.length > 0) {
+                removeCheckbox.checked = false;
+                removeCheckbox.disabled = true;
+              } else {
+                removeCheckbox.disabled = false;
+              }
             }
           });
           </script>
