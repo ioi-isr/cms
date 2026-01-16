@@ -46,7 +46,7 @@ from cms.db import (
     ScoreHistory,
     DelayRequest,
 )
-from cms.server.util import get_all_student_tags, deduplicate_preserving_order, calculate_task_archive_progress
+from cms.server.util import get_all_student_tags, deduplicate_preserving_order, calculate_task_archive_progress, can_access_task
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -2275,24 +2275,23 @@ class ArchiveTrainingDayHandler(BaseHandler):
             # Get all student tags (as list for array storage)
             student_tags = list(student.student_tags) if student.student_tags else []
 
-            # Determine which tasks were visible to this student during the training day
-            # A task is visible if the student has a StudentTask record for it
-            # with source_training_day_id matching this training day
-            visible_task_ids: list[int] = []
-            for st in student.student_tasks:
-                if st.task_id in training_day_task_ids:
-                    if st.source_training_day_id == training_day.id:
-                        visible_task_ids.append(st.task_id)
+            # Determine which tasks should be visible to this student based on their tags
+            # This uses the same logic as _add_training_day_tasks_to_student in StartHandler
+            # A task is visible if:
+            # - The task has no visible_to_tags (empty list = visible to all)
+            # - The student has at least one tag matching the task's visible_to_tags
+            visible_tasks: list[Task] = []
+            for task in training_day_tasks:
+                if can_access_task(self.sql_session, task, participation, training_day):
+                    visible_tasks.append(task)
 
             # Get task scores for ALL visible tasks (including 0 scores)
             # The presence of a task_id key indicates the task was visible
             task_scores: dict[str, float] = {}
             submissions: dict[str, list[dict]] = {}
 
-            for task_id in visible_task_ids:
-                task = next((t for t in training_day_tasks if t.id == task_id), None)
-                if not task:
-                    continue
+            for task in visible_tasks:
+                task_id = task.id
 
                 # Get score
                 cache_entry = get_cached_score_entry(
