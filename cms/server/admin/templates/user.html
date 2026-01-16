@@ -173,18 +173,18 @@
       </tr>
       <tr>
         <td>
-          <span class="info" title="Profile picture of the contestant. Max 5MB, JPEG/PNG/GIF/WEBP, max 1024x1024 pixels. Will be cropped to square."></span>
+          <span class="info" title="Profile picture of the contestant. Max 5MB, JPEG/PNG/GIF/WEBP, max 1024x1024 pixels."></span>
           Profile picture
         </td>
         <td>
           {% if user.picture %}
           <div style="margin-bottom: 10px;">
-            <img src="{{ url("file", user.picture, "picture") }}" alt="Profile picture" style="max-width: 100px; max-height: 100px; border: 1px solid #ccc;"/>
+            <img src="{{ url("file", user.picture, "picture") }}" alt="Profile picture" style="max-width: 200px; max-height: 200px; border: 1px solid #ccc;"/>
             <br/>
-            <label><input type="checkbox" name="remove_picture" value="1"/> Remove picture</label>
+            <label><input type="checkbox" name="remove_picture" value="1" id="remove_picture"/> Remove picture</label>
           </div>
           {% endif %}
-          <input type="file" name="picture" accept="image/jpeg,image/png,image/gif,image/webp"/>
+          <input type="file" name="picture" accept="image/jpeg,image/png,image/gif,image/webp" id="picture_input" onchange="if(this.files.length > 0) document.getElementById('remove_picture') && (document.getElementById('remove_picture').checked = false);"/>
         </td>
       </tr>
       <tr>

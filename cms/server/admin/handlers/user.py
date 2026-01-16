@@ -106,27 +106,40 @@ class UserHandler(BaseHandler):
             else:
                 attrs["date_of_birth"] = None
 
-            # Handle picture upload
+            # Handle picture upload and removal
+            # If a new picture is uploaded, use it (ignore remove checkbox)
+            # Otherwise, if remove checkbox is checked, remove the picture
+            old_picture_digest = user.picture
+            new_picture_uploaded = False
+
             if "picture" in self.request.files:
                 picture_file = self.request.files["picture"][0]
                 if picture_file["body"]:
                     try:
                         processed_data, _ = process_picture(
                             picture_file["body"],
-                            picture_file["content_type"],
-                            square_mode="crop"
+                            picture_file["content_type"]
                         )
                         attrs["picture"] = self.service.file_cacher.put_file_content(
                             processed_data,
                             "Profile picture for %s" % attrs.get("username", "user")
                         )
+                        new_picture_uploaded = True
                     except PictureValidationError as e:
                         raise ValueError(e.message)
 
-            # Handle picture removal
-            remove_picture = self.get_argument("remove_picture", None)
-            if remove_picture == "1":
-                attrs["picture"] = None
+            # Only process remove checkbox if no new picture was uploaded
+            if not new_picture_uploaded:
+                remove_picture = self.get_argument("remove_picture", None)
+                if remove_picture == "1":
+                    attrs["picture"] = None
+
+            # Delete old picture from file cacher if it's being replaced or removed
+            if old_picture_digest is not None and attrs.get("picture") != old_picture_digest:
+                try:
+                    self.service.file_cacher.delete(old_picture_digest)
+                except Exception:
+                    pass
 
             assert attrs.get("username") is not None, \
                 "No username specified."

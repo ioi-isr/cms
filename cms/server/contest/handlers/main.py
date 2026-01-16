@@ -227,18 +227,18 @@ class RegistrationHandler(ContestHandler):
         picture_digest = None
         if "picture" in self.request.files:
             picture_file = self.request.files["picture"][0]
-            try:
-                processed_data, _ = process_picture(
-                    picture_file["body"],
-                    picture_file["content_type"],
-                    square_mode="crop"
-                )
-                picture_digest = self.service.file_cacher.put_file_content(
-                    processed_data,
-                    "Profile picture for %s" % username
-                )
-            except PictureValidationError as e:
-                raise RegistrationError(e.code, "picture")
+            if picture_file["body"]:
+                try:
+                    processed_data, _ = process_picture(
+                        picture_file["body"],
+                        picture_file["content_type"]
+                    )
+                    picture_digest = self.service.file_cacher.put_file_content(
+                        processed_data,
+                        "Profile picture for %s" % username
+                    )
+                except PictureValidationError as e:
+                    raise RegistrationError(e.code, "picture")
 
         # Check if the username is available
         tot_users = self.sql_session.query(User)\

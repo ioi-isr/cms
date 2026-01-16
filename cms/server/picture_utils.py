@@ -20,7 +20,7 @@
 
 This module provides functions for validating and processing user profile
 pictures with security measures including size limits, MIME type validation,
-dimension constraints, and square cropping/padding.
+and dimension constraints.
 """
 
 import io
@@ -137,80 +137,9 @@ def validate_dimensions(img: Image.Image) -> None:
         )
 
 
-def crop_to_square(img: Image.Image) -> Image.Image:
-    """Crop an image to a square by center-cropping.
-
-    If the image is already square, it is returned unchanged.
-    Otherwise, the image is cropped from the center to make it square.
-
-    img: the PIL Image object.
-
-    return: a square PIL Image object.
-    """
-    width, height = img.size
-
-    if width == height:
-        return img
-
-    # Determine the size of the square (use the smaller dimension)
-    size = min(width, height)
-
-    # Calculate the crop box (center crop)
-    left = (width - size) // 2
-    top = (height - size) // 2
-    right = left + size
-    bottom = top + size
-
-    return img.crop((left, top, right, bottom))
-
-
-def pad_to_square(img: Image.Image, background_color: Tuple[int, ...] = (255, 255, 255, 0)) -> Image.Image:
-    """Pad an image to a square by adding letterboxing.
-
-    If the image is already square, it is returned unchanged.
-    Otherwise, the image is centered on a square canvas with the
-    specified background color.
-
-    img: the PIL Image object.
-    background_color: the color to use for padding (RGBA tuple).
-
-    return: a square PIL Image object.
-    """
-    width, height = img.size
-
-    if width == height:
-        return img
-
-    # Determine the size of the square (use the larger dimension)
-    size = max(width, height)
-
-    # Create a new square image with the background color
-    if img.mode == 'RGBA':
-        new_img = Image.new('RGBA', (size, size), background_color)
-    elif img.mode == 'RGB':
-        new_img = Image.new('RGB', (size, size), background_color[:3])
-    else:
-        # Convert to RGB for other modes
-        img = img.convert('RGB')
-        new_img = Image.new('RGB', (size, size), background_color[:3])
-
-    # Calculate the position to paste the original image (centered)
-    x = (size - width) // 2
-    y = (size - height) // 2
-
-    # Paste the original image onto the new canvas
-    if img.mode == 'RGBA':
-        new_img.paste(img, (x, y), img)
-    else:
-        new_img.paste(img, (x, y))
-
-    return new_img
-
-
 def process_picture(
     data: bytes,
-    content_type: str | None,
-    square_mode: str = "crop"
+    content_type: str | None
 ) -> Tuple[bytes, str]:
     """Process and validate a user profile picture.
 
@@ -219,13 +148,10 @@ def process_picture(
     2. Validates the file size
     3. Validates that the data is a valid image
     4. Validates the dimensions
-    5. Converts the image to a square (crop or pad)
-    6. Returns the processed image as bytes
+    5. Returns the validated image as bytes (preserving original dimensions)
 
     data: the file content as bytes.
     content_type: the MIME type of the uploaded file.
-    square_mode: how to make the image square - "crop" (center crop) or
-                 "pad" (letterbox with transparent/white background).
 
     return: a tuple of (processed image bytes, output MIME type).
 
@@ -243,13 +169,7 @@ def process_picture(
     # Step 4: Validate dimensions
     validate_dimensions(img)
 
-    # Step 5: Convert to square
-    if square_mode == "pad":
-        img = pad_to_square(img)
-    else:
-        img = crop_to_square(img)
-
-    # Step 6: Save the processed image
+    # Step 5: Save the validated image (preserving original dimensions)
     output = io.BytesIO()
 
     # Determine output format based on input format
