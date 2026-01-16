@@ -179,12 +179,20 @@
         <td>
           {% if user.picture %}
           <div style="margin-bottom: 10px;">
-            <img src="{{ url("file", user.picture, "picture") }}" alt="Profile picture" style="max-width: 200px; max-height: 200px; border: 1px solid #ccc;"/>
+            <img src="{{ url("file", user.picture, "picture") }}" alt="Profile picture" style="max-width: 160px; max-height: 240px; border: 1px solid #ccc;"/>
             <br/>
             <label><input type="checkbox" name="remove_picture" value="1" id="remove_picture"/> Remove picture</label>
           </div>
           {% endif %}
-          <input type="file" name="picture" accept="image/jpeg,image/png,image/gif,image/webp" id="picture_input" onchange="if(this.files.length > 0) document.getElementById('remove_picture') && (document.getElementById('remove_picture').checked = false);"/>
+          <input type="file" name="picture" accept="image/jpeg,image/png,image/gif,image/webp" id="picture_input"/>
+          <script>
+          document.getElementById('picture_input').addEventListener('change', function() {
+            var removeCheckbox = document.getElementById('remove_picture');
+            if (removeCheckbox && this.files.length > 0) {
+              removeCheckbox.checked = false;
+            }
+          });
+          </script>
         </td>
       </tr>
       <tr>
