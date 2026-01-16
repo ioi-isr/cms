@@ -1219,3 +1219,280 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     color: #64748B;  /* Improved contrast for WCAG AA compliance */
     font-style: italic;
 }
+
+/* --- Training Program Views (Attendance & Ranking) --- */
+
+/* Layout & Container */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.core_title h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: #111827;
+}
+
+/* Filter Bar */
+.filter-card {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #4b5563;
+}
+
+.filter-input {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    background-color: #0F766E;
+    color: white;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover { background-color: #0d655e; }
+
+.btn-text {
+    color: #6b7280;
+    text-decoration: underline;
+    font-size: 0.85rem;
+    margin-left: auto;
+}
+
+/* Data Table Wrapper */
+.table-container {
+    overflow-x: auto;
+    max-height: 75vh;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    /* Ensures the white background spans full width even if table is small */
+    width: 100%;
+}
+
+/* Common Table Styles */
+.attendance-table,
+.ranking-table {
+    /* FIXED: Changed from 100% to auto to prevent "Student Name" from stretching */
+    width: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    white-space: nowrap; /* Prevents awkward wrapping */
+}
+
+.attendance-table th,
+.attendance-table td,
+.ranking-table th,
+.ranking-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    vertical-align: top;
+}
+
+.ranking-table th,
+.ranking-table td {
+    padding: 10px 12px;
+    vertical-align: middle;
+}
+
+/* Sticky Header (Dates) */
+.attendance-table thead th,
+.ranking-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: #f3f4f6;
+    z-index: 10;
+    color: #374151;
+    font-weight: 600;
+    text-align: left;
+    box-shadow: 0 1px 0 #e5e7eb;
+}
+
+.ranking-table thead th {
+    text-align: center;
+}
+
+.ranking-table thead th.student-header {
+    text-align: left;
+}
+
+/* Sticky First Column (Students) */
+.attendance-table tbody th,
+.ranking-table tbody th {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 5;
+    text-align: left;
+    /* Reduced min-width slightly and added max-width control */
+    min-width: 160px;
+    max-width: 250px;
+    box-shadow: 1px 0 0 #e5e7eb;
+    /* Ensure long names truncate nicely instead of breaking layout */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attendance-table tbody tr:hover th,
+.ranking-table tbody tr:hover th {
+    background-color: #f9fafb;
+}
+
+/* Sticky Corner Fix */
+.attendance-table thead th:first-child,
+.ranking-table thead th:first-child {
+    left: 0;
+    z-index: 20;
+    background-color: #f3f4f6;
+    min-width: 160px;
+}
+
+/* --- Attendance Table Specifics --- */
+.date-header-main { font-size: 0.95rem; color: #111827; }
+.date-header-sub { font-size: 0.75rem; color: #6b7280; font-weight: normal; margin-top: 2px; }
+
+.cell-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px; /* Ensures data cells have enough breathing room */
+}
+
+/* Modern Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.status-on-time { background-color: #d1fae5; color: #065f46; }
+.status-delayed { background-color: #fef3c7; color: #92400e; }
+.status-missed  { background-color: #fee2e2; color: #991b1b; }
+.status-unknown { background-color: #f3f4f6; color: #4b5563; }
+
+.location-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: #4b5563;
+}
+
+.location-icon { font-size: 0.85rem; }
+
+.reason-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+    background: #f9fafb;
+    border-left: 2px solid #d1d5db;
+    padding: 2px 6px;
+    margin-top: 2px;
+    white-space: normal; /* Allow reasons to wrap within the cell */
+    max-width: 200px;
+}
+
+.attendance-table .empty-cell { color: #d1d5db; font-size: 1.5rem; line-height: 0.5; }
+
+
+/* --- Combined Ranking Specifics --- */
+.training-day-header {
+    background-color: #e0f2fe !important;
+    border-bottom: 2px solid #0ea5e9 !important;
+}
+
+.training-day-header-main {
+    font-size: 0.95rem;
+    color: #0369a1;
+    font-weight: 700;
+}
+
+.training-day-header-sub {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: normal;
+    margin-top: 2px;
+}
+
+.task-header {
+    background-color: #f0fdf4 !important;
+    font-size: 0.8rem;
+    color: #166534;
+}
+
+.total-header {
+    background-color: #fef3c7 !important;
+    font-size: 0.85rem;
+    color: #92400e;
+    font-weight: 700;
+}
+
+.score-cell {
+    text-align: center;
+    font-family: monospace;
+}
+
+.score-cell.task-score {
+    background-color: #f0fdf4;
+    color: #166534;
+}
+
+.score-cell.total-score {
+    background-color: #fef3c7;
+    color: #92400e;
+    font-weight: 600;
+}
+
+.ranking-table .empty-cell {
+    color: #d1d5db;
+    text-align: center;
+}
+
+.history-link {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-decoration: none;
+    margin-left: 4px;
+}
+
+.history-link:hover {
+    color: #374151;
+    text-decoration: underline;
+}

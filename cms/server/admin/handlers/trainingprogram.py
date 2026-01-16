@@ -45,7 +45,6 @@ from cms.db import (
     ArchivedStudentRanking,
     ScoreHistory,
     DelayRequest,
-    ParticipationTaskScore,
 )
 from cms.server.util import get_all_student_tags, deduplicate_preserving_order, calculate_task_archive_progress
 from cmscommon.datetime import make_datetime
