@@ -201,7 +201,7 @@
         <div style="font-size: 0.6em; color: #666;">
           {{ participation.user.username }}
         </div>
-        {% if participation.user.picture %}<img id="UserDetail_face" src="{{ url("file", participation.user.picture, "picture") }}" alt="Face"/>{% else %}<img id="UserDetail_face" src="" alt="Face"/>{% endif %}
+        {% if participation.user.picture %}<img id="UserDetail_face" src="{{ url("file", participation.user.picture, "picture") }}" alt="Profile picture of {{ participation.user.first_name }} {{ participation.user.last_name }}"/>{% endif %}
         <div id="UserDetail_spacer"></div>
         <div id="UserDetail_team">{% if participation.team %}{{ participation.team.name }}{% endif %}</div>
         <img id="UserDetail_flag" src="" alt="Flag"/>

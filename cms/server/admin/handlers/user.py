@@ -134,12 +134,10 @@ class UserHandler(BaseHandler):
                 if remove_picture == "1":
                     attrs["picture"] = None
 
-            # Delete old picture from file cacher if it's being replaced or removed
+            # Defer deletion until after successful commit
+            picture_digest_to_delete = None
             if old_picture_digest is not None and attrs.get("picture") != old_picture_digest:
-                try:
-                    self.service.file_cacher.delete(old_picture_digest)
-                except Exception:
-                    pass
+                picture_digest_to_delete = old_picture_digest
 
             assert attrs.get("username") is not None, \
                 "No username specified."
@@ -158,6 +156,12 @@ class UserHandler(BaseHandler):
         if self.try_commit():
             # Update the user on RWS.
             self.service.proxy_service.reinitialize()
+            # Delete old picture from file cacher after successful commit
+            if picture_digest_to_delete:
+                try:
+                    self.service.file_cacher.delete(picture_digest_to_delete)
+                except Exception:
+                    pass
         self.redirect(fallback_page)
 
 

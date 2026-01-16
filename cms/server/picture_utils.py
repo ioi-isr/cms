@@ -119,7 +119,7 @@ def validate_and_get_image(data: bytes) -> Image.Image:
         raise PictureValidationError(
             "invalid_image",
             "The uploaded file is not a valid image."
-        )
+        ) from e
 
 
 def validate_dimensions(img: Image.Image) -> None:
@@ -147,8 +147,9 @@ def process_picture(
     1. Validates the MIME type
     2. Validates the file size
     3. Validates that the data is a valid image
-    4. Validates the dimensions
-    5. Returns the validated image as bytes (preserving original dimensions)
+    4. Verifies declared MIME type matches actual image format
+    5. Validates the dimensions
+    6. Returns the validated image as bytes (preserving original dimensions)
 
     data: the file content as bytes.
     content_type: the MIME type of the uploaded file.
@@ -166,7 +167,15 @@ def process_picture(
     # Step 3: Validate and open the image
     img = validate_and_get_image(data)
 
-    # Step 4: Validate dimensions
+    # Step 4: Verify declared MIME type matches actual image format
+    expected_format = ALLOWED_MIME_TYPES.get(content_type)
+    if expected_format and img.format != expected_format:
+        raise PictureValidationError(
+            "mime_type_mismatch",
+            "The file content does not match the declared MIME type."
+        )
+
+    # Step 5: Validate dimensions
     validate_dimensions(img)
 
     # Step 5: Save the validated image (preserving original dimensions)

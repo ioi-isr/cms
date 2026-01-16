@@ -223,6 +223,13 @@ class RegistrationHandler(ContestHandler):
         except ValueError:
             raise RegistrationError("invalid_date_of_birth", "date_of_birth")
 
+        # Check if the username is available (before processing picture to avoid orphaned files)
+        tot_users = self.sql_session.query(User)\
+                        .filter(User.username == username).count()
+        if tot_users != 0:
+            # HTTP 409: Conflict
+            raise tornado.web.HTTPError(409)
+
         # Process picture (optional)
         picture_digest = None
         if "picture" in self.request.files:
@@ -239,13 +246,6 @@ class RegistrationHandler(ContestHandler):
                     )
                 except PictureValidationError as e:
                     raise RegistrationError(e.code, "picture")
-
-        # Check if the username is available
-        tot_users = self.sql_session.query(User)\
-                        .filter(User.username == username).count()
-        if tot_users != 0:
-            # HTTP 409: Conflict
-            raise tornado.web.HTTPError(409)
 
         # Store new user
         user = User(first_name, last_name, username, password, email=email,
