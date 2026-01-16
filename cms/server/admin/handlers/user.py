@@ -693,7 +693,7 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
                 if picture_file["body"]:
                     content_type = picture_file.get("content_type", "application/octet-stream")
                     try:
-                        processed_data = process_picture(picture_file["body"], content_type)
+                        processed_data, _ = process_picture(picture_file["body"], content_type)
                         digest = self.service.file_cacher.put_file_content(
                             processed_data,
                             "Picture for user %s" % attrs["username"]
