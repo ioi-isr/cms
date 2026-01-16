@@ -202,6 +202,7 @@ class ExportUsersHandler(BaseHandler):
             "Password",
             "Plain text / Hash",
             "E-mail",
+            "Date of birth",
             "Timezone",
             "Preferred languages"
         ])
@@ -217,6 +218,8 @@ class ExportUsersHandler(BaseHandler):
 
             preferred_languages = "; ".join(user.preferred_languages) if user.preferred_languages else ""
 
+            date_of_birth_str = user.date_of_birth.isoformat() if user.date_of_birth else ""
+
             writer.writerow([
                 user.first_name or "",
                 user.last_name or "",
@@ -224,6 +227,7 @@ class ExportUsersHandler(BaseHandler):
                 password_value or "",
                 password_type,
                 user.email or "",
+                date_of_birth_str,
                 user.timezone or "",
                 preferred_languages
             ])
@@ -276,7 +280,7 @@ class ImportUsersHandler(BaseHandler):
 
         expected_headers = {
             "First name", "Last name", "Username", "Password",
-            "Plain text / Hash", "E-mail", "Timezone", "Preferred languages"
+            "Plain text / Hash", "E-mail", "Date of birth", "Timezone", "Preferred languages"
         }
 
         if not reader.fieldnames or not expected_headers.issubset(set(reader.fieldnames)):
@@ -304,6 +308,7 @@ class ImportUsersHandler(BaseHandler):
             password = row.get("Password", "").strip()
             password_type = row.get("Plain text / Hash", "").strip()
             email = row.get("E-mail", "").strip()
+            date_of_birth_str = row.get("Date of birth", "").strip()
             timezone = row.get("Timezone", "").strip()
             preferred_languages_str = row.get("Preferred languages", "").strip()
 
@@ -323,6 +328,14 @@ class ImportUsersHandler(BaseHandler):
 
             if password_type and password_type.lower() not in ["plain text", "hash"]:
                 errors.append(f"Invalid password type '{password_type}'. Must be 'Plain text' or 'Hash'")
+
+            # Parse date of birth (optional, but validate format if provided)
+            date_of_birth = None
+            if date_of_birth_str:
+                try:
+                    date_of_birth = date.fromisoformat(date_of_birth_str)
+                except ValueError:
+                    errors.append(f"Invalid date of birth format '{date_of_birth_str}'. Use YYYY-MM-DD format.")
 
             if errors:
                 failed_users.append({
@@ -352,6 +365,7 @@ class ImportUsersHandler(BaseHandler):
                 "last_name": last_name,
                 "password": password_value,
                 "email": email if email else None,
+                "date_of_birth": date_of_birth.isoformat() if date_of_birth else None,
                 "timezone": timezone if timezone else None,
                 "preferred_languages": preferred_languages,
                 "row": row_num
@@ -401,12 +415,16 @@ class ImportUsersConfirmHandler(BaseHandler):
 
         for user_data in new_users:
             try:
+                date_of_birth = None
+                if user_data.get("date_of_birth"):
+                    date_of_birth = date.fromisoformat(user_data["date_of_birth"])
                 user = User(
                     username=user_data["username"],
                     first_name=user_data["first_name"],
                     last_name=user_data["last_name"],
                     password=user_data["password"],
                     email=user_data.get("email"),
+                    date_of_birth=date_of_birth,
                     timezone=user_data.get("timezone"),
                     preferred_languages=user_data.get("preferred_languages", [])
                 )
@@ -427,6 +445,10 @@ class ImportUsersConfirmHandler(BaseHandler):
                         user.last_name = user_data["last_name"]
                         user.password = user_data["password"]
                         user.email = user_data.get("email")
+                        if user_data.get("date_of_birth"):
+                            user.date_of_birth = date.fromisoformat(user_data["date_of_birth"])
+                        else:
+                            user.date_of_birth = None
                         user.timezone = user_data.get("timezone")
                         user.preferred_languages = user_data.get("preferred_languages", [])
                         updated_count += 1
