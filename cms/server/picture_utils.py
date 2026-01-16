@@ -178,7 +178,7 @@ def process_picture(
     # Step 5: Validate dimensions
     validate_dimensions(img)
 
-    # Step 5: Save the validated image (preserving original dimensions)
+    # Step 6: Save the validated image (preserving original dimensions)
     output = io.BytesIO()
 
     # Determine output format based on input format
