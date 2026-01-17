@@ -23,14 +23,17 @@ It wraps a Contest and includes its position within the training program.
 
 import typing
 
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
-from sqlalchemy.types import Integer
+from sqlalchemy.types import DateTime, Integer, Interval, Unicode
 
 from . import Base
 
 if typing.TYPE_CHECKING:
+    from datetime import datetime, timedelta
     from . import Contest, TrainingProgram, Task, TrainingDayGroup, Submission, Participation, User
+    from . import ArchivedAttendance, ArchivedStudentRanking
 
 
 def get_managing_participation(
@@ -81,10 +84,10 @@ class TrainingDay(Base):
         index=True,
     )
 
-    contest_id: int = Column(
+    contest_id: int | None = Column(
         Integer,
-        ForeignKey("contests.id", onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("contests.id", onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
         unique=True,
         index=True,
     )
@@ -94,12 +97,47 @@ class TrainingDay(Base):
         nullable=True,
     )
 
+    # Name and description are synced with contest while contest exists.
+    # After archiving (when contest is deleted), these fields preserve the values.
+    name: str | None = Column(
+        Unicode,
+        nullable=True,
+    )
+
+    description: str | None = Column(
+        Unicode,
+        nullable=True,
+    )
+
+    # Start time is synced with contest while contest exists.
+    # After archiving (when contest is deleted), this field preserves the value.
+    start_time: "datetime | None" = Column(
+        DateTime,
+        nullable=True,
+    )
+
+    # Task metadata at archive time: {task_id: {name, short_name, max_score, score_precision, extra_headers}}
+    # Preserves the scoring scheme as it was during the training day.
+    # Stored at training day level (not per-student) since it's the same for all students.
+    archived_tasks_data: dict | None = Column(
+        JSONB,
+        nullable=True,
+    )
+
+    # Duration of the training day at archive time.
+    # Calculated as the max training duration among main groups (if any),
+    # or the training day duration (if no main groups).
+    duration: "timedelta | None" = Column(
+        Interval,
+        nullable=True,
+    )
+
     training_program: "TrainingProgram" = relationship(
         "TrainingProgram",
         back_populates="training_days",
     )
 
-    contest: "Contest" = relationship(
+    contest: "Contest | None" = relationship(
         "Contest",
         back_populates="training_day",
     )
@@ -120,4 +158,16 @@ class TrainingDay(Base):
         "Submission",
         back_populates="training_day",
         passive_deletes=True,
+    )
+
+    archived_attendances: list["ArchivedAttendance"] = relationship(
+        "ArchivedAttendance",
+        back_populates="training_day",
+        cascade="all, delete-orphan",
+    )
+
+    archived_student_rankings: list["ArchivedStudentRanking"] = relationship(
+        "ArchivedStudentRanking",
+        back_populates="training_day",
+        cascade="all, delete-orphan",
     )

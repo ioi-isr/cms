@@ -73,8 +73,10 @@
         <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
         <td>{{ t.title }}</td>
         <td>
-          {% if t.training_day is not none %}
+          {% if t.training_day is not none and t.training_day.contest is not none %}
           <a href="{{ url("contest", t.training_day.contest.id) }}">{{ t.training_day.contest.name }}</a>
+          {% elif t.training_day is not none %}
+          {{ t.training_day.name or "(archived)" }}
           {% endif %}
         </td>
       </tr>

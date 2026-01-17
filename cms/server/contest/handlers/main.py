@@ -437,9 +437,13 @@ class StartHandler(ContestHandler):
                 student_task.task_id = task.id
                 student_task.source_training_day_id = training_day.id
                 self.sql_session.add(student_task)
+                training_day_name = (
+                    training_day.contest.name if training_day.contest is not None
+                    else training_day.name or "Archived"
+                )
                 logger.info(
                     "Added task %s to student %s from training day %s",
-                    task.name, participation.user.username, training_day.contest.name
+                    task.name, participation.user.username, training_day_name
                 )
 
 
