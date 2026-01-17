@@ -29,16 +29,22 @@
 
 import csv
 import io
+import logging
 import re
+from datetime import date
 
 from sqlalchemy import and_, exists
 from cms.db import Contest, Participation, Submission, Team, User
+from cms.server.picture_utils import process_picture, PictureValidationError
 from cms.server.util import exclude_internal_contests
-from cmscommon.crypto import (parse_authentication, 
-                               hash_password, validate_password_strength)
+from cmscommon.crypto import (parse_authentication,
+                              hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
+
+
+logger = logging.getLogger(__name__)
 
 
 class UserHandler(BaseHandler):
@@ -94,10 +100,55 @@ class UserHandler(BaseHandler):
             self.get_string_list(attrs, "preferred_languages")
             self.get_string(attrs, "timezone", empty=None)
 
+            # Handle date of birth
+            date_of_birth_str = self.get_argument("date_of_birth", "")
+            if date_of_birth_str:
+                try:
+                    attrs["date_of_birth"] = date.fromisoformat(date_of_birth_str)
+                except ValueError:
+                    raise ValueError("Invalid date of birth format") from None
+            else:
+                attrs["date_of_birth"] = None
+
+            # Validate username before any file operations to avoid persisting
+            # uploads on validation failure
             assert attrs.get("username") is not None, \
                 "No username specified."
             assert not attrs.get("username").startswith("__"), \
                 "Username cannot start with '__' (reserved for system users)."
+
+            # Handle picture upload and removal
+            # If a new picture is uploaded, use it (ignore remove checkbox)
+            # Otherwise, if remove checkbox is checked, remove the picture
+            old_picture_digest = user.picture
+            new_picture_uploaded = False
+
+            if "picture" in self.request.files:
+                picture_file = self.request.files["picture"][0]
+                if picture_file["body"]:
+                    try:
+                        processed_data, _ = process_picture(
+                            picture_file["body"],
+                            picture_file["content_type"]
+                        )
+                        attrs["picture"] = self.service.file_cacher.put_file_content(
+                            processed_data,
+                            "Profile picture for %s" % attrs.get("username", "user")
+                        )
+                        new_picture_uploaded = True
+                    except PictureValidationError as e:
+                        raise ValueError(e.message) from e
+
+            # Only process remove checkbox if no new picture was uploaded
+            if not new_picture_uploaded:
+                remove_picture = self.get_argument("remove_picture", None)
+                if remove_picture == "1":
+                    attrs["picture"] = None
+
+            # Defer deletion until after successful commit
+            picture_digest_to_delete = None
+            if old_picture_digest is not None and attrs.get("picture") != old_picture_digest:
+                picture_digest_to_delete = old_picture_digest
 
             # Update the user.
             user.set_attrs(attrs)
@@ -111,6 +162,16 @@ class UserHandler(BaseHandler):
         if self.try_commit():
             # Update the user on RWS.
             self.service.proxy_service.reinitialize()
+            # Delete old picture from file cacher after successful commit
+            if picture_digest_to_delete:
+                try:
+                    self.service.file_cacher.delete(picture_digest_to_delete)
+                except Exception:
+                    logger.warning(
+                        "Failed to delete old picture %s for user %s",
+                        picture_digest_to_delete,
+                        user.username
+                    )
         self.redirect(fallback_page)
 
 
@@ -155,6 +216,7 @@ class ExportUsersHandler(BaseHandler):
             "Password",
             "Plain text / Hash",
             "E-mail",
+            "Date of birth",
             "Timezone",
             "Preferred languages"
         ])
@@ -170,6 +232,8 @@ class ExportUsersHandler(BaseHandler):
 
             preferred_languages = "; ".join(user.preferred_languages) if user.preferred_languages else ""
 
+            date_of_birth_str = user.date_of_birth.isoformat() if user.date_of_birth else ""
+
             writer.writerow([
                 user.first_name or "",
                 user.last_name or "",
@@ -177,6 +241,7 @@ class ExportUsersHandler(BaseHandler):
                 password_value or "",
                 password_type,
                 user.email or "",
+                date_of_birth_str,
                 user.timezone or "",
                 preferred_languages
             ])
@@ -229,7 +294,7 @@ class ImportUsersHandler(BaseHandler):
 
         expected_headers = {
             "First name", "Last name", "Username", "Password",
-            "Plain text / Hash", "E-mail", "Timezone", "Preferred languages"
+            "Plain text / Hash", "E-mail", "Date of birth", "Timezone", "Preferred languages"
         }
 
         if not reader.fieldnames or not expected_headers.issubset(set(reader.fieldnames)):
@@ -257,6 +322,7 @@ class ImportUsersHandler(BaseHandler):
             password = row.get("Password", "").strip()
             password_type = row.get("Plain text / Hash", "").strip()
             email = row.get("E-mail", "").strip()
+            date_of_birth_str = row.get("Date of birth", "").strip()
             timezone = row.get("Timezone", "").strip()
             preferred_languages_str = row.get("Preferred languages", "").strip()
 
@@ -276,6 +342,14 @@ class ImportUsersHandler(BaseHandler):
 
             if password_type and password_type.lower() not in ["plain text", "hash"]:
                 errors.append(f"Invalid password type '{password_type}'. Must be 'Plain text' or 'Hash'")
+
+            # Parse date of birth (optional, but validate format if provided)
+            date_of_birth = None
+            if date_of_birth_str:
+                try:
+                    date_of_birth = date.fromisoformat(date_of_birth_str)
+                except ValueError:
+                    errors.append(f"Invalid date of birth format '{date_of_birth_str}'. Use YYYY-MM-DD format.")
 
             if errors:
                 failed_users.append({
@@ -305,6 +379,7 @@ class ImportUsersHandler(BaseHandler):
                 "last_name": last_name,
                 "password": password_value,
                 "email": email if email else None,
+                "date_of_birth": date_of_birth.isoformat() if date_of_birth else None,
                 "timezone": timezone if timezone else None,
                 "preferred_languages": preferred_languages,
                 "row": row_num
@@ -315,6 +390,7 @@ class ImportUsersHandler(BaseHandler):
                 user_data["existing_first_name"] = existing_user.first_name
                 user_data["existing_last_name"] = existing_user.last_name
                 user_data["existing_email"] = existing_user.email
+                user_data["existing_date_of_birth"] = existing_user.date_of_birth.isoformat() if existing_user.date_of_birth else None
                 user_data["existing_timezone"] = existing_user.timezone
                 existing_users.append(user_data)
             else:
@@ -354,12 +430,16 @@ class ImportUsersConfirmHandler(BaseHandler):
 
         for user_data in new_users:
             try:
+                date_of_birth = None
+                if user_data.get("date_of_birth"):
+                    date_of_birth = date.fromisoformat(user_data["date_of_birth"])
                 user = User(
                     username=user_data["username"],
                     first_name=user_data["first_name"],
                     last_name=user_data["last_name"],
                     password=user_data["password"],
                     email=user_data.get("email"),
+                    date_of_birth=date_of_birth,
                     timezone=user_data.get("timezone"),
                     preferred_languages=user_data.get("preferred_languages", [])
                 )
@@ -380,6 +460,10 @@ class ImportUsersConfirmHandler(BaseHandler):
                         user.last_name = user_data["last_name"]
                         user.password = user_data["password"]
                         user.email = user_data.get("email")
+                        if user_data.get("date_of_birth"):
+                            user.date_of_birth = date.fromisoformat(user_data["date_of_birth"])
+                        else:
+                            user.date_of_birth = None
                         user.timezone = user_data.get("timezone")
                         user.preferred_languages = user_data.get("preferred_languages", [])
                         updated_count += 1
@@ -600,6 +684,11 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
 
             self.get_password(attrs, None, False)
 
+            # Parse date of birth
+            date_of_birth_str = self.get_argument("date_of_birth", "").strip()
+            if date_of_birth_str:
+                attrs["date_of_birth"] = date.fromisoformat(date_of_birth_str)
+
             self.get_string(attrs, "timezone", empty=None)
 
             self.get_string_list(attrs, "preferred_languages")
@@ -607,6 +696,24 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
             # Create the user.
             user = User(**attrs)
             self.sql_session.add(user)
+
+            # Handle picture upload
+            if "picture" in self.request.files and len(self.request.files["picture"]) > 0:
+                picture_file = self.request.files["picture"][0]
+                if picture_file["body"]:
+                    content_type = picture_file.get("content_type", "application/octet-stream")
+                    try:
+                        processed_data, _ = process_picture(picture_file["body"], content_type)
+                        digest = self.service.file_cacher.put_file_content(
+                            processed_data,
+                            "Picture for user %s" % attrs["username"]
+                        )
+                        user.picture = digest
+                    except PictureValidationError as e:
+                        self.service.add_notification(
+                            make_datetime(), "Picture upload failed", str(e))
+                        self.redirect(fallback_page)
+                        return
 
         except Exception as error:
             self.service.add_notification(

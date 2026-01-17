@@ -46,6 +46,7 @@ from sqlalchemy.types import (
     String,
     Unicode,
     DateTime,
+    Date,
     Interval,
     Enum,
     TypeEngine,
@@ -142,6 +143,8 @@ def encode_value(type_: TypeEngine, value: object) -> object:
         return value
     elif isinstance(type_, DateTime):
         return make_timestamp(value)
+    elif isinstance(type_, Date):
+        return value.isoformat()
     elif isinstance(type_, Interval):
         return value.total_seconds()
     elif isinstance(type_, (ARRAY, FilenameSchemaArray)):

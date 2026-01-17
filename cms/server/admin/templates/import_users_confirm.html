@@ -20,6 +20,7 @@
         <th>First Name</th>
         <th>Last Name</th>
         <th>E-mail</th>
+        <th>Date of birth</th>
         <th>Timezone</th>
         <th>Preferred Languages</th>
       </tr>
@@ -32,6 +33,7 @@
         <td>{{ user.first_name }}</td>
         <td>{{ user.last_name }}</td>
         <td>{{ user.email or "" }}</td>
+        <td>{{ user.date_of_birth or "" }}</td>
         <td>{{ user.timezone or "" }}</td>
         <td>{{ user.preferred_languages|join(", ") if user.preferred_languages else "" }}</td>
       </tr>
@@ -61,6 +63,7 @@
         <th>First Name</th>
         <th>Last Name</th>
         <th>E-mail</th>
+        <th>Date of birth</th>
         <th>Timezone</th>
         <th>Preferred Languages</th>
       </tr>
@@ -89,6 +92,12 @@
           {{ user.email or "" }}
           {% if user.existing_email is defined and user.email != user.existing_email %}
           <br/><small style="color: #666;">(was: {{ user.existing_email or "" }})</small>
+          {% endif %}
+        </td>
+        <td>
+          {{ user.date_of_birth or "" }}
+          {% if user.existing_date_of_birth is defined and user.date_of_birth != user.existing_date_of_birth %}
+          <br/><small style="color: #666;">(was: {{ user.existing_date_of_birth or "" }})</small>
           {% endif %}
         </td>
         <td>

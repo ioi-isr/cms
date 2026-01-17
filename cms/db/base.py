@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import ipaddress
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import typing
 
 from sqlalchemy.dialects.postgresql import ARRAY, CIDR, JSONB, OID
@@ -30,7 +30,7 @@ from sqlalchemy.orm import \
 from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy.orm.session import object_session
 from sqlalchemy.types import \
-    Boolean, Integer, Float, String, Unicode, Enum, DateTime, Interval, \
+    Boolean, Integer, Float, String, Unicode, Enum, DateTime, Date, Interval, \
     BigInteger
 
 from cms.db.session import Session
@@ -53,6 +53,7 @@ _TYPE_MAP = {
     FilenameSchema: str,
     Digest: str,
     DateTime: datetime,
+    Date: date,
     Interval: timedelta,
     ARRAY: list,
     CastingArray: list,

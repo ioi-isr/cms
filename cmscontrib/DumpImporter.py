@@ -39,7 +39,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy.types import (
     Boolean,
@@ -48,6 +48,7 @@ from sqlalchemy.types import (
     String,
     Unicode,
     DateTime,
+    Date,
     Interval,
     Enum,
     TypeEngine,
@@ -133,6 +134,13 @@ def decode_value(type_: TypeEngine, value: object) -> object:
             logger.warning("The dump has a date too far in the future for "
                            "your system. Changing to 2030-01-01.")
             return datetime(2030, 1, 1)
+    elif isinstance(type_, Date):
+        try:
+            return date.fromisoformat(value)
+        except ValueError as exc:
+            raise RuntimeError(
+                f"Invalid ISO date in dump: {value!r}"
+            ) from exc
     elif isinstance(type_, Interval):
         return timedelta(seconds=value)
     elif isinstance(type_, (ARRAY, FilenameSchemaArray)):
