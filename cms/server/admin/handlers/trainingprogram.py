@@ -1171,6 +1171,7 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
         self.r_params["contest"] = managing_contest
+        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == managing_contest.id)\

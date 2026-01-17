@@ -30,9 +30,10 @@
 from datetime import datetime
 import logging
 
-from cms.db import Question, Announcement, Message, Student
+from cms.db import Question, Announcement, Message
 from cms.db.session import Session
 from cms.db.user import Participation
+from cms.server.util import get_student_for_training_day
 from cmscommon.datetime import make_timestamp
 
 
@@ -50,7 +51,8 @@ def can_see_announcement(
     - The announcement has no visible_to_tags (empty list = visible to all)
     - The student has at least one tag matching the announcement's visible_to_tags
 
-    For non-training-program contests, all announcements are visible.
+    For non-training-day and non-training-program contests, all announcements
+    are visible.
 
     sql_session: the SQLAlchemy database session to use.
     announcement: the announcement to check visibility for.
@@ -63,28 +65,43 @@ def can_see_announcement(
     if not announcement.visible_to_tags:
         return True
 
-    # Check if this is a training program managing contest
     contest = participation.contest
+
+    # Check if this is a training day contest
+    training_day = contest.training_day
+    if training_day is not None:
+        # Use the existing utility function to find the student
+        student = get_student_for_training_day(sql_session, participation, training_day)
+
+        if student is None:
+            return False
+
+        # Check if student has any matching tag (case-insensitive)
+        student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
+        announcement_tags_set = {tag.lower() for tag in announcement.visible_to_tags}
+        return bool(student_tags_set & announcement_tags_set)
+
+    # Check if this is a training program managing contest
     training_program = contest.training_program
+    if training_program is not None:
+        # For managing contest, find student directly by participation
+        from cms.db import Student
+        student = sql_session.query(Student).filter(
+            Student.participation_id == participation.id,
+            Student.training_program_id == training_program.id
+        ).first()
 
-    if training_program is None:
-        # For non-training-program contests, all announcements are visible
-        # (visibility tags only apply to training programs)
-        return True
+        if student is None:
+            return False
 
-    # Find the student record for this participation
-    student = sql_session.query(Student).filter(
-        Student.participation_id == participation.id,
-        Student.training_program_id == training_program.id
-    ).first()
+        # Check if student has any matching tag (case-insensitive)
+        student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
+        announcement_tags_set = {tag.lower() for tag in announcement.visible_to_tags}
+        return bool(student_tags_set & announcement_tags_set)
 
-    if student is None:
-        return False
-
-    # Check if student has any matching tag (case-insensitive)
-    student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
-    announcement_tags_set = {tag.lower() for tag in announcement.visible_to_tags}
-    return bool(student_tags_set & announcement_tags_set)
+    # For non-training-day and non-training-program contests,
+    # all announcements are visible (visibility tags don't apply)
+    return True
 
 
 # Dummy function to mark translatable strings.

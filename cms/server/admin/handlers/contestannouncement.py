@@ -36,8 +36,33 @@ except:
 import tornado.web
 
 from cms.db import Contest, Announcement
+from cms.server.util import get_all_student_tags
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
+
+
+class ContestAnnouncementsHandler(BaseHandler):
+    """Display announcements for a contest.
+
+    For training day contests, also passes all_student_tags for the tagify box.
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id: str):
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        self.r_params = self.render_params()
+
+        # For training day contests, pass all_student_tags for the tagify box
+        training_day = self.contest.training_day
+        if training_day is not None:
+            training_program = training_day.training_program
+            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+            self.r_params["is_training_day"] = True
+        else:
+            self.r_params["all_student_tags"] = []
+            self.r_params["is_training_day"] = False
+
+        self.render("announcements.html", **self.r_params)
 
 
 class AddAnnouncementHandler(BaseHandler):

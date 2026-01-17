@@ -1,6 +1,36 @@
 {% extends "base.html" %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
 
+{% block js_init %}
+{% if training_program is defined or is_training_day %}
+// Initialize Tagify for announcement visibility tags (no auto-save, form submission only)
+document.addEventListener('DOMContentLoaded', function() {
+    var whitelist = {{ all_student_tags | tojson }};
+    var inputs = document.querySelectorAll('.announcement-visibility-tags');
+    inputs.forEach(function(input) {
+        new Tagify(input, {
+            delimiters: ",",
+            maxTags: 20,
+            placeholder: "All students",
+            whitelist: whitelist,
+            enforceWhitelist: true,
+            dropdown: {
+                maxItems: 20,
+                classname: "tags-look",
+                enabled: 0,
+                closeOnSelect: true
+            },
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.map(function(item) {
+                    return item.value;
+                }).join(', ');
+            }
+        });
+    });
+});
+{% endif %}
+{% endblock js_init %}
+
 {% block core %}
 <div class="core_title">
   <h1>Announcements</h1>
@@ -27,10 +57,10 @@
             <label for="text">Text</label>
             {{ macro_markdown.markdown_input("text") }}
           </div>
-          {% if training_program is defined %}
+          {% if training_program is defined or is_training_day %}
           <div class="notification_visible_to_tags">
-            <label for="visible_to_tags">Visible to tags (comma-separated, leave empty for all students)</label>
-            <input type="text" name="visible_to_tags" id="visible_to_tags" style="width: 100%" placeholder="e.g., beginner, advanced">
+            <label for="visible_to_tags">Visible to tags (leave empty for all students)</label>
+            <input type="text" name="visible_to_tags" class="announcement-visibility-tags" style="width: 100%">
           </div>
           {% endif %}
           <input type="submit"
@@ -54,7 +84,7 @@
           <div class="notification_timestamp">{{ msg.timestamp }}</div>
           <div class="notification_subject">{{ msg.subject }}</div>
           <div class="notification_text">{{ msg.text | markdown }}</div>
-          {% if training_program is defined and msg.visible_to_tags %}
+          {% if (training_program is defined or is_training_day) and msg.visible_to_tags %}
           <div class="notification_visible_to_tags_display">
             <strong>Visible to:</strong> {{ msg.visible_to_tags|join(', ') }}
           </div>
@@ -86,10 +116,10 @@
                 <label for="text">Text</label>
                 {{ macro_markdown.markdown_input("text") }}
               </div>
-              {% if training_program is defined %}
+              {% if training_program is defined or is_training_day %}
               <div class="notification_visible_to_tags">
-                <label for="edit_visible_to_tags">Visible to tags (comma-separated, leave empty for all students)</label>
-                <input type="text" name="visible_to_tags" id="edit_visible_to_tags" style="width: 100%" placeholder="e.g., beginner, advanced">
+                <label for="edit_visible_to_tags">Visible to tags (leave empty for all students)</label>
+                <input type="text" name="visible_to_tags" class="announcement-visibility-tags" style="width: 100%">
               </div>
               {% endif %}
               <input type="submit"
