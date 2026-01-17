@@ -67,7 +67,14 @@ def sanitize_path_component(name: str) -> str:
 def get_source_folder(submission):
     """Get the source folder name for a submission."""
     if submission.training_day_id is not None:
-        return sanitize_path_component(submission.training_day.contest.description)
+        training_day = submission.training_day
+        if training_day.contest is not None:
+            return sanitize_path_component(training_day.contest.description)
+        else:
+            # Archived training day - use stored description or name
+            return sanitize_path_component(
+                training_day.description or training_day.name or "archived_training_day"
+            )
     return "task_archive"
 
 

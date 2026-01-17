@@ -54,7 +54,11 @@
         </td>
         <td>
           {% if st.source_training_day %}
-            <a href="{{ url("contest", st.source_training_day.contest.id) }}">{{ st.source_training_day.contest.description }}</a>
+            {% if st.source_training_day.contest %}
+              <a href="{{ url("contest", st.source_training_day.contest.id) }}">{{ st.source_training_day.contest.description }}</a>
+            {% else %}
+              {{ st.source_training_day.description or st.source_training_day.name or "Archived Training Day" }}
+            {% endif %}
           {% else %}
             <em>Manual assignment</em>
           {% endif %}

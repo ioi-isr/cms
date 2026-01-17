@@ -9,6 +9,8 @@
   <a href="{{ url("training_program", training_program.id, "training_days", "add") }}">Add a new training day</a>
 </p>
 
+<h2>Active Training Days</h2>
+
 <form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Remove selected training day:
@@ -39,10 +41,12 @@
         <th>Name</th>
         <th>Description</th>
         <th>Start</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
-      {% for td in training_program.training_days %}
+      {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
+      {% for td in active_training_days %}
       <tr>
         <td>
           <input type="radio" name="training_day_id" value="{{ td.id }}"/>
@@ -56,10 +60,13 @@
             -
           {% endif %}
         </td>
+        <td>
+          <a href="{{ url("training_program", training_program.id, "training_day", td.id, "archive") }}">Archive</a>
+        </td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="4">(no training days yet)</td>
+        <td colspan="5">(no active training days)</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -71,4 +78,42 @@
     });
   </script>
 </form>
+
+<h2>Archived Training Days</h2>
+
+<table class="bordered" id="archived_training_days_table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Description</th>
+      <th>Start</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
+    {% for td in archived_training_days %}
+    <tr>
+      <td>{{ td.name or "(no name)" }}</td>
+      <td>{{ td.description or "(no description)" }}</td>
+      <td>
+        {% if td.start_time %}
+          {{ td.start_time.strftime("%Y-%m-%d %H:%M") }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="3">(no archived training days)</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+  $(document).ready(function() {
+    CMS.AWSUtils.init_table_sort($("#archived_training_days_table"), false, 2, false);
+  });
+</script>
 {% endblock core %}

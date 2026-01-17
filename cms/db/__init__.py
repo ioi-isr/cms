@@ -55,6 +55,7 @@ __all__ = [
     # contest
     "Contest", "Announcement", "ContestFolder", "TrainingProgram", "Student",
     "TrainingDay", "TrainingDayGroup", "StudentTask",
+    "ArchivedAttendance", "ArchivedStudentRanking",
     # user
     "User", "Team", "Participation", "Message", "Question", "DelayRequest",
     # admin
@@ -110,6 +111,8 @@ from .training_day import TrainingDay
 from .training_day_group import TrainingDayGroup
 from .student import Student
 from .student_task import StudentTask
+from .archived_attendance import ArchivedAttendance
+from .archived_student_ranking import ArchivedStudentRanking
 from .user import User, Team, Participation, Message, Question, DelayRequest
 from .task import Task, Statement, Attachment, Dataset, Manager, Testcase, \
     Generator, SubtaskValidator, SubtaskValidationResult
