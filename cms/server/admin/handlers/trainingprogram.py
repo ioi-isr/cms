@@ -2838,3 +2838,25 @@ class TrainingProgramCombinedRankingDetailHandler(
             .filter(Question.ignored.is_(False))\
             .count()
         self.render("training_program_combined_ranking_detail.html", **self.r_params)
+
+
+class TrainingProgramOverviewRedirectHandler(BaseHandler):
+    """Redirect /training_program/{id}/overview to the managing contest's overview page."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        self.redirect(
+            self.url("contest", training_program.managing_contest.id, "overview")
+        )
+
+
+class TrainingProgramResourcesListRedirectHandler(BaseHandler):
+    """Redirect /training_program/{id}/resourceslist to the managing contest's resourceslist page."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        self.redirect(
+            self.url("contest", training_program.managing_contest.id, "resourceslist")
+        )
