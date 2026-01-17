@@ -1789,6 +1789,26 @@ class StudentTasksHandler(BaseHandler):
         assigned_task_ids = {st.task_id for st in student.student_tasks}
         available_tasks = [t for t in all_tasks if t.id not in assigned_task_ids]
 
+        # Build home scores from participation task_scores cache
+        home_scores = {}
+        for pts in participation.task_scores:
+            home_scores[pts.task_id] = pts.score
+
+        # Build training scores from archived student rankings
+        training_scores = {}
+        for st in student.student_tasks:
+            if st.source_training_day_id is not None:
+                archived_ranking = (
+                    self.sql_session.query(ArchivedStudentRanking)
+                    .filter(ArchivedStudentRanking.training_day_id == st.source_training_day_id)
+                    .filter(ArchivedStudentRanking.student_id == student.id)
+                    .first()
+                )
+                if archived_ranking and archived_ranking.task_scores:
+                    task_id_str = str(st.task_id)
+                    if task_id_str in archived_ranking.task_scores:
+                        training_scores[st.task_id] = archived_ranking.task_scores[task_id_str]
+
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
         self.r_params["participation"] = participation
@@ -1798,6 +1818,8 @@ class StudentTasksHandler(BaseHandler):
             student.student_tasks, key=lambda st: st.assigned_at, reverse=True
         )
         self.r_params["available_tasks"] = available_tasks
+        self.r_params["home_scores"] = home_scores
+        self.r_params["training_scores"] = training_scores
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == managing_contest.id)\

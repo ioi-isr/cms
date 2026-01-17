@@ -180,6 +180,11 @@ $(document).ready(function () {
                                     <span id="unread_count" class="label label-warning no_unread"></span>
                                 </a>
                             </li>
+    {% if training_program is not none %}
+                            <li{% if page == "training_days" %} class="active"{% endif %}>
+                                <a href="{{ contest_url("training_days") }}">{% trans %}Training Days{% endtrans %}</a>
+                            </li>
+    {% endif %}
     {% if training_program is none and ((actual_phase >= 0 and participation.starting_time is not none) or participation.unrestricted) %}
         {% for t_iter in visible_tasks %}
                             <li class="nav-header">

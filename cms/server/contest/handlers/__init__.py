@@ -58,7 +58,8 @@ from .communication import \
 from .delayrequest import \
     DelayRequestHandler
 from .trainingprogram import \
-    TrainingProgramOverviewHandler
+    TrainingProgramOverviewHandler, \
+    TrainingDaysHandler
 from .api import \
     ApiLoginHandler, \
     ApiSubmissionListHandler, \
@@ -116,6 +117,7 @@ HANDLERS = [
     # Training Programs
 
     (r"/training_overview", TrainingProgramOverviewHandler),
+    (r"/training_days", TrainingDaysHandler),
 
     # API
     (r"/api/login", ApiLoginHandler),
