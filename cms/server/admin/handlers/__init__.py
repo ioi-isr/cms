@@ -202,7 +202,9 @@ from .trainingprogram import \
     TrainingProgramAttendanceHandler, \
     TrainingProgramCombinedRankingHandler, \
     TrainingProgramCombinedRankingHistoryHandler, \
-    TrainingProgramCombinedRankingDetailHandler
+    TrainingProgramCombinedRankingDetailHandler, \
+    TrainingProgramOverviewRedirectHandler, \
+    TrainingProgramResourcesListRedirectHandler
 
 
 HANDLERS = [
@@ -392,6 +394,8 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/combined_ranking", TrainingProgramCombinedRankingHandler),
     (r"/training_program/([0-9]+)/combined_ranking/history", TrainingProgramCombinedRankingHistoryHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/combined_ranking_detail", TrainingProgramCombinedRankingDetailHandler),
+    (r"/training_program/([0-9]+)/overview", TrainingProgramOverviewRedirectHandler),
+    (r"/training_program/([0-9]+)/resourceslist", TrainingProgramResourcesListRedirectHandler),
 
     # Training day groups (main groups configuration on contest page)
     (r"/contest/([0-9]+)/training_day_group/add", AddTrainingDayGroupHandler),

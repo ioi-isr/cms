@@ -12,6 +12,26 @@ CMS.AWSUtils.initTagify({
     placeholder: 'All students',
     enforceWhitelist: true
 });
+
+// Confirmation for adding tasks not in the training program
+var programTaskIds = {{ program_task_ids | default([]) | tojson }};
+var addTaskForm = document.getElementById('add-task-form');
+if (addTaskForm) {
+    addTaskForm.addEventListener('submit', function(e) {
+        var select = this.querySelector('select[name="task_id"]');
+        var selectedTaskId = parseInt(select.value, 10);
+        if (selectedTaskId && !programTaskIds.includes(selectedTaskId)) {
+            var confirmed = confirm(
+                'This task is not in the training program. ' +
+                'Adding it to this training day will also add it to the training program. ' +
+                'Do you want to continue?'
+            );
+            if (!confirmed) {
+                e.preventDefault();
+            }
+        }
+    });
+}
 {% endif %}
 {% endblock js_init %}
 
@@ -28,14 +48,14 @@ CMS.AWSUtils.initTagify({
 <span style="color: red;">Warning: the contest is visible to contestants, tasks added can be seen</span>
 {% endif %}
 
-<form action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
+<form id="add-task-form" action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  Add a new task{% if is_training_day %} from training program{% endif %}:
+  Add a new task:
   <select name="task_id" class="searchable-select">
     <option value="" selected disabled hidden>Select a new task...</option>
     {% for t in unassigned_tasks %}
-    <option value="{{ t.id }}">
-      {{ t.name }}
+    <option value="{{ t.id }}"{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} data-not-in-program="true"{% endif %}>
+      {{ t.name }}{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} (not in training program){% endif %}
     </option>
     {% endfor %}
   </select>

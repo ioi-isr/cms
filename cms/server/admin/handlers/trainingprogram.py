@@ -107,8 +107,10 @@ class TrainingProgramHandler(BaseHandler):
     def post(self, training_program_id: str):
         fallback = self.url("training_program", training_program_id)
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        contest = training_program.managing_contest
 
         try:
+            # Update training program attributes
             attrs = training_program.get_attrs()
             self.get_string(attrs, "name")
             self.get_string(attrs, "description")
@@ -122,28 +124,72 @@ class TrainingProgramHandler(BaseHandler):
             training_program.set_attrs(attrs)
 
             # Sync description to managing contest
-            training_program.managing_contest.description = attrs["description"]
+            contest.description = attrs["description"]
 
-            # Parse and update start/stop times on managing contest
-            start_str = self.get_argument("start", "")
-            stop_str = self.get_argument("stop", "")
+            # Update managing contest configuration fields
+            contest_attrs = contest.get_attrs()
 
-            if start_str:
-                training_program.managing_contest.start = dt.strptime(
-                    start_str, "%Y-%m-%dT%H:%M"
-                )
+            # Allowed localizations (comma-separated list)
+            allowed_localizations: str = self.get_argument("allowed_localizations", "")
+            if allowed_localizations:
+                contest_attrs["allowed_localizations"] = [
+                    x.strip()
+                    for x in allowed_localizations.split(",")
+                    if len(x) > 0 and not x.isspace()
+                ]
+            else:
+                contest_attrs["allowed_localizations"] = []
 
-            if stop_str:
-                training_program.managing_contest.stop = dt.strptime(
-                    stop_str, "%Y-%m-%dT%H:%M"
-                )
+            # Programming languages
+            contest_attrs["languages"] = self.get_arguments("languages")
+
+            # Boolean settings
+            self.get_bool(contest_attrs, "submissions_download_allowed")
+            self.get_bool(contest_attrs, "allow_questions")
+            self.get_bool(contest_attrs, "allow_user_tests")
+            self.get_bool(contest_attrs, "allow_unofficial_submission_before_analysis_mode")
+            self.get_bool(contest_attrs, "allow_delay_requests")
+
+            # Login section boolean settings
+            self.get_bool(contest_attrs, "block_hidden_participations")
+            self.get_bool(contest_attrs, "allow_password_authentication")
+            self.get_bool(contest_attrs, "allow_registration")
+            self.get_bool(contest_attrs, "ip_restriction")
+            self.get_bool(contest_attrs, "ip_autologin")
+
+            # Score precision
+            self.get_int(contest_attrs, "score_precision")
+
+            # Times
+            self.get_datetime(contest_attrs, "start")
+            self.get_datetime(contest_attrs, "stop")
+            self.get_string(contest_attrs, "timezone", empty=None)
+            self.get_timedelta_sec(contest_attrs, "per_user_time")
+
+            # Limits
+            self.get_int(contest_attrs, "max_submission_number")
+            self.get_int(contest_attrs, "max_user_test_number")
+            self.get_timedelta_sec(contest_attrs, "min_submission_interval")
+            self.get_timedelta_sec(contest_attrs, "min_submission_interval_grace_period")
+            self.get_timedelta_sec(contest_attrs, "min_user_test_interval")
+
+            # Token parameters
+            self.get_string(contest_attrs, "token_mode")
+            self.get_int(contest_attrs, "token_max_number")
+            self.get_timedelta_sec(contest_attrs, "token_min_interval")
+            self.get_int(contest_attrs, "token_gen_initial")
+            self.get_int(contest_attrs, "token_gen_number")
+            self.get_timedelta_min(contest_attrs, "token_gen_interval")
+            self.get_int(contest_attrs, "token_gen_max")
+
+            # Apply contest attributes
+            contest.set_attrs(contest_attrs)
 
             # Validate that stop is not before start (only if both are set)
             if (
-                training_program.managing_contest.start is not None
-                and training_program.managing_contest.stop is not None
-                and training_program.managing_contest.stop
-                < training_program.managing_contest.start
+                contest.start is not None
+                and contest.stop is not None
+                and contest.stop < contest.start
             ):
                 raise ValueError("End time must be after start time")
 
@@ -154,7 +200,9 @@ class TrainingProgramHandler(BaseHandler):
             self.redirect(fallback)
             return
 
-        self.try_commit()
+        if self.try_commit():
+            # Update the contest on RWS.
+            self.service.proxy_service.reinitialize()
         self.redirect(fallback)
 
 
@@ -440,7 +488,7 @@ class AddTrainingProgramStudentHandler(BaseHandler):
 
         try:
             user_id: str = self.get_argument("user_id")
-            assert user_id != "null", "Please select a valid user"
+            assert user_id != "", "Please select a valid user"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -449,7 +497,13 @@ class AddTrainingProgramStudentHandler(BaseHandler):
 
         user = self.safe_get_item(User, user_id)
 
-        participation = Participation(contest=managing_contest, user=user)
+        # Set starting_time to now so the student can see everything immediately
+        # (training programs don't have a start button)
+        participation = Participation(
+            contest=managing_contest,
+            user=user,
+            starting_time=make_datetime()
+        )
         self.sql_session.add(participation)
         self.sql_session.flush()
 
@@ -1876,7 +1930,7 @@ class AddStudentTaskHandler(BaseHandler):
 
         try:
             task_id = self.get_argument("task_id")
-            if task_id == "null":
+            if task_id in ("", "null"):
                 raise ValueError("Please select a task")
 
             task = self.safe_get_item(Task, task_id)
@@ -2008,7 +2062,7 @@ class BulkAssignTaskHandler(BaseHandler):
 
         try:
             task_id = self.get_argument("task_id")
-            if task_id == "null":
+            if task_id in ("", "null"):
                 raise ValueError("Please select a task")
 
             tag_name = self.get_argument("tag", "").strip().lower()
@@ -2847,3 +2901,25 @@ class TrainingProgramCombinedRankingDetailHandler(
             .filter(Question.ignored.is_(False))\
             .count()
         self.render("training_program_combined_ranking_detail.html", **self.r_params)
+
+
+class TrainingProgramOverviewRedirectHandler(BaseHandler):
+    """Redirect /training_program/{id}/overview to the managing contest's overview page."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        self.redirect(
+            self.url("contest", training_program.managing_contest.id, "overview")
+        )
+
+
+class TrainingProgramResourcesListRedirectHandler(BaseHandler):
+    """Redirect /training_program/{id}/resourceslist to the managing contest's resourceslist page."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        self.redirect(
+            self.url("contest", training_program.managing_contest.id, "resourceslist")
+        )
