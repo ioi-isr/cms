@@ -6,7 +6,7 @@
     // Pre-paint CSS injection to prevent flash of expanded menus
     // Uses a hydration class on <html> so these rules only apply during initial render
     (function() {
-      var validSectionKeys = ['training-programs', 'contests', 'tasks', 'users', 'teams'];
+      var validSectionKeys = ['training-programs', 'contests', 'tasks', 'users', 'teams', 'training-days'];
       var folderKeyPattern = /^(folder|subfolder|training-program)-\d+$/;
       var css = '';
 
@@ -284,9 +284,12 @@ $(document).ready(initSidebarEvents);
         </div>
         {% endif %}
         <ul class="menu">
-        {% if contest is none or training_program is defined %}
+        {% if contest is none and training_program is not defined %}
           <li class="menu_entry"><a class="menu_link" href="{{ url() }}">Overview</a></li>
           <li class="menu_entry"><a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a></li>
+        {% elif training_program is defined %}
+          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "overview") }}">Overview</a></li>
+          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "resourceslist") }}">Resource usage</a></li>
         {% else %}
           <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "overview") }}">Overview</a></li>
           <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "resourceslist") }}">Resource usage</a></li>
@@ -478,7 +481,6 @@ $(document).ready(initSidebarEvents);
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "combined_ranking") }}">Combined Ranking</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a></li>
@@ -491,6 +493,31 @@ $(document).ready(initSidebarEvents);
             </li>
           </ul>
           <div class="hr"></div>
+          <div class="sidebar-section" data-section-key="training-days">
+            <h2 class="sidebar-section-title">
+              <span class="section-caret"></span>
+              <a href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a>
+            </h2>
+            <div class="sidebar-section-body">
+              {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
+              {% if active_training_days|length > 0 %}
+              <ul class="sidebar-menu">
+                {% for td in active_training_days %}
+                <li class="sidebar-contest">
+                  <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
+                </li>
+                {% endfor %}
+              </ul>
+              {% else %}
+              <p class="sidebar-empty">No active training days</p>
+              {% endif %}
+              {% if admin.permission_all %}
+              <div class="sidebar-actions">
+                <a class="sidebar-action-link" href="{{ url("training_program", training_program.id, "training_days", "add") }}">Add a training day</a>
+              </div>
+              {% endif %}
+            </div>
+          </div>
           <div class="footer">
             <span id="remaining_text"></span>
             <span id="remaining_value"></span>

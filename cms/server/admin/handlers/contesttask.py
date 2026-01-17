@@ -52,15 +52,28 @@ class ContestTasksHandler(BaseHandler):
         self.r_params["is_training_day"] = training_day is not None
 
         if training_day is not None:
-            # For training days, show tasks from the training program's
-            # managing contest that are not already assigned to any training day
+            # For training days, show all tasks that are not already assigned
+            # to any training day. Tasks in the training program are shown first,
+            # followed by tasks not in the training program.
             training_program = training_day.training_program
-            self.r_params["unassigned_tasks"] = \
-                self.sql_session.query(Task)\
-                    .filter(Task.contest_id == training_program.managing_contest_id)\
-                    .filter(Task.training_day_id.is_(None))\
-                    .order_by(Task.num)\
-                    .all()
+
+            # Tasks in the training program (not assigned to any training day)
+            program_tasks = self.sql_session.query(Task)\
+                .filter(Task.contest_id == training_program.managing_contest_id)\
+                .filter(Task.training_day_id.is_(None))\
+                .order_by(Task.num)\
+                .all()
+
+            # All other tasks (not in any contest or training day)
+            other_tasks = self.sql_session.query(Task)\
+                .filter(Task.contest_id.is_(None))\
+                .filter(Task.training_day_id.is_(None))\
+                .order_by(Task.name)\
+                .all()
+
+            self.r_params["unassigned_tasks"] = program_tasks + other_tasks
+            # Track which task IDs are in the training program for the template
+            self.r_params["program_task_ids"] = [t.id for t in program_tasks]
 
             # Get all student tags for autocomplete (for task visibility tags)
             self.r_params["all_student_tags"] = get_all_student_tags(training_program)
@@ -282,6 +295,15 @@ class AddContestTaskHandler(BaseHandler):
         task = self.safe_get_item(Task, task_id)
 
         if training_day is not None:
+            training_program = training_day.training_program
+
+            # Check if task is not in the training program
+            if task.contest_id != training_program.managing_contest_id:
+                # Add the task to the training program's managing contest first
+                managing_contest = training_program.managing_contest
+                task.num = len(managing_contest.tasks)
+                task.contest = managing_contest
+
             # Assign the task to the training day.
             # Task keeps its contest_id (managing contest) and gets training_day_id set.
             # Use training_day_num for ordering within the training day.

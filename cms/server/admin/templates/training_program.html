@@ -5,9 +5,11 @@
   <h1>Training Program</h1>
 </div>
 
-<form action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program" style="display:inline;">
+<!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
+<form enctype="multipart/form-data" action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program" style="display:inline;">
   {{ xsrf_form_html|safe }}
   <table class="sub_table">
+    <tr><td colspan=2><h2>Training Program Information</h2></td></tr>
     <tr>
       <td>
         <span class="info" title="A short name for the training program, preferably using only letters, numbers and underscores."></span>
@@ -20,68 +22,23 @@
         <span class="info" title="The name of the training program as seen by users."></span>
         Description
       </td>
-      <td><input type="text" name="description" value="{{ training_program.description }}"/></td>
+      <td><textarea name="description">{{ training_program.description }}</textarea></td>
     </tr>
-    <tr>
-      <td>
-        <span class="info" title="When the training program starts."></span>
-        Start time
-      </td>
-      <td><input type="datetime-local" name="start" value="{{ training_program.managing_contest.start.strftime('%Y-%m-%dT%H:%M') }}"/></td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="When the training program ends. Must be after start time."></span>
-        End time
-      </td>
-      <td><input type="datetime-local" name="stop" value="{{ training_program.managing_contest.stop.strftime('%Y-%m-%dT%H:%M') }}"/></td>
-    </tr>
-  </table>
-  <input type="submit" value="Update"/>
-</form>
 
-<script>
-CMS.AWSUtils.initDateTimeValidation(
-  'form[name="edit_training_program"]',
-  'input[name="start"]',
-  'input[name="stop"]'
-);
-</script>
+    {# Include contest configuration fields for the managing contest #}
+    {% set contest = training_program.managing_contest %}
+    {% with show_folder=false, show_name=false, show_description=false, show_login_section=true, show_analysis_section=false %}
+      {% include "fragments/contest_config_fields.html" %}
+    {% endwith %}
+  </table>
+  <input type="submit" value="Update"{% if not admin.permission_all %} disabled{% endif %}/>
+  <input type="reset" value="Reset">
+</form>
 
 <form action="{{ url("training_programs") }}" method="POST" style="display:inline;">
   {{ xsrf_form_html|safe }}
   <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
   <input type="submit" name="operation" value="Remove" style="float: right;"/>
 </form>
-
-
-<h3>Students ({{ training_program.students|length }})</h3>
-<ul>
-  {% if training_program.students|length == 0 %}
-    <li>(no students yet)</li>
-  {% else %}
-    {% for student in training_program.students[:10] %}
-      {% set u = student.participation.user %}
-      <li><a href="{{ url("training_program", training_program.id, "student", u.id, "edit") }}">{{ u.username }}</a> - {{ u.first_name }} {{ u.last_name }}</li>
-    {% endfor %}
-    {% if training_program.students|length > 10 %}
-      <li>... and {{ training_program.students|length - 10 }} more</li>
-    {% endif %}
-  {% endif %}
-</ul>
-
-<h3>Tasks ({{ training_program.managing_contest.tasks|length }})</h3>
-<ul>
-  {% if training_program.managing_contest.tasks|length == 0 %}
-    <li>(no tasks yet)</li>
-  {% else %}
-    {% for t in training_program.managing_contest.tasks[:10] %}
-      <li><a href="{{ url("task", t.id) }}">{{ t.name }}</a> - {{ t.title }}</li>
-    {% endfor %}
-    {% if training_program.managing_contest.tasks|length > 10 %}
-      <li>... and {{ training_program.managing_contest.tasks|length - 10 }} more</li>
-    {% endif %}
-  {% endif %}
-</ul>
 
 {% endblock core %}
