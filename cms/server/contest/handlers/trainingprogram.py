@@ -85,6 +85,10 @@ class TrainingProgramOverviewHandler(ContestHandler):
         for training_day in training_program.training_days:
             td_contest = training_day.contest
 
+            # Skip archived training days (contest is None)
+            if td_contest is None:
+                continue
+
             # Get user's participation in this training day's contest
             td_participation = (
                 self.sql_session.query(Participation)

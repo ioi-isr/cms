@@ -408,7 +408,7 @@ $(document).ready(function () {
 {% for td_id, td_data in training_day_submissions.items() %}
 {% set training_day = td_data[0] %}
 {% set td_submissions = td_data[1] %}
-<h3>{% trans td_desc=training_day.contest.description %}Submissions from training day: {{ td_desc }}{% endtrans %}</h3>
+<h3>{% trans td_desc=(training_day.contest.description if training_day.contest else (training_day.description or training_day.name)) %}Submissions from training day: {{ td_desc }}{% endtrans %}</h3>
 {% if td_submissions|rejectattr("official")|list|length > 0 %}
 <h4>{% trans %}Unofficial submissions{% endtrans %}</h4>
   {{ macro_submission.rows(
