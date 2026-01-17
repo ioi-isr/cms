@@ -288,8 +288,8 @@ $(document).ready(initSidebarEvents);
           <li class="menu_entry"><a class="menu_link" href="{{ url() }}">Overview</a></li>
           <li class="menu_entry"><a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a></li>
         {% elif training_program is defined %}
-          <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id) }}">Overview</a></li>
-          <li class="menu_entry"><a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a></li>
+          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "overview") }}">Overview</a></li>
+          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "resourceslist") }}">Resource usage</a></li>
         {% else %}
           <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "overview") }}">Overview</a></li>
           <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "resourceslist") }}">Resource usage</a></li>
