@@ -2374,35 +2374,37 @@ class ArchiveTrainingDayHandler(BaseHandler):
             self.sql_session.add(archived_ranking)
 
 
-class TrainingProgramAttendanceHandler(BaseHandler):
-    """Display attendance data for all archived training days."""
+class TrainingProgramDateFilterMixin:
+    """Mixin for filtering training days by date range."""
 
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-
-        # Get date filter parameters
-        start_date_str = self.get_argument("start_date", None)
-        end_date_str = self.get_argument("end_date", None)
-
+    def _parse_date_range(self) -> tuple[dt | None, dt | None]:
+        """Parse start_date and end_date query arguments."""
         start_date = None
         end_date = None
-        if start_date_str:
+        start_str = self.get_argument("start_date", None)
+        end_str = self.get_argument("end_date", None)
+
+        if start_str:
             try:
-                start_date = dt.fromisoformat(start_date_str)
-            except ValueError:
-                pass
-        if end_date_str:
-            try:
-                end_date = dt.fromisoformat(end_date_str)
+                start_date = dt.fromisoformat(start_str)
             except ValueError:
                 pass
 
-        # Get all archived training days (those with contest_id = NULL)
-        # Apply date filtering if specified
+        if end_str:
+            try:
+                end_date = dt.fromisoformat(end_str)
+            except ValueError:
+                pass
+
+        return start_date, end_date
+
+    def _get_archived_training_days(
+        self, training_program_id: int, start_date: dt | None, end_date: dt | None
+    ) -> list[TrainingDay]:
+        """Query archived training days with optional date filtering."""
         query = (
             self.sql_session.query(TrainingDay)
-            .filter(TrainingDay.training_program_id == training_program.id)
+            .filter(TrainingDay.training_program_id == training_program_id)
             .filter(TrainingDay.contest_id.is_(None))
         )
         if start_date:
@@ -2410,7 +2412,20 @@ class TrainingProgramAttendanceHandler(BaseHandler):
         if end_date:
             # Add one day to end_date to include the entire end day
             query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
-        archived_training_days = query.order_by(TrainingDay.start_time).all()
+        return query.order_by(TrainingDay.start_time).all()
+
+
+class TrainingProgramAttendanceHandler(TrainingProgramDateFilterMixin, BaseHandler):
+    """Display attendance data for all archived training days."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        start_date, end_date = self._parse_date_range()
+        archived_training_days = self._get_archived_training_days(
+            training_program.id, start_date, end_date
+        )
 
         # Build attendance data structure
         # {student_id: {training_day_id: attendance_record}}
@@ -2447,39 +2462,19 @@ class TrainingProgramAttendanceHandler(BaseHandler):
         self.render("training_program_attendance.html", **self.r_params)
 
 
-class TrainingProgramCombinedRankingHandler(BaseHandler):
+class TrainingProgramCombinedRankingHandler(
+    TrainingProgramDateFilterMixin, BaseHandler
+):
     """Display combined ranking data for all archived training days."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
-        start_date_str = self.get_argument("start_date", None)
-        end_date_str = self.get_argument("end_date", None)
-
-        start_date = None
-        end_date = None
-        if start_date_str:
-            try:
-                start_date = dt.fromisoformat(start_date_str)
-            except ValueError:
-                pass
-        if end_date_str:
-            try:
-                end_date = dt.fromisoformat(end_date_str)
-            except ValueError:
-                pass
-
-        query = (
-            self.sql_session.query(TrainingDay)
-            .filter(TrainingDay.training_program_id == training_program.id)
-            .filter(TrainingDay.contest_id.is_(None))
+        start_date, end_date = self._parse_date_range()
+        archived_training_days = self._get_archived_training_days(
+            training_program.id, start_date, end_date
         )
-        if start_date:
-            query = query.filter(TrainingDay.start_time >= start_date)
-        if end_date:
-            query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
-        archived_training_days = query.order_by(TrainingDay.start_time).all()
 
         ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
         all_students: dict[int, Student] = {}
@@ -2543,7 +2538,9 @@ class TrainingProgramCombinedRankingHandler(BaseHandler):
         self.render("training_program_combined_ranking.html", **self.r_params)
 
 
-class TrainingProgramCombinedRankingHistoryHandler(BaseHandler):
+class TrainingProgramCombinedRankingHistoryHandler(
+    TrainingProgramDateFilterMixin, BaseHandler
+):
     """Return score history for archived training days as JSON."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
@@ -2552,32 +2549,10 @@ class TrainingProgramCombinedRankingHistoryHandler(BaseHandler):
 
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
-        start_date_str = self.get_argument("start_date", None)
-        end_date_str = self.get_argument("end_date", None)
-
-        start_date = None
-        end_date = None
-        if start_date_str:
-            try:
-                start_date = dt.fromisoformat(start_date_str)
-            except ValueError:
-                pass
-        if end_date_str:
-            try:
-                end_date = dt.fromisoformat(end_date_str)
-            except ValueError:
-                pass
-
-        query = (
-            self.sql_session.query(TrainingDay)
-            .filter(TrainingDay.training_program_id == training_program.id)
-            .filter(TrainingDay.contest_id.is_(None))
+        start_date, end_date = self._parse_date_range()
+        archived_training_days = self._get_archived_training_days(
+            training_program.id, start_date, end_date
         )
-        if start_date:
-            query = query.filter(TrainingDay.start_time >= start_date)
-        if end_date:
-            query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
-        archived_training_days = query.order_by(TrainingDay.start_time).all()
 
         result = []
         for td in archived_training_days:
@@ -2595,7 +2570,9 @@ class TrainingProgramCombinedRankingHistoryHandler(BaseHandler):
         self.write(json.dumps(result))
 
 
-class TrainingProgramCombinedRankingDetailHandler(BaseHandler):
+class TrainingProgramCombinedRankingDetailHandler(
+    TrainingProgramDateFilterMixin, BaseHandler
+):
     """Show detailed score/rank progress for a student across archived training days."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
@@ -2603,32 +2580,10 @@ class TrainingProgramCombinedRankingDetailHandler(BaseHandler):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         student = self.safe_get_item(Student, student_id)
 
-        start_date_str = self.get_argument("start_date", None)
-        end_date_str = self.get_argument("end_date", None)
-
-        start_date = None
-        end_date = None
-        if start_date_str:
-            try:
-                start_date = dt.fromisoformat(start_date_str)
-            except ValueError:
-                pass
-        if end_date_str:
-            try:
-                end_date = dt.fromisoformat(end_date_str)
-            except ValueError:
-                pass
-
-        query = (
-            self.sql_session.query(TrainingDay)
-            .filter(TrainingDay.training_program_id == training_program.id)
-            .filter(TrainingDay.contest_id.is_(None))
+        start_date, end_date = self._parse_date_range()
+        archived_training_days = self._get_archived_training_days(
+            training_program.id, start_date, end_date
         )
-        if start_date:
-            query = query.filter(TrainingDay.start_time >= start_date)
-        if end_date:
-            query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
-        archived_training_days = query.order_by(TrainingDay.start_time).all()
 
         users_data = {}
         for s in training_program.students:
