@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block core %}
+<style>
+#UserDetail_bg {
+  display: block;
+}
+
+#UserDetail {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+#UserDetail_close {
+  display: none;
+}
+
+#UserDetail_header {
+  display: flex;
+  min-height: 120px;
+  margin-bottom: 20px;
+}
+
+#UserDetail_summary {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 1.5em;
+  line-height: 1.5em;
+}
+
+#UserDetail_face,
+#UserDetail_flag {
+  display: none;
+}
+
+#UserDetail_navigator {
+  flex: 1;
+  max-width: 450px;
+}
+
+#UserDetail_navigator table {
+  width: 100%;
+  table-layout: fixed;
+  border-spacing: 2px;
+  border-collapse: separate;
+}
+
+#UserDetail_navigator tr {
+  height: 28px;
+}
+
+#UserDetail_navigator col.name {
+  width: 55%;
+}
+
+#UserDetail_navigator col.score,
+#UserDetail_navigator col.rank {
+  width: 15%;
+}
+
+#UserDetail_navigator col.show {
+  width: 15%;
+}
+
+#UserDetail_navigator tr td.score,
+#UserDetail_navigator tr td.rank {
+  padding-left: 4px;
+  text-align: right;
+}
+
+#UserDetail_navigator tbody tr td.btn {
+  text-align: center;
+  border: 1px solid #999999;
+  box-shadow: 0 0 2px gray;
+  background-color: #EEEEEE;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+}
+
+#UserDetail_navigator tbody tr td.btn:hover {
+  background-color: #DDDDDD;
+}
+
+#UserDetail_navigator tbody tr td.btn:active {
+  background-color: #CCCCCC;
+}
+
+#UserDetail_navigator tbody tr.active td.btn {
+  background-color: #EEEEEE;
+  opacity: 0.4;
+  cursor: default;
+}
+
+#UserDetail_navigator tr.global,
+#UserDetail_navigator tr.contest {
+  background-color: #DDDDDD;
+}
+
+#UserDetail_navigator tr.task {
+  background-color: #FFFFFF;
+}
+
+#UserDetail_navigator tr.global td.name,
+#UserDetail_navigator tr.contest td.name {
+  padding-left: 5px;
+  font-weight: bold;
+}
+
+#UserDetail_navigator tr.task td.name {
+  padding-left: 25px;
+}
+
+#UserDetail_title {
+  margin-top: 24px;
+  font-size: 1.5em;
+  line-height: 1.5em;
+  text-align: center;
+}
+
+#UserDetail_charts {
+  margin-top: 24px;
+  width: 100%;
+  text-align: center;
+}
+
+#UserDetail_charts canvas {
+  display: block;
+  margin: 10px auto;
+}
+
+#UserDetail_submissions {
+  margin-top: 24px;
+  width: 100%;
+}
+
+#UserDetail_submissions:empty {
+  margin-top: 0;
+}
+
+#UserDetail_submissions table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+#UserDetail_submissions td,
+#UserDetail_submissions th {
+  height: 28px;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+#UserDetail_submissions thead {
+  background-color: #DDDDDD;
+}
+
+#UserDetail_submissions tbody tr:nth-child(even) {
+  background-color: #EEEEEE;
+}
+
+#UserDetail_submissions tbody tr:nth-child(odd) {
+  background-color: #F8F8F8;
+}
+
+#UserDetail_submissions tbody td[colspan] {
+  text-align: center;
+  font-style: italic;
+}
+
+.back-link {
+  margin-bottom: 20px;
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+.back-link a {
+    color: #0F766E;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.back-link a:hover {
+    text-decoration: underline;
+    color: #0d655e;
+}
+
+.filter-info {
+  background-color: #F0FDFA;
+  border: 1px solid #0F766E;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  color: #0F766E;
+}
+</style>
+
+<div class="back-link">
+  <a href="{{ url("training_program", training_program.id, "combined_ranking") }}{% if start_date or end_date %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}{% endif %}{% if start_date and end_date %}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}{% endif %}{% endif %}">&larr; Back to Combined Ranking</a>
+  |
+  <a href="{{ url("training_program", training_program.id, "student", student.participation.user.id, "edit") }}">Edit Student</a>
+</div>
+
+{% if start_date or end_date %}
+<div class="filter-info">
+  Showing data for training days
+  {% if start_date and end_date %}
+    from {{ start_date.strftime('%Y-%m-%d') }} to {{ end_date.strftime('%Y-%m-%d') }}
+  {% elif start_date %}
+    from {{ start_date.strftime('%Y-%m-%d') }}
+  {% elif end_date %}
+    until {{ end_date.strftime('%Y-%m-%d') }}
+  {% endif %}
+</div>
+{% endif %}
+
+<div id="UserDetail_bg">
+  <div id="UserDetail">
+    <img id="UserDetail_close" src="" alt="Close"/>
+    <div id="UserDetail_header">
+      <div id="UserDetail_summary">
+        <div>
+          <span id="UserDetail_f_name">{% if student.participation %}{{ student.participation.user.first_name }}{% endif %}</span>
+          <span id="UserDetail_l_name">{% if student.participation %}{{ student.participation.user.last_name }}{% endif %}</span>
+        </div>
+        <div style="font-size: 0.6em; color: #666;">
+          {% if student.participation %}{{ student.participation.user.username }}{% endif %}
+        </div>
+        <img id="UserDetail_face" src="" alt="Face"/>
+        <div id="UserDetail_spacer"></div>
+        <div id="UserDetail_team"></div>
+        <img id="UserDetail_flag" src="" alt="Flag"/>
+      </div>
+      <div id="UserDetail_navigator">
+        <table>
+          <col class="name"/>
+          <col class="score"/>
+          <col class="rank"/>
+          <col class="show"/>
+          <thead>
+            <tr>
+              <td></td>
+              <td style="text-align: right;">Score</td>
+              <td style="text-align: right;">Rank</td>
+              <td></td>
+            </tr>
+          </thead>
+          <tbody id="UserDetail_scores">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="UserDetail_title"></div>
+
+    <div id="UserDetail_charts">
+      <div style="margin-bottom: 10px;"><strong>Score</strong></div>
+      <canvas id="UserDetail_score_chart" width="920" height="200"></canvas>
+      <div style="margin-top: 20px; margin-bottom: 10px;"><strong>Rank</strong></div>
+      <canvas id="UserDetail_rank_chart" width="920" height="200"></canvas>
+    </div>
+
+    <div id="UserDetail_submissions">
+    </div>
+  </div>
+</div>
+
+<script>
+function format_time(time, full) {
+  var h = Math.floor(time / 3600);
+  var m = Math.floor((time % 3600) / 60);
+  var s = Math.floor(time % 60);
+  h = full && h < 10 ? "0" + h : "" + h;
+  m = m < 10 ? "0" + m : "" + m;
+  s = s < 10 ? "0" + s : "" + s;
+  return (h + ":" + m + ":" + s);
+}
+
+function round_to_str(value, ndigits) {
+  if (ndigits > 0) {
+    return value.toFixed(ndigits).replace(/\.?0+$/, "");
+  } else {
+    return value.toFixed(0);
+  }
+}
+
+var Config = new function() {
+  var self = this;
+  self.get_history_url = function() {
+    return {{ history_url | tojson | safe }};
+  };
+  self.get_submissions_url = function(user_id) {
+    return "";
+  };
+  self.get_face_url = function(user_id) {
+    return "";
+  };
+  self.get_flag_url = function(team_id) {
+    return "";
+  };
+};
+
+var DataStore = new function() {
+  var self = this;
+
+  var usersData = {{ users_data | tojson | safe }};
+  var tasksData = {{ tasks_data | tojson | safe }};
+  var contestsData = {{ contests_data | tojson | safe }};
+  var contestList = {{ contest_list | tojson | safe }};
+
+  self.users = usersData;
+  self.tasks = tasksData;
+  self.teams = {};
+  self.contests = contestsData;
+  self.contest_list = contestList;
+
+  self.user_count = {{ user_count }};
+  self.global_max_score = {{ total_max_score }};
+  self.global_score_precision = 2;
+};
+</script>
+
+<script src="{{ url("static", "js", "Chart.js") }}"></script>
+<script src="{{ url("static", "js", "HistoryStore.js") }}"></script>
+<script src="{{ url("static", "js", "UserDetail.js") }}"></script>
+
+<script>
+(function() {
+  var userId = {{ user_id | tojson | safe }};
+
+  HistoryStore.init();
+
+  var originalInit = UserDetail.init;
+  UserDetail.init = function() {
+    UserDetail.f_name_label = $('#UserDetail_f_name');
+    UserDetail.l_name_label = $('#UserDetail_l_name');
+    UserDetail.team_label = $('#UserDetail_team');
+    UserDetail.flag_image = $('#UserDetail_flag');
+    UserDetail.face_image = $('#UserDetail_face');
+    UserDetail.title_label = $('#UserDetail_title');
+    UserDetail.navigator = $('#UserDetail_navigator table tbody');
+    UserDetail.submission_table = $('#UserDetail_submissions');
+    UserDetail.score_chart = $('#UserDetail_score_chart')[0];
+    UserDetail.rank_chart = $('#UserDetail_rank_chart')[0];
+
+    UserDetail.navigator.on("click", "td.btn", function() {
+      if (UserDetail.active !== null) {
+        UserDetail.active.removeClass("active");
+      }
+      UserDetail.active = $(this).parent();
+      UserDetail.active.addClass("active");
+
+      if (UserDetail.active.hasClass('global')) {
+        UserDetail.show_global();
+      } else if (UserDetail.active.hasClass('contest')) {
+        UserDetail.show_contest(UserDetail.active.attr('data-contest'));
+      } else if (UserDetail.active.hasClass('task')) {
+        UserDetail.show_task(UserDetail.active.attr('data-task'));
+      }
+    });
+  };
+
+  UserDetail.show = function(user_id) {
+    UserDetail.user_id = user_id;
+    UserDetail.user = DataStore.users[user_id];
+    UserDetail.data_fetched = 0;
+
+    HistoryStore.request_update(UserDetail.history_callback);
+
+    UserDetail.submissions = {{ submissions_data | tojson | safe }};
+    UserDetail.data_fetched += 1;
+    UserDetail.do_show();
+  };
+
+  var originalDoShow = UserDetail.do_show;
+  UserDetail.do_show = function() {
+    if (UserDetail.data_fetched == 2) {
+      var s = "<tr class=\"global\"> \
+                  <td class=\"name\">Global</td> \
+                  <td class=\"score\">" + (UserDetail.global_s.length > 0 ? round_to_str(UserDetail.global_s[UserDetail.global_s.length-1][1], DataStore.global_score_precision) : 0) + "</td> \
+                  <td class=\"rank\">" + (UserDetail.global_r.length > 0 ? UserDetail.global_r[UserDetail.global_r.length-1][1] : 1) + "</td> \
+                  <td class=\"btn\"><a>Show</a></td> \
+              </tr>";
+
+      var contests = DataStore.contest_list;
+      for (var i in contests) {
+        var contest = contests[i];
+        var c_id = contest["key"];
+
+        s += "<tr class=\"contest\" data-contest=\"" + c_id +"\"> \
+                 <td class=\"name\">" + contest['name'] + "</td> \
+                 <td class=\"score\">" + (UserDetail.contest_s[c_id] && UserDetail.contest_s[c_id].length > 0 ? round_to_str(UserDetail.contest_s[c_id][UserDetail.contest_s[c_id].length-1][1], contest["score_precision"]) : 0) + "</td> \
+                 <td class=\"rank\">" + (UserDetail.contest_r[c_id] && UserDetail.contest_r[c_id].length > 0 ? UserDetail.contest_r[c_id][UserDetail.contest_r[c_id].length-1][1] : 1) + "</td> \
+                 <td class=\"btn\"><a>Show</a></td> \
+              </tr>";
+
+        var tasks = contest["tasks"];
+        for (var j in tasks) {
+          var task = tasks[j];
+          var t_id = task["key"];
+
+          s += "<tr class=\"task\" data-task=\"" + t_id +"\"> \
+                   <td class=\"name\">" + task['name'] + "</td> \
+                   <td class=\"score\">" + (UserDetail.task_s[t_id] && UserDetail.task_s[t_id].length > 0 ? round_to_str(UserDetail.task_s[t_id][UserDetail.task_s[t_id].length-1][1], task["score_precision"]) : 0) + "</td> \
+                   <td class=\"rank\">" + (UserDetail.task_r[t_id] && UserDetail.task_r[t_id].length > 0 ? UserDetail.task_r[t_id][UserDetail.task_r[t_id].length-1][1] : 1) + "</td> \
+                   <td class=\"btn\"><a>Show</a></td> \
+                </tr>";
+        }
+      }
+
+      UserDetail.navigator.html(s);
+      UserDetail.active = null;
+
+      $('tr.global td.btn', UserDetail.navigator).click();
+    }
+  };
+
+  UserDetail.hide = function() {};
+
+  UserDetail.init();
+  UserDetail.show(userId);
+})();
+</script>
+
+{% endblock core %}
