@@ -107,8 +107,10 @@ class TrainingProgramHandler(BaseHandler):
     def post(self, training_program_id: str):
         fallback = self.url("training_program", training_program_id)
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        contest = training_program.managing_contest
 
         try:
+            # Update training program attributes
             attrs = training_program.get_attrs()
             self.get_string(attrs, "name")
             self.get_string(attrs, "description")
@@ -122,28 +124,50 @@ class TrainingProgramHandler(BaseHandler):
             training_program.set_attrs(attrs)
 
             # Sync description to managing contest
-            training_program.managing_contest.description = attrs["description"]
+            contest.description = attrs["description"]
 
-            # Parse and update start/stop times on managing contest
-            start_str = self.get_argument("start", "")
-            stop_str = self.get_argument("stop", "")
+            # Update managing contest configuration fields
+            contest_attrs = contest.get_attrs()
 
-            if start_str:
-                training_program.managing_contest.start = dt.strptime(
-                    start_str, "%Y-%m-%dT%H:%M"
-                )
+            # Programming languages
+            contest_attrs["languages"] = self.get_arguments("languages")
 
-            if stop_str:
-                training_program.managing_contest.stop = dt.strptime(
-                    stop_str, "%Y-%m-%dT%H:%M"
-                )
+            # Boolean settings
+            self.get_bool(contest_attrs, "submissions_download_allowed")
+            self.get_bool(contest_attrs, "allow_questions")
+            self.get_bool(contest_attrs, "allow_user_tests")
+
+            # Score precision
+            self.get_int(contest_attrs, "score_precision")
+
+            # Times
+            self.get_datetime(contest_attrs, "start")
+            self.get_datetime(contest_attrs, "stop")
+            self.get_string(contest_attrs, "timezone", empty=None)
+
+            # Limits
+            self.get_int(contest_attrs, "max_submission_number")
+            self.get_int(contest_attrs, "max_user_test_number")
+            self.get_timedelta_sec(contest_attrs, "min_submission_interval")
+            self.get_timedelta_sec(contest_attrs, "min_user_test_interval")
+
+            # Token parameters
+            self.get_string(contest_attrs, "token_mode")
+            self.get_int(contest_attrs, "token_max_number")
+            self.get_timedelta_sec(contest_attrs, "token_min_interval")
+            self.get_int(contest_attrs, "token_gen_initial")
+            self.get_int(contest_attrs, "token_gen_number")
+            self.get_timedelta_min(contest_attrs, "token_gen_interval")
+            self.get_int(contest_attrs, "token_gen_max")
+
+            # Apply contest attributes
+            contest.set_attrs(contest_attrs)
 
             # Validate that stop is not before start (only if both are set)
             if (
-                training_program.managing_contest.start is not None
-                and training_program.managing_contest.stop is not None
-                and training_program.managing_contest.stop
-                < training_program.managing_contest.start
+                contest.start is not None
+                and contest.stop is not None
+                and contest.stop < contest.start
             ):
                 raise ValueError("End time must be after start time")
 
@@ -154,7 +178,9 @@ class TrainingProgramHandler(BaseHandler):
             self.redirect(fallback)
             return
 
-        self.try_commit()
+        if self.try_commit():
+            # Update the contest on RWS.
+            self.service.proxy_service.reinitialize()
         self.redirect(fallback)
 
 
