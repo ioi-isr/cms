@@ -129,6 +129,17 @@ class TrainingProgramHandler(BaseHandler):
             # Update managing contest configuration fields
             contest_attrs = contest.get_attrs()
 
+            # Allowed localizations (comma-separated list)
+            allowed_localizations: str = self.get_argument("allowed_localizations", "")
+            if allowed_localizations:
+                contest_attrs["allowed_localizations"] = [
+                    x.strip()
+                    for x in allowed_localizations.split(",")
+                    if len(x) > 0 and not x.isspace()
+                ]
+            else:
+                contest_attrs["allowed_localizations"] = []
+
             # Programming languages
             contest_attrs["languages"] = self.get_arguments("languages")
 
@@ -136,6 +147,15 @@ class TrainingProgramHandler(BaseHandler):
             self.get_bool(contest_attrs, "submissions_download_allowed")
             self.get_bool(contest_attrs, "allow_questions")
             self.get_bool(contest_attrs, "allow_user_tests")
+            self.get_bool(contest_attrs, "allow_unofficial_submission_before_analysis_mode")
+            self.get_bool(contest_attrs, "allow_delay_requests")
+
+            # Login section boolean settings
+            self.get_bool(contest_attrs, "block_hidden_participations")
+            self.get_bool(contest_attrs, "allow_password_authentication")
+            self.get_bool(contest_attrs, "allow_registration")
+            self.get_bool(contest_attrs, "ip_restriction")
+            self.get_bool(contest_attrs, "ip_autologin")
 
             # Score precision
             self.get_int(contest_attrs, "score_precision")
@@ -144,11 +164,13 @@ class TrainingProgramHandler(BaseHandler):
             self.get_datetime(contest_attrs, "start")
             self.get_datetime(contest_attrs, "stop")
             self.get_string(contest_attrs, "timezone", empty=None)
+            self.get_timedelta_sec(contest_attrs, "per_user_time")
 
             # Limits
             self.get_int(contest_attrs, "max_submission_number")
             self.get_int(contest_attrs, "max_user_test_number")
             self.get_timedelta_sec(contest_attrs, "min_submission_interval")
+            self.get_timedelta_sec(contest_attrs, "min_submission_interval_grace_period")
             self.get_timedelta_sec(contest_attrs, "min_user_test_interval")
 
             # Token parameters
