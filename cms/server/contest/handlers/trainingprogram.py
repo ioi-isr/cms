@@ -260,6 +260,7 @@ class TrainingDaysHandler(ContestHandler):
                 "contest": td_contest,
                 "participation": td_participation,
                 "has_started": has_started,
+                "has_ended": actual_phase >= 1,
                 "user_start_time": user_start_time,
                 "duration": duration,
                 "can_enter_soon": can_enter_soon,

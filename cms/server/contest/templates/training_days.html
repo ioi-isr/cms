@@ -16,7 +16,7 @@
 
 <div class="training-day-list">
 {% for td_info in ongoing_upcoming_trainings %}
-    <div class="training-day-card {% if td_info.has_started %}started{% else %}upcoming{% endif %}">
+    <div class="training-day-card {% if td_info.has_ended %}ended{% elif td_info.has_started %}started{% else %}upcoming{% endif %}">
         <div class="training-day-meta">
             <h3 class="training-day-title">{{ td_info.contest.description }}</h3>
             <div class="training-day-detail">
@@ -27,7 +27,13 @@
             </div>
         </div>
 
-        {% if td_info.has_started %}
+        {% if td_info.has_ended %}
+        <div class="training-day-status">
+            <div class="countdown-display ended-pill">
+                <span class="countdown-running">{% trans %}ENDED{% endtrans %}</span>
+            </div>
+        </div>
+        {% elif td_info.has_started %}
         <div class="training-day-status">
             <div class="countdown-display live-pill">
                 <span class="countdown-running">{% trans %}LIVE{% endtrans %}</span>
@@ -108,7 +114,6 @@
             <th>{% trans %}Tasks{% endtrans %}</th>
             <th style="cursor: pointer;" onclick="sortPastTrainings(3)">{% trans %}Training Score{% endtrans %} <span class="sort-icon"></span></th>
             <th style="cursor: pointer;" onclick="sortPastTrainings(4)">{% trans %}Home Score{% endtrans %} <span class="sort-icon"></span></th>
-            <th style="cursor: pointer;" onclick="sortPastTrainings(5)">{% trans %}Total{% endtrans %} <span class="sort-icon"></span></th>
         </tr>
     </thead>
     <tbody>
@@ -140,11 +145,6 @@
             </td>
             <td>
                 <span class="score-value">{{ "%.0f"|format(pt.home_score) }}</span>
-                <span class="score-max">/ {{ "%.0f"|format(pt.max_score) }}</span>
-            </td>
-            <td>
-                {% set total_score = [pt.training_score, pt.home_score]|max %}
-                <span class="score-value score-total">{{ "%.0f"|format(total_score) }}</span>
                 <span class="score-max">/ {{ "%.0f"|format(pt.max_score) }}</span>
             </td>
         </tr>
@@ -189,13 +189,15 @@
 }
 .training-day-card.started { border-left-color: #28a745; }
 .training-day-card.upcoming { border-left-color: #0d6efd; }
+.training-day-card.ended { border-left-color: #dc3545; }
 .training-day-meta { flex: 1; min-width: 250px; }
 .training-day-title { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #333; }
 .training-day-detail { font-size: 14px; color: #666; margin-bottom: 4px; }
 .training-day-status { text-align: center; flex: 0 0 auto; }
 .countdown-display { display: inline-block; border-radius: 8px; padding: 10px 15px; }
 .countdown-running { font-size: 16px; font-weight: 700; color: white; letter-spacing: 1px; }
-.live-pill { background: #dc3545; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); animation: pulse 2s ease-in-out infinite; }
+.live-pill { background: #28a745; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3); animation: pulse-green 2s ease-in-out infinite; }
+.ended-pill { background: #dc3545; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); }
 .training-day-countdown-label { font-size: 13px; color: #666; margin-bottom: 8px; }
 .training-day-countdown { display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px; }
 .training-day-countdown-text { font-size: 16px; font-weight: 600; color: #0d6efd; }
@@ -253,9 +255,9 @@
 .score-total {
     color: #28a745;
 }
-@keyframes pulse {
-    0%, 100% { box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); }
-    50% { box-shadow: 0 2px 16px rgba(220, 53, 69, 0.6); }
+@keyframes pulse-green {
+    0%, 100% { box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3); }
+    50% { box-shadow: 0 2px 16px rgba(40, 167, 69, 0.6); }
 }
 </style>
 
@@ -354,13 +356,6 @@ function sortPastTrainings(columnIndex) {
         } else if (columnIndex === 4) {
             aVal = parseFloat(a.getAttribute('data-home-score')) || 0;
             bVal = parseFloat(b.getAttribute('data-home-score')) || 0;
-        } else if (columnIndex === 5) {
-            var aTraining = parseFloat(a.getAttribute('data-training-score')) || 0;
-            var aHome = parseFloat(a.getAttribute('data-home-score')) || 0;
-            aVal = Math.max(aTraining, aHome);
-            var bTraining = parseFloat(b.getAttribute('data-training-score')) || 0;
-            var bHome = parseFloat(b.getAttribute('data-home-score')) || 0;
-            bVal = Math.max(bTraining, bHome);
         } else {
             aVal = a.cells[columnIndex].textContent.trim().toLowerCase();
             bVal = b.cells[columnIndex].textContent.trim().toLowerCase();
