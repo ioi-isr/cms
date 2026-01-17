@@ -666,4 +666,8 @@ ALTER TABLE public.training_days ADD COLUMN start_time timestamp without time zo
 -- Add archived_tasks_data column to training_days for storing task metadata after archiving
 ALTER TABLE public.training_days ADD COLUMN archived_tasks_data jsonb;
 
+-- Add duration column to training_days for storing the training day duration after archiving
+-- Calculated as max of main groups duration (if any) or training day duration
+ALTER TABLE public.training_days ADD COLUMN duration interval;
+
 COMMIT;

@@ -46,6 +46,7 @@ from cms.db import (
     ScoreHistory,
     DelayRequest,
 )
+from cms.db.training_day import get_managing_participation
 from cms.server.util import get_all_student_tags, deduplicate_preserving_order, calculate_task_archive_progress, can_access_task
 from cmscommon.datetime import make_datetime
 
@@ -1539,17 +1540,22 @@ class RemoveTrainingDayHandler(BaseHandler):
 
         # Stats for warning message
         self.r_params["task_count"] = len(training_day.tasks)
-        self.r_params["participation_count"] = (
-            self.sql_session.query(Participation)
-            .filter(Participation.contest_id == training_day.contest_id)
-            .count()
-        )
-        self.r_params["submission_count"] = (
-            self.sql_session.query(Submission)
-            .join(Participation)
-            .filter(Participation.contest_id == training_day.contest_id)
-            .count()
-        )
+        # For archived training days, contest_id is None so counts are 0
+        if training_day.contest_id is not None:
+            self.r_params["participation_count"] = (
+                self.sql_session.query(Participation)
+                .filter(Participation.contest_id == training_day.contest_id)
+                .count()
+            )
+            self.r_params["submission_count"] = (
+                self.sql_session.query(Submission)
+                .join(Participation)
+                .filter(Participation.contest_id == training_day.contest_id)
+                .count()
+            )
+        else:
+            self.r_params["participation_count"] = 0
+            self.r_params["submission_count"] = 0
 
         self.render("training_day_remove.html", **self.r_params)
 
@@ -1581,7 +1587,8 @@ class RemoveTrainingDayHandler(BaseHandler):
         self.sql_session.flush()
 
         self.sql_session.delete(training_day)
-        self.sql_session.delete(contest)
+        if contest is not None:
+            self.sql_session.delete(contest)
 
         self.sql_session.flush()
 
@@ -2101,6 +2108,12 @@ class ArchiveTrainingDayHandler(BaseHandler):
             training_day.description = contest.description
             training_day.start_time = contest.start
 
+            # Calculate and store the training day duration
+            # Use max duration among main groups (if any), or training day duration
+            training_day.duration = self._calculate_training_day_duration(
+                training_day, contest
+            )
+
             # Archive attendance data for each student
             self._archive_attendance_data(training_day, contest, class_ips)
 
@@ -2125,6 +2138,40 @@ class ArchiveTrainingDayHandler(BaseHandler):
             )
 
         self.redirect(fallback_page)
+
+    def _calculate_training_day_duration(
+        self,
+        training_day: TrainingDay,
+        contest: Contest
+    ) -> timedelta | None:
+        """Calculate the training day duration for archiving.
+
+        Returns the max training duration among main groups (if any),
+        or the training day duration (if no main groups).
+
+        training_day: the training day being archived.
+        contest: the contest associated with the training day.
+
+        return: the duration as a timedelta, or None if not calculable.
+        """
+        # Check if there are main groups with custom timing
+        main_groups = training_day.groups
+        if main_groups:
+            # Calculate max duration among main groups
+            max_duration: timedelta | None = None
+            for group in main_groups:
+                if group.start_time is not None and group.end_time is not None:
+                    group_duration = group.end_time - group.start_time
+                    if max_duration is None or group_duration > max_duration:
+                        max_duration = group_duration
+            if max_duration is not None:
+                return max_duration
+
+        # Fall back to training day (contest) duration
+        if contest.start is not None and contest.stop is not None:
+            return contest.stop - contest.start
+
+        return None
 
     def _archive_attendance_data(
         self,
@@ -2296,6 +2343,19 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     student_task.source_training_day_id = training_day.id
                     self.sql_session.add(student_task)
 
+            # Get the managing participation for this user
+            # Submissions are stored with the managing contest participation, not the
+            # training day participation
+            managing_participation = get_managing_participation(
+                self.sql_session, training_day, participation.user
+            )
+            if managing_participation is None:
+                continue
+
+            # Determine the reference time for time offset calculation
+            # Use student's starting_time if available, otherwise fall back to contest start
+            reference_time = participation.starting_time or contest.start
+
             # Get task scores for ALL visible tasks (including 0 scores)
             # The presence of a task_id key indicates the task was visible
             task_scores: dict[str, float] = {}
@@ -2304,18 +2364,19 @@ class ArchiveTrainingDayHandler(BaseHandler):
             for task in visible_tasks:
                 task_id = task.id
 
-                # Get score
+                # Get score from the training day participation (for cache lookup)
                 cache_entry = get_cached_score_entry(
                     self.sql_session, participation, task
                 )
                 task_scores[str(task_id)] = cache_entry.score
 
-                # Get submissions for this task in RWS format
+                # Get official submissions for this task from the managing participation
                 task_submissions = (
                     self.sql_session.query(Submission)
-                    .filter(Submission.participation_id == participation.id)
+                    .filter(Submission.participation_id == managing_participation.id)
                     .filter(Submission.task_id == task_id)
                     .filter(Submission.training_day_id == training_day.id)
+                    .filter(Submission.official.is_(True))
                     .order_by(Submission.timestamp)
                     .all()
                 )
@@ -2326,9 +2387,9 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     if result is None or not result.scored():
                         continue
 
-                    if contest.start is not None and sub.timestamp is not None:
+                    if reference_time is not None and sub.timestamp is not None:
                         time_offset = int(
-                            (sub.timestamp - contest.start).total_seconds()
+                            (sub.timestamp - reference_time).total_seconds()
                         )
                     else:
                         time_offset = 0
@@ -2342,6 +2403,7 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     })
 
             # Get score history in RWS format: [[user_id, task_id, time, score], ...]
+            # Score history is stored on the training day participation
             history: list[list] = []
             score_histories = (
                 self.sql_session.query(ScoreHistory)
@@ -2351,8 +2413,8 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 .all()
             )
             for sh in score_histories:
-                if contest.start is not None and sh.timestamp is not None:
-                    time_offset = (sh.timestamp - contest.start).total_seconds()
+                if reference_time is not None and sh.timestamp is not None:
+                    time_offset = (sh.timestamp - reference_time).total_seconds()
                 else:
                     time_offset = 0
                 history.append([

@@ -8,9 +8,13 @@
 {% if admin.permission_all %}
 <p>
   Are you sure you want to remove task {{ task.name }} from training program {{ training_program.name }}?
-  {% if task.training_day and task.training_day.contest %}
+  {% if task.training_day %}
   <br>
+  {% if task.training_day.contest %}
   <strong>Warning:</strong> This task is also assigned to training day "{{ task.training_day.contest.description }}". Removing it from the training program will also remove it from the training day.
+  {% else %}
+  <strong>Warning:</strong> This task is also assigned to archived training day "{{ task.training_day.description or task.training_day.name or 'Archived' }}". Removing it from the training program will also remove it from the training day.
+  {% endif %}
   {% endif %}
   <br>
   This operation cannot be undone.

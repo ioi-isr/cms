@@ -26,12 +26,12 @@ import typing
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
-from sqlalchemy.types import DateTime, Integer, Unicode
+from sqlalchemy.types import DateTime, Integer, Interval, Unicode
 
 from . import Base
 
 if typing.TYPE_CHECKING:
-    from datetime import datetime
+    from datetime import datetime, timedelta
     from . import Contest, TrainingProgram, Task, TrainingDayGroup, Submission, Participation, User
     from . import ArchivedAttendance, ArchivedStudentRanking
 
@@ -121,6 +121,14 @@ class TrainingDay(Base):
     # Stored at training day level (not per-student) since it's the same for all students.
     archived_tasks_data: dict | None = Column(
         JSONB,
+        nullable=True,
+    )
+
+    # Duration of the training day at archive time.
+    # Calculated as the max training duration among main groups (if any),
+    # or the training day duration (if no main groups).
+    duration: "timedelta | None" = Column(
+        Interval,
         nullable=True,
     )
 
