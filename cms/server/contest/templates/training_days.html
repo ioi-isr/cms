@@ -1,22 +1,22 @@
 {% extends "contest.html" %}
 {% from "macro/delay_request.html" import delay_request_form, delay_request_list with context %}
 
-{% set page = "training_overview" %}
+{% set page = "training_days" %}
 
 {% block core %}
 
 <div class="span9">
 
 <div class="page-header">
-    <h1>{{ training_program.description if training_program.description else training_program.name }}</h1>
+    <h1>{% trans %}Training Days{% endtrans %}</h1>
 </div>
 
-{% if upcoming_training_days|length > 0 %}
-<h2 class="tp-section-heading">{% trans %}Upcoming Training Days{% endtrans %}</h2>
+{% if ongoing_upcoming_trainings|length > 0 %}
+<h2 class="tp-section-heading">{% trans %}Ongoing and Upcoming Trainings{% endtrans %}</h2>
 
 <div class="training-day-list">
-{% for td_info in upcoming_training_days %}
-    <div class="training-day-card {% if td_info.has_started %}started{% else %}upcoming{% endif %}">
+{% for td_info in ongoing_upcoming_trainings %}
+    <div class="training-day-card {% if td_info.has_ended %}ended{% elif td_info.has_started %}started{% else %}upcoming{% endif %}">
         <div class="training-day-meta">
             <h3 class="training-day-title">{{ td_info.contest.description }}</h3>
             <div class="training-day-detail">
@@ -27,10 +27,16 @@
             </div>
         </div>
 
-        {% if td_info.has_started %}
+        {% if td_info.has_ended %}
+        <div class="training-day-status">
+            <div class="countdown-display ended-pill">
+                <span class="countdown-running">{% trans %}ENDED{% endtrans %}</span>
+            </div>
+        </div>
+        {% elif td_info.has_started %}
         <div class="training-day-status">
             <div class="countdown-display live-pill">
-                <span class="countdown-running">⬤ {% trans %}LIVE{% endtrans %}</span>
+                <span class="countdown-running">{% trans %}LIVE{% endtrans %}</span>
             </div>
         </div>
         {% else %}
@@ -72,7 +78,7 @@
             <p class="text-info" style="margin-bottom: 15px;">
                 {% trans %}Current start time:{% endtrans %} <strong>{{ td_info.user_start_time|format_datetime_smart }}</strong>
             </p>
-            {{ delay_request_form(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop.index, inline=True, next_url="/" ~ training_program.name ~ "/training_overview") }}
+            {{ delay_request_form(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop.index, inline=True, next_url="/" ~ training_program.name ~ "/training_days") }}
         </div>
     </div>
     {% endif %}
@@ -93,119 +99,60 @@
     {% endif %}
 {% endfor %}
 </div>
+{% else %}
+<p>{% trans %}No ongoing or upcoming trainings.{% endtrans %}</p>
 {% endif %}
 
-<h2 style="margin-bottom: 15px;">{% trans %}Statistics{% endtrans %}</h2>
+<h2 class="tp-section-heading" style="margin-top: 30px;">{% trans %}Past Trainings{% endtrans %}</h2>
 
-<div class="training-program-summary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 25px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-    <p style="font-size: 16px; opacity: 0.9; margin-bottom: 20px;">{{ training_program.description }}</p>
-
-    <div style="display: flex; gap: 40px; align-items: center; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 200px;">
-            <div style="font-size: 48px; font-weight: bold;">
-                {{ "%.1f"|format(percentage) }}%
-            </div>
-            <div style="margin-top: 15px; font-size: 14px; opacity: 0.8;">{% trans %}Completion{% endtrans %}</div>
-        </div>
-        <div style="flex: 2; min-width: 300px;">
-          {% set clamped_percentage = [percentage, 0]|max %}
-          {% set clamped_percentage = [clamped_percentage, 100]|min %}
-          <div class="progress-track" role="progressbar" aria-valuenow="{{ clamped_percentage }}" aria-valuemin="0" aria-valuemax="100">
-              <div class="progress-fill {% if percentage >= 80 %}high{% elif percentage >= 50 %}med{% else %}low{% endif %}"
-                  style="width: {{ clamped_percentage }}%;">
-              </div>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; opacity: 0.8;">
-              <span>{{ "%.1f"|format(total_score) }} {% trans %}points{% endtrans %}</span>
-              <span>{{ "%.1f"|format(max_score) }} {% trans %}total{% endtrans %}</span>
-          </div>
-      </div>
-    </div>
-</div>
-
-<div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-    <div style="flex: 1; background: #e8f5e9; border: 2px solid #28a745; border-radius: 8px; padding: 15px; text-align: center; flex: 1; min-width: 120px;">
-        <div style="font-size: 36px; font-weight: 800; color: #28a745; line-height: 1;" id="solved-count">0</div>
-        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #2e7d32; margin-top: 5px; opacity: 0.8;">{% trans %}Solved{% endtrans %}</div>
-    </div>
-    <div style="flex: 1; background: #fff8e1; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; text-align: center; flex: 1; min-width: 120px;">
-        <div style="font-size: 36px; font-weight: 800; color: #f57c00; line-height: 1;" id="partial-count">0</div>
-        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #ef6c00; margin-top: 5px; opacity: 0.8;">{% trans %}Partial{% endtrans %}</div>
-    </div>
-    <div style="flex: 1; background: #ffebee; border: 2px solid #dc3545; border-radius: 8px; padding: 15px; text-align: center; flex: 1; min-width: 120px;">
-        <div style="font-size: 36px; font-weight: 800; color: #dc3545; line-height: 1;" id="unsolved-count">0</div>
-        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #c62828; margin-top: 5px; opacity: 0.8;">{% trans %}Not Solved{% endtrans %}</div>
-    </div>
-</div>
-
-<h2 style="margin-bottom: 15px;">{% trans %}Task Archive{% endtrans %}</h2>
-
-{% if task_scores|length == 0 %}
-<p>{% trans %}No tasks available yet.{% endtrans %}</p>
-{% else %}
-
-<div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-    <span style="font-weight: bold; margin-right: 10px;">{% trans %}Filter:{% endtrans %}</span>
-    <button class="btn btn-small filter-btn active" data-filter="all" onclick="filterTasks('all')">{% trans %}All{% endtrans %}</button>
-    <button class="btn btn-small btn-success filter-btn" data-filter="solved" onclick="filterTasks('solved')">{% trans %}Solved{% endtrans %}</button>
-    <button class="btn btn-small btn-warning filter-btn" data-filter="partial" onclick="filterTasks('partial')">{% trans %}Partial{% endtrans %}</button>
-    <button class="btn btn-small btn-danger filter-btn" data-filter="unsolved" onclick="filterTasks('unsolved')">{% trans %}Not Solved{% endtrans %}</button>
-</div>
-
-<table class="table table-bordered table-striped" id="task-table">
+{% if past_trainings|length > 0 %}
+<table class="table table-bordered table-striped" id="past-trainings-table">
     <thead>
         <tr>
-            <th style="cursor: pointer;" onclick="sortTable(0)">{% trans %}Task{% endtrans %} <span class="sort-icon"></span></th>
-            <th>{% trans %}Name{% endtrans %}</th>
-            <th style="cursor: pointer;" onclick="sortTable(2)">{% trans %}Score{% endtrans %} <span class="sort-icon"></span></th>
-            <th>{% trans %}Status{% endtrans %}</th>
-            <th style="cursor: pointer;" onclick="sortTable(4)">{% trans %}Assigned{% endtrans %} <span class="sort-icon"></span></th>
-            <th style="cursor: pointer;" onclick="sortTable(5)">{% trans %}Source{% endtrans %} <span class="sort-icon"></span></th>
-            <th>{% trans %}Submit{% endtrans %}</th>
+            <th style="cursor: pointer;" onclick="sortPastTrainings(0)">{% trans %}Date{% endtrans %} <span class="sort-icon"></span></th>
+            <th>{% trans %}Description{% endtrans %}</th>
+            <th>{% trans %}Tasks{% endtrans %}</th>
+            <th style="cursor: pointer;" onclick="sortPastTrainings(3)">{% trans %}Training Score{% endtrans %} <span class="sort-icon"></span></th>
+            <th style="cursor: pointer;" onclick="sortPastTrainings(4)">{% trans %}Home Score{% endtrans %} <span class="sort-icon"></span></th>
         </tr>
     </thead>
     <tbody>
-{% for ts in task_scores %}
-        <tr data-status="{% if ts.score >= ts.max_score %}solved{% elif ts.score > 0 %}partial{% else %}unsolved{% endif %}" data-score="{{ ts.score }}" data-assigned="{{ ts.assigned_at.timestamp() if ts.assigned_at else 0 }}" data-source="{{ ts.source_training_day.name if ts.source_training_day else '' }}">
-            <td><a href="{{ contest_url("tasks", ts.task.name, "description") }}" style="font-weight: bold;">{{ ts.task.name }}</a></td>
-            <td>{{ ts.task.title }}</td>
+{% for pt in past_trainings %}
+        <tr data-training-score="{{ pt.training_score }}" data-home-score="{{ pt.home_score }}" data-date="{{ pt.start_time.timestamp() if pt.start_time else 0 }}">
             <td>
-    {% if ts.max_score == 100.0 %}
-                <span style="font-weight: bold;">{{ "%.0f"|format(ts.score) }}</span>
-    {% else %}
-                <span style="font-weight: bold;">{{ "%.1f"|format(ts.score) }}/{{ "%.0f"|format(ts.max_score) }}</span>
-    {% endif %}
+                {% if pt.start_time %}
+                    {{ pt.start_time.strftime("%Y-%m-%d") }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>{{ pt.description or pt.name or "Training" }}</td>
+            <td>
+                {% for task in pt.tasks %}
+                <div class="past-training-task">
+                    <a href="{{ contest_url("tasks", task.name, "description") }}" class="task-link">{{ task.name }}</a>
+                    <span class="task-scores">
+                        ({% trans %}T:{% endtrans %} {{ "%.0f"|format(task.training_score) }} / {% trans %}H:{% endtrans %} {{ "%.0f"|format(task.home_score) }})
+                    </span>
+                </div>
+                {% else %}
+                <em>{% trans %}No tasks{% endtrans %}</em>
+                {% endfor %}
             </td>
             <td>
-    {% if ts.score >= ts.max_score %}
-                <span class="label label-success" style="font-size: 12px;">{% trans %}Solved{% endtrans %}</span>
-    {% elif ts.score > 0 %}
-                <span class="label label-warning" style="font-size: 12px;">{% trans %}Partial{% endtrans %}</span>
-    {% else %}
-                <span class="label label-important" style="font-size: 12px;">{% trans %}Not Solved{% endtrans %}</span>
-    {% endif %}
+                <span class="score-value">{{ "%.0f"|format(pt.training_score) }}</span>
+                <span class="score-max">/ {{ "%.0f"|format(pt.max_score) }}</span>
             </td>
             <td>
-    {% if ts.assigned_at %}
-                {{ ts.assigned_at.strftime("%Y-%m-%d") }}
-    {% else %}
-                -
-    {% endif %}
-            </td>
-            <td>
-    {% if ts.source_training_day %}
-                {{ ts.source_training_day.description or ts.source_training_day.name or "Training" }}
-    {% else %}
-                <em>{% trans %}Manual{% endtrans %}</em>
-    {% endif %}
-            </td>
-            <td>
-                <a href="{{ contest_url("tasks", ts.task.name, "submissions") }}" class="btn btn-small btn-primary">{% trans %}Submit{% endtrans %}</a>
+                <span class="score-value">{{ "%.0f"|format(pt.home_score) }}</span>
+                <span class="score-max">/ {{ "%.0f"|format(pt.max_score) }}</span>
             </td>
         </tr>
 {% endfor %}
     </tbody>
 </table>
+{% else %}
+<p>{% trans %}No past trainings yet.{% endtrans %}</p>
 {% endif %}
 
 </div>
@@ -242,14 +189,15 @@
 }
 .training-day-card.started { border-left-color: #28a745; }
 .training-day-card.upcoming { border-left-color: #0d6efd; }
+.training-day-card.ended { border-left-color: #dc3545; }
 .training-day-meta { flex: 1; min-width: 250px; }
 .training-day-title { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #333; }
 .training-day-detail { font-size: 14px; color: #666; margin-bottom: 4px; }
 .training-day-status { text-align: center; flex: 0 0 auto; }
-.training-day-status-label { font-size: 13px; color: #28a745; font-weight: 600; margin-bottom: 8px; }
 .countdown-display { display: inline-block; border-radius: 8px; padding: 10px 15px; }
 .countdown-running { font-size: 16px; font-weight: 700; color: white; letter-spacing: 1px; }
-.live-pill { background: #dc3545; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); animation: pulse 2s ease-in-out infinite; }
+.live-pill { background: #28a745; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3); animation: pulse-green 2s ease-in-out infinite; }
+.ended-pill { background: #dc3545; border-radius: 20px; padding: 12px 24px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); }
 .training-day-countdown-label { font-size: 13px; color: #666; margin-bottom: 8px; }
 .training-day-countdown { display: inline-block; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 15px; }
 .training-day-countdown-text { font-size: 16px; font-weight: 600; color: #0d6efd; }
@@ -268,16 +216,7 @@
     font-size: 12px;
     line-height: 16px;
 }
-.filter-btn {
-    transition: all 0.2s ease;
-}
-.filter-btn.active {
-    box-shadow: 0 0 0 2px #333;
-}
-.filter-btn:hover {
-    opacity: 0.8;
-}
-#task-table th[onclick]:hover {
+#past-trainings-table th[onclick]:hover {
     background-color: #e9ecef;
 }
 .sort-icon::after {
@@ -293,31 +232,36 @@
     content: '\2193';
     opacity: 1;
 }
-@keyframes pulse {
-    0%, 100% { box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); }
-    50% { box-shadow: 0 2px 16px rgba(220, 53, 69, 0.6); }
+.past-training-task {
+    margin-bottom: 4px;
+}
+.past-training-task:last-child {
+    margin-bottom: 0;
+}
+.task-link {
+    font-weight: bold;
+}
+.task-scores {
+    font-size: 12px;
+    color: #666;
+}
+.score-value {
+    font-weight: bold;
+}
+.score-max {
+    color: #999;
+    font-size: 12px;
+}
+.score-total {
+    color: #28a745;
+}
+@keyframes pulse-green {
+    0%, 100% { box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3); }
+    50% { box-shadow: 0 2px 16px rgba(40, 167, 69, 0.6); }
 }
 </style>
 
 <script>
-(function() {
-    var solvedCount = 0, partialCount = 0, unsolvedCount = 0;
-    var rows = document.querySelectorAll('#task-table tbody tr');
-    rows.forEach(function(row) {
-        var status = row.getAttribute('data-status');
-        if (status === 'solved') solvedCount++;
-        else if (status === 'partial') partialCount++;
-        else unsolvedCount++;
-    });
-    var solvedEl = document.getElementById('solved-count');
-    if (solvedEl) solvedEl.textContent = solvedCount;
-    var partialEl = document.getElementById('partial-count');
-    if (partialEl) partialEl.textContent = partialCount;
-    var unsolvedEl = document.getElementById('unsolved-count');
-    if (unsolvedEl) unsolvedEl.textContent = unsolvedCount;
-})();
-
-// Server timestamp for timezone-correct countdown
 var serverTimestamp = {{ server_timestamp.timestamp() * 1000 }};
 var clientLoadTime = new Date().getTime();
 var reloadScheduled = false;
@@ -384,34 +328,15 @@ function updateCountdowns() {
 updateCountdowns();
 setInterval(updateCountdowns, 1000);
 
-function filterTasks(filter) {
-    var rows = document.querySelectorAll('#task-table tbody tr');
-    rows.forEach(function(row) {
-        var status = row.getAttribute('data-status');
-        if (filter === 'all' || status === filter) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-
-    document.querySelectorAll('.filter-btn').forEach(function(btn) {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-filter') === filter) {
-            btn.classList.add('active');
-        }
-    });
-}
-
-var sortDirection = {};
-function sortTable(columnIndex) {
-    var table = document.getElementById('task-table');
+var pastSortDirection = {};
+function sortPastTrainings(columnIndex) {
+    var table = document.getElementById('past-trainings-table');
     var tbody = table.querySelector('tbody');
     var rows = Array.from(tbody.querySelectorAll('tr'));
     var headers = table.querySelectorAll('th');
 
-    sortDirection[columnIndex] = !sortDirection[columnIndex];
-    var ascending = sortDirection[columnIndex];
+    pastSortDirection[columnIndex] = !pastSortDirection[columnIndex];
+    var ascending = pastSortDirection[columnIndex];
 
     headers.forEach(function(h, i) {
         h.classList.remove('sort-asc', 'sort-desc');
@@ -422,15 +347,15 @@ function sortTable(columnIndex) {
 
     rows.sort(function(a, b) {
         var aVal, bVal;
-        if (columnIndex === 2) {
-            aVal = parseFloat(a.getAttribute('data-score')) || 0;
-            bVal = parseFloat(b.getAttribute('data-score')) || 0;
+        if (columnIndex === 0) {
+            aVal = parseFloat(a.getAttribute('data-date')) || 0;
+            bVal = parseFloat(b.getAttribute('data-date')) || 0;
+        } else if (columnIndex === 3) {
+            aVal = parseFloat(a.getAttribute('data-training-score')) || 0;
+            bVal = parseFloat(b.getAttribute('data-training-score')) || 0;
         } else if (columnIndex === 4) {
-            aVal = parseFloat(a.getAttribute('data-assigned')) || 0;
-            bVal = parseFloat(b.getAttribute('data-assigned')) || 0;
-        } else if (columnIndex === 5) {
-            aVal = a.getAttribute('data-source').toLowerCase();
-            bVal = b.getAttribute('data-source').toLowerCase();
+            aVal = parseFloat(a.getAttribute('data-home-score')) || 0;
+            bVal = parseFloat(b.getAttribute('data-home-score')) || 0;
         } else {
             aVal = a.cells[columnIndex].textContent.trim().toLowerCase();
             bVal = b.cells[columnIndex].textContent.trim().toLowerCase();

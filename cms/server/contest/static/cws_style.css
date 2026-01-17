@@ -1054,3 +1054,20 @@ td.token_rules p:last-child {
     background-color: white;
     border: 1px solid #e5e5e5;
 }
+
+.progress-track {
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    height: 30px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 10px 0 0 10px;
+    transition: width 0.5s ease;
+}
+
+.progress-fill.high { background-color: #28a745; }
+.progress-fill.med  { background-color: #ffc107; }
+.progress-fill.low  { background-color: #ff6b6b; }
