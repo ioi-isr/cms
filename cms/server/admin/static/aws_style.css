@@ -1,4 +1,4 @@
-html {
+﻿html {
     font-size: 100%;
 }
 
@@ -1223,7 +1223,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 /* --- Training Program Views (Attendance & Ranking) --- */
 
 /* Layout & Container */
-.page-header {
+.tp-page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1239,7 +1239,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* Filter Bar */
-.filter-card {
+.tp-filter-card {
     background-color: #f9fafb;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
@@ -1251,26 +1251,26 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     flex-wrap: wrap;
 }
 
-.filter-group {
+.tp-filter-group {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.filter-label {
+.tp-filter-label {
     font-weight: 600;
     font-size: 0.85rem;
     color: #4b5563;
 }
 
-.filter-input {
+.tp-filter-input {
     padding: 6px 10px;
     border: 1px solid #d1d5db;
     border-radius: 4px;
     font-size: 0.9rem;
 }
 
-.btn-primary {
+.tp-btn-primary {
     background-color: #0F766E;
     color: white;
     border: none;
@@ -1279,11 +1279,16 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     cursor: pointer;
     font-weight: 500;
     transition: background 0.2s;
+    text-decoration: none; /* In case it's an anchor */
+    display: inline-block;
 }
 
-.btn-primary:hover { background-color: #0d655e; }
+.tp-btn-primary:hover { 
+    background-color: #0d655e; 
+    color: white;
+}
 
-.btn-text {
+.tp-btn-text {
     color: #6b7280;
     text-decoration: underline;
     font-size: 0.85rem;
@@ -1291,55 +1296,59 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* Data Table Wrapper */
-.table-container {
+.tp-table-container {
     overflow-x: auto;
     max-height: 75vh;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
     background: white;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    /* Ensures the white background spans full width even if table is small */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    position: relative;
+    /* Ensure the container width is handled correctly */
     width: 100%;
 }
 
 /* Common Table Styles */
 .attendance-table,
 .ranking-table {
-    /* FIXED: Changed from 100% to auto to prevent "Student Name" from stretching */
     width: auto;
-    border-collapse: separate;
+    border-collapse: separate; /* Required for sticky headers */
     border-spacing: 0;
     font-size: 0.9rem;
-    white-space: nowrap; /* Prevents awkward wrapping */
+    white-space: nowrap;
+}
+
+/* Force border-box for consistency */
+.ranking-table *, .attendance-table * {
+    box-sizing: border-box;
 }
 
 .attendance-table th,
 .attendance-table td,
 .ranking-table th,
 .ranking-table td {
-    padding: 12px 16px;
-    border-bottom: 1px solid #e5e7eb;
-    border-right: 1px solid #e5e7eb;
-    vertical-align: top;
-}
-
-.ranking-table th,
-.ranking-table td {
-    padding: 10px 12px;
+    padding: 0; /* Reset padding, inner divs handle it */
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    background-clip: padding-box;
     vertical-align: middle;
+    height: 1px;
 }
 
-/* Sticky Header (Dates) */
+/* --- Sticky Headers & Columns --- */
+
+/* 1. Header Rows */
 .attendance-table thead th,
 .ranking-table thead th {
     position: sticky;
     top: 0;
-    background-color: #f3f4f6;
+    background-color: #f8fafc;
     z-index: 10;
-    color: #374151;
+    color: #475569;
     font-weight: 600;
     text-align: left;
-    box-shadow: 0 1px 0 #e5e7eb;
+    box-shadow: 0 1px 0 #cbd5e1; /* Visual bottom border */
+    padding: 10px 12px; /* Headers get direct padding */
 }
 
 .ranking-table thead th {
@@ -1348,9 +1357,10 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .ranking-table thead th.student-header {
     text-align: left;
+    vertical-align: middle;
 }
 
-/* Sticky First Column (Students) */
+/* 2. First Column (Students) */
 .attendance-table tbody th,
 .ranking-table tbody th {
     position: sticky;
@@ -1358,38 +1368,36 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     background-color: white;
     z-index: 5;
     text-align: left;
-    /* Reduced min-width slightly and added max-width control */
-    min-width: 160px;
+    min-width: 180px;
     max-width: 250px;
-    box-shadow: 1px 0 0 #e5e7eb;
-    /* Ensure long names truncate nicely instead of breaking layout */
+    box-shadow: 1px 0 0 #e2e8f0; /* Visual right border */
+    border-right: none;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: #1e293b;
+    padding: 0; /* Inner div handles padding */
 }
 
-.attendance-table tbody tr:hover th,
-.ranking-table tbody tr:hover th {
-    background-color: #f9fafb;
-}
-
-/* Sticky Corner Fix */
+/* 3. Top-Left Corner */
 .attendance-table thead th:first-child,
 .ranking-table thead th:first-child {
     left: 0;
     z-index: 20;
-    background-color: #f3f4f6;
-    min-width: 160px;
+    background-color: #f8fafc;
+    box-shadow: 1px 1px 0 #cbd5e1;
 }
 
 /* --- Attendance Table Specifics --- */
 .date-header-main { font-size: 0.95rem; color: #111827; }
 .date-header-sub { font-size: 0.75rem; color: #6b7280; font-weight: normal; margin-top: 2px; }
 
+/* Wrapper for cell content */
 .cell-wrapper {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    min-width: 140px; /* Ensures data cells have enough breathing room */
+    min-width: 140px;
+    padding: 10px 12px;
 }
 
 /* Modern Badges */
@@ -1425,64 +1433,114 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     border-left: 2px solid #d1d5db;
     padding: 2px 6px;
     margin-top: 2px;
-    white-space: normal; /* Allow reasons to wrap within the cell */
+    white-space: normal;
     max-width: 200px;
 }
 
-.attendance-table .empty-cell { color: #d1d5db; font-size: 1.5rem; line-height: 0.5; }
+.attendance-table .empty-cell { color: #d1d5db; font-size: 1.5rem; line-height: 0.5; padding: 10px; text-align: center;}
 
 
 /* --- Combined Ranking Specifics --- */
 .training-day-header {
-    background-color: #e0f2fe !important;
-    border-bottom: 2px solid #0ea5e9 !important;
+    background-color: #f1f5f9 !important;
+    text-align: center;
+    border-bottom: 1px solid #cbd5e1 !important;
+    pointer-events: none;
 }
 
 .training-day-header-main {
     font-size: 0.95rem;
-    color: #0369a1;
+    color: #334155;
     font-weight: 700;
 }
 
 .training-day-header-sub {
     font-size: 0.75rem;
-    color: #6b7280;
+    color: #64748b;
     font-weight: normal;
     margin-top: 2px;
 }
 
 .task-header {
-    background-color: #f0fdf4 !important;
+    background-color: #ffffff !important;
     font-size: 0.8rem;
-    color: #166534;
+    color: #475569;
+    vertical-align: bottom;
 }
 
-.total-header {
-    background-color: #fef3c7 !important;
-    font-size: 0.85rem;
-    color: #92400e;
+/* Total Column specific styling */
+.total-col {
+    border-left: 2px solid #cbd5e1 !important;
+    background-color: #f8fafc;
+}
+
+.ranking-table thead th.total-col {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-weight: 800;
+}
+
+.ranking-table tbody td.total-col {
     font-weight: 700;
+    color: #0f172a;
 }
 
-.score-cell {
-    text-align: center;
-    font-family: monospace;
+/* Content wrapper for Ranking cells */
+.cell-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 10px 12px;
+    min-height: 40px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+    font-weight: 500;
 }
 
-.score-cell.task-score {
-    background-color: #f0fdf4;
-    color: #166534;
+/* Student name wrapper */
+.student-name-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 10px 16px;
+    width: 100%;
+    height: 100%;
 }
 
-.score-cell.total-score {
-    background-color: #fef3c7;
-    color: #92400e;
+.student-name-link {
+    color: #0f172a;
+    text-decoration: none;
     font-weight: 600;
 }
+.student-name-link:hover {
+    color: #0F766E;
+    text-decoration: underline;
+}
+.student-username {
+    display: block;
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: normal;
+}
 
-.ranking-table .empty-cell {
-    color: #d1d5db;
+.ranking-table .empty-cell-content {
+    color: #cbd5e1;
     text-align: center;
+    font-weight: normal;
+}
+
+.inaccessible-cell {
+    background: repeating-linear-gradient(
+        45deg,
+        #f3f4f6,
+        #f3f4f6 10px,
+        #e5e7eb 10px,
+        #e5e7eb 20px
+    );
+    color: #9ca3af;
+    font-size: 0.75rem;
+    font-style: italic;
 }
 
 .history-link {
@@ -1495,4 +1553,12 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .history-link:hover {
     color: #374151;
     text-decoration: underline;
+}
+
+/* Hover effects */
+.ranking-table tbody tr:hover td {
+    filter: brightness(0.97);
+}
+.ranking-table tbody tr:hover th {
+    background-color: #f8fafc;
 }
