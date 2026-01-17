@@ -15,17 +15,17 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Training program overview handler for CWS.
+"""Training program handlers for CWS.
 
-This handler provides a custom overview page for training programs,
-showing total score, percentage, task archive, and upcoming training days.
+This module provides handlers for training programs in the contest web server,
+including the overview page and training days page.
 """
 
 from datetime import timedelta
 
 import tornado.web
 
-from cms.db import Participation, Student
+from cms.db import Participation, Student, ArchivedStudentRanking
 from cms.server import multi_contest
 from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
 from cms.server.util import check_training_day_eligibility, calculate_task_archive_progress
@@ -169,3 +169,198 @@ class TrainingProgramOverviewHandler(ContestHandler):
             server_timestamp=self.timestamp,
             **self.r_params
         )
+
+
+class TrainingDaysHandler(ContestHandler):
+    """Training days page handler.
+
+    Shows all training days for a training program, including:
+    - Ongoing and upcoming trainings (non-archived)
+    - Past trainings with scores (training score, home score, total)
+    """
+
+    @tornado.web.authenticated
+    @multi_contest
+    def get(self):
+        participation: Participation = self.current_user
+        contest = self.contest
+
+        training_program = self.training_program
+        if training_program is None:
+            raise tornado.web.HTTPError(404)
+
+        student = (
+            self.sql_session.query(Student)
+            .join(Participation, Student.participation_id == Participation.id)
+            .filter(Participation.contest_id == contest.id)
+            .filter(Participation.user_id == participation.user_id)
+            .filter(Student.training_program_id == training_program.id)
+            .first()
+        )
+
+        ongoing_upcoming_trainings = []
+        past_trainings = []
+
+        # Collect past training day IDs for batch query
+        past_training_day_ids = [
+            td.id for td in training_program.training_days if td.contest is None
+        ]
+
+        # Batch fetch all ArchivedStudentRanking records for the student
+        archived_rankings_map = {}
+        if student is not None and past_training_day_ids:
+            archived_rankings = (
+                self.sql_session.query(ArchivedStudentRanking)
+                .filter(ArchivedStudentRanking.training_day_id.in_(past_training_day_ids))
+                .filter(ArchivedStudentRanking.student_id == student.id)
+                .all()
+            )
+            archived_rankings_map = {r.training_day_id: r for r in archived_rankings}
+
+        for training_day in training_program.training_days:
+            td_contest = training_day.contest
+
+            if td_contest is None:
+                past_trainings.append(self._build_past_training_info(
+                    training_day, student, participation, archived_rankings_map
+                ))
+                continue
+
+            td_participation = (
+                self.sql_session.query(Participation)
+                .filter(Participation.contest == td_contest)
+                .filter(Participation.user == participation.user)
+                .first()
+            )
+
+            if td_participation is None:
+                continue
+
+            is_eligible, main_group, _ = check_training_day_eligibility(
+                self.sql_session, td_participation, training_day
+            )
+            if not is_eligible:
+                continue
+
+            main_group_start = main_group.start_time if main_group else None
+            main_group_end = main_group.end_time if main_group else None
+            contest_start, contest_stop = compute_effective_times(
+                td_contest.start, td_contest.stop,
+                td_participation.delay_time,
+                main_group_start, main_group_end)
+
+            actual_phase, _, _, _, _ = compute_actual_phase(
+                self.timestamp,
+                contest_start,
+                contest_stop,
+                td_contest.analysis_start if td_contest.analysis_enabled else None,
+                td_contest.analysis_stop if td_contest.analysis_enabled else None,
+                td_contest.per_user_time,
+                td_participation.starting_time,
+                td_participation.delay_time,
+                td_participation.extra_time,
+            )
+
+            user_start_time = contest_start + td_participation.delay_time
+
+            duration = td_contest.per_user_time \
+                if td_contest.per_user_time is not None else \
+                contest_stop - contest_start
+
+            six_hours_from_now = self.timestamp + timedelta(hours=6)
+            has_started = actual_phase >= -1
+            can_enter_soon = not has_started and user_start_time <= six_hours_from_now
+
+            ongoing_upcoming_trainings.append({
+                "training_day": training_day,
+                "contest": td_contest,
+                "participation": td_participation,
+                "has_started": has_started,
+                "has_ended": actual_phase >= 1,
+                "user_start_time": user_start_time,
+                "duration": duration,
+                "can_enter_soon": can_enter_soon,
+            })
+
+        ongoing_upcoming_trainings.sort(key=lambda x: x["user_start_time"])
+        past_trainings.sort(
+            key=lambda x: x["start_time"] if x["start_time"] else self.timestamp,
+            reverse=True
+        )
+
+        self.render(
+            "training_days.html",
+            ongoing_upcoming_trainings=ongoing_upcoming_trainings,
+            past_trainings=past_trainings,
+            server_timestamp=self.timestamp,
+            **self.r_params
+        )
+
+    def _build_past_training_info(
+        self,
+        training_day,
+        student: Student | None,
+        participation: Participation,
+        archived_rankings_map: dict
+    ) -> dict:
+        """Build info dict for a past (archived) training day."""
+        training_score = 0.0
+        home_score = 0.0
+        max_score = 0.0
+        tasks_info = []
+
+        archived_tasks_data = training_day.archived_tasks_data or {}
+
+        if student is not None:
+            archived_ranking = archived_rankings_map.get(training_day.id)
+
+            archived_task_scores = {}
+            if archived_ranking and archived_ranking.task_scores:
+                archived_task_scores = archived_ranking.task_scores
+
+            cached_scores = {}
+            for pts in participation.task_scores:
+                cached_scores[pts.task_id] = pts.score
+
+            for task_id_str, task_data in archived_tasks_data.items():
+                task_max_score = task_data.get("max_score", 100.0)
+                max_score += task_max_score
+
+                task_training_score = archived_task_scores.get(task_id_str, 0.0)
+                training_score += task_training_score
+
+                task_id = int(task_id_str)
+                task_home_score = cached_scores.get(task_id, 0.0)
+                home_score += task_home_score
+
+                tasks_info.append({
+                    "task_id": task_id,
+                    "name": task_data.get("short_name", ""),
+                    "title": task_data.get("name", ""),
+                    "training_score": task_training_score,
+                    "home_score": task_home_score,
+                    "max_score": task_max_score,
+                })
+        else:
+            for task_id_str, task_data in archived_tasks_data.items():
+                task_max_score = task_data.get("max_score", 100.0)
+                max_score += task_max_score
+                tasks_info.append({
+                    "task_id": int(task_id_str),
+                    "name": task_data.get("short_name", ""),
+                    "title": task_data.get("name", ""),
+                    "training_score": 0.0,
+                    "home_score": 0.0,
+                    "max_score": task_max_score,
+                })
+
+        return {
+            "training_day": training_day,
+            "name": training_day.name,
+            "description": training_day.description,
+            "start_time": training_day.start_time,
+            "training_score": training_score,
+            "home_score": home_score,
+            "max_score": max_score,
+            "tasks": tasks_info,
+        }
