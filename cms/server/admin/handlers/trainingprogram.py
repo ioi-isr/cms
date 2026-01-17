@@ -2237,6 +2237,7 @@ class ArchiveTrainingDayHandler(BaseHandler):
             delay_requests = (
                 self.sql_session.query(DelayRequest)
                 .filter(DelayRequest.participation_id == participation.id)
+                .order_by(DelayRequest.request_timestamp)
                 .all()
             )
             delay_reasons = None
@@ -2343,6 +2344,10 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     student_task.source_training_day_id = training_day.id
                     self.sql_session.add(student_task)
 
+            # Skip students who missed the training
+            if participation.starting_time is None:
+                continue
+
             # Get the managing participation for this user
             # Submissions are stored with the managing contest participation, not the
             # training day participation
@@ -2351,10 +2356,6 @@ class ArchiveTrainingDayHandler(BaseHandler):
             )
             if managing_participation is None:
                 continue
-
-            # Determine the reference time for time offset calculation
-            # Use student's starting_time if available, otherwise fall back to contest start
-            reference_time = participation.starting_time or contest.start
 
             # Get task scores for ALL visible tasks (including 0 scores)
             # The presence of a task_id key indicates the task was visible
@@ -2387,9 +2388,11 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     if result is None or not result.scored():
                         continue
 
-                    if reference_time is not None and sub.timestamp is not None:
+                    if sub.timestamp is not None:
                         time_offset = int(
-                            (sub.timestamp - reference_time).total_seconds()
+                            (
+                                sub.timestamp - participation.starting_time
+                            ).total_seconds()
                         )
                     else:
                         time_offset = 0
@@ -2413,8 +2416,10 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 .all()
             )
             for sh in score_histories:
-                if reference_time is not None and sh.timestamp is not None:
-                    time_offset = (sh.timestamp - reference_time).total_seconds()
+                if sh.timestamp is not None:
+                    time_offset = (
+                        sh.timestamp - participation.starting_time
+                    ).total_seconds()
                 else:
                     time_offset = 0
                 history.append([
@@ -2735,21 +2740,19 @@ class TrainingProgramCombinedRankingDetailHandler(
             if td.start_time:
                 td_name += f" ({td.start_time.strftime('%Y-%m-%d')})"
 
-            # Calculate contest duration from history data or use default (5 hours)
+            # Calculate contest duration
             # History times are stored as offsets from contest start, so we need
-            # begin=0 and end=max_time for the graph scale to be correct
-            student_ranking = student_rankings.get(td.id)
-            max_history_time = 18000  # Default 5 hours
-            if student_ranking and student_ranking.history:
-                for entry in student_ranking.history:
-                    if len(entry) > 2 and entry[2] > max_history_time:
-                        max_history_time = int(entry[2])
+            # begin=0 and end=duration for the graph scale to be correct
+            if td.duration:
+                end_time = int(td.duration.total_seconds())
+            else:
+                end_time = 18000  # Default 5 hours
 
             contests_data[contest_key] = {
                 "key": contest_key,
                 "name": td_name,
                 "begin": 0,
-                "end": max_history_time,
+                "end": end_time,
                 "max_score": contest_max_score,
                 "score_precision": 2,
                 "tasks": contest_tasks,
@@ -2762,12 +2765,12 @@ class TrainingProgramCombinedRankingDetailHandler(
         history_url = self.url(
             "training_program", training_program_id, "combined_ranking", "history"
         )
-        if start_date_str or end_date_str:
+        if start_date or end_date:
             params = []
-            if start_date_str:
-                params.append(f"start_date={start_date_str}")
-            if end_date_str:
-                params.append(f"end_date={end_date_str}")
+            if start_date:
+                params.append(f"start_date={start_date.isoformat()}")
+            if end_date:
+                params.append(f"end_date={end_date.isoformat()}")
             history_url += "?" + "&".join(params)
 
         self.r_params = self.render_params()

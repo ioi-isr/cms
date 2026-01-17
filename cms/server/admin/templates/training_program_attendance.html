@@ -5,20 +5,23 @@
   <h1>Attendance: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
 </div>
 
-<form action="{{ url('training_program', training_program.id, 'attendance') }}" method="GET" class="filter-card">
-  <div class="filter-group">
-    <label class="filter-label" for="start_date">From:</label>
-    <input type="date" id="start_date" class="filter-input" name="start_date" value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}" />
+<form action="{{ url('training_program', training_program.id, 'attendance') }}" method="GET" class="tp-filter-card">
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="start_date">From:</label>
+    <input type="date" id="start_date" class="tp-filter-input" name="start_date" value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}" />
   </div>
-  <div class="filter-group">
-    <label class="filter-label" for="end_date">To:</label>
-    <input type="date" id="end_date" class="filter-input" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="end_date">To:</label>
+    <input type="date" id="end_date" class="tp-filter-input" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
   </div>
-  <button type="submit" class="btn-primary">Apply Filter</button>
-
-  {% if start_date or end_date %}
-  <a href="{{ url('training_program', training_program.id, 'attendance') }}" class="btn-text">Clear Filters</a>
-  {% endif %}
+  
+  <div class="tp-filter-group" style="margin-left: 5px;">
+      <button type="submit" class="tp-btn-primary">Apply Filter</button>
+      
+      {% if start_date or end_date %}
+      <a href="{{ url('training_program', training_program.id, 'attendance') }}" class="tp-btn-secondary">Clear</a>
+      {% endif %}
+  </div>
 </form>
 
 {% if archived_training_days %}
