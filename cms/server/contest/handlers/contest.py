@@ -40,6 +40,7 @@ import collections
 
 from cms.db.user import Participation
 from cms.server.util import Url, can_access_task, check_training_day_eligibility
+from cms.server.contest.communication import can_see_announcement
 
 try:
     collections.MutableMapping
@@ -372,6 +373,9 @@ class ContestHandler(BaseHandler):
         # For training day contests, filter tasks based on visibility tags
         ret["visible_tasks"] = self.get_visible_tasks()
 
+        # Filter announcements based on visibility tags for training programs/days
+        ret["visible_announcements"] = self.get_visible_announcements()
+
         return ret
 
     def get_eligibility(self) -> tuple[bool, "TrainingDayGroup | None", list[str]]:
@@ -477,6 +481,28 @@ class ContestHandler(BaseHandler):
                 tasks = sorted(tasks, key=lambda t: t.name)
 
         return tasks
+
+    def get_visible_announcements(self) -> list:
+        """Return the list of announcements visible to the current user.
+
+        For training day and training program contests, filters announcements
+        based on visibility tags. An announcement is visible if:
+        - The announcement has no visible_to_tags (empty list = visible to all)
+        - The student has at least one tag matching the announcement's visible_to_tags
+
+        For non-training contests, all announcements are visible.
+
+        return: list of announcements the current user can see.
+
+        """
+        if self.current_user is None:
+            # If not logged in, only show announcements without visibility restrictions
+            return [a for a in self.contest.announcements if not a.visible_to_tags]
+
+        return [
+            a for a in self.contest.announcements
+            if can_see_announcement(self.sql_session, a, self.current_user)
+        ]
 
     def get_submission(self, task: Task, opaque_id: str | int) -> Submission | None:
         """Return the num-th contestant's submission on the given task.
