@@ -1,4 +1,4 @@
-html {
+﻿html {
     font-size: 100%;
 }
 
@@ -1411,8 +1411,8 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* 3. Top-Left Corner */
-.attendance-table thead th:first-child,
-.ranking-table thead th:first-child {
+.attendance-table thead tr:first-child th:first-child,
+.ranking-table thead tr:first-child th:first-child {
     left: 0;
     z-index: 20;
     background-color: #f8fafc;
