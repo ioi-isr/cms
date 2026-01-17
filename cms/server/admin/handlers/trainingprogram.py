@@ -2302,6 +2302,7 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 "max_score": max_score,
                 "score_precision": score_precision,
                 "extra_headers": extra_headers,
+                "training_day_num": task.training_day_num,
             }
         training_day.archived_tasks_data = archived_tasks_data
 
@@ -2570,6 +2571,7 @@ class TrainingProgramCombinedRankingHandler(
                                     "id": task_id,
                                     "name": task_info.get("short_name", ""),
                                     "title": task_info.get("name", ""),
+                                    "training_day_num": task_info.get("training_day_num"),
                                 }
                             else:
                                 # Fallback to live task data
@@ -2579,9 +2581,15 @@ class TrainingProgramCombinedRankingHandler(
                                         "id": task_id,
                                         "name": task.name,
                                         "title": task.title,
+                                        "training_day_num": task.training_day_num,
                                     }
 
-            training_day_tasks[td.id] = list(visible_tasks_by_id.values())
+            # Sort tasks by training_day_num for stable ordering
+            sorted_tasks = sorted(
+                visible_tasks_by_id.values(),
+                key=lambda t: (t.get("training_day_num") or 0, t["id"])
+            )
+            training_day_tasks[td.id] = sorted_tasks
 
         sorted_students = sorted(
             all_students.values(),
@@ -2687,9 +2695,19 @@ class TrainingProgramCombinedRankingDetailHandler(
             # Get archived_tasks_data from training day
             archived_tasks_data = td.archived_tasks_data or {}
 
+            # Sort task IDs by training_day_num for stable ordering
+            def get_training_day_num(task_id: int) -> tuple[int, int]:
+                task_key = str(task_id)
+                if task_key in archived_tasks_data:
+                    num = archived_tasks_data[task_key].get("training_day_num")
+                    return (num if num is not None else 0, task_id)
+                return (0, task_id)
+
+            sorted_task_ids = sorted(task_ids_in_contest, key=get_training_day_num)
+
             contest_tasks = []
             contest_max_score = 0.0
-            for task_id in task_ids_in_contest:
+            for task_id in sorted_task_ids:
                 task_key = str(task_id)
 
                 # Use archived_tasks_data if available (preserves original scoring scheme)
