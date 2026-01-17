@@ -113,7 +113,12 @@ class TaskHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, task_id):
         task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
+        # If the task is assigned to an active training day (not archived),
+        # show the training day's contest sidebar instead of the training program sidebar
+        if task.training_day is not None and task.training_day.contest is not None:
+            self.contest = task.training_day.contest
+        else:
+            self.contest = task.contest
 
         self.r_params = self.render_params()
         self.r_params["task"] = task

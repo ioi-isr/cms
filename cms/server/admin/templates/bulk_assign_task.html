@@ -50,8 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
           Task
         </td>
         <td>
-          <select name="task_id">
-            <option value="null" selected>-- Select a task --</option>
+          <select name="task_id" class="searchable-select">
+            <option value="" selected disabled hidden>Select a task...</option>
             {% for task in all_tasks %}
             <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
             {% endfor %}
