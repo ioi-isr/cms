@@ -25,7 +25,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libcap-dev
         libcups2-dev
         libffi-dev
+        libjpeg-dev
         libpq-dev
+        libwebp-dev
         libyaml-dev
         mono-mcs
         php-cli
@@ -40,6 +42,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         sudo
         wait-for-it
         zip
+        zlib1g-dev
     )
     apt-get install -y "${PACKAGES[@]}"
 EOF

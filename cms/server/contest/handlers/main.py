@@ -221,7 +221,7 @@ class RegistrationHandler(ContestHandler):
         try:
             date_of_birth = date.fromisoformat(date_of_birth_str)
         except ValueError:
-            raise RegistrationError("invalid_date_of_birth", "date_of_birth")
+            raise RegistrationError("invalid_date_of_birth", "date_of_birth") from None
 
         # Check if the username is available (before processing picture to avoid orphaned files)
         tot_users = self.sql_session.query(User)\
@@ -245,7 +245,7 @@ class RegistrationHandler(ContestHandler):
                         "Profile picture for %s" % username
                     )
                 except PictureValidationError as e:
-                    raise RegistrationError(e.code, "picture")
+                    raise RegistrationError(e.code, "picture") from e
 
         # Store new user
         user = User(first_name, last_name, username, password, email=email,

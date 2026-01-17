@@ -29,6 +29,7 @@
 
 import csv
 import io
+import logging
 import re
 from datetime import date
 
@@ -41,6 +42,9 @@ from cmscommon.crypto import (parse_authentication,
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
+
+
+logger = logging.getLogger(__name__)
 
 
 class UserHandler(BaseHandler):
@@ -102,7 +106,7 @@ class UserHandler(BaseHandler):
                 try:
                     attrs["date_of_birth"] = date.fromisoformat(date_of_birth_str)
                 except ValueError:
-                    raise ValueError("Invalid date of birth format")
+                    raise ValueError("Invalid date of birth format") from None
             else:
                 attrs["date_of_birth"] = None
 
@@ -133,7 +137,7 @@ class UserHandler(BaseHandler):
                         )
                         new_picture_uploaded = True
                     except PictureValidationError as e:
-                        raise ValueError(e.message)
+                        raise ValueError(e.message) from e
 
             # Only process remove checkbox if no new picture was uploaded
             if not new_picture_uploaded:
@@ -163,7 +167,11 @@ class UserHandler(BaseHandler):
                 try:
                     self.service.file_cacher.delete(picture_digest_to_delete)
                 except Exception:
-                    pass
+                    logger.warning(
+                        "Failed to delete old picture %s for user %s",
+                        picture_digest_to_delete,
+                        user.username
+                    )
         self.redirect(fallback_page)
 
 

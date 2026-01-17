@@ -113,13 +113,14 @@ def validate_and_get_image(data: bytes) -> Image.Image:
         img.verify()
         # Re-open after verify (verify() can only be called once)
         img = Image.open(io.BytesIO(data))
-        return img
     except Exception as e:
         logger.warning("Failed to open image: %s", e)
         raise PictureValidationError(
             "invalid_image",
             "The uploaded file is not a valid image."
         ) from e
+    else:
+        return img
 
 
 def validate_dimensions(img: Image.Image) -> None:
@@ -190,7 +191,10 @@ def process_picture(
     if img_format == 'JPEG' and img.mode == 'RGBA':
         img = img.convert('RGB')
 
-    img.save(output, format=img_format, quality=85)
+    save_kwargs = {'format': img_format}
+    if img_format == 'JPEG':
+        save_kwargs['quality'] = 85
+    img.save(output, **save_kwargs)
     output.seek(0)
 
     return output.read(), FORMAT_TO_MIME[img_format]
