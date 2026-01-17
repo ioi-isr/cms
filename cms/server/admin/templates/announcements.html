@@ -4,28 +4,26 @@
 {% block js_init %}
 {% if training_program is defined or is_training_day %}
 // Initialize Tagify for announcement visibility tags (no auto-save, form submission only)
-document.addEventListener('DOMContentLoaded', function() {
-    var whitelist = {{ all_student_tags | tojson }};
-    var inputs = document.querySelectorAll('.announcement-visibility-tags');
-    inputs.forEach(function(input) {
-        new Tagify(input, {
-            delimiters: ",",
-            maxTags: 20,
-            placeholder: "All students",
-            whitelist: whitelist,
-            enforceWhitelist: true,
-            dropdown: {
-                maxItems: 20,
-                classname: "tags-look",
-                enabled: 0,
-                closeOnSelect: true
-            },
-            originalInputValueFormat: function(valuesArr) {
-                return valuesArr.map(function(item) {
-                    return item.value;
-                }).join(', ');
-            }
-        });
+var whitelist = {{ all_student_tags | tojson }};
+var inputs = document.querySelectorAll('.announcement-visibility-tags');
+inputs.forEach(function(input) {
+    new Tagify(input, {
+        delimiters: ",",
+        maxTags: 20,
+        placeholder: "All students",
+        whitelist: whitelist,
+        enforceWhitelist: true,
+        dropdown: {
+            maxItems: 20,
+            classname: "tags-look",
+            enabled: 0,
+            closeOnSelect: true
+        },
+        originalInputValueFormat: function(valuesArr) {
+            return valuesArr.map(function(item) {
+                return item.value;
+            }).join(', ');
+        }
     });
 });
 {% endif %}
