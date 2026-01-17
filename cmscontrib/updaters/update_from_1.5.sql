@@ -565,4 +565,109 @@ CREATE INDEX ix_student_tasks_task_id ON public.student_tasks USING btree (task_
 
 CREATE INDEX ix_student_tasks_source_training_day_id ON public.student_tasks USING btree (source_training_day_id);
 
+-- Archive training day feature: add name and description fields to training_days
+-- These are synced with contest while contest exists, preserved after archiving
+ALTER TABLE public.training_days ADD COLUMN name character varying;
+ALTER TABLE public.training_days ADD COLUMN description character varying;
+
+-- Make contest_id nullable (will be NULL after archiving)
+ALTER TABLE public.training_days ALTER COLUMN contest_id DROP NOT NULL;
+
+-- Change ON DELETE behavior from CASCADE to SET NULL for contest_id
+ALTER TABLE ONLY public.training_days DROP CONSTRAINT training_days_contest_id_fkey;
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_contest_id_fkey FOREIGN KEY (contest_id) REFERENCES public.contests(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+-- Archived attendance table for storing attendance data after archiving
+CREATE TABLE public.archived_attendances (
+    id integer NOT NULL,
+    training_day_id integer NOT NULL,
+    student_id integer NOT NULL,
+    status character varying NOT NULL,
+    location character varying,
+    delay_time interval,
+    delay_reasons character varying
+);
+
+CREATE SEQUENCE public.archived_attendances_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.archived_attendances_id_seq OWNED BY public.archived_attendances.id;
+
+ALTER TABLE ONLY public.archived_attendances
+    ALTER COLUMN id SET DEFAULT nextval('public.archived_attendances_id_seq'::regclass);
+
+ALTER TABLE ONLY public.archived_attendances
+    ADD CONSTRAINT archived_attendances_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.archived_attendances
+    ADD CONSTRAINT archived_attendances_training_day_id_student_id_key UNIQUE (training_day_id, student_id);
+
+ALTER TABLE ONLY public.archived_attendances
+    ADD CONSTRAINT archived_attendances_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.archived_attendances
+    ADD CONSTRAINT archived_attendances_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_archived_attendances_training_day_id ON public.archived_attendances USING btree (training_day_id);
+
+CREATE INDEX ix_archived_attendances_student_id ON public.archived_attendances USING btree (student_id);
+
+-- Archived student ranking table for storing ranking data after archiving
+CREATE TABLE public.archived_student_rankings (
+    id integer NOT NULL,
+    training_day_id integer NOT NULL,
+    student_id integer NOT NULL,
+    student_tags character varying[] NOT NULL,
+    task_scores jsonb,
+    submissions jsonb,
+    history jsonb
+);
+
+CREATE SEQUENCE public.archived_student_rankings_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.archived_student_rankings_id_seq OWNED BY public.archived_student_rankings.id;
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ALTER COLUMN id SET DEFAULT nextval('public.archived_student_rankings_id_seq'::regclass);
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ADD CONSTRAINT archived_student_rankings_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ADD CONSTRAINT archived_student_rankings_training_day_id_student_id_key UNIQUE (training_day_id, student_id);
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ADD CONSTRAINT archived_student_rankings_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ADD CONSTRAINT archived_student_rankings_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_archived_student_rankings_training_day_id ON public.archived_student_rankings USING btree (training_day_id);
+
+CREATE INDEX ix_archived_student_rankings_student_id ON public.archived_student_rankings USING btree (student_id);
+
+CREATE INDEX ix_archived_student_rankings_student_tags_gin ON public.archived_student_rankings USING gin (student_tags);
+
+-- Add start_time column to training_days for storing the contest start time after archiving
+ALTER TABLE public.training_days ADD COLUMN start_time timestamp without time zone;
+
+-- Add archived_tasks_data column to training_days for storing task metadata after archiving
+ALTER TABLE public.training_days ADD COLUMN archived_tasks_data jsonb;
+
+-- Add duration column to training_days for storing the training day duration after archiving
+-- Calculated as max of main groups duration (if any) or training day duration
+ALTER TABLE public.training_days ADD COLUMN duration interval;
+
 COMMIT;

@@ -184,7 +184,12 @@ from .trainingprogram import \
     RemoveTrainingDayHandler, \
     AddTrainingDayGroupHandler, \
     UpdateTrainingDayGroupsHandler, \
-    RemoveTrainingDayGroupHandler
+    RemoveTrainingDayGroupHandler, \
+    ArchiveTrainingDayHandler, \
+    TrainingProgramAttendanceHandler, \
+    TrainingProgramCombinedRankingHandler, \
+    TrainingProgramCombinedRankingHistoryHandler, \
+    TrainingProgramCombinedRankingDetailHandler
 
 
 HANDLERS = [
@@ -356,6 +361,11 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/training_days", TrainingProgramTrainingDaysHandler),
     (r"/training_program/([0-9]+)/training_days/add", AddTrainingDayHandler),
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/remove", RemoveTrainingDayHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/archive", ArchiveTrainingDayHandler),
+    (r"/training_program/([0-9]+)/attendance", TrainingProgramAttendanceHandler),
+    (r"/training_program/([0-9]+)/combined_ranking", TrainingProgramCombinedRankingHandler),
+    (r"/training_program/([0-9]+)/combined_ranking/history", TrainingProgramCombinedRankingHistoryHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/combined_ranking_detail", TrainingProgramCombinedRankingDetailHandler),
 
     # Training day groups (main groups configuration on contest page)
     (r"/contest/([0-9]+)/training_day_group/add", AddTrainingDayGroupHandler),
