@@ -497,7 +497,13 @@ class AddTrainingProgramStudentHandler(BaseHandler):
 
         user = self.safe_get_item(User, user_id)
 
-        participation = Participation(contest=managing_contest, user=user)
+        # Set starting_time to now so the student can see everything immediately
+        # (training programs don't have a start button)
+        participation = Participation(
+            contest=managing_contest,
+            user=user,
+            starting_time=make_datetime()
+        )
         self.sql_session.add(participation)
         self.sql_session.flush()
 
@@ -2021,7 +2027,7 @@ class BulkAssignTaskHandler(BaseHandler):
 
         try:
             task_id = self.get_argument("task_id")
-            if task_id == "null":
+            if task_id in ("", "null"):
                 raise ValueError("Please select a task")
 
             tag_name = self.get_argument("tag", "").strip().lower()

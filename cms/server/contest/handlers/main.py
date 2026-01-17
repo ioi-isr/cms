@@ -142,8 +142,13 @@ class RegistrationHandler(ContestHandler):
 
             # Create participation
             team = self._get_team()
+            # For training programs, set starting_time to now so the user can
+            # see everything immediately (training programs don't have a start button)
+            starting_time = None
+            if self.contest.training_program is not None:
+                starting_time = make_datetime()
             participation = Participation(user=user, contest=self.contest,
-                                          team=team)
+                                          team=team, starting_time=starting_time)
             self.sql_session.add(participation)
 
             self.sql_session.commit()
