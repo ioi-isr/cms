@@ -118,7 +118,7 @@
     </thead>
     <tbody>
 {% for pt in past_trainings %}
-        <tr data-training-score="{{ pt.training_score }}" data-home-score="{{ pt.home_score }}" data-total-score="{{ pt.max_score }}" data-date="{{ pt.start_time.timestamp() if pt.start_time else 0 }}">
+        <tr data-training-score="{{ pt.training_score }}" data-home-score="{{ pt.home_score }}" data-date="{{ pt.start_time.timestamp() if pt.start_time else 0 }}">
             <td>
                 {% if pt.start_time %}
                     {{ pt.start_time.strftime("%Y-%m-%d") }}
@@ -130,7 +130,7 @@
             <td>
                 {% for task in pt.tasks %}
                 <div class="past-training-task">
-                    <a href="/{{ training_program.name }}/tasks/{{ task.name }}/description" class="task-link">{{ task.name }}</a>
+                    <a href="{{ contest_url("tasks", task.name, "description") }}" class="task-link">{{ task.name }}</a>
                     <span class="task-scores">
                         ({% trans %}T:{% endtrans %} {{ "%.0f"|format(task.training_score) }} / {% trans %}H:{% endtrans %} {{ "%.0f"|format(task.home_score) }})
                     </span>

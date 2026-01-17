@@ -201,12 +201,28 @@ class TrainingDaysHandler(ContestHandler):
         ongoing_upcoming_trainings = []
         past_trainings = []
 
+        # Collect past training day IDs for batch query
+        past_training_day_ids = [
+            td.id for td in training_program.training_days if td.contest is None
+        ]
+
+        # Batch fetch all ArchivedStudentRanking records for the student
+        archived_rankings_map = {}
+        if student is not None and past_training_day_ids:
+            archived_rankings = (
+                self.sql_session.query(ArchivedStudentRanking)
+                .filter(ArchivedStudentRanking.training_day_id.in_(past_training_day_ids))
+                .filter(ArchivedStudentRanking.student_id == student.id)
+                .all()
+            )
+            archived_rankings_map = {r.training_day_id: r for r in archived_rankings}
+
         for training_day in training_program.training_days:
             td_contest = training_day.contest
 
             if td_contest is None:
                 past_trainings.append(self._build_past_training_info(
-                    training_day, student, participation
+                    training_day, student, participation, archived_rankings_map
                 ))
                 continue
 
@@ -284,7 +300,8 @@ class TrainingDaysHandler(ContestHandler):
         self,
         training_day,
         student: Student | None,
-        participation: Participation
+        participation: Participation,
+        archived_rankings_map: dict
     ) -> dict:
         """Build info dict for a past (archived) training day."""
         training_score = 0.0
@@ -295,12 +312,7 @@ class TrainingDaysHandler(ContestHandler):
         archived_tasks_data = training_day.archived_tasks_data or {}
 
         if student is not None:
-            archived_ranking = (
-                self.sql_session.query(ArchivedStudentRanking)
-                .filter(ArchivedStudentRanking.training_day_id == training_day.id)
-                .filter(ArchivedStudentRanking.student_id == student.id)
-                .first()
-            )
+            archived_ranking = archived_rankings_map.get(training_day.id)
 
             archived_task_scores = {}
             if archived_ranking and archived_ranking.task_scores:

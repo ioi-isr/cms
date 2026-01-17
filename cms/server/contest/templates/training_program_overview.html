@@ -108,9 +108,11 @@
             <div style="margin-top: 15px; font-size: 14px; opacity: 0.8;">{% trans %}Completion{% endtrans %}</div>
         </div>
         <div style="flex: 2; min-width: 300px;">
-          <div class="progress-track" role="progressbar" aria-valuenow="{{ percentage }}" aria-valuemin="0" aria-valuemax="100">
+          {% set clamped_percentage = [percentage, 0]|max %}
+          {% set clamped_percentage = [clamped_percentage, 100]|min %}
+          <div class="progress-track" role="progressbar" aria-valuenow="{{ clamped_percentage }}" aria-valuemin="0" aria-valuemax="100">
               <div class="progress-fill {% if percentage >= 80 %}high{% elif percentage >= 50 %}med{% else %}low{% endif %}"
-                  style="width: {{ percentage if percentage <= 100 else 100 }}%;">
+                  style="width: {{ clamped_percentage }}%;">
               </div>
           </div>
           <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; opacity: 0.8;">

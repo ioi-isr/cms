@@ -1794,20 +1794,33 @@ class StudentTasksHandler(BaseHandler):
         for pts in participation.task_scores:
             home_scores[pts.task_id] = pts.score
 
-        # Build training scores from archived student rankings
+        # Build training scores from archived student rankings (batch query)
         training_scores = {}
-        for st in student.student_tasks:
-            if st.source_training_day_id is not None:
-                archived_ranking = (
+        source_training_day_ids = {
+            st.source_training_day_id
+            for st in student.student_tasks
+            if st.source_training_day_id is not None
+        }
+        archived_rankings = {}
+        if source_training_day_ids:
+            archived_rankings = {
+                r.training_day_id: r
+                for r in (
                     self.sql_session.query(ArchivedStudentRanking)
-                    .filter(ArchivedStudentRanking.training_day_id == st.source_training_day_id)
+                    .filter(ArchivedStudentRanking.training_day_id.in_(source_training_day_ids))
                     .filter(ArchivedStudentRanking.student_id == student.id)
-                    .first()
+                    .all()
                 )
-                if archived_ranking and archived_ranking.task_scores:
-                    task_id_str = str(st.task_id)
-                    if task_id_str in archived_ranking.task_scores:
-                        training_scores[st.task_id] = archived_ranking.task_scores[task_id_str]
+            }
+
+        for st in student.student_tasks:
+            if st.source_training_day_id is None:
+                continue
+            archived_ranking = archived_rankings.get(st.source_training_day_id)
+            if archived_ranking and archived_ranking.task_scores:
+                task_id_str = str(st.task_id)
+                if task_id_str in archived_ranking.task_scores:
+                    training_scores[st.task_id] = archived_ranking.task_scores[task_id_str]
 
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
