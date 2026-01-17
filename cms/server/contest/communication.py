@@ -30,13 +30,61 @@
 from datetime import datetime
 import logging
 
-from cms.db import Question, Announcement, Message
+from cms.db import Question, Announcement, Message, Student
 from cms.db.session import Session
 from cms.db.user import Participation
 from cmscommon.datetime import make_timestamp
 
 
 logger = logging.getLogger(__name__)
+
+
+def can_see_announcement(
+    sql_session: Session,
+    announcement: Announcement,
+    participation: Participation,
+) -> bool:
+    """Check if a participation can see the given announcement.
+
+    An announcement is visible if:
+    - The announcement has no visible_to_tags (empty list = visible to all)
+    - The student has at least one tag matching the announcement's visible_to_tags
+
+    For non-training-program contests, all announcements are visible.
+
+    sql_session: the SQLAlchemy database session to use.
+    announcement: the announcement to check visibility for.
+    participation: the participation to check visibility for.
+
+    return: True if the participation can see the announcement.
+
+    """
+    # If announcement has no visibility restrictions, it's visible to all
+    if not announcement.visible_to_tags:
+        return True
+
+    # Check if this is a training program managing contest
+    contest = participation.contest
+    training_program = contest.training_program
+
+    if training_program is None:
+        # For non-training-program contests, all announcements are visible
+        # (visibility tags only apply to training programs)
+        return True
+
+    # Find the student record for this participation
+    student = sql_session.query(Student).filter(
+        Student.participation_id == participation.id,
+        Student.training_program_id == training_program.id
+    ).first()
+
+    if student is None:
+        return False
+
+    # Check if student has any matching tag (case-insensitive)
+    student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
+    announcement_tags_set = {tag.lower() for tag in announcement.visible_to_tags}
+    return bool(student_tags_set & announcement_tags_set)
 
 
 # Dummy function to mark translatable strings.
@@ -154,6 +202,9 @@ def get_communications(
         query = query.filter(Announcement.timestamp > after)
     for announcement in query.all():
         announcement: Announcement
+        # Filter announcements based on student tags
+        if not can_see_announcement(sql_session, announcement, participation):
+            continue
         res.append({"type": "announcement",
                     "timestamp": make_timestamp(announcement.timestamp),
                     "subject": announcement.subject,

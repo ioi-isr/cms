@@ -1189,6 +1189,19 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
         text = self.get_argument("text", "")
         announcement_id = self.get_argument("announcement_id", None)
 
+        # Parse visible_to_tags from comma-separated string
+        visible_to_tags_str = self.get_argument("visible_to_tags", "")
+        visible_to_tags = [
+            tag.strip() for tag in visible_to_tags_str.split(",") if tag.strip()
+        ]
+        # Remove duplicates while preserving order
+        seen: set[str] = set()
+        unique_tags: list[str] = []
+        for tag in visible_to_tags:
+            if tag not in seen:
+                seen.add(tag)
+                unique_tags.append(tag)
+
         if subject and text:
             if announcement_id is not None:
                 # Edit existing announcement
@@ -1197,6 +1210,7 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
                     raise tornado.web.HTTPError(404)
                 announcement.subject = subject
                 announcement.text = text
+                announcement.visible_to_tags = unique_tags
             else:
                 # Add new announcement
                 announcement = Announcement(
@@ -1204,7 +1218,8 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
                     subject=subject,
                     text=text,
                     contest=managing_contest,
-                    admin=self.current_user
+                    admin=self.current_user,
+                    visible_to_tags=unique_tags
                 )
                 self.sql_session.add(announcement)
             self.try_commit()

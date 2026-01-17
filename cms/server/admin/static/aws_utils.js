@@ -990,6 +990,14 @@ CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
 
     form.querySelector('input[name="subject"]').value = subjectText;
     form.querySelector('textarea[name="text"]').value = bodyText;
+
+    // Populate visible_to_tags field if it exists
+    const visibleToTagsInput = form.querySelector('input[name="visible_to_tags"]');
+    const rawVisibleToTags = notification.querySelector('.announcement_raw_visible_to_tags');
+    if (visibleToTagsInput && rawVisibleToTags) {
+        visibleToTagsInput.value = rawVisibleToTags.value;
+    }
+
     var obj = notification.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
