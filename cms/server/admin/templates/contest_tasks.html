@@ -20,7 +20,7 @@ if (addTaskForm) {
     addTaskForm.addEventListener('submit', function(e) {
         var select = this.querySelector('select[name="task_id"]');
         var selectedTaskId = parseInt(select.value, 10);
-        if (selectedTaskId && programTaskIds.indexOf(selectedTaskId) === -1) {
+        if (selectedTaskId && !programTaskIds.includes(selectedTaskId)) {
             var confirmed = confirm(
                 'This task is not in the training program. ' +
                 'Adding it to this training day will also add it to the training program. ' +

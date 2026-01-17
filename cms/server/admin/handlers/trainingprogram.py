@@ -488,7 +488,7 @@ class AddTrainingProgramStudentHandler(BaseHandler):
 
         try:
             user_id: str = self.get_argument("user_id")
-            assert user_id != "null", "Please select a valid user"
+            assert user_id != "", "Please select a valid user"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -1895,7 +1895,7 @@ class AddStudentTaskHandler(BaseHandler):
 
         try:
             task_id = self.get_argument("task_id")
-            if task_id == "null":
+            if task_id in ("", "null"):
                 raise ValueError("Please select a task")
 
             task = self.safe_get_item(Task, task_id)
