@@ -135,7 +135,12 @@ def decode_value(type_: TypeEngine, value: object) -> object:
                            "your system. Changing to 2030-01-01.")
             return datetime(2030, 1, 1)
     elif isinstance(type_, Date):
-        return date.fromisoformat(value)
+        try:
+            return date.fromisoformat(value)
+        except ValueError as exc:
+            raise RuntimeError(
+                f"Invalid ISO date in dump: {value!r}"
+            ) from exc
     elif isinstance(type_, Interval):
         return timedelta(seconds=value)
     elif isinstance(type_, (ARRAY, FilenameSchemaArray)):

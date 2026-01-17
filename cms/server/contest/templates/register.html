@@ -216,7 +216,7 @@ $(document).ready(function() {
                         $("#date_of_birth-input").addClass("error");
                         $("#date_of_birth-input span.help-block").text("{% trans %}Please enter a valid date of birth.{% endtrans %}");
                         $("#date_of_birth").focus();
-                    } else if (payload.code === "invalid_mime_type") {
+                    } else if (payload.code === "invalid_mime_type" || payload.code === "mime_type_mismatch") {
                         $("#picture-input").addClass("error");
                         $("#picture-input span.help-block").text("{% trans %}Invalid image type. Allowed types: JPEG, PNG, GIF, WEBP.{% endtrans %}");
                         $("#picture").focus();

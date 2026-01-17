@@ -106,6 +106,13 @@ class UserHandler(BaseHandler):
             else:
                 attrs["date_of_birth"] = None
 
+            # Validate username before any file operations to avoid persisting
+            # uploads on validation failure
+            assert attrs.get("username") is not None, \
+                "No username specified."
+            assert not attrs.get("username").startswith("__"), \
+                "Username cannot start with '__' (reserved for system users)."
+
             # Handle picture upload and removal
             # If a new picture is uploaded, use it (ignore remove checkbox)
             # Otherwise, if remove checkbox is checked, remove the picture
@@ -138,11 +145,6 @@ class UserHandler(BaseHandler):
             picture_digest_to_delete = None
             if old_picture_digest is not None and attrs.get("picture") != old_picture_digest:
                 picture_digest_to_delete = old_picture_digest
-
-            assert attrs.get("username") is not None, \
-                "No username specified."
-            assert not attrs.get("username").startswith("__"), \
-                "Username cannot start with '__' (reserved for system users)."
 
             # Update the user.
             user.set_attrs(attrs)
