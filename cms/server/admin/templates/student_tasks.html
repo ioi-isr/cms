@@ -43,6 +43,8 @@
         <th>Task</th>
         <th>Source</th>
         <th>Assigned At</th>
+        <th>Training Score</th>
+        <th>Home Score</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -64,6 +66,20 @@
           {% endif %}
         </td>
         <td>{{ st.assigned_at }}</td>
+        <td>
+          {% if st.task.id in training_scores %}
+            {{ "%.2f"|format(training_scores[st.task.id]) }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>
+          {% if st.task.id in home_scores %}
+            {{ "%.2f"|format(home_scores[st.task.id]) }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
         <td>
           <form action="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "remove") }}" method="POST" style="display: inline;">
             {{ xsrf_form_html|safe }}
