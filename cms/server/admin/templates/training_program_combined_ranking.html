@@ -135,6 +135,7 @@ CMS.AWSUtils.initTagify({
 
           <td class="total-col">
             <div class="cell-content">
+                {% set attendance = attendance_data.get(student.id, {}).get(td.id) %}
                 {% if ranking and ranking.task_scores %}
                   {% set total = namespace(value=0) %}
                   {% for task in training_day_tasks.get(td.id, []) %}
@@ -144,8 +145,15 @@ CMS.AWSUtils.initTagify({
                   {% endfor %}
                   {{ "%.1f"|format(total.value) | replace('.0', '') }}
                   {% set global_total.value = global_total.value + total.value %}
+                  {% if attendance and attendance.location == 'home' %}
+                    <span class="attendance-badge home-badge" title="Participated from home">&#127968;</span>
+                  {% endif %}
                 {% else %}
-                  <span class="empty-cell-content">-</span>
+                  {% if attendance and attendance.status == 'missed' %}
+                    <span class="attendance-badge missed-badge" title="Missed training">&#10060;</span>
+                  {% else %}
+                    <span class="empty-cell-content">-</span>
+                  {% endif %}
                 {% endif %}
             </div>
           </td>

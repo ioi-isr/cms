@@ -1575,6 +1575,21 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     color: #9ca3af;
 }
 
+/* Attendance badges for combined ranking */
+.attendance-badge {
+    margin-left: 4px;
+    font-size: 0.75em;
+    vertical-align: middle;
+}
+
+.home-badge {
+    opacity: 0.7;
+}
+
+.missed-badge {
+    opacity: 0.8;
+}
+
 .history-link {
     font-size: 0.75rem;
     color: #6b7280;

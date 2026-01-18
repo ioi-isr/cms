@@ -52,6 +52,7 @@ from cms.server.util import (
     get_all_training_day_types,
     calculate_task_archive_progress,
     can_access_task,
+    check_training_day_eligibility,
     parse_tags,
 )
 from cmscommon.datetime import make_datetime
@@ -2332,6 +2333,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
             if student is None:
                 continue
 
+            # Skip ineligible students (not in any main group)
+            # These students were never supposed to participate in this training day
+            is_eligible, _, _ = check_training_day_eligibility(
+                self.sql_session, participation, training_day
+            )
+            if not is_eligible:
+                continue
+
             # Determine status
             if participation.starting_time is None:
                 status = "missed"
@@ -2480,10 +2489,6 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     student_task.source_training_day_id = training_day.id
                     self.sql_session.add(student_task)
 
-            # Skip students who missed the training
-            if participation.starting_time is None:
-                continue
-
             # Get the managing participation for this user
             # Submissions are stored with the managing contest participation, not the
             # training day participation
@@ -2491,7 +2496,15 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 self.sql_session, training_day, participation.user
             )
             if managing_participation is None:
-                continue
+                raise ValueError(
+                    f"User {participation.user.username} (id={participation.user_id}) "
+                    f"does not have a participation in the managing contest "
+                    f"'{training_day.training_program.managing_contest.name}' "
+                    f"for training day '{training_day.name}'"
+                )
+
+            # Check if student missed the training (no starting_time)
+            student_missed = participation.starting_time is None
 
             # Get task scores for ALL visible tasks (including 0 scores)
             # The presence of a task_id key indicates the task was visible
@@ -2501,11 +2514,15 @@ class ArchiveTrainingDayHandler(BaseHandler):
             for task in visible_tasks:
                 task_id = task.id
 
-                # Get score from the training day participation (for cache lookup)
-                cache_entry = get_cached_score_entry(
-                    self.sql_session, participation, task
-                )
-                task_scores[str(task_id)] = cache_entry.score
+                if student_missed:
+                    # Student missed the training - set score to 0
+                    task_scores[str(task_id)] = 0.0
+                else:
+                    # Get score from the training day participation (for cache lookup)
+                    cache_entry = get_cached_score_entry(
+                        self.sql_session, participation, task
+                    )
+                    task_scores[str(task_id)] = cache_entry.score
 
                 # Get official submissions for this task from the managing participation
                 task_submissions = (
@@ -2517,6 +2534,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     .order_by(Submission.timestamp)
                     .all()
                 )
+
+                # If student missed but has submissions, this is an error
+                if student_missed and task_submissions:
+                    raise ValueError(
+                        f"User {participation.user.username} (id={participation.user_id}) "
+                        f"has no starting_time but has {len(task_submissions)} submission(s) "
+                        f"for task '{task.name}' in training day '{training_day.name}'"
+                    )
 
                 submissions[str(task_id)] = []
                 for sub in task_submissions:
@@ -2551,6 +2576,15 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 .order_by(ScoreHistory.timestamp)
                 .all()
             )
+
+            # If student missed but has score history, this is an error
+            if student_missed and score_histories:
+                raise ValueError(
+                    f"User {participation.user.username} (id={participation.user_id}) "
+                    f"has no starting_time but has {len(score_histories)} score history "
+                    f"record(s) in training day '{training_day.name}'"
+                )
+
             for sh in score_histories:
                 if sh.timestamp is not None:
                     time_offset = (
@@ -2703,8 +2737,17 @@ class TrainingProgramCombinedRankingHandler(
         ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
         all_students: dict[int, Student] = {}
         training_day_tasks: dict[int, list[dict]] = {}
+        # Attendance data: {student_id: {training_day_id: ArchivedAttendance}}
+        attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
 
         for td in archived_training_days:
+            # Build attendance lookup for this training day
+            for attendance in td.archived_attendances:
+                student_id = attendance.student_id
+                if student_id not in attendance_data:
+                    attendance_data[student_id] = {}
+                attendance_data[student_id][td.id] = attendance
+
             # Collect all tasks that were visible to at least one student
             # Use archived_tasks_data from training day (preserves original scoring scheme)
             visible_tasks_by_id: dict[int, dict] = {}
@@ -2758,6 +2801,7 @@ class TrainingProgramCombinedRankingHandler(
         self.r_params["ranking_data"] = ranking_data
         self.r_params["sorted_students"] = sorted_students
         self.r_params["training_day_tasks"] = training_day_tasks
+        self.r_params["attendance_data"] = attendance_data
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
         self.r_params["training_day_types"] = training_day_types
