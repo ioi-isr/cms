@@ -2944,12 +2944,14 @@ class TrainingProgramCombinedRankingDetailHandler(
         history_url = self.url(
             "training_program", training_program_id, "combined_ranking", "history"
         )
-        if start_date or end_date:
+        if start_date or end_date or training_day_types:
             params = []
             if start_date:
                 params.append(f"start_date={start_date.isoformat()}")
             if end_date:
                 params.append(f"end_date={end_date.isoformat()}")
+            if training_day_types:
+                params.append(f"training_day_types={','.join(training_day_types)}")
             history_url += "?" + "&".join(params)
 
         self.r_params = self.render_params()
@@ -2966,6 +2968,7 @@ class TrainingProgramCombinedRankingDetailHandler(
         self.r_params["history_url"] = history_url
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
+        self.r_params["training_day_types"] = training_day_types
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\

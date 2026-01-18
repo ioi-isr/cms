@@ -52,6 +52,9 @@ CMS.AWSUtils.initTagify({
           {% if td.start_time %}
           <div class="date-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
           {% endif %}
+          {% if td.training_day_types %}
+          <div class="date-header-types" style="font-size: 0.75em; color: #6b7280; margin-top: 2px;">{{ td.training_day_types | join(', ') }}</div>
+          {% endif %}
         </th>
         {% endfor %}
       </tr>

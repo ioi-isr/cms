@@ -73,6 +73,9 @@ CMS.AWSUtils.initTagify({
           {% if td.start_time %}
           <div class="training-day-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
           {% endif %}
+          {% if td.training_day_types %}
+          <div class="training-day-header-types" style="font-size: 0.75em; color: #6b7280; margin-top: 2px;">{{ td.training_day_types | join(', ') }}</div>
+          {% endif %}
         </th>
         {% endfor %}
         {# Global Total Header #}
@@ -108,7 +111,7 @@ CMS.AWSUtils.initTagify({
                 <span class="student-username">{{ student.participation.user.username }}</span>
 
                 <div style="margin-top: 4px;">
-                    <a class="history-link" href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if start_date or end_date %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}{% endif %}{% if start_date and end_date %}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}{% endif %}{% endif %}" title="View score/rank history">
+                    <a class="history-link" href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if start_date or end_date or training_day_types %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}{% endif %}{% if (start_date and end_date) or (start_date and training_day_types) %}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}{% endif %}{% if end_date and training_day_types %}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(',') }}{% endif %}{% endif %}" title="View score/rank history">
                         <i style="font-size: 0.8em;">📊 View History</i>
                     </a>
                 </div>
