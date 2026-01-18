@@ -8,8 +8,7 @@ CMS.AWSUtils.initTagify({
     saveParamName: 'training_day_types',
     placeholder: 'Filter by types',
     editable: false,
-    pattern: /^[^,]+$/,
-    invalidMessage: 'Types cannot contain commas.'
+    enforceWhitelist: true
 });
 {% endblock js_init %}
 
