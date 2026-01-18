@@ -42,6 +42,7 @@ import tornado.web
 
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cms.grading.scoretypes import ScoreTypeGroup
+from cms.server.util import parse_tags
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
 from cms.grading.subtask_validation import get_running_validator_ids
@@ -240,19 +241,7 @@ class TaskHandler(BaseHandler):
             # (to avoid clobbering when editing from the general task page)
             visible_to_tags_str = self.get_argument("visible_to_tags", None)
             if visible_to_tags_str is not None:
-                visible_to_tags = [
-                    tag.strip().lower()
-                    for tag in visible_to_tags_str.split(",")
-                    if tag.strip()
-                ]
-                # Remove duplicates while preserving order
-                seen: set[str] = set()
-                unique_tags: list[str] = []
-                for tag in visible_to_tags:
-                    if tag not in seen:
-                        seen.add(tag)
-                        unique_tags.append(tag)
-                attrs["visible_to_tags"] = unique_tags
+                attrs["visible_to_tags"] = parse_tags(visible_to_tags_str)
 
             # Update the task.
             task.set_attrs(attrs)
