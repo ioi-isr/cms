@@ -32,7 +32,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import relationship
-from sqlalchemy.schema import Column, ForeignKey, CheckConstraint
+from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, Index
 from sqlalchemy.types import Integer, Unicode, DateTime, Interval, Enum, \
     Boolean, String
 
@@ -390,6 +390,10 @@ class Announcement(Base):
 
     """
     __tablename__ = 'announcements'
+    __table_args__ = (
+        Index("ix_announcements_visible_to_tags_gin", "visible_to_tags",
+              postgresql_using="gin"),
+    )
 
     # Auto increment primary key.
     id: int = Column(
@@ -429,3 +433,11 @@ class Announcement(Base):
         nullable=True,
         index=True)
     admin: Admin | None = relationship(Admin)
+
+    # Tags that control which students can see this announcement.
+    # If empty, the announcement is visible to all students.
+    # If set, only students with at least one matching tag can see the announcement.
+    visible_to_tags: list[str] = Column(
+        ARRAY(Unicode),
+        nullable=False,
+        default=[])
