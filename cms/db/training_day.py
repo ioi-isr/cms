@@ -140,7 +140,7 @@ class TrainingDay(Base):
     training_day_types: list[str] = Column(
         ARRAY(Unicode),
         nullable=False,
-        default=list,
+        default=lambda: [],
     )
 
     training_program: "TrainingProgram" = relationship(
