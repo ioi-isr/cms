@@ -429,18 +429,25 @@ function get_table_row_comparator(column_idx, numeric, ascending) {
 /**
  * Sorts specified table by specified column in specified order.
  */
-CMS.AWSUtils.sort_table = function(table, column_idx, ascending) {
+CMS.AWSUtils.sort_table = function(table, column_idx, ascending, header_element) {
     var initial_column_idx = table.data("initial_sort_column_idx");
     var ranks_column = table.data("ranks_column");
-    column_idx += ranks_column ? 1 : 0;
+    var data_column_idx = column_idx + (ranks_column ? 1 : 0);
     var table_rows = table
         .children("tbody")
         .children("tr");
-    var column_header = table
-        .children("thead")
-        .children("tr")
-        .children("th")
-        .eq(column_idx);
+    
+    // Use provided header element if available, otherwise find by index
+    var column_header;
+    if (header_element) {
+        column_header = $(header_element);
+    } else {
+        column_header = table
+            .children("thead")
+            .children("tr")
+            .children("th")
+            .eq(data_column_idx);
+    }
     var settings = (column_header.attr("data-sort-settings") || "").split(" ");
 
     var numeric = settings.indexOf("numeric") >= 0;
@@ -450,8 +457,13 @@ CMS.AWSUtils.sort_table = function(table, column_idx, ascending) {
         ascending = !ascending;
     }
 
-    // Normalize column index, converting negative to positive from the end.
-    column_idx = column_header.index();
+    // Normalize column index for data access, converting negative to positive from the end.
+    if (data_column_idx < 0) {
+        // For negative indices, calculate from the number of columns in data rows
+        var first_data_row = table_rows.first();
+        var num_cols = first_data_row.children("td,th").length;
+        data_column_idx = num_cols + data_column_idx;
+    }
 
     // Reassign arrows to headers
     table.find(".column-sort").html("&varr;");
@@ -460,7 +472,7 @@ CMS.AWSUtils.sort_table = function(table, column_idx, ascending) {
     // Do the sorting, by initial column and then by selected column.
     table_rows
         .sort(get_table_row_comparator(initial_column_idx, numeric, ascending))
-        .sort(get_table_row_comparator(column_idx, numeric, ascending))
+        .sort(get_table_row_comparator(data_column_idx, numeric, ascending))
         .each(function(idx, row) {
             table.children("tbody").append(row)
         });
@@ -501,16 +513,26 @@ CMS.AWSUtils.init_table_sort = function(table, ranks_column,
     var ascending = initial_ascending;
 
     // Add sorting indicators to column headers
+    // Skip headers with the "no-sort" class
+    // Use data-sort-column attribute if present for correct column index
     table_column_headers
         .children("th")
-        .each(function(column_idx, header) {
+        .not(".no-sort")
+        .each(function(idx, header) {
+            var $header = $(header);
+            // Use data-sort-column if specified, otherwise use the header's index
+            var sortColumn = $header.data("sort-column");
+            if (sortColumn === undefined) {
+                sortColumn = $header.index();
+            }
             $("<a/>", {
                 href: "#",
                 class: "column-sort",
-                click: function() {
-                    ascending = !ascending && previous_column_idx == column_idx;
-                    previous_column_idx = column_idx;
-                    CMS.AWSUtils.sort_table(table, column_idx, ascending);
+                click: function(e) {
+                    e.preventDefault();
+                    ascending = !ascending && previous_column_idx == sortColumn;
+                    previous_column_idx = sortColumn;
+                    CMS.AWSUtils.sort_table(table, sortColumn, ascending, header);
                 }
             }).appendTo(header);
         });
