@@ -36,7 +36,7 @@ except:
 import tornado.web
 
 from cms.db import Contest, Announcement
-from cms.server.util import get_all_student_tags
+from cms.server.util import get_all_student_tags, parse_tags
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 
@@ -78,27 +78,24 @@ class AddAnnouncementHandler(BaseHandler):
 
         # Parse visible_to_tags from comma-separated string
         visible_to_tags_str = self.get_argument("visible_to_tags", "")
-        visible_to_tags = [
-            tag.strip() for tag in visible_to_tags_str.split(",") if tag.strip()
-        ]
-        # Remove duplicates while preserving order
-        seen: set[str] = set()
-        unique_tags: list[str] = []
-        for tag in visible_to_tags:
-            if tag not in seen:
-                seen.add(tag)
-                unique_tags.append(tag)
+        visible_to_tags = parse_tags(visible_to_tags_str)
 
         if len(subject) > 0:
-            ann = Announcement(make_datetime(), subject, text,
-                               contest=self.contest, admin=self.current_user,
-                               visible_to_tags=unique_tags)
+            ann = Announcement(
+                make_datetime(),
+                subject,
+                text,
+                contest=self.contest,
+                admin=self.current_user,
+                visible_to_tags=visible_to_tags,
+            )
             self.sql_session.add(ann)
             self.try_commit()
         else:
             self.service.add_notification(
                 make_datetime(), "Subject is mandatory.", "")
         self.redirect(self.url("contest", contest_id, "announcements"))
+
 
 class EditAnnouncementHandler(BaseHandler):
     """Called to edit an announcement"""
@@ -117,21 +114,12 @@ class EditAnnouncementHandler(BaseHandler):
 
         # Parse visible_to_tags from comma-separated string
         visible_to_tags_str = self.get_argument("visible_to_tags", "")
-        visible_to_tags = [
-            tag.strip() for tag in visible_to_tags_str.split(",") if tag.strip()
-        ]
-        # Remove duplicates while preserving order
-        seen: set[str] = set()
-        unique_tags: list[str] = []
-        for tag in visible_to_tags:
-            if tag not in seen:
-                seen.add(tag)
-                unique_tags.append(tag)
+        visible_to_tags = parse_tags(visible_to_tags_str)
 
         if len(subject) > 0:
             original_ann.subject = subject
             original_ann.text = text
-            original_ann.visible_to_tags = unique_tags
+            original_ann.visible_to_tags = visible_to_tags
             self.try_commit()
         else:
             self.service.add_notification(make_datetime(), "Subject is mandatory.", "")

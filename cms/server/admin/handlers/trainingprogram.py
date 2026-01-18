@@ -47,7 +47,12 @@ from cms.db import (
     DelayRequest,
 )
 from cms.db.training_day import get_managing_participation
-from cms.server.util import get_all_student_tags, deduplicate_preserving_order, calculate_task_archive_progress, can_access_task
+from cms.server.util import (
+    get_all_student_tags,
+    calculate_task_archive_progress,
+    can_access_task,
+    parse_tags,
+)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -687,8 +692,7 @@ class StudentHandler(BaseHandler):
                 participation.team = None
 
             tags_str = self.get_argument("student_tags", "")
-            tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
-            student.student_tags = deduplicate_preserving_order(tags)
+            student.student_tags = parse_tags(tags_str)
 
         except Exception as error:
             self.service.add_notification(
@@ -742,8 +746,7 @@ class StudentTagsHandler(BaseHandler):
 
         try:
             tags_str = self.get_argument("student_tags", "")
-            tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
-            student.student_tags = deduplicate_preserving_order(tags)
+            student.student_tags = parse_tags(tags_str)
 
             if self.try_commit():
                 self.write({"success": True, "tags": student.student_tags})
@@ -1192,16 +1195,7 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
 
         # Parse visible_to_tags from comma-separated string
         visible_to_tags_str = self.get_argument("visible_to_tags", "")
-        visible_to_tags = [
-            tag.strip() for tag in visible_to_tags_str.split(",") if tag.strip()
-        ]
-        # Remove duplicates while preserving order
-        seen: set[str] = set()
-        unique_tags: list[str] = []
-        for tag in visible_to_tags:
-            if tag not in seen:
-                seen.add(tag)
-                unique_tags.append(tag)
+        visible_to_tags = parse_tags(visible_to_tags_str)
 
         if subject and text:
             if announcement_id is not None:
@@ -1211,7 +1205,7 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
                     raise tornado.web.HTTPError(404)
                 announcement.subject = subject
                 announcement.text = text
-                announcement.visible_to_tags = unique_tags
+                announcement.visible_to_tags = visible_to_tags
             else:
                 # Add new announcement
                 announcement = Announcement(
@@ -1220,7 +1214,7 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
                     text=text,
                     contest=managing_contest,
                     admin=self.current_user,
-                    visible_to_tags=unique_tags
+                    visible_to_tags=visible_to_tags,
                 )
                 self.sql_session.add(announcement)
             self.try_commit()

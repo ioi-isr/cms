@@ -449,3 +449,26 @@ def deduplicate_preserving_order(items: list[str]) -> list[str]:
             seen.add(item)
             unique.append(item)
     return unique
+
+
+def parse_tags(tags_str: str) -> list[str]:
+    """Parse a comma-separated string of tags into a list of normalized tags.
+
+    This utility handles:
+    - Splitting by comma
+    - Stripping whitespace
+    - converting to lowercase
+    - Removing empty tags
+    - Deduplicating while preserving order
+
+    Args:
+        tags_str: Comma-separated string of tags
+
+    Returns:
+        List of unique, normalized tags
+    """
+    if not tags_str:
+        return []
+
+    tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
+    return deduplicate_preserving_order(tags)
