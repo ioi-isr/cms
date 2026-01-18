@@ -747,4 +747,12 @@ ALTER TABLE public.training_days ADD COLUMN archived_tasks_data jsonb;
 -- Calculated as max of main groups duration (if any) or training day duration
 ALTER TABLE public.training_days ADD COLUMN duration interval;
 
+-- Add visible_to_tags column to announcements for controlling announcement visibility based on student tags
+-- If empty, the announcement is visible to all students. If set, only students with at least one matching tag can see the announcement.
+ALTER TABLE public.announcements ADD COLUMN visible_to_tags character varying[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.announcements ALTER COLUMN visible_to_tags DROP DEFAULT;
+
+-- Add GIN index on visible_to_tags for efficient querying
+CREATE INDEX ix_announcements_visible_to_tags_gin ON public.announcements USING gin (visible_to_tags);
+
 COMMIT;

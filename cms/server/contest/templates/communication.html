@@ -11,10 +11,10 @@
     <h1>{% trans %}Communication{% endtrans %}</h1>
 </div>
 
-{% if contest.announcements|length > 0 %}
+{% if visible_announcements|length > 0 %}
 <h2>{% trans %}Announcements{% endtrans %}</h2>
 <div class="announcement_list">
-    {% for msg in contest.announcements|reverse %}
+    {% for msg in visible_announcements|reverse %}
     <div class="announcement">
         {% if msg.subject|length > 0 %}
         <h4 class="subject">{{ msg.subject }}</h4>
@@ -63,7 +63,7 @@
                     <input type="text" name="question_subject" id="input_subject" class="input-xlarge" maxlength="50" list="task_names_list" autocomplete="off">
                     <datalist id="task_names_list">
                         {% if actual_phase >= 0 %}
-                            {% for task in contest.get_tasks() %}
+                            {% for task in visible_tasks %}
                         <option value="{{ task.name }}">
                             {% endfor %}
                         {% endif %}
