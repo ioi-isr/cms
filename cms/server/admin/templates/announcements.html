@@ -58,7 +58,7 @@ inputs.forEach(function(input) {
           {% if training_program is defined or is_training_day %}
           <div class="notification_visible_to_tags">
             <label for="visible_to_tags">Visible to tags (leave empty for all students)</label>
-            <input type="text" name="visible_to_tags" class="announcement-visibility-tags" style="width: 100%">
+            <input type="text" id="visible_to_tags" name="visible_to_tags" class="announcement-visibility-tags" style="width: 100%">
           </div>
           {% endif %}
           <input type="submit"
@@ -117,7 +117,7 @@ inputs.forEach(function(input) {
               {% if training_program is defined or is_training_day %}
               <div class="notification_visible_to_tags">
                 <label for="edit_visible_to_tags">Visible to tags (leave empty for all students)</label>
-                <input type="text" name="visible_to_tags" class="announcement-visibility-tags" style="width: 100%">
+                <input type="text" id="edit_visible_to_tags" name="visible_to_tags" class="announcement-visibility-tags" style="width: 100%">
               </div>
               {% endif %}
               <input type="submit"

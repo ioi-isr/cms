@@ -995,7 +995,15 @@ CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
     const visibleToTagsInput = form.querySelector('input[name="visible_to_tags"]');
     const rawVisibleToTags = notification.querySelector('.announcement_raw_visible_to_tags');
     if (visibleToTagsInput && rawVisibleToTags) {
-        visibleToTagsInput.value = rawVisibleToTags.value;
+        const rawValue = rawVisibleToTags.value;
+        const tagify = visibleToTagsInput._tagify;
+        if (tagify) {
+            tagify.removeAllTags();
+            const tags = rawValue.split(",").map(t => t.trim()).filter(Boolean);
+            if (tags.length) tagify.addTags(tags);
+        } else {
+            visibleToTagsInput.value = rawValue;
+        }
     }
 
     var obj = notification.querySelector(".reply_question");

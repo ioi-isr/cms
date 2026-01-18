@@ -496,7 +496,9 @@ class ContestHandler(BaseHandler):
 
         """
         if self.current_user is None:
-            # If not logged in, only show announcements without visibility restrictions
+            # If not logged in, only apply filtering to training program/day contests
+            if self.contest.training_day is None and self.contest.training_program is None:
+                return list(self.contest.announcements)
             return [a for a in self.contest.announcements if not a.visible_to_tags]
 
         return [
