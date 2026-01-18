@@ -23,9 +23,9 @@ It wraps a Contest and includes its position within the training program.
 
 import typing
 
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship, Session
-from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
+from sqlalchemy.schema import Column, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.types import DateTime, Integer, Interval, Unicode
 
 from . import Base
@@ -68,11 +68,14 @@ class TrainingDay(Base):
 
     Each training day wraps a Contest and belongs to exactly one TrainingProgram.
     The position field determines the order of training days within the program.
+    Training day types are tags for categorization (e.g., "practice", "exam").
     """
     __tablename__ = "training_days"
     __table_args__ = (
         UniqueConstraint("training_program_id", "position",
                          name="training_days_training_program_id_position_key"),
+        Index("ix_training_days_training_day_types_gin", "training_day_types",
+              postgresql_using="gin"),
     )
 
     id: int = Column(Integer, primary_key=True)
@@ -130,6 +133,14 @@ class TrainingDay(Base):
     duration: "timedelta | None" = Column(
         Interval,
         nullable=True,
+    )
+
+    # Training day types for categorization (e.g., "practice", "exam", "homework").
+    # Used for filtering in attendance and combined ranking views.
+    training_day_types: list[str] = Column(
+        ARRAY(Unicode),
+        nullable=False,
+        default=list,
     )
 
     training_program: "TrainingProgram" = relationship(

@@ -1,5 +1,18 @@
 {% extends "base.html" %}
 
+{% block js_init %}
+CMS.AWSUtils.initTagify({
+    inputSelector: 'input[name="training_day_types"]',
+    whitelist: {{ all_training_day_types | tojson }},
+    getSaveUrl: function() { return null; },
+    saveParamName: 'training_day_types',
+    placeholder: 'Filter by types',
+    editable: false,
+    pattern: /^[^,]+$/,
+    invalidMessage: 'Types cannot contain commas.'
+});
+{% endblock js_init %}
+
 {% block core %}
 
 {# --- Macro for Score Coloring --- #}
@@ -35,9 +48,13 @@
     <label class="tp-filter-label" for="end_date">To:</label>
     <input type="date" id="end_date" class="tp-filter-input" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
   </div>
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="training_day_types">Types:</label>
+    <input type="text" id="training_day_types" name="training_day_types" style="min-width: 200px;" value="{{ training_day_types | join(', ') }}" />
+  </div>
   <div class="tp-filter-group" style="margin-left: 5px;">
     <button type="submit" class="tp-btn-primary">Apply Filter</button>
-    {% if start_date or end_date %}
+    {% if start_date or end_date or training_day_types %}
     <a href="{{ url('training_program', training_program.id, 'combined_ranking') }}" class="tp-btn-secondary">Clear</a>
     {% endif %}
   </div>

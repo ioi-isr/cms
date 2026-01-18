@@ -49,6 +49,7 @@ from cms.db import (
 from cms.db.training_day import get_managing_participation
 from cms.server.util import (
     get_all_student_tags,
+    get_all_training_day_types,
     calculate_task_archive_progress,
     can_access_task,
     parse_tags,
@@ -1346,6 +1347,8 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
             .filter(Question.reply_timestamp.is_(None))\
             .filter(Question.ignored.is_(False))\
             .count()
+        self.r_params["all_training_day_types"] = get_all_training_day_types(
+            training_program)
 
         self.render("training_program_training_days.html", **self.r_params)
 
@@ -1818,6 +1821,39 @@ class RemoveTrainingDayGroupHandler(BaseHandler):
         self.sql_session.delete(group)
         self.try_commit()
         self.redirect(self.url("contest", contest_id))
+
+
+class TrainingDayTypesHandler(BaseHandler):
+    """Handler for updating training day types via AJAX."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, training_day_id: str):
+        self.set_header("Content-Type", "application/json")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            self.set_status(404)
+            self.write({"error": "Training day does not belong to this program"})
+            return
+
+        try:
+            types_str = self.get_argument("training_day_types", "")
+            training_day.training_day_types = parse_tags(types_str)
+
+            if self.try_commit():
+                self.write({
+                    "success": True,
+                    "types": training_day.training_day_types
+                })
+            else:
+                self.set_status(500)
+                self.write({"error": "Failed to save"})
+
+        except Exception as error:
+            self.set_status(400)
+            self.write({"error": str(error)})
 
 
 class StudentTasksHandler(BaseHandler):
@@ -2541,8 +2577,8 @@ class ArchiveTrainingDayHandler(BaseHandler):
             self.sql_session.add(archived_ranking)
 
 
-class TrainingProgramDateFilterMixin:
-    """Mixin for filtering training days by date range."""
+class TrainingProgramFilterMixin:
+    """Mixin for filtering training days by date range and types."""
 
     def _parse_date_range(self) -> tuple[dt | None, dt | None]:
         """Parse start_date and end_date query arguments."""
@@ -2565,10 +2601,21 @@ class TrainingProgramDateFilterMixin:
 
         return start_date, end_date
 
+    def _parse_training_day_types(self) -> list[str]:
+        """Parse training_day_types query argument."""
+        types_str = self.get_argument("training_day_types", "")
+        if not types_str:
+            return []
+        return parse_tags(types_str)
+
     def _get_archived_training_days(
-        self, training_program_id: int, start_date: dt | None, end_date: dt | None
+        self,
+        training_program_id: int,
+        start_date: dt | None,
+        end_date: dt | None,
+        training_day_types: list[str] | None = None,
     ) -> list[TrainingDay]:
-        """Query archived training days with optional date filtering."""
+        """Query archived training days with optional date and type filtering."""
         query = (
             self.sql_session.query(TrainingDay)
             .filter(TrainingDay.training_program_id == training_program_id)
@@ -2579,10 +2626,15 @@ class TrainingProgramDateFilterMixin:
         if end_date:
             # Add one day to end_date to include the entire end day
             query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
+        if training_day_types:
+            # Filter training days that have ALL specified types
+            query = query.filter(
+                TrainingDay.training_day_types.contains(training_day_types)
+            )
         return query.order_by(TrainingDay.start_time).all()
 
 
-class TrainingProgramAttendanceHandler(TrainingProgramDateFilterMixin, BaseHandler):
+class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
     """Display attendance data for all archived training days."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
@@ -2590,8 +2642,9 @@ class TrainingProgramAttendanceHandler(TrainingProgramDateFilterMixin, BaseHandl
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
         start_date, end_date = self._parse_date_range()
+        training_day_types = self._parse_training_day_types()
         archived_training_days = self._get_archived_training_days(
-            training_program.id, start_date, end_date
+            training_program.id, start_date, end_date, training_day_types
         )
 
         # Build attendance data structure
@@ -2620,6 +2673,9 @@ class TrainingProgramAttendanceHandler(TrainingProgramDateFilterMixin, BaseHandl
         self.r_params["sorted_students"] = sorted_students
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
+        self.r_params["training_day_types"] = training_day_types
+        self.r_params["all_training_day_types"] = get_all_training_day_types(
+            training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\
@@ -2630,7 +2686,7 @@ class TrainingProgramAttendanceHandler(TrainingProgramDateFilterMixin, BaseHandl
 
 
 class TrainingProgramCombinedRankingHandler(
-    TrainingProgramDateFilterMixin, BaseHandler
+    TrainingProgramFilterMixin, BaseHandler
 ):
     """Display combined ranking data for all archived training days."""
 
@@ -2639,8 +2695,9 @@ class TrainingProgramCombinedRankingHandler(
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
         start_date, end_date = self._parse_date_range()
+        training_day_types = self._parse_training_day_types()
         archived_training_days = self._get_archived_training_days(
-            training_program.id, start_date, end_date
+            training_program.id, start_date, end_date, training_day_types
         )
 
         ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
@@ -2703,6 +2760,9 @@ class TrainingProgramCombinedRankingHandler(
         self.r_params["training_day_tasks"] = training_day_tasks
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
+        self.r_params["training_day_types"] = training_day_types
+        self.r_params["all_training_day_types"] = get_all_training_day_types(
+            training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\
@@ -2713,7 +2773,7 @@ class TrainingProgramCombinedRankingHandler(
 
 
 class TrainingProgramCombinedRankingHistoryHandler(
-    TrainingProgramDateFilterMixin, BaseHandler
+    TrainingProgramFilterMixin, BaseHandler
 ):
     """Return score history for archived training days as JSON."""
 
@@ -2724,8 +2784,9 @@ class TrainingProgramCombinedRankingHistoryHandler(
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
         start_date, end_date = self._parse_date_range()
+        training_day_types = self._parse_training_day_types()
         archived_training_days = self._get_archived_training_days(
-            training_program.id, start_date, end_date
+            training_program.id, start_date, end_date, training_day_types
         )
 
         result = []
@@ -2745,7 +2806,7 @@ class TrainingProgramCombinedRankingHistoryHandler(
 
 
 class TrainingProgramCombinedRankingDetailHandler(
-    TrainingProgramDateFilterMixin, BaseHandler
+    TrainingProgramFilterMixin, BaseHandler
 ):
     """Show detailed score/rank progress for a student across archived training days."""
 
@@ -2755,8 +2816,9 @@ class TrainingProgramCombinedRankingDetailHandler(
         student = self.safe_get_item(Student, student_id)
 
         start_date, end_date = self._parse_date_range()
+        training_day_types = self._parse_training_day_types()
         archived_training_days = self._get_archived_training_days(
-            training_program.id, start_date, end_date
+            training_program.id, start_date, end_date, training_day_types
         )
 
         users_data = {}
