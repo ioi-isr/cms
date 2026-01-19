@@ -32,11 +32,14 @@ from cms.db import Contest, Task
 from cms.grading.languagemanager import SOURCE_EXTS, get_language
 from cms.grading.tasktypes.util import get_allowed_manager_basenames
 from cmscommon.datetime import make_datetime
+from cmscontrib.loaders.base_loader import LANGUAGE_MAP
 
 from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+LANGUAGE_CODE_TO_NAME = {code: name for name, code in LANGUAGE_MAP.items()}
 
 
 def _expand_codename_with_language(filename: str, language_name: str | None) -> str:
@@ -88,8 +91,15 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     os.makedirs(managers_dir, exist_ok=True)
 
     for lang_code, statement in task.statements.items():
-        statement_path = os.path.join(statements_dir, f"{lang_code}.pdf")
+        lang_name = LANGUAGE_CODE_TO_NAME.get(lang_code, lang_code)
+        statement_path = os.path.join(statements_dir, f"{lang_name}.pdf")
         file_cacher.get_file_to_path(statement.digest, statement_path)
+        if statement.source_digest:
+            if statement.source_extension:
+                source_path = os.path.join(statements_dir, f"{lang_name}{statement.source_extension}")
+            else:
+                source_path = os.path.join(statements_dir, f"{lang_name}_source")
+            file_cacher.get_file_to_path(statement.source_digest, source_path)
 
     for filename, attachment in task.attachments.items():
         attachment_path = os.path.join(attachments_dir, filename)
