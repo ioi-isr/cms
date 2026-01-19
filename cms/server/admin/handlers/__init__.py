@@ -69,7 +69,9 @@ from .contestuser import \
     AddContestUserHandler, \
     BulkAddContestUsersHandler, \
     ParticipationHandler, \
-    MessageHandler
+    MessageHandler, \
+    EditMessageHandler, \
+    DeleteMessageHandler
 from .dataset import \
     DatasetSubmissionsHandler, \
     CloneDatasetHandler, \
@@ -197,6 +199,8 @@ HANDLERS = [
     (r"/contest/([0-9]+)/user/([0-9]+)/remove", RemoveParticipationHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/edit", ParticipationHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/message", MessageHandler),
+    (r"/contest/([0-9]+)/user/([0-9]+)/message/([0-9]+)/edit", EditMessageHandler),
+    (r"/contest/([0-9]+)/user/([0-9]+)/message/([0-9]+)", DeleteMessageHandler),
 
     # Contest's tasks
 
