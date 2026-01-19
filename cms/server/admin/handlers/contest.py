@@ -137,6 +137,7 @@ class ContestHandler(SimpleContestHandler("contest.html")):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, contest_id: str):
         contest = self.safe_get_item(Contest, contest_id)
+        self.contest = contest
 
         old_start = contest.start
 
@@ -185,16 +186,16 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_timedelta_sec(attrs, "min_submission_interval_grace_period")
             self.get_timedelta_sec(attrs, "min_user_test_interval")
 
-            self.get_datetime(attrs, "start")
-            self.get_datetime(attrs, "stop")
+            self.get_datetime_with_timezone(attrs, "start")
+            self.get_datetime_with_timezone(attrs, "stop")
 
             self.get_string(attrs, "timezone", empty=None)
             self.get_timedelta_sec(attrs, "per_user_time")
             self.get_int(attrs, "score_precision")
 
             self.get_bool(attrs, "analysis_enabled")
-            self.get_datetime(attrs, "analysis_start")
-            self.get_datetime(attrs, "analysis_stop")
+            self.get_datetime_with_timezone(attrs, "analysis_start")
+            self.get_datetime_with_timezone(attrs, "analysis_stop")
 
             # Update the contest first
             contest.set_attrs(attrs)
