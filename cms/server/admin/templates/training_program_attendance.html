@@ -1,15 +1,19 @@
 {% extends "base.html" %}
 
 {% block js_init %}
-CMS.AWSUtils.initTagify({
-    inputSelector: 'input[name="training_day_types"]',
-    whitelist: {{ all_training_day_types | tojson }},
-    getSaveUrl: function() { return null; },
-    saveParamName: 'training_day_types',
-    placeholder: 'Filter by types',
-    editable: false,
-    enforceWhitelist: true
-});
+// Initialize read-only filter tagify (no AJAX save)
+var filterInput = document.querySelector('input[name="training_day_types"]');
+if (filterInput && typeof Tagify !== 'undefined') {
+    new Tagify(filterInput, {
+        delimiters: ",",
+        whitelist: {{ all_training_day_types | tojson }},
+        enforceWhitelist: true,
+        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
+        originalInputValueFormat: function(valuesArr) {
+            return valuesArr.map(function(item) { return item.value; }).join(', ');
+        }
+    });
+}
 {% endblock js_init %}
 
 {% block core %}

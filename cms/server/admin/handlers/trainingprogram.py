@@ -22,6 +22,7 @@ Each training program has a managing contest that handles all submissions.
 """
 
 from datetime import datetime as dt, timedelta
+from urllib.parse import urlencode
 
 import tornado.web
 
@@ -2997,14 +2998,14 @@ class TrainingProgramCombinedRankingDetailHandler(
             "training_program", training_program_id, "combined_ranking", "history"
         )
         if start_date or end_date or training_day_types:
-            params = []
+            params = {}
             if start_date:
-                params.append(f"start_date={start_date.isoformat()}")
+                params["start_date"] = start_date.isoformat()
             if end_date:
-                params.append(f"end_date={end_date.isoformat()}")
+                params["end_date"] = end_date.isoformat()
             if training_day_types:
-                params.append(f"training_day_types={','.join(training_day_types)}")
-            history_url += "?" + "&".join(params)
+                params["training_day_types"] = training_day_types
+            history_url += "?" + urlencode(params, doseq=True)
 
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program

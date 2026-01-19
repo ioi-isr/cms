@@ -72,7 +72,7 @@ CMS.AWSUtils.initTagify({
         <td><a href="{{ url("contest", td.contest.id) }}">{{ td.contest.name }}</a></td>
         <td>{{ td.contest.description }}</td>
         <td style="min-width: 200px;">
-          <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}"/>
+          <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
         </td>
         <td>
           {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
@@ -118,7 +118,7 @@ CMS.AWSUtils.initTagify({
       <td>{{ td.name or "(no name)" }}</td>
       <td>{{ td.description or "(no description)" }}</td>
       <td style="min-width: 200px;">
-        <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}"/>
+        <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
       </td>
       <td>
         {% if td.start_time %}

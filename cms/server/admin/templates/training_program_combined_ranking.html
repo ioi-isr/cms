@@ -1,15 +1,19 @@
 {% extends "base.html" %}
 
 {% block js_init %}
-CMS.AWSUtils.initTagify({
-    inputSelector: 'input[name="training_day_types"]',
-    whitelist: {{ all_training_day_types | tojson }},
-    getSaveUrl: function() { return null; },
-    saveParamName: 'training_day_types',
-    placeholder: 'Filter by types',
-    editable: false,
-    enforceWhitelist: true
-});
+// Initialize read-only filter tagify (no AJAX save)
+var filterInput = document.querySelector('input[name="training_day_types"]');
+if (filterInput && typeof Tagify !== 'undefined') {
+    new Tagify(filterInput, {
+        delimiters: ",",
+        whitelist: {{ all_training_day_types | tojson }},
+        enforceWhitelist: true,
+        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
+        originalInputValueFormat: function(valuesArr) {
+            return valuesArr.map(function(item) { return item.value; }).join(', ');
+        }
+    });
+}
 {% endblock js_init %}
 
 {% block core %}
@@ -108,7 +112,7 @@ CMS.AWSUtils.initTagify({
                 <span class="student-username">{{ student.participation.user.username }}</span>
 
                 <div style="margin-top: 4px;">
-                    <a class="history-link" href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if start_date or end_date or training_day_types %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}{% endif %}{% if (start_date and end_date) or (start_date and training_day_types) %}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}{% endif %}{% if end_date and training_day_types %}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(',') }}{% endif %}{% endif %}" title="View score/rank history">
+                    <a class="history-link" href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if start_date or end_date or training_day_types %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}{% endif %}{% if (start_date and end_date) or (start_date and training_day_types) %}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}{% endif %}{% if end_date and training_day_types %}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(',') | urlencode }}{% endif %}{% endif %}" title="View score/rank history">
                         <i style="font-size: 0.8em;">📊 View History</i>
                     </a>
                 </div>
@@ -145,7 +149,9 @@ CMS.AWSUtils.initTagify({
                   {% endfor %}
                   {{ "%.1f"|format(total.value) | replace('.0', '') }}
                   {% set global_total.value = global_total.value + total.value %}
-                  {% if attendance and attendance.location == 'home' %}
+                  {% if attendance and attendance.status == 'missed' %}
+                    <span class="attendance-badge missed-badge" title="Missed training">&#10060;</span>
+                  {% elif attendance and attendance.location == 'home' %}
                     <span class="attendance-badge home-badge" title="Participated from home">&#127968;</span>
                   {% endif %}
                 {% else %}
