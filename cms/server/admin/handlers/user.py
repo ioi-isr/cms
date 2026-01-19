@@ -904,7 +904,7 @@ class RemovePictureHandler(BaseHandler):
                 "No picture to remove",
                 "User %s does not have a profile picture." % user.username
             )
-            self.redirect(fallback_page)
+            self.write(fallback_page)
             return
 
         old_picture_digest = user.picture
@@ -927,4 +927,4 @@ class RemovePictureHandler(BaseHandler):
             )
             self.service.proxy_service.reinitialize()
 
-        self.redirect(fallback_page)
+        self.write(fallback_page)

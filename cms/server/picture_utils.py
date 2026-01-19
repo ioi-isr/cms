@@ -27,7 +27,7 @@ import io
 import logging
 from typing import Tuple
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 
 logger = logging.getLogger(__name__)
@@ -118,6 +118,12 @@ def validate_and_get_image(data: bytes) -> Image.Image:
         img.verify()
         # Re-open after verify (verify() can only be called once)
         img = Image.open(io.BytesIO(data))
+
+        # Apply EXIF orientation if present
+        # We need to preserve the format as exif_transpose might lose it
+        original_format = img.format
+        img = ImageOps.exif_transpose(img)
+        img.format = original_format
     except Exception as e:
         logger.warning("Failed to open image: %s", e)
         raise PictureValidationError(
