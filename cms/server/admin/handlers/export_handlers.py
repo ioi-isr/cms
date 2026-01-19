@@ -32,11 +32,14 @@ from cms.db import Contest, Task
 from cms.grading.languagemanager import SOURCE_EXTS, get_language
 from cms.grading.tasktypes.util import get_allowed_manager_basenames
 from cmscommon.datetime import make_datetime
+from cmscontrib.loaders.base_loader import LANGUAGE_MAP
 
 from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+LANGUAGE_CODE_TO_NAME = {code: name for name, code in LANGUAGE_MAP.items()}
 
 
 def _expand_codename_with_language(filename: str, language_name: str | None) -> str:
@@ -88,8 +91,15 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     os.makedirs(managers_dir, exist_ok=True)
 
     for lang_code, statement in task.statements.items():
-        statement_path = os.path.join(statements_dir, f"{lang_code}.pdf")
+        lang_name = LANGUAGE_CODE_TO_NAME.get(lang_code, lang_code)
+        statement_path = os.path.join(statements_dir, f"{lang_name}.pdf")
         file_cacher.get_file_to_path(statement.digest, statement_path)
+        if statement.source_digest:
+            if statement.source_extension:
+                source_path = os.path.join(statements_dir, f"{lang_name}{statement.source_extension}")
+            else:
+                source_path = os.path.join(statements_dir, f"{lang_name}_source")
+            file_cacher.get_file_to_path(statement.source_digest, source_path)
 
     for filename, attachment in task.attachments.items():
         attachment_path = os.path.join(attachments_dir, filename)
@@ -291,6 +301,61 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
 
         if generators_config:
             task_config['generators'] = generators_config
+
+    # Export subtask validators
+    if dataset.subtask_validators:
+        validators_dir = os.path.join(export_dir, "validators")
+        os.makedirs(validators_dir, exist_ok=True)
+        validators_config = []
+
+        # First pass: detect filename collisions
+        # Count how many validators use each filename
+        filename_counts = {}
+        for validator in dataset.subtask_validators.values():
+            filename_counts[validator.filename] = \
+                filename_counts.get(validator.filename, 0) + 1
+
+        # Track used export filenames to handle edge cases
+        used_export_filenames = set()
+
+        # Sort by subtask_index for stable, deterministic output
+        for subtask_index in sorted(dataset.subtask_validators.keys()):
+            validator = dataset.subtask_validators[subtask_index]
+            original_filename = validator.filename
+
+            # Determine export filename
+            if filename_counts[original_filename] > 1:
+                # Collision detected - add subtask index suffix
+                stem, ext = os.path.splitext(original_filename)
+                export_filename = f"{stem}_st{subtask_index}{ext}"
+            else:
+                # No collision - use original filename
+                export_filename = original_filename
+
+            # Handle edge case: export_filename already used (e.g., someone
+            # named their file "validator_st0.cpp" and there's a collision)
+            if export_filename in used_export_filenames:
+                stem, ext = os.path.splitext(original_filename)
+                counter = 1
+                while export_filename in used_export_filenames:
+                    export_filename = f"{stem}_st{subtask_index}_{counter}{ext}"
+                    counter += 1
+
+            used_export_filenames.add(export_filename)
+
+            # Export validator source file with the (possibly renamed) filename
+            validator_path = os.path.join(validators_dir, export_filename)
+            file_cacher.get_file_to_path(validator.digest, validator_path)
+
+            # Add validator metadata to config (use export filename, not original)
+            validator_config = {
+                'filename': export_filename,
+                'subtask_index': subtask_index,
+            }
+            validators_config.append(validator_config)
+
+        if validators_config:
+            task_config['validators'] = validators_config
 
     task_yaml_path = os.path.join(export_dir, "task.yaml")
     with open(task_yaml_path, 'w', encoding='utf-8') as f:

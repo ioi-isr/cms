@@ -43,6 +43,7 @@ from . import (
     Dataset,
     Testcase,
     Generator,
+    SubtaskValidator,
     Submission,
     File,
     SubmissionResult,
@@ -347,6 +348,9 @@ def enumerate_files(
 
     task_q = contest_q.join(Contest.tasks)
     queries.append(task_q.join(Task.statements).with_entities(Statement.digest))
+    queries.append(task_q.join(Task.statements)
+                   .filter(Statement.source_digest.isnot(None))
+                   .with_entities(Statement.source_digest))
     queries.append(task_q.join(Task.attachments)
                    .with_entities(Attachment.digest))
 
@@ -364,6 +368,13 @@ def enumerate_files(
     queries.append(dataset_q.join(Dataset.generators)
                    .filter(Generator.executable_digest.isnot(None))
                    .with_entities(Generator.executable_digest))
+
+    # SubtaskValidator source and executable files
+    queries.append(dataset_q.join(Dataset.subtask_validators)
+                   .with_entities(SubtaskValidator.digest))
+    queries.append(dataset_q.join(Dataset.subtask_validators)
+                   .filter(SubtaskValidator.executable_digest.isnot(None))
+                   .with_entities(SubtaskValidator.executable_digest))
 
     if not skip_submissions and not skip_users:
         submission_q = task_q.join(Task.submissions)

@@ -69,7 +69,9 @@ from .contestuser import \
     AddContestUserHandler, \
     BulkAddContestUsersHandler, \
     ParticipationHandler, \
-    MessageHandler
+    MessageHandler, \
+    EditMessageHandler, \
+    DeleteMessageHandler
 from .dataset import \
     DatasetSubmissionsHandler, \
     CloneDatasetHandler, \
@@ -87,7 +89,17 @@ from .dataset import \
     AddGeneratorHandler, \
     EditGeneratorHandler, \
     DeleteGeneratorHandler, \
-    GenerateTestcasesHandler
+    GenerateTestcasesHandler, \
+    RenameTestcaseHandler, \
+    BatchRenameTestcasesHandler
+from .subtask_validators import (
+    AddSubtaskValidatorHandler,
+    DeleteSubtaskValidatorHandler,
+    SubtaskDetailsHandler,
+    UpdateSubtaskRegexHandler,
+    UpdateSubtaskNameHandler,
+    RerunSubtaskValidatorsHandler,
+)
 from .main import \
     LoginHandler, \
     LogoutHandler, \
@@ -188,6 +200,8 @@ HANDLERS = [
     (r"/contest/([0-9]+)/user/([0-9]+)/remove", RemoveParticipationHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/edit", ParticipationHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/message", MessageHandler),
+    (r"/contest/([0-9]+)/user/([0-9]+)/message/([0-9]+)/edit", EditMessageHandler),
+    (r"/contest/([0-9]+)/user/([0-9]+)/message/([0-9]+)", DeleteMessageHandler),
 
     # Contest's tasks
 
@@ -269,6 +283,16 @@ HANDLERS = [
     (r"/dataset/([0-9]+)/generator/([0-9]+)/edit", EditGeneratorHandler),
     (r"/dataset/([0-9]+)/generator/([0-9]+)/delete", DeleteGeneratorHandler),
     (r"/dataset/([0-9]+)/generator/([0-9]+)/generate", GenerateTestcasesHandler),
+
+    # Subtask validators
+    (r"/dataset/([0-9]+)/subtask/([0-9]+)/validator/add", AddSubtaskValidatorHandler),
+    (r"/dataset/([0-9]+)/validator/([0-9]+)/delete", DeleteSubtaskValidatorHandler),
+    (r"/dataset/([0-9]+)/subtask/([0-9]+)/details", SubtaskDetailsHandler),
+    (r"/dataset/([0-9]+)/subtask/([0-9]+)/regex", UpdateSubtaskRegexHandler),
+    (r"/dataset/([0-9]+)/subtask/([0-9]+)/name", UpdateSubtaskNameHandler),
+    (r"/dataset/([0-9]+)/testcase/([0-9]+)/rename", RenameTestcaseHandler),
+    (r"/dataset/([0-9]+)/testcases/batch_rename", BatchRenameTestcasesHandler),
+    (r"/dataset/([0-9]+)/validators/rerun", RerunSubtaskValidatorsHandler),
 
     # Users/Teams
 

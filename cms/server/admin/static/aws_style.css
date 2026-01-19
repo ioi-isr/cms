@@ -970,6 +970,165 @@ body.admin div.task_dataset {
     border: 1px solid #CBD5E1;
 }
 
+/* Task dataset subsection titles and helper text */
+body.admin .task_dataset h4 {
+    font-size: 1.15em;
+    margin: 1.2em 0 0.35em;
+    color: #1F2937;
+    font-weight: 700;
+}
+
+body.admin .task_dataset h5 {
+    font-size: 1.05em;
+    margin: 0.9em 0 0.25em;
+    color: #1F2937;
+    font-weight: 700;
+}
+
+body.admin .task_dataset h3 {
+    color: #1F2937;
+    font-weight: 700;
+}
+
+body.admin .task_dataset h4+p {
+    margin: 0.1em 0 0.7em;
+    padding: 0;
+    font-size: 0.95em;
+    color: #2f3c2c;
+}
+
+body.admin .task_dataset h4 .info {
+    color: #53637D;
+    font-size: 0.85em;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    vertical-align: middle;
+}
+
+body.admin .task_dataset table.subtask-validators {
+    margin-left: 0.7em;
+}
+
+body.admin .task_dataset table.subtask-validators th:last-child {
+    min-width: 160px;
+    white-space: nowrap;
+}
+
+/* Subtask details */
+body.admin .subtask-table-card {
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    background-color: #F8FBFF;
+    padding: 0.8em 1em 1em;
+    margin: 1.2em 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+body.admin .subtask-section-title {
+    margin: 0 0 0.45em;
+    color: #1F2937;
+    font-weight: 700;
+}
+
+body.admin .subtask-table-card .filter-row {
+    margin: 0 0 0.65em;
+}
+
+body.admin .subtask-table-card .filter-row .filter-btn[data-filter="passed"] {
+    color: #15803d;
+    font-weight: 700;
+}
+
+body.admin .subtask-table-card .filter-row .filter-btn[data-filter="failed"] {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+body.admin .subtask-table-card .filter-row .filter-btn[data-filter="error"] {
+    color: #b45309;
+    font-weight: 700;
+}
+
+body.admin .subtask-table-card .filter-row .filter-btn[data-filter="not_validated"] {
+    color: #4b5563;
+    font-weight: 700;
+}
+
+body.admin .subtask-table-card .muted {
+    color: #4B5563;
+}
+
+body.admin .subtask-table-card table {
+    margin-top: 0.35em;
+}
+
+body.admin .subtask-table-card .batch-actions {
+    display: none;
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #F3F6FB;
+    border-radius: 6px;
+    border: 1px solid #DBE2EB;
+}
+
+body.admin .subtask-section-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #CBD5E1, transparent);
+    margin: -0.4em 0 0.8em;
+}
+
+/* Validator status badges */
+body.admin .validator-status {
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+body.admin .validator-status::before {
+    content: "●";
+    font-size: 0.85em;
+}
+
+body.admin .validator-pass {
+    color: #15803d;
+}
+body.admin .validator-pass::before {
+    color: #16a34a;
+}
+
+body.admin .validator-fail,
+body.admin .validator-missing {
+    color: #b91c1c;
+}
+body.admin .validator-fail::before,
+body.admin .validator-missing::before {
+    color: #dc2626;
+}
+
+body.admin .validator-error {
+    color: #b45309;
+}
+body.admin .validator-error::before {
+    color: #d97706;
+}
+
+body.admin .validator-unvalidated {
+    color: #6b7280;
+}
+body.admin .validator-unvalidated::before {
+    color: #9ca3af;
+}
+
+body.admin .validator-running {
+    color: #1d4ed8;
+    font-style: italic;
+}
+body.admin .validator-running::before {
+    color: #2563eb;
+}
+
 body.admin #notifications .notification {
     background-color: #F7CBFE;
     border: 0.143em solid #E475FF;
@@ -1197,4 +1356,19 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .notice-pending a {
     color: white;
+}
+
+/* Stderr output in validator results */
+.stderr-output {
+    margin: 0;
+    padding: 4px 8px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 0.85em;
+    max-width: 300px;
+    max-height: 100px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }

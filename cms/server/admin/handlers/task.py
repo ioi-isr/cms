@@ -28,6 +28,7 @@
 """
 
 import logging
+import os.path
 import traceback
 
 import collections
@@ -43,7 +44,7 @@ from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cms.grading.scoretypes import ScoreTypeGroup
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
-from .modelsolution import get_subtask_info
+from cms.grading.subtask_validation import get_running_validator_ids
 
 
 logger = logging.getLogger(__name__)
@@ -129,30 +130,52 @@ class TaskHandler(BaseHandler):
             try:
                 score_type_obj = dataset.score_type_object
                 if isinstance(score_type_obj, ScoreTypeGroup):
-                    # Build testcase -> subtask mapping
-                    targets = score_type_obj.retrieve_target_testcases()
-                    tc_to_subtasks = {}
-                    for subtask_idx, testcase_list in enumerate(targets):
-                        for tc_codename in testcase_list:
-                            if tc_codename not in tc_to_subtasks:
-                                tc_to_subtasks[tc_codename] = []
-                            tc_to_subtasks[tc_codename].append(subtask_idx)
-                    testcase_subtasks[dataset.id] = tc_to_subtasks
-
-                    # Use shared helper to get subtask info
-                    subtasks = get_subtask_info(dataset)
+                    # Extract subtask names and info from score type parameters first
+                    # This should work even when there are no testcases
+                    # Parameters format: [[score, pattern, optional_name], ...]
+                    names = {}
+                    subtasks = []
+                    for idx, param in enumerate(score_type_obj.parameters):
+                        max_score = param[0]
+                        name = param[2] if len(param) >= 3 and param[2] else None
+                        if name:
+                            names[idx] = name
+                        subtasks.append({
+                            "idx": idx,
+                            "name": name,
+                            "display_name": name if name else f"Subtask {idx}",
+                            "max_score": max_score
+                        })
+                    if names:
+                        subtask_names[dataset.id] = names
                     if subtasks:
                         subtask_info[dataset.id] = subtasks
-                        # Extract names dict for backward compatibility
-                        names = {st["idx"]: st["name"] for st in subtasks if st["name"]}
-                        if names:
-                            subtask_names[dataset.id] = names
+
+                    # Now try to get testcase-to-subtask mapping
+                    # This may fail if there are no testcases, but subtask_info
+                    # should still be populated from above
+                    try:
+                        targets = score_type_obj.retrieve_target_testcases()
+                        tc_to_subtasks = {}
+                        for subtask_idx, testcase_list in enumerate(targets):
+                            for tc_codename in testcase_list:
+                                if tc_codename not in tc_to_subtasks:
+                                    tc_to_subtasks[tc_codename] = []
+                                tc_to_subtasks[tc_codename].append(subtask_idx)
+                        testcase_subtasks[dataset.id] = tc_to_subtasks
+                    except ValueError as e:
+                        # If retrieve_target_testcases fails due to bad parameters/regexes,
+                        # just skip the mapping but keep the subtask_info populated
+                        logger.debug(
+                            "Could not build testcase-to-subtask mapping for "
+                            "dataset %d: %s", dataset.id, e)
             except Exception:
                 pass
 
         self.r_params["testcase_subtasks"] = testcase_subtasks
         self.r_params["subtask_names"] = subtask_names
         self.r_params["subtask_info"] = subtask_info
+        self.r_params["running_validator_ids"] = get_running_validator_ids()
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -313,16 +336,13 @@ class AddStatementHandler(BaseHandler):
                 "The language code can be any string.")
             self.redirect(fallback_page)
             return
-
-        # Check if a file was uploaded
-        if "statement" not in self.request.files:
+        if "statement" not in self.request.files or len(self.request.files["statement"]) == 0:
             self.service.add_notification(
                 make_datetime(),
-                "No file selected",
-                "Please select a PDF file to upload.")
+                "No statement file provided",
+                "A PDF statement file is required.")
             self.redirect(fallback_page)
             return
-
         statement = self.request.files["statement"][0]
 
         # Check for empty file
@@ -340,6 +360,16 @@ class AddStatementHandler(BaseHandler):
                 "The task statement must be a .pdf file.")
             self.redirect(fallback_page)
             return
+
+        # Check for optional source file
+        source_file = None
+        source_digest = None
+        source_extension = None
+        if "source" in self.request.files and len(self.request.files["source"]) > 0:
+            source_file = self.request.files["source"][0]
+            source_filename = source_file["filename"].lower()
+            _, source_extension = os.path.splitext(source_filename)
+
         task_name = task.name
         self.sql_session.close()
 
@@ -355,6 +385,20 @@ class AddStatementHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
+        # Store source file if provided
+        if source_file is not None:
+            try:
+                source_digest = self.service.file_cacher.put_file_content(
+                    source_file["body"],
+                    "Statement source for task %s (lang: %s)" % (task_name, language))
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Source file storage failed",
+                    repr(error))
+                self.redirect(fallback_page)
+                return
+
         # TODO verify that there's no other Statement with that language
         # otherwise we'd trigger an IntegrityError for constraint violation
 
@@ -362,7 +406,8 @@ class AddStatementHandler(BaseHandler):
         task = self.safe_get_item(Task, task_id)
         self.contest = task.contest
 
-        statement = Statement(language, digest, task=task)
+        statement = Statement(language, digest, task=task, source_digest=source_digest,
+                               source_extension=source_extension)
         self.sql_session.add(statement)
 
         if self.try_commit():

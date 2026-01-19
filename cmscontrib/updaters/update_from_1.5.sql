@@ -336,6 +336,79 @@ CREATE INDEX ix_generators_dataset_id ON public.generators USING btree (dataset_
 
 ALTER TABLE ONLY public.generators ADD CONSTRAINT generators_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES public.datasets(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+-- Add subtask_validators table for validating testcases in subtasks
+CREATE TABLE public.subtask_validators (
+    id integer NOT NULL,
+    dataset_id integer NOT NULL,
+    subtask_index integer NOT NULL,
+    filename public.filename NOT NULL,
+    digest public.digest NOT NULL,
+    executable_digest public.digest
+);
+
+CREATE SEQUENCE public.subtask_validators_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.subtask_validators_id_seq OWNED BY public.subtask_validators.id;
+
+ALTER TABLE ONLY public.subtask_validators ALTER COLUMN id SET DEFAULT nextval('public.subtask_validators_id_seq'::regclass);
+
+ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_dataset_id_subtask_index_key UNIQUE (dataset_id, subtask_index);
+
+CREATE INDEX ix_subtask_validators_dataset_id ON public.subtask_validators USING btree (dataset_id);
+
+ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES public.datasets(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_subtask_index_check CHECK ((subtask_index >= 0));
+
+-- Add subtask_validation_results table for storing validation results
+CREATE TABLE public.subtask_validation_results (
+    id integer NOT NULL,
+    validator_id integer NOT NULL,
+    testcase_id integer NOT NULL,
+    passed boolean NOT NULL,
+    exit_status character varying,
+    exit_code integer,
+    stderr character varying
+);
+
+CREATE SEQUENCE public.subtask_validation_results_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.subtask_validation_results_id_seq OWNED BY public.subtask_validation_results.id;
+
+ALTER TABLE ONLY public.subtask_validation_results ALTER COLUMN id SET DEFAULT nextval('public.subtask_validation_results_id_seq'::regclass);
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_validator_id_testcase_id_key UNIQUE (validator_id, testcase_id);
+
+CREATE INDEX ix_subtask_validation_results_validator_id ON public.subtask_validation_results USING btree (validator_id);
+
+CREATE INDEX ix_subtask_validation_results_testcase_id ON public.subtask_validation_results USING btree (testcase_id);
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_validator_id_fkey FOREIGN KEY (validator_id) REFERENCES public.subtask_validators(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_testcase_id_fkey FOREIGN KEY (testcase_id) REFERENCES public.testcases(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_exit_code_check CHECK (((exit_code IS NULL) OR (exit_code >= 0)));
+
+-- Add source_digest and source_extension columns to statements table for storing source files (DOC/DOCX/TEX)
+ALTER TABLE public.statements ADD COLUMN source_digest public.digest;
+ALTER TABLE public.statements ADD COLUMN source_extension character varying;
+
 -- Add date_of_birth and picture fields to users table
 ALTER TABLE public.users ADD COLUMN date_of_birth date;
 ALTER TABLE public.users ADD COLUMN picture public.digest;

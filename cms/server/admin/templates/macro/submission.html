@@ -2,7 +2,7 @@
 {% import 'macro/pages.html' as macro_pages %}
 
 
-{% macro rows(admin, url, page_url, submissions, page, pages, dataset=none) -%}
+{% macro rows(admin, url, page_url, submissions, page, pages, dataset=none, timezone=none) -%}
 {#
 Render a table of submission data.
 
@@ -15,6 +15,8 @@ page (int): 0-based number of the current page.
 pages (int): total number of pages.
 dataset (Dataset|None): the dataset to show results for, or if not defined use
     the active one.
+timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
+    use the system default.
 #}
 {% if pages == 0 %}
 <p>No submissions found.</p>
@@ -50,7 +52,7 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
   </thead>
   <tbody>
     {% for s in submissions|sort(attribute="timestamp")|reverse %}
-      {{ row(admin, url, s, dataset) }}
+      {{ row(admin, url, s, dataset, timezone) }}
     {% endfor %}
   </tbody>
 </table>
@@ -58,7 +60,7 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
 {%- endmacro %}
 
 
-{% macro row(admin, url, s, dataset=None) -%}
+{% macro row(admin, url, s, dataset=None, timezone=none) -%}
 {#
 Render a table's row containing a submission data.
 
@@ -67,6 +69,8 @@ url (Url): the URL instance referring to the root of AWS.
 s (Submission): the submission to render.
 dataset (Dataset|None): the dataset to show results for, or if not defined use
     the active one.
+timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
+    use the system default.
 #}
 
 {% if dataset is none %}
@@ -84,7 +88,7 @@ dataset (Dataset|None): the dataset to show results for, or if not defined use
 <tr>
   <td class="diff-only"><input type=radio class="diff-radio" name="diff-radio-old" data-submission="{{ s.id }}"></td>
   <td class="diff-only"><input type=radio class="diff-radio" name="diff-radio-new" data-submission="{{ s.id }}"></td>
-  <td><a href="{{ url("submission", s.id) }}">{{ s.timestamp }}</a></td>
+  <td><a href="{{ url("submission", s.id) }}">{{ s.timestamp|format_datetime_with_timezone(timezone) }}</a></td>
   <td><a href="{{ url("contest", s.participation.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a></td>
   <td><a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a></td>
   <td>
