@@ -38,8 +38,10 @@
     <div id="current_picture_container" style="margin-bottom: 10px;">
       <img src="{{ url('file', user.picture, 'picture') }}" alt="Profile picture" style="max-width: 160px; max-height: 240px; border: 1px solid #ccc;"/>
       <br/>
-      <button type="button" id="remove_picture_btn" onclick="document.getElementById('remove_picture').value='1'; document.getElementById('current_picture_container').style.display='none';">Remove picture</button>
-      <input type="hidden" name="remove_picture" id="remove_picture" value=""/>
+      <form action="{{ url('user', user.id, 'remove_picture') }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to remove this picture?');">
+        {{ xsrf_form_html|safe }}
+        <button type="submit">Remove picture</button>
+      </form>
     </div>
     {% endif %}
     <input type="file" name="picture" accept="image/jpeg,image/png,image/gif,image/webp" id="picture_input"/>
@@ -48,21 +50,13 @@
     (function() {
       var pictureInput = document.getElementById('picture_input');
       var sizeError = document.getElementById('picture_size_error');
-      var removeInput = document.getElementById('remove_picture');
       var maxSize = {{ max_file_size_bytes }};
       
       pictureInput.addEventListener('change', function() {
         sizeError.style.display = 'none';
-        if (this.files.length > 0) {
-          if (this.files[0].size > maxSize) {
-            sizeError.style.display = 'block';
-            this.value = '';
-            return;
-          }
-          // If a new file is selected, clear the remove flag
-          if (removeInput) {
-            removeInput.value = '';
-          }
+        if (this.files.length > 0 && this.files[0].size > maxSize) {
+          sizeError.style.display = 'block';
+          this.value = '';
         }
       });
     })();

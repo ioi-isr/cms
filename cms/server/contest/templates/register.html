@@ -292,6 +292,16 @@ $(document).ready(function() {
                             <span class="help-block"></span>
                         </div>
                     </div>
+                    <script>
+                    (function() {
+                        var input = document.getElementById('date_of_birth');
+                        var today = new Date();
+                        var maxDate = today.toISOString().split('T')[0];
+                        var minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+                        input.setAttribute('max', maxDate);
+                        input.setAttribute('min', minDate);
+                    })();
+                    </script>
                     <div class="control-group" id="picture-input">
                         <label class="control-label" for="picture">{% trans %}Profile picture{% endtrans %}</label>
                         <div class="controls">

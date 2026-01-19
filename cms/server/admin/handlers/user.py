@@ -119,28 +119,26 @@ class UserHandler(BaseHandler):
             assert not attrs.get("username").startswith("__"), \
                 "Username cannot start with '__' (reserved for system users)."
 
-            # Handle picture upload and removal
-            # If a new picture is uploaded, use it (ignore remove checkbox)
-            # Otherwise, if remove checkbox is checked, remove the picture
+            # Handle picture upload
             old_picture_digest = user.picture
-            new_picture_digest = process_picture_upload(
-                self.request.files,
-                self.service.file_cacher,
-                "Profile picture for %s" % attrs.get("username", "user")
-            )
-
-            if new_picture_digest is not None:
-                attrs["picture"] = new_picture_digest
-            else:
-                # Only process remove checkbox if no new picture was uploaded
-                remove_picture = self.get_argument("remove_picture", None)
-                if remove_picture == "1":
-                    attrs["picture"] = None
+            try:
+                new_picture_digest = process_picture_upload(
+                    self.request.files,
+                    self.service.file_cacher,
+                    "Profile picture for %s" % attrs.get("username", "user")
+                )
+            except PictureValidationError as e:
+                self.service.add_notification(
+                    make_datetime(), "Picture upload failed", e.message)
+                self.redirect(fallback_page)
+                return
 
             # Defer deletion until after successful commit
             picture_digest_to_delete = None
-            if old_picture_digest is not None and attrs.get("picture") != old_picture_digest:
-                picture_digest_to_delete = old_picture_digest
+            if new_picture_digest is not None:
+                attrs["picture"] = new_picture_digest
+                if old_picture_digest is not None:
+                    picture_digest_to_delete = old_picture_digest
 
             # Update the user.
             user.set_attrs(attrs)
@@ -690,11 +688,17 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
             self.sql_session.add(user)
 
             # Handle picture upload
-            picture_digest = process_picture_upload(
-                self.request.files,
-                self.service.file_cacher,
-                "Picture for user %s" % attrs["username"]
-            )
+            try:
+                picture_digest = process_picture_upload(
+                    self.request.files,
+                    self.service.file_cacher,
+                    "Picture for user %s" % attrs["username"]
+                )
+            except PictureValidationError as e:
+                self.service.add_notification(
+                    make_datetime(), "Picture upload failed", e.message)
+                self.redirect(fallback_page)
+                return
             if picture_digest is not None:
                 user.picture = picture_digest
 
@@ -881,5 +885,46 @@ class DenyPasswordResetHandler(BaseHandler):
                 "Password reset denied",
                 "The password reset for user %s has been denied." % user.username
             )
+
+        self.redirect(fallback_page)
+
+
+class RemovePictureHandler(BaseHandler):
+    """Remove a user's profile picture."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, user_id):
+        fallback_page = self.url("user", user_id)
+
+        user = self.safe_get_item(User, user_id)
+
+        if not user.picture:
+            self.service.add_notification(
+                make_datetime(),
+                "No picture to remove",
+                "User %s does not have a profile picture." % user.username
+            )
+            self.redirect(fallback_page)
+            return
+
+        old_picture_digest = user.picture
+        user.picture = None
+
+        if self.try_commit():
+            # Delete old picture from file cacher after successful commit
+            try:
+                self.service.file_cacher.delete(old_picture_digest)
+            except Exception:
+                logger.warning(
+                    "Failed to delete picture %s for user %s",
+                    old_picture_digest,
+                    user.username
+                )
+            self.service.add_notification(
+                make_datetime(),
+                "Picture removed",
+                "Profile picture for user %s has been removed." % user.username
+            )
+            self.service.proxy_service.reinitialize()
 
         self.redirect(fallback_page)
