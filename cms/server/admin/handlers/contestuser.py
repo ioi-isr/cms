@@ -317,9 +317,9 @@ class EditMessageHandler(BaseHandler):
         if message.participation_id != participation.id:
             raise tornado.web.HTTPError(404)
 
-        subject: str = self.get_argument("subject", "")
+        subject: str = self.get_argument("subject", "").strip()
         text: str = self.get_argument("text", "")
-        if len(subject) > 0:
+        if subject:
             message.subject = subject
             message.text = text
             self.try_commit()
@@ -357,4 +357,4 @@ class DeleteMessageHandler(BaseHandler):
         self.try_commit()
 
         # Page to redirect to.
-        self.write("../../../../edit")
+        self.write(self.url("contest", contest_id, "user", user_id, "edit"))
