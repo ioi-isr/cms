@@ -64,7 +64,9 @@ from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
-from cms.server.picture_utils import process_picture, PictureValidationError
+from cms.server.picture_utils import (
+    process_picture_upload, PictureValidationError
+)
 from cmscommon.crypto import hash_password, validate_password, \
     validate_password_strength, WeakPasswordError
 from cmscommon.datetime import make_datetime, make_timestamp
@@ -231,21 +233,14 @@ class RegistrationHandler(ContestHandler):
             raise tornado.web.HTTPError(409)
 
         # Process picture (optional)
-        picture_digest = None
-        if "picture" in self.request.files:
-            picture_file = self.request.files["picture"][0]
-            if picture_file["body"]:
-                try:
-                    processed_data, _ = process_picture(
-                        picture_file["body"],
-                        picture_file["content_type"]
-                    )
-                    picture_digest = self.service.file_cacher.put_file_content(
-                        processed_data,
-                        "Profile picture for %s" % username
-                    )
-                except PictureValidationError as e:
-                    raise RegistrationError(e.code, "picture") from e
+        try:
+            picture_digest = process_picture_upload(
+                self.request.files,
+                self.service.file_cacher,
+                "Profile picture for %s" % username
+            )
+        except PictureValidationError as e:
+            raise RegistrationError(e.code, "picture") from e
 
         # Store new user
         user = User(first_name, last_name, username, password, email=email,

@@ -35,7 +35,9 @@ from datetime import date
 
 from sqlalchemy import and_, exists
 from cms.db import Contest, Participation, Submission, Team, User
-from cms.server.picture_utils import process_picture, PictureValidationError
+from cms.server.picture_utils import (
+    process_picture_upload, PictureValidationError
+)
 from cms.server.util import exclude_internal_contests
 from cmscommon.crypto import (parse_authentication,
                               hash_password, validate_password_strength)
@@ -121,26 +123,16 @@ class UserHandler(BaseHandler):
             # If a new picture is uploaded, use it (ignore remove checkbox)
             # Otherwise, if remove checkbox is checked, remove the picture
             old_picture_digest = user.picture
-            new_picture_uploaded = False
+            new_picture_digest = process_picture_upload(
+                self.request.files,
+                self.service.file_cacher,
+                "Profile picture for %s" % attrs.get("username", "user")
+            )
 
-            if "picture" in self.request.files:
-                picture_file = self.request.files["picture"][0]
-                if picture_file["body"]:
-                    try:
-                        processed_data, _ = process_picture(
-                            picture_file["body"],
-                            picture_file["content_type"]
-                        )
-                        attrs["picture"] = self.service.file_cacher.put_file_content(
-                            processed_data,
-                            "Profile picture for %s" % attrs.get("username", "user")
-                        )
-                        new_picture_uploaded = True
-                    except PictureValidationError as e:
-                        raise ValueError(e.message) from e
-
-            # Only process remove checkbox if no new picture was uploaded
-            if not new_picture_uploaded:
+            if new_picture_digest is not None:
+                attrs["picture"] = new_picture_digest
+            else:
+                # Only process remove checkbox if no new picture was uploaded
                 remove_picture = self.get_argument("remove_picture", None)
                 if remove_picture == "1":
                     attrs["picture"] = None
@@ -698,22 +690,13 @@ class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
             self.sql_session.add(user)
 
             # Handle picture upload
-            if "picture" in self.request.files and len(self.request.files["picture"]) > 0:
-                picture_file = self.request.files["picture"][0]
-                if picture_file["body"]:
-                    content_type = picture_file.get("content_type", "application/octet-stream")
-                    try:
-                        processed_data, _ = process_picture(picture_file["body"], content_type)
-                        digest = self.service.file_cacher.put_file_content(
-                            processed_data,
-                            "Picture for user %s" % attrs["username"]
-                        )
-                        user.picture = digest
-                    except PictureValidationError as e:
-                        self.service.add_notification(
-                            make_datetime(), "Picture upload failed", str(e))
-                        self.redirect(fallback_page)
-                        return
+            picture_digest = process_picture_upload(
+                self.request.files,
+                self.service.file_cacher,
+                "Picture for user %s" % attrs["username"]
+            )
+            if picture_digest is not None:
+                user.picture = picture_digest
 
         except Exception as error:
             self.service.add_notification(

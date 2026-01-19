@@ -62,22 +62,7 @@
         </td>
         <td><input type="text" name="email" /></td>
       </tr>
-      <tr>
-        <td>
-          <span class="info" title="Date of birth of the contestant."></span>
-          Date of birth
-        </td>
-        <td><input type="date" name="date_of_birth" /></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Profile picture of the contestant. Max 5MB, JPEG/PNG/GIF/WEBP, max 1024x1024 pixels."></span>
-          Profile picture
-        </td>
-        <td>
-          <input type="file" name="picture" accept="image/jpeg,image/png,image/gif,image/webp"/>
-        </td>
-      </tr>
+      {% include "fragments/user_picture_form.html" %}
       <tr>
         <td>
           <span class="info" title="Timezone of the contestant, used to display start, end times and the current server time in local time.

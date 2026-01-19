@@ -164,42 +164,7 @@
         </td>
         <td><input type="text" name="email" value="{{ user.email if user.email is not none else "" }}"/></td>
       </tr>
-      <tr>
-        <td>
-          <span class="info" title="Date of birth of the contestant."></span>
-          Date of birth
-        </td>
-        <td><input type="date" name="date_of_birth" value="{{ user.date_of_birth.isoformat() if user.date_of_birth is not none else "" }}"/></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Profile picture of the contestant. Max 5MB, JPEG/PNG/GIF/WEBP, max 1024x1024 pixels."></span>
-          Profile picture
-        </td>
-        <td>
-          {% if user.picture %}
-          <div style="margin-bottom: 10px;">
-            <img src="{{ url("file", user.picture, "picture") }}" alt="Profile picture" style="max-width: 160px; max-height: 240px; border: 1px solid #ccc;"/>
-            <br/>
-            <label><input type="checkbox" name="remove_picture" value="1" id="remove_picture"/> Remove picture</label>
-          </div>
-          {% endif %}
-          <input type="file" name="picture" accept="image/jpeg,image/png,image/gif,image/webp" id="picture_input"/>
-          <script>
-          document.getElementById('picture_input').addEventListener('change', function() {
-            var removeCheckbox = document.getElementById('remove_picture');
-            if (removeCheckbox) {
-              if (this.files.length > 0) {
-                removeCheckbox.checked = false;
-                removeCheckbox.disabled = true;
-              } else {
-                removeCheckbox.disabled = false;
-              }
-            }
-          });
-          </script>
-        </td>
-      </tr>
+      {% include "fragments/user_picture_form.html" %}
       <tr>
         <td>
           <span class="info" title="Timezone of the contestant, used to display start, end times and the current server time in local time.
