@@ -1570,7 +1570,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
                             if len(param) >= 2 and isinstance(param[1], str):
                                 old_regex = param[1]
                                 # Add a term to match testcases containing the prefix
-                                # Use .*prefix.* pattern to match substring
+                                # Use .*prefix pattern to match substring
                                 import re
 
                                 new_term = ".*%s(?#CMS)" % re.escape(value)
