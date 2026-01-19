@@ -153,7 +153,7 @@ def parse_datetime_with_timezone(value: str, tz) -> datetime:
         local_dt = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
         return local_to_utc(local_dt, tz)
     except (ValueError, OverflowError) as err:
-        raise ValueError("Can't cast %s to datetime." % value) from err
+        raise ValueError("Can't parse %s as a datetime." % value) from err
 
 
 def parse_ip_networks(
