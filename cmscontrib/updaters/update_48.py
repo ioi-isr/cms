@@ -20,12 +20,8 @@
 Used by DumpImporter and DumpUpdater.
 
 This version adds the last_evaluation_failure_* fields to SubmissionResult
-for storing details about why evaluation attempts failed, which helps admins
+to store details about why evaluation attempts failed, helping admins
 diagnose issues with checkers or managers.
-It also adds the ModelSolutionMeta table which stores metadata for
-model solutions. Model solutions are implemented as regular Submissions
-owned by a special hidden system Participation, so this only adds one
-small metadata table rather than parallel infrastructure.
 
 """
 

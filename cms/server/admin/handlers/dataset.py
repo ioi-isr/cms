@@ -51,6 +51,7 @@ from cms.grading.tasktypes.util import \
 from cms.grading.languagemanager import filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
 from cms.grading.scoring import compute_changes_for_dataset
+from cms.grading.subtask_validation import set_sandbox_resource_limits
 from cmscommon.datetime import make_datetime
 from cmscommon.importers import import_testcases_from_zipfile, compile_template_regex
 from .base import BaseHandler, require_permission
@@ -484,7 +485,7 @@ class AddManagerHandler(BaseHandler):
                     for_evaluation=True,
                     notify=notify
                 )
-                
+
                 if not success:
                     self.redirect(fallback_page)
                     return
@@ -498,14 +499,16 @@ class AddManagerHandler(BaseHandler):
         for filename, content in planned_entries:
             try:
                 digest = self.service.file_cacher.put_file_content(
-                    content, "Task manager for %s" % task_name)
+                    content, "Task manager for %s" % task_name
+                )
                 all_stored_entries.append((filename, digest))
             except Exception as error:
                 logger.warning("Failed to store manager '%s'", filename, exc_info=True)
                 self.service.add_notification(
                     make_datetime(),
                     "Manager storage failed",
-                    "Error storing '%s': %s" % (filename, repr(error)))
+                    "Error storing '%s': %s" % (filename, repr(error)),
+                )
                 self.redirect(fallback_page)
                 return
 
@@ -529,9 +532,8 @@ class AddManagerHandler(BaseHandler):
 
 
 class DeleteManagerHandler(BaseHandler):
-    """Delete a manager.
+    """Delete a manager."""
 
-    """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, dataset_id, manager_id):
         manager = self.safe_get_item(Manager, manager_id)
@@ -565,9 +567,8 @@ class DeleteManagerHandler(BaseHandler):
 
 
 class AddTestcaseHandler(BaseHandler):
-    """Add a testcase to a dataset.
+    """Add a testcase to a dataset."""
 
-    """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -593,9 +594,8 @@ class AddTestcaseHandler(BaseHandler):
             output = self.request.files["output"][0]
         except KeyError:
             self.service.add_notification(
-                make_datetime(),
-                "Invalid data",
-                "Please fill both input and output.")
+                make_datetime(), "Invalid data", "Please fill both input and output."
+            )
             self.redirect(fallback_page)
             return
 
@@ -604,19 +604,16 @@ class AddTestcaseHandler(BaseHandler):
         self.sql_session.close()
 
         try:
-            input_digest = \
-                self.service.file_cacher.put_file_content(
-                    input_["body"],
-                    "Testcase input for task %s" % task_name)
-            output_digest = \
-                self.service.file_cacher.put_file_content(
-                    output["body"],
-                    "Testcase output for task %s" % task_name)
+            input_digest = self.service.file_cacher.put_file_content(
+                input_["body"], "Testcase input for task %s" % task_name
+            )
+            output_digest = self.service.file_cacher.put_file_content(
+                output["body"], "Testcase output for task %s" % task_name
+            )
         except Exception as error:
             self.service.add_notification(
-                make_datetime(),
-                "Testcase storage failed",
-                repr(error))
+                make_datetime(), "Testcase storage failed", repr(error)
+            )
             self.redirect(fallback_page)
             return
 
@@ -625,7 +622,8 @@ class AddTestcaseHandler(BaseHandler):
         task = dataset.task
 
         testcase = Testcase(
-            codename, public, input_digest, output_digest, dataset=dataset)
+            codename, public, input_digest, output_digest, dataset=dataset
+        )
         self.sql_session.add(testcase)
 
         if dataset.active and dataset.task_type == "OutputOnly":
@@ -634,7 +632,8 @@ class AddTestcaseHandler(BaseHandler):
             except Exception as e:
                 raise RuntimeError(
                     f"Couldn't create default submission format for task {task.id}, "
-                    f"dataset {dataset.id}") from e
+                    f"dataset {dataset.id}"
+                ) from e
 
         if self.try_commit():
             # max_score and/or extra_headers might have changed.
@@ -645,9 +644,8 @@ class AddTestcaseHandler(BaseHandler):
 
 
 class AddTestcasesHandler(BaseHandler):
-    """Add several testcases to a dataset.
+    """Add several testcases to a dataset."""
 
-    """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -661,8 +659,7 @@ class AddTestcasesHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = \
-            self.url("dataset", dataset_id, "testcases", "add_multiple")
+        fallback_page = self.url("dataset", dataset_id, "testcases", "add_multiple")
 
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
@@ -671,9 +668,8 @@ class AddTestcasesHandler(BaseHandler):
             archive = self.request.files["archive"][0]
         except KeyError:
             self.service.add_notification(
-                make_datetime(),
-                "Invalid data",
-                "Please choose tests archive.")
+                make_datetime(), "Invalid data", "Please choose tests archive."
+            )
             self.redirect(fallback_page)
             return
 
@@ -682,7 +678,8 @@ class AddTestcasesHandler(BaseHandler):
             self.service.add_notification(
                 make_datetime(),
                 "Empty file",
-                "The selected archive is empty. Please select a non-empty zip file.")
+                "The selected archive is empty. Please select a non-empty zip file.",
+            )
             self.redirect(fallback_page)
             return
 
@@ -692,7 +689,7 @@ class AddTestcasesHandler(BaseHandler):
         # Get input/output file names templates, or use default ones.
         input_template: str = self.get_argument("input_template", "input.*")
         output_template: str = self.get_argument("output_template", "output.*")
-        
+
         try:
             input_re = compile_template_regex(input_template)
             output_re = compile_template_regex(output_template)
@@ -1205,13 +1202,8 @@ class GenerateTestcasesHandler(BaseHandler):
                         "get_evaluation_commands failed for %s: %s, using default",
                         generator.filename, e)
 
-            # Set resource limits from config to prevent buggy generators
-            # from consuming system resources indefinitely
-            sandbox.timeout = config.sandbox.trusted_sandbox_max_time_s
-            sandbox.wallclock_timeout = config.sandbox.trusted_sandbox_max_time_s * 2
-            sandbox.address_space = \
-                config.sandbox.trusted_sandbox_max_memory_kib * 1024
-            sandbox.max_processes = config.sandbox.trusted_sandbox_max_processes
+            # Apply resource limits to prevent runaway generators
+            set_sandbox_resource_limits(sandbox)
 
             # Set stdout/stderr files so they are created during execution
             sandbox.stdout_file = "stdout.txt"
@@ -1310,3 +1302,346 @@ class GenerateTestcasesHandler(BaseHandler):
             self.redirect(self.url("task", task.id))
         else:
             self.redirect(fallback_page)
+
+
+class RenameTestcaseHandler(BaseHandler):
+    """Rename a testcase's codename.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, testcase_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        testcase = self.safe_get_item(Testcase, testcase_id)
+        task = dataset.task
+
+        # Protect against URLs providing incompatible parameters.
+        if testcase.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        # Support redirect back to subtask details page if subtask_index is provided
+        subtask_index = self.get_argument("subtask_index", None)
+        if subtask_index is not None:
+            fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+        else:
+            fallback_page = self.url("task", task.id)
+
+        new_codename = self.get_argument("new_codename", "").strip()
+        if not new_codename:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid codename",
+                "Codename cannot be empty.")
+            self.redirect(fallback_page)
+            return
+
+        old_codename = testcase.codename
+
+        # Check if the new codename already exists in this dataset
+        if new_codename != old_codename and new_codename in dataset.testcases:
+            self.service.add_notification(
+                make_datetime(),
+                "Codename already exists",
+                "A testcase with codename '%s' already exists in this dataset." % new_codename)
+            self.redirect(fallback_page)
+            return
+
+        # Update the codename
+        # First remove from the collection (keyed by old codename)
+        del dataset.testcases[old_codename]
+        # Update the codename
+        testcase.codename = new_codename
+        # Re-add to the collection (keyed by new codename)
+        dataset.testcases[new_codename] = testcase
+
+        # Update submission format for OutputOnly tasks
+        if dataset.active and dataset.task_type == "OutputOnly":
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Testcase renamed",
+                "Testcase renamed from '%s' to '%s'." % (old_codename, new_codename))
+        self.redirect(fallback_page)
+
+
+def _apply_codename_mapping(dataset, testcases, new_codenames):
+    """Apply a codename mapping to testcases using two-phase approach.
+
+    This uses a two-phase approach to safely handle cases where a new codename
+    equals another selected testcase's old codename.
+
+    Args:
+        dataset: The dataset containing the testcases
+        testcases: List of testcases being renamed
+        new_codenames: Dict mapping testcase.id to new codename
+
+    Returns:
+        Number of testcases actually renamed (where codename changed)
+    """
+    # Phase 1: Remove all old codenames for testcases that are changing
+    changing_testcases = []
+    for tc in testcases:
+        new_codename = new_codenames.get(tc.id)
+        if new_codename is not None and tc.codename != new_codename:
+            del dataset.testcases[tc.codename]
+            changing_testcases.append((tc, new_codename))
+
+    # Phase 2: Update codenames and re-add to dataset
+    for tc, new_codename in changing_testcases:
+        tc.codename = new_codename
+        dataset.testcases[new_codename] = tc
+
+    return len(changing_testcases)
+
+
+def _batch_rename_testcases(
+    handler, dataset, task, testcases, codename_modifier, fallback_page
+):
+    """Common logic for batch renaming testcases.
+
+    Args:
+        handler: The request handler (for notifications, commit, redirect)
+        dataset: The dataset containing the testcases
+        task: The task owning the dataset
+        testcases: List of testcases to rename
+        codename_modifier: Function(testcase) -> (new_codename, error_msg)
+                          Returns new codename or (None, error_msg) on failure
+        fallback_page: URL to redirect to
+
+    Returns:
+        (success, renamed_count) tuple. If success is False, handler has
+        already been redirected with an error notification.
+    """
+    # Build the new codename mapping
+    testcase_set = set(testcases)
+    new_codenames = {}
+    seen_codenames = {}  # new_codename -> tc, for duplicate detection
+
+    for tc in testcases:
+        new_codename, error_msg = codename_modifier(tc)
+        if error_msg is not None:
+            handler.service.add_notification(make_datetime(), "Rename error", error_msg)
+            handler.redirect(fallback_page)
+            return (False, 0)
+
+        # Check for duplicates within the mapping itself
+        if new_codename in seen_codenames:
+            handler.service.add_notification(
+                make_datetime(),
+                "Codename conflict",
+                "Renaming would create duplicate codename '%s'." % new_codename,
+            )
+            handler.redirect(fallback_page)
+            return (False, 0)
+        seen_codenames[new_codename] = tc
+
+        # Check for conflicts with existing testcases not in the selection
+        if new_codename in dataset.testcases:
+            existing_tc = dataset.testcases[new_codename]
+            if existing_tc not in testcase_set:
+                handler.service.add_notification(
+                    make_datetime(),
+                    "Codename conflict",
+                    "Renaming would create duplicate codename '%s'." % new_codename,
+                )
+                handler.redirect(fallback_page)
+                return (False, 0)
+
+        new_codenames[tc.id] = new_codename
+
+    # Apply the rename using two-phase approach
+    renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
+
+    # Update submission format for OutputOnly tasks
+    if dataset.active and dataset.task_type == "OutputOnly":
+        try:
+            task.set_default_output_only_submission_format()
+        except Exception as e:
+            raise RuntimeError(
+                f"Couldn't create default submission format for task {task.id}, "
+                f"dataset {dataset.id}"
+            ) from e
+
+    return (True, renamed_count)
+
+
+class BatchRenameTestcasesHandler(BaseHandler):
+    """Batch rename testcases - add prefix or remove common substring."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        # Support redirect back to subtask details page if subtask_index is provided
+        subtask_index = self.get_argument("subtask_index", None)
+        if subtask_index is not None:
+            fallback_page = self.url(
+                "dataset", dataset_id, "subtask", subtask_index, "details"
+            )
+        else:
+            fallback_page = self.url("task", task.id)
+
+        # Get the operation type and value
+        operation = self.get_argument("operation", "")
+        value = self.get_argument("value", "")
+
+        # Collect selected testcase IDs from the request
+        id_strings = self.get_arguments("testcase_id")
+
+        if not id_strings:
+            self.service.add_notification(
+                make_datetime(),
+                "No testcases selected",
+                "Please select at least one testcase.",
+            )
+            self.redirect(fallback_page)
+            return
+
+        if operation not in ("add_prefix", "remove_substring"):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid operation",
+                "Unknown operation: %s" % operation,
+            )
+            self.redirect(fallback_page)
+            return
+
+        # Gather testcases
+        testcases = []
+        for id_str in id_strings:
+            try:
+                tid = int(id_str)
+            except ValueError:
+                raise tornado.web.HTTPError(400)
+            tc = self.safe_get_item(Testcase, tid)
+
+            # Protect against mixing datasets
+            if tc.dataset is not dataset:
+                raise tornado.web.HTTPError(400)
+
+            testcases.append(tc)
+
+        if operation == "add_prefix":
+            # Add prefix to all selected testcases
+            if not value:
+                self.service.add_notification(
+                    make_datetime(), "Invalid prefix", "Prefix cannot be empty."
+                )
+                self.redirect(fallback_page)
+                return
+
+            def add_prefix_modifier(tc):
+                # Skip adding prefix if codename already starts with it
+                if tc.codename.startswith(value):
+                    return (tc.codename, None)
+                return (value + tc.codename, None)
+
+            success, renamed_count = _batch_rename_testcases(
+                self,
+                dataset,
+                task,
+                testcases,
+                add_prefix_modifier,
+                fallback_page,
+            )
+            if not success:
+                return
+
+            # Check if user wants to update the subtask regex
+            update_regex = self.get_argument("update_regex", "") == "true"
+            regex_updated = False
+            regex_already_exists = False
+            if update_regex and subtask_index is not None:
+                try:
+                    subtask_idx = int(subtask_index)
+                    score_type_obj = dataset.score_type_object
+                    if hasattr(score_type_obj, "parameters"):
+                        params = list(score_type_obj.parameters)
+                        if 0 <= subtask_idx < len(params):
+                            param = list(params[subtask_idx])
+                            # Check if using regex (string pattern)
+                            if len(param) >= 2 and isinstance(param[1], str):
+                                old_regex = param[1]
+                                # Add a term to match testcases containing the prefix
+                                # Use .*prefix pattern to match substring
+                                import re
+
+                                new_term = ".*%s(?#CMS)" % re.escape(value)
+                                # Check if the term already exists in the regex
+                                if new_term in old_regex:
+                                    regex_already_exists = True
+                                else:
+                                    # Combine with existing regex using |
+                                    new_regex = "%s|%s" % (old_regex, new_term)
+                                    param[1] = new_regex
+                                    params[subtask_idx] = param
+                                    dataset.score_type_parameters = params
+                                    regex_updated = True
+                except (ValueError, AttributeError, IndexError) as e:
+                    logger.warning(
+                        "Could not update regex for subtask %s: %s", subtask_index, e
+                    )
+
+            if self.try_commit():
+                msg = "Added prefix '%s' to %d testcases." % (value, renamed_count)
+                if regex_updated:
+                    msg += (
+                        " Subtask regex updated to match testcases containing '%s'."
+                        % value
+                    )
+                elif regex_already_exists:
+                    msg += " Regex term for '%s' already exists in the pattern." % value
+                self.service.add_notification(make_datetime(), "Testcases renamed", msg)
+
+        elif operation == "remove_substring":
+            # Remove a common substring from all selected testcases
+            substring = value
+
+            if not substring:
+                self.service.add_notification(
+                    make_datetime(), "Invalid substring", "Substring cannot be empty."
+                )
+                self.redirect(fallback_page)
+                return
+
+            def remove_substring_modifier(tc):
+                if substring not in tc.codename:
+                    return (
+                        None,
+                        "Testcase '%s' does not contain substring '%s'."
+                        % (tc.codename, substring),
+                    )
+                new_codename = tc.codename.replace(substring, "", 1)
+                if not new_codename:
+                    return (
+                        None,
+                        "Removing substring from '%s' would result in empty codename."
+                        % tc.codename,
+                    )
+                return (new_codename, None)
+
+            success, renamed_count = _batch_rename_testcases(
+                self,
+                dataset,
+                task,
+                testcases,
+                remove_substring_modifier,
+                fallback_page,
+            )
+            if not success:
+                return
+
+            if self.try_commit():
+                self.service.add_notification(
+                    make_datetime(),
+                    "Testcases renamed",
+                    "Removed substring '%s' from %d testcases." % (substring, renamed_count))
+
+        self.redirect(fallback_page)
