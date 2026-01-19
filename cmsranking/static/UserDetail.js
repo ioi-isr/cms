@@ -142,7 +142,10 @@ var UserDetail = new function () {
         }
         for (var i = 0; i < data.length; i += 1) {
             var submission = data[i];
-            self.submissions[submission['task']].push(submission);
+            // Skip if task no longer exists (e.g., removed from contest)
+            if (self.submissions[submission['task']]) {
+                self.submissions[submission['task']].push(submission);
+            }
         }
 
         self.data_fetched += 1;
