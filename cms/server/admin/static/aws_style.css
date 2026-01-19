@@ -1402,12 +1402,13 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     text-align: left;
     min-width: 180px;
     max-width: 250px;
-    box-shadow: 1px 0 0 #e2e8f0; /* Visual right border */
+    box-shadow: 6px 0 12px -4px rgba(0, 0, 0, 0.15);
+    clip-path: inset(0px -10px 0px 0px);
     border-right: none;
     overflow: hidden;
     text-overflow: ellipsis;
     color: #1e293b;
-    padding: 0; /* Inner div handles padding */
+    padding: 0;
 }
 
 /* 3. Top-Left Corner */
@@ -1482,8 +1483,23 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .global-total-header {
     background-color: #f1f5f9 !important;
-    text-align: center;
-    border-bottom: 1px solid #cbd5e1 !important;
+    color: #0f172a;
+    font-weight: 800;
+    border-left: none !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+.ranking-table td.global-cell {
+    background-color: #f3f4f6 !important;
+    font-weight: 700;
+    border-left: none !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+.global-total-header::after,
+.ranking-table td.global-cell::after {
+    content: none !important;
+    display: none !important;
 }
 
 .training-day-header-main {
@@ -1523,6 +1539,36 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     color: #0f172a;
 }
 
+.ranking-table th.training-day-header,
+.ranking-table th.total-col,
+.ranking-table td.total-col {
+    border-right: none !important;
+}
+
+.ranking-table th.training-day-header,
+.ranking-table th.total-col {
+    position: sticky;
+    z-index: 11;
+}
+
+.ranking-table td.total-col {
+    position: relative;
+    z-index: 5;
+}
+
+.ranking-table th.training-day-header::after,
+.ranking-table th.total-col::after,
+.ranking-table td.total-col::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 4px;
+    background-color: #94a3b8;
+    z-index: 10;
+}
+
 /* Content wrapper for Ranking cells */
 .cell-content {
     display: flex;
@@ -1530,10 +1576,13 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     justify-content: center;
     width: 100%;
     height: 100%;
-    padding: 10px 12px;
+    padding: 12px 8px;
     min-height: 40px;
-    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
-    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 1.5em;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+    color: #374151;
 }
 
 /* Student name wrapper */

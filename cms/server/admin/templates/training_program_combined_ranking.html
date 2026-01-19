@@ -77,7 +77,7 @@ CMS.AWSUtils.initTagify({
         </th>
         {% endfor %}
         {# Global Total Header #}
-        <th class="global-total-header" rowspan="2" style="border-left: 2px solid #d1d5db; min-width: 70px;" data-sort-column="-1">
+        <th class="global-total-header" rowspan="2" data-sort-column="-1">
           <div class="training-day-header-main">Global</div>
           <div class="training-day-header-sub">Total</div>
         </th>
@@ -86,7 +86,7 @@ CMS.AWSUtils.initTagify({
       <tr>
         {% for td in archived_training_days %}
           {% for task in training_day_tasks.get(td.id, []) %}
-          <th class="task-header" title="{{ task.title }}">
+          <th class="task-header" title="{{ task.title }}" data-parent-day="{{ td.id }}">
               {{ task.name }}
           </th>
           {% endfor %}
@@ -122,7 +122,7 @@ CMS.AWSUtils.initTagify({
           {% set ranking = ranking_data.get(student.id, {}).get(td.id) %}
 
           {% for task in training_day_tasks.get(td.id, []) %}
-            <td>
+            <td data-parent-day="{{ td.id }}">
                 {% if ranking and ranking.task_scores and task.id|string in ranking.task_scores %}
                     {{ render_score_cell(ranking.task_scores.get(task.id|string)) }}
                 {% else %}
@@ -159,7 +159,7 @@ CMS.AWSUtils.initTagify({
           </td>
         {% endfor %}
 
-        <td class="total-col" style="border-left: 2px solid #d1d5db; background-color: #f3f4f6; font-weight: 700;">
+        <td class="total-col global-cell">
             <div class="cell-content">
                 {{ "%.1f"|format(global_total.value) | replace('.0', '') }}
             </div>

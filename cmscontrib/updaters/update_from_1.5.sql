@@ -678,7 +678,7 @@ ALTER TABLE public.announcements ALTER COLUMN visible_to_tags DROP DEFAULT;
 -- Add GIN index on visible_to_tags for efficient querying
 CREATE INDEX ix_announcements_visible_to_tags_gin ON public.announcements USING gin (visible_to_tags);
 
--- Add training_day_types column to training_days for categorization (e.g., "practice", "exam")
+-- Add training_day_types column to training_days for categorization (e.g., "online", "competition")
 -- Used for filtering in attendance and combined ranking views
 ALTER TABLE public.training_days ADD COLUMN training_day_types character varying[] NOT NULL DEFAULT '{}';
 ALTER TABLE public.training_days ALTER COLUMN training_day_types DROP DEFAULT;

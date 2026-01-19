@@ -2465,6 +2465,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
             if student is None:
                 continue
 
+            # Skip ineligible students (not in any main group)
+            # These students were never supposed to participate in this training day
+            is_eligible, _, _ = check_training_day_eligibility(
+                self.sql_session, participation, training_day
+            )
+            if not is_eligible:
+                continue
+
             # Get all student tags (as list for array storage)
             student_tags = list(student.student_tags) if student.student_tags else []
 

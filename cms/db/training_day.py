@@ -68,7 +68,7 @@ class TrainingDay(Base):
 
     Each training day wraps a Contest and belongs to exactly one TrainingProgram.
     The position field determines the order of training days within the program.
-    Training day types are tags for categorization (e.g., "practice", "exam").
+    Training day types are tags for categorization (e.g., "online", "competition").
     """
     __tablename__ = "training_days"
     __table_args__ = (
@@ -135,7 +135,7 @@ class TrainingDay(Base):
         nullable=True,
     )
 
-    # Training day types for categorization (e.g., "practice", "exam", "homework").
+    # Training day types for categorization (e.g., "online", "onsite", "competition").
     # Used for filtering in attendance and combined ranking views.
     training_day_types: list[str] = Column(
         ARRAY(Unicode),
