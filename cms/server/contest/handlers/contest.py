@@ -103,6 +103,12 @@ class ContestHandler(BaseHandler):
         # because we need contest_name
         self.r_params = self.render_params()
 
+    def _raise_404_for_internal_contest(self):
+        """Prepare error context and raise 404 for internal contests."""
+        super().prepare()
+        self.r_params = super().render_params()
+        raise tornado.web.HTTPError(404)
+
     def choose_contest(self):
         """Fill self.contest using contest passed as argument or path.
 
@@ -125,13 +131,16 @@ class ContestHandler(BaseHandler):
                 # render_params in this class assumes the contest is loaded,
                 # so we cannot call it without a fully defined contest. Luckily
                 # the one from the base class is enough to display a 404 page.
-                super().prepare()
-                self.r_params = super().render_params()
-                raise tornado.web.HTTPError(404)
+                self._raise_404_for_internal_contest()
+            if self.contest.name.startswith("__"):
+                self._raise_404_for_internal_contest()
         else:
             # Select the contest specified on the command line
             self.contest = Contest.get_from_id(
                 self.service.contest_id, self.sql_session)
+            if self.contest is not None and \
+                    self.contest.name.startswith("__"):
+                self._raise_404_for_internal_contest()
 
     def get_current_user(self) -> Participation | None:
         """Return the currently logged in participation.

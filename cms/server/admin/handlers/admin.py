@@ -24,7 +24,7 @@
 import logging
 
 from cms.db import Admin
-from cmscommon.crypto import hash_password
+from cmscommon.crypto import hash_password, validate_password_strength
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
 
@@ -52,6 +52,9 @@ def _admin_attrs(handler: BaseHandler) -> dict:
     # Get the password and translate it to an authentication, if present.
     handler.get_string(attrs, "password", empty=None)
     if attrs['password'] is not None:
+        # Validate password strength before hashing
+        user_inputs = [attrs["username"]] if attrs.get("username") else []
+        validate_password_strength(attrs["password"], user_inputs)
         attrs["authentication"] = hash_password(attrs["password"])
     del attrs["password"]
 

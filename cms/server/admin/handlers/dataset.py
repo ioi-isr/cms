@@ -43,20 +43,57 @@ except:
 
 import tornado.web
 
-from cms.db import Dataset, Manager, Message, Participation, \
+from cms import config
+from cms.db import Dataset, Generator, Manager, Message, Participation, \
     Session, Submission, Task, Testcase
-from cms.grading.tasktypes import get_task_type_class
-from cms.grading.tasktypes.util import create_sandbox
-from cms.grading.languagemanager import filename_to_language
+from cms.grading.tasktypes.util import \
+    get_allowed_manager_basenames, compile_manager_bytes, create_sandbox
+from cms.grading.languagemanager import filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
-from cms.grading.steps.compilation import compilation_step
 from cms.grading.scoring import compute_changes_for_dataset
+from cms.grading.subtask_validation import set_sandbox_resource_limits
 from cmscommon.datetime import make_datetime
-from cmscommon.importers import import_testcases_from_zipfile
+from cmscommon.importers import import_testcases_from_zipfile, compile_template_regex
 from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
+
+
+def check_compiled_file_conflict(filename, allowed_basenames, existing_managers):
+    """Check if uploading a compiled file conflicts with existing source.
+
+    When a compiled file (no extension) is uploaded for a basename that has
+    an existing source file, this would conflict with auto-compilation.
+
+    Args:
+        filename: The filename being uploaded.
+        allowed_basenames: Set of basenames that are auto-compiled.
+        existing_managers: Dict or set of existing manager filenames.
+
+    Returns:
+        The conflicting source filename if a conflict exists, None otherwise.
+    """
+    base_noext = os.path.splitext(os.path.basename(filename))[0]
+    has_extension = "." in os.path.basename(filename)
+
+    if base_noext in allowed_basenames and not has_extension:
+        for existing_filename in existing_managers:
+            existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
+            existing_has_ext = "." in os.path.basename(existing_filename)
+            if existing_base == base_noext and existing_has_ext:
+                return existing_filename
+    return None
+
+
+def validate_template(template: str, name: str) -> str | None:
+    """Validate a filename template contains exactly one '*'.
+
+    Return an error message if invalid, None if valid.
+    """
+    if template.count('*') != 1:
+        return "%s template must contain exactly one '*'." % name.capitalize()
+    return None
 
 
 class DatasetSubmissionsHandler(BaseHandler):
@@ -378,134 +415,109 @@ class AddManagerHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        manager = self.request.files["manager"][0]
-        task_name = task.name
+        # Check if any files were uploaded
+        if "manager" not in self.request.files:
+            self.service.add_notification(
+                make_datetime(),
+                "No file selected",
+                "Please select at least one file to upload.")
+            self.redirect(fallback_page)
+            return
 
-        filename = manager["filename"]
-        body = manager["body"]
+        managers = self.request.files["manager"]
+        task_name = task.name
 
         # Decide which auto-compiled basenames are allowed for this task type.
         # Use TaskType constants to avoid hardcoding names and to avoid
         # compiling unintended files (e.g., manager.%l for TwoSteps).
-        allowed_compile_basenames: set[str] = set()
-        try:
-            tt_cls = get_task_type_class(dataset.task_type)
-            # Many task types (Batch, OutputOnly, TwoSteps, BatchAndOutput)
-            # define CHECKER_CODENAME = "checker"; only compile that.
-            if hasattr(tt_cls, "CHECKER_CODENAME"):
-                allowed_compile_basenames.add(getattr(tt_cls, "CHECKER_CODENAME"))
-            # Communication defines MANAGER_FILENAME = "manager"; allow that.
-            if hasattr(tt_cls, "MANAGER_FILENAME"):
-                allowed_compile_basenames.add(getattr(tt_cls, "MANAGER_FILENAME"))
-        except Exception:
-            # If anything goes wrong, fall back to not auto-compiling.
-            allowed_compile_basenames = set()
-        base_noext = os.path.splitext(os.path.basename(filename))[0]
+        allowed_compile_basenames = get_allowed_manager_basenames(dataset.task_type)
 
-        # compiled files (no extension) when a source file already exists.
-        has_extension = "." in os.path.basename(filename)
-        if (base_noext in allowed_compile_basenames and not has_extension):
-            for existing_filename in dataset.managers.keys():
-                existing_base = os.path.splitext(os.path.basename(existing_filename))[0]
-                existing_has_ext = "." in os.path.basename(existing_filename)
-                if existing_base == base_noext and existing_has_ext:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Cannot upload compiled manager",
-                        ("A source file '%s' already exists for '%s'. "
-                         "Compiled files are auto-generated from source. "
-                         "Please upload the source file instead, or delete "
-                         "the existing source first." %
-                         (existing_filename, base_noext)))
-                    self.redirect(fallback_page)
-                    return
+        # Check all files for compiled file conflicts before processing
+        for manager in managers:
+            filename = manager["filename"]
+            base_noext = os.path.splitext(os.path.basename(filename))[0]
+
+            # Check if uploading a compiled file conflicts with existing source
+            conflicting_source = check_compiled_file_conflict(
+                filename, allowed_compile_basenames, dataset.managers.keys())
+            if conflicting_source is not None:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Cannot upload compiled manager",
+                    ("A source file '%s' already exists for '%s'. "
+                     "Compiled files are auto-generated from source. "
+                     "Please upload the source file instead, or delete "
+                     "the existing source first." %
+                     (conflicting_source, base_noext)))
+                self.redirect(fallback_page)
+                return
 
         self.sql_session.close()
 
-        # If a source file for a known compiled language is uploaded,
-        # compile it into an executable manager.
-        compiled_filename = None
-        compiled_bytes = None
-        try:
-            language = filename_to_language(filename)
-        except Exception:
-            language = None
+        def notify(title, text):
+            self.service.add_notification(make_datetime(), title, text)
 
-        if (language is not None
-                and isinstance(language, CompiledLanguage)
-                and base_noext in allowed_compile_basenames):
-            safe_src = os.path.basename(filename)
-            compiled_filename = base_noext
-            
-            sandbox = None
+        # Phase 1: Compile all files first, collecting results in memory.
+        # This ensures no files are stored in file_cacher if any compilation fails.
+        planned_entries: list[tuple[str, bytes]] = []  # (filename, content_bytes)
+        for manager in managers:
+            filename = manager["filename"]
+            body = manager["body"]
+            base_noext = os.path.splitext(os.path.basename(filename))[0]
+
+            # Always plan to store the original upload.
+            planned_entries.append((filename, body))
+
+            # If a source file for a known compiled language is uploaded,
+            # compile it into an executable manager.
+            language = filename_to_language(filename)
+
+            if (language is not None
+                    and isinstance(language, CompiledLanguage)
+                    and base_noext in allowed_compile_basenames):
+                compiled_filename = base_noext
+                success, compiled_bytes, _stats = compile_manager_bytes(
+                    self.service.file_cacher,
+                    filename,
+                    body,
+                    compiled_filename,
+                    sandbox_name="admin_compile",
+                    for_evaluation=True,
+                    notify=notify
+                )
+
+                if not success:
+                    self.redirect(fallback_page)
+                    return
+
+                # Plan to store the compiled executable.
+                if compiled_bytes is not None:
+                    planned_entries.append((compiled_filename, compiled_bytes))
+
+        # Phase 2: All compilations succeeded, now store all files in file_cacher.
+        all_stored_entries: list[tuple[str, str]] = []  # (filename, digest)
+        for filename, content in planned_entries:
             try:
-                sandbox = create_sandbox(self.service.file_cacher, name="admin_compile")
-                
-                sandbox.create_file_from_string(safe_src, body)
-                
-                commands = language.get_compilation_commands(
-                    [safe_src], compiled_filename, for_evaluation=True)
-                
-                box_success, compilation_success, text, stats = \
-                    compilation_step(sandbox, commands)
-                
-                if not box_success:
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Manager compilation failed",
-                        "Sandbox error during compilation. See logs for details.")
-                    self.redirect(fallback_page)
-                    return
-                
-                if not compilation_success:
-                    stdout = stats.get("stdout", "") if stats else ""
-                    stderr = stats.get("stderr", "") if stats else ""
-                    self.service.add_notification(
-                        make_datetime(),
-                        "Manager compilation failed",
-                        ("Compilation failed. Command:%r\nStdout:\n%s\nStderr:\n%s" %
-                         (commands, stdout, stderr)))
-                    self.redirect(fallback_page)
-                    return
-                
-                compiled_bytes = sandbox.get_file_to_string(compiled_filename, maxlen=None)
-                
+                digest = self.service.file_cacher.put_file_content(
+                    content, "Task manager for %s" % task_name
+                )
+                all_stored_entries.append((filename, digest))
             except Exception as error:
+                logger.warning("Failed to store manager '%s'", filename, exc_info=True)
                 self.service.add_notification(
                     make_datetime(),
-                    "Manager compilation error",
-                    repr(error))
+                    "Manager storage failed",
+                    "Error storing '%s': %s" % (filename, repr(error)),
+                )
                 self.redirect(fallback_page)
                 return
-            finally:
-                if sandbox:
-                    sandbox.cleanup(delete=True)
 
-        # Store the appropriate content(s) into the file cache.
-        stored_entries: list[tuple[str, str]] = []  # (filename, digest)
-        try:
-            # Always store the original upload.
-            orig_digest = self.service.file_cacher.put_file_content(
-                body, "Task manager for %s" % task_name)
-            stored_entries.append((filename, orig_digest))
-            # If compilation happened, also store compiled executable.
-            if compiled_bytes is not None and compiled_filename is not None:
-                comp_digest = self.service.file_cacher.put_file_content(
-                    compiled_bytes, "Compiled task manager for %s" % task_name)
-                stored_entries.append((compiled_filename, comp_digest))
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(),
-                "Manager storage failed",
-                repr(error))
-            self.redirect(fallback_page)
-            return
-
+        # Phase 3: Update database with all manager records.
         self.sql_session = Session()
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        for fname, dig in stored_entries:
+        for fname, dig in all_stored_entries:
             existing_manager = dataset.managers.get(fname)
             if existing_manager is not None:
                 existing_manager.digest = dig
@@ -520,9 +532,8 @@ class AddManagerHandler(BaseHandler):
 
 
 class DeleteManagerHandler(BaseHandler):
-    """Delete a manager.
+    """Delete a manager."""
 
-    """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, dataset_id, manager_id):
         manager = self.safe_get_item(Manager, manager_id)
@@ -556,9 +567,8 @@ class DeleteManagerHandler(BaseHandler):
 
 
 class AddTestcaseHandler(BaseHandler):
-    """Add a testcase to a dataset.
+    """Add a testcase to a dataset."""
 
-    """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -584,9 +594,8 @@ class AddTestcaseHandler(BaseHandler):
             output = self.request.files["output"][0]
         except KeyError:
             self.service.add_notification(
-                make_datetime(),
-                "Invalid data",
-                "Please fill both input and output.")
+                make_datetime(), "Invalid data", "Please fill both input and output."
+            )
             self.redirect(fallback_page)
             return
 
@@ -595,19 +604,16 @@ class AddTestcaseHandler(BaseHandler):
         self.sql_session.close()
 
         try:
-            input_digest = \
-                self.service.file_cacher.put_file_content(
-                    input_["body"],
-                    "Testcase input for task %s" % task_name)
-            output_digest = \
-                self.service.file_cacher.put_file_content(
-                    output["body"],
-                    "Testcase output for task %s" % task_name)
+            input_digest = self.service.file_cacher.put_file_content(
+                input_["body"], "Testcase input for task %s" % task_name
+            )
+            output_digest = self.service.file_cacher.put_file_content(
+                output["body"], "Testcase output for task %s" % task_name
+            )
         except Exception as error:
             self.service.add_notification(
-                make_datetime(),
-                "Testcase storage failed",
-                repr(error))
+                make_datetime(), "Testcase storage failed", repr(error)
+            )
             self.redirect(fallback_page)
             return
 
@@ -616,7 +622,8 @@ class AddTestcaseHandler(BaseHandler):
         task = dataset.task
 
         testcase = Testcase(
-            codename, public, input_digest, output_digest, dataset=dataset)
+            codename, public, input_digest, output_digest, dataset=dataset
+        )
         self.sql_session.add(testcase)
 
         if dataset.active and dataset.task_type == "OutputOnly":
@@ -625,7 +632,8 @@ class AddTestcaseHandler(BaseHandler):
             except Exception as e:
                 raise RuntimeError(
                     f"Couldn't create default submission format for task {task.id}, "
-                    f"dataset {dataset.id}") from e
+                    f"dataset {dataset.id}"
+                ) from e
 
         if self.try_commit():
             # max_score and/or extra_headers might have changed.
@@ -636,9 +644,8 @@ class AddTestcaseHandler(BaseHandler):
 
 
 class AddTestcasesHandler(BaseHandler):
-    """Add several testcases to a dataset.
+    """Add several testcases to a dataset."""
 
-    """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -652,8 +659,7 @@ class AddTestcasesHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = \
-            self.url("dataset", dataset_id, "testcases", "add_multiple")
+        fallback_page = self.url("dataset", dataset_id, "testcases", "add_multiple")
 
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
@@ -662,9 +668,18 @@ class AddTestcasesHandler(BaseHandler):
             archive = self.request.files["archive"][0]
         except KeyError:
             self.service.add_notification(
+                make_datetime(), "Invalid data", "Please choose tests archive."
+            )
+            self.redirect(fallback_page)
+            return
+
+        # Check for empty file
+        if len(archive["body"]) == 0:
+            self.service.add_notification(
                 make_datetime(),
-                "Invalid data",
-                "Please choose tests archive.")
+                "Empty file",
+                "The selected archive is empty. Please select a non-empty zip file.",
+            )
             self.redirect(fallback_page)
             return
 
@@ -674,10 +689,15 @@ class AddTestcasesHandler(BaseHandler):
         # Get input/output file names templates, or use default ones.
         input_template: str = self.get_argument("input_template", "input.*")
         output_template: str = self.get_argument("output_template", "output.*")
-        input_re = re.compile(re.escape(input_template).replace("\\*",
-                              "(.*)") + "$")
-        output_re = re.compile(re.escape(output_template).replace("\\*",
-                               "(.*)") + "$")
+
+        try:
+            input_re = compile_template_regex(input_template)
+            output_re = compile_template_regex(output_template)
+        except ValueError as e:
+            self.service.add_notification(
+                make_datetime(), "Invalid template", str(e))
+            self.redirect(fallback_page)
+            return
 
         fp = io.BytesIO(archive["body"])
         try:
@@ -731,6 +751,59 @@ class DeleteTestcaseHandler(BaseHandler):
         self.write("./%d" % task_id)
 
 
+class DeleteSelectedTestcasesHandler(BaseHandler):
+    """Delete multiple selected testcases from a dataset.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        task_id = task.id
+
+        # Collect selected testcase IDs from the request.
+        id_strings = self.get_arguments("testcase_id")
+
+        # If nothing was selected, just redirect back without doing anything.
+        if not id_strings:
+            self.write("./%d" % task_id)
+            return
+
+        testcases = []
+        for id_str in id_strings:
+            try:
+                tid = int(id_str)
+            except ValueError:
+                raise tornado.web.HTTPError(400)
+            tc = self.safe_get_item(Testcase, tid)
+
+            # Protect against mixing datasets.
+            if tc.dataset is not dataset:
+                raise tornado.web.HTTPError(400)
+
+            testcases.append(tc)
+
+        # Delete all selected testcases.
+        for tc in testcases:
+            self.sql_session.delete(tc)
+
+        # Handle OutputOnly tasks
+        if dataset.active and dataset.task_type == "OutputOnly":
+            for tc in testcases:
+                dataset.testcases.pop(tc.codename, None)
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
+
+        if self.try_commit():
+            # max_score and/or extra_headers might have changed.
+            self.service.proxy_service.reinitialize()
+        self.write("./%d" % task_id)
+
+
 class DownloadTestcasesHandler(BaseHandler):
     """Download all testcases in a zip file.
 
@@ -760,11 +833,14 @@ class DownloadTestcasesHandler(BaseHandler):
         output_template: str = self.get_argument("output_template", "output.*")
 
         # Template validations
-        if input_template.count('*') != 1 or output_template.count('*') != 1:
+        error = validate_template(input_template, "input")
+        if error is None:
+            error = validate_template(output_template, "output")
+        if error is not None:
             self.service.add_notification(
                 make_datetime(),
                 "Invalid template format",
-                "You must have exactly one '*' in input/output template.")
+                error)
             self.redirect(fallback_page)
             return
 
@@ -790,3 +866,782 @@ class DownloadTestcasesHandler(BaseHandler):
                         "attachment; filename=\"%s\"" % zip_filename)
 
         self.write(temp_file.getvalue())
+
+
+class AddGeneratorHandler(BaseHandler):
+    """Add a generator to a dataset.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.render("add_generator.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        fallback_page = self.url("dataset", dataset_id, "generators", "add")
+
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        task_name = task.name
+
+        generator_file = self.request.files.get("generator")
+        if not generator_file:
+            self.service.add_notification(
+                make_datetime(),
+                "No generator file",
+                "Please upload a generator source file.")
+            self.redirect(fallback_page)
+            return
+
+        generator_file = generator_file[0]
+        filename = generator_file["filename"]
+        body = generator_file["body"]
+
+        input_filename_template = self.get_argument(
+            "input_filename_template", "input.*").strip()
+        output_filename_template = self.get_argument(
+            "output_filename_template", "output.*").strip()
+
+        error = validate_template(input_filename_template, "input")
+        if error is None:
+            error = validate_template(output_filename_template, "output")
+        if error is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid template",
+                error)
+            self.redirect(fallback_page)
+            return
+
+        # Get language from form (explicit selection) instead of auto-detection
+        # This allows distinguishing between languages with the same extension
+        # (e.g., PyPy vs CPython for .py files)
+        language_name = self.get_argument("language", "").strip()
+        if not language_name:
+            # Fallback to auto-detection if no language selected
+            language = filename_to_language(filename)
+            if language is None:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Unknown language",
+                    "Could not detect language for file '%s'." % filename)
+                self.redirect(fallback_page)
+                return
+            language_name = language.name
+        else:
+            try:
+                language = get_language(language_name)
+            except KeyError:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Unknown language",
+                    "Language '%s' is not supported." % language_name)
+                self.redirect(fallback_page)
+                return
+
+        if not isinstance(language, CompiledLanguage):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid language",
+                "Generator must be a compiled language, not '%s'." %
+                language.name)
+            self.redirect(fallback_page)
+            return
+
+        self.sql_session.close()
+
+        compiled_filename = "generator"
+
+        def notify(title, text):
+            self.service.add_notification(make_datetime(), title, text)
+
+        success, compiled_bytes, _stats = compile_manager_bytes(
+            self.service.file_cacher,
+            filename,
+            body,
+            compiled_filename,
+            sandbox_name="admin_compile",
+            for_evaluation=True,
+            notify=notify,
+            language_name=language_name
+        )
+
+        if not success:
+            self.redirect(fallback_page)
+            return
+
+        try:
+            source_digest = self.service.file_cacher.put_file_content(
+                body, "Generator source for %s" % task_name)
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator storage failed",
+                "Error storing source: %s" % repr(error))
+            self.redirect(fallback_page)
+            return
+
+        executable_digest = None
+        if compiled_bytes is not None:
+            try:
+                executable_digest = self.service.file_cacher.put_file_content(
+                    compiled_bytes, "Compiled generator for %s" % task_name)
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Generator storage failed",
+                    "Error storing executable: %s" % repr(error))
+                self.redirect(fallback_page)
+                return
+
+        self.sql_session = Session()
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        existing_generator = dataset.generators.get(filename)
+        if existing_generator is not None:
+            existing_generator.digest = source_digest
+            existing_generator.executable_digest = executable_digest
+            existing_generator.input_filename_template = input_filename_template
+            existing_generator.output_filename_template = output_filename_template
+            existing_generator.language_name = language_name
+        else:
+            generator = Generator(
+                filename=filename,
+                digest=source_digest,
+                executable_digest=executable_digest,
+                input_filename_template=input_filename_template,
+                output_filename_template=output_filename_template,
+                language_name=language_name,
+                dataset=dataset)
+            self.sql_session.add(generator)
+
+        if self.try_commit():
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class EditGeneratorHandler(BaseHandler):
+    """Edit a generator's filename templates.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id, generator_id):
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.r_params["generator"] = generator
+        self.render("edit_generator.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, generator_id):
+        fallback_page = self.url("dataset", dataset_id, "generator",
+                                 generator_id, "edit")
+
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task = dataset.task
+
+        input_filename_template = self.get_argument(
+            "input_filename_template", "input.*").strip()
+        output_filename_template = self.get_argument(
+            "output_filename_template", "output.*").strip()
+
+        error = validate_template(input_filename_template, "input")
+        if error is None:
+            error = validate_template(output_filename_template, "output")
+        if error is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid template",
+                error)
+            self.redirect(fallback_page)
+            return
+
+        generator.input_filename_template = input_filename_template
+        generator.output_filename_template = output_filename_template
+
+        if self.try_commit():
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class DeleteGeneratorHandler(BaseHandler):
+    """Delete a generator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, dataset_id, generator_id):
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        task_id = dataset.task_id
+        self.sql_session.delete(generator)
+
+        self.try_commit()
+        self.write("./%d" % task_id)
+
+
+class GenerateTestcasesHandler(BaseHandler):
+    """Generate testcases using a generator.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self, dataset_id, generator_id):
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        if generator.executable_digest is None:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator not compiled",
+                "The generator has not been compiled successfully.")
+            self.redirect(self.url("task", dataset.task.id))
+            return
+
+        task = dataset.task
+        self.contest = task.contest
+
+        self.r_params = self.render_params()
+        self.r_params["task"] = task
+        self.r_params["dataset"] = dataset
+        self.r_params["generator"] = generator
+        self.render("generate_testcases.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, generator_id):
+        fallback_page = self.url("dataset", dataset_id, "generator",
+                                 generator_id, "generate")
+
+        generator = self.safe_get_item(Generator, generator_id)
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        if generator.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        if generator.executable_digest is None:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator not compiled",
+                "The generator has not been compiled successfully.")
+            self.redirect(self.url("task", dataset.task.id))
+            return
+
+        task = dataset.task
+
+        overwrite = self.get_argument("overwrite", "") == "on"
+        public = self.get_argument("public", "") == "on"
+
+        input_template = generator.input_filename_template
+        output_template = generator.output_filename_template
+
+        self.sql_session.close()
+
+        # Use stored language_name if available, otherwise fall back to auto-detection
+        language = None
+        if generator.language_name:
+            try:
+                language = get_language(generator.language_name)
+            except KeyError:
+                logger.debug(
+                    "Stored language '%s' not found for generator %s, "
+                    "falling back to auto-detection",
+                    generator.language_name, generator.filename)
+        if language is None:
+            language = filename_to_language(generator.filename)
+
+        exe_name = "generator"
+        if language is not None and isinstance(language, CompiledLanguage):
+            exe_name += language.executable_extension
+
+        sandbox = None
+        try:
+            sandbox = create_sandbox(self.service.file_cacher,
+                                     name="admin_generate")
+
+            sandbox.create_file_from_storage(exe_name,
+                                             generator.executable_digest,
+                                             executable=True)
+
+            cmd = ["./" + exe_name]
+            if language is not None:
+                try:
+                    cmds = language.get_evaluation_commands(exe_name)
+                    if cmds:
+                        cmd = cmds[0]
+                except Exception as e:
+                    logger.debug(
+                        "get_evaluation_commands failed for %s: %s, using default",
+                        generator.filename, e)
+
+            # Apply resource limits to prevent runaway generators
+            set_sandbox_resource_limits(sandbox)
+
+            # Set stdout/stderr files so they are created during execution
+            sandbox.stdout_file = "stdout.txt"
+            sandbox.stderr_file = "stderr.txt"
+
+            box_success = sandbox.execute_without_std(cmd, wait=True)
+
+            # Read stdout/stderr (best-effort, may not exist)
+            stdout = ""
+            stderr = ""
+            try:
+                stdout = sandbox.get_file_to_string("stdout.txt", maxlen=65536)
+            except FileNotFoundError:
+                pass
+            try:
+                stderr = sandbox.get_file_to_string("stderr.txt", maxlen=65536)
+            except FileNotFoundError:
+                pass
+
+            if not box_success:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Generator execution failed",
+                    "Sandbox error during execution.\nStdout:\n%s\nStderr:\n%s"
+                    % (stdout, stderr))
+                self.redirect(fallback_page)
+                return
+
+            exit_status = sandbox.get_exit_status()
+            if exit_status != sandbox.EXIT_OK:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Generator execution failed",
+                    "Exit status: %s\nStdout:\n%s\nStderr:\n%s" %
+                    (exit_status, stdout, stderr))
+                self.redirect(fallback_page)
+                return
+
+            input_re = compile_template_regex(input_template)
+            output_re = compile_template_regex(output_template)
+
+            temp_zip = io.BytesIO()
+            with zipfile.ZipFile(temp_zip, "w") as zf:
+                sandbox_home = sandbox.relative_path("")
+                for root, _dirs, files in os.walk(sandbox_home):
+                    for filename in files:
+                        if filename in [exe_name, "stdout.txt", "stderr.txt"]:
+                            continue
+                        rel_path = os.path.relpath(
+                            os.path.join(root, filename), sandbox_home)
+                        content = sandbox.get_file_to_string(rel_path, maxlen=None)
+                        zf.writestr(rel_path, content)
+
+            temp_zip.seek(0)
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Generator execution error",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+        finally:
+            if sandbox:
+                sandbox.cleanup(delete=True)
+
+        self.sql_session = Session()
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        try:
+            successful_subject, successful_text = import_testcases_from_zipfile(
+                self.sql_session,
+                self.service.file_cacher,
+                dataset,
+                temp_zip,
+                input_re,
+                output_re,
+                overwrite,
+                public)
+            self.service.add_notification(
+                make_datetime(),
+                successful_subject,
+                successful_text)
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Testcase import failed",
+                repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            # max_score and/or extra_headers might have changed.
+            self.service.proxy_service.reinitialize()
+            self.redirect(self.url("task", task.id))
+        else:
+            self.redirect(fallback_page)
+
+
+class RenameTestcaseHandler(BaseHandler):
+    """Rename a testcase's codename.
+
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id, testcase_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        testcase = self.safe_get_item(Testcase, testcase_id)
+        task = dataset.task
+
+        # Protect against URLs providing incompatible parameters.
+        if testcase.dataset is not dataset:
+            raise tornado.web.HTTPError(404)
+
+        # Support redirect back to subtask details page if subtask_index is provided
+        subtask_index = self.get_argument("subtask_index", None)
+        if subtask_index is not None:
+            fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+        else:
+            fallback_page = self.url("task", task.id)
+
+        new_codename = self.get_argument("new_codename", "").strip()
+        if not new_codename:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid codename",
+                "Codename cannot be empty.")
+            self.redirect(fallback_page)
+            return
+
+        old_codename = testcase.codename
+
+        # Check if the new codename already exists in this dataset
+        if new_codename != old_codename and new_codename in dataset.testcases:
+            self.service.add_notification(
+                make_datetime(),
+                "Codename already exists",
+                "A testcase with codename '%s' already exists in this dataset." % new_codename)
+            self.redirect(fallback_page)
+            return
+
+        # Update the codename
+        # First remove from the collection (keyed by old codename)
+        del dataset.testcases[old_codename]
+        # Update the codename
+        testcase.codename = new_codename
+        # Re-add to the collection (keyed by new codename)
+        dataset.testcases[new_codename] = testcase
+
+        # Update submission format for OutputOnly tasks
+        if dataset.active and dataset.task_type == "OutputOnly":
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task {task.id}, "
+                    f"dataset {dataset.id}") from e
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Testcase renamed",
+                "Testcase renamed from '%s' to '%s'." % (old_codename, new_codename))
+        self.redirect(fallback_page)
+
+
+def _apply_codename_mapping(dataset, testcases, new_codenames):
+    """Apply a codename mapping to testcases using two-phase approach.
+
+    This uses a two-phase approach to safely handle cases where a new codename
+    equals another selected testcase's old codename.
+
+    Args:
+        dataset: The dataset containing the testcases
+        testcases: List of testcases being renamed
+        new_codenames: Dict mapping testcase.id to new codename
+
+    Returns:
+        Number of testcases actually renamed (where codename changed)
+    """
+    # Phase 1: Remove all old codenames for testcases that are changing
+    changing_testcases = []
+    for tc in testcases:
+        new_codename = new_codenames.get(tc.id)
+        if new_codename is not None and tc.codename != new_codename:
+            del dataset.testcases[tc.codename]
+            changing_testcases.append((tc, new_codename))
+
+    # Phase 2: Update codenames and re-add to dataset
+    for tc, new_codename in changing_testcases:
+        tc.codename = new_codename
+        dataset.testcases[new_codename] = tc
+
+    return len(changing_testcases)
+
+
+def _batch_rename_testcases(
+    handler, dataset, task, testcases, codename_modifier, fallback_page
+):
+    """Common logic for batch renaming testcases.
+
+    Args:
+        handler: The request handler (for notifications, commit, redirect)
+        dataset: The dataset containing the testcases
+        task: The task owning the dataset
+        testcases: List of testcases to rename
+        codename_modifier: Function(testcase) -> (new_codename, error_msg)
+                          Returns new codename or (None, error_msg) on failure
+        fallback_page: URL to redirect to
+
+    Returns:
+        (success, renamed_count) tuple. If success is False, handler has
+        already been redirected with an error notification.
+    """
+    # Build the new codename mapping
+    testcase_set = set(testcases)
+    new_codenames = {}
+    seen_codenames = {}  # new_codename -> tc, for duplicate detection
+
+    for tc in testcases:
+        new_codename, error_msg = codename_modifier(tc)
+        if error_msg is not None:
+            handler.service.add_notification(make_datetime(), "Rename error", error_msg)
+            handler.redirect(fallback_page)
+            return (False, 0)
+
+        # Check for duplicates within the mapping itself
+        if new_codename in seen_codenames:
+            handler.service.add_notification(
+                make_datetime(),
+                "Codename conflict",
+                "Renaming would create duplicate codename '%s'." % new_codename,
+            )
+            handler.redirect(fallback_page)
+            return (False, 0)
+        seen_codenames[new_codename] = tc
+
+        # Check for conflicts with existing testcases not in the selection
+        if new_codename in dataset.testcases:
+            existing_tc = dataset.testcases[new_codename]
+            if existing_tc not in testcase_set:
+                handler.service.add_notification(
+                    make_datetime(),
+                    "Codename conflict",
+                    "Renaming would create duplicate codename '%s'." % new_codename,
+                )
+                handler.redirect(fallback_page)
+                return (False, 0)
+
+        new_codenames[tc.id] = new_codename
+
+    # Apply the rename using two-phase approach
+    renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
+
+    # Update submission format for OutputOnly tasks
+    if dataset.active and dataset.task_type == "OutputOnly":
+        try:
+            task.set_default_output_only_submission_format()
+        except Exception as e:
+            raise RuntimeError(
+                f"Couldn't create default submission format for task {task.id}, "
+                f"dataset {dataset.id}"
+            ) from e
+
+    return (True, renamed_count)
+
+
+class BatchRenameTestcasesHandler(BaseHandler):
+    """Batch rename testcases - add prefix or remove common substring."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+
+        # Support redirect back to subtask details page if subtask_index is provided
+        subtask_index = self.get_argument("subtask_index", None)
+        if subtask_index is not None:
+            fallback_page = self.url(
+                "dataset", dataset_id, "subtask", subtask_index, "details"
+            )
+        else:
+            fallback_page = self.url("task", task.id)
+
+        # Get the operation type and value
+        operation = self.get_argument("operation", "")
+        value = self.get_argument("value", "")
+
+        # Collect selected testcase IDs from the request
+        id_strings = self.get_arguments("testcase_id")
+
+        if not id_strings:
+            self.service.add_notification(
+                make_datetime(),
+                "No testcases selected",
+                "Please select at least one testcase.",
+            )
+            self.redirect(fallback_page)
+            return
+
+        if operation not in ("add_prefix", "remove_substring"):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid operation",
+                "Unknown operation: %s" % operation,
+            )
+            self.redirect(fallback_page)
+            return
+
+        # Gather testcases
+        testcases = []
+        for id_str in id_strings:
+            try:
+                tid = int(id_str)
+            except ValueError:
+                raise tornado.web.HTTPError(400)
+            tc = self.safe_get_item(Testcase, tid)
+
+            # Protect against mixing datasets
+            if tc.dataset is not dataset:
+                raise tornado.web.HTTPError(400)
+
+            testcases.append(tc)
+
+        if operation == "add_prefix":
+            # Add prefix to all selected testcases
+            if not value:
+                self.service.add_notification(
+                    make_datetime(), "Invalid prefix", "Prefix cannot be empty."
+                )
+                self.redirect(fallback_page)
+                return
+
+            def add_prefix_modifier(tc):
+                # Skip adding prefix if codename already starts with it
+                if tc.codename.startswith(value):
+                    return (tc.codename, None)
+                return (value + tc.codename, None)
+
+            success, renamed_count = _batch_rename_testcases(
+                self,
+                dataset,
+                task,
+                testcases,
+                add_prefix_modifier,
+                fallback_page,
+            )
+            if not success:
+                return
+
+            # Check if user wants to update the subtask regex
+            update_regex = self.get_argument("update_regex", "") == "true"
+            regex_updated = False
+            regex_already_exists = False
+            if update_regex and subtask_index is not None:
+                try:
+                    subtask_idx = int(subtask_index)
+                    score_type_obj = dataset.score_type_object
+                    if hasattr(score_type_obj, "parameters"):
+                        params = list(score_type_obj.parameters)
+                        if 0 <= subtask_idx < len(params):
+                            param = list(params[subtask_idx])
+                            # Check if using regex (string pattern)
+                            if len(param) >= 2 and isinstance(param[1], str):
+                                old_regex = param[1]
+                                # Add a term to match testcases containing the prefix
+                                # Use .*prefix pattern to match substring
+                                import re
+
+                                new_term = ".*%s(?#CMS)" % re.escape(value)
+                                # Check if the term already exists in the regex
+                                if new_term in old_regex:
+                                    regex_already_exists = True
+                                else:
+                                    # Combine with existing regex using |
+                                    new_regex = "%s|%s" % (old_regex, new_term)
+                                    param[1] = new_regex
+                                    params[subtask_idx] = param
+                                    dataset.score_type_parameters = params
+                                    regex_updated = True
+                except (ValueError, AttributeError, IndexError) as e:
+                    logger.warning(
+                        "Could not update regex for subtask %s: %s", subtask_index, e
+                    )
+
+            if self.try_commit():
+                msg = "Added prefix '%s' to %d testcases." % (value, renamed_count)
+                if regex_updated:
+                    msg += (
+                        " Subtask regex updated to match testcases containing '%s'."
+                        % value
+                    )
+                elif regex_already_exists:
+                    msg += " Regex term for '%s' already exists in the pattern." % value
+                self.service.add_notification(make_datetime(), "Testcases renamed", msg)
+
+        elif operation == "remove_substring":
+            # Remove a common substring from all selected testcases
+            substring = value
+
+            if not substring:
+                self.service.add_notification(
+                    make_datetime(), "Invalid substring", "Substring cannot be empty."
+                )
+                self.redirect(fallback_page)
+                return
+
+            def remove_substring_modifier(tc):
+                if substring not in tc.codename:
+                    return (
+                        None,
+                        "Testcase '%s' does not contain substring '%s'."
+                        % (tc.codename, substring),
+                    )
+                new_codename = tc.codename.replace(substring, "", 1)
+                if not new_codename:
+                    return (
+                        None,
+                        "Removing substring from '%s' would result in empty codename."
+                        % tc.codename,
+                    )
+                return (new_codename, None)
+
+            success, renamed_count = _batch_rename_testcases(
+                self,
+                dataset,
+                task,
+                testcases,
+                remove_substring_modifier,
+                fallback_page,
+            )
+            if not success:
+                return
+
+            if self.try_commit():
+                self.service.add_notification(
+                    make_datetime(),
+                    "Testcases renamed",
+                    "Removed substring '%s' from %d testcases." % (substring, renamed_count))
+
+        self.redirect(fallback_page)

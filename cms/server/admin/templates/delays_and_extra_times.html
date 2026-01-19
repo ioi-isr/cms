@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'macro/delay_request.html' as macro_delay_request with context %}
 
 {% block js_init %}
 
@@ -65,11 +66,23 @@ tr.finished .status-badge {
 tr.missed .status-badge {
   background-color: #dc3545; /* Red */
 }
+
+/* Subtle link styling for usernames in the table - override body.admin a color */
+a.username-link,
+a.username-link:link,
+a.username-link:visited {
+  color: #222 !important;
+  text-decoration: none;
+}
+
+a.username-link:hover {
+  text-decoration: underline;
+}
 </style>
 
 <div class="core_title">
   <h1>Attendance</h1>
-  <p class="muted">All times shown in UTC</p>
+  <p class="muted">All times shown in {{ timezone_name }}</p>
 </div>
 
 {% if delay_requests != [] %}
@@ -80,31 +93,7 @@ tr.missed .status-badge {
   <div id="paged_content_pending_delay_requests">
   {% for req in delay_requests %}
     {% if req.status == 'pending' %}
-    <div class="notification">
-      <div class="notification_msg">
-        <div class="notification_timestamp">
-          {{ req.request_timestamp|format_datetime }}
-        </div>
-        <div class="notification_subject">
-          <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }} ({{ req.participation.user.username }})
-        </div>
-        <div class="notification_text">
-          <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
-          <strong>Current Delay:</strong> {{ req.participation.delay_time.total_seconds()|int }} seconds<br>
-          <strong>Reason:</strong> {{ req.reason }}
-        </div>
-      </div>
-      <div class="notification_buttons">
-        <form action="{{ url("contest", contest.id, "delay_request", req.id, "approve") }}" method="POST" style="display: inline;">
-          {{ xsrf_form_html|safe }}
-          <button type="submit" class="btn btn-success">Approve</button>
-        </form>
-        <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" style="display: inline;">
-          {{ xsrf_form_html|safe }}
-          <button type="submit" class="btn btn-danger">Reject</button>
-        </form>
-      </div>
-    </div>
+      {{ macro_delay_request.delay_request(req) }}
     {% endif %}
   {% endfor %}
   </div>
@@ -157,9 +146,9 @@ tr.missed .status-badge {
     {% set participation = item.participation %}
     <tr class="{{ item.status_class }}">
       <td>
-        {{ participation.user.first_name }} {{ participation.user.last_name }}
+        <a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}" class="username-link">{{ participation.user.first_name }} {{ participation.user.last_name }}</a>
       </td>
-      <td>{{ participation.user.username }}</td>
+      <td><a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}" class="username-link">{{ participation.user.username }}</a></td>
       <td>{{ participation.delay_time.total_seconds()|int }}</td>
       <td>
         {% if participation.delay_time.total_seconds() > 0 %}
@@ -232,27 +221,7 @@ tr.missed .status-badge {
   <div id="page_selector_all_delay_requests"></div>
   <div id="paged_content_all_delay_requests">
   {% for req in delay_requests %}
-    <div class="notification {% if req.status == 'approved' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
-      <div class="notification_msg">
-        <div class="notification_timestamp">
-          {{ req.request_timestamp|format_datetime }}
-        </div>
-        <div class="notification_subject">
-          <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }} ({{ req.participation.user.username }})
-        </div>
-        <div class="notification_text">
-          <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
-          <strong>Status:</strong> {{ req.status }}<br>
-          {% if req.processed_timestamp %}
-          <strong>Processed:</strong> {{ req.processed_timestamp|format_datetime }}<br>
-          {% endif %}
-          {% if req.admin %}
-          <strong>Processed by:</strong> {{ req.admin.name }}<br>
-          {% endif %}
-          <strong>Reason:</strong> {{ req.reason }}
-        </div>
-      </div>
-    </div>
+    {{ macro_delay_request.delay_request(req, show_buttons=False) }}
   {% endfor %}
   </div>
 </div>

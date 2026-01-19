@@ -162,7 +162,7 @@ class AddContestTaskHandler(BaseHandler):
         try:
             task_id: str = self.get_argument("task_id")
             # Check that the admin selected some task.
-            assert task_id != "null", "Please select a valid task"
+            assert task_id != "", "Please select a valid task"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))

@@ -126,4 +126,283 @@ ALTER TABLE ONLY public.contests ADD CONSTRAINT contests_check1 CHECK (((per_use
 -- https://github.com/ioi-isr/cms/pull/35
 ALTER TABLE public.participations ADD COLUMN starting_ip_addresses character varying;
 
+-- https://github.com/ioi-isr/cms/pull/49
+ALTER TABLE ONLY public.contests ADD CONSTRAINT contests_check4 CHECK (stop <= analysis_stop);
+
+-- https://github.com/ioi-isr/cms/pull/37
+CREATE TABLE public.statement_views (
+    id integer NOT NULL,
+    participation_id integer NOT NULL,
+    task_id integer NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL
+);
+
+CREATE SEQUENCE public.statement_views_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.statement_views_id_seq OWNED BY public.statement_views.id;
+
+ALTER TABLE ONLY public.statement_views ALTER COLUMN id SET DEFAULT nextval('public.statement_views_id_seq'::regclass);
+
+ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.statement_views ADD CONSTRAINT participation_task_unique UNIQUE (participation_id, task_id);
+
+CREATE INDEX ix_statement_views_participation_id ON public.statement_views USING btree (participation_id);
+
+CREATE INDEX ix_statement_views_task_id ON public.statement_views USING btree (task_id);
+
+ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.statement_views ADD CONSTRAINT statement_views_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+-- Password reset feature: add password reset fields to users table
+ALTER TABLE public.users ADD COLUMN password_reset_token character varying;
+ALTER TABLE public.users ADD COLUMN password_reset_token_expires timestamp without time zone;
+ALTER TABLE public.users ADD COLUMN password_reset_pending boolean NOT NULL DEFAULT false;
+ALTER TABLE public.users ADD COLUMN password_reset_new_hash character varying;
+ALTER TABLE public.users ALTER COLUMN password_reset_pending DROP DEFAULT;
+-- Partial index for efficient token lookups (only indexes non-null tokens)
+CREATE INDEX ix_users_password_reset_token ON public.users USING btree (password_reset_token) WHERE password_reset_token IS NOT NULL;
+
+-- https://github.com/ioi-isr/cms/pull/73
+CREATE TABLE public.participation_task_scores (
+    id integer NOT NULL,
+    participation_id integer NOT NULL,
+    task_id integer NOT NULL,
+    score double precision NOT NULL,
+    subtask_max_scores jsonb,
+    max_tokened_score double precision NOT NULL,
+    last_submission_score double precision,
+    last_submission_timestamp timestamp without time zone,
+    history_valid boolean NOT NULL,
+    has_submissions boolean NOT NULL,
+    last_update timestamp without time zone NOT NULL,
+    created_at timestamp without time zone,
+    invalidated_at timestamp without time zone
+);
+
+CREATE SEQUENCE public.participation_task_scores_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.participation_task_scores_id_seq OWNED BY public.participation_task_scores.id;
+
+ALTER TABLE ONLY public.participation_task_scores ALTER COLUMN id SET DEFAULT nextval('public.participation_task_scores_id_seq'::regclass);
+
+ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_participation_id_task_id_key UNIQUE (participation_id, task_id);
+
+CREATE INDEX ix_participation_task_scores_task_id ON public.participation_task_scores USING btree (task_id);
+
+ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.participation_task_scores ADD CONSTRAINT participation_task_scores_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+-- Score history for user detail view
+CREATE TABLE public.score_history (
+    id integer NOT NULL,
+    participation_id integer NOT NULL,
+    task_id integer NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL,
+    score double precision NOT NULL,
+    submission_id integer NOT NULL
+);
+
+CREATE SEQUENCE public.score_history_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.score_history_id_seq OWNED BY public.score_history.id;
+
+ALTER TABLE ONLY public.score_history ALTER COLUMN id SET DEFAULT nextval('public.score_history_id_seq'::regclass);
+
+ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_pkey PRIMARY KEY (id);
+
+CREATE INDEX ix_score_history_task_id ON public.score_history USING btree (task_id);
+
+CREATE INDEX ix_score_history_timestamp ON public.score_history USING btree ("timestamp");
+
+CREATE INDEX ix_score_history_submission_id ON public.score_history USING btree (submission_id);
+
+CREATE INDEX ix_score_history_participation_task ON public.score_history USING btree (participation_id, task_id);
+
+ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.score_history ADD CONSTRAINT score_history_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.submissions(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+-- https://github.com/ioi-isr/cms/pull/33
+CREATE TABLE public.model_solution_meta (
+    id integer NOT NULL,
+    submission_id integer NOT NULL,
+    dataset_id integer NOT NULL,
+    name character varying NOT NULL,
+    description character varying NOT NULL,
+    expected_score_min double precision NOT NULL,
+    expected_score_max double precision NOT NULL,
+    subtask_expected_scores jsonb
+);
+
+CREATE SEQUENCE public.model_solution_meta_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.model_solution_meta_id_seq OWNED BY public.model_solution_meta.id;
+
+ALTER TABLE ONLY public.model_solution_meta ALTER COLUMN id SET DEFAULT nextval('public.model_solution_meta_id_seq'::regclass);
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_submission_id_dataset_id_key UNIQUE (submission_id, dataset_id);
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_dataset_id_name_key UNIQUE (dataset_id, name);
+
+CREATE INDEX ix_model_solution_meta_dataset_id ON public.model_solution_meta USING btree (dataset_id);
+
+CREATE INDEX ix_model_solution_meta_submission_id ON public.model_solution_meta USING btree (submission_id);
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES public.datasets(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.model_solution_meta ADD CONSTRAINT model_solution_meta_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.submissions(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+-- https://github.com/ioi-isr/cms/pull/82 - Add rejection reason to delay requests
+ALTER TABLE public.delay_requests ADD COLUMN rejection_reason character varying;
+
+-- https://github.com/ioi-isr/cms/pull/79 - Add evaluation failure details
+-- These fields store details about why the last evaluation attempt failed,
+-- which helps admins diagnose issues with checkers or managers.
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_text VARCHAR[];
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_shard INTEGER;
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_sandbox_paths VARCHAR[];
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_sandbox_digests VARCHAR[];
+-- JSONB field storing detailed failure information (exit_status, signal, time, memory, stdout, stderr)
+ALTER TABLE public.submission_results ADD COLUMN last_evaluation_failure_details JSONB;
+
+-- https://github.com/ioi-isr/cms/pull/79 - Add 'fail' value to evaluation_outcome enum
+-- This allows marking submissions as permanently failed when evaluation fails
+-- (e.g., checker/manager crash) after max retries, showing "Evaluation system error"
+-- to contestants instead of leaving them stuck in "Evaluating..." state.
+ALTER TYPE public.evaluation_outcome ADD VALUE 'fail';
+
+-- Add generators table for testcase generation
+CREATE TABLE public.generators (
+    id integer NOT NULL,
+    dataset_id integer NOT NULL,
+    filename public.filename NOT NULL,
+    digest public.digest NOT NULL,
+    executable_digest public.digest,
+    input_filename_template character varying NOT NULL,
+    output_filename_template character varying NOT NULL,
+    language_name character varying
+);
+
+CREATE SEQUENCE public.generators_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.generators_id_seq OWNED BY public.generators.id;
+
+ALTER TABLE ONLY public.generators ALTER COLUMN id SET DEFAULT nextval('public.generators_id_seq'::regclass);
+
+ALTER TABLE ONLY public.generators ADD CONSTRAINT generators_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.generators ADD CONSTRAINT generators_dataset_id_filename_key UNIQUE (dataset_id, filename);
+
+CREATE INDEX ix_generators_dataset_id ON public.generators USING btree (dataset_id);
+
+ALTER TABLE ONLY public.generators ADD CONSTRAINT generators_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES public.datasets(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+-- Add subtask_validators table for validating testcases in subtasks
+CREATE TABLE public.subtask_validators (
+    id integer NOT NULL,
+    dataset_id integer NOT NULL,
+    subtask_index integer NOT NULL,
+    filename public.filename NOT NULL,
+    digest public.digest NOT NULL,
+    executable_digest public.digest
+);
+
+CREATE SEQUENCE public.subtask_validators_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.subtask_validators_id_seq OWNED BY public.subtask_validators.id;
+
+ALTER TABLE ONLY public.subtask_validators ALTER COLUMN id SET DEFAULT nextval('public.subtask_validators_id_seq'::regclass);
+
+ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_dataset_id_subtask_index_key UNIQUE (dataset_id, subtask_index);
+
+CREATE INDEX ix_subtask_validators_dataset_id ON public.subtask_validators USING btree (dataset_id);
+
+ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES public.datasets(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.subtask_validators ADD CONSTRAINT subtask_validators_subtask_index_check CHECK ((subtask_index >= 0));
+
+-- Add subtask_validation_results table for storing validation results
+CREATE TABLE public.subtask_validation_results (
+    id integer NOT NULL,
+    validator_id integer NOT NULL,
+    testcase_id integer NOT NULL,
+    passed boolean NOT NULL,
+    exit_status character varying,
+    exit_code integer,
+    stderr character varying
+);
+
+CREATE SEQUENCE public.subtask_validation_results_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.subtask_validation_results_id_seq OWNED BY public.subtask_validation_results.id;
+
+ALTER TABLE ONLY public.subtask_validation_results ALTER COLUMN id SET DEFAULT nextval('public.subtask_validation_results_id_seq'::regclass);
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_validator_id_testcase_id_key UNIQUE (validator_id, testcase_id);
+
+CREATE INDEX ix_subtask_validation_results_validator_id ON public.subtask_validation_results USING btree (validator_id);
+
+CREATE INDEX ix_subtask_validation_results_testcase_id ON public.subtask_validation_results USING btree (testcase_id);
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_validator_id_fkey FOREIGN KEY (validator_id) REFERENCES public.subtask_validators(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_testcase_id_fkey FOREIGN KEY (testcase_id) REFERENCES public.testcases(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_validation_results_exit_code_check CHECK (((exit_code IS NULL) OR (exit_code >= 0)));
+
 COMMIT;

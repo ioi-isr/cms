@@ -32,11 +32,12 @@ try:
 except:
     collections.MutableMapping = collections.abc.MutableMapping
 
+from sqlalchemy import not_
 import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation
 from cms.server.contest.phase_management import compute_actual_phase
-from cmscommon.datetime import make_datetime, utc
+from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 
 
@@ -95,10 +96,10 @@ class DelaysAndExtraTimesHandler(BaseHandler):
         self.contest = self.safe_get_item(Contest, contest_id)
 
         self.r_params = self.render_params()
-        self.r_params["timezone"] = utc
-        
+
         participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
+            .filter(not_(Participation.hidden))\
             .order_by(Participation.id)\
             .all()
         
@@ -184,9 +185,12 @@ class DelayRequestRejectHandler(DelayRequestActionHandler):
         if delay_request.status != 'pending':
             raise tornado.web.HTTPError(400, "Delay request is not pending")
 
+        rejection_reason = self.get_argument("rejection_reason", "").strip()
+
         delay_request.status = 'rejected'
         delay_request.processed_timestamp = make_datetime()
         delay_request.admin = self.current_user
+        delay_request.rejection_reason = rejection_reason if rejection_reason else None
 
         if self.try_commit():
             logger.info("Delay request %s rejected by admin %s for user %s in contest %s",
@@ -232,6 +236,7 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
 
         participations = self.sql_session.query(Participation)\
             .filter(Participation.contest_id == contest_id)\
+            .filter(not_(Participation.hidden))\
             .order_by(Participation.id)\
             .all()
 

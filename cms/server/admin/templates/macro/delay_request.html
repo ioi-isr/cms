@@ -1,0 +1,63 @@
+{# This macro should be imported "with context". #}
+
+{% macro delay_request(req, user_id=None, show_buttons=True) %}
+{#
+Render one delay request by a participant.
+
+req (DelayRequest): the delay request object.
+user_id (int|None): if we are rendering one of the delay requests on a single user's
+    page, this is the user's id. if we are rendering one of the delay requests on
+    the contest attendance page, then None.
+show_buttons (bool): whether to show approve/reject buttons for pending requests.
+#}
+<div class="notification {% if req.status == 'approved' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
+  <div class="notification_msg">
+    <div class="notification_timestamp">
+      {% if user_id is none %}
+        <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">{{ req.participation.user.username }}</a> &mdash;
+      {% endif %}
+      {{ req.request_timestamp|format_datetime }}
+    </div>
+    <div class="notification_subject">
+      {% if user_id is none %}
+      <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }}
+      {% else %}
+      <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}
+      {% endif %}
+    </div>
+    <div class="notification_text">
+      {% if user_id is none %}
+      <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
+      {% endif %}
+      <strong>Reason:</strong> {{ req.reason }}<br>
+      {% if req.status != 'pending' %}
+        <strong>Status:</strong> {{ req.status }}
+        {% if req.status == 'rejected' and req.rejection_reason %}
+          <br><strong>Rejection Reason:</strong> {{ req.rejection_reason }}
+        {% endif %}
+        {% if req.processed_timestamp %}
+          <br><strong>Processed:</strong> {{ req.processed_timestamp|format_datetime }}
+        {% endif %}
+        {% if req.admin %}
+          <br><strong>Processed by:</strong> {{ req.admin.name }}
+        {% endif %}
+      {% endif %}
+    </div>
+    {% if show_buttons and req.status == 'pending' and (admin.permission_all or admin.permission_messaging) %}
+      <div class="notification_buttons">
+        <form action="{{ url("contest", contest.id, "delay_request", req.id, "approve") }}" method="POST" style="display: inline;">
+          {{ xsrf_form_html|safe }}
+          <button type="submit" class="btn btn-success">Approve</button>
+        </form>
+        <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" style="display: inline;">
+          {{ xsrf_form_html|safe }}
+          <button type="submit" class="btn btn-danger">Reject</button>
+          <div style="display: inline-block; margin-right: 5px;">
+            <input type="text" name="rejection_reason" placeholder="Rejection reason (optional)" style="width: 250px;">
+          </div>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}

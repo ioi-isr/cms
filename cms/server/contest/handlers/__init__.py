@@ -48,7 +48,10 @@ from .main import \
     StartHandler, \
     NotificationsHandler, \
     PrintingHandler, \
-    DocumentationHandler
+    DocumentationHandler, \
+    TranslationHandler, \
+    PasswordResetRequestHandler, \
+    PasswordResetConfirmHandler
 from .communication import \
     CommunicationHandler, \
     QuestionHandler
@@ -72,6 +75,9 @@ HANDLERS = [
     (r"/notifications", NotificationsHandler),
     (r"/printing", PrintingHandler),
     (r"/documentation", DocumentationHandler),
+    (r"/translation", TranslationHandler),
+    (r"/password_reset", PasswordResetRequestHandler),
+    (r"/password_reset_confirm/([^/]+)", PasswordResetConfirmHandler),
 
     # Tasks
 

@@ -41,12 +41,22 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session
+from cms.db import Session, Contest
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
 
 logger = logging.getLogger(__name__)
+
+
+def exclude_internal_contests(query):
+    """Exclude contests with names starting with '__' (internal/system contests).
+
+    query: SQLAlchemy query object for Contest queries
+
+    return: Query object with internal contests filtered out
+    """
+    return query.filter(~Contest.name.like(r'\_\_%', escape='\\'))
 
 
 # TODO: multi_contest is only relevant for CWS

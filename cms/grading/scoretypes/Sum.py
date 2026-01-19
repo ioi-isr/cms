@@ -106,16 +106,20 @@ class Sum(ScoreTypeAlone):
         """See ScoreType.max_score."""
         public_score = 0.0
         score = 0.0
+        # Use max(self.parameters, 0.0) to handle negative testcase scores.
+        # Negative scores can only reduce the total, not increase the max.
+        max_param = max(self.parameters, 0.0)
         for public in self.public_testcases.values():
             if public:
-                public_score += self.parameters
-            score += self.parameters
+                public_score += max_param
+            score += max_param
         return score, public_score, []
 
     def compute_score(self, submission_result):
         """See ScoreType.compute_score."""
-        # Actually, this means it didn't even compile!
-        if not submission_result.evaluated():
+        # If evaluation didn't succeed (evaluation or compilation failed),
+        # score as 0 with empty details.
+        if not submission_result.evaluation_succeeded():
             return 0.0, [], 0.0, [], []
 
         # XXX Lexicographical order by codename

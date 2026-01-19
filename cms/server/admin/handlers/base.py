@@ -51,14 +51,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, subqueryload
 
 from cms import __version__, config
-from cms.db import Admin, Contest, DelayRequest, Participation, Question, \
-    Submission, SubmissionResult, Task, Team, User, UserTest
+from cms.db import Session, Contest, ContestFolder, DelayRequest, Participation, \
+    Question, Submission, SubmissionResult, Task, Team, User, UserTest, Admin
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
 from cms.server import CommonRequestHandler, FileHandlerMixin
+from cms.server.util import exclude_internal_contests
 from cmscommon.crypto import hash_password, parse_authentication
-from cmscommon.datetime import make_datetime
+from cmscommon.datetime import make_datetime, get_timezone, local_to_utc, format_datetime_for_input, get_timezone_name
 if typing.TYPE_CHECKING:
     from cms.server.admin import AdminWebServer
 
@@ -136,6 +137,23 @@ def parse_datetime(value: str) -> datetime:
         return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
     except:
         raise ValueError("Can't cast %s to datetime." % value)
+
+
+def parse_datetime_with_timezone(value: str, tz) -> datetime:
+    """Parse a datetime in the given timezone and convert to UTC.
+
+    value: a datetime string in "YYYY-MM-DD HH:MM:SS" format.
+    tz: the timezone the datetime is in.
+
+    return: a naive datetime in UTC.
+    """
+    if '.' not in value:
+        value += ".0"
+    try:
+        local_dt = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+        return local_to_utc(local_dt, tz)
+    except (ValueError, OverflowError) as err:
+        raise ValueError("Can't parse %s as a datetime." % value) from err
 
 
 def parse_ip_networks(
@@ -347,10 +365,32 @@ class BaseHandler(CommonRequestHandler):
                 .count()
         # TODO: not all pages require all these data.
         # TODO: use a better sorting method.
-        params["contest_list"] = self.sql_session.query(Contest).order_by(Contest.name).all()
-        params["task_list"] = self.sql_session.query(Task).order_by(Task.name).all()
-        params["user_list"] = self.sql_session.query(User).order_by(User.username).all()
-        params["team_list"] = self.sql_session.query(Team).order_by(Team.name).all()
+        params["contest_list"] = exclude_internal_contests(
+            self.sql_session.query(Contest)
+        ).order_by(Contest.name).all()
+        params["task_list"] = self.sql_session.query(Task)\
+            .order_by(Task.name).all()
+        params["user_list"] = self.sql_session.query(User)\
+            .filter(~User.username.like(r'\_\_%', escape='\\'))\
+            .order_by(User.username).all()
+        params["team_list"] = self.sql_session.query(Team)\
+            .order_by(Team.name).all()
+        params["folder_list"] = self.sql_session.query(ContestFolder)\
+            .options(subqueryload(ContestFolder.contests))\
+            .options(subqueryload(ContestFolder.children).subqueryload(ContestFolder.contests))\
+            .order_by(ContestFolder.name).all()
+        params["root_contests"] = exclude_internal_contests(
+            self.sql_session.query(Contest).filter(
+                Contest.folder_id.is_(None)
+            )
+        ).order_by(Contest.name).all()
+        params["pending_password_resets"] = self.sql_session.query(User)\
+            .filter(User.password_reset_pending.is_(True))\
+            .count()
+        # Add timezone for datetime formatting (contest-specific if available)
+        tz = get_timezone(None, self.contest)
+        params["timezone"] = tz
+        params["timezone_name"] = get_timezone_name(tz)
         return params
 
     def write_error(self, status_code, **kwargs):
@@ -399,6 +439,22 @@ class BaseHandler(CommonRequestHandler):
     get_timedelta_min = argument_reader(parse_timedelta_min)
 
     get_datetime = argument_reader(parse_datetime)
+
+    def get_datetime_with_timezone(self, dest: dict, name: str):
+        """Parse a datetime in the contest timezone and convert to UTC.
+
+        dest: a place to store the result.
+        name: the name of the argument and of the item.
+
+        """
+        value = self.get_argument(name, None)
+        if value is None:
+            return
+        if len(value) == 0:
+            dest[name] = None
+        else:
+            tz = get_timezone(None, self.contest)
+            dest[name] = parse_datetime_with_timezone(value, tz)
 
     get_ip_networks = argument_reader(parse_ip_networks)
 
@@ -609,6 +665,11 @@ class BaseHandler(CommonRequestHandler):
 
         if self.r_params is None:
             self.r_params = self.render_params()
+        else:
+            # Ensure timezone is available even if r_params was already set
+            tz = get_timezone(None, self.contest)
+            self.r_params["timezone"] = tz
+            self.r_params["timezone_name"] = get_timezone_name(tz)
 
         # A page showing paginated submissions can use these
         # parameters: total number of submissions, submissions to
@@ -643,6 +704,11 @@ class BaseHandler(CommonRequestHandler):
 
         if self.r_params is None:
             self.r_params = self.render_params()
+        else:
+            # Ensure timezone is available even if r_params was already set
+            tz = get_timezone(None, self.contest)
+            self.r_params["timezone"] = tz
+            self.r_params["timezone_name"] = get_timezone_name(tz)
 
         self.r_params["user_test_count"] = count
         self.r_params["user_tests"] = \

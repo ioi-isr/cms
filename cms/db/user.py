@@ -28,10 +28,11 @@
 from datetime import datetime, timedelta
 from ipaddress import IPv4Network, IPv6Network
 
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import ARRAY, CIDR
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, \
-    UniqueConstraint
+    UniqueConstraint, Index
 from sqlalchemy.types import Boolean, Integer, String, Unicode, DateTime, \
     Interval
 
@@ -40,6 +41,7 @@ from . import CastingArray, Codename, Base, Admin, Contest
 import typing
 if typing.TYPE_CHECKING:
     from . import PrintJob, Submission, UserTest
+    from .scorecache import ParticipationTaskScore, ScoreHistory
 
 class User(Base):
     """Class to store a user.
@@ -47,6 +49,14 @@ class User(Base):
     """
 
     __tablename__ = 'users'
+    __table_args__ = (
+        # Partial index for efficient token lookups during password reset
+        Index(
+            'ix_users_password_reset_token',
+            'password_reset_token',
+            postgresql_where=text('password_reset_token IS NOT NULL')
+        ),
+    )
 
     # Auto increment primary key.
     id: int = Column(
@@ -96,6 +106,28 @@ class User(Base):
         ARRAY(String),
         nullable=False,
         default=[])
+
+    # Password reset fields for the password reset flow.
+    # Token for password reset requests.
+    password_reset_token: str | None = Column(
+        Unicode,
+        nullable=True)
+
+    # Expiration time for the password reset token.
+    password_reset_token_expires: datetime | None = Column(
+        DateTime,
+        nullable=True)
+
+    # Whether a password reset is pending admin approval.
+    password_reset_pending: bool = Column(
+        Boolean,
+        nullable=False,
+        default=False)
+
+    # The new password hash waiting for admin approval.
+    password_reset_new_hash: str | None = Column(
+        Unicode,
+        nullable=True)
 
     # These one-to-many relationships are the reversed directions of
     # the ones defined in the "child" classes using foreign keys.
@@ -288,6 +320,24 @@ class Participation(Base):
         passive_deletes=True,
         back_populates="participation")
 
+    statement_views: list["StatementView"] = relationship(
+        "StatementView",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="participation")
+
+    task_scores: list["ParticipationTaskScore"] = relationship(
+        "ParticipationTaskScore",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="participation")
+
+    score_history: list["ScoreHistory"] = relationship(
+        "ScoreHistory",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="participation")
+
 
 class Message(Base):
     """Class to store a private message from the managers to the
@@ -463,6 +513,11 @@ class DelayRequest(Base):
     participation: Participation = relationship(
         Participation,
         back_populates="delay_requests")
+
+    # Reason for rejection (only set when status is 'rejected').
+    rejection_reason: str | None = Column(
+        Unicode,
+        nullable=True)
 
     # Admin that processed the request (or null if not processed yet or
     # if the admin has been later deleted). Admins only loosely "own" a

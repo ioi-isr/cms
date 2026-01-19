@@ -70,6 +70,18 @@ def _is_contest_multithreaded(contest: Contest) -> bool:
                for l in contest.languages)
 
 
+def _is_sandbox_multithreaded(submission: Submission) -> bool:
+    """Return if the sandbox should allow multithreading for a submission."""
+    contest = submission.task.contest
+    if contest is not None:
+        return _is_contest_multithreaded(contest)
+
+    if submission.language is not None:
+        return get_language(submission.language).requires_multithreading
+    
+    return False
+
+
 class Job:
     """Base class for all jobs.
 
@@ -364,7 +376,7 @@ class CompilationJob(Job):
                          "but the operation is %s.", operation.type_)
             raise ValueError("Operation is not a compilation")
 
-        multithreaded = _is_contest_multithreaded(submission.task.contest)
+        multithreaded = _is_sandbox_multithreaded(submission)
 
         # dict() is required to detach the dictionary that gets added
         # to the Job from the control of SQLAlchemy
@@ -612,7 +624,7 @@ class EvaluationJob(Job):
                          "but the operation is %s.", operation.type_)
             raise ValueError("Operation is not an evaluation")
 
-        multithreaded = _is_contest_multithreaded(submission.task.contest)
+        multithreaded = _is_sandbox_multithreaded(submission)
 
         submission_result = submission.get_result(dataset)
         # This should have been created by now.

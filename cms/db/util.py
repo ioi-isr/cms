@@ -42,6 +42,8 @@ from . import (
     Manager,
     Dataset,
     Testcase,
+    Generator,
+    SubtaskValidator,
     Submission,
     File,
     SubmissionResult,
@@ -162,10 +164,11 @@ def get_submissions(
     participation_id: int | None = None,
     task_id: int | None = None,
     submission_id: int | None = None,
+    include_model_solutions: bool = False,
 ) -> Query:
     """Search for submissions that match the given criteria
 
-    The submissions will be returned as a list, and the last four
+    The submissions will be returned as a list, and the last five
     parameters determine the filters used to decide which submissions
     to include. Some of them are incompatible, that is they cannot be
     non-None at the same time. When this happens it means that one of
@@ -181,6 +184,8 @@ def get_submissions(
     task_id: id of the task to filter with, or None.
     submission_id: id of the submission to filter with, or
         None.
+    include_model_solutions: whether to include model solutions
+        in the results (default: False).
 
     return: a query for the list of submission that match the
         given criteria
@@ -211,6 +216,13 @@ def get_submissions(
         query = query.join(Participation) \
             .filter(Participation.contest_id == contest_id) \
             .join(Task).filter(Task.contest_id == contest_id)
+    
+    if not include_model_solutions:
+        from cms.db import ModelSolutionMeta
+        query = query.outerjoin(ModelSolutionMeta,
+                                ModelSolutionMeta.submission_id == Submission.id) \
+            .filter(ModelSolutionMeta.id.is_(None))
+    
     return query
 
 
@@ -221,11 +233,12 @@ def get_submission_results(
     task_id: int | None = None,
     submission_id: int | None = None,
     dataset_id: int | None = None,
+    include_model_solutions: bool = False,
 ) -> Query:
     """Search for submission results that match the given criteria
 
     The submission results will be returned as a list, and the last
-    five parameters determine the filters used to decide which
+    six parameters determine the filters used to decide which
     submission results to include. Some of them are incompatible, that
     is they cannot be non-None at the same time. When this happens it
     means that one of the parameters "implies" the other (for example,
@@ -241,6 +254,8 @@ def get_submission_results(
     submission_id: id of the submission to filter with, or
         None.
     dataset_id: id of the dataset to filter with, or None.
+    include_model_solutions: whether to include model solutions
+        in the results (default: False).
 
     return: a query for the list of submission results that
         match the given criteria
@@ -277,6 +292,13 @@ def get_submission_results(
         query = query.join(Participation) \
             .filter(Participation.contest_id == contest_id)\
             .join(Task).filter(Task.contest_id == contest_id)
+    
+    if not include_model_solutions:
+        from cms.db import ModelSolutionMeta
+        query = query.outerjoin(ModelSolutionMeta,
+                                ModelSolutionMeta.submission_id == Submission.id) \
+            .filter(ModelSolutionMeta.id.is_(None))
+    
     return query
 
 
@@ -336,6 +358,20 @@ def enumerate_files(
                    .with_entities(Testcase.input))
     queries.append(dataset_q.join(Dataset.testcases)
                    .with_entities(Testcase.output))
+
+    # Generator source and executable files
+    queries.append(dataset_q.join(Dataset.generators)
+                   .with_entities(Generator.digest))
+    queries.append(dataset_q.join(Dataset.generators)
+                   .filter(Generator.executable_digest.isnot(None))
+                   .with_entities(Generator.executable_digest))
+
+    # SubtaskValidator source and executable files
+    queries.append(dataset_q.join(Dataset.subtask_validators)
+                   .with_entities(SubtaskValidator.digest))
+    queries.append(dataset_q.join(Dataset.subtask_validators)
+                   .filter(SubtaskValidator.executable_digest.isnot(None))
+                   .with_entities(SubtaskValidator.executable_digest))
 
     if not skip_submissions and not skip_users:
         submission_q = task_q.join(Task.submissions)

@@ -1,6 +1,30 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+
 {% extends "base.html" %}
 
 {% block js_init %}
+
+var originalScoreParams = {};
+
+{% for dataset in task.datasets %}
+originalScoreParams[{{ dataset.id }}] = {
+    score_type: $("select[name=score_type_{{ dataset.id }}]").val(),
+    score_type_parameters: $("textarea[name=score_type_parameters_{{ dataset.id }}]").val()
+};
+{% endfor %}
+
+function checkScoreParameterChanges() {
+    var changedDatasets = [];
+    {% for dataset in task.datasets %}
+    var currentScoreType = $("select[name=score_type_{{ dataset.id }}]").val();
+    var currentScoreParams = $("textarea[name=score_type_parameters_{{ dataset.id }}]").val();
+    if (currentScoreType !== originalScoreParams[{{ dataset.id }}].score_type ||
+        currentScoreParams !== originalScoreParams[{{ dataset.id }}].score_type_parameters) {
+        changedDatasets.push({{ dataset.id }});
+    }
+    {% endfor %}
+    return changedDatasets;
+}
 
 function showTaskTypeOption(dataset_id) {
     var selector = $("select[name=task_type_" + dataset_id + "]")[0];
@@ -37,8 +61,137 @@ $(document).ready(function() {
   $(".TaskTypeOptions_{{ dataset.id }} select[name$='_output_eval']").change(function(){
     updateRealPrecOptions({{ dataset.id }});
   });
+  $(".multi_delete_checkbox_{{ dataset.id }}").change(function() {
+    updateMultiDeleteMaster({{ dataset.id }});
+  });
   {% endfor %}
+
+  $("form[action='{{ url("task", task.id) }}']").submit(function(e) {
+    var changedDatasets = checkScoreParameterChanges();
+    if (changedDatasets.length > 0) {
+      var shouldRescore = confirm(
+        "Score parameters have been changed for " + changedDatasets.length + " dataset(s).\n\n" +
+        "Do you want to re-score all submissions (including model solutions) for the affected dataset(s)?\n\n" +
+        "Click OK to save changes AND re-score, or Cancel to save changes WITHOUT re-scoring."
+      );
+      if (shouldRescore) {
+        // Add hidden field with dataset IDs to re-score
+        // Server will trigger re-scoring only after successful commit
+        $(this).append('<input type="hidden" name="rescore_datasets" value="' + changedDatasets.join(',') + '" />');
+      }
+    }
+    return true;
+  });
 });
+
+window.toggleMultipleDeleteMode = function(dataset_id) {
+  var cells = $(".multi_delete_col_" + dataset_id);
+  var toggleLink = $("#toggle_multi_delete_" + dataset_id);
+  var actionContainer = $("#multi_delete_actions_" + dataset_id);
+  var deleteButton = $("#delete_selected_" + dataset_id);
+  var cancelLink = $("#cancel_multi_delete_" + dataset_id);
+  var searchBox = $("#testcase_search_" + dataset_id);
+  var searchContainer = $("#testcase_search_container_" + dataset_id);
+  var currentlyVisible = cells.first().is(":visible");
+  if (currentlyVisible) {
+    cells.hide();
+    actionContainer.hide();
+    deleteButton.hide();
+    cancelLink.hide();
+    searchContainer.hide();
+    toggleLink.show();
+    $(".multi_delete_checkbox_" + dataset_id).prop("checked", false);
+    $("#multi_delete_master_" + dataset_id).prop("checked", false);
+    searchBox.val("");
+    $("#testcases_table_" + dataset_id + " tbody tr").show();
+  } else {
+    cells.show();
+    actionContainer.show();
+    deleteButton.show();
+    cancelLink.show();
+    searchContainer.show();
+    toggleLink.hide();
+  }
+};
+
+window.toggleSelectAllTestcases = function(dataset_id, masterCheckbox) {
+  $(".multi_delete_checkbox_" + dataset_id + ":visible").prop("checked", masterCheckbox.checked);
+  window.updateMultiDeleteMaster(dataset_id);
+};
+
+window.deleteSelectedTestcases = function(dataset_id, url) {
+  var checkboxes = $(".multi_delete_checkbox_" + dataset_id + ":checked");
+  if (checkboxes.length === 0) {
+    alert("No testcases selected.");
+    return;
+  }
+  if (!confirm("Are you sure you want to delete the selected testcases from this dataset?")) {
+    return;
+  }
+
+  var data = [];
+  checkboxes.each(function() {
+    data.push("testcase_id=" + encodeURIComponent($(this).val()));
+  });
+
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: data.join("&"),
+    headers: {"X-XSRFToken": get_cookie("_xsrf")},
+    success: function(redirect_url) {
+      if (redirect_url) {
+        window.location.replace(redirect_url);
+      }
+    },
+    error: function(xhr, status, error) {
+      utils.display_notification("notification", 0,
+        "Failed to delete testcases",
+        "Error: " + xhr.status + " " + xhr.statusText);
+    }
+  });
+};
+
+window.updateMultiDeleteMaster = function(dataset_id) {
+  var master = $("#multi_delete_master_" + dataset_id);
+  if (master.length === 0) return;
+  var checkboxes = $(".multi_delete_checkbox_" + dataset_id + ":visible");
+  var total = checkboxes.length;
+  if (total === 0) {
+    master.prop("checked", false);
+    return;
+  }
+  var checked = checkboxes.filter(":checked").length;
+  master.prop("checked", checked === total);
+};
+
+window.filterTestcases = function(dataset_id) {
+  var searchInput = $("#testcase_search_" + dataset_id);
+  var errorEl = $("#testcase_search_error_" + dataset_id);
+  var searchVal = searchInput.val();
+  var searchText;
+  try {
+    searchText = new RegExp(searchVal, 'i');
+    errorEl.hide();
+  } catch (e) {
+    errorEl.text("Invalid regex").show();
+    $("#testcases_table_" + dataset_id + " tbody tr").show();
+    window.updateMultiDeleteMaster(dataset_id);
+    return;
+  }
+  var table = $("#testcases_table_" + dataset_id);
+  var rows = table.find("tbody tr");
+  rows.each(function() {
+    var row = $(this);
+    var codename = row.find(".testcase_codename").text();
+    if (searchText.test(codename)) {
+      row.show();
+    } else {
+      row.hide();
+    }
+  });
+  window.updateMultiDeleteMaster(dataset_id);
+};
 
 {% endblock js_init %}
 
@@ -484,6 +637,321 @@ $(document).ready(function() {
           <td><textarea name="score_type_parameters_{{ dataset.id }}">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea></td>
         </tr>
       </table>
+
+      {% if subtask_info.get(dataset.id) %}
+      {% set ds_ns = namespace(total_not_validated=0,
+                               not_validated_codenames=[],
+                               any_validator_running=false) %}
+      {% for subtask in subtask_info[dataset.id] %}
+        {% set validator = dataset.subtask_validators.get(subtask.idx) %}
+        {% if validator %}
+          {% if validator.id in running_validator_ids %}
+            {% set ds_ns.any_validator_running = true %}
+          {% elif validator.validation_results %}
+            {% set results_codenames = [] %}
+            {% for r in validator.validation_results %}
+              {% set _ = results_codenames.append(r.testcase.codename) %}
+            {% endfor %}
+            {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+              {% if tc_codename not in results_codenames and tc_codename not in ds_ns.not_validated_codenames %}
+                {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+              {% if tc_codename not in ds_ns.not_validated_codenames %}
+                {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      {% set ds_ns.total_not_validated = ds_ns.not_validated_codenames|length %}
+      <h4>Subtask Validators<span class="info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid."></span>
+      </h4>
+      {% if ds_ns.any_validator_running %}
+      <p style="color: #2196F3;"><strong>Validating...</strong> One or more validators are currently running. Refresh the page to see updated results.</p>
+      {% elif ds_ns.total_not_validated > 0 %}
+        <p style="color: orange;"><strong>Warning:</strong> {{ ds_ns.total_not_validated }} testcase(s) have not been validated. Click "rerun validators" to validate them.</p>
+        {% if admin.permission_all %}
+          [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
+        {% endif %}
+      {% endif %}
+      <table class="bordered subtask-validators">
+        <thead>
+          <tr>
+            <th>Subtask</th>
+            <th>Validator</th>
+            <th>Tests</th>
+            <th>Additional Tests Passed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for subtask in subtask_info[dataset.id] %}
+          {% set validator = dataset.subtask_validators.get(subtask.idx) %}
+          {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, subtask_error=0, subtask_not_validated=0, other_passed=0) %}
+          {% set results_by_tc = {} %}
+          {% if validator and validator.validation_results %}
+            {% for r in validator.validation_results %}
+              {% set _ = results_by_tc.update({r.testcase.codename: r}) %}
+            {% endfor %}
+          {% endif %}
+          {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+            {% set tc_subtasks = testcase_subtasks.get(dataset.id, {}).get(tc_codename, []) %}
+            {% set has_result = results_by_tc.get(tc_codename) %}
+            {% if subtask.idx in tc_subtasks %}
+              {% set ns.subtask_tc_count = ns.subtask_tc_count + 1 %}
+              {% if has_result %}
+                {% if has_result.passed %}
+                  {% set ns.subtask_passed = ns.subtask_passed + 1 %}
+                {% elif has_result.exit_status in ['ok', 'nonzero return', none] %}
+                  {% set ns.subtask_failed = ns.subtask_failed + 1 %}
+                {% else %}
+                  {% set ns.subtask_error = ns.subtask_error + 1 %}
+                {% endif %}
+              {% else %}
+                {% set ns.subtask_not_validated = ns.subtask_not_validated + 1 %}
+              {% endif %}
+            {% else %}
+              {% set ns.other_tc_count = ns.other_tc_count + 1 %}
+              {% if has_result and has_result.passed %}
+                {% set ns.other_passed = ns.other_passed + 1 %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          <tr>
+            <td>{{ subtask.display_name }}</td>
+            <td>
+              {% if admin.permission_all %}
+              {# File input uses form attribute to associate with validator form placed outside the main task form #}
+              <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
+              {% endif %}
+              {% if validator %}
+                <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
+                {% if validator.executable_digest is none %}
+                  <span class="validator-status validator-error">(compilation failed)</span>
+                {% endif %}
+                {% if admin.permission_all %}
+                [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">replace</a>]
+                [<a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>]
+                {% endif %}
+              {% else %}
+                <span class="validator-status validator-missing">No validator</span>
+                {% if admin.permission_all %}
+                [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">add</a>]
+                {% endif %}
+              {% endif %}
+            </td>
+            <td>
+              {{ ns.subtask_tc_count }}
+              {% if validator and validator.id in running_validator_ids %}
+                (<span class="validator-status validator-running">Validating...</span>)
+              {% elif validator and validator.validation_results|length > 0 %}
+                ({% if ns.subtask_failed == 0 and ns.subtask_error == 0 and ns.subtask_not_validated == 0 %}
+                  <span class="validator-status validator-pass">all {{ ns.subtask_passed }} passed</span>
+                {% else %}
+                  {% set has_prev = false %}
+                  {% if ns.subtask_passed > 0 %}<span class="validator-status validator-pass">{{ ns.subtask_passed }} passed</span>{% set has_prev = true %}{% endif %}
+                  {% if ns.subtask_failed > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-fail">{{ ns.subtask_failed }} failed</span>{% set has_prev = true %}{% endif %}
+                  {% if ns.subtask_error > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-error">{{ ns.subtask_error }} error</span>{% set has_prev = true %}{% endif %}
+                  {% if ns.subtask_not_validated > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-unvalidated">{{ ns.subtask_not_validated }} not validated</span>{% endif %}
+                {% endif %})
+              {% elif validator %}
+                (<span class="validator-status validator-unvalidated">not validated</span>)
+              {% endif %}
+              [<a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}">details</a>]
+            </td>
+            <td>
+              {% if validator and validator.validation_results|length > 0 %}
+                {{ ns.other_passed }} / {{ ns.other_tc_count }}
+              {% elif validator %}
+                <em>Not validated</em>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      <div class="hr"></div>
+    </div>
+
+  <!-- Model Solutions for this dataset -->
+
+  <h4 id="title_model_solutions_{{ dataset.id }}" class="toggling_on">Model Solutions<span class="info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly."></span>
+{% if admin.permission_all %}
+    [<a href="{{ url("dataset", dataset.id, "model_solutions", "add") }}">add</a>]
+{% endif %}
+  </h4>
+    <div id="model_solutions_{{ dataset.id }}" class="task_dataset_model_solutions">
+{% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
+      <p>
+        <strong>Reevaluate all model solutions:</strong>
+        <button type="button" onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+                         'EvaluationService', 0,
+                         'invalidate_model_solutions', {
+                         'dataset_id': {{ dataset.id }},
+                         'level': 'compilation'},
+                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                         );"
+                title="Compilation" >C</button>
+        <button type="button" onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+                         'EvaluationService', 0,
+                         'invalidate_model_solutions', {
+                         'dataset_id': {{ dataset.id }},
+                         'level': 'evaluation'},
+                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                         );"
+                title="Evaluation" >E</button>
+        <button type="button" onclick="confirm('Do you really want to reevaluate all model solutions?') && cmsrpc_request(
+                         'ScoringService', 0,
+                         'invalidate_model_solutions', {
+                         'dataset_id': {{ dataset.id }}},
+                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                         );"
+                title="Score" >S</button>
+      </p>
+{% endif %}
+      <table class="bordered" style="text-align:center">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Description</th>
+            <th>Language</th>
+            <th>Expected Score Range</th>
+            <th>Actual Score</th>
+            <th>In Range?</th>
+            <th>Status</th>
+            <th>Comment</th>
+            <th>Reevaluate</th>
+            <th>Ops</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if dataset.model_solution_metas|length == 0 %}
+          <tr>
+            <td colspan="10">No model solutions yet</td>
+          </tr>
+          {% else %}
+          {% for meta in dataset.model_solution_metas %}
+          {% set submission = meta.submission %}
+          {% set msr = submission.get_result(dataset) %}
+          <tr id="model_solution_{{ meta.id }}">
+            <td style="font-weight:bold;">{{ loop.index }}</td>
+            <td><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></td>
+            <td>{{ submission.language if submission.language else "N/A" }}</td>
+            <td>{{ "%.2f"|format(meta.expected_score_min) }} - {{ "%.2f"|format(meta.expected_score_max) }}</td>
+            <td>
+              {% if msr and msr.score is not none %}
+              {{ "%.2f"|format(msr.score) }}
+              {% else %}
+              N/A
+              {% endif %}
+            </td>
+            <td>
+              {% set score_in_range = meta.is_score_in_range() %}
+              {% if score_in_range is none %}
+              <span style="color: gray;">Not scored</span>
+              {% elif score_in_range %}
+              <span style="color: green;">✓ Yes</span>
+              {% else %}
+              <span style="color: red;">✗ No</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if msr is none %}
+              Not evaluated
+              {% elif not msr.compiled() %}
+              Compiling...
+              {% elif msr.compilation_failed() %}
+              Compilation failed
+              {% elif not msr.evaluated() %}
+              Evaluating...
+              {% elif msr.evaluation_failed() %}
+              Evaluation system error
+              {% elif not msr.scored() %}
+              Scoring...
+              {% else %}
+              Scored
+              {% endif %}
+            </td>
+            <td>
+              {{ submission.comment if submission.comment else "" }}
+            </td>
+            <td>
+            {{ macro_reevaluation_buttons.reevaluation_buttons(
+                 admin.permission_all,
+                 url("task", task.id),
+                 submission_id=submission.id,
+                 dataset_id=dataset.id) }}
+            </td>
+            <td>
+              <a href="{{ url("model_solution", meta.id, "edit") }}">Edit</a>
+{% if admin.permission_all %}
+              | <a onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');">Delete</a>
+{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
+
+{% if dataset.id in subtask_info and dataset.model_solution_metas|length > 0 %}
+      <h5 style="margin-top: 20px;">Subtask Score Validation</h5>
+      <table class="bordered" style="text-align:center">
+        <thead>
+          <tr>
+            <th>Model Solution</th>
+{% for st in subtask_info[dataset.id] %}
+            <th>{{ st.display_name }}</th>
+{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+{% for meta in dataset.model_solution_metas %}
+{% set msr = meta.submission.get_result(dataset) %}
+{% if msr and msr.scored() %}
+          <tr>
+            <td><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></td>
+{% for st in subtask_info[dataset.id] %}
+{% if st.max_score == 0 %}
+{% set outcomes = meta.get_subtask_testcase_outcomes(st.idx) %}
+            <td>
+{% if outcomes %}
+              <span style="font-family: monospace;">{{ outcomes|safe }}</span>
+{% else %}
+              <span style="color: gray;">N/A</span>
+{% endif %}
+            </td>
+{% else %}
+{% set status = meta.get_subtask_score_status(st.idx) %}
+{% set actual = meta.get_subtask_actual_score(st.idx) %}
+{% set st_key = st.idx|string %}
+{% set expected_min = meta.subtask_expected_scores[st_key].min if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
+{% set expected_max = meta.subtask_expected_scores[st_key].max if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
+            <td>
+{% if status == "not_configured" %}
+              <span style="color: gray;">Not configured</span>
+{% elif status == "in_range" %}
+              <span style="color: green;">✓ {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+{% elif status == "out_of_range" %}
+              <span style="color: red;">✗ {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+{% else %}
+              <span style="color: gray;">N/A</span>
+{% endif %}
+            </td>
+{% endif %}
+{% endfor %}
+          </tr>
+{% endif %}
+{% endfor %}
+        </tbody>
+      </table>
+{% endif %}
       <div class="hr"></div>
     </div>
 
@@ -491,17 +959,72 @@ $(document).ready(function() {
 
   <h4 id="title_testcases_{{ dataset.id }}" class="toggling_on">Test cases</h4>
     <div id="testcases_{{ dataset.id }}" class="task_dataset_testcases">
+
+      <!-- Generators section -->
+      <div class="generators_section" style="margin-bottom: 20px;">
+        <strong>Generators</strong>
+{% if admin.permission_all %}
+        [<a href="{{ url("dataset", dataset.id, "generators", "add") }}">add</a>]
+{% endif %}
+        <div style="margin-top: 5px;">
+        {% if dataset.generators|length == 0 %}
+          No generators.
+        {% else %}
+          <table class="bordered" style="text-align:center; margin-top: 10px;">
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Template</th>
+                <th>Ops</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for filename, generator in dataset.generators|dictsort(by="key") %}
+              <tr>
+                <td><a href="javascript:void(0);" onclick="utils.show_file('{{ generator.filename }}','{{ url("file", generator.digest, generator.filename) }}')">{{ generator.filename }}</a></td>
+                <td>
+                  {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
+                  [<a href="{{ url("dataset", dataset.id, "generator", generator.id, "edit") }}">edit</a>]
+                </td>
+                <td>
+                  <a href="{{ url("dataset", dataset.id, "generator", generator.id, "generate") }}">Generate testcases</a>
+{% if admin.permission_all %}
+                  | <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');">Delete</a>
+{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+        </div>
+      </div>
+      <div class="hr"></div>
+
 {% if admin.permission_all %}
       <a href="{{ url("dataset", dataset.id, "testcases", "add") }}">Add a testcase</a>
       <a href="{{ url("dataset", dataset.id, "testcases", "add_multiple") }}">Add multiple testcases</a>
 {% endif %}
       <a href="{{ url("dataset", dataset.id, "testcases", "download") }}">Download all testcases</a>
-      <table class="bordered" style="text-align:center">
+{% if admin.permission_all %}
+      <a href="javascript:void(0);" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Delete multiple testcases</a>
+      <div id="testcase_search_container_{{ dataset.id }}" style="display:none; margin:10px 0;">
+        <input type="text" id="testcase_search_{{ dataset.id }}" placeholder="Filter by codename..." oninput="filterTestcases({{ dataset.id }});" style="padding:4px 8px;">
+        <div id="testcase_search_error_{{ dataset.id }}" style="color:#c00; display:none; margin-top:4px; font-size:12px;"></div>
+      </div>
+{% endif %}
+      <table id="testcases_table_{{ dataset.id }}" class="bordered" style="text-align:center">
         <thead>
           <tr>
+            <th class="multi_delete_col_{{ dataset.id }}" style="display:none;">
+              <input type="checkbox" id="multi_delete_master_{{ dataset.id }}" class="multi_delete_master multi_delete_master_{{ dataset.id }}" onclick="toggleSelectAllTestcases({{ dataset.id }}, this)">
+            </th>
             <th>#</th>
             <th>Codename</th>
             <th>Public</th>
+            {% if dataset.id in testcase_subtasks %}
+            <th>Subtasks</th>
+            {% endif %}
             <th>Input</th>
             <th>Output</th>
             <th>Ops</th>
@@ -510,11 +1033,32 @@ $(document).ready(function() {
         <tbody>
           {% for codename, testcase in dataset.testcases|dictsort(by="key") %}
           <tr>
+            <td class="multi_delete_col_{{ dataset.id }}" style="display:none;">
+              <input type="checkbox" class="multi_delete_checkbox_{{ dataset.id }}" value="{{ testcase.id }}">
+            </td>
             <td style="font-weight:bold;">{{ loop.index }}</td>
-            <td>{{ codename }}</td>
+            <td class="testcase_codename">{{ codename }}</td>
             <td style="font-weight:bold;">
               <input type="checkbox" name="testcase_{{ testcase.id }}_public" {% if testcase.public %}checked{% endif %} />
             </td>
+            {% if dataset.id in testcase_subtasks %}
+            <td>
+              {% if codename in testcase_subtasks[dataset.id] %}
+                {% set subtask_indices = testcase_subtasks[dataset.id][codename] %}
+                {% set display_names = [] %}
+                {% for idx in subtask_indices %}
+                  {% if dataset.id in subtask_names and idx in subtask_names[dataset.id] %}
+                    {% set _ = display_names.append(subtask_names[dataset.id][idx]) %}
+                  {% else %}
+                    {% set _ = display_names.append(idx) %}
+                  {% endif %}
+                {% endfor %}
+                {{ display_names|join(", ") }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            {% endif %}
             <td>
               <a href="javascript:void(0);" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')">Show input</a>
             </td>
@@ -528,6 +1072,12 @@ $(document).ready(function() {
           {% endfor %}
         </tbody>
       </table>
+{% if admin.permission_all %}
+      <div class="multi_delete_actions" id="multi_delete_actions_{{ dataset.id }}" style="display:none; text-align:left; margin-top:18px;">
+        <a href="javascript:void(0);" id="cancel_multi_delete_{{ dataset.id }}" class="button-link button-link-secondary" style="display:none;" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</a>
+        <a href="javascript:void(0);" id="delete_selected_{{ dataset.id }}" class="button-link button-link-danger" style="display:none;" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete testcases</a>
+      </div>
+{% endif %}
       <div class="hr"></div>
     </div>
   </div>
@@ -539,7 +1089,25 @@ $(document).ready(function() {
 {% endif %}
          value="Update" />
   <input type="reset" value="Reset" />
+  <a href="{{ url("task", task.id, "export") }}"> ⇩ Export </a>
 </form>
+
+{# Validator upload forms - placed outside the main task form to avoid nested form issues #}
+{% if admin.permission_all %}
+{% for dataset in task.datasets %}
+{% if subtask_info.get(dataset.id) %}
+{% for subtask in subtask_info[dataset.id] %}
+<form id="validator_form_{{ dataset.id }}_{{ subtask.idx }}" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx|string, "validator", "add") }}" enctype="multipart/form-data" style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
+{% endfor %}
+<form id="rerun_validators_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "validators", "rerun") }}" style="display: none;">
+  {{ xsrf_form_html|safe }}
+</form>
+{% endif %}
+{% endfor %}
+{% endif %}
+
 <form action="{{ url("tasks") }}" method="POST" style="display:inline;">
     {{ xsrf_form_html|safe }}
     <input type="hidden" name="task_id" value="{{ task.id }}"/>

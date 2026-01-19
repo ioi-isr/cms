@@ -37,11 +37,22 @@
           Password
         </td>
         <td>
-          <input type="text" name="password" />
+          <input type="password" name="password" id="add-user-password-field" />
           <select name="method">
             <option value="plaintext">Plain text</option>
             <option value="bcrypt" selected>Hashed (bcrypt)</option>
           </select>
+          <div id="add-user-password-strength-container" style="margin-top: 5px;">
+            <div id="add-user-password-strength-bar" style="height: 5px; border-radius: 3px; transition: all 0.3s ease; display: none;"></div>
+            <span id="add-user-password-strength-text" style="font-size: 12px;"></span>
+          </div>
+          <script>
+            CMS.AWSUtils.initPasswordStrength(
+              "#add-user-password-field",
+              "#add-user-password-strength-bar",
+              "#add-user-password-strength-text"
+            );
+          </script>
         </td>
       </tr>
       <tr>

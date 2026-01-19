@@ -171,5 +171,19 @@ class TestRealPrecision(unittest.TestCase):
         self.assertTrue(self._cmp_exp(f(a), f(a + noise * a), exp))
         self.assertFalse(self._cmp_exp(f(a), f(a + diff * a), exp))
 
+    # --- Tolerance based on correct output only --------------------------------------
+
+    def test_large_user_output_does_not_inflate_tolerance(self):
+        # Regression test: tolerance should be based on correct output only.
+        # A very large user output (parsed as inf) should not inflate the
+        # tolerance and cause wrong answers to be accepted.
+        # With the old buggy implementation (tol = eps * max(1.0, abs(a), abs(b))),
+        # this test would pass because tol = inf, and inf <= inf is True.
+        # With the fix (tol = eps * max(1.0, abs(b))), this correctly fails.
+        large_number = "9" * 309  # Parses to inf in Python
+        self.assertFalse(self._cmp(large_number, "1.0"))
+        self.assertFalse(self._cmp(large_number, "0"))
+        self.assertFalse(self._cmp(large_number, "-1000000"))
+
 if __name__ == "__main__":
     unittest.main()

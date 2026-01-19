@@ -60,14 +60,20 @@ __all__ = [
     "Admin",
     # task
     "Task", "Statement", "Attachment", "Dataset", "Manager", "Testcase",
+    "Generator", "SubtaskValidator", "SubtaskValidationResult",
     # submission
     "Submission", "File", "Token", "SubmissionResult", "Executable",
     "Evaluation",
     # usertest
     "UserTest", "UserTestFile", "UserTestManager", "UserTestResult",
     "UserTestExecutable",
+    "ModelSolutionMeta", "get_or_create_model_solution_participation",
+    "create_model_solution", "validate_model_solution_name",
     # printjob
     "PrintJob",
+    "StatementView",
+    # scorecache
+    "ParticipationTaskScore", "ScoreHistory",
     # init
     "init_db",
     # drop
@@ -81,7 +87,7 @@ __all__ = [
 
 # Instantiate or import these objects.
 
-version = 47
+version = 48
 
 engine = create_engine(config.database.url, echo=config.database.debug,
                        pool_timeout=60, pool_recycle=120)
@@ -99,12 +105,18 @@ from .admin import Admin
 from .contest import Contest, Announcement
 from .contest_folder import ContestFolder
 from .user import User, Team, Participation, Message, Question, DelayRequest
-from .task import Task, Statement, Attachment, Dataset, Manager, Testcase
+from .task import Task, Statement, Attachment, Dataset, Manager, Testcase, \
+    Generator, SubtaskValidator, SubtaskValidationResult
 from .submission import Submission, File, Token, SubmissionResult, \
     Executable, Evaluation
 from .usertest import UserTest, UserTestFile, UserTestManager, \
     UserTestResult, UserTestExecutable
+from .modelsolution import ModelSolutionMeta, \
+    get_or_create_model_solution_participation, create_model_solution, \
+    validate_model_solution_name
 from .printjob import PrintJob
+from .statementview import StatementView
+from .scorecache import ParticipationTaskScore, ScoreHistory
 
 from .init import init_db
 from .drop import drop_db

@@ -169,7 +169,55 @@ class TelegramBotConfig:
     chat_id: str
 
 
+@dataclass()
+class SMTPConfig:
+    server: str | None = None
+    port: int = 587
+    username: str | None = None
+    password: str | None = None
+    use_tls: bool = True
+    sender_address: str | None = None
+
+
 field_helper = lambda T: dataclasses.field(default_factory=T)
+
+
+@dataclass()
+class PasswordResetEmailConfig:
+    # Email subject template. Supports placeholders: {system_name}
+    subject: str = "[{system_name}] Password reset request"
+    # Plain text email body template.
+    # Supports placeholders: {system_name}, {reset_url}, {token_expiration_hours}
+    text: str = (
+        "You (or someone else) requested a password reset for {system_name}.\n\n"
+        "Click the following link to reset your password:\n{reset_url}\n\n"
+        "This link expires in {token_expiration_hours} hours.\n\n"
+        "If you didn't request this, you can ignore this email."
+    )
+    # HTML email body template (optional).
+    # Supports placeholders: {system_name}, {reset_url}, {token_expiration_hours}
+    html: str | None = (
+        "<p>You (or someone else) requested a password reset for "
+        "<b>{system_name}</b>.</p>\n"
+        "<p><a href=\"{reset_url}\">Reset your password</a></p>\n"
+        "<p>This link expires in {token_expiration_hours} hours.</p>\n"
+        "<p>If you didn't request this, you can ignore this email.</p>"
+    )
+    # Token expiration time in hours
+    token_expiration_hours: int = 2
+    # Rate limiting: max requests per username within the time window
+    rate_limit_max_requests: int = 3
+    # Rate limiting: time window in seconds
+    rate_limit_window_seconds: int = 900
+
+
+@dataclass()
+class EmailConfig:
+    # System name used in email templates (e.g., "CMS", "IOI 2025")
+    system_name: str = "CMS"
+    # Password reset email configuration
+    password_reset: PasswordResetEmailConfig = field_helper(PasswordResetEmailConfig)
+
 
 @dataclass(kw_only=True)
 class Config:
@@ -189,6 +237,8 @@ class Config:
     printing: PrintingServiceConfig = field_helper(PrintingServiceConfig)
     prometheus: PrometheusConfig = field_helper(PrometheusConfig)
     telegram_bot: TelegramBotConfig | None = None
+    smtp: SMTPConfig = field_helper(SMTPConfig)
+    email: EmailConfig = field_helper(EmailConfig)
     # This is the one that will be provided in the config file.
     services_: dict[str, list[tuple[str, int]]]
     # And this is the one we want to use inside CMS.

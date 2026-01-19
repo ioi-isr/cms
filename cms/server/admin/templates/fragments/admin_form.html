@@ -22,7 +22,20 @@
     </tr>
     <tr>
       <td>Password</td>
-      <td><input type="password" name="password" value=""/></td>
+      <td>
+        <input type="password" name="password" id="admin-password-field" value=""/>
+        <div id="admin-password-strength-container" style="margin-top: 5px;">
+          <div id="admin-password-strength-bar" style="height: 5px; border-radius: 3px; transition: all 0.3s ease; display: none;"></div>
+          <span id="admin-password-strength-text" style="font-size: 12px;"></span>
+        </div>
+        <script>
+          CMS.AWSUtils.initPasswordStrength(
+            "#admin-password-field",
+            "#admin-password-strength-bar",
+            "#admin-password-strength-text"
+          );
+        </script>
+      </td>
     </tr>
     <tr>
       <td>Name</td>

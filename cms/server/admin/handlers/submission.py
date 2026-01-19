@@ -32,6 +32,7 @@ import difflib
 
 from cms.db import Dataset, File, Submission
 from cms.grading.languagemanager import safe_get_lang_filename
+from cms.grading.scorecache import invalidate_score_cache
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, FileHandler, require_permission
 
@@ -204,6 +205,11 @@ class SubmissionOfficialStatusHandler(BaseHandler):
         should_make_official = self.get_argument("official", "yes") == "yes"
 
         submission.official = should_make_official
+        invalidate_score_cache(
+            self.sql_session,
+            participation_id=submission.participation_id,
+            task_id=submission.task_id,
+        )
         if self.try_commit():
             logger.info("Submission '%s' by user %s in contest %s has "
                         "been made %s",

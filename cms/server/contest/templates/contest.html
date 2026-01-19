@@ -117,6 +117,9 @@ $(document).ready(function () {
                         </div>
                     </fieldset>
                 </form>
+                <p style="margin: 9px 0 0;">
+                    <a href="{{ contest_url('password_reset') }}">{% trans %}Forgot password?{% endtrans %}</a>
+                </p>
                 {% if contest.allow_registration %}
                 <p style="margin: 9px 0 0;">
                     {% trans %}Don't have an account?{% endtrans %} <a href="{{ contest_url('register') }}">{% trans %}Register{% endtrans %}</a>
@@ -193,6 +196,9 @@ $(document).ready(function () {
                             <li class="divider"></li>
                             <li{% if page == "documentation" %} class="active"{% endif %}>
                                 <a href="{{ contest_url("documentation") }}">{% trans %}Documentation{% endtrans %}</a>
+                            </li>
+                            <li{% if page == "translation" %} class="active"{% endif %}>
+                                <a href="{{ contest_url("translation") }}">{% trans %}Translation{% endtrans %}</a>
                             </li>
     {% if actual_phase == 0 or participation.unrestricted %}{# FIXME maybe >= 0? #}
         {% if testing_enabled %}

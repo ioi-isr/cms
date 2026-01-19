@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% import "macro/model_solution_subtasks.html" as ms %}
+
+{% block core %}
+{% include "fragments/model_solution_styles.html" %}
+
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Add Model Solution</h1>
+</div>
+<p>Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.</p>
+
+{% set allowed_langs = task.get_allowed_languages() or [] %}
+{% set language_required = task.submission_format|any("endswith", ".%l") %}
+{% set allow_partial = task.submission_format|length > 1 and not language_required %}
+
+{% if allow_partial %}
+<p><strong>You may submit any subset of outputs in a single submission.</strong></p>
+{% endif %}
+
+<div style="display: flex; gap: 40px; flex-wrap: wrap;">
+<div>
+<form enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "model_solutions", "add") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>Name:</td>
+      <td><input type="text" name="name" pattern="^(?!.*\.\.)([^/\\*?<>|:&quot;])+$" title="Cannot contain: / \ * ? < > | : &quot; or .." required /></td>
+      <td style="font-size: 0.9em; color: #666;">(identifier for export, e.g., 'intended', 'bruteforce')</td>
+    </tr>
+    <tr>
+      <td>Description:</td>
+      <td><input type="text" name="description" required /></td>
+    </tr>
+{% for filename in task.submission_format %}
+    <tr>
+      <td>{{ filename }}:</td>
+      <td><input type="file" name="{{ filename }}" class="ms-file-input" /></td>
+    </tr>
+{% endfor %}
+{% if language_required %}
+    <tr>
+      <td>Language:</td>
+      <td>
+        <select name="language">
+{% for lang in allowed_langs %}
+          <option value="{{ lang }}">{{ lang }}</option>
+{% endfor %}
+        </select>
+      </td>
+    </tr>
+{% endif %}
+    <tr>
+      <td>Expected Score Min:</td>
+      <td><input type="number" step="0.01" min="0" name="expected_score_min" value="0.0" class="ms-form-control" style="width: 100px;" required /></td>
+    </tr>
+    <tr>
+      <td>Expected Score Max:</td>
+      <td><input type="number" step="0.01" min="0" name="expected_score_max" value="100.0" class="ms-form-control" style="width: 100px;" required /></td>
+    </tr>
+{% if subtasks %}
+    <tr>
+      <td></td>
+      <td>{{ ms.auto_calc_checkbox("form1") }}</td>
+    </tr>
+    <tr>
+      <td colspan="2"><strong>Expected Subtask Scores:</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        {{ ms.subtask_table(subtasks, "form1") }}
+      </td>
+    </tr>
+{% endif %}
+  </table>
+  <input type="submit" value="Add Model Solution">
+  <input type="reset" value="Reset">
+</form>
+</div>
+
+{% if allow_partial %}
+<div>
+<form enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "model_solutions", "add") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>Name:</td>
+      <td><input type="text" name="name" pattern="^(?!.*\.\.)([^/\\*?<>|:&quot;])+$" title="Cannot contain: / \ * ? < > | : &quot; or .." required /></td>
+      <td style="font-size: 0.9em; color: #666;">(identifier for export, e.g., 'intended', 'bruteforce')</td>
+    </tr>
+    <tr>
+      <td>Description:</td>
+      <td><input type="text" name="description" required /></td>
+    </tr>
+    <tr>
+      <td>submission.zip:</td>
+      <td><input type="file" name="submission" class="ms-file-input" required /></td>
+    </tr>
+    <tr>
+      <td>Expected Score Min:</td>
+      <td><input type="number" step="0.01" min="0" name="expected_score_min" value="0.0" class="ms-form-control" style="width: 100px;" required /></td>
+    </tr>
+    <tr>
+      <td>Expected Score Max:</td>
+      <td><input type="number" step="0.01" min="0" name="expected_score_max" value="100.0" class="ms-form-control" style="width: 100px;" required /></td>
+    </tr>
+{% if subtasks %}
+    <tr>
+      <td></td>
+      <td>{{ ms.auto_calc_checkbox("form2") }}</td>
+    </tr>
+    <tr>
+      <td colspan="2"><strong>Expected Subtask Scores:</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        {{ ms.subtask_table(subtasks, "form2") }}
+      </td>
+    </tr>
+{% endif %}
+  </table>
+  <input type="submit" value="Add Model Solution">
+  <input type="reset" value="Reset">
+</form>
+</div>
+{% endif %}
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+{% if language_required %}
+    const TASK_LANGUAGES = {
+{% for lang in allowed_langs %}
+        "{{ lang }}": {
+{% for extension in (lang|to_language).source_extensions %}
+            "{{ extension }}": true,
+{% endfor %}
+        },
+{% endfor %}
+    };
+
+    document.querySelectorAll('form[action$="model_solutions/add"]').forEach(function(form) {
+        const select = form.querySelector('select[name="language"]');
+        if (!select) return;
+        const inputs = form.querySelectorAll('input[type="file"]');
+        const filter = function() {
+            CMS.AWSUtils.filter_languages(select.options, inputs, TASK_LANGUAGES);
+        };
+        inputs.forEach(function(input) {
+            input.addEventListener('change', filter);
+        });
+        filter();
+    });
+{% endif %}
+
+    // Initialize model solution subtask handlers (from aws_utils.js)
+    CMS.AWSUtils.initModelSolutionSubtasks();
+});
+</script>
+{% endblock core %}

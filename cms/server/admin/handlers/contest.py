@@ -31,11 +31,58 @@
 from datetime import timedelta
 
 from cms import ServiceCoord, get_service_shards, get_service_address
-from cms.db import Contest, Participation, Submission, ContestFolder
+from cms.db import Contest, Participation, Submission, Task, ContestFolder
+from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
+from sqlalchemy import func
 
 from .base import BaseHandler, SimpleContestHandler, SimpleHandler, \
     require_permission
+
+
+def remove_contest_with_action(session, contest, action, target_contest=None):
+    """Remove contest with specified action for tasks.
+    
+    This is a standalone helper function that can be called from tests.
+    
+    Args:
+        session: SQLAlchemy session
+        contest: Contest object to remove
+        action: One of "move", "detach", or "delete_all"
+        target_contest: Contest object (required if action is "move")
+    """
+    if action == "move":
+        if target_contest is None:
+            raise ValueError("Target contest must be specified when moving tasks")
+        
+        max_num = session.query(func.max(Task.num))\
+            .filter(Task.contest == target_contest)\
+            .scalar()
+        base_num = (max_num or -1) + 1
+        
+        tasks = session.query(Task)\
+            .filter(Task.contest == contest)\
+            .order_by(Task.num)\
+            .all()
+        
+        for i, task in enumerate(tasks):
+            task.contest = target_contest
+            task.num = base_num + i
+            session.flush()
+        
+    elif action == "detach":
+        tasks = session.query(Task)\
+            .filter(Task.contest == contest)\
+            .all()
+        
+        for task in tasks:
+            task.contest = None
+            task.num = None
+            session.flush()
+    
+    
+    session.delete(contest)
+    session.flush()
 
 
 class AddContestHandler(
@@ -52,6 +99,9 @@ class AddContestHandler(
 
             self.get_string(attrs, "name", empty=None)
             assert attrs.get("name") is not None, "No contest name specified."
+            assert not attrs.get("name").startswith("__"), \
+                "Contest name cannot start with '__' " \
+                "(reserved for system contests)."
             attrs["description"] = attrs["name"]
 
             # Create the contest.
@@ -87,6 +137,7 @@ class ContestHandler(SimpleContestHandler("contest.html")):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, contest_id: str):
         contest = self.safe_get_item(Contest, contest_id)
+        self.contest = contest
 
         old_start = contest.start
 
@@ -97,6 +148,9 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_string(attrs, "description")
 
             assert attrs.get("name") is not None, "No contest name specified."
+            assert not attrs.get("name").startswith("__"), \
+                "Contest name cannot start with '__' " \
+                "(reserved for system contests)."
 
             allowed_localizations: str = self.get_argument("allowed_localizations", "")
             if allowed_localizations:
@@ -132,16 +186,16 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_timedelta_sec(attrs, "min_submission_interval_grace_period")
             self.get_timedelta_sec(attrs, "min_user_test_interval")
 
-            self.get_datetime(attrs, "start")
-            self.get_datetime(attrs, "stop")
+            self.get_datetime_with_timezone(attrs, "start")
+            self.get_datetime_with_timezone(attrs, "stop")
 
             self.get_string(attrs, "timezone", empty=None)
             self.get_timedelta_sec(attrs, "per_user_time")
             self.get_int(attrs, "score_precision")
 
             self.get_bool(attrs, "analysis_enabled")
-            self.get_datetime(attrs, "analysis_start")
-            self.get_datetime(attrs, "analysis_stop")
+            self.get_datetime_with_timezone(attrs, "analysis_start")
+            self.get_datetime_with_timezone(attrs, "analysis_stop")
 
             # Update the contest first
             contest.set_attrs(attrs)
@@ -239,15 +293,62 @@ class RemoveContestHandler(BaseHandler):
 
         self.contest = contest
         self.render_params_for_remove_confirmation(submission_query)
+        
+        self.r_params["task_count"] = len(contest.tasks)
+        self.r_params["other_contests"] = exclude_internal_contests(
+            self.sql_session.query(Contest)
+            .filter(Contest.id != contest.id)
+        ).order_by(Contest.name).all()
+        
         self.render("contest_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, contest_id):
+        """Handle DELETE request with task handling options."""
         contest = self.safe_get_item(Contest, contest_id)
-
-        self.sql_session.delete(contest)
-        if self.try_commit():
-            self.service.proxy_service.reinitialize()
-
+        
+        try:
+            action = self.get_argument("action", "detach")
+            assert action in ["move", "detach", "delete_all"], \
+                "Invalid action specified"
+            
+            target_contest_id = None
+            if action == "move":
+                target_contest_id = self.get_argument("target_contest_id", None)
+                assert target_contest_id, \
+                    "Target contest must be specified when moving tasks"
+                assert target_contest_id != str(contest_id), \
+                    "Target contest cannot be the same as the contest being deleted"
+            
+            self._remove_contest_with_action(contest, action, target_contest_id)
+            
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Error removing contest", repr(error))
+            self.write("error")
+            return
+        
         # Maybe they'll want to do this again (for another contest)
         self.write("../../contests")
+    
+    def _remove_contest_with_action(self, contest, action, target_contest_id):
+        """Remove contest with specified action for tasks.
+        
+        This is a thin wrapper that calls the standalone helper function.
+        
+        contest: Contest object to remove
+        action: One of "move", "detach", or "delete_all"
+        target_contest_id: ID of target contest (required if action is "move")
+        """
+        target_contest = None
+        if action == "move":
+            target_contest = self.safe_get_item(Contest, target_contest_id)
+        
+        remove_contest_with_action(self.sql_session, contest, action, target_contest)
+        
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+            self.service.add_notification(
+                make_datetime(), 
+                "Contest removed successfully",
+                f"Contest removed with action: {action}")

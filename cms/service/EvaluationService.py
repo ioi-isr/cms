@@ -47,6 +47,7 @@ from cms.db import SessionGen, Digest, Dataset, Evaluation, Submission, \
     SubmissionResult, Testcase, UserTest, UserTestResult, get_submissions, \
     get_submission_results, get_datasets_to_judge
 from cms.grading.Job import Job, JobGroup
+from cms.grading.scorecache import invalidate_score_cache
 from cms.io import Executor, TriggeredService, rpc_method
 from .esoperations import ESOperation, get_relevant_operations, \
     get_submissions_operations, get_user_tests_operations, \
@@ -659,6 +660,21 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                             object_result.submission)
                 else:
                     object_result.evaluation_tries += 1
+                    # Store failure details for debugging
+                    object_result.last_evaluation_failure_text = result.job.text
+                    object_result.last_evaluation_failure_shard = result.job.shard
+                    object_result.last_evaluation_failure_sandbox_paths = \
+                        result.job.sandboxes
+                    object_result.last_evaluation_failure_sandbox_digests = \
+                        result.job.get_sandbox_digest_list()
+                    # Store detailed failure info (exit_status, signal, stdout, stderr)
+                    object_result.last_evaluation_failure_details = result.job.plus
+                    # Mark as failed if max retries reached, so evaluation_ended()
+                    # will be called and the submission won't be stuck in
+                    # "Evaluating..." state forever.
+                    if object_result.evaluation_tries >= \
+                            EvaluationService.MAX_EVALUATION_TRIES:
+                        object_result.set_evaluation_outcome(success=False)
 
         elif operation.type_ == ESOperation.USER_TEST_COMPILATION:
             if result.job_success:
@@ -728,8 +744,8 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
 
     def evaluation_ended(self, submission_result: SubmissionResult, archive_sandbox: bool = False):
         """Actions to be performed when we have a submission that has
-        been evaluated. In particular: we inform ScoringService on
-        success, we requeue on failure.
+        been evaluated. In particular: we inform ScoringService so it can
+        update the score for both successful and failed evaluations.
 
         submission_result: the submission result.
         archive_sandbox: whether we need to archive the sandbox.
@@ -737,30 +753,23 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
         """
         submission = submission_result.submission
 
-        # Evaluation successful, we inform ScoringService so it can
-        # update the score. We need to commit the session beforehand,
-        # otherwise the ScoringService wouldn't receive the updated
-        # submission.
-        if submission_result.evaluated():
+        # Log successful evaluation for debugging/monitoring purposes
+        if submission_result.evaluation_succeeded():
             logger.info("Submission %d(%d) was evaluated successfully.",
                         submission_result.submission_id,
                         submission_result.dataset_id)
-            self.scoring_service.new_evaluation(
-                submission_id=submission_result.submission_id,
-                dataset_id=submission_result.dataset_id)
 
-        # Evaluation unsuccessful, we log the error.
+        # Log failed evaluation for debugging/monitoring purposes
         else:
-            logger.warning("Worker failed when evaluating submission "
-                           "%d(%d).",
+            logger.warning("Submission %d(%d) evaluation failed due to system "
+                           "error.",
                            submission_result.submission_id,
                            submission_result.dataset_id)
-            if submission_result.evaluation_tries >= \
-                    EvaluationService.MAX_EVALUATION_TRIES:
-                logger.error("Maximum number of failures reached for the "
-                             "evaluation of submission %d(%d).",
-                             submission_result.submission_id,
-                             submission_result.dataset_id)
+
+        # Inform ScoringService to update the score regardless of success/failure
+        self.scoring_service.new_evaluation(
+            submission_id=submission_result.submission_id,
+            dataset_id=submission_result.dataset_id)
 
         # Enqueue next steps to be done (e.g., if evaluation failed).
         self.submission_enqueue_operations(submission, archive_sandbox)
@@ -951,6 +960,7 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 participation_id,
                 task_id,
                 submission_id,
+                include_model_solutions=True,
             ).all()
 
             # Then we get all relevant operations, and we remove them
@@ -984,6 +994,7 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 task_id if dataset_id is None else None,
                 submission_id,
                 dataset_id,
+                include_model_solutions=True,
             ).all()
             logger.info("Submission results to invalidate %s for: %d.",
                         level, len(submission_results))
@@ -995,6 +1006,19 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
                 elif level == "evaluation":
                     submission_result.invalidate_evaluation(testcase_id=testcase_id)
 
+            # Invalidate score cache for affected participation/task pairs.
+            # We derive the pairs from the submissions to be precise.
+            affected_pairs: set[tuple[int, int]] = set()
+            for submission in submissions:
+                affected_pairs.add(
+                    (submission.participation_id, submission.task_id))
+            for p_id, t_id in affected_pairs:
+                invalidate_score_cache(
+                    session,
+                    participation_id=p_id,
+                    task_id=t_id,
+                )
+
             # Finally, we re-enqueue the operations for the
             # submissions.
             for submission in submissions:
@@ -1002,6 +1026,83 @@ class EvaluationService(TriggeredService[ESOperation, EvaluationExecutor]):
 
             session.commit()
         logger.info("Invalidate successfully completed.")
+
+    @rpc_method
+    @with_post_finish_lock
+    def invalidate_model_solutions(
+        self,
+        dataset_id: int,
+        level: str = "compilation",
+        testcase_id: int | None = None,
+        archive_sandbox: bool = False,
+    ):
+        """Request to invalidate computed data for all model solutions of a dataset.
+
+        This method invalidates only model solutions (not regular submissions)
+        for the specified dataset. It's similar to invalidate_submission but
+        explicitly filters to only model solutions via ModelSolutionMeta.
+
+        dataset_id: id of the dataset whose model solutions should be invalidated.
+        level: 'compilation' or 'evaluation'
+        testcase_id: id of the testcase to invalidate, or None.
+        archive_sandbox: whether to store submission output.
+
+        """
+        logger.info("Model solution invalidation request received for dataset %d.",
+                    dataset_id)
+
+        # Validate arguments
+        if level not in ("compilation", "evaluation"):
+            raise ValueError(
+                "Unexpected invalidation level `%s'." % level)
+
+        with SessionGen() as session:
+            from cms.db import ModelSolutionMeta
+
+            model_solution_metas = session.query(ModelSolutionMeta).filter(
+                ModelSolutionMeta.dataset_id == dataset_id
+            ).all()
+
+            submissions = [meta.submission for meta in model_solution_metas]
+
+            if not submissions:
+                logger.info("No model solutions found for dataset %d.", dataset_id)
+                return
+
+            operations = get_relevant_operations(
+                level, submissions, dataset_id)
+            for operation in operations:
+                try:
+                    self.dequeue(operation)
+                except KeyError:
+                    pass  # Ok, the operation wasn't in the queue.
+                try:
+                    self.get_executor().pool.ignore_operation(operation)
+                except LookupError:
+                    pass  # Ok, the operation wasn't in the pool.
+
+            # Get submission results for model solutions only
+            # Use the submission IDs we already have to avoid an extra join
+            submission_ids = [s.id for s in submissions]
+            submission_results = session.query(SubmissionResult).filter(
+                SubmissionResult.submission_id.in_(submission_ids),
+                SubmissionResult.dataset_id == dataset_id
+            ).all()
+
+            logger.info("Model solution results to invalidate %s for: %d.",
+                        level, len(submission_results))
+            for submission_result in submission_results:
+                # Invalidate the appropriate data
+                if level == "compilation":
+                    submission_result.invalidate_compilation()
+                elif level == "evaluation":
+                    submission_result.invalidate_evaluation(testcase_id=testcase_id)
+
+            for submission in submissions:
+                self.submission_enqueue_operations(submission, archive_sandbox)
+
+            session.commit()
+        logger.info("Model solution invalidation successfully completed.")
 
     @rpc_method
     def disable_worker(self, shard: int) -> bool:
