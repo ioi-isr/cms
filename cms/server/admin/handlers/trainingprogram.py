@@ -2621,7 +2621,7 @@ class ArchiveTrainingDayHandler(BaseHandler):
 
 
 class TrainingProgramFilterMixin:
-    """Mixin for filtering training days by date range and types."""
+    """Mixin for filtering training days by date range, types, and student tags."""
 
     def _parse_date_range(self) -> tuple[dt | None, dt | None]:
         """Parse start_date and end_date query arguments."""
@@ -2650,6 +2650,21 @@ class TrainingProgramFilterMixin:
         if not types_str:
             return []
         return parse_tags(types_str)
+
+    def _parse_student_tags_filter(self) -> tuple[list[str], str]:
+        """Parse student_tags and student_tags_mode query arguments.
+
+        Returns:
+            tuple of (student_tags list, filter_mode string)
+            filter_mode is either "current" or "historical"
+        """
+        tags_str = self.get_argument("student_tags", "")
+        mode = self.get_argument("student_tags_mode", "current")
+        if mode not in ("current", "historical"):
+            mode = "current"
+        if not tags_str:
+            return [], mode
+        return parse_tags(tags_str), mode
 
     def _get_archived_training_days(
         self,
@@ -2739,17 +2754,33 @@ class TrainingProgramCombinedRankingHandler(
 
         start_date, end_date = self._parse_date_range()
         training_day_types = self._parse_training_day_types()
+        student_tags, student_tags_mode = self._parse_student_tags_filter()
         archived_training_days = self._get_archived_training_days(
             training_program.id, start_date, end_date, training_day_types
         )
+
+        # Build a set of students with matching current tags (for "current" mode)
+        current_tag_student_ids: set[int] = set()
+        if student_tags and student_tags_mode == "current":
+            for student in training_program.students:
+                if all(tag in student.student_tags for tag in student_tags):
+                    current_tag_student_ids.add(student.id)
 
         ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
         all_students: dict[int, Student] = {}
         training_day_tasks: dict[int, list[dict]] = {}
         # Attendance data: {student_id: {training_day_id: ArchivedAttendance}}
         attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
+        # Track which students are "active" (have matching tags) for each training day
+        # For historical mode: student had matching tags during that training
+        # For current mode: student has matching tags now AND participated in that training
+        active_students_per_td: dict[int, set[int]] = {}
+
+        filtered_training_days: list[TrainingDay] = []
 
         for td in archived_training_days:
+            active_students_per_td[td.id] = set()
+
             # Build attendance lookup for this training day
             for attendance in td.archived_attendances:
                 student_id = attendance.student_id
@@ -2757,11 +2788,28 @@ class TrainingProgramCombinedRankingHandler(
                     attendance_data[student_id] = {}
                 attendance_data[student_id][td.id] = attendance
 
-            # Collect all tasks that were visible to at least one student
+            # Collect all tasks that were visible to at least one filtered student
             # Use archived_tasks_data from training day (preserves original scoring scheme)
             visible_tasks_by_id: dict[int, dict] = {}
             for ranking in td.archived_student_rankings:
                 student_id = ranking.student_id
+
+                # Apply student tag filter
+                if student_tags:
+                    if student_tags_mode == "current":
+                        # Filter by current tags: student must have matching tags now
+                        if student_id not in current_tag_student_ids:
+                            continue
+                    else:  # historical mode
+                        # Filter by historical tags: student must have had matching tags
+                        # during this specific training day
+                        if not all(tag in (ranking.student_tags or [])
+                                   for tag in student_tags):
+                            continue
+
+                # Student passes the filter for this training day
+                active_students_per_td[td.id].add(student_id)
+
                 if student_id not in ranking_data:
                     ranking_data[student_id] = {}
                     all_students[student_id] = ranking.student
@@ -2792,6 +2840,12 @@ class TrainingProgramCombinedRankingHandler(
                                         "training_day_num": task.training_day_num,
                                     }
 
+            # Omit training days where no filtered students were eligible
+            if not active_students_per_td[td.id]:
+                continue
+
+            filtered_training_days.append(td)
+
             # Sort tasks by training_day_num for stable ordering
             sorted_tasks = sorted(
                 visible_tasks_by_id.values(),
@@ -2806,16 +2860,20 @@ class TrainingProgramCombinedRankingHandler(
 
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
-        self.r_params["archived_training_days"] = archived_training_days
+        self.r_params["archived_training_days"] = filtered_training_days
         self.r_params["ranking_data"] = ranking_data
         self.r_params["sorted_students"] = sorted_students
         self.r_params["training_day_tasks"] = training_day_tasks
         self.r_params["attendance_data"] = attendance_data
+        self.r_params["active_students_per_td"] = active_students_per_td
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
         self.r_params["training_day_types"] = training_day_types
+        self.r_params["student_tags"] = student_tags
+        self.r_params["student_tags_mode"] = student_tags_mode
         self.r_params["all_training_day_types"] = get_all_training_day_types(
             training_program)
+        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\
@@ -2838,13 +2896,31 @@ class TrainingProgramCombinedRankingHistoryHandler(
 
         start_date, end_date = self._parse_date_range()
         training_day_types = self._parse_training_day_types()
+        student_tags, student_tags_mode = self._parse_student_tags_filter()
         archived_training_days = self._get_archived_training_days(
             training_program.id, start_date, end_date, training_day_types
         )
 
+        # Build a set of students with matching current tags (for "current" mode)
+        current_tag_student_ids: set[int] = set()
+        if student_tags and student_tags_mode == "current":
+            for student in training_program.students:
+                if all(tag in student.student_tags for tag in student_tags):
+                    current_tag_student_ids.add(student.id)
+
         result = []
         for td in archived_training_days:
             for ranking in td.archived_student_rankings:
+                # Apply student tag filter
+                if student_tags:
+                    if student_tags_mode == "current":
+                        if ranking.student_id not in current_tag_student_ids:
+                            continue
+                    else:  # historical mode
+                        if not all(tag in (ranking.student_tags or [])
+                                   for tag in student_tags):
+                            continue
+
                 if ranking.history:
                     for entry in ranking.history:
                         result.append([
@@ -2870,13 +2946,43 @@ class TrainingProgramCombinedRankingDetailHandler(
 
         start_date, end_date = self._parse_date_range()
         training_day_types = self._parse_training_day_types()
+        student_tags, student_tags_mode = self._parse_student_tags_filter()
         archived_training_days = self._get_archived_training_days(
             training_program.id, start_date, end_date, training_day_types
         )
 
+        # Build a set of students with matching current tags (for "current" mode)
+        current_tag_student_ids: set[int] = set()
+        if student_tags and student_tags_mode == "current":
+            for s in training_program.students:
+                if all(tag in s.student_tags for tag in student_tags):
+                    current_tag_student_ids.add(s.id)
+
+        # For historical mode, we need to track which students are active per training day
+        # to compute the correct user_count for relative ranks
+        active_students_per_td: dict[int, set[int]] = {}
+        if student_tags and student_tags_mode == "historical":
+            for td in archived_training_days:
+                active_students_per_td[td.id] = set()
+                for ranking in td.archived_student_rankings:
+                    if all(tag in (ranking.student_tags or []) for tag in student_tags):
+                        active_students_per_td[td.id].add(ranking.student_id)
+
+        # Build users_data for filtered students only
         users_data = {}
+        filtered_student_ids: set[int] = set()
         for s in training_program.students:
             if s.participation and s.participation.user:
+                # Apply student tag filter for current mode
+                if student_tags and student_tags_mode == "current":
+                    if s.id not in current_tag_student_ids:
+                        continue
+                # For historical mode, include student if they appear in any training day
+                elif student_tags and student_tags_mode == "historical":
+                    if not any(s.id in active_students_per_td.get(td.id, set())
+                               for td in archived_training_days):
+                        continue
+                filtered_student_ids.add(s.id)
                 users_data[str(s.participation.user_id)] = {
                     "f_name": s.participation.user.first_name or "",
                     "l_name": s.participation.user.last_name or "",
@@ -2901,8 +3007,17 @@ class TrainingProgramCombinedRankingDetailHandler(
             contest_key = f"td_{td.id}"
             task_ids_in_contest: set[int] = set()
 
-            # Collect all visible task IDs from all students' task_scores keys
+            # Collect all visible task IDs from filtered students' task_scores keys
             for ranking in td.archived_student_rankings:
+                # Apply student tag filter
+                if student_tags:
+                    if student_tags_mode == "current":
+                        if ranking.student_id not in current_tag_student_ids:
+                            continue
+                    else:  # historical mode
+                        if not all(tag in (ranking.student_tags or [])
+                                   for tag in student_tags):
+                            continue
                 if ranking.task_scores:
                     task_ids_in_contest.update(int(k) for k in ranking.task_scores.keys())
 
@@ -2997,7 +3112,7 @@ class TrainingProgramCombinedRankingDetailHandler(
         history_url = self.url(
             "training_program", training_program_id, "combined_ranking", "history"
         )
-        if start_date or end_date or training_day_types:
+        if start_date or end_date or training_day_types or student_tags:
             params = {}
             if start_date:
                 params["start_date"] = start_date.isoformat()
@@ -3005,6 +3120,9 @@ class TrainingProgramCombinedRankingDetailHandler(
                 params["end_date"] = end_date.isoformat()
             if training_day_types:
                 params["training_day_types"] = training_day_types
+            if student_tags:
+                params["student_tags"] = student_tags
+                params["student_tags_mode"] = student_tags_mode
             history_url += "?" + urlencode(params, doseq=True)
 
         self.r_params = self.render_params()
@@ -3022,6 +3140,8 @@ class TrainingProgramCombinedRankingDetailHandler(
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
         self.r_params["training_day_types"] = training_day_types
+        self.r_params["student_tags"] = student_tags
+        self.r_params["student_tags_mode"] = student_tags_mode
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\
