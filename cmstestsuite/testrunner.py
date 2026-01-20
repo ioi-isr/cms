@@ -165,7 +165,8 @@ class TestRunner:
             "method": "plaintext",
             "first_name": "Ms. Test",
             "last_name": "Wabbit the %d%s" % (self.num_users,
-                                              enumerify(self.num_users))
+                                              enumerify(self.num_users)),
+            "date_of_birth": "2000-01-01",
         }
 
         if username in users:
