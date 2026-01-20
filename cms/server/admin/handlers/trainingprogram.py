@@ -2702,9 +2702,20 @@ class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
 
         start_date, end_date = self._parse_date_range()
         training_day_types = self._parse_training_day_types()
+        # Parse student tags filter (current tags only for attendance)
+        student_tags_str = self.get_argument("student_tags", "")
+        student_tags = parse_tags(student_tags_str) if student_tags_str else []
+
         archived_training_days = self._get_archived_training_days(
             training_program.id, start_date, end_date, training_day_types
         )
+
+        # Build a set of students with matching current tags
+        current_tag_student_ids: set[int] = set()
+        if student_tags:
+            for student in training_program.students:
+                if all(tag in student.student_tags for tag in student_tags):
+                    current_tag_student_ids.add(student.id)
 
         # Build attendance data structure
         # {student_id: {training_day_id: attendance_record}}
@@ -2714,6 +2725,9 @@ class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
         for td in archived_training_days:
             for attendance in td.archived_attendances:
                 student_id = attendance.student_id
+                # Apply student tag filter (current tags only)
+                if student_tags and student_id not in current_tag_student_ids:
+                    continue
                 if student_id not in attendance_data:
                     attendance_data[student_id] = {}
                     all_students[student_id] = attendance.student
@@ -2733,8 +2747,10 @@ class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
         self.r_params["training_day_types"] = training_day_types
+        self.r_params["student_tags"] = student_tags
         self.r_params["all_training_day_types"] = get_all_training_day_types(
             training_program)
+        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\

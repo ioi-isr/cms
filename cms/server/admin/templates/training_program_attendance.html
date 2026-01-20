@@ -1,12 +1,26 @@
 {% extends "base.html" %}
 
 {% block js_init %}
-// Initialize read-only filter tagify (no AJAX save)
+// Initialize read-only filter tagify for training day types (no AJAX save)
 var filterInput = document.querySelector('input[name="training_day_types"]');
 if (filterInput && typeof Tagify !== 'undefined') {
     new Tagify(filterInput, {
         delimiters: ",",
         whitelist: {{ all_training_day_types | tojson }},
+        enforceWhitelist: true,
+        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
+        originalInputValueFormat: function(valuesArr) {
+            return valuesArr.map(function(item) { return item.value; }).join(', ');
+        }
+    });
+}
+
+// Initialize read-only filter tagify for student tags (no AJAX save)
+var studentTagsInput = document.querySelector('input[name="student_tags"]');
+if (studentTagsInput && typeof Tagify !== 'undefined') {
+    new Tagify(studentTagsInput, {
+        delimiters: ",",
+        whitelist: {{ all_student_tags | tojson }},
         enforceWhitelist: true,
         dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
         originalInputValueFormat: function(valuesArr) {
@@ -34,11 +48,15 @@ if (filterInput && typeof Tagify !== 'undefined') {
     <label class="tp-filter-label" for="training_day_types">Types:</label>
     <input type="text" id="training_day_types" name="training_day_types" style="min-width: 200px;" value="{{ training_day_types | join(', ') }}" />
   </div>
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="student_tags">Student Tags:</label>
+    <input type="text" id="student_tags" name="student_tags" style="min-width: 200px;" value="{{ student_tags | join(', ') }}" />
+  </div>
   
   <div class="tp-filter-group" style="margin-left: 5px;">
       <button type="submit" class="tp-btn-primary">Apply Filter</button>
       
-      {% if start_date or end_date or training_day_types %}
+      {% if start_date or end_date or training_day_types or student_tags %}
       <a href="{{ url('training_program', training_program.id, 'attendance') }}" class="tp-btn-secondary">Clear</a>
       {% endif %}
   </div>

@@ -28,6 +28,259 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
         }
     });
 }
+
+// Histogram modal functionality
+var histogramModal = null;
+var histogramTagify = null;
+var currentHistogramData = null;
+var allStudentTags = {{ all_student_tags | tojson }};
+
+// Store student data for histogram filtering
+var studentData = {};
+{% for student in sorted_students %}
+studentData[{{ student.id }}] = {
+    tags: {{ student.student_tags | tojson if student.student_tags else '[]' }},
+    name: {% if student.participation %}"{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}"{% else %}"(Unknown)"{% endif %}
+};
+{% endfor %}
+
+function initHistogramModal() {
+    histogramModal = document.getElementById('histogramModal');
+    if (!histogramModal) return;
+    
+    // Initialize tagify for histogram filter
+    var histogramTagsInput = document.getElementById('histogramTagsFilter');
+    if (histogramTagsInput && typeof Tagify !== 'undefined') {
+        histogramTagify = new Tagify(histogramTagsInput, {
+            delimiters: ",",
+            whitelist: allStudentTags,
+            enforceWhitelist: true,
+            dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.map(function(item) { return item.value; }).join(', ');
+            }
+        });
+        histogramTagify.on('change', function() {
+            if (currentHistogramData) {
+                renderHistogram(currentHistogramData.scores, currentHistogramData.title, currentHistogramData.type);
+            }
+        });
+    }
+    
+    // Close modal on backdrop click
+    histogramModal.addEventListener('click', function(e) {
+        if (e.target === histogramModal) {
+            closeHistogramModal();
+        }
+    });
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && histogramModal.style.display === 'flex') {
+            closeHistogramModal();
+        }
+    });
+}
+
+function openHistogramModal(scores, title, type) {
+    if (!histogramModal) return;
+    currentHistogramData = { scores: scores, title: title, type: type };
+    document.getElementById('histogramTitle').textContent = title + ' - Score Distribution';
+    histogramModal.style.display = 'flex';
+    renderHistogram(scores, title, type);
+}
+
+function closeHistogramModal() {
+    if (histogramModal) {
+        histogramModal.style.display = 'none';
+    }
+    currentHistogramData = null;
+}
+
+function getFilteredScores(scores) {
+    var filterTags = [];
+    if (histogramTagify) {
+        var tagifyValue = histogramTagify.value;
+        if (tagifyValue && tagifyValue.length > 0) {
+            filterTags = tagifyValue.map(function(t) { return t.value; });
+        }
+    }
+    
+    if (filterTags.length === 0) {
+        return scores;
+    }
+    
+    // Filter scores by student tags
+    return scores.filter(function(item) {
+        var studentInfo = studentData[item.studentId];
+        if (!studentInfo) return false;
+        return filterTags.every(function(tag) {
+            return studentInfo.tags.indexOf(tag) !== -1;
+        });
+    });
+}
+
+function renderHistogram(scores, title, type) {
+    var filteredScores = getFilteredScores(scores);
+    var scoreValues = filteredScores.map(function(s) { return s.score; });
+    
+    // Sort scores high to low
+    scoreValues.sort(function(a, b) { return b - a; });
+    
+    // Build histogram buckets (0-10, 10-20, ..., 90-100)
+    var buckets = {};
+    for (var i = 0; i <= 100; i += 10) {
+        buckets[i] = 0;
+    }
+    
+    scoreValues.forEach(function(score) {
+        var bucket = Math.floor(score / 10) * 10;
+        if (bucket > 100) bucket = 100;
+        if (bucket < 0) bucket = 0;
+        buckets[bucket] = (buckets[bucket] || 0) + 1;
+    });
+    
+    // Render histogram bars
+    var histogramBars = document.getElementById('histogramBars');
+    var maxCount = Math.max.apply(null, Object.values(buckets)) || 1;
+    var totalStudents = scoreValues.length;
+    
+    var barsHtml = '';
+    for (var bucket = 0; bucket <= 100; bucket += 10) {
+        var count = buckets[bucket] || 0;
+        var percentage = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
+        var barHeight = maxCount > 0 ? (count / maxCount) * 100 : 0;
+        var hue = bucket * 1.2;
+        if (hue > 120) hue = 120;
+        
+        barsHtml += '<div class="histogram-bar-container">' +
+            '<div class="histogram-bar" style="height: ' + barHeight + '%; background-color: hsl(' + hue + ', 75%, 60%);" title="' + count + ' students (' + percentage + '%)"></div>' +
+            '<div class="histogram-label">' + bucket + '-' + (bucket + 10) + '</div>' +
+            '<div class="histogram-count">' + count + '</div>' +
+            '</div>';
+    }
+    histogramBars.innerHTML = barsHtml;
+    
+    // Update stats
+    document.getElementById('histogramStats').innerHTML = 
+        '<strong>Total students:</strong> ' + totalStudents + 
+        (scoreValues.length > 0 ? ' | <strong>Average:</strong> ' + (scoreValues.reduce(function(a, b) { return a + b; }, 0) / scoreValues.length).toFixed(1) +
+        ' | <strong>Max:</strong> ' + Math.max.apply(null, scoreValues).toFixed(1) +
+        ' | <strong>Min:</strong> ' + Math.min.apply(null, scoreValues).toFixed(1) : '');
+    
+    // Build text data for copying
+    var textData = title + ' - Score Distribution\n';
+    textData += '================================\n\n';
+    textData += 'Scores (high to low):\n';
+    
+    // Group by score value
+    var scoreGroups = {};
+    scoreValues.forEach(function(score) {
+        var roundedScore = score.toFixed(1);
+        scoreGroups[roundedScore] = (scoreGroups[roundedScore] || 0) + 1;
+    });
+    
+    // Sort by score descending
+    var sortedScoreKeys = Object.keys(scoreGroups).sort(function(a, b) { return parseFloat(b) - parseFloat(a); });
+    sortedScoreKeys.forEach(function(score) {
+        var count = scoreGroups[score];
+        var pct = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
+        textData += score + ': ' + count + ' student' + (count !== 1 ? 's' : '') + ' (' + pct + '%)\n';
+    });
+    
+    textData += '\nHistogram buckets:\n';
+    for (var bucket = 100; bucket >= 0; bucket -= 10) {
+        var count = buckets[bucket] || 0;
+        var pct = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
+        textData += (bucket) + '-' + (bucket + 10) + ': ' + count + ' (' + pct + '%)\n';
+    }
+    
+    document.getElementById('histogramTextData').value = textData;
+}
+
+function copyHistogramData() {
+    var textArea = document.getElementById('histogramTextData');
+    textArea.select();
+    document.execCommand('copy');
+    
+    var btn = document.querySelector('.copy-btn');
+    var originalText = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function() {
+        btn.textContent = originalText;
+    }, 2000);
+}
+
+function showTaskHistogram(taskId, taskName, trainingDayId) {
+    var scores = [];
+    var table = document.getElementById('ranking_table');
+    if (!table) return;
+    
+    // Find the column index for this task
+    var headers = table.querySelectorAll('thead tr:last-child th');
+    var colIndex = -1;
+    headers.forEach(function(th, idx) {
+        if (th.dataset.taskId == taskId && th.dataset.parentDay == trainingDayId) {
+            colIndex = idx;
+        }
+    });
+    
+    // Collect scores from the table
+    var rows = table.querySelectorAll('tbody tr');
+    rows.forEach(function(row) {
+        var studentIdMatch = row.querySelector('th a.student-name-link');
+        if (!studentIdMatch) return;
+        
+        var href = studentIdMatch.getAttribute('href');
+        var studentIdFromHref = href.match(/student\/(\d+)/);
+        if (!studentIdFromHref) return;
+        var studentId = parseInt(studentIdFromHref[1]);
+        
+        var cells = row.querySelectorAll('td');
+        cells.forEach(function(cell) {
+            if (cell.dataset.taskId == taskId && cell.dataset.parentDay == trainingDayId) {
+                var value = parseFloat(cell.dataset.value);
+                if (!isNaN(value)) {
+                    scores.push({ studentId: studentId, score: value });
+                }
+            }
+        });
+    });
+    
+    openHistogramModal(scores, taskName, 'task');
+}
+
+function showTrainingDayHistogram(trainingDayId, trainingDayName) {
+    var scores = [];
+    var table = document.getElementById('ranking_table');
+    if (!table) return;
+    
+    // Collect total scores for this training day
+    var rows = table.querySelectorAll('tbody tr');
+    rows.forEach(function(row) {
+        var studentIdMatch = row.querySelector('th a.student-name-link');
+        if (!studentIdMatch) return;
+        
+        var href = studentIdMatch.getAttribute('href');
+        var studentIdFromHref = href.match(/student\/(\d+)/);
+        if (!studentIdFromHref) return;
+        var studentId = parseInt(studentIdFromHref[1]);
+        
+        var cells = row.querySelectorAll('td.total-col[data-training-day-id="' + trainingDayId + '"]');
+        cells.forEach(function(cell) {
+            var value = parseFloat(cell.dataset.value);
+            if (!isNaN(value)) {
+                scores.push({ studentId: studentId, score: value });
+            }
+        });
+    });
+    
+    openHistogramModal(scores, trainingDayName, 'training_day');
+}
+
+$(document).ready(function() {
+    initHistogramModal();
+});
 {% endblock js_init %}
 
 {% block core %}
@@ -117,11 +370,11 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
       <tr>
         {% for td in archived_training_days %}
           {% for task in training_day_tasks.get(td.id, []) %}
-          <th class="task-header" title="{{ task.title }}" data-parent-day="{{ td.id }}" data-sort-settings="numeric">
+          <th class="task-header clickable-header" title="{{ task.title }} (click for histogram)" data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-sort-settings="numeric" onclick="showTaskHistogram({{ task.id }}, '{{ task.name }}', {{ td.id }})">
               {{ task.name }}
           </th>
           {% endfor %}
-          <th class="total-col" title="Daily Total" data-sort-settings="numeric">Total</th>
+          <th class="total-col total-col-header clickable-header" title="Daily Total (click for histogram)" data-training-day-id="{{ td.id }}" data-sort-settings="numeric" onclick="showTrainingDayHistogram({{ td.id }}, '{{ td.description or td.name or 'Session' }}')">Total</th>
         {% endfor %}
       </tr>
     </thead>
@@ -181,7 +434,7 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
                 {% set score_val = ranking.task_scores.get(task.id|string) %}
             {% endif %}
 
-            <td data-parent-day="{{ td.id }}" data-value="{{ score_val }}">
+            <td data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-value="{{ score_val }}">
                 {% if ranking and ranking.task_scores and task.id|string in ranking.task_scores %}
                     {{ render_score_cell(score_val) }}
                 {% else %}
@@ -204,7 +457,7 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
             {% set cell_value = total.value %}
           {% endif %}
 
-          <td class="total-col" data-value="{{ cell_value }}">
+          <td class="total-col" data-training-day-id="{{ td.id }}" data-value="{{ cell_value }}">
             <div class="cell-content">
                 {% if ranking and ranking.task_scores %}
                   {{ "%.1f"|format(cell_value) | replace('.0', '') }}
@@ -256,4 +509,205 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
     <p style="color: #6b7280;">No archived training days found matching your current filter.</p>
   </div>
 {% endif %}
+
+<div id="histogramModal" class="histogram-modal" style="display: none;">
+  <div class="histogram-modal-content">
+    <div class="histogram-modal-header">
+      <h2 id="histogramTitle">Score Distribution</h2>
+      <button class="histogram-close-btn" onclick="closeHistogramModal()">&times;</button>
+    </div>
+    <div class="histogram-filter-row">
+      <label for="histogramTagsFilter">Filter by student tags:</label>
+      <input type="text" id="histogramTagsFilter" style="min-width: 300px;" placeholder="Select tags to filter..." />
+    </div>
+    <div class="histogram-chart-container">
+      <div id="histogramBars" class="histogram-bars"></div>
+    </div>
+    <div id="histogramStats" class="histogram-stats"></div>
+    <div class="histogram-text-section">
+      <div class="histogram-text-header">
+        <span>Text Data (for copying)</span>
+        <button class="copy-btn" onclick="copyHistogramData()">Copy to Clipboard</button>
+      </div>
+      <textarea id="histogramTextData" readonly rows="10"></textarea>
+    </div>
+  </div>
+</div>
+
+<style>
+.histogram-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.histogram-modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.histogram-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.histogram-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1f2937;
+}
+
+.histogram-close-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+  padding: 0;
+}
+
+.histogram-close-btn:hover {
+  color: #1f2937;
+}
+
+.histogram-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.histogram-filter-row label {
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.histogram-chart-container {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.histogram-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 200px;
+  gap: 4px;
+}
+
+.histogram-bar-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.histogram-bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+}
+
+.histogram-label {
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.histogram-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 2px;
+}
+
+.histogram-stats {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  color: #0369a1;
+}
+
+.histogram-text-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.histogram-text-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.histogram-text-header span {
+  font-weight: 500;
+  color: #374151;
+}
+
+.copy-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.copy-btn:hover {
+  background: #2563eb;
+}
+
+#histogramTextData {
+  width: 100%;
+  border: none;
+  padding: 12px 14px;
+  font-family: monospace;
+  font-size: 12px;
+  resize: vertical;
+  background: white;
+}
+
+.task-header.clickable-header,
+.total-col-header.clickable-header {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.task-header.clickable-header:hover,
+.total-col-header.clickable-header:hover {
+  background-color: #e0f2fe !important;
+}
+</style>
 {% endblock core %}
