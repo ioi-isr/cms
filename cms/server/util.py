@@ -27,6 +27,7 @@
 """
 
 import logging
+from datetime import date, timedelta
 from functools import wraps
 from urllib.parse import quote, urlencode
 
@@ -73,6 +74,39 @@ def multi_contest(f):
             # Otherwise, just forward all arguments.
             f(self, *args)
     return wrapped_f
+
+
+def validate_date_of_birth(date_of_birth_str: str) -> date:
+    """Validate date of birth string and return parsed date.
+
+    Args:
+        date_of_birth_str: Date string in ISO format (YYYY-MM-DD)
+
+    Returns:
+        Parsed date object
+
+    Raises:
+        ValueError: If date is invalid, in future, or more than 120 years ago
+    """
+    if not date_of_birth_str:
+        raise ValueError("date_of_birth cannot be empty")
+
+    try:
+        parsed_date = date.fromisoformat(date_of_birth_str)
+    except ValueError as e:
+        raise ValueError("Invalid date of birth format") from e
+
+    # Validate date is not in the future
+    today = date.today()
+    if parsed_date > today:
+        raise ValueError("Date of birth cannot be in the future")
+
+    # Add 120-year lower bound check using timedelta to handle leap years
+    max_age_delta = timedelta(days=120 * 365.25)  # ~120 years accounting for leap years
+    if today - parsed_date > max_age_delta:
+        raise ValueError("Date of birth cannot be more than 120 years ago")
+
+    return parsed_date
 
 
 class FileHandlerMixin(RequestHandler):

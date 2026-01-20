@@ -1,0 +1,77 @@
+{% macro user_fields(user=None) %}
+  <tr>
+    <td>
+      <span class="info" title="First name of the contestant."></span>
+      First name
+    </td>
+    <td><input type="text" name="first_name" value="{{ user.first_name if user else '' }}"/></td>
+  </tr>
+  <tr>
+    <td>
+      <span class="info" title="Last name of the contestant."></span>
+      Last name
+    </td>
+    <td><input type="text" name="last_name" value="{{ user.last_name if user else '' }}"/></td>
+  </tr>
+  <tr>
+    <td>
+      <span class="info" title="Username of the contestant (used to log in)."></span>
+      Username
+    </td>
+    <td><input type="text" name="username" value="{{ user.username if user else '' }}"/></td>
+  </tr>
+  <tr>
+    <td>
+      <span class="info" title="Contestant password. Caution: stored in plain text."></span>      Password
+    </td>
+    <td>
+      {% if user %}
+        {% with hashed_password = user.password %}
+          {% include "fragments/hashed_password_form.html" %}
+        {% endwith %}
+      {% else %}
+        <input type="password" name="password" id="add-user-password-field" />
+        <select name="method">
+          <option value="plaintext">Plain text</option>
+          <option value="bcrypt" selected>Hashed (bcrypt)</option>
+        </select>
+        <div id="add-user-password-strength-container" style="margin-top: 5px;">
+          <div id="add-user-password-strength-bar" style="height: 5px; border-radius: 3px; transition: all 0.3s ease; display: none;"></div>
+          <span id="add-user-password-strength-text" style="font-size: 12px;"></span>
+        </div>
+        <script>
+          CMS.AWSUtils.initPasswordStrength(
+            "#add-user-password-field",
+            "#add-user-password-strength-bar",
+            "#add-user-password-strength-text"
+          );
+        </script>
+      {% endif %}
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <span class="info" title="Contestant e-mail address."></span>
+      E-mail
+    </td>
+    <td><input type="text" name="email" value="{{ user.email if user and user.email is not none else '' }}"/></td>
+  </tr>
+  {% include "fragments/user_date_of_birth_form.html" %}
+  {% include "fragments/user_picture_form.html" %}
+  <tr>
+    <td>
+      <span class="info" title="Timezone of the contestant, used to display start, end times and the current server time in local time.
+                                Example: 'Europe/Rome', 'America/New_York', ..."></span>
+      Timezone
+    </td>
+    <td><input type="text" name="timezone" value="{{ user.timezone if user and user.timezone is not none else '' }}"></td>
+  </tr>
+  <tr>
+    <td>
+      <span class="info" title="Comma-separated list of language codes, from the most to the least preferred.
+                                Example: 'en, ja'."></span>
+      Preferred languages
+    </td>
+    <td><input type="text" name="preferred_languages" value="{{ user.preferred_languages|join(', ') if user and user.preferred_languages else '' }}"></td>
+  </tr>
+{% endmacro %}

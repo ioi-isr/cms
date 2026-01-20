@@ -409,4 +409,8 @@ ALTER TABLE ONLY public.subtask_validation_results ADD CONSTRAINT subtask_valida
 ALTER TABLE public.statements ADD COLUMN source_digest public.digest;
 ALTER TABLE public.statements ADD COLUMN source_extension character varying;
 
+-- Add date_of_birth and picture fields to users table
+ALTER TABLE public.users ADD COLUMN date_of_birth date;
+ALTER TABLE public.users ADD COLUMN picture public.digest;
+
 COMMIT;

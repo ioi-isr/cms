@@ -30,7 +30,15 @@
   line-height: 1.5em;
 }
 
-#UserDetail_face,
+#UserDetail_face {
+  display: block;
+  max-width: 160px;
+  max-height: 240px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
 #UserDetail_flag {
   display: none;
 }
@@ -193,7 +201,7 @@
         <div style="font-size: 0.6em; color: #666;">
           {{ participation.user.username }}
         </div>
-        <img id="UserDetail_face" src="" alt="Face"/>
+        {% if participation.user.picture %}<img id="UserDetail_face" src="{{ url("file", participation.user.picture, "picture") }}" alt="Profile picture of {{ participation.user.first_name }} {{ participation.user.last_name }}"/>{% endif %}
         <div id="UserDetail_spacer"></div>
         <div id="UserDetail_team">{% if participation.team %}{{ participation.team.name }}{% endif %}</div>
         <img id="UserDetail_flag" src="" alt="Flag"/>

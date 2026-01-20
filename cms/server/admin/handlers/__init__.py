@@ -148,7 +148,8 @@ from .user import \
     RemoveTeamHandler, \
     ClearResetTokenHandler, \
     ApprovePasswordResetHandler, \
-    DenyPasswordResetHandler
+    DenyPasswordResetHandler, \
+    RemovePictureHandler
 from .usertest import \
     UserTestHandler, \
     UserTestFileHandler
@@ -311,6 +312,7 @@ HANDLERS = [
     (r"/user/([0-9]+)/clear_reset_token", ClearResetTokenHandler),
     (r"/user/([0-9]+)/approve_password_reset", ApprovePasswordResetHandler),
     (r"/user/([0-9]+)/deny_password_reset", DenyPasswordResetHandler),
+    (r"/user/([0-9]+)/remove_picture", RemovePictureHandler),
 
     # Folders
     (r"/folders", FolderListHandler),

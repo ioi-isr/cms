@@ -57,6 +57,9 @@ dependencies = [
 
     # Only for translation feature
     "deep-translator>=1.11,<2.0",  # https://pypi.org/project/deep-translator
+
+    # Only for user profile pictures
+    "Pillow>=10.0,<13.0",          # https://pillow.readthedocs.io/en/stable/releasenotes/
 ]
 
 [project.urls]

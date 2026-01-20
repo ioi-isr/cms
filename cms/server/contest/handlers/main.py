@@ -36,7 +36,6 @@ import os.path
 import re
 import secrets
 import smtplib
-from datetime import timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -64,6 +63,10 @@ from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
+from cms.server.picture_utils import (
+    process_picture_upload, PictureValidationError
+)
+from cms.server.util import validate_date_of_birth
 from cmscommon.crypto import hash_password, validate_password, \
     validate_password_strength, WeakPasswordError
 from cmscommon.datetime import make_datetime, make_timestamp
@@ -114,11 +117,14 @@ class RegistrationHandler(ContestHandler):
             raise tornado.web.HTTPError(404)
 
         create_new_user = self.get_argument("new_user") == "true"
+        picture_digest_to_delete = None
 
         try:
             # Get or create user
             if create_new_user:
                 user = self._create_user()
+                # Store picture digest for potential cleanup if commit fails
+                picture_digest_to_delete = user.picture
             else:
                 user = self._get_user()
 
@@ -144,6 +150,18 @@ class RegistrationHandler(ContestHandler):
             self.set_status(400)
             self.set_header("Content-Type", "application/json")
             self.write(json.dumps({"code": e.code, "field": e.field}))
+        except Exception:
+            # Clean up picture if commit failed
+            if picture_digest_to_delete:
+                try:
+                    self.service.file_cacher.delete(picture_digest_to_delete)
+                except Exception:
+                    # Log warning but don't raise another exception
+                    logger.warning(
+                        "Failed to delete picture %s after registration commit failure",
+                        picture_digest_to_delete,
+                    )
+            raise
 
     @multi_contest
     def get(self):
@@ -164,6 +182,7 @@ class RegistrationHandler(ContestHandler):
             username = self.get_argument("username")
             password = self.get_argument("password")
             email = self.get_argument("email")
+            date_of_birth_str = self.get_argument("date_of_birth")
         except tornado.web.MissingArgumentError:
             raise RegistrationError("missing_field")
 
@@ -213,15 +232,34 @@ class RegistrationHandler(ContestHandler):
         # Override password with its hash
         password = hash_password(password)
 
-        # Check if the username is available
+        # Validate date of birth (required)
+        if not date_of_birth_str:
+            raise RegistrationError("missing_date_of_birth", "date_of_birth")
+        try:
+            date_of_birth = validate_date_of_birth(date_of_birth_str)
+        except ValueError:
+            raise RegistrationError("invalid_date_of_birth", "date_of_birth") from None
+
+        # Check if the username is available (before processing picture to avoid orphaned files)
         tot_users = self.sql_session.query(User)\
                         .filter(User.username == username).count()
         if tot_users != 0:
             # HTTP 409: Conflict
             raise tornado.web.HTTPError(409)
 
+        # Process picture (optional)
+        try:
+            picture_digest = process_picture_upload(
+                self.request.files,
+                self.service.file_cacher,
+                "Profile picture for %s" % username
+            )
+        except PictureValidationError as e:
+            raise RegistrationError(e.code, "picture") from e
+
         # Store new user
-        user = User(first_name, last_name, username, password, email=email)
+        user = User(first_name, last_name, username, password, email=email,
+                    date_of_birth=date_of_birth, picture=picture_digest)
         self.sql_session.add(user)
 
         return user
@@ -483,14 +521,14 @@ def translate_text(source_text, source_lang, target_lang, supported_languages):
     """
     if not source_text:
         return None, N_("Please enter text to translate.")
-    
+
     supported_language_codes = set(supported_languages.keys())
     supported_language_codes |= {
         GOOGLE_TRANSLATE_CODE_MAP[lang]
         for lang in supported_languages
         if lang in GOOGLE_TRANSLATE_CODE_MAP
     }
-    
+
     allowed_source_codes = supported_language_codes | {'auto'}
     allowed_target_codes = supported_language_codes
 
@@ -502,7 +540,7 @@ def translate_text(source_text, source_lang, target_lang, supported_languages):
         return None, N_("Invalid target language.")
     if source_lang == target_lang and source_lang != 'auto':
         return None, N_("Source and target languages must be different.")
-    
+
     normalized_source = GOOGLE_TRANSLATE_CODE_MAP.get(source_lang, source_lang)
     normalized_target = GOOGLE_TRANSLATE_CODE_MAP.get(target_lang, target_lang)
 

@@ -29,35 +29,181 @@
 
 import csv
 import io
+import logging
 import re
+from datetime import date
 
 from sqlalchemy import and_, exists
 from cms.db import Contest, Participation, Submission, Team, User
-from cms.server.util import exclude_internal_contests
-from cmscommon.crypto import (parse_authentication, 
-                               hash_password, validate_password_strength)
+from cms.server.picture_utils import (
+    process_picture_upload, PictureValidationError
+)
+from cms.server.util import exclude_internal_contests, validate_date_of_birth
+from cmscommon.crypto import (parse_authentication,
+                              hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
 
 
-class UserHandler(BaseHandler):
+logger = logging.getLogger(__name__)
+
+
+class UserValidationMixin:
+    """Mixin for validating and processing user data."""
+
+    def validate_user_data(self, user=None):
+        """Validate user data from request and return attributes.
+
+        Args:
+            user: The existing user object (optional).
+
+        Returns:
+            A tuple (attrs, picture_digest_to_delete) where attrs is the
+            dictionary of validated attributes and picture_digest_to_delete
+            is the digest of the old picture to remove (if any).
+        """
+        if user:
+            attrs = user.get_attrs()
+        else:
+            attrs = {}
+
+        self.get_string(attrs, "first_name")
+        self.get_string(attrs, "last_name")
+        self.get_string(attrs, "username", empty=None)
+        self.get_string(attrs, "email", empty=None)
+
+        # Validate password strength unless explicitly bypassed
+        # (e.g., for imports or tests)
+        password = self.get_argument("password", "")
+        allow_weak = self.get_argument("allow_weak_password", None)
+
+        if len(password) > 0 and allow_weak is None:
+            user_inputs = []
+            if attrs.get("username"):
+                user_inputs.append(attrs["username"])
+            if attrs.get("email"):
+                user_inputs.append(attrs["email"])
+            validate_password_strength(password, user_inputs)
+
+        old_password = user.password if user else None
+        self.get_password(attrs, old_password, False, allow_weak)
+        self.get_string_list(attrs, "preferred_languages")
+        self.get_string(attrs, "timezone", empty=None)
+
+        # Handle date of birth
+        date_of_birth_str = self.get_argument("date_of_birth", "").strip()
+        if not date_of_birth_str:
+            # For new users, date_of_birth is required
+            if user is None:
+                raise ValueError("date_of_birth required")
+            attrs["date_of_birth"] = None
+        else:
+            try:
+                attrs["date_of_birth"] = validate_date_of_birth(date_of_birth_str)
+            except ValueError as e:
+                raise ValueError(f"Invalid date of birth: {e}") from e
+
+        # Validate username before any file operations to avoid persisting
+        # uploads on validation failure
+        if attrs.get("username") is None:
+            raise ValueError("No username specified.")
+        if attrs.get("username").startswith("__"):
+            raise ValueError(
+                "Username cannot start with '__' (reserved for system users)."
+            )
+
+        # Handle picture upload
+        old_picture_digest = user.picture if user else None
+        new_picture_digest = process_picture_upload(
+            self.request.files,
+            self.service.file_cacher,
+            "Profile picture for %s" % attrs.get("username", "user"),
+        )
+
+        picture_digest_to_delete = None
+        newly_uploaded_picture_digest = None
+        if new_picture_digest is not None and new_picture_digest != old_picture_digest:
+            attrs["picture"] = new_picture_digest
+            newly_uploaded_picture_digest = new_picture_digest
+            if old_picture_digest is not None:
+                picture_digest_to_delete = old_picture_digest
+
+        return attrs, picture_digest_to_delete, newly_uploaded_picture_digest
+
+    def save_user(self, user, fallback_page):
+        """Validate and save user, handling commit and cleanup.
+
+        Returns the user object on success, or None on failure (after redirecting).
+        """
+        try:
+            attrs, picture_digest_to_delete, newly_uploaded_picture_digest = (
+                self.validate_user_data(user)
+            )
+
+            if user:
+                user.set_attrs(attrs)
+            else:
+                user = User(**attrs)
+                self.sql_session.add(user)
+
+        except PictureValidationError as e:
+            self.service.add_notification(
+                make_datetime(), "Picture upload failed", e.message
+            )
+            self.redirect(fallback_page)
+            return None
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error)
+            )
+            self.redirect(fallback_page)
+            return None
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+            if picture_digest_to_delete:
+                try:
+                    self.service.file_cacher.delete(picture_digest_to_delete)
+                except Exception:
+                    logger.warning(
+                        "Failed to delete old picture %s for user %s",
+                        picture_digest_to_delete,
+                        user.username,
+                    )
+            return user
+        else:
+            if newly_uploaded_picture_digest:
+                try:
+                    self.service.file_cacher.delete(newly_uploaded_picture_digest)
+                except Exception:
+                    logger.warning(
+                        "Failed to delete new picture %s for user %s after commit failure",
+                        newly_uploaded_picture_digest,
+                        user.username,
+                    )
+            self.redirect(fallback_page)
+            return None
+
+
+class UserHandler(BaseHandler, UserValidationMixin):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, user_id):
         user = self.safe_get_item(User, user_id)
 
         self.r_params = self.render_params()
         self.r_params["user"] = user
-        self.r_params["participations"] = \
-            self.sql_session.query(Participation)\
-                .filter(Participation.user == user)\
-                .all()
+        self.r_params["participations"] = (
+            self.sql_session.query(Participation)
+            .filter(Participation.user == user)
+            .all()
+        )
         self.r_params["unassigned_contests"] = exclude_internal_contests(
             self.sql_session.query(Contest).filter(
                 ~exists().where(
                     and_(
                         Participation.contest_id == Contest.id,
-                        Participation.user == user
+                        Participation.user == user,
                     )
                 )
             )
@@ -67,51 +213,10 @@ class UserHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, user_id):
         fallback_page = self.url("user", user_id)
-
         user = self.safe_get_item(User, user_id)
 
-        try:
-            attrs = user.get_attrs()
-
-            self.get_string(attrs, "first_name")
-            self.get_string(attrs, "last_name")
-            self.get_string(attrs, "username", empty=None)
-            self.get_string(attrs, "email", empty=None)
-
-            # Validate password strength unless explicitly bypassed
-            # (e.g., for imports or tests)
-            password = self.get_argument("password", "")
-            allow_weak = self.get_argument("allow_weak_password", None)
-            if len(password) > 0 and allow_weak is None:
-                user_inputs = []
-                if attrs.get("username"):
-                    user_inputs.append(attrs["username"])
-                if attrs.get("email"):
-                    user_inputs.append(attrs["email"])
-                validate_password_strength(password, user_inputs)
-
-            self.get_password(attrs, user.password, False)
-            self.get_string_list(attrs, "preferred_languages")
-            self.get_string(attrs, "timezone", empty=None)
-
-            assert attrs.get("username") is not None, \
-                "No username specified."
-            assert not attrs.get("username").startswith("__"), \
-                "Username cannot start with '__' (reserved for system users)."
-
-            # Update the user.
-            user.set_attrs(attrs)
-
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
+        if self.save_user(user, fallback_page):
             self.redirect(fallback_page)
-            return
-
-        if self.try_commit():
-            # Update the user on RWS.
-            self.service.proxy_service.reinitialize()
-        self.redirect(fallback_page)
 
 
 class UserListHandler(SimpleHandler("users.html")):
@@ -132,14 +237,13 @@ class UserListHandler(SimpleHandler("users.html")):
             self.redirect(asking_page)
         else:
             self.service.add_notification(
-                make_datetime(), "Invalid operation %s" % operation, "")
+                make_datetime(), "Invalid operation %s" % operation, ""
+            )
             self.redirect(self.url("contests"))
 
 
 class ExportUsersHandler(BaseHandler):
-    """Export all users to a CSV file.
-
-    """
+    """Export all users to a CSV file."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self):
@@ -148,16 +252,19 @@ class ExportUsersHandler(BaseHandler):
         output = io.StringIO()
         writer = csv.writer(output)
 
-        writer.writerow([
-            "First name",
-            "Last name",
-            "Username",
-            "Password",
-            "Plain text / Hash",
-            "E-mail",
-            "Timezone",
-            "Preferred languages"
-        ])
+        writer.writerow(
+            [
+                "First name",
+                "Last name",
+                "Username",
+                "Password",
+                "Plain text / Hash",
+                "E-mail",
+                "Date of birth",
+                "Timezone",
+                "Preferred languages",
+            ]
+        )
 
         for user in users:
             try:
@@ -168,18 +275,27 @@ class ExportUsersHandler(BaseHandler):
                 password_type = "Unknown"
                 password_value = user.password
 
-            preferred_languages = "; ".join(user.preferred_languages) if user.preferred_languages else ""
+            preferred_languages = (
+                "; ".join(user.preferred_languages) if user.preferred_languages else ""
+            )
 
-            writer.writerow([
-                user.first_name or "",
-                user.last_name or "",
-                user.username or "",
-                password_value or "",
-                password_type,
-                user.email or "",
-                user.timezone or "",
-                preferred_languages
-            ])
+            date_of_birth_str = (
+                user.date_of_birth.isoformat() if user.date_of_birth else ""
+            )
+
+            writer.writerow(
+                [
+                    user.first_name or "",
+                    user.last_name or "",
+                    user.username or "",
+                    password_value or "",
+                    password_type,
+                    user.email or "",
+                    date_of_birth_str,
+                    user.timezone or "",
+                    preferred_languages,
+                ]
+            )
 
         self.set_header("Content-Type", "text/csv")
         self.set_header("Content-Disposition", "attachment; filename=users.csv")
@@ -204,16 +320,20 @@ class ImportUsersHandler(BaseHandler):
 
         if "csv_file" not in self.request.files:
             self.service.add_notification(
-                make_datetime(), "No file uploaded", "Please select a CSV file to upload.")
+                make_datetime(),
+                "No file uploaded",
+                "Please select a CSV file to upload.",
+            )
             self.redirect(fallback_page)
             return
 
         csv_file = self.request.files["csv_file"][0]
         filename = csv_file["filename"]
 
-        if not filename.lower().endswith('.csv'):
+        if not filename.lower().endswith(".csv"):
             self.service.add_notification(
-                make_datetime(), "Invalid file type", "Only CSV files are accepted.")
+                make_datetime(), "Invalid file type", "Only CSV files are accepted."
+            )
             self.redirect(fallback_page)
             return
 
@@ -221,22 +341,35 @@ class ImportUsersHandler(BaseHandler):
             content = csv_file["body"].decode("utf-8")
         except UnicodeDecodeError:
             self.service.add_notification(
-                make_datetime(), "Invalid file encoding", "CSV file must be UTF-8 encoded.")
+                make_datetime(),
+                "Invalid file encoding",
+                "CSV file must be UTF-8 encoded.",
+            )
             self.redirect(fallback_page)
             return
 
         reader = csv.DictReader(io.StringIO(content))
 
         expected_headers = {
-            "First name", "Last name", "Username", "Password",
-            "Plain text / Hash", "E-mail", "Timezone", "Preferred languages"
+            "First name",
+            "Last name",
+            "Username",
+            "Password",
+            "Plain text / Hash",
+            "E-mail",
+            "Date of birth",
+            "Timezone",
+            "Preferred languages",
         }
 
-        if not reader.fieldnames or not expected_headers.issubset(set(reader.fieldnames)):
+        if not reader.fieldnames or not expected_headers.issubset(
+            set(reader.fieldnames)
+        ):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid CSV format",
-                f"CSV must have headers: {', '.join(expected_headers)}")
+                f"CSV must have headers: {', '.join(expected_headers)}",
+            )
             self.redirect(fallback_page)
             return
 
@@ -245,7 +378,7 @@ class ImportUsersHandler(BaseHandler):
         existing_users = []
         row_num = 1
 
-        username_pattern = re.compile(r'^[A-Za-z0-9_-]+$')
+        username_pattern = re.compile(r"^[A-Za-z0-9_-]+$")
 
         for row in reader:
             row_num += 1
@@ -257,13 +390,16 @@ class ImportUsersHandler(BaseHandler):
             password = row.get("Password", "").strip()
             password_type = row.get("Plain text / Hash", "").strip()
             email = row.get("E-mail", "").strip()
+            date_of_birth_str = row.get("Date of birth", "").strip()
             timezone = row.get("Timezone", "").strip()
             preferred_languages_str = row.get("Preferred languages", "").strip()
 
             if not username:
                 errors.append("Username is required")
             elif not username_pattern.match(username):
-                errors.append("Username must contain only letters, numbers, hyphens, and underscores")
+                errors.append(
+                    "Username must contain only letters, numbers, hyphens, and underscores"
+                )
 
             if not first_name:
                 errors.append("First name is required")
@@ -275,19 +411,37 @@ class ImportUsersHandler(BaseHandler):
                 errors.append("Password is required")
 
             if password_type and password_type.lower() not in ["plain text", "hash"]:
-                errors.append(f"Invalid password type '{password_type}'. Must be 'Plain text' or 'Hash'")
+                errors.append(
+                    f"Invalid password type '{password_type}'. Must be 'Plain text' or 'Hash'"
+                )
+
+            # Parse date of birth (optional, but validate format if provided)
+            date_of_birth = None
+            if date_of_birth_str:
+                try:
+                    date_of_birth = date.fromisoformat(date_of_birth_str)
+                except ValueError:
+                    errors.append(
+                        f"Invalid date of birth format '{date_of_birth_str}'. Use YYYY-MM-DD format."
+                    )
 
             if errors:
-                failed_users.append({
-                    "row": row_num,
-                    "username": username,
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "errors": errors
-                })
+                failed_users.append(
+                    {
+                        "row": row_num,
+                        "username": username,
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "errors": errors,
+                    }
+                )
                 continue
 
-            preferred_languages = [lang.strip() for lang in re.split(r"[;,]", preferred_languages_str) if lang.strip()]
+            preferred_languages = [
+                lang.strip()
+                for lang in re.split(r"[;,]", preferred_languages_str)
+                if lang.strip()
+            ]
 
             if password_type.lower() == "plain text":
                 password_value = hash_password(password, "bcrypt")
@@ -297,7 +451,9 @@ class ImportUsersHandler(BaseHandler):
                 else:
                     password_value = f"bcrypt:{password}"
 
-            existing_user = self.sql_session.query(User).filter(User.username == username).first()
+            existing_user = (
+                self.sql_session.query(User).filter(User.username == username).first()
+            )
 
             user_data = {
                 "username": username,
@@ -305,9 +461,10 @@ class ImportUsersHandler(BaseHandler):
                 "last_name": last_name,
                 "password": password_value,
                 "email": email if email else None,
+                "date_of_birth": date_of_birth.isoformat() if date_of_birth else None,
                 "timezone": timezone if timezone else None,
                 "preferred_languages": preferred_languages,
-                "row": row_num
+                "row": row_num,
             }
 
             if existing_user:
@@ -315,6 +472,11 @@ class ImportUsersHandler(BaseHandler):
                 user_data["existing_first_name"] = existing_user.first_name
                 user_data["existing_last_name"] = existing_user.last_name
                 user_data["existing_email"] = existing_user.email
+                user_data["existing_date_of_birth"] = (
+                    existing_user.date_of_birth.isoformat()
+                    if existing_user.date_of_birth
+                    else None
+                )
                 user_data["existing_timezone"] = existing_user.timezone
                 existing_users.append(user_data)
             else:
@@ -328,9 +490,7 @@ class ImportUsersHandler(BaseHandler):
 
 
 class ImportUsersConfirmHandler(BaseHandler):
-    """Confirm and execute the user import.
-
-    """
+    """Confirm and execute the user import."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
@@ -344,7 +504,8 @@ class ImportUsersConfirmHandler(BaseHandler):
             existing_users = json.loads(existing_users_json)
         except json.JSONDecodeError:
             self.service.add_notification(
-                make_datetime(), "Invalid data", "Failed to parse user data.")
+                make_datetime(), "Invalid data", "Failed to parse user data."
+            )
             self.redirect(self.url("users"))
             return
 
@@ -354,19 +515,25 @@ class ImportUsersConfirmHandler(BaseHandler):
 
         for user_data in new_users:
             try:
+                date_of_birth = None
+                if user_data.get("date_of_birth"):
+                    date_of_birth = date.fromisoformat(user_data["date_of_birth"])
                 user = User(
                     username=user_data["username"],
                     first_name=user_data["first_name"],
                     last_name=user_data["last_name"],
                     password=user_data["password"],
                     email=user_data.get("email"),
+                    date_of_birth=date_of_birth,
                     timezone=user_data.get("timezone"),
-                    preferred_languages=user_data.get("preferred_languages", [])
+                    preferred_languages=user_data.get("preferred_languages", []),
                 )
                 self.sql_session.add(user)
                 created_count += 1
             except Exception as error:
-                errors.append(f"Failed to create user {user_data['username']}: {str(error)}")
+                errors.append(
+                    f"Failed to create user {user_data['username']}: {str(error)}"
+                )
 
         update_user_ids = self.get_arguments("update_user")
 
@@ -374,17 +541,31 @@ class ImportUsersConfirmHandler(BaseHandler):
             user_id = str(user_data["existing_id"])
             if user_id in update_user_ids:
                 try:
-                    user = self.sql_session.query(User).filter(User.id == user_data["existing_id"]).first()
+                    user = (
+                        self.sql_session.query(User)
+                        .filter(User.id == user_data["existing_id"])
+                        .first()
+                    )
                     if user:
                         user.first_name = user_data["first_name"]
                         user.last_name = user_data["last_name"]
                         user.password = user_data["password"]
                         user.email = user_data.get("email")
+                        if user_data.get("date_of_birth"):
+                            user.date_of_birth = date.fromisoformat(
+                                user_data["date_of_birth"]
+                            )
+                        else:
+                            user.date_of_birth = None
                         user.timezone = user_data.get("timezone")
-                        user.preferred_languages = user_data.get("preferred_languages", [])
+                        user.preferred_languages = user_data.get(
+                            "preferred_languages", []
+                        )
                         updated_count += 1
                 except Exception as error:
-                    errors.append(f"Failed to update user {user_data['username']}: {str(error)}")
+                    errors.append(
+                        f"Failed to update user {user_data['username']}: {str(error)}"
+                    )
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()
@@ -392,9 +573,6 @@ class ImportUsersConfirmHandler(BaseHandler):
             if errors:
                 message += f" Errors: {'; '.join(errors)}"
             self.service.add_notification(make_datetime(), "Import completed", message)
-        else:
-            self.service.add_notification(
-                make_datetime(), "Import failed", "Failed to commit changes to database.")
 
         self.redirect(self.url("users"))
 
@@ -431,11 +609,14 @@ class RemoveUserHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, user_id):
         user = self.safe_get_item(User, user_id)
-        submission_query = self.sql_session.query(Submission)\
-            .join(Submission.participation)\
+        submission_query = (
+            self.sql_session.query(Submission)
+            .join(Submission.participation)
             .filter(Participation.user == user)
-        participation_query = self.sql_session.query(Participation)\
-            .filter(Participation.user == user)
+        )
+        participation_query = self.sql_session.query(Participation).filter(
+            Participation.user == user
+        )
 
         self.render_params_for_remove_confirmation(submission_query)
         self.r_params["user"] = user
@@ -476,7 +657,6 @@ class RemoveTeamHandler(BaseHandler):
     def delete(self, team_id):
         team = self.safe_get_item(Team, team_id)
         try:
-
             # Remove associations
             self.sql_session.query(Participation).filter(
                 Participation.team_id == team_id
@@ -501,6 +681,7 @@ class TeamHandler(BaseHandler):
     If referred by GET, this handler will return a pre-filled HTML form.
     If referred by POST, this handler will sync the team data with the form's.
     """
+
     def get(self, team_id):
         team = self.safe_get_item(Team, team_id)
 
@@ -519,15 +700,16 @@ class TeamHandler(BaseHandler):
             self.get_string(attrs, "code")
             self.get_string(attrs, "name")
 
-            assert attrs.get("code") is not None, \
-                "No team code specified."
+            if attrs.get("code") is None:
+                raise ValueError("No team code specified.")
 
             # Update the team.
             team.set_attrs(attrs)
 
         except Exception as error:
             self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
+                make_datetime(), "Invalid field(s)", repr(error)
+            )
             self.redirect(fallback_page)
             return
 
@@ -548,8 +730,8 @@ class AddTeamHandler(SimpleHandler("add_team.html", permission_all=True)):
             self.get_string(attrs, "code")
             self.get_string(attrs, "name")
 
-            assert attrs.get("code") is not None, \
-                "No team code specified."
+            if attrs.get("code") is None:
+                raise ValueError("No team code specified.")
 
             # Create the team.
             team = Team(**attrs)
@@ -557,7 +739,8 @@ class AddTeamHandler(SimpleHandler("add_team.html", permission_all=True)):
 
         except Exception as error:
             self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
+                make_datetime(), "Invalid field(s)", repr(error)
+            )
             self.redirect(fallback_page)
             return
 
@@ -569,57 +752,16 @@ class AddTeamHandler(SimpleHandler("add_team.html", permission_all=True)):
         self.redirect(fallback_page)
 
 
-class AddUserHandler(SimpleHandler("add_user.html", permission_all=True)):
+class AddUserHandler(
+    SimpleHandler("add_user.html", permission_all=True), UserValidationMixin
+):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
         fallback_page = self.url("users", "add")
 
-        try:
-            attrs = dict()
-
-            self.get_string(attrs, "first_name")
-            self.get_string(attrs, "last_name")
-            self.get_string(attrs, "username", empty=None)
-
-            self.get_string(attrs, "email", empty=None)
-
-            assert attrs.get("username") is not None, \
-                "No username specified."
-            assert not attrs.get("username").startswith("__"), \
-                "Username cannot start with '__' (reserved for system users)."
-
-            # Validate password strength unless explicitly bypassed
-            # (e.g., for imports or tests)
-            password = self.get_argument("password", "")
-            allow_weak = self.get_argument("allow_weak_password", None)
-            if len(password) > 0 and allow_weak is None:
-                user_inputs = [attrs["username"]]
-                if attrs.get("email"):
-                    user_inputs.append(attrs["email"])
-                validate_password_strength(password, user_inputs)
-
-            self.get_password(attrs, None, False)
-
-            self.get_string(attrs, "timezone", empty=None)
-
-            self.get_string_list(attrs, "preferred_languages")
-
-            # Create the user.
-            user = User(**attrs)
-            self.sql_session.add(user)
-
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
-            return
-
-        if self.try_commit():
-            # Create the user on RWS.
-            self.service.proxy_service.reinitialize()
+        user = self.save_user(None, fallback_page)
+        if user:
             self.redirect(self.url("user", user.id))
-        else:
-            self.redirect(fallback_page)
 
 
 class AddParticipationHandler(BaseHandler):
@@ -631,7 +773,8 @@ class AddParticipationHandler(BaseHandler):
 
         try:
             contest_id: str = self.get_argument("contest_id")
-            assert contest_id != "", "Please select a valid contest"
+            if contest_id == "":
+                raise ValueError("Please select a valid contest")
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -669,10 +812,10 @@ class EditParticipationHandler(BaseHandler):
         try:
             contest_id: str = self.get_argument("contest_id")
             operation: str = self.get_argument("operation")
-            assert contest_id != "", "Please select a valid contest"
-            assert operation in (
-                "Remove",
-            ), "Please select a valid operation"
+            if contest_id == "":
+                raise ValueError("Please select a valid contest")
+            if operation not in ("Remove",):
+                raise ValueError("Please select a valid operation")
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -793,3 +936,44 @@ class DenyPasswordResetHandler(BaseHandler):
             )
 
         self.redirect(fallback_page)
+
+
+class RemovePictureHandler(BaseHandler):
+    """Remove a user's profile picture."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, user_id):
+        fallback_page = self.url("user", user_id)
+
+        user = self.safe_get_item(User, user_id)
+
+        if not user.picture:
+            self.service.add_notification(
+                make_datetime(),
+                "No picture to remove",
+                "User %s does not have a profile picture." % user.username
+            )
+            self.write(fallback_page)
+            return
+
+        old_picture_digest = user.picture
+        user.picture = None
+
+        if self.try_commit():
+            # Delete old picture from file cacher after successful commit
+            try:
+                self.service.file_cacher.delete(old_picture_digest)
+            except Exception:
+                logger.warning(
+                    "Failed to delete picture %s for user %s",
+                    old_picture_digest,
+                    user.username
+                )
+            self.service.add_notification(
+                make_datetime(),
+                "Picture removed",
+                "Profile picture for user %s has been removed." % user.username
+            )
+            self.service.proxy_service.reinitialize()
+
+        self.write(fallback_page)
