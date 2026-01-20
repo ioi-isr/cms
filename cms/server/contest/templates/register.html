@@ -257,7 +257,7 @@ $(document).ready(function() {
             <li class="active" id="register-pill"><a href="#" data-toggle="tab">{% trans %}New user{% endtrans %}</a></li>
             <li id="join-pill"><a href="#" data-toggle="tab">{% trans %}Join contest{% endtrans %}</a></li>
         </ul>
-        <form id="signup" class="form-horizontal" action="{{ contest_url('register') }}" enctype="multipart/form-data">
+        <form id="signup" class="form-horizontal" action="{{ contest_url('register') }}" method="post" enctype="multipart/form-data">
             {{ xsrf_form_html|safe }}
             {% set next_page = handler.get_argument("next", none) %}
             {% if next_page is not none %}
@@ -296,8 +296,10 @@ $(document).ready(function() {
                     (function() {
                         var input = document.getElementById('date_of_birth');
                         var today = new Date();
-                        var maxDate = today.toISOString().split('T')[0];
-                        var minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+                        var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+                        var maxDate = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+                        var minDateObj = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate());
+                        var minDate = minDateObj.getFullYear() + '-' + pad(minDateObj.getMonth() + 1) + '-' + pad(minDateObj.getDate());
                         input.setAttribute('max', maxDate);
                         input.setAttribute('min', minDate);
                     })();

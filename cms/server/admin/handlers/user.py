@@ -102,7 +102,7 @@ class UserValidationMixin:
             try:
                 attrs["date_of_birth"] = validate_date_of_birth(date_of_birth_str)
             except ValueError as e:
-                raise ValueError("Invalid date of birth format") from e
+                raise ValueError(f"Invalid date of birth: {e}") from e
 
         # Validate username before any file operations to avoid persisting
         # uploads on validation failure
@@ -122,12 +122,14 @@ class UserValidationMixin:
         )
 
         picture_digest_to_delete = None
+        newly_uploaded_picture_digest = None
         if new_picture_digest is not None and new_picture_digest != old_picture_digest:
             attrs["picture"] = new_picture_digest
+            newly_uploaded_picture_digest = new_picture_digest
             if old_picture_digest is not None:
                 picture_digest_to_delete = old_picture_digest
 
-        return attrs, picture_digest_to_delete
+        return attrs, picture_digest_to_delete, newly_uploaded_picture_digest
 
     def save_user(self, user, fallback_page):
         """Validate and save user, handling commit and cleanup.
@@ -135,7 +137,9 @@ class UserValidationMixin:
         Returns the user object on success, or None on failure (after redirecting).
         """
         try:
-            attrs, picture_digest_to_delete = self.validate_user_data(user)
+            attrs, picture_digest_to_delete, newly_uploaded_picture_digest = (
+                self.validate_user_data(user)
+            )
 
             if user:
                 user.set_attrs(attrs)
@@ -169,14 +173,13 @@ class UserValidationMixin:
                     )
             return user
         else:
-            uploaded_picture_digest = attrs.get("picture")
-            if uploaded_picture_digest:
+            if newly_uploaded_picture_digest:
                 try:
-                    self.service.file_cacher.delete(uploaded_picture_digest)
+                    self.service.file_cacher.delete(newly_uploaded_picture_digest)
                 except Exception:
                     logger.warning(
                         "Failed to delete new picture %s for user %s after commit failure",
-                        uploaded_picture_digest,
+                        newly_uploaded_picture_digest,
                         user.username,
                     )
             self.redirect(fallback_page)

@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 # Maximum file size in bytes (5MB)
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
+# Maximum file size after re-encoding (10MB - allows for expansion during processing)
+MAX_POST_PROCESSING_FILE_SIZE = 10 * 1024 * 1024
+
 # Maximum dimensions in pixels
 MAX_DIMENSION = 1280
 
@@ -98,6 +101,23 @@ def validate_file_size(data: bytes) -> None:
         raise PictureValidationError(
             "file_too_large",
             f"Image file is too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB."
+        )
+
+
+def validate_post_processing_file_size(data: bytes) -> None:
+    """Validate that the re-encoded file size is within post-processing limits.
+
+    This allows for larger files after re-encoding since compression can
+    legitimately increase file size (e.g., highly optimized PNGs).
+
+    data: the file content as bytes.
+
+    raise (PictureValidationError): if the file is too large.
+    """
+    if len(data) > MAX_POST_PROCESSING_FILE_SIZE:
+        raise PictureValidationError(
+            "file_too_large_after_processing",
+            f"Image file too large after processing. Maximum size is {MAX_POST_PROCESSING_FILE_SIZE // (1024 * 1024)}MB.",
         )
 
 
@@ -279,4 +299,11 @@ def process_picture(
     img.save(output, **save_kwargs)
     output.seek(0)
 
-    return output.read(), FORMAT_TO_MIME[img_format]
+    # Step 8: Final validation of re-encoded file size
+    # Re-encoding (especially PNG/GIF/WEBP compression) can change file size.
+    # A highly optimized input could expand when re-saved, so we validate
+    # the final output size with a more lenient limit to allow for expansion.
+    final_data = output.read()
+    validate_post_processing_file_size(final_data)
+
+    return final_data, FORMAT_TO_MIME[img_format]
