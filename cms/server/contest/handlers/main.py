@@ -225,6 +225,12 @@ class RegistrationHandler(ContestHandler):
         except ValueError:
             raise RegistrationError("invalid_date_of_birth", "date_of_birth") from None
 
+        # Validate date is within reasonable range (not future, not > 120 years ago)
+        today = date.today()
+        min_date = date(today.year - 120, today.month, today.day)
+        if date_of_birth > today or date_of_birth < min_date:
+            raise RegistrationError("invalid_date_of_birth", "date_of_birth")
+
         # Check if the username is available (before processing picture to avoid orphaned files)
         tot_users = self.sql_session.query(User)\
                         .filter(User.username == username).count()
@@ -506,14 +512,14 @@ def translate_text(source_text, source_lang, target_lang, supported_languages):
     """
     if not source_text:
         return None, N_("Please enter text to translate.")
-    
+
     supported_language_codes = set(supported_languages.keys())
     supported_language_codes |= {
         GOOGLE_TRANSLATE_CODE_MAP[lang]
         for lang in supported_languages
         if lang in GOOGLE_TRANSLATE_CODE_MAP
     }
-    
+
     allowed_source_codes = supported_language_codes | {'auto'}
     allowed_target_codes = supported_language_codes
 
@@ -525,7 +531,7 @@ def translate_text(source_text, source_lang, target_lang, supported_languages):
         return None, N_("Invalid target language.")
     if source_lang == target_lang and source_lang != 'auto':
         return None, N_("Source and target languages must be different.")
-    
+
     normalized_source = GOOGLE_TRANSLATE_CODE_MAP.get(source_lang, source_lang)
     normalized_target = GOOGLE_TRANSLATE_CODE_MAP.get(target_lang, target_lang)
 

@@ -226,7 +226,7 @@ $(document).ready(function() {
                         $("#picture").focus();
                     } else if (payload.code === "dimensions_too_large") {
                         $("#picture-input").addClass("error");
-                        $("#picture-input span.help-block").text("{% trans %}Image dimensions are too large. Maximum is 1024x1024 pixels.{% endtrans %}");
+                        $("#picture-input span.help-block").text("{% trans %}Image dimensions are too large. Maximum is 1280x1280 pixels.{% endtrans %}");
                         $("#picture").focus();
                     } else if (payload.code === "invalid_image") {
                         $("#picture-input").addClass("error");

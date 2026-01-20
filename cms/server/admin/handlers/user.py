@@ -103,10 +103,12 @@ class UserValidationMixin:
 
         # Validate username before any file operations to avoid persisting
         # uploads on validation failure
-        assert attrs.get("username") is not None, "No username specified."
-        assert not attrs.get("username").startswith("__"), (
-            "Username cannot start with '__' (reserved for system users)."
-        )
+        if attrs.get("username") is None:
+            raise ValueError("No username specified.")
+        if attrs.get("username").startswith("__"):
+            raise ValueError(
+                "Username cannot start with '__' (reserved for system users)."
+            )
 
         # Handle picture upload
         old_picture_digest = user.picture if user else None
@@ -123,6 +125,61 @@ class UserValidationMixin:
                 picture_digest_to_delete = old_picture_digest
 
         return attrs, picture_digest_to_delete
+
+    def save_user(self, user, fallback_page):
+        """Validate and save user, handling commit and cleanup.
+
+        Returns the user object on success, or None on failure (after redirecting).
+        """
+        try:
+            attrs, picture_digest_to_delete = self.validate_user_data(user)
+            new_picture_digest = attrs.get("picture")
+
+            if user:
+                if new_picture_digest == user.picture:
+                    new_picture_digest = None
+                user.set_attrs(attrs)
+            else:
+                user = User(**attrs)
+                self.sql_session.add(user)
+
+        except PictureValidationError as e:
+            self.service.add_notification(
+                make_datetime(), "Picture upload failed", e.message
+            )
+            self.redirect(fallback_page)
+            return None
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error)
+            )
+            self.redirect(fallback_page)
+            return None
+
+        if self.try_commit():
+            self.service.proxy_service.reinitialize()
+            if picture_digest_to_delete:
+                try:
+                    self.service.file_cacher.delete(picture_digest_to_delete)
+                except Exception:
+                    logger.warning(
+                        "Failed to delete old picture %s for user %s",
+                        picture_digest_to_delete,
+                        user.username,
+                    )
+            return user
+        else:
+            if new_picture_digest:
+                try:
+                    self.service.file_cacher.delete(new_picture_digest)
+                except Exception:
+                    logger.warning(
+                        "Failed to delete new picture %s for user %s after commit failure",
+                        new_picture_digest,
+                        user.username,
+                    )
+            self.redirect(fallback_page)
+            return None
 
 
 class UserHandler(BaseHandler, UserValidationMixin):
@@ -152,42 +209,10 @@ class UserHandler(BaseHandler, UserValidationMixin):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, user_id):
         fallback_page = self.url("user", user_id)
-
         user = self.safe_get_item(User, user_id)
 
-        try:
-            attrs, picture_digest_to_delete = self.validate_user_data(user)
-
-            # Update the user.
-            user.set_attrs(attrs)
-
-        except PictureValidationError as e:
-            self.service.add_notification(
-                make_datetime(), "Picture upload failed", e.message
-            )
+        if self.save_user(user, fallback_page):
             self.redirect(fallback_page)
-            return
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error)
-            )
-            self.redirect(fallback_page)
-            return
-
-        if self.try_commit():
-            # Update the user on RWS.
-            self.service.proxy_service.reinitialize()
-            # Delete old picture from file cacher after successful commit
-            if picture_digest_to_delete:
-                try:
-                    self.service.file_cacher.delete(picture_digest_to_delete)
-                except Exception:
-                    logger.warning(
-                        "Failed to delete old picture %s for user %s",
-                        picture_digest_to_delete,
-                        user.username,
-                    )
-        self.redirect(fallback_page)
 
 
 class UserListHandler(SimpleHandler("users.html")):
@@ -544,12 +569,6 @@ class ImportUsersConfirmHandler(BaseHandler):
             if errors:
                 message += f" Errors: {'; '.join(errors)}"
             self.service.add_notification(make_datetime(), "Import completed", message)
-        else:
-            self.service.add_notification(
-                make_datetime(),
-                "Import failed",
-                "Failed to commit changes to database.",
-            )
 
         self.redirect(self.url("users"))
 
@@ -677,7 +696,8 @@ class TeamHandler(BaseHandler):
             self.get_string(attrs, "code")
             self.get_string(attrs, "name")
 
-            assert attrs.get("code") is not None, "No team code specified."
+            if attrs.get("code") is None:
+                raise ValueError("No team code specified.")
 
             # Update the team.
             team.set_attrs(attrs)
@@ -706,7 +726,8 @@ class AddTeamHandler(SimpleHandler("add_team.html", permission_all=True)):
             self.get_string(attrs, "code")
             self.get_string(attrs, "name")
 
-            assert attrs.get("code") is not None, "No team code specified."
+            if attrs.get("code") is None:
+                raise ValueError("No team code specified.")
 
             # Create the team.
             team = Team(**attrs)
@@ -734,32 +755,9 @@ class AddUserHandler(
     def post(self):
         fallback_page = self.url("users", "add")
 
-        try:
-            attrs, _ = self.validate_user_data(user=None)
-
-            # Create the user.
-            user = User(**attrs)
-            self.sql_session.add(user)
-
-        except PictureValidationError as e:
-            self.service.add_notification(
-                make_datetime(), "Picture upload failed", e.message
-            )
-            self.redirect(fallback_page)
-            return
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error)
-            )
-            self.redirect(fallback_page)
-            return
-
-        if self.try_commit():
-            # Create the user on RWS.
-            self.service.proxy_service.reinitialize()
+        user = self.save_user(None, fallback_page)
+        if user:
             self.redirect(self.url("user", user.id))
-        else:
-            self.redirect(fallback_page)
 
 
 class AddParticipationHandler(BaseHandler):
@@ -771,7 +769,8 @@ class AddParticipationHandler(BaseHandler):
 
         try:
             contest_id: str = self.get_argument("contest_id")
-            assert contest_id != "", "Please select a valid contest"
+            if contest_id == "":
+                raise ValueError("Please select a valid contest")
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -809,10 +808,10 @@ class EditParticipationHandler(BaseHandler):
         try:
             contest_id: str = self.get_argument("contest_id")
             operation: str = self.get_argument("operation")
-            assert contest_id != "", "Please select a valid contest"
-            assert operation in (
-                "Remove",
-            ), "Please select a valid operation"
+            if contest_id == "":
+                raise ValueError("Please select a valid contest")
+            if operation not in ("Remove",):
+                raise ValueError("Please select a valid operation")
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
