@@ -44,8 +44,8 @@ except:
 import tornado.web
 
 from cms import config
-from cms.db import Dataset, Generator, Manager, Message, Participation, \
-    Session, Submission, Task, Testcase
+from cms.db import Dataset, Generator, Manager, Message, ModelSolutionMeta, \
+    Participation, Session, Submission, Task, Testcase
 from cms.grading.tasktypes.util import \
     get_allowed_manager_basenames, compile_manager_bytes, create_sandbox
 from cms.grading.languagemanager import filename_to_language, get_language
@@ -1130,10 +1130,18 @@ class GenerateTestcasesHandler(BaseHandler):
         task = dataset.task
         self.contest = task.contest
 
+        # Get model solutions that have been compiled (have executables)
+        compiled_model_solutions = []
+        for meta in dataset.model_solution_metas:
+            result = meta.submission.get_result(dataset)
+            if result is not None and result.executables:
+                compiled_model_solutions.append(meta)
+
         self.r_params = self.render_params()
         self.r_params["task"] = task
         self.r_params["dataset"] = dataset
         self.r_params["generator"] = generator
+        self.r_params["model_solutions"] = compiled_model_solutions
         self.render("generate_testcases.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -1159,9 +1167,38 @@ class GenerateTestcasesHandler(BaseHandler):
 
         overwrite = self.get_argument("overwrite", "") == "on"
         public = self.get_argument("public", "") == "on"
+        output_source = self.get_argument("output_source", "generator")
 
         input_template = generator.input_filename_template
         output_template = generator.output_filename_template
+
+        # Check if we're using a model solution for output generation
+        model_solution_meta = None
+        model_solution_result = None
+        if output_source.startswith("model_solution_"):
+            try:
+                meta_id = int(output_source.replace("model_solution_", ""))
+                model_solution_meta = self.safe_get_item(
+                    ModelSolutionMeta, meta_id)
+                if model_solution_meta.dataset_id != dataset.id:
+                    raise tornado.web.HTTPError(400, "Invalid model solution")
+                model_solution_result = model_solution_meta.submission.get_result(
+                    dataset)
+                if model_solution_result is None or \
+                        not model_solution_result.executables:
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Model solution not compiled",
+                        "The selected model solution has not been compiled.")
+                    self.redirect(fallback_page)
+                    return
+            except (ValueError, TypeError):
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid output source",
+                    "The selected output source is invalid.")
+                self.redirect(fallback_page)
+                return
 
         self.sql_session.close()
 
@@ -1245,19 +1282,17 @@ class GenerateTestcasesHandler(BaseHandler):
             input_re = compile_template_regex(input_template)
             output_re = compile_template_regex(output_template)
 
-            temp_zip = io.BytesIO()
-            with zipfile.ZipFile(temp_zip, "w") as zf:
-                sandbox_home = sandbox.relative_path("")
-                for root, _dirs, files in os.walk(sandbox_home):
-                    for filename in files:
-                        if filename in [exe_name, "stdout.txt", "stderr.txt"]:
-                            continue
-                        rel_path = os.path.relpath(
-                            os.path.join(root, filename), sandbox_home)
-                        content = sandbox.get_file_to_string(rel_path, maxlen=None)
-                        zf.writestr(rel_path, content)
-
-            temp_zip.seek(0)
+            # Collect files from generator sandbox
+            generated_files = {}  # filename -> content
+            sandbox_home = sandbox.relative_path("")
+            for root, _dirs, files in os.walk(sandbox_home):
+                for filename in files:
+                    if filename in [exe_name, "stdout.txt", "stderr.txt"]:
+                        continue
+                    rel_path = os.path.relpath(
+                        os.path.join(root, filename), sandbox_home)
+                    content = sandbox.get_file_to_string(rel_path, maxlen=None)
+                    generated_files[rel_path] = content
 
         except Exception as error:
             self.service.add_notification(
@@ -1269,6 +1304,35 @@ class GenerateTestcasesHandler(BaseHandler):
         finally:
             if sandbox:
                 sandbox.cleanup(delete=True)
+
+        # If using model solution for outputs, generate them now
+        if model_solution_meta is not None:
+            try:
+                generated_files = self._generate_outputs_with_model_solution(
+                    generated_files,
+                    input_re,
+                    output_template,
+                    model_solution_result,
+                    model_solution_meta.submission.language,
+                    dataset.task_type_parameters,
+                    fallback_page)
+                if generated_files is None:
+                    # Error already reported, redirect already done
+                    return
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Model solution execution error",
+                    repr(error))
+                self.redirect(fallback_page)
+                return
+
+        # Create zip from generated files
+        temp_zip = io.BytesIO()
+        with zipfile.ZipFile(temp_zip, "w") as zf:
+            for filename, content in generated_files.items():
+                zf.writestr(filename, content)
+        temp_zip.seek(0)
 
         self.sql_session = Session()
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -1302,6 +1366,176 @@ class GenerateTestcasesHandler(BaseHandler):
             self.redirect(self.url("task", task.id))
         else:
             self.redirect(fallback_page)
+
+    def _generate_outputs_with_model_solution(
+            self,
+            generated_files,
+            input_re,
+            output_template,
+            model_solution_result,
+            language_name,
+            task_type_parameters,
+            fallback_page):
+        """Generate output files by running a model solution on input files.
+
+        generated_files: dict of filename -> content from generator
+        input_re: compiled regex for matching input files
+        output_template: template for output filenames (e.g., "output.*")
+        model_solution_result: SubmissionResult with compiled executables
+        language_name: language name of the model solution
+        task_type_parameters: task type parameters for I/O configuration
+        fallback_page: URL to redirect to on error
+
+        return: updated generated_files dict with outputs, or None on error
+        """
+        # Get the executable
+        if not model_solution_result.executables:
+            self.service.add_notification(
+                make_datetime(),
+                "Model solution not compiled",
+                "The model solution has no compiled executables.")
+            self.redirect(fallback_page)
+            return None
+
+        exe_filename = next(iter(model_solution_result.executables.keys()))
+        exe_digest = model_solution_result.executables[exe_filename].digest
+
+        # Get language for evaluation commands
+        sol_language = None
+        if language_name:
+            try:
+                sol_language = get_language(language_name)
+            except KeyError:
+                logger.debug(
+                    "Language '%s' not found for model solution, "
+                    "using default execution",
+                    language_name)
+
+        # Parse task type parameters to determine I/O mode
+        # Default to stdin/stdout if parameters are not available
+        input_filename = ""
+        output_filename = ""
+        if task_type_parameters and len(task_type_parameters) >= 2:
+            io_params = task_type_parameters[1]
+            if isinstance(io_params, (list, tuple)) and len(io_params) >= 2:
+                input_filename = io_params[0] or ""
+                output_filename = io_params[1] or ""
+
+        # Determine actual input/output filenames
+        actual_input = input_filename if input_filename else "input.txt"
+        actual_output = output_filename if output_filename else "output.txt"
+
+        # Find input files and generate outputs
+        input_files = {}  # codename -> content
+        for filename, content in generated_files.items():
+            match = input_re.match(filename)
+            if match:
+                codename = match.group(1)
+                input_files[codename] = content
+
+        if not input_files:
+            self.service.add_notification(
+                make_datetime(),
+                "No input files found",
+                "The generator did not produce any files matching the "
+                "input template.")
+            self.redirect(fallback_page)
+            return None
+
+        # Generate output for each input file
+        result_files = dict(generated_files)  # Start with all generated files
+        for codename, input_content in input_files.items():
+            output_filename_for_tc = output_template.replace("*", codename)
+
+            sandbox = None
+            try:
+                sandbox = create_sandbox(self.service.file_cacher,
+                                         name="admin_model_solution")
+
+                # Copy executable
+                sandbox.create_file_from_storage(exe_filename, exe_digest,
+                                                 executable=True)
+
+                # Copy input file
+                sandbox.create_file_from_string(actual_input, input_content)
+
+                # Prepare execution command
+                main_name = os.path.splitext(exe_filename)[0]
+                if sol_language is not None:
+                    cmd = sol_language.get_evaluation_commands(
+                        exe_filename, main=main_name)
+                    if cmd:
+                        cmd = cmd[0]
+                    else:
+                        cmd = ["./" + exe_filename]
+                else:
+                    cmd = ["./" + exe_filename]
+
+                # Set up I/O redirection
+                stdin_redirect = None
+                stdout_redirect = None
+                if not input_filename:  # Use stdin
+                    stdin_redirect = actual_input
+                if not output_filename:  # Use stdout
+                    stdout_redirect = actual_output
+
+                sandbox.stdin_file = stdin_redirect
+                sandbox.stdout_file = stdout_redirect
+                sandbox.stderr_file = "stderr.txt"
+
+                # No time/memory limits for output generation (per user request)
+                box_success = sandbox.execute_without_std(cmd, wait=True)
+
+                if not box_success:
+                    stderr = ""
+                    try:
+                        stderr = sandbox.get_file_to_string(
+                            "stderr.txt", maxlen=65536)
+                    except FileNotFoundError:
+                        pass
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Model solution execution failed",
+                        "Sandbox error for testcase '%s'.\nStderr:\n%s" %
+                        (codename, stderr))
+                    self.redirect(fallback_page)
+                    return None
+
+                exit_status = sandbox.get_exit_status()
+                if exit_status != sandbox.EXIT_OK:
+                    stderr = ""
+                    try:
+                        stderr = sandbox.get_file_to_string(
+                            "stderr.txt", maxlen=65536)
+                    except FileNotFoundError:
+                        pass
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Model solution execution failed",
+                        "Exit status '%s' for testcase '%s'.\nStderr:\n%s" %
+                        (exit_status, codename, stderr))
+                    self.redirect(fallback_page)
+                    return None
+
+                # Read output
+                if not sandbox.file_exists(actual_output):
+                    self.service.add_notification(
+                        make_datetime(),
+                        "Model solution produced no output",
+                        "No output file '%s' for testcase '%s'." %
+                        (actual_output, codename))
+                    self.redirect(fallback_page)
+                    return None
+
+                output_content = sandbox.get_file_to_string(
+                    actual_output, maxlen=None)
+                result_files[output_filename_for_tc] = output_content
+
+            finally:
+                if sandbox:
+                    sandbox.cleanup(delete=True)
+
+        return result_files
 
 
 class RenameTestcaseHandler(BaseHandler):

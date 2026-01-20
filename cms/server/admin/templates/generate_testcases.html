@@ -20,6 +20,20 @@
       <td>{{ generator.output_filename_template }}</td>
     </tr>
     <tr>
+      <td>Output generation:</td>
+      <td>
+        <select name="output_source">
+          <option value="generator">Generator outputs (default)</option>
+          {% for meta in model_solutions %}
+          <option value="model_solution_{{ meta.id }}">Model solution: {{ meta.name }}{% if meta.description %} ({{ meta.description }}){% endif %}</option>
+          {% endfor %}
+        </select>
+        {% if not model_solutions %}
+        <br><small>No compiled model solutions available for this dataset.</small>
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
       <td>Override existing testcases:</td>
       <td>
         <input type="checkbox" name="overwrite" checked>
