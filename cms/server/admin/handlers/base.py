@@ -584,7 +584,13 @@ class BaseHandler(CommonRequestHandler):
         dest["score_type"] = name
         dest["score_type_parameters"] = params
 
-    def get_password(self, dest: dict, old_password: str | None, allow_unset: bool):
+    def get_password(
+        self,
+        dest: dict,
+        old_password: str | None,
+        allow_unset: bool,
+        allow_empty: bool = True,
+    ):
         """Parse a (possibly hashed) password.
 
         Parse the value of the password and the method that should be
@@ -597,6 +603,8 @@ class BaseHandler(CommonRequestHandler):
             "<method>:" prefix.
         allow_unset: whether the password is allowed to be left unset,
             which is represented as a value of None in dest.
+        allow_empty: whether the password is allowed to be the empty
+            string (hashed).
 
         """
         # The admin leaving the password field empty could mean one of
@@ -639,6 +647,8 @@ class BaseHandler(CommonRequestHandler):
             dest["password"] = None
         # Or that they really mean the password to be the empty string.
         else:
+            if not allow_empty:
+                raise ValueError("Password cannot be empty.")
             dest["password"] = hash_password("", method)
 
     def render_params_for_submissions(

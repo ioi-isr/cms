@@ -1,0 +1,26 @@
+{#
+  Fragment for user date of birth form field.
+
+  Parameters:
+  - user: The user object (optional, for edit mode)
+#}
+<tr>
+  <td>
+    <span class="info" title="Date of birth of the contestant."></span>
+    Date of birth
+  </td>
+  <td>
+    <input type="date" name="date_of_birth" id="date_of_birth_input"
+           value="{{ user.date_of_birth.isoformat() if user and user.date_of_birth is not none else '' }}"/>
+    <script>
+    (function() {
+      var input = document.getElementById('date_of_birth_input');
+      var today = new Date();
+      var maxDate = today.toISOString().split('T')[0];
+      var minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+      input.setAttribute('max', maxDate);
+      input.setAttribute('min', minDate);
+    })();
+    </script>
+  </td>
+</tr>

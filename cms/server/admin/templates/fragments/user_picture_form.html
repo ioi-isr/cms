@@ -1,5 +1,5 @@
 {#
-  Fragment for user date of birth and picture upload form fields.
+  Fragment for user picture upload form fields.
 
   Parameters:
   - user: The user object (optional, for edit mode)
@@ -10,31 +10,11 @@
 
 <tr>
   <td>
-    <span class="info" title="Date of birth of the contestant."></span>
-    Date of birth
-  </td>
-  <td>
-    <input type="date" name="date_of_birth" id="date_of_birth_input"
-           value="{{ user.date_of_birth.isoformat() if user is defined and user.date_of_birth is not none else '' }}"/>
-    <script>
-    (function() {
-      var input = document.getElementById('date_of_birth_input');
-      var today = new Date();
-      var maxDate = today.toISOString().split('T')[0];
-      var minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate()).toISOString().split('T')[0];
-      input.setAttribute('max', maxDate);
-      input.setAttribute('min', minDate);
-    })();
-    </script>
-  </td>
-</tr>
-<tr>
-  <td>
     <span class="info" title="Profile picture of the contestant. Max {{ max_file_size_mb }}MB, JPEG/PNG/GIF/WEBP, max 1280x1280 pixels."></span>
     Profile picture
   </td>
   <td>
-    {% if user is defined and user.picture %}
+    {% if user and user.picture %}
     <div id="current_picture_container" style="margin-bottom: 10px;">
       <img src="{{ url('file', user.picture, 'picture') }}" alt="Profile picture" style="max-width: 160px; max-height: 240px; border: 1px solid #ccc;"/>
       <br/>
