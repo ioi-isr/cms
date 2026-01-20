@@ -51,6 +51,40 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
     </div>
 {% endmacro %}
 
+{% macro type_badge_color(type_name) %}
+    {# Generate a neutral pastel color based on string hash for training day types #}
+    {% set hash = 0 %}
+    {% for char in type_name %}
+        {% set hash = (hash * 31 + loop.index) % 360 %}
+    {% endfor %}
+    {# Use hues in blue-purple-teal range (180-280) for neutral look #}
+    {% set hue = 180 + (hash % 100) %}
+    background-color: hsl({{ hue }}, 35%, 92%); color: hsl({{ hue }}, 50%, 35%); border: 1px solid hsl({{ hue }}, 30%, 80%);
+{% endmacro %}
+
+{% macro header_bg_color(training_day_types) %}
+    {# Generate a subtle background color for training day header based on first type #}
+    {% if training_day_types and training_day_types|length > 0 %}
+        {% set type_name = training_day_types[0] %}
+        {% set hash = 0 %}
+        {% for char in type_name %}
+            {% set hash = (hash * 31 + loop.index) % 360 %}
+        {% endfor %}
+        {% set hue = 180 + (hash % 100) %}
+        background-color: hsl({{ hue }}, 25%, 97%);
+    {% else %}
+        background-color: #f9fafb;
+    {% endif %}
+{% endmacro %}
+
+{% macro render_type_badge(type_name) %}
+    <span class="type-badge" style="{{ type_badge_color(type_name) }} padding: 1px 6px; border-radius: 10px; font-size: 0.7em; margin: 1px; display: inline-block; white-space: nowrap;">{{ type_name }}</span>
+{% endmacro %}
+
+{% macro render_student_tag_badge(tag_name) %}
+    <span class="student-tag-badge" style="background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 1px 5px; border-radius: 8px; font-size: 0.65em; margin: 1px; display: inline-block; white-space: nowrap;">{{ tag_name }}</span>
+{% endmacro %}
+
 <div class="core_title tp-page-header">
   <h1>Combined Ranking: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
 </div>
@@ -92,16 +126,18 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
   <table class="ranking-table" id="ranking_table">
     <thead>
       <tr>
-        <th class="student-header" rowspan="2">Student Name</th>
+        <th class="student-header" rowspan="2">Student</th>
         {% for td in archived_training_days %}
         {# Colspan = Number of tasks + 1 (for Total) #}
-        <th class="training-day-header no-sort" colspan="{{ (training_day_tasks.get(td.id, [])|length) + 1 }}">
+        <th class="training-day-header no-sort" colspan="{{ (training_day_tasks.get(td.id, [])|length) + 1 }}" style="{{ header_bg_color(td.training_day_types) }}">
           <div class="training-day-header-main">{{ td.description or td.name or "Session" }}</div>
           {% if td.start_time %}
           <div class="training-day-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
           {% endif %}
           {% if td.training_day_types %}
-          <div class="training-day-header-types" style="font-size: 0.75em; color: #6b7280; margin-top: 2px;">{{ td.training_day_types | join(', ') }}</div>
+          <div class="training-day-header-types" style="margin-top: 3px;">
+            {% for type_name in td.training_day_types %}{{ render_type_badge(type_name) }}{% endfor %}
+          </div>
           {% endif %}
         </th>
         {% endfor %}
@@ -115,11 +151,11 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
       <tr>
         {% for td in archived_training_days %}
           {% for task in training_day_tasks.get(td.id, []) %}
-          <th class="task-header" title="{{ task.title }}" data-parent-day="{{ td.id }}">
+          <th class="task-header" title="{{ task.title }}" data-parent-day="{{ td.id }}" style="{{ header_bg_color(td.training_day_types) }}">
               {{ task.name }}
           </th>
           {% endfor %}
-          <th class="total-col" title="Daily Total">Total</th>
+          <th class="total-col" title="Daily Total" style="{{ header_bg_color(td.training_day_types) }}">Total</th>
         {% endfor %}
       </tr>
     </thead>
@@ -127,25 +163,31 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
       {% for student in sorted_students %}
       {% set global_total = namespace(value=0) %}
       <tr>
-        {# Sticky Student Name Column #}
+        {# Sticky Student Column - compact layout #}
         <th>
-          <div class="student-name-wrapper">
+          <div class="student-name-wrapper" style="display: flex; flex-direction: row; align-items: center; gap: 8px; min-width: 200px;">
             {% if student.participation %}
-                <a class="student-name-link" href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}">
-                    {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
-                </a>
-                <span class="student-username">{{ student.participation.user.username }}</span>
-
-                <div style="margin-top: 4px;">
-                    {% set params = [] %}
-                    {% if start_date %}{% set _ = params.append('start_date=' ~ start_date.strftime('%Y-%m-%d')) %}{% endif %}
-                    {% if end_date %}{% set _ = params.append('end_date=' ~ end_date.strftime('%Y-%m-%d')) %}{% endif %}
-                    {% if training_day_types %}{% set _ = params.append('training_day_types=' ~ (training_day_types | join(',') | urlencode)) %}{% endif %}
-                    {% if student_tags %}{% set _ = params.append('student_tags=' ~ (student_tags | join(',') | urlencode)) %}{% endif %}
-                    {% if student_tags %}{% set _ = params.append('student_tags_mode=' ~ student_tags_mode) %}{% endif %}
-                    <a class="history-link" href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if params %}?{{ params | join('&') }}{% endif %}" title="View score/rank history">
-                        <i style="font-size: 0.8em;">📊 View History</i>
-                    </a>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <a class="student-name-link" href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}" style="white-space: nowrap;">
+                            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
+                        </a>
+                        <span class="student-username" style="font-size: 0.8em;">({{ student.participation.user.username }})</span>
+                        {% set params = [] %}
+                        {% if start_date %}{% set _ = params.append('start_date=' ~ start_date.strftime('%Y-%m-%d')) %}{% endif %}
+                        {% if end_date %}{% set _ = params.append('end_date=' ~ end_date.strftime('%Y-%m-%d')) %}{% endif %}
+                        {% if training_day_types %}{% set _ = params.append('training_day_types=' ~ (training_day_types | join(',') | urlencode)) %}{% endif %}
+                        {% if student_tags %}{% set _ = params.append('student_tags=' ~ (student_tags | join(',') | urlencode)) %}{% endif %}
+                        {% if student_tags %}{% set _ = params.append('student_tags_mode=' ~ student_tags_mode) %}{% endif %}
+                        <a class="history-link" href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if params %}?{{ params | join('&') }}{% endif %}" title="View score/rank history" style="font-size: 0.75em;">
+                            📊
+                        </a>
+                    </div>
+                    {% if student.student_tags %}
+                    <div style="margin-top: 2px;">
+                        {% for tag in student.student_tags %}{{ render_student_tag_badge(tag) }}{% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
             {% else %}
                 <span style="color:#9ca3af;">(Unknown Student)</span>
@@ -168,7 +210,7 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
             </td>
           {% endfor %}
 
-          <td class="total-col">
+          <td class="total-col" style="{{ header_bg_color(td.training_day_types) }}">
             <div class="cell-content">
                 {% set attendance = attendance_data.get(student.id, {}).get(td.id) %}
                 {% if ranking and ranking.task_scores %}
