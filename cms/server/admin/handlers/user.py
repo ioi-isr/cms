@@ -31,6 +31,7 @@ import csv
 import io
 import logging
 import re
+from datetime import date
 
 from sqlalchemy import and_, exists
 from cms.db import Contest, Participation, Submission, Team, User

@@ -97,11 +97,11 @@ def validate_date_of_birth(date_of_birth_str: str) -> date:
         raise ValueError("Invalid date of birth format") from e
 
     # Validate date is not in the future
-    if parsed_date > date.today():
+    today = date.today()
+    if parsed_date > today:
         raise ValueError("Date of birth cannot be in the future")
 
     # Add 120-year lower bound check using timedelta to handle leap years
-    today = date.today()
     max_age_delta = timedelta(days=120 * 365.25)  # ~120 years accounting for leap years
     if today - parsed_date > max_age_delta:
         raise ValueError("Date of birth cannot be more than 120 years ago")
