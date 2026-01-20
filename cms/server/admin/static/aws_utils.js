@@ -416,12 +416,30 @@ CMS.AWSUtils.prototype.close_notification = function(item) {
  */
 function get_table_row_comparator(column_idx, numeric, ascending) {
     return function(a, b) {
-        var valA = $(a).children("td").eq(column_idx).text();
-        var valB = $(b).children("td").eq(column_idx).text();
-        var result = numeric
-            ? Number(valA) - Number(valB)
-            : valA.localeCompare(valB);
-        return ascending ? -result : result;
+        var cellA = $(a).children("td").eq(column_idx);
+        var cellB = $(b).children("td").eq(column_idx);
+
+        // Use data-value if present, otherwise fallback to text
+        var valA = cellA.attr("data-value");
+        if (typeof valA === "undefined") valA = cellA.text().trim();
+
+        var valB = cellB.attr("data-value");
+        if (typeof valB === "undefined") valB = cellB.text().trim();
+
+        if (numeric) {
+            var numA = parseFloat(valA);
+            var numB = parseFloat(valB);
+
+            // Treat non-numeric/empty as a very low number so they sink to bottom
+            if (isNaN(numA)) numA = -9999999;
+            if (isNaN(numB)) numB = -9999999;
+
+            var result = numA - numB;
+            return ascending ? result : -result;
+        } else {
+            var result = valA.localeCompare(valB);
+            return ascending ? result : -result;
+        }
     }
 }
 
@@ -436,7 +454,7 @@ CMS.AWSUtils.sort_table = function(table, column_idx, ascending, header_element)
     var table_rows = table
         .children("tbody")
         .children("tr");
-    
+
     // Use provided header element if available, otherwise find by index
     var column_header;
     if (header_element) {

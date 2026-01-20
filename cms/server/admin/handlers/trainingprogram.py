@@ -50,6 +50,7 @@ from cms.db import (
 from cms.db.training_day import get_managing_participation
 from cms.server.util import (
     get_all_student_tags,
+    get_all_student_tags_with_historical,
     get_all_training_day_types,
     calculate_task_archive_progress,
     can_access_task,
@@ -2873,7 +2874,8 @@ class TrainingProgramCombinedRankingHandler(
         self.r_params["student_tags_mode"] = student_tags_mode
         self.r_params["all_training_day_types"] = get_all_training_day_types(
             training_program)
-        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+        self.r_params["all_student_tags"] = get_all_student_tags_with_historical(
+            training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\

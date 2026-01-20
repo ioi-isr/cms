@@ -45,11 +45,11 @@ if (filterInput && typeof Tagify !== 'undefined') {
 </form>
 
 {% if archived_training_days %}
-<div class="table-container">
+<div class="tp-table-container">
   <table class="attendance-table" id="attendance_table">
     <thead>
       <tr>
-        <th>Student Name</th>
+        <th>Student</th>
         {% for td in archived_training_days %}
         <th>
           <div class="date-header-main">{{ td.description or td.name or "Session" }}</div>
@@ -57,7 +57,11 @@ if (filterInput && typeof Tagify !== 'undefined') {
           <div class="date-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
           {% endif %}
           {% if td.training_day_types %}
-          <div class="date-header-types" style="font-size: 0.75em; color: #6b7280; margin-top: 2px;">{{ td.training_day_types | join(', ') }}</div>
+          <div class="date-header-types" style="margin-top: 4px; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px;">
+            {% for type in td.training_day_types %}
+                <span class="badge badge-slate badge-pill" style="font-weight: normal; font-size: 0.7em;">{{ type }}</span>
+            {% endfor %}
+          </div>
           {% endif %}
         </th>
         {% endfor %}
@@ -67,11 +71,32 @@ if (filterInput && typeof Tagify !== 'undefined') {
       {% for student in sorted_students %}
       <tr>
         <th>
-          {% if student.participation %}
-            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }} (<a href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}">{{ student.participation.user.username }}</a>)
-          {% else %}
-            <span style="color:#9ca3af;">(Unknown)</span>
-          {% endif %}
+          <div class="student-name-wrapper">
+            {% if student.participation %}
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: baseline; gap: 6px; max-width: 100%;">
+                        <a class="student-name-link"
+                           href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}"
+                           title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}"
+                           style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%;">
+                            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
+                        </a>
+                        <span class="student-username">
+                            ({{ student.participation.user.username }})
+                        </span>
+                    </div>
+                    {% if student.student_tags %}
+                    <div style="margin-top: 3px; display: flex; flex-wrap: wrap; gap: 2px;">
+                        {% for tag in student.student_tags %}
+                          <span class="badge badge-teal" style="font-weight: normal; font-size: 0.7em;">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <span style="color:#9ca3af;">(Unknown)</span>
+            {% endif %}
+          </div>
         </th>
         {% for td in archived_training_days %}
           {% set att = attendance_data.get(student.id, {}).get(td.id) %}
