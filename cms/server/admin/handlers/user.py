@@ -31,14 +31,13 @@ import csv
 import io
 import logging
 import re
-from datetime import date
 
 from sqlalchemy import and_, exists
 from cms.db import Contest, Participation, Submission, Team, User
 from cms.server.picture_utils import (
     process_picture_upload, PictureValidationError
 )
-from cms.server.util import exclude_internal_contests
+from cms.server.util import exclude_internal_contests, validate_date_of_birth
 from cmscommon.crypto import (parse_authentication,
                               hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
@@ -100,16 +99,7 @@ class UserValidationMixin:
             attrs["date_of_birth"] = None
         else:
             try:
-                parsed_date = date.fromisoformat(date_of_birth_str)
-                # Validate date is not in the future
-                if parsed_date > date.today():
-                    raise ValueError("Date of birth cannot be in the future")
-                # Add 120-year lower bound check
-                today = date.today()
-                min_date = date(today.year - 120, today.month, today.day)
-                if parsed_date < min_date:
-                    raise ValueError("Date of birth cannot be more than 120 years ago")
-                attrs["date_of_birth"] = parsed_date
+                attrs["date_of_birth"] = validate_date_of_birth(date_of_birth_str)
             except ValueError as e:
                 raise ValueError("Invalid date of birth format") from e
 

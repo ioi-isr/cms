@@ -36,7 +36,6 @@ import os.path
 import re
 import secrets
 import smtplib
-from datetime import date, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -67,6 +66,7 @@ from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
 from cms.server.picture_utils import (
     process_picture_upload, PictureValidationError
 )
+from cms.server.util import validate_date_of_birth
 from cmscommon.crypto import hash_password, validate_password, \
     validate_password_strength, WeakPasswordError
 from cmscommon.datetime import make_datetime, make_timestamp
@@ -236,15 +236,9 @@ class RegistrationHandler(ContestHandler):
         if not date_of_birth_str:
             raise RegistrationError("missing_date_of_birth", "date_of_birth")
         try:
-            date_of_birth = date.fromisoformat(date_of_birth_str)
+            date_of_birth = validate_date_of_birth(date_of_birth_str)
         except ValueError:
             raise RegistrationError("invalid_date_of_birth", "date_of_birth") from None
-
-        # Validate date is within reasonable range (not future, not > 120 years ago)
-        today = date.today()
-        min_date = date(today.year - 120, today.month, today.day)
-        if date_of_birth > today or date_of_birth < min_date:
-            raise RegistrationError("invalid_date_of_birth", "date_of_birth")
 
         # Check if the username is available (before processing picture to avoid orphaned files)
         tot_users = self.sql_session.query(User)\
