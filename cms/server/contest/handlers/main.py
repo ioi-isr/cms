@@ -117,11 +117,14 @@ class RegistrationHandler(ContestHandler):
             raise tornado.web.HTTPError(404)
 
         create_new_user = self.get_argument("new_user") == "true"
+        picture_digest_to_delete = None
 
         try:
             # Get or create user
             if create_new_user:
                 user = self._create_user()
+                # Store picture digest for potential cleanup if commit fails
+                picture_digest_to_delete = user.picture
             else:
                 user = self._get_user()
 
@@ -147,6 +150,18 @@ class RegistrationHandler(ContestHandler):
             self.set_status(400)
             self.set_header("Content-Type", "application/json")
             self.write(json.dumps({"code": e.code, "field": e.field}))
+        except Exception:
+            # Clean up picture if commit failed
+            if picture_digest_to_delete:
+                try:
+                    self.service.file_cacher.delete(picture_digest_to_delete)
+                except Exception:
+                    # Log warning but don't raise another exception
+                    logger.warning(
+                        "Failed to delete picture %s after registration commit failure",
+                        picture_digest_to_delete,
+                    )
+            raise
 
     @multi_contest
     def get(self):

@@ -93,13 +93,25 @@ class UserValidationMixin:
 
         # Handle date of birth
         date_of_birth_str = self.get_argument("date_of_birth", "").strip()
-        if date_of_birth_str:
-            try:
-                attrs["date_of_birth"] = date.fromisoformat(date_of_birth_str)
-            except ValueError:
-                raise ValueError("Invalid date of birth format") from None
-        else:
+        if not date_of_birth_str:
+            # For new users, date_of_birth is required
+            if user is None:
+                raise ValueError("date_of_birth required")
             attrs["date_of_birth"] = None
+        else:
+            try:
+                parsed_date = date.fromisoformat(date_of_birth_str)
+                # Validate date is not in the future
+                if parsed_date > date.today():
+                    raise ValueError("Date of birth cannot be in the future")
+                # Add 120-year lower bound check
+                today = date.today()
+                min_date = date(today.year - 120, today.month, today.day)
+                if parsed_date < min_date:
+                    raise ValueError("Date of birth cannot be more than 120 years ago")
+                attrs["date_of_birth"] = parsed_date
+            except ValueError as e:
+                raise ValueError("Invalid date of birth format") from e
 
         # Validate username before any file operations to avoid persisting
         # uploads on validation failure
@@ -119,7 +131,7 @@ class UserValidationMixin:
         )
 
         picture_digest_to_delete = None
-        if new_picture_digest is not None:
+        if new_picture_digest is not None and new_picture_digest != old_picture_digest:
             attrs["picture"] = new_picture_digest
             if old_picture_digest is not None:
                 picture_digest_to_delete = old_picture_digest
@@ -133,11 +145,8 @@ class UserValidationMixin:
         """
         try:
             attrs, picture_digest_to_delete = self.validate_user_data(user)
-            new_picture_digest = attrs.get("picture")
 
             if user:
-                if new_picture_digest == user.picture:
-                    new_picture_digest = None
                 user.set_attrs(attrs)
             else:
                 user = User(**attrs)
@@ -169,13 +178,14 @@ class UserValidationMixin:
                     )
             return user
         else:
-            if new_picture_digest:
+            uploaded_picture_digest = attrs.get("picture")
+            if uploaded_picture_digest:
                 try:
-                    self.service.file_cacher.delete(new_picture_digest)
+                    self.service.file_cacher.delete(uploaded_picture_digest)
                 except Exception:
                     logger.warning(
                         "Failed to delete new picture %s for user %s after commit failure",
-                        new_picture_digest,
+                        uploaded_picture_digest,
                         user.username,
                     )
             self.redirect(fallback_page)
