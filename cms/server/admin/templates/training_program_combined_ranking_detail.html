@@ -201,6 +201,7 @@
   {% set params = [] %}
   {% if start_date %}{% set _ = params.append('start_date=' ~ start_date.strftime('%Y-%m-%d')) %}{% endif %}
   {% if end_date %}{% set _ = params.append('end_date=' ~ end_date.strftime('%Y-%m-%d')) %}{% endif %}
+  {% if training_day_types %}{% for tdt in training_day_types %}{% set _ = params.append('training_day_types=' ~ tdt) %}{% endfor %}{% endif %}
   {% if student_tags %}{% set _ = params.append('student_tags=' ~ student_tags|join(',')) %}{% endif %}
   {% if student_tags_mode and student_tags_mode != 'current' %}{% set _ = params.append('student_tags_mode=' ~ student_tags_mode) %}{% endif %}
   <a href="{{ url("training_program", training_program.id, "combined_ranking") }}{% if params %}?{{ params|join('&') }}{% endif %}">&larr; Back to Combined Ranking</a>
@@ -208,7 +209,7 @@
   <a href="{{ url("training_program", training_program.id, "student", student.participation.user.id, "edit") }}">Edit Student</a>
 </div>
 
-{% if start_date or end_date or student_tags %}
+{% if start_date or end_date or training_day_types or student_tags %}
 <div class="filter-info">
   {% if start_date or end_date %}
   Showing data for training days
@@ -220,8 +221,12 @@
     until {{ end_date.strftime('%Y-%m-%d') }}
   {% endif %}
   {% endif %}
-  {% if student_tags %}
+  {% if training_day_types %}
     {% if start_date or end_date %}<br>{% endif %}
+    Filtered by training day types: <strong>{{ training_day_types|join(', ') }}</strong>
+  {% endif %}
+  {% if student_tags %}
+    {% if start_date or end_date or training_day_types %}<br>{% endif %}
     Filtered by student tags: <strong>{{ student_tags|join(', ') }}</strong>
     {% if student_tags_mode == 'historical' %}(during training){% else %}(current){% endif %}
   {% endif %}
