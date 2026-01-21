@@ -1,5 +1,37 @@
 {% extends "base.html" %}
 
+{% block js_init %}
+// Initialize read-only filter tagify for training day types (no AJAX save)
+var filterInput = document.querySelector('input[name="training_day_types"]');
+if (filterInput && typeof Tagify !== 'undefined') {
+    new Tagify(filterInput, {
+        delimiters: ",",
+        whitelist: {{ all_training_day_types | tojson }},
+        enforceWhitelist: true,
+        editTags: false,
+        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
+        originalInputValueFormat: function(valuesArr) {
+            return valuesArr.map(function(item) { return item.value; }).join(', ');
+        }
+    });
+}
+
+// Initialize read-only filter tagify for student tags (no AJAX save)
+var studentTagsInput = document.querySelector('input[name="student_tags"]');
+if (studentTagsInput && typeof Tagify !== 'undefined') {
+    new Tagify(studentTagsInput, {
+        delimiters: ",",
+        whitelist: {{ all_student_tags | default([]) | tojson }},
+        enforceWhitelist: true,
+        editTags: false,
+        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
+        originalInputValueFormat: function(valuesArr) {
+            return valuesArr.map(function(item) { return item.value; }).join(', ');
+        }
+    });
+}
+{% endblock js_init %}
+
 {% block core %}
 <div class="core_title page-header">
   <h1>Attendance: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
@@ -14,27 +46,42 @@
     <label class="tp-filter-label" for="end_date">To:</label>
     <input type="date" id="end_date" class="tp-filter-input" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
   </div>
-  
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="training_day_types">Types:</label>
+    <input type="text" id="training_day_types" name="training_day_types" style="min-width: 200px;" value="{{ training_day_types | join(', ') }}" />
+  </div>
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="student_tags">Student Tags:</label>
+    <input type="text" id="student_tags" name="student_tags" style="min-width: 200px;" value="{{ student_tags | join(', ') }}" />
+  </div>
+
   <div class="tp-filter-group" style="margin-left: 5px;">
       <button type="submit" class="tp-btn-primary">Apply Filter</button>
-      
-      {% if start_date or end_date %}
+
+      {% if start_date or end_date or training_day_types or student_tags %}
       <a href="{{ url('training_program', training_program.id, 'attendance') }}" class="tp-btn-secondary">Clear</a>
       {% endif %}
   </div>
 </form>
 
 {% if archived_training_days %}
-<div class="table-container">
+<div class="tp-table-container">
   <table class="attendance-table" id="attendance_table">
     <thead>
       <tr>
-        <th>Student Name</th>
+        <th class="no-sort">Student</th>
         {% for td in archived_training_days %}
-        <th>
+        <th data-sort-settings="numeric" data-sort-column="{{ loop.index - 1 }}">
           <div class="date-header-main">{{ td.description or td.name or "Session" }}</div>
           {% if td.start_time %}
           <div class="date-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
+          {% endif %}
+          {% if td.training_day_types %}
+          <div class="date-header-types" style="margin-top: 4px; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px;">
+            {% for type in td.training_day_types %}
+                <span class="badge badge-slate badge-pill" style="font-weight: normal; font-size: 0.7em;">{{ type }}</span>
+            {% endfor %}
+          </div>
           {% endif %}
         </th>
         {% endfor %}
@@ -43,17 +90,44 @@
     <tbody>
       {% for student in sorted_students %}
       <tr>
-        <th>
-          {% if student.participation %}
-            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }} (<a href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}">{{ student.participation.user.username }}</a>)
-          {% else %}
-            <span style="color:#9ca3af;">(Unknown)</span>
-          {% endif %}
+        <th class="no-sort">
+          <div class="student-name-wrapper">
+            {% if student.participation %}
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: baseline; gap: 6px; max-width: 100%;">
+                        <a class="student-name-link"
+                           href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}"
+                           title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}"
+                           style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%;">
+                            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
+                        </a>
+                        <span class="student-username">
+                            ({{ student.participation.user.username }})
+                        </span>
+                    </div>
+                    {% if student.student_tags %}
+                    <div style="margin-top: 3px; display: flex; flex-wrap: wrap; gap: 2px;">
+                        {% for tag in student.student_tags %}
+                          <span class="badge badge-teal" style="font-weight: normal; font-size: 0.7em;">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <span style="color:#9ca3af;">(Unknown)</span>
+            {% endif %}
+          </div>
         </th>
         {% for td in archived_training_days %}
           {% set att = attendance_data.get(student.id, {}).get(td.id) %}
-          <td>
-            {% if att %}
+          {% if att %}
+            {% if att.status == "missed" %}
+              <td data-value="3">
+              {% elif att.delay_time %}
+              <td data-value="2">
+              {% else %}
+              <td data-value="1">
+            {% endif %}
               <div class="cell-wrapper">
                 {% if att.status == "missed" %}
                   <div class="status-badge status-missed">
@@ -91,10 +165,12 @@
                   </div>
                 {% endif %}
               </div>
-            {% else %}
+            </td>
+          {% else %}
+            <td data-value="">
               <span class="empty-cell">&middot;</span>
-            {% endif %}
-          </td>
+            </td>
+          {% endif %}
         {% endfor %}
       </tr>
       {% else %}
