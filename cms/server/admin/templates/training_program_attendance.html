@@ -8,6 +8,7 @@ if (filterInput && typeof Tagify !== 'undefined') {
         delimiters: ",",
         whitelist: {{ all_training_day_types | tojson }},
         enforceWhitelist: true,
+        editTags: false,
         dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
         originalInputValueFormat: function(valuesArr) {
             return valuesArr.map(function(item) { return item.value; }).join(', ');
@@ -22,6 +23,7 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
         delimiters: ",",
         whitelist: {{ all_student_tags | default([]) | tojson }},
         enforceWhitelist: true,
+        editTags: false,
         dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
         originalInputValueFormat: function(valuesArr) {
             return valuesArr.map(function(item) { return item.value; }).join(', ');

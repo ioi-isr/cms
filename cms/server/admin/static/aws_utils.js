@@ -426,6 +426,7 @@ function get_table_row_comparator(column_idx, numeric, ascending) {
         var valB = cellB.attr("data-value");
         if (typeof valB === "undefined") valB = cellB.text().trim();
 
+        var result;
         if (numeric) {
             var numA = parseFloat(valA);
             var numB = parseFloat(valB);
@@ -434,10 +435,10 @@ function get_table_row_comparator(column_idx, numeric, ascending) {
             if (isNaN(numA)) numA = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
             if (isNaN(numB)) numB = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
 
-            var result = numA - numB;
+            result = numA - numB;
             return ascending ? result : -result;
         }else {
-            var result = valA.localeCompare(valB);
+            result = valA.localeCompare(valB);
             return ascending ? result : -result;
         }
     }
