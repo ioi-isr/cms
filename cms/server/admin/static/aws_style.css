@@ -2,6 +2,10 @@
     font-size: 100%;
 }
 
+:root {
+    --ranking-header-top: 90px;
+}
+
 .searchable-select {
     width: 240px;
     display: inline-block;
@@ -1471,8 +1475,8 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     vertical-align: middle;
 }
 
-.tp-btn-primary:hover { 
-    background-color: #0d655e; 
+.tp-btn-primary:hover {
+    background-color: #0d655e;
     color: white;
 }
 
@@ -1572,16 +1576,18 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     position: sticky;
     left: 0;
     background-color: white;
-    z-index: 5;
+    z-index: 8;
     text-align: left;
-    min-width: 180px;
-    max-width: 250px;
-    box-shadow: 1px 0 0 #e2e8f0; /* Visual right border */
-    border-right: none;
+    min-width: 250px;
+    max-width: 300px;
+    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.1);
+    clip-path: inset(0px -10px 0px 0px);
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #f1f5f9;
     overflow: hidden;
     text-overflow: ellipsis;
     color: #1e293b;
-    padding: 0; /* Inner div handles padding */
+    padding: 0;
 }
 
 /* 3. Top-Left Corner */
@@ -1654,6 +1660,27 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     pointer-events: none;
 }
 
+.global-total-header {
+    background-color: #f1f5f9 !important;
+    color: #0f172a;
+    font-weight: 800;
+    border-left: none !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+.ranking-table td.global-cell {
+    background-color: #f3f4f6 !important;
+    font-weight: 700;
+    border-left: none !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+.global-total-header::after,
+.ranking-table td.global-cell::after {
+    content: none !important;
+    display: none !important;
+}
+
 .training-day-header-main {
     font-size: 0.95rem;
     color: #334155;
@@ -1672,23 +1699,56 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     font-size: 0.8rem;
     color: #475569;
     vertical-align: bottom;
+    border-left: 1px solid #e2e8f0 !important;
+    border-top: 3px solid #e2e8f0;
 }
 
 /* Total Column specific styling */
 .total-col {
-    border-left: 2px solid #cbd5e1 !important;
-    background-color: #f8fafc;
+    border-left: 2px solid #e2e8f0 !important;
+    background-color: #f1f5f9;
 }
 
 .ranking-table thead th.total-col {
-    background-color: #f1f5f9;
+    background-color: #f1f5f9 !important;
     color: #0f172a;
     font-weight: 800;
 }
 
 .ranking-table tbody td.total-col {
+    background-color: #f1f5f9 !important;
     font-weight: 700;
     color: #0f172a;
+}
+
+.ranking-table th.training-day-header,
+.ranking-table th.total-col,
+.ranking-table td.total-col {
+    border-right: none !important;
+}
+
+.ranking-table th.training-day-header,
+.ranking-table th.total-col {
+    position: sticky;
+    z-index: 11;
+}
+
+.ranking-table td.total-col {
+    position: relative;
+    z-index: 5;
+}
+
+.ranking-table th.training-day-header::after,
+.ranking-table th.total-col::after,
+.ranking-table td.total-col::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 4px;
+    background-color: #cbd5e1;
+    z-index: 10;
 }
 
 /* Content wrapper for Ranking cells */
@@ -1696,12 +1756,15 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    height: 100%;
-    padding: 10px 12px;
-    min-height: 40px;
-    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
-    font-weight: 500;
+    padding: 12px 8px;
+    font-size: 1.25rem; /* Much smaller than 1.5em */
+    font-weight: 600;
+    border-radius: 6px; /* Soften the blockiness */
+    margin: 4px; /* Give the cell breathing room inside the grid */
+    height: calc(100% - 8px);
+    width: calc(100% - 8px);
+    color: #1e293b; /* Dark Slate, not black */
+    background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3));
 }
 
 /* Student name wrapper */
@@ -1737,16 +1800,25 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .inaccessible-cell {
-    background: repeating-linear-gradient(
-        45deg,
-        #f3f4f6,
-        #f3f4f6 10px,
-        #e5e7eb 10px,
-        #e5e7eb 20px
-    );
+    background-color: #f3f4f6;
+    background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+    background-size: 10px 10px;
     color: #9ca3af;
-    font-size: 0.75rem;
-    font-style: italic;
+}
+
+/* Attendance badges for combined ranking */
+.attendance-badge {
+    margin-left: 4px;
+    font-size: 0.75em;
+    vertical-align: middle;
+}
+
+.home-badge {
+    opacity: 0.7;
+}
+
+.missed-badge {
+    opacity: 0.8;
 }
 
 .history-link {
@@ -1763,8 +1835,83 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 /* Hover effects */
 .ranking-table tbody tr:hover td {
-    filter: brightness(0.97);
+    background-color: #e2e8f0;
 }
 .ranking-table tbody tr:hover th {
+    background-color: #e2e8f0;
+}
+
+.ranking-table tbody tr:nth-child(even) {
+    background-color: #f8fafc; /* Very light gray */
+}
+
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 9999px;
+    margin-right: 4px;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+}
+
+.badge-pill {
+    border-radius: 9999px;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.badge-teal {
+    background-color: #f0fdfa;
+    color: #0f766e;
+    border-color: #ccfbf1;
+}
+.badge-slate {
     background-color: #f8fafc;
+    color: #475569;
+    border-color: #e2e8f0;
+}
+
+.ranking-table thead th {
+    position: sticky;
+}
+
+.ranking-table thead tr:first-child th {
+    height: auto;
+    padding: 12px 8px;
+    background-color: #fff;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.ranking-table thead tr:nth-child(2) th {
+    top: var(--ranking-header-top);
+    z-index: 15;
+    box-shadow: 0 2px 4px -2px rgba(0,0,0,0.1);
+    background-color: #fff;
+}
+
+.ranking-table thead tr:first-child th[rowspan="2"] {
+    top: 0;
+    height: auto;
+    z-index: 30;
+    background-color: #f8fafc;
+    vertical-align: middle;
+}
+
+.ranking-table thead tr:first-child th.student-header {
+    left: 0;
+    z-index: 40;
+    border-right: 2px solid #e2e8f0;
+    width: 250px;
+}
+
+.ranking-table thead th.global-total-header {
+    z-index: 25;
 }

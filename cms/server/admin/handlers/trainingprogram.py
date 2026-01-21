@@ -22,6 +22,7 @@ Each training program has a managing contest that handles all submissions.
 """
 
 from datetime import datetime as dt, timedelta
+from urllib.parse import urlencode
 
 import tornado.web
 
@@ -49,8 +50,11 @@ from cms.db import (
 from cms.db.training_day import get_managing_participation
 from cms.server.util import (
     get_all_student_tags,
+    get_all_student_tags_with_historical,
+    get_all_training_day_types,
     calculate_task_archive_progress,
     can_access_task,
+    check_training_day_eligibility,
     parse_tags,
 )
 from cmscommon.datetime import make_datetime
@@ -1346,6 +1350,8 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
             .filter(Question.reply_timestamp.is_(None))\
             .filter(Question.ignored.is_(False))\
             .count()
+        self.r_params["all_training_day_types"] = get_all_training_day_types(
+            training_program)
 
         self.render("training_program_training_days.html", **self.r_params)
 
@@ -1818,6 +1824,39 @@ class RemoveTrainingDayGroupHandler(BaseHandler):
         self.sql_session.delete(group)
         self.try_commit()
         self.redirect(self.url("contest", contest_id))
+
+
+class TrainingDayTypesHandler(BaseHandler):
+    """Handler for updating training day types via AJAX."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, training_day_id: str):
+        self.set_header("Content-Type", "application/json")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            self.set_status(404)
+            self.write({"error": "Training day does not belong to this program"})
+            return
+
+        try:
+            types_str = self.get_argument("training_day_types", "")
+            training_day.training_day_types = parse_tags(types_str)
+
+            if self.try_commit():
+                self.write({
+                    "success": True,
+                    "types": training_day.training_day_types
+                })
+            else:
+                self.set_status(500)
+                self.write({"error": "Failed to save"})
+
+        except Exception as error:
+            self.set_status(400)
+            self.write({"error": str(error)})
 
 
 class StudentTasksHandler(BaseHandler):
@@ -2296,6 +2335,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
             if student is None:
                 continue
 
+            # Skip ineligible students (not in any main group)
+            # These students were never supposed to participate in this training day
+            is_eligible, _, _ = check_training_day_eligibility(
+                self.sql_session, participation, training_day
+            )
+            if not is_eligible:
+                continue
+
             # Determine status
             if participation.starting_time is None:
                 status = "missed"
@@ -2420,6 +2467,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
             if student is None:
                 continue
 
+            # Skip ineligible students (not in any main group)
+            # These students were never supposed to participate in this training day
+            is_eligible, _, _ = check_training_day_eligibility(
+                self.sql_session, participation, training_day
+            )
+            if not is_eligible:
+                continue
+
             # Get all student tags (as list for array storage)
             student_tags = list(student.student_tags) if student.student_tags else []
 
@@ -2444,10 +2499,6 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     student_task.source_training_day_id = training_day.id
                     self.sql_session.add(student_task)
 
-            # Skip students who missed the training
-            if participation.starting_time is None:
-                continue
-
             # Get the managing participation for this user
             # Submissions are stored with the managing contest participation, not the
             # training day participation
@@ -2455,7 +2506,15 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 self.sql_session, training_day, participation.user
             )
             if managing_participation is None:
-                continue
+                raise ValueError(
+                    f"User {participation.user.username} (id={participation.user_id}) "
+                    f"does not have a participation in the managing contest "
+                    f"'{training_day.training_program.managing_contest.name}' "
+                    f"for training day '{training_day.name}'"
+                )
+
+            # Check if student missed the training (no starting_time)
+            student_missed = participation.starting_time is None
 
             # Get task scores for ALL visible tasks (including 0 scores)
             # The presence of a task_id key indicates the task was visible
@@ -2465,11 +2524,15 @@ class ArchiveTrainingDayHandler(BaseHandler):
             for task in visible_tasks:
                 task_id = task.id
 
-                # Get score from the training day participation (for cache lookup)
-                cache_entry = get_cached_score_entry(
-                    self.sql_session, participation, task
-                )
-                task_scores[str(task_id)] = cache_entry.score
+                if student_missed:
+                    # Student missed the training - set score to 0
+                    task_scores[str(task_id)] = 0.0
+                else:
+                    # Get score from the training day participation (for cache lookup)
+                    cache_entry = get_cached_score_entry(
+                        self.sql_session, participation, task
+                    )
+                    task_scores[str(task_id)] = cache_entry.score
 
                 # Get official submissions for this task from the managing participation
                 task_submissions = (
@@ -2481,6 +2544,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     .order_by(Submission.timestamp)
                     .all()
                 )
+
+                # If student missed but has submissions, this is an error
+                if student_missed and task_submissions:
+                    raise ValueError(
+                        f"User {participation.user.username} (id={participation.user_id}) "
+                        f"has no starting_time but has {len(task_submissions)} submission(s) "
+                        f"for task '{task.name}' in training day '{training_day.name}'"
+                    )
 
                 submissions[str(task_id)] = []
                 for sub in task_submissions:
@@ -2515,6 +2586,15 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 .order_by(ScoreHistory.timestamp)
                 .all()
             )
+
+            # If student missed but has score history, this is an error
+            if student_missed and score_histories:
+                raise ValueError(
+                    f"User {participation.user.username} (id={participation.user_id}) "
+                    f"has no starting_time but has {len(score_histories)} score history "
+                    f"record(s) in training day '{training_day.name}'"
+                )
+
             for sh in score_histories:
                 if sh.timestamp is not None:
                     time_offset = (
@@ -2541,8 +2621,8 @@ class ArchiveTrainingDayHandler(BaseHandler):
             self.sql_session.add(archived_ranking)
 
 
-class TrainingProgramDateFilterMixin:
-    """Mixin for filtering training days by date range."""
+class TrainingProgramFilterMixin:
+    """Mixin for filtering training days by date range, types, and student tags."""
 
     def _parse_date_range(self) -> tuple[dt | None, dt | None]:
         """Parse start_date and end_date query arguments."""
@@ -2565,10 +2645,36 @@ class TrainingProgramDateFilterMixin:
 
         return start_date, end_date
 
+    def _parse_training_day_types(self) -> list[str]:
+        """Parse training_day_types query argument."""
+        types_str = self.get_argument("training_day_types", "")
+        if not types_str:
+            return []
+        return parse_tags(types_str)
+
+    def _parse_student_tags_filter(self) -> tuple[list[str], str]:
+        """Parse student_tags and student_tags_mode query arguments.
+
+        Returns:
+            tuple of (student_tags list, filter_mode string)
+            filter_mode is either "current" or "historical"
+        """
+        tags_str = self.get_argument("student_tags", "")
+        mode = self.get_argument("student_tags_mode", "current")
+        if mode not in ("current", "historical"):
+            mode = "current"
+        if not tags_str:
+            return [], mode
+        return parse_tags(tags_str), mode
+
     def _get_archived_training_days(
-        self, training_program_id: int, start_date: dt | None, end_date: dt | None
+        self,
+        training_program_id: int,
+        start_date: dt | None,
+        end_date: dt | None,
+        training_day_types: list[str] | None = None,
     ) -> list[TrainingDay]:
-        """Query archived training days with optional date filtering."""
+        """Query archived training days with optional date and type filtering."""
         query = (
             self.sql_session.query(TrainingDay)
             .filter(TrainingDay.training_program_id == training_program_id)
@@ -2579,20 +2685,63 @@ class TrainingProgramDateFilterMixin:
         if end_date:
             # Add one day to end_date to include the entire end day
             query = query.filter(TrainingDay.start_time < end_date + timedelta(days=1))
+        if training_day_types:
+            # Filter training days that have ALL specified types
+            query = query.filter(
+                TrainingDay.training_day_types.contains(training_day_types)
+            )
         return query.order_by(TrainingDay.start_time).all()
 
+    def _tags_match(self, item_tags: list[str] | None, filter_tags: list[str]) -> bool:
+        """Check if item_tags contains all filter_tags."""
+        return all(tag in (item_tags or []) for tag in filter_tags)
 
-class TrainingProgramAttendanceHandler(TrainingProgramDateFilterMixin, BaseHandler):
+    def _get_student_ids_with_tags(self, students, filter_tags: list[str]) -> set[int]:
+        """Return IDs of students that have all filter_tags."""
+        return {s.id for s in students if self._tags_match(s.student_tags, filter_tags)}
+
+    def _get_filtered_context(self, training_program):
+        """Parse common arguments and retrieve archived training days."""
+        start_date, end_date = self._parse_date_range()
+        training_day_types = self._parse_training_day_types()
+        student_tags, student_tags_mode = self._parse_student_tags_filter()
+
+        archived_training_days = self._get_archived_training_days(
+            training_program.id, start_date, end_date, training_day_types
+        )
+
+        # Build a set of students with matching current tags
+        current_tag_student_ids = self._get_student_ids_with_tags(
+            training_program.students, student_tags
+        )
+
+        return (
+            start_date,
+            end_date,
+            training_day_types,
+            student_tags,
+            student_tags_mode,
+            archived_training_days,
+            current_tag_student_ids,
+        )
+
+
+class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
     """Display attendance data for all archived training days."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
-        start_date, end_date = self._parse_date_range()
-        archived_training_days = self._get_archived_training_days(
-            training_program.id, start_date, end_date
-        )
+        (
+            start_date,
+            end_date,
+            training_day_types,
+            student_tags,
+            _,
+            archived_training_days,
+            current_tag_student_ids,
+        ) = self._get_filtered_context(training_program)
 
         # Build attendance data structure
         # {student_id: {training_day_id: attendance_record}}
@@ -2602,6 +2751,9 @@ class TrainingProgramAttendanceHandler(TrainingProgramDateFilterMixin, BaseHandl
         for td in archived_training_days:
             for attendance in td.archived_attendances:
                 student_id = attendance.student_id
+                # Apply student tag filter (current tags only)
+                if student_tags and student_id not in current_tag_student_ids:
+                    continue
                 if student_id not in attendance_data:
                     attendance_data[student_id] = {}
                     all_students[student_id] = attendance.student
@@ -2620,6 +2772,11 @@ class TrainingProgramAttendanceHandler(TrainingProgramDateFilterMixin, BaseHandl
         self.r_params["sorted_students"] = sorted_students
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
+        self.r_params["training_day_types"] = training_day_types
+        self.r_params["student_tags"] = student_tags
+        self.r_params["all_training_day_types"] = get_all_training_day_types(
+            training_program)
+        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\
@@ -2630,7 +2787,7 @@ class TrainingProgramAttendanceHandler(TrainingProgramDateFilterMixin, BaseHandl
 
 
 class TrainingProgramCombinedRankingHandler(
-    TrainingProgramDateFilterMixin, BaseHandler
+    TrainingProgramFilterMixin, BaseHandler
 ):
     """Display combined ranking data for all archived training days."""
 
@@ -2638,21 +2795,59 @@ class TrainingProgramCombinedRankingHandler(
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
-        start_date, end_date = self._parse_date_range()
-        archived_training_days = self._get_archived_training_days(
-            training_program.id, start_date, end_date
-        )
+        (
+            start_date,
+            end_date,
+            training_day_types,
+            student_tags,
+            student_tags_mode,
+            archived_training_days,
+            current_tag_student_ids,
+        ) = self._get_filtered_context(training_program)
 
         ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
         all_students: dict[int, Student] = {}
         training_day_tasks: dict[int, list[dict]] = {}
+        # Attendance data: {student_id: {training_day_id: ArchivedAttendance}}
+        attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
+        # Track which students are "active" (have matching tags) for each training day
+        # For historical mode: student had matching tags during that training
+        # For current mode: student has matching tags now AND participated in that training
+        active_students_per_td: dict[int, set[int]] = {}
+
+        filtered_training_days: list[TrainingDay] = []
 
         for td in archived_training_days:
-            # Collect all tasks that were visible to at least one student
+            active_students_per_td[td.id] = set()
+
+            # Build attendance lookup for this training day
+            for attendance in td.archived_attendances:
+                student_id = attendance.student_id
+                if student_id not in attendance_data:
+                    attendance_data[student_id] = {}
+                attendance_data[student_id][td.id] = attendance
+
+            # Collect all tasks that were visible to at least one filtered student
             # Use archived_tasks_data from training day (preserves original scoring scheme)
             visible_tasks_by_id: dict[int, dict] = {}
             for ranking in td.archived_student_rankings:
                 student_id = ranking.student_id
+
+                # Apply student tag filter
+                if student_tags:
+                    if student_tags_mode == "current":
+                        # Filter by current tags: student must have matching tags now
+                        if student_id not in current_tag_student_ids:
+                            continue
+                    else:  # historical mode
+                        # Filter by historical tags: student must have had matching tags
+                        # during this specific training day
+                        if not self._tags_match(ranking.student_tags, student_tags):
+                            continue
+
+                # Student passes the filter for this training day
+                active_students_per_td[td.id].add(student_id)
+
                 if student_id not in ranking_data:
                     ranking_data[student_id] = {}
                     all_students[student_id] = ranking.student
@@ -2683,6 +2878,12 @@ class TrainingProgramCombinedRankingHandler(
                                         "training_day_num": task.training_day_num,
                                     }
 
+            # Omit training days where no filtered students were eligible
+            if not active_students_per_td[td.id]:
+                continue
+
+            filtered_training_days.append(td)
+
             # Sort tasks by training_day_num for stable ordering
             sorted_tasks = sorted(
                 visible_tasks_by_id.values(),
@@ -2697,12 +2898,21 @@ class TrainingProgramCombinedRankingHandler(
 
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
-        self.r_params["archived_training_days"] = archived_training_days
+        self.r_params["archived_training_days"] = filtered_training_days
         self.r_params["ranking_data"] = ranking_data
         self.r_params["sorted_students"] = sorted_students
         self.r_params["training_day_tasks"] = training_day_tasks
+        self.r_params["attendance_data"] = attendance_data
+        self.r_params["active_students_per_td"] = active_students_per_td
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
+        self.r_params["training_day_types"] = training_day_types
+        self.r_params["student_tags"] = student_tags
+        self.r_params["student_tags_mode"] = student_tags_mode
+        self.r_params["all_training_day_types"] = get_all_training_day_types(
+            training_program)
+        self.r_params["all_student_tags"] = get_all_student_tags_with_historical(
+            training_program)
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\
@@ -2713,7 +2923,7 @@ class TrainingProgramCombinedRankingHandler(
 
 
 class TrainingProgramCombinedRankingHistoryHandler(
-    TrainingProgramDateFilterMixin, BaseHandler
+    TrainingProgramFilterMixin, BaseHandler
 ):
     """Return score history for archived training days as JSON."""
 
@@ -2723,14 +2933,28 @@ class TrainingProgramCombinedRankingHistoryHandler(
 
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
-        start_date, end_date = self._parse_date_range()
-        archived_training_days = self._get_archived_training_days(
-            training_program.id, start_date, end_date
-        )
+        (
+            _start_date,
+            _end_date,
+            _training_day_types,
+            student_tags,
+            student_tags_mode,
+            archived_training_days,
+            current_tag_student_ids,
+        ) = self._get_filtered_context(training_program)
 
         result = []
         for td in archived_training_days:
             for ranking in td.archived_student_rankings:
+                # Apply student tag filter
+                if student_tags:
+                    if student_tags_mode == "current":
+                        if ranking.student_id not in current_tag_student_ids:
+                            continue
+                    else:  # historical mode
+                        if not self._tags_match(ranking.student_tags, student_tags):
+                            continue
+
                 if ranking.history:
                     for entry in ranking.history:
                         result.append([
@@ -2745,7 +2969,7 @@ class TrainingProgramCombinedRankingHistoryHandler(
 
 
 class TrainingProgramCombinedRankingDetailHandler(
-    TrainingProgramDateFilterMixin, BaseHandler
+    TrainingProgramFilterMixin, BaseHandler
 ):
     """Show detailed score/rank progress for a student across archived training days."""
 
@@ -2754,14 +2978,41 @@ class TrainingProgramCombinedRankingDetailHandler(
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         student = self.safe_get_item(Student, student_id)
 
-        start_date, end_date = self._parse_date_range()
-        archived_training_days = self._get_archived_training_days(
-            training_program.id, start_date, end_date
-        )
+        (
+            start_date,
+            end_date,
+            training_day_types,
+            student_tags,
+            student_tags_mode,
+            archived_training_days,
+            current_tag_student_ids,
+        ) = self._get_filtered_context(training_program)
 
+        # For historical mode, we need to track which students are active per training day
+        # to compute the correct user_count for relative ranks
+        active_students_per_td: dict[int, set[int]] = {}
+        if student_tags and student_tags_mode == "historical":
+            for td in archived_training_days:
+                active_students_per_td[td.id] = set()
+                for ranking in td.archived_student_rankings:
+                    if self._tags_match(ranking.student_tags, student_tags):
+                        active_students_per_td[td.id].add(ranking.student_id)
+
+        # Build users_data for filtered students only
         users_data = {}
+        filtered_student_ids: set[int] = set()
         for s in training_program.students:
             if s.participation and s.participation.user:
+                # Apply student tag filter for current mode
+                if student_tags and student_tags_mode == "current":
+                    if s.id not in current_tag_student_ids:
+                        continue
+                # For historical mode, include student if they appear in any training day
+                elif student_tags and student_tags_mode == "historical":
+                    if not any(s.id in active_students_per_td.get(td.id, set())
+                               for td in archived_training_days):
+                        continue
+                filtered_student_ids.add(s.id)
                 users_data[str(s.participation.user_id)] = {
                     "f_name": s.participation.user.first_name or "",
                     "l_name": s.participation.user.last_name or "",
@@ -2786,8 +3037,16 @@ class TrainingProgramCombinedRankingDetailHandler(
             contest_key = f"td_{td.id}"
             task_ids_in_contest: set[int] = set()
 
-            # Collect all visible task IDs from all students' task_scores keys
+            # Collect all visible task IDs from filtered students' task_scores keys
             for ranking in td.archived_student_rankings:
+                # Apply student tag filter
+                if student_tags:
+                    if student_tags_mode == "current":
+                        if ranking.student_id not in current_tag_student_ids:
+                            continue
+                    else:  # historical mode
+                        if not self._tags_match(ranking.student_tags, student_tags):
+                            continue
                 if ranking.task_scores:
                     task_ids_in_contest.update(int(k) for k in ranking.task_scores.keys())
 
@@ -2882,13 +3141,18 @@ class TrainingProgramCombinedRankingDetailHandler(
         history_url = self.url(
             "training_program", training_program_id, "combined_ranking", "history"
         )
-        if start_date or end_date:
-            params = []
+        if start_date or end_date or training_day_types or student_tags:
+            params = {}
             if start_date:
-                params.append(f"start_date={start_date.isoformat()}")
+                params["start_date"] = start_date.isoformat()
             if end_date:
-                params.append(f"end_date={end_date.isoformat()}")
-            history_url += "?" + "&".join(params)
+                params["end_date"] = end_date.isoformat()
+            if training_day_types:
+                params["training_day_types"] = ",".join(training_day_types)
+            if student_tags:
+                params["student_tags"] = ",".join(student_tags)
+                params["student_tags_mode"] = student_tags_mode
+            history_url += "?" + urlencode(params)
 
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
@@ -2904,6 +3168,9 @@ class TrainingProgramCombinedRankingDetailHandler(
         self.r_params["history_url"] = history_url
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
+        self.r_params["training_day_types"] = training_day_types
+        self.r_params["student_tags"] = student_tags
+        self.r_params["student_tags_mode"] = student_tags_mode
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\
