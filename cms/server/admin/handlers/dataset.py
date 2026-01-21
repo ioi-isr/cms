@@ -1131,17 +1131,21 @@ class GenerateTestcasesHandler(BaseHandler):
         self.contest = task.contest
 
         # Get model solutions that have been compiled (have executables)
+        # Only for Batch tasks - model solution output generation is not
+        # supported for other task types
         compiled_model_solutions = []
-        for meta in dataset.model_solution_metas:
-            result = meta.submission.get_result(dataset)
-            if result is not None and result.executables:
-                compiled_model_solutions.append(meta)
+        if dataset.task_type == "Batch":
+            for meta in dataset.model_solution_metas:
+                result = meta.submission.get_result(dataset)
+                if result is not None and result.executables:
+                    compiled_model_solutions.append(meta)
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
         self.r_params["dataset"] = dataset
         self.r_params["generator"] = generator
         self.r_params["model_solutions"] = compiled_model_solutions
+        self.r_params["task_type"] = dataset.task_type
         self.render("generate_testcases.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -1173,9 +1177,19 @@ class GenerateTestcasesHandler(BaseHandler):
         output_template = generator.output_filename_template
 
         # Check if we're using a model solution for output generation
+        # (only allowed for Batch tasks)
         model_solution_meta = None
         model_solution_result = None
+        use_empty_outputs = False
         if output_source.startswith("model_solution_"):
+            if dataset.task_type != "Batch":
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid output source",
+                    "Model solution output generation is only supported "
+                    "for Batch tasks.")
+                self.redirect(fallback_page)
+                return
             try:
                 meta_id = int(output_source.replace("model_solution_", ""))
                 model_solution_meta = self.safe_get_item(
@@ -1199,6 +1213,16 @@ class GenerateTestcasesHandler(BaseHandler):
                     "The selected output source is invalid.")
                 self.redirect(fallback_page)
                 return
+        elif output_source == "empty":
+            if dataset.task_type != "Communication":
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid output source",
+                    "Empty output generation is only supported "
+                    "for Communication tasks.")
+                self.redirect(fallback_page)
+                return
+            use_empty_outputs = True
 
         self.sql_session.close()
 
@@ -1326,6 +1350,13 @@ class GenerateTestcasesHandler(BaseHandler):
                     repr(error))
                 self.redirect(fallback_page)
                 return
+
+        # If using empty outputs (for Communication tasks), generate them now
+        if use_empty_outputs:
+            generated_files = self._generate_empty_outputs(
+                generated_files,
+                input_re,
+                output_template)
 
         # Create zip from generated files
         temp_zip = io.BytesIO()
@@ -1534,6 +1565,35 @@ class GenerateTestcasesHandler(BaseHandler):
             finally:
                 if sandbox:
                     sandbox.cleanup(delete=True)
+
+        return result_files
+
+    def _generate_empty_outputs(
+            self,
+            generated_files,
+            input_re,
+            output_template):
+        """Generate empty output files for each input file.
+
+        This is useful for Communication tasks where outputs are not needed.
+
+        generated_files: dict of filename -> content from generator
+        input_re: compiled regex for matching input files
+        output_template: template for output filenames (e.g., "output.*")
+
+        return: updated generated_files dict with empty outputs
+        """
+        result_files = {}
+
+        for filename, content in generated_files.items():
+            match = input_re.match(filename)
+            if match:
+                codename = match.group(1)
+                output_filename = output_template.replace("*", codename)
+                result_files[filename] = content
+                result_files[output_filename] = b""
+            else:
+                result_files[filename] = content
 
         return result_files
 
