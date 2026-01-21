@@ -2714,7 +2714,7 @@ class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
         current_tag_student_ids: set[int] = set()
         if student_tags:
             for student in training_program.students:
-                if all(tag in student.student_tags for tag in student_tags):
+                if all(tag in (student.student_tags or []) for tag in student_tags):
                     current_tag_student_ids.add(student.id)
 
         # Build attendance data structure
@@ -2780,7 +2780,7 @@ class TrainingProgramCombinedRankingHandler(
         current_tag_student_ids: set[int] = set()
         if student_tags and student_tags_mode == "current":
             for student in training_program.students:
-                if all(tag in student.student_tags for tag in student_tags):
+                if all(tag in (student.student_tags or []) for tag in student_tags):
                     current_tag_student_ids.add(student.id)
 
         ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
@@ -2973,7 +2973,7 @@ class TrainingProgramCombinedRankingDetailHandler(
         current_tag_student_ids: set[int] = set()
         if student_tags and student_tags_mode == "current":
             for s in training_program.students:
-                if all(tag in s.student_tags for tag in student_tags):
+                if all(tag in (s.student_tags or []) for tag in student_tags):
                     current_tag_student_ids.add(s.id)
 
         # For historical mode, we need to track which students are active per training day

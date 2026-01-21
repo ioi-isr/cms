@@ -2,6 +2,10 @@
     font-size: 100%;
 }
 
+:root {
+    --ranking-header-top: 90px;
+}
+
 .searchable-select {
     width: 240px;
     display: inline-block;
@@ -1713,7 +1717,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .ranking-table thead tr:nth-child(2) th {
-    top: 90px;
+    top: var(--ranking-header-top);
     z-index: 15;
     box-shadow: 0 2px 4px -2px rgba(0,0,0,0.1);
     background-color: #fff;

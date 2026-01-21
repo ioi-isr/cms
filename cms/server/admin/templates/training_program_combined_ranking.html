@@ -246,6 +246,10 @@ function renderHistogram(scores, title, type) {
     // Calculate bucket size: divide max score into 10 equal parts
     // For max=100: buckets are 0, (0,10], (10,20], ..., (80,90], >90
     // For max=200: buckets are 0, (0,20], (20,40], ..., (160,180], >180
+    // Guard against division by zero when maxPossibleScore is 0
+    if (maxPossibleScore === 0) {
+        maxPossibleScore = 1; // Avoid division by zero
+    }
     var bucketSize = maxPossibleScore / 10;
     var lastBucketThreshold = maxPossibleScore * 0.9; // 90% of max
     
@@ -377,15 +381,35 @@ function renderHistogram(scores, title, type) {
 
 window.copyHistogramData = function() {
     var textArea = document.getElementById('histogramTextData');
-    textArea.select();
-    document.execCommand('copy');
-
+    var textToCopy = textArea.value;
     var btn = document.querySelector('.copy-btn');
     var originalText = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(function() {
-        btn.textContent = originalText;
-    }, 2000);
+
+    // Use modern Clipboard API with fallback for older browsers
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(function() {
+            btn.textContent = 'Copied!';
+            setTimeout(function() {
+                btn.textContent = originalText;
+            }, 2000);
+        }).catch(function() {
+            // Fallback to deprecated execCommand if Clipboard API fails
+            textArea.select();
+            document.execCommand('copy');
+            btn.textContent = 'Copied!';
+            setTimeout(function() {
+                btn.textContent = originalText;
+            }, 2000);
+        });
+    } else {
+        // Fallback for browsers without Clipboard API
+        textArea.select();
+        document.execCommand('copy');
+        btn.textContent = 'Copied!';
+        setTimeout(function() {
+            btn.textContent = originalText;
+        }, 2000);
+    }
 }
 
 window.showTaskHistogram = function(taskId, taskName, trainingDayId) {
@@ -542,12 +566,12 @@ $(document).ready(function() {
           {% for task in training_day_tasks.get(td.id, []) %}
           <th class="task-header" title="{{ task.title }}" data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-sort-settings="numeric">
               <span class="header-text">{{ task.name }}</span>
-              <span class="histogram-icon" title="View histogram" onclick="event.stopPropagation(); showTaskHistogram({{ task.id }}, '{{ task.name }}', {{ td.id }})">&#128202;</span>
+              <span class="histogram-icon" title="View histogram" onclick="event.stopPropagation(); showTaskHistogram({{ task.id }}, {{ task.name|tojson }}, {{ td.id }})">&#128202;</span>
           </th>
           {% endfor %}
           <th class="total-col total-col-header" title="Daily Total" data-training-day-id="{{ td.id }}" data-sort-settings="numeric">
               <span class="header-text">Total</span>
-              <span class="histogram-icon" title="View histogram" onclick="event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, '{{ td.description or td.name or 'Session' }}')">&#128202;</span>
+              <span class="histogram-icon" title="View histogram" onclick="event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, {{ (td.description or td.name or 'Session')|tojson }})">&#128202;</span>
           </th>
         {% endfor %}
       </tr>

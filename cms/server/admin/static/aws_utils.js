@@ -430,13 +430,13 @@ function get_table_row_comparator(column_idx, numeric, ascending) {
             var numA = parseFloat(valA);
             var numB = parseFloat(valB);
 
-            // Treat non-numeric/empty as a very low number so they sink to bottom
-            if (isNaN(numA)) numA = -9999999;
-            if (isNaN(numB)) numB = -9999999;
+            // Treat non-numeric/empty values so they always sink to bottom regardless of sort direction
+            if (isNaN(numA)) numA = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+            if (isNaN(numB)) numB = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
 
             var result = numA - numB;
             return ascending ? result : -result;
-        } else {
+        }else {
             var result = valA.localeCompare(valB);
             return ascending ? result : -result;
         }
