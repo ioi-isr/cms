@@ -2934,9 +2934,9 @@ class TrainingProgramCombinedRankingHistoryHandler(
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
         (
-            start_date,
-            end_date,
-            training_day_types,
+            _start_date,
+            _end_date,
+            _training_day_types,
             student_tags,
             student_tags_mode,
             archived_training_days,

@@ -571,12 +571,12 @@ $(document).ready(function() {
           {% for task in training_day_tasks.get(td.id, []) %}
           <th class="task-header" title="{{ task.title }}" data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-sort-settings="numeric">
               <span class="header-text">{{ task.name }}</span>
-              <span class="histogram-icon" title="View histogram" onclick="event.stopPropagation(); showTaskHistogram({{ task.id }}, '{{ task.name|e }}', {{ td.id }})">&#128202;</span>
+              <span class="histogram-icon" title="View histogram" onclick='event.stopPropagation(); showTaskHistogram({{ task.id }}, {{ task.name|tojson }}, {{ td.id }})'>&#128202;</span>
           </th>
           {% endfor %}
           <th class="total-col total-col-header" title="Daily Total" data-training-day-id="{{ td.id }}" data-sort-settings="numeric">
               <span class="header-text">Total</span>
-              <span class="histogram-icon" title="View histogram" onclick="event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, '{{ (td.description or td.name or "Session")|e }}')">&#128202;</span>
+              <span class="histogram-icon" title="View histogram" onclick='event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, {{ (td.description or td.name or "Session")|tojson }})'>&#128202;</span>
           </th>
         {% endfor %}
       </tr>

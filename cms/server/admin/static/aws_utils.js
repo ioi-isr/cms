@@ -437,7 +437,7 @@ function get_table_row_comparator(column_idx, numeric, ascending) {
 
             result = numA - numB;
             return ascending ? result : -result;
-        }else {
+        } else {
             result = valA.localeCompare(valB);
             return ascending ? result : -result;
         }
