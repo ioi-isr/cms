@@ -1398,7 +1398,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     position: sticky;
     left: 0;
     background-color: white;
-    z-index: 5;
+    z-index: 8;
     text-align: left;
     min-width: 250px;
     max-width: 300px;
