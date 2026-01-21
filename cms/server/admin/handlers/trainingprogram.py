@@ -3148,11 +3148,11 @@ class TrainingProgramCombinedRankingDetailHandler(
             if end_date:
                 params["end_date"] = end_date.isoformat()
             if training_day_types:
-                params["training_day_types"] = training_day_types
+                params["training_day_types"] = ",".join(training_day_types)
             if student_tags:
-                params["student_tags"] = student_tags
+                params["student_tags"] = ",".join(student_tags)
                 params["student_tags_mode"] = student_tags_mode
-            history_url += "?" + urlencode(params, doseq=True)
+            history_url += "?" + urlencode(params)
 
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program

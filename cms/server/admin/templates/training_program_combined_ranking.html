@@ -544,7 +544,7 @@ $(document).ready(function() {
   <table class="ranking-table" id="ranking_table">
     <thead>
       <tr>
-        <th class="student-header" rowspan="2">Student</th>
+        <th class="student-header no-sort" rowspan="2">Student</th>
         {% for td in archived_training_days %}
         <th class="training-day-header no-sort" colspan="{{ (training_day_tasks.get(td.id, [])|length) + 1 }}">
           <div class="training-day-header-main">{{ td.description or td.name or "Session" }}</div>
@@ -630,6 +630,8 @@ $(document).ready(function() {
 
         {% for td in archived_training_days %}
           {% set ranking = ranking_data.get(student.id, {}).get(td.id) %}
+          {% set attendance = attendance_data.get(student.id, {}).get(td.id) %}
+          {% set participated = attendance and attendance.status == 'participated' %}
 
           {% for task in training_day_tasks.get(td.id, []) %}
             {% set score_val = None %}
@@ -638,7 +640,7 @@ $(document).ready(function() {
             {% endif %}
 
             {% set has_access = ranking and ranking.task_scores and task.id|string in ranking.task_scores %}
-            <td data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-value="{{ score_val if score_val is not none else '' }}" data-accessible="{{ 'true' if has_access else 'false' }}">
+            <td data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-value="{{ score_val if score_val is not none else '' }}" data-accessible="{{ 'true' if (has_access and participated) else 'false' }}">
                 {% if has_access %}
                     {{ render_score_cell(score_val) }}
                 {% else %}
@@ -661,12 +663,14 @@ $(document).ready(function() {
             {% set cell_value = total.value %}
           {% endif %}
 
-          {% set participated = ranking and ranking.task_scores %}
-          <td class="total-col" data-training-day-id="{{ td.id }}" data-value="{{ cell_value if cell_value is not none else '' }}" data-accessible="{{ 'true' if participated else 'false' }}">
+          {% set participated = attendance and attendance.status == 'participated' %}
+          <td class="total-col" data-training-day-id="{{ td.id }}" data-value="{{ cell_value if cell_value is not none else '' }}" data-accessible="{{ 'true' if (participated and cell_value is not none) else 'false' }}">
             <div class="cell-content">
-                {% if participated %}
+                {% if cell_value is not none %}
                   {{ "%.1f"|format(cell_value) | replace('.0', '') }}
-                  {% set global_total.value = global_total.value + cell_value %}
+                  {% if participated %}
+                    {% set global_total.value = global_total.value + cell_value %}
+                  {% endif %}
                   {% if attendance and attendance.status == 'missed' %}
                     <span class="attendance-badge missed-badge" title="Missed training">&#10060;</span>
                   {% elif attendance and attendance.location == 'home' %}

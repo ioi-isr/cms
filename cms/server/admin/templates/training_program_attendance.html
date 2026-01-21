@@ -69,9 +69,9 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
   <table class="attendance-table" id="attendance_table">
     <thead>
       <tr>
-        <th>Student</th>
+        <th class="no-sort">Student</th>
         {% for td in archived_training_days %}
-        <th>
+        <th data-sort-settings="numeric" data-sort-column="{{ loop.index - 1 }}">
           <div class="date-header-main">{{ td.description or td.name or "Session" }}</div>
           {% if td.start_time %}
           <div class="date-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
@@ -90,7 +90,7 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
     <tbody>
       {% for student in sorted_students %}
       <tr>
-        <th>
+        <th class="no-sort">
           <div class="student-name-wrapper">
             {% if student.participation %}
                 <div style="flex: 1; min-width: 0;">
@@ -120,8 +120,14 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
         </th>
         {% for td in archived_training_days %}
           {% set att = attendance_data.get(student.id, {}).get(td.id) %}
-          <td>
-            {% if att %}
+          {% if att %}
+            {% if att.status == "missed" %}
+              <td data-value="3">
+              {% elif att.delay_time %}
+              <td data-value="2">
+              {% else %}
+              <td data-value="1">
+            {% endif %}
               <div class="cell-wrapper">
                 {% if att.status == "missed" %}
                   <div class="status-badge status-missed">
@@ -159,10 +165,12 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
                   </div>
                 {% endif %}
               </div>
-            {% else %}
+            </td>
+          {% else %}
+            <td data-value="">
               <span class="empty-cell">&middot;</span>
-            {% endif %}
-          </td>
+            </td>
+          {% endif %}
         {% endfor %}
       </tr>
       {% else %}
