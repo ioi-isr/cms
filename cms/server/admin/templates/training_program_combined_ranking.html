@@ -20,7 +20,7 @@ var studentTagsInput = document.querySelector('input[name="student_tags"]');
 if (studentTagsInput && typeof Tagify !== 'undefined') {
     new Tagify(studentTagsInput, {
         delimiters: ",",
-        whitelist: {{ all_student_tags | tojson }},
+        whitelist: {{ all_student_tags | default([]) | tojson }},
         enforceWhitelist: true,
         dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
         originalInputValueFormat: function(valuesArr) {
@@ -33,21 +33,21 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
 var histogramModal = null;
 var histogramTagify = null;
 var currentHistogramData = null;
-var allStudentTags = {{ all_student_tags | tojson }};
+var allStudentTags = {{ all_student_tags | default([]) | tojson }};
 
 // Store student data for histogram filtering
 var studentData = {};
 {% for student in sorted_students %}
 studentData[{{ student.id }}] = {
     tags: {{ student.student_tags | tojson if student.student_tags else '[]' }},
-    name: {% if student.participation %}"{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}"{% else %}"(Unknown)"{% endif %}
+    name: {% if student.participation %}{{ (student.participation.user.first_name + " " + student.participation.user.last_name) | tojson }}{% else %}"(Unknown)"{% endif %}
 };
 {% endfor %}
 
 function initHistogramModal() {
     histogramModal = document.getElementById('histogramModal');
     if (!histogramModal) return;
-    
+
     // Initialize tagify for histogram filter
     var histogramTagsInput = document.getElementById('histogramTagsFilter');
     if (histogramTagsInput && typeof Tagify !== 'undefined') {
@@ -66,14 +66,14 @@ function initHistogramModal() {
             }
         });
     }
-    
+
     // Close modal on backdrop click
     histogramModal.addEventListener('click', function(e) {
         if (e.target === histogramModal) {
             closeHistogramModal();
         }
     });
-    
+
     // Close modal on Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && histogramModal.style.display === 'flex') {
@@ -90,7 +90,7 @@ function openHistogramModal(scores, title, type) {
     renderHistogram(scores, title, type);
 }
 
-function closeHistogramModal() {
+window.closeHistogramModal = function() {
     if (histogramModal) {
         histogramModal.style.display = 'none';
     }
@@ -105,11 +105,11 @@ function getFilteredScores(scores) {
             filterTags = tagifyValue.map(function(t) { return t.value; });
         }
     }
-    
+
     if (filterTags.length === 0) {
         return scores;
     }
-    
+
     // Filter scores by student tags
     return scores.filter(function(item) {
         var studentInfo = studentData[item.studentId];
@@ -123,28 +123,28 @@ function getFilteredScores(scores) {
 function renderHistogram(scores, title, type) {
     var filteredScores = getFilteredScores(scores);
     var scoreValues = filteredScores.map(function(s) { return s.score; });
-    
+
     // Sort scores high to low
     scoreValues.sort(function(a, b) { return b - a; });
-    
+
     // Build histogram buckets (0-10, 10-20, ..., 90-100)
     var buckets = {};
     for (var i = 0; i <= 100; i += 10) {
         buckets[i] = 0;
     }
-    
+
     scoreValues.forEach(function(score) {
         var bucket = Math.floor(score / 10) * 10;
         if (bucket > 100) bucket = 100;
         if (bucket < 0) bucket = 0;
         buckets[bucket] = (buckets[bucket] || 0) + 1;
     });
-    
+
     // Render histogram bars
     var histogramBars = document.getElementById('histogramBars');
     var maxCount = Math.max.apply(null, Object.values(buckets)) || 1;
     var totalStudents = scoreValues.length;
-    
+
     var barsHtml = '';
     for (var bucket = 0; bucket <= 100; bucket += 10) {
         var count = buckets[bucket] || 0;
@@ -152,7 +152,7 @@ function renderHistogram(scores, title, type) {
         var barHeight = maxCount > 0 ? (count / maxCount) * 100 : 0;
         var hue = bucket * 1.2;
         if (hue > 120) hue = 120;
-        
+
         barsHtml += '<div class="histogram-bar-container">' +
             '<div class="histogram-bar" style="height: ' + barHeight + '%; background-color: hsl(' + hue + ', 75%, 60%);" title="' + count + ' students (' + percentage + '%)"></div>' +
             '<div class="histogram-label">' + bucket + '-' + (bucket + 10) + '</div>' +
@@ -160,26 +160,26 @@ function renderHistogram(scores, title, type) {
             '</div>';
     }
     histogramBars.innerHTML = barsHtml;
-    
+
     // Update stats
-    document.getElementById('histogramStats').innerHTML = 
-        '<strong>Total students:</strong> ' + totalStudents + 
+    document.getElementById('histogramStats').innerHTML =
+        '<strong>Total students:</strong> ' + totalStudents +
         (scoreValues.length > 0 ? ' | <strong>Average:</strong> ' + (scoreValues.reduce(function(a, b) { return a + b; }, 0) / scoreValues.length).toFixed(1) +
         ' | <strong>Max:</strong> ' + Math.max.apply(null, scoreValues).toFixed(1) +
         ' | <strong>Min:</strong> ' + Math.min.apply(null, scoreValues).toFixed(1) : '');
-    
+
     // Build text data for copying
     var textData = title + ' - Score Distribution\n';
     textData += '================================\n\n';
     textData += 'Scores (high to low):\n';
-    
+
     // Group by score value
     var scoreGroups = {};
     scoreValues.forEach(function(score) {
         var roundedScore = score.toFixed(1);
         scoreGroups[roundedScore] = (scoreGroups[roundedScore] || 0) + 1;
     });
-    
+
     // Sort by score descending
     var sortedScoreKeys = Object.keys(scoreGroups).sort(function(a, b) { return parseFloat(b) - parseFloat(a); });
     sortedScoreKeys.forEach(function(score) {
@@ -187,22 +187,22 @@ function renderHistogram(scores, title, type) {
         var pct = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
         textData += score + ': ' + count + ' student' + (count !== 1 ? 's' : '') + ' (' + pct + '%)\n';
     });
-    
+
     textData += '\nHistogram buckets:\n';
     for (var bucket = 100; bucket >= 0; bucket -= 10) {
         var count = buckets[bucket] || 0;
         var pct = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
         textData += (bucket) + '-' + (bucket + 10) + ': ' + count + ' (' + pct + '%)\n';
     }
-    
+
     document.getElementById('histogramTextData').value = textData;
 }
 
-function copyHistogramData() {
+window.copyHistogramData = function() {
     var textArea = document.getElementById('histogramTextData');
     textArea.select();
     document.execCommand('copy');
-    
+
     var btn = document.querySelector('.copy-btn');
     var originalText = btn.textContent;
     btn.textContent = 'Copied!';
@@ -211,11 +211,11 @@ function copyHistogramData() {
     }, 2000);
 }
 
-function showTaskHistogram(taskId, taskName, trainingDayId) {
+window.showTaskHistogram = function(taskId, taskName, trainingDayId) {
     var scores = [];
     var table = document.getElementById('ranking_table');
     if (!table) return;
-    
+
     // Find the column index for this task
     var headers = table.querySelectorAll('thead tr:last-child th');
     var colIndex = -1;
@@ -224,18 +224,18 @@ function showTaskHistogram(taskId, taskName, trainingDayId) {
             colIndex = idx;
         }
     });
-    
+
     // Collect scores from the table
     var rows = table.querySelectorAll('tbody tr');
     rows.forEach(function(row) {
         var studentIdMatch = row.querySelector('th a.student-name-link');
         if (!studentIdMatch) return;
-        
+
         var href = studentIdMatch.getAttribute('href');
         var studentIdFromHref = href.match(/student\/(\d+)/);
         if (!studentIdFromHref) return;
         var studentId = parseInt(studentIdFromHref[1]);
-        
+
         var cells = row.querySelectorAll('td');
         cells.forEach(function(cell) {
             if (cell.dataset.taskId == taskId && cell.dataset.parentDay == trainingDayId) {
@@ -246,7 +246,7 @@ function showTaskHistogram(taskId, taskName, trainingDayId) {
             }
         });
     });
-    
+
     openHistogramModal(scores, taskName, 'task');
 }
 
@@ -254,18 +254,18 @@ function showTrainingDayHistogram(trainingDayId, trainingDayName) {
     var scores = [];
     var table = document.getElementById('ranking_table');
     if (!table) return;
-    
+
     // Collect total scores for this training day
     var rows = table.querySelectorAll('tbody tr');
     rows.forEach(function(row) {
         var studentIdMatch = row.querySelector('th a.student-name-link');
         if (!studentIdMatch) return;
-        
+
         var href = studentIdMatch.getAttribute('href');
         var studentIdFromHref = href.match(/student\/(\d+)/);
         if (!studentIdFromHref) return;
         var studentId = parseInt(studentIdFromHref[1]);
-        
+
         var cells = row.querySelectorAll('td.total-col[data-training-day-id="' + trainingDayId + '"]');
         cells.forEach(function(cell) {
             var value = parseFloat(cell.dataset.value);
@@ -274,7 +274,7 @@ function showTrainingDayHistogram(trainingDayId, trainingDayName) {
             }
         });
     });
-    
+
     openHistogramModal(scores, trainingDayName, 'training_day');
 }
 
