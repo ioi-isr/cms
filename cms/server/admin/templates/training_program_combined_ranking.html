@@ -632,13 +632,13 @@ $(document).ready(function() {
           {% set ranking = ranking_data.get(student.id, {}).get(td.id) %}
 
           {% for task in training_day_tasks.get(td.id, []) %}
-            {% set score_val = 0 %}
+            {% set score_val = None %}
             {% if ranking and ranking.task_scores and task.id|string in ranking.task_scores %}
                 {% set score_val = ranking.task_scores.get(task.id|string) %}
             {% endif %}
 
             {% set has_access = ranking and ranking.task_scores and task.id|string in ranking.task_scores %}
-            <td data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-value="{{ score_val }}" data-accessible="{{ 'true' if has_access else 'false' }}">
+            <td data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-value="{{ score_val if score_val is not none else '' }}" data-accessible="{{ 'true' if has_access else 'false' }}">
                 {% if has_access %}
                     {{ render_score_cell(score_val) }}
                 {% else %}
@@ -650,7 +650,7 @@ $(document).ready(function() {
           {% endfor %}
 
           {% set attendance = attendance_data.get(student.id, {}).get(td.id) %}
-          {% set cell_value = 0 %}
+          {% set cell_value = None %}
           {% if ranking and ranking.task_scores %}
             {% set total = namespace(value=0) %}
             {% for task in training_day_tasks.get(td.id, []) %}
@@ -662,7 +662,7 @@ $(document).ready(function() {
           {% endif %}
 
           {% set participated = ranking and ranking.task_scores %}
-          <td class="total-col" data-training-day-id="{{ td.id }}" data-value="{{ cell_value }}" data-accessible="{{ 'true' if participated else 'false' }}">
+          <td class="total-col" data-training-day-id="{{ td.id }}" data-value="{{ cell_value if cell_value is not none else '' }}" data-accessible="{{ 'true' if participated else 'false' }}">
             <div class="cell-content">
                 {% if participated %}
                   {{ "%.1f"|format(cell_value) | replace('.0', '') }}

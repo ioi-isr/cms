@@ -3045,8 +3045,7 @@ class TrainingProgramCombinedRankingDetailHandler(
                         if ranking.student_id not in current_tag_student_ids:
                             continue
                     else:  # historical mode
-                        if not all(tag in (ranking.student_tags or [])
-                                   for tag in student_tags):
+                        if not self._tags_match(ranking.student_tags, student_tags):
                             continue
                 if ranking.task_scores:
                     task_ids_in_contest.update(int(k) for k in ranking.task_scores.keys())

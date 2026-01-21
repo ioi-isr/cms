@@ -421,10 +421,10 @@ function get_table_row_comparator(column_idx, numeric, ascending) {
 
         // Use data-value if present, otherwise fallback to text
         var valA = cellA.attr("data-value");
-        if (typeof valA === "undefined") valA = cellA.text().trim();
+        if (typeof valA === "undefined" || valA === "") valA = cellA.text().trim();
 
         var valB = cellB.attr("data-value");
-        if (typeof valB === "undefined") valB = cellB.text().trim();
+        if (typeof valB === "undefined" || valB === "") valB = cellB.text().trim();
 
         var result;
         if (numeric) {

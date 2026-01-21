@@ -201,8 +201,8 @@
   {% set params = [] %}
   {% if start_date %}{% set _ = params.append('start_date=' ~ start_date.strftime('%Y-%m-%d')) %}{% endif %}
   {% if end_date %}{% set _ = params.append('end_date=' ~ end_date.strftime('%Y-%m-%d')) %}{% endif %}
-  {% if training_day_types %}{% set _ = params.append('training_day_types=' ~ training_day_types|join(',')) %}{% endif %}
-  {% if student_tags %}{% set _ = params.append('student_tags=' ~ student_tags|join(',')) %}{% endif %}
+  {% if training_day_types %}{% set _ = params.append('training_day_types=' ~ (training_day_types|join(',')|urlencode)) %}{% endif %}
+  {% if student_tags %}{% set _ = params.append('student_tags=' ~ (student_tags|join(',')|urlencode)) %}{% endif %}
   {% if student_tags_mode and student_tags_mode != 'current' %}{% set _ = params.append('student_tags_mode=' ~ student_tags_mode) %}{% endif %}
   <a href="{{ url("training_program", training_program.id, "combined_ranking") }}{% if params %}?{{ params|join('&') }}{% endif %}">&larr; Back to Combined Ranking</a>
   |
