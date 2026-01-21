@@ -273,13 +273,11 @@ class Base:
                         "argument '%s'" % prp.key)
                 # We're setting the default ourselves, since we may
                 # want to use the object before storing it in the DB.
-                # FIXME This code doesn't work with callable defaults.
-                # We can use the is_callable and is_scalar properties
-                # (and maybe the is_sequence and is_clause_element ones
-                # too) to detect the type. Note that callables require
-                # an ExecutionContext argument (which we don't have).
                 if col.default is not None:
-                    setattr(self, prp.key, col.default.arg)
+                    if col.default.is_callable:
+                        setattr(self, prp.key, col.default.arg(None))
+                    else:
+                        setattr(self, prp.key, col.default.arg)
             elif prp.key in attrs:
                 val = attrs.pop(prp.key)
 

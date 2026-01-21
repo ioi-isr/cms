@@ -80,6 +80,50 @@ def get_all_student_tags(training_program: "TrainingProgram") -> list[str]:
     return sorted(all_tags_set)
 
 
+def get_all_student_tags_with_historical(
+    training_program: "TrainingProgram"
+) -> list[str]:
+    """Get all unique student tags including historical tags from archived rankings.
+
+    This includes both current student tags and tags that students had during
+    past training days (stored in ArchivedStudentRanking.student_tags).
+
+    training_program: the training program to get tags from.
+
+    return: sorted list of unique student tags (current + historical).
+
+    """
+    all_tags_set: set[str] = set()
+    # Collect current tags
+    for student in training_program.students:
+        if student.student_tags:
+            all_tags_set.update(student.student_tags)
+    # Collect historical tags from archived rankings
+    for training_day in training_program.training_days:
+        for ranking in training_day.archived_student_rankings:
+            if ranking.student_tags:
+                all_tags_set.update(ranking.student_tags)
+    return sorted(all_tags_set)
+
+
+def get_all_training_day_types(training_program: "TrainingProgram") -> list[str]:
+    """Get all unique training day types from a training program's training days.
+
+    This is a shared utility to avoid duplicating tag collection logic
+    across multiple handlers.
+
+    training_program: the training program to get types from.
+
+    return: sorted list of unique training day types.
+
+    """
+    all_types_set: set[str] = set()
+    for training_day in training_program.training_days:
+        if training_day.training_day_types:
+            all_types_set.update(training_day.training_day_types)
+    return sorted(all_types_set)
+
+
 def get_student_for_training_day(
     sql_session: Session,
     participation: "Participation",
