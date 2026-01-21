@@ -66,6 +66,19 @@ Object.keys(tagsPerTrainingDay).forEach(function(tdId) {
     tagsPerTrainingDay[tdId] = Array.from(tagsPerTrainingDay[tdId]).sort();
 });
 
+// Store max possible scores for tasks and training days
+var taskMaxScores = {};
+var trainingDayMaxScores = {};
+{% for td in archived_training_days %}
+{% if td.archived_tasks_data %}
+trainingDayMaxScores[{{ td.id }}] = 0;
+{% for task_id_str, task_info in td.archived_tasks_data.items() %}
+taskMaxScores[{{ task_id_str }}] = {{ task_info.get('max_score', 100) }};
+trainingDayMaxScores[{{ td.id }}] += {{ task_info.get('max_score', 100) }};
+{% endfor %}
+{% endif %}
+{% endfor %}
+
 function initHistogramModal() {
     histogramModal = document.getElementById('histogramModal');
     if (!histogramModal) return;
@@ -104,9 +117,9 @@ function initHistogramModal() {
     });
 }
 
-function openHistogramModal(scores, title, type, trainingDayId) {
+function openHistogramModal(scores, title, type, trainingDayId, maxPossibleScore) {
     if (!histogramModal) return;
-    currentHistogramData = { scores: scores, title: title, type: type, trainingDayId: trainingDayId };
+    currentHistogramData = { scores: scores, title: title, type: type, trainingDayId: trainingDayId, maxPossibleScore: maxPossibleScore || 100 };
     document.getElementById('histogramTitle').textContent = title + ' - Score Distribution';
     
     // Update the whitelist to only show tags that existed in this training day
@@ -174,45 +187,53 @@ function renderHistogram(scores, title, type) {
     // Sort scores high to low
     scoreValues.sort(function(a, b) { return b - a; });
 
-    // Build histogram buckets: 0, (0,10], (10,20], ..., (80,90], >90
-    // Bucket keys: '0' for exactly 0, '10' for (0,10], '20' for (10,20], ..., '90' for (80,90], '100' for >90
-    var buckets = {
-        '0': 0,    // exactly 0
-        '10': 0,   // (0, 10]
-        '20': 0,   // (10, 20]
-        '30': 0,   // (20, 30]
-        '40': 0,   // (30, 40]
-        '50': 0,   // (40, 50]
-        '60': 0,   // (50, 60]
-        '70': 0,   // (60, 70]
-        '80': 0,   // (70, 80]
-        '90': 0,   // (80, 90]
-        '100': 0   // >90
-    };
-    var bucketLabels = {
-        '0': '0',
-        '10': '(0,10]',
-        '20': '(10,20]',
-        '30': '(20,30]',
-        '40': '(30,40]',
-        '50': '(40,50]',
-        '60': '(50,60]',
-        '70': '(60,70]',
-        '80': '(70,80]',
-        '90': '(80,90]',
-        '100': '>90'
-    };
+    // Get max possible score from current histogram data
+    var maxPossibleScore = currentHistogramData ? currentHistogramData.maxPossibleScore : 100;
+    
+    // Calculate bucket size: divide max score into 10 equal parts
+    // For max=100: buckets are 0, (0,10], (10,20], ..., (80,90], >90
+    // For max=200: buckets are 0, (0,20], (20,40], ..., (160,180], >180
+    var bucketSize = maxPossibleScore / 10;
+    var lastBucketThreshold = maxPossibleScore * 0.9; // 90% of max
+    
+    // Build histogram buckets dynamically based on max possible score
+    var buckets = {};
+    var bucketLabels = {};
+    var bucketOrder = [];
+    
+    // First bucket: exactly 0
+    buckets['0'] = 0;
+    bucketLabels['0'] = '0';
+    bucketOrder.push('0');
+    
+    // Middle buckets: (0, bucketSize], (bucketSize, 2*bucketSize], ..., up to 90% of max
+    for (var i = 1; i <= 9; i++) {
+        var upperBound = Math.round(i * bucketSize);
+        var lowerBound = Math.round((i - 1) * bucketSize);
+        var key = upperBound.toString();
+        buckets[key] = 0;
+        bucketLabels[key] = '(' + lowerBound + ',' + upperBound + ']';
+        bucketOrder.push(key);
+    }
+    
+    // Last bucket: >90% of max
+    var lastKey = Math.round(maxPossibleScore).toString();
+    buckets[lastKey] = 0;
+    bucketLabels[lastKey] = '>' + Math.round(lastBucketThreshold);
+    bucketOrder.push(lastKey);
 
     scoreValues.forEach(function(score) {
         if (score === 0) {
             buckets['0']++;
-        } else if (score > 90) {
-            buckets['100']++;
+        } else if (score > lastBucketThreshold) {
+            buckets[lastKey]++;
         } else {
-            // For (0,10], (10,20], etc. - use ceiling to get the bucket
-            var bucket = Math.ceil(score / 10) * 10;
-            if (bucket < 10) bucket = 10;
-            buckets[bucket.toString()]++;
+            // For (0,bucketSize], (bucketSize,2*bucketSize], etc. - use ceiling to get the bucket
+            var bucketIndex = Math.ceil(score / bucketSize);
+            if (bucketIndex < 1) bucketIndex = 1;
+            if (bucketIndex > 9) bucketIndex = 9;
+            var bucketKey = Math.round(bucketIndex * bucketSize).toString();
+            buckets[bucketKey]++;
         }
     });
 
@@ -221,15 +242,13 @@ function renderHistogram(scores, title, type) {
     var maxCount = Math.max.apply(null, Object.values(buckets)) || 1;
     var totalStudents = scoreValues.length;
 
-    var bucketOrder = ['0', '10', '20', '30', '40', '50', '60', '70', '80', '90', '100'];
     var barsHtml = '';
-    bucketOrder.forEach(function(bucketKey) {
+    bucketOrder.forEach(function(bucketKey, index) {
         var count = buckets[bucketKey] || 0;
         var percentage = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
         var barHeight = maxCount > 0 ? (count / maxCount) * 100 : 0;
-        // Color based on bucket position (0=red, 100=green)
-        var hue = parseInt(bucketKey) * 1.2;
-        if (hue > 120) hue = 120;
+        // Color based on bucket position (0=red, max=green) - use index for consistent coloring
+        var hue = (index / (bucketOrder.length - 1)) * 120;
 
         barsHtml += '<div class="histogram-bar-container">' +
             '<div class="histogram-bar-wrapper">' +
@@ -256,6 +275,7 @@ function renderHistogram(scores, title, type) {
     // Update stats
     document.getElementById('histogramStats').innerHTML =
         '<strong>Total students:</strong> ' + totalStudents +
+        ' | <strong>Max possible:</strong> ' + Math.round(maxPossibleScore) +
         (scoreValues.length > 0 ? ' | <strong>Average:</strong> ' + (scoreValues.reduce(function(a, b) { return a + b; }, 0) / scoreValues.length).toFixed(1) +
         ' | <strong>Median:</strong> ' + median.toFixed(1) +
         ' | <strong>Max:</strong> ' + Math.max.apply(null, scoreValues).toFixed(1) +
@@ -266,6 +286,7 @@ function renderHistogram(scores, title, type) {
     textData += '================================\n\n';
     textData += 'Statistics:\n';
     textData += 'Total: ' + totalStudents + '\n';
+    textData += 'Max possible score: ' + Math.round(maxPossibleScore) + '\n';
     if (scoreValues.length > 0) {
         textData += 'Average: ' + (scoreValues.reduce(function(a, b) { return a + b; }, 0) / scoreValues.length).toFixed(1) + '\n';
         textData += 'Median: ' + median.toFixed(1) + '\n';
@@ -319,25 +340,15 @@ window.showTaskHistogram = function(taskId, taskName, trainingDayId) {
     var table = document.getElementById('ranking_table');
     if (!table) return;
 
-    // Find the column index for this task
-    var headers = table.querySelectorAll('thead tr:last-child th');
-    var colIndex = -1;
-    headers.forEach(function(th, idx) {
-        if (th.dataset.taskId == taskId && th.dataset.parentDay == trainingDayId) {
-            colIndex = idx;
-        }
-    });
+    // Get max possible score for this task
+    var maxPossibleScore = taskMaxScores[taskId] || 100;
 
     // Collect scores from the table
     var rows = table.querySelectorAll('tbody tr');
     rows.forEach(function(row) {
-        var studentIdMatch = row.querySelector('th a.student-name-link');
-        if (!studentIdMatch) return;
-
-        var href = studentIdMatch.getAttribute('href');
-        var studentIdFromHref = href.match(/student\/(\d+)/);
-        if (!studentIdFromHref) return;
-        var studentId = parseInt(studentIdFromHref[1]);
+        // Use data-student-id attribute instead of extracting from URL
+        var studentId = parseInt(row.dataset.studentId);
+        if (!studentId) return;
 
         var cells = row.querySelectorAll('td');
         cells.forEach(function(cell) {
@@ -350,7 +361,7 @@ window.showTaskHistogram = function(taskId, taskName, trainingDayId) {
         });
     });
 
-    openHistogramModal(scores, taskName, 'task', trainingDayId);
+    openHistogramModal(scores, taskName, 'task', trainingDayId, maxPossibleScore);
 }
 
 window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
@@ -358,16 +369,15 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
     var table = document.getElementById('ranking_table');
     if (!table) return;
 
+    // Get max possible score for this training day (sum of all task max scores)
+    var maxPossibleScore = trainingDayMaxScores[trainingDayId] || 100;
+
     // Collect total scores for this training day
     var rows = table.querySelectorAll('tbody tr');
     rows.forEach(function(row) {
-        var studentIdMatch = row.querySelector('th a.student-name-link');
-        if (!studentIdMatch) return;
-
-        var href = studentIdMatch.getAttribute('href');
-        var studentIdFromHref = href.match(/student\/(\d+)/);
-        if (!studentIdFromHref) return;
-        var studentId = parseInt(studentIdFromHref[1]);
+        // Use data-student-id attribute instead of extracting from URL
+        var studentId = parseInt(row.dataset.studentId);
+        if (!studentId) return;
 
         var cells = row.querySelectorAll('td.total-col[data-training-day-id="' + trainingDayId + '"]');
         cells.forEach(function(cell) {
@@ -378,7 +388,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
         });
     });
 
-    openHistogramModal(scores, trainingDayName, 'training_day', trainingDayId);
+    openHistogramModal(scores, trainingDayName, 'training_day', trainingDayId, maxPossibleScore);
 }
 
 $(document).ready(function() {
@@ -484,7 +494,7 @@ $(document).ready(function() {
     <tbody>
       {% for student in sorted_students %}
       {% set global_total = namespace(value=0) %}
-      <tr>
+      <tr data-student-id="{{ student.id }}">
         <th>
           <div class="student-name-wrapper" style="display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 10px;">
             {% if student.participation %}
