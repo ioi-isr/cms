@@ -1496,7 +1496,9 @@ class GenerateTestcasesHandler(BaseHandler):
 
         # Generate output for each input file
         for codename, input_file_path in input_files.items():
-            output_filename_for_tc = output_template.replace("*", codename)
+            # Use basename to ensure output stays in temp_dir (no subdirectories)
+            output_filename_for_tc = os.path.basename(
+                output_template.replace("*", codename))
 
             sandbox = None
             try:
@@ -1624,7 +1626,9 @@ class GenerateTestcasesHandler(BaseHandler):
                 match = input_re.match(rel_path)
                 if match:
                     codename = match.group(1)
-                    output_filename = output_template.replace("*", codename)
+                    # Use basename to ensure output stays in temp_dir (no subdirectories)
+                    output_filename = os.path.basename(
+                        output_template.replace("*", codename))
                     output_path = os.path.join(temp_dir, output_filename)
                     open(output_path, "wb").close()  # Create empty file
 
