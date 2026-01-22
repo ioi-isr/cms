@@ -30,7 +30,7 @@
           {% include "fragments/hashed_password_form.html" %}
         {% endwith %}
       {% else %}
-        <input type="password" name="password" id="add-user-password-field" />
+        <input type="password" name="password" id="add-user-password-field" autocomplete="new-password" />
         <select name="method">
           <option value="plaintext">Plain text</option>
           <option value="bcrypt" selected>Hashed (bcrypt)</option>
