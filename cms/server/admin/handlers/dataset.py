@@ -31,6 +31,8 @@ import io
 import os
 import logging
 import re
+import shutil
+import tempfile
 import zipfile
 
 import collections
@@ -1214,14 +1216,6 @@ class GenerateTestcasesHandler(BaseHandler):
                 self.redirect(fallback_page)
                 return
         elif output_source == "empty":
-            if dataset.task_type != "Communication":
-                self.service.add_notification(
-                    make_datetime(),
-                    "Invalid output source",
-                    "Empty output generation is only supported "
-                    "for Communication tasks.")
-                self.redirect(fallback_page)
-                return
             use_empty_outputs = True
 
         self.sql_session.close()
@@ -1306,8 +1300,10 @@ class GenerateTestcasesHandler(BaseHandler):
             input_re = compile_template_regex(input_template)
             output_re = compile_template_regex(output_template)
 
-            # Collect files from generator sandbox
-            generated_files = {}  # filename -> content
+            # Create a temporary directory to store generated files
+            temp_dir = tempfile.mkdtemp(prefix="cms_generate_")
+
+            # Collect files from generator sandbox to temp directory
             sandbox_home = sandbox.relative_path("")
             for root, _dirs, files in os.walk(sandbox_home):
                 for filename in files:
@@ -1316,7 +1312,13 @@ class GenerateTestcasesHandler(BaseHandler):
                     rel_path = os.path.relpath(
                         os.path.join(root, filename), sandbox_home)
                     content = sandbox.get_file_to_string(rel_path, maxlen=None)
-                    generated_files[rel_path] = content
+                    dest_path = os.path.join(temp_dir, rel_path)
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    with open(dest_path, "wb") as f:
+                        if isinstance(content, str):
+                            f.write(content.encode("utf-8"))
+                        else:
+                            f.write(content)
 
         except Exception as error:
             self.service.add_notification(
@@ -1324,46 +1326,58 @@ class GenerateTestcasesHandler(BaseHandler):
                 "Generator execution error",
                 repr(error))
             self.redirect(fallback_page)
+            if 'temp_dir' in locals():
+                shutil.rmtree(temp_dir, ignore_errors=True)
             return
         finally:
             if sandbox:
                 sandbox.cleanup(delete=True)
 
-        # If using model solution for outputs, generate them now
-        if model_solution_meta is not None:
-            try:
-                generated_files = self._generate_outputs_with_model_solution(
-                    generated_files,
+        try:
+            # If using model solution for outputs, generate them now
+            if model_solution_meta is not None:
+                success = self._generate_outputs_with_model_solution(
+                    temp_dir,
                     input_re,
                     output_template,
                     model_solution_result,
                     model_solution_meta.submission.language,
                     dataset.task_type_parameters,
+                    dataset.time_limit,
+                    dataset.memory_limit,
                     fallback_page)
-                if generated_files is None:
+                if not success:
                     # Error already reported, redirect already done
+                    shutil.rmtree(temp_dir, ignore_errors=True)
                     return
-            except Exception as error:
-                self.service.add_notification(
-                    make_datetime(),
-                    "Model solution execution error",
-                    repr(error))
-                self.redirect(fallback_page)
-                return
 
-        # If using empty outputs (for Communication tasks), generate them now
-        if use_empty_outputs:
-            generated_files = self._generate_empty_outputs(
-                generated_files,
-                input_re,
-                output_template)
+            # If using empty outputs, generate them now
+            if use_empty_outputs:
+                self._generate_empty_outputs(
+                    temp_dir,
+                    input_re,
+                    output_template)
 
-        # Create zip from generated files
-        temp_zip = io.BytesIO()
-        with zipfile.ZipFile(temp_zip, "w") as zf:
-            for filename, content in generated_files.items():
-                zf.writestr(filename, content)
-        temp_zip.seek(0)
+            # Create zip from temp directory
+            temp_zip = io.BytesIO()
+            with zipfile.ZipFile(temp_zip, "w") as zf:
+                for root, _dirs, files in os.walk(temp_dir):
+                    for filename in files:
+                        file_path = os.path.join(root, filename)
+                        rel_path = os.path.relpath(file_path, temp_dir)
+                        zf.write(file_path, rel_path)
+            temp_zip.seek(0)
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Output generation error",
+                repr(error))
+            self.redirect(fallback_page)
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return
+        finally:
+            # Clean up temp directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
         self.sql_session = Session()
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -1400,24 +1414,28 @@ class GenerateTestcasesHandler(BaseHandler):
 
     def _generate_outputs_with_model_solution(
             self,
-            generated_files,
+            temp_dir,
             input_re,
             output_template,
             model_solution_result,
             language_name,
             task_type_parameters,
+            time_limit,
+            memory_limit,
             fallback_page):
         """Generate output files by running a model solution on input files.
 
-        generated_files: dict of filename -> content from generator
+        temp_dir: path to temporary directory containing generated files
         input_re: compiled regex for matching input files
         output_template: template for output filenames (e.g., "output.*")
         model_solution_result: SubmissionResult with compiled executables
         language_name: language name of the model solution
         task_type_parameters: task type parameters for I/O configuration
+        time_limit: time limit in seconds (from dataset)
+        memory_limit: memory limit in bytes (from dataset)
         fallback_page: URL to redirect to on error
 
-        return: updated generated_files dict with outputs, or None on error
+        return: True on success, False on error
         """
         # Get the executable
         if not model_solution_result.executables:
@@ -1426,7 +1444,7 @@ class GenerateTestcasesHandler(BaseHandler):
                 "Model solution not compiled",
                 "The model solution has no compiled executables.")
             self.redirect(fallback_page)
-            return None
+            return False
 
         exe_filename = next(iter(model_solution_result.executables.keys()))
         exe_digest = model_solution_result.executables[exe_filename].digest
@@ -1456,13 +1474,16 @@ class GenerateTestcasesHandler(BaseHandler):
         actual_input = input_filename if input_filename else "input.txt"
         actual_output = output_filename if output_filename else "output.txt"
 
-        # Find input files and generate outputs
-        input_files = {}  # codename -> content
-        for filename, content in generated_files.items():
-            match = input_re.match(filename)
-            if match:
-                codename = match.group(1)
-                input_files[codename] = content
+        # Find input files in temp directory
+        input_files = {}  # codename -> file_path
+        for root, _dirs, files in os.walk(temp_dir):
+            for filename in files:
+                rel_path = os.path.relpath(
+                    os.path.join(root, filename), temp_dir)
+                match = input_re.match(rel_path)
+                if match:
+                    codename = match.group(1)
+                    input_files[codename] = os.path.join(root, filename)
 
         if not input_files:
             self.service.add_notification(
@@ -1471,11 +1492,10 @@ class GenerateTestcasesHandler(BaseHandler):
                 "The generator did not produce any files matching the "
                 "input template.")
             self.redirect(fallback_page)
-            return None
+            return False
 
         # Generate output for each input file
-        result_files = dict(generated_files)  # Start with all generated files
-        for codename, input_content in input_files.items():
+        for codename, input_file_path in input_files.items():
             output_filename_for_tc = output_template.replace("*", codename)
 
             sandbox = None
@@ -1488,6 +1508,8 @@ class GenerateTestcasesHandler(BaseHandler):
                                                  executable=True)
 
                 # Copy input file
+                with open(input_file_path, "rb") as f:
+                    input_content = f.read()
                 sandbox.create_file_from_string(actual_input, input_content)
 
                 # Prepare execution command
@@ -1514,7 +1536,13 @@ class GenerateTestcasesHandler(BaseHandler):
                 sandbox.stdout_file = stdout_redirect
                 sandbox.stderr_file = "stderr.txt"
 
-                # No time/memory limits for output generation (per user request)
+                # Apply task time/memory limits
+                if time_limit is not None:
+                    sandbox.timeout = time_limit
+                    sandbox.wallclock_timeout = time_limit * 2
+                if memory_limit is not None:
+                    sandbox.address_space = memory_limit
+
                 box_success = sandbox.execute_without_std(cmd, wait=True)
 
                 if not box_success:
@@ -1530,7 +1558,7 @@ class GenerateTestcasesHandler(BaseHandler):
                         "Sandbox error for testcase '%s'.\nStderr:\n%s" %
                         (codename, stderr))
                     self.redirect(fallback_page)
-                    return None
+                    return False
 
                 exit_status = sandbox.get_exit_status()
                 if exit_status != sandbox.EXIT_OK:
@@ -1546,7 +1574,7 @@ class GenerateTestcasesHandler(BaseHandler):
                         "Exit status '%s' for testcase '%s'.\nStderr:\n%s" %
                         (exit_status, codename, stderr))
                     self.redirect(fallback_page)
-                    return None
+                    return False
 
                 # Read output
                 if not sandbox.file_exists(actual_output):
@@ -1556,46 +1584,49 @@ class GenerateTestcasesHandler(BaseHandler):
                         "No output file '%s' for testcase '%s'." %
                         (actual_output, codename))
                     self.redirect(fallback_page)
-                    return None
+                    return False
 
                 output_content = sandbox.get_file_to_string(
                     actual_output, maxlen=None)
-                result_files[output_filename_for_tc] = output_content
+
+                # Write output to temp directory
+                output_path = os.path.join(temp_dir, output_filename_for_tc)
+                with open(output_path, "wb") as f:
+                    if isinstance(output_content, str):
+                        f.write(output_content.encode("utf-8"))
+                    else:
+                        f.write(output_content)
 
             finally:
                 if sandbox:
                     sandbox.cleanup(delete=True)
 
-        return result_files
+        return True
 
     def _generate_empty_outputs(
             self,
-            generated_files,
+            temp_dir,
             input_re,
             output_template):
         """Generate empty output files for each input file.
 
-        This is useful for Communication tasks where outputs are not needed.
+        This is useful when outputs are not needed or will be generated
+        separately.
 
-        generated_files: dict of filename -> content from generator
+        temp_dir: path to temporary directory containing generated files
         input_re: compiled regex for matching input files
         output_template: template for output filenames (e.g., "output.*")
-
-        return: updated generated_files dict with empty outputs
         """
-        result_files = {}
-
-        for filename, content in generated_files.items():
-            match = input_re.match(filename)
-            if match:
-                codename = match.group(1)
-                output_filename = output_template.replace("*", codename)
-                result_files[filename] = content
-                result_files[output_filename] = b""
-            else:
-                result_files[filename] = content
-
-        return result_files
+        for root, _dirs, files in os.walk(temp_dir):
+            for filename in files:
+                rel_path = os.path.relpath(
+                    os.path.join(root, filename), temp_dir)
+                match = input_re.match(rel_path)
+                if match:
+                    codename = match.group(1)
+                    output_filename = output_template.replace("*", codename)
+                    output_path = os.path.join(temp_dir, output_filename)
+                    open(output_path, "wb").close()  # Create empty file
 
 
 class RenameTestcaseHandler(BaseHandler):

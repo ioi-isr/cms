@@ -24,9 +24,7 @@
       <td>
         <select name="output_source">
           <option value="generator">Generator outputs (default)</option>
-          {% if task_type == "Communication" %}
           <option value="empty">Empty output files</option>
-          {% endif %}
           {% if task_type == "Batch" %}
           {% for meta in model_solutions %}
           <option value="model_solution_{{ meta.id }}">Model solution: {{ meta.name }}{% if meta.description %} ({{ meta.description }}){% endif %}</option>
