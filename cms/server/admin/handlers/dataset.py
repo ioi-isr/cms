@@ -89,12 +89,14 @@ def check_compiled_file_conflict(filename, allowed_basenames, existing_managers)
 
 
 def validate_template(template: str, name: str) -> str | None:
-    """Validate a filename template contains exactly one '*'.
+    """Validate a filename template contains exactly one '*' and no path separators.
 
     Return an error message if invalid, None if valid.
     """
     if template.count('*') != 1:
         return "%s template must contain exactly one '*'." % name.capitalize()
+    if '/' in template or '\\' in template:
+        return "%s template must not contain directory separators." % name.capitalize()
     return None
 
 
@@ -691,6 +693,16 @@ class AddTestcasesHandler(BaseHandler):
         # Get input/output file names templates, or use default ones.
         input_template: str = self.get_argument("input_template", "input.*")
         output_template: str = self.get_argument("output_template", "output.*")
+
+        # Validate templates
+        error = validate_template(input_template, "input")
+        if not error:
+            error = validate_template(output_template, "output")
+        if error:
+            self.service.add_notification(
+                make_datetime(), "Invalid template", error)
+            self.redirect(fallback_page)
+            return
 
         try:
             input_re = compile_template_regex(input_template)
@@ -1496,9 +1508,7 @@ class GenerateTestcasesHandler(BaseHandler):
 
         # Generate output for each input file
         for codename, input_file_path in input_files.items():
-            # Use basename to ensure output stays in temp_dir (no subdirectories)
-            output_filename_for_tc = os.path.basename(
-                output_template.replace("*", codename))
+            output_filename_for_tc = output_template.replace("*", codename)
 
             sandbox = None
             try:
@@ -1626,9 +1636,7 @@ class GenerateTestcasesHandler(BaseHandler):
                 match = input_re.match(rel_path)
                 if match:
                     codename = match.group(1)
-                    # Use basename to ensure output stays in temp_dir (no subdirectories)
-                    output_filename = os.path.basename(
-                        output_template.replace("*", codename))
+                    output_filename = output_template.replace("*", codename)
                     output_path = os.path.join(temp_dir, output_filename)
                     open(output_path, "wb").close()  # Create empty file
 

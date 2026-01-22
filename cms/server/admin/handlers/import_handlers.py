@@ -38,6 +38,7 @@ from cmscontrib.loaders import choose_loader
 from cmscontrib.loaders.base_loader import LoaderValidationError
 
 from .base import BaseHandler, SimpleHandler, require_permission
+from .dataset import validate_template
 
 
 logger = logging.getLogger(__name__)
@@ -216,6 +217,22 @@ class ImportTaskHandler(
 
         input_template = self.get_argument("input_template", "").strip()
         output_template = self.get_argument("output_template", "").strip()
+
+        # Validate templates if provided
+        if input_template:
+            error = validate_template(input_template, "input")
+            if error:
+                self.service.add_notification(
+                    make_datetime(), "Invalid template", error)
+                self.redirect(fallback_page)
+                return
+        if output_template:
+            error = validate_template(output_template, "output")
+            if error:
+                self.service.add_notification(
+                    make_datetime(), "Invalid template", error)
+                self.redirect(fallback_page)
+                return
 
         try:
             with _extract_uploaded_zip(
