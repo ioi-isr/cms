@@ -1,5 +1,7 @@
 {% macro task_indicator(status) -%}
-    {%- if not status.has_submissions -%}
+    {%- if not status.can_access -%}
+        N
+    {%- elif not status.has_submissions -%}
         {%- if not status.has_opened -%}
             X
         {%- else -%}

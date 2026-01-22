@@ -1217,12 +1217,14 @@ class TrainingProgramRankingHandler(BaseHandler):
         """Return a status indicator string for CSV export.
 
         status: a TaskStatus namedtuple with score, partial, has_submissions,
-            has_opened fields.
+            has_opened, can_access fields.
 
         return: a string indicator for the status.
 
         """
         star = "*" if status.partial else ""
+        if not status.can_access:
+            return "N/A"
         if not status.has_submissions:
             return "X" if not status.has_opened else "-"
         if not status.has_opened:
