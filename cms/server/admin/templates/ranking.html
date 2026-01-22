@@ -121,7 +121,7 @@
         {% for task in group_tasks %}
           {% set idx = task_index[task.id] %}
           {% set status = p.task_statuses[idx] %}
-          <td>{{ task_html(status) }}</td>
+          <td data-value="{{ status.score }}">{{ task_html(status) }}</td>
           {% set total_score.value = total_score.value + status.score %}
           {% if status.partial %}{% set partial.value = true %}{% endif %}
         {% endfor %}
@@ -198,7 +198,7 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
         {% endif %}
       {% endif %}
       {% for status in p.task_statuses %}
-      <td>{{ task_html(status) }}</td>
+      <td data-value="{{ status.score }}">{{ task_html(status) }}</td>
       {% endfor %}
       {% set total_score, partial = p.total_score %}
       <td {%- if partial %} class="partial" {%- endif -%}>{{ total_score }}</td>
