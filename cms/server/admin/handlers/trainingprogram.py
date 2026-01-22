@@ -1144,6 +1144,7 @@ class TrainingProgramRankingHandler(BaseHandler):
         self.r_params["contest"] = self.contest
         self.r_params["show_teams"] = show_teams
         self.r_params["student_tags_by_participation"] = student_tags_by_participation
+        self.r_params["main_groups_data"] = None  # Not used for training program ranking
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == self.contest.id)\
