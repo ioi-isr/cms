@@ -125,7 +125,7 @@
           {% set total_score.value = total_score.value + status.score %}
           {% if status.partial %}{% set partial.value = true %}{% endif %}
         {% endfor %}
-        <td {%- if partial.value %} class="partial" {%- endif -%}>{{ "%.0f"|format(total_score.value) if total_score.value == total_score.value|int else "%.1f"|format(total_score.value) }}</td>
+        <td {%- if partial.value %} class="partial" {%- endif -%}>{{ ("%%.%df"|format(contest.score_precision))|format(total_score.value) }}</td>
       </tr>
       {% else %}
       <tr>

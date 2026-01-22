@@ -40,9 +40,8 @@ from cms.db import Contest, Participation, ScoreHistory, Student, \
     Submission, SubmissionResult, Task
 
 from cms.grading.scorecache import get_cached_score_entry, ensure_valid_history
-from cms.server.util import can_access_task
+from cms.server.util import can_access_task, get_all_student_tags
 from .base import BaseHandler, require_permission
-from .trainingprogram import get_all_student_tags
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +228,10 @@ class RankingHandler(BaseHandler):
                 for mg in p_main_groups:
                     participations_by_group[mg].append(p)
 
+            # Build task index lookup for computing group-specific scores
+            all_tasks = list(self.contest.get_tasks())
+            task_index = {task.id: i for i, task in enumerate(all_tasks)}
+
             # For each group, determine which tasks are accessible to at least one member
             for mg in sorted(main_group_tags):
                 group_participations = participations_by_group[mg]
@@ -245,10 +248,17 @@ class RankingHandler(BaseHandler):
 
                 tasks_by_group[mg] = accessible_tasks
 
-                # Sort participations by total score
+                # Sort participations by group-specific total score (sum of accessible tasks only)
+                # Capture accessible_tasks in closure to avoid late binding issues
+                def get_group_score(p, tasks=accessible_tasks):
+                    return sum(
+                        p.task_statuses[task_index[t.id]].score
+                        for t in tasks
+                    )
+
                 sorted_participations = sorted(
                     group_participations,
-                    key=lambda p: p.total_score,
+                    key=get_group_score,
                     reverse=True
                 )
 
@@ -505,20 +515,25 @@ class ParticipationDetailHandler(BaseHandler):
                 user_tags = set(user_student.student_tags or [])
                 user_main_groups = user_tags & main_group_tags
                 if user_main_groups:
-                    user_main_group = next(iter(user_main_groups))
+                    # Use deterministic selection (sorted first) instead of arbitrary
+                    user_main_group = sorted(user_main_groups)[0]
+
+                    # Batch query: fetch all Student rows for visible participations
+                    visible_user_ids = {p.user_id for p in visible_participations}
+                    students = (
+                        self.sql_session.query(Student, Participation.user_id)
+                        .join(Participation, Student.participation_id == Participation.id)
+                        .filter(Student.training_program_id == training_program.id)
+                        .filter(Participation.user_id.in_(visible_user_ids))
+                        .all()
+                    )
+
+                    # Build main_group_user_ids from batch results
                     main_group_user_ids = set()
-                    for p in visible_participations:
-                        student = (
-                            self.sql_session.query(Student)
-                            .join(Participation, Student.participation_id == Participation.id)
-                            .filter(Student.training_program_id == training_program.id)
-                            .filter(Participation.user_id == p.user_id)
-                            .first()
-                        )
-                        if student:
-                            p_tags = set(student.student_tags or [])
-                            if user_main_group in p_tags:
-                                main_group_user_ids.add(p.user_id)
+                    for student, uid in students:
+                        p_tags = set(student.student_tags or [])
+                        if user_main_group in p_tags:
+                            main_group_user_ids.add(uid)
 
         if main_group_user_ids is not None:
             visible_participations = [

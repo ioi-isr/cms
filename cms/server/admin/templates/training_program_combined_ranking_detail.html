@@ -253,7 +253,7 @@
         <div style="font-size: 0.6em; color: #666;">
           {% if student.participation %}{{ student.participation.user.username }}{% endif %}
         </div>
-        {% if student.participation and student.participation.user.picture %}<img id="UserDetail_face" src="{{ url("file", student.participation.user.picture, "picture") }}" alt="Profile picture of {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}"/>{% endif %}
+        {% if student.participation and student.participation.user.picture %}<img id="UserDetail_face" src="{{ url("file", student.participation.user.picture, "picture") }}" alt="Profile picture of {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}"/>{% else %}<img id="UserDetail_face" src="" alt="" style="display: none;"/>{% endif %}
         <div id="UserDetail_spacer"></div>
         <div id="UserDetail_team"></div>
         <img id="UserDetail_flag" src="" alt="Flag"/>
