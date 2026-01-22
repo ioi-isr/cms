@@ -703,8 +703,8 @@ class TrainingProgramCombinedRankingHandler(
                         active_students_per_td[td.id].add(ranking.student_id)
 
         # Build ranking data structure
-        # {student_id: {training_day_id: total_score}}
-        ranking_data: dict[int, dict[int, float]] = {}
+        # {student_id: {training_day_id: ArchivedStudentRanking}}
+        ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
         all_students: dict[int, Student] = {}
 
         for td in archived_training_days:
@@ -725,14 +725,17 @@ class TrainingProgramCombinedRankingHandler(
                 if student_id not in ranking_data:
                     ranking_data[student_id] = {}
                     all_students[student_id] = student
-                # Sum task scores for this training day
-                total_score = sum(ranking.task_scores.values()) if ranking.task_scores else 0.0
-                ranking_data[student_id][td.id] = total_score
+                # Store the full ranking object (not just the score)
+                ranking_data[student_id][td.id] = ranking
 
         # Calculate grand totals and sort students
         student_totals: dict[int, float] = {}
-        for student_id, td_scores in ranking_data.items():
-            student_totals[student_id] = sum(td_scores.values())
+        for student_id, td_rankings in ranking_data.items():
+            total = 0.0
+            for ranking in td_rankings.values():
+                if ranking.task_scores:
+                    total += sum(ranking.task_scores.values())
+            student_totals[student_id] = total
 
         sorted_students = sorted(
             all_students.values(),
