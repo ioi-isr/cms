@@ -482,7 +482,7 @@ class ParticipationDetailHandler(BaseHandler):
 
         tasks_data = {}
         total_max_score = 0.0
-        for task in self.contest.tasks:
+        for task in self.contest.get_tasks():
             max_score = 100.0
             extra_headers = []
             if task.active_dataset:
@@ -561,7 +561,7 @@ class ParticipationSubmissionsHandler(BaseHandler):
         )
 
         dataset_by_task_id = {
-            task.id: task.active_dataset for task in self.contest.tasks
+            task.id: task.active_dataset for task in self.contest.get_tasks()
         }
 
         result = []

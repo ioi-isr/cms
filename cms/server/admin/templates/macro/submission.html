@@ -96,7 +96,14 @@ show_training_day (bool): if true, show a column indicating which training day
   <td class="diff-only"><input type=radio class="diff-radio" name="diff-radio-old" data-submission="{{ s.id }}"></td>
   <td class="diff-only"><input type=radio class="diff-radio" name="diff-radio-new" data-submission="{{ s.id }}"></td>
   <td><a href="{{ url("submission", s.id) }}">{{ s.timestamp|format_datetime_with_timezone(timezone) }}</a></td>
-  <td><a href="{{ url("contest", s.participation.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a></td>
+  <td>
+    {# For training day submissions, link to the training day participation #}
+    {% if s.training_day is not none and s.training_day.contest is not none %}
+    <a href="{{ url("contest", s.training_day.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a>
+    {% else %}
+    <a href="{{ url("contest", s.participation.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a>
+    {% endif %}
+  </td>
   <td><a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a></td>
   {% if show_training_day %}
   <td>
