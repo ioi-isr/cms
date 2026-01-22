@@ -17,9 +17,9 @@
 
 {% block core %}
 <style>
-  .ranking-table .score-only { display: none; }
-  .ranking-table.hide-indicators .indicator { display: none; }
-  .ranking-table.hide-indicators .score-only { display: inline; }
+  .td-ranking-table .score-only { display: none; }
+  .td-ranking-table.hide-indicators .indicator { display: none; }
+  .td-ranking-table.hide-indicators .score-only { display: inline; }
   .main-group-section { margin-bottom: 30px; }
   .main-group-header {
     display: flex;
@@ -77,7 +77,7 @@
     </div>
   </div>
 
-  <table class="bordered ranking-table" id="ranking-table-{{ loop.index }}">
+  <table class="bordered td-ranking-table" id="ranking-table-{{ loop.index }}">
     <thead>
       <tr>
         <th>Username</th>
@@ -145,9 +145,9 @@
 
     $("#show-indicators").on("change", function() {
       if (this.checked) {
-        $(".ranking-table").removeClass("hide-indicators");
+        $(".td-ranking-table").removeClass("hide-indicators");
       } else {
-        $(".ranking-table").addClass("hide-indicators");
+        $(".td-ranking-table").addClass("hide-indicators");
       }
     });
   })
@@ -157,7 +157,7 @@
 {# Regular contest or training day without groups - show single table #}
 Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>, <a href="{{ url("contest", contest.id, "ranking", "txt") }}">text</a>.
 <label style="margin-left: 20px;"><input type="checkbox" id="show-indicators" checked> Show indicators</label>
-<table id="ranking-table" class="bordered ranking-table">
+<table id="ranking-table" class="bordered td-ranking-table">
   <thead>
     <tr>
       <th>Username</th>
