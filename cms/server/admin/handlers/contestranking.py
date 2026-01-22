@@ -395,6 +395,9 @@ class ScoreHistoryHandler(BaseHandler):
     By default, excludes hidden participations to match ranking page behavior.
     Use ?include_hidden=1 to include hidden participations.
 
+    For training days with main groups, use ?main_group_user_ids=id1,id2,...
+    to filter history to only include users from a specific main group.
+
     Before returning history data, this handler checks for any cache entries
     with history_valid=False and rebuilds their history to ensure correctness.
 
@@ -405,6 +408,13 @@ class ScoreHistoryHandler(BaseHandler):
         self.safe_get_item(Contest, contest_id)
 
         include_hidden = self.get_argument("include_hidden", "0") == "1"
+        main_group_user_ids_param = self.get_argument("main_group_user_ids", None)
+
+        main_group_user_ids = None
+        if main_group_user_ids_param:
+            main_group_user_ids = set(
+                int(uid) for uid in main_group_user_ids_param.split(",") if uid
+            )
 
         # Ensure all score history for the contest is valid before querying
         if ensure_valid_history(self.sql_session, int(contest_id)):
@@ -419,6 +429,9 @@ class ScoreHistoryHandler(BaseHandler):
 
         if not include_hidden:
             query = query.filter(Participation.hidden.is_(False))
+
+        if main_group_user_ids is not None:
+            query = query.filter(Participation.user_id.in_(main_group_user_ids))
 
         history = query.order_by(ScoreHistory.timestamp).all()
 
@@ -443,6 +456,9 @@ class ParticipationDetailHandler(BaseHandler):
     showing score and rank progress over time for a specific participation.
     It includes global and per-task score/rank charts, a navigator table,
     and a submission table for each task.
+
+    For training days with main groups, the ranking is computed relative to
+    the user's main group only, not all participants.
 
     """
     @require_permission(BaseHandler.AUTHENTICATED)
@@ -471,6 +487,44 @@ class ParticipationDetailHandler(BaseHandler):
         visible_participations = [
             p for p in self.contest.participations if not p.hidden
         ]
+
+        training_day = self.contest.training_day
+        main_group_user_ids = None
+        if training_day and training_day.groups:
+            training_program = training_day.training_program
+            main_group_tags = {g.tag_name for g in training_day.groups}
+
+            user_student = (
+                self.sql_session.query(Student)
+                .join(Participation, Student.participation_id == Participation.id)
+                .filter(Student.training_program_id == training_program.id)
+                .filter(Participation.user_id == user_id)
+                .first()
+            )
+            if user_student:
+                user_tags = set(user_student.student_tags or [])
+                user_main_groups = user_tags & main_group_tags
+                if user_main_groups:
+                    user_main_group = next(iter(user_main_groups))
+                    main_group_user_ids = set()
+                    for p in visible_participations:
+                        student = (
+                            self.sql_session.query(Student)
+                            .join(Participation, Student.participation_id == Participation.id)
+                            .filter(Student.training_program_id == training_program.id)
+                            .filter(Participation.user_id == p.user_id)
+                            .first()
+                        )
+                        if student:
+                            p_tags = set(student.student_tags or [])
+                            if user_main_group in p_tags:
+                                main_group_user_ids.add(p.user_id)
+
+        if main_group_user_ids is not None:
+            visible_participations = [
+                p for p in visible_participations if p.user_id in main_group_user_ids
+            ]
+
         user_count = len(visible_participations)
 
         users_data = {}
@@ -521,9 +575,12 @@ class ParticipationDetailHandler(BaseHandler):
         self.r_params["users_data"] = users_data
         self.r_params["tasks_data"] = tasks_data
         self.r_params["contest_data"] = contest_data
-        self.r_params["history_url"] = self.url(
-            "contest", contest_id, "ranking", "history"
-        )
+        history_url = self.url("contest", contest_id, "ranking", "history")
+        if main_group_user_ids is not None:
+            history_url += "?main_group_user_ids=" + ",".join(
+                str(uid) for uid in main_group_user_ids
+            )
+        self.r_params["history_url"] = history_url
         self.r_params["submissions_url"] = self.url(
             "contest", contest_id, "user", user_id, "submissions"
         )
