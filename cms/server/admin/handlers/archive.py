@@ -722,63 +722,110 @@ class TrainingProgramCombinedRankingHandler(
             current_tag_student_ids,
         ) = self._get_filtered_context(training_program)
 
-        # For historical mode, we need to track which students are active per training day
-        # to compute the correct user_count for relative ranks
-        active_students_per_td: dict[int, set[int]] = {}
-        if student_tags and student_tags_mode == "historical":
-            for td in archived_training_days:
-                active_students_per_td[td.id] = set()
-                for ranking in td.archived_student_rankings:
-                    if self._tags_match(ranking.student_tags, student_tags):
-                        active_students_per_td[td.id].add(ranking.student_id)
-
-        # Build ranking data structure
-        # {student_id: {training_day_id: ArchivedStudentRanking}}
         ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
         all_students: dict[int, Student] = {}
+        training_day_tasks: dict[int, list[dict]] = {}
+        # Attendance data: {student_id: {training_day_id: ArchivedAttendance}}
+        attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
+        # Track which students are "active" (have matching tags) for each training day
+        # For historical mode: student had matching tags during that training
+        # For current mode: student has matching tags now AND participated in that training
+        active_students_per_td: dict[int, set[int]] = {}
+
+        filtered_training_days: list[TrainingDay] = []
 
         for td in archived_training_days:
+            active_students_per_td[td.id] = set()
+
+            # Build attendance lookup for this training day
+            for attendance in td.archived_attendances:
+                student_id = attendance.student_id
+                if student_id not in attendance_data:
+                    attendance_data[student_id] = {}
+                attendance_data[student_id][td.id] = attendance
+
+            # Collect all tasks that were visible to at least one filtered student
+            # Use archived_tasks_data from training day (preserves original scoring scheme)
+            visible_tasks_by_id: dict[int, dict] = {}
             for ranking in td.archived_student_rankings:
                 student_id = ranking.student_id
-                # Apply student tag filter
-                if student_tags:
-                    if student_tags_mode == "current":
-                        if student_id not in current_tag_student_ids:
-                            continue
-                    else:  # historical mode
-                        if not self._tags_match(ranking.student_tags, student_tags):
-                            continue
+
                 # Skip hidden users
                 student = ranking.student
                 if student.participation and student.participation.hidden:
                     continue
+
+                # Apply student tag filter
+                if student_tags:
+                    if student_tags_mode == "current":
+                        # Filter by current tags: student must have matching tags now
+                        if student_id not in current_tag_student_ids:
+                            continue
+                    else:  # historical mode
+                        # Filter by historical tags: student must have had matching tags
+                        # during this specific training day
+                        if not self._tags_match(ranking.student_tags, student_tags):
+                            continue
+
+                # Student passes the filter for this training day
+                active_students_per_td[td.id].add(student_id)
+
                 if student_id not in ranking_data:
                     ranking_data[student_id] = {}
                     all_students[student_id] = student
-                # Store the full ranking object (not just the score)
                 ranking_data[student_id][td.id] = ranking
 
-        # Calculate grand totals and sort students
-        student_totals: dict[int, float] = {}
-        for student_id, td_rankings in ranking_data.items():
-            total = 0.0
-            for ranking in td_rankings.values():
+                # Collect all visible tasks from this student's task_scores keys
                 if ranking.task_scores:
-                    total += sum(ranking.task_scores.values())
-            student_totals[student_id] = total
+                    for task_id_str in ranking.task_scores.keys():
+                        task_id = int(task_id_str)
+                        if task_id not in visible_tasks_by_id:
+                            # Get task info from archived_tasks_data on training day
+                            if td.archived_tasks_data and task_id_str in td.archived_tasks_data:
+                                task_info = td.archived_tasks_data[task_id_str]
+                                visible_tasks_by_id[task_id] = {
+                                    "id": task_id,
+                                    "name": task_info.get("short_name", ""),
+                                    "title": task_info.get("name", ""),
+                                    "training_day_num": task_info.get("training_day_num"),
+                                }
+                            else:
+                                # Fallback to live task data
+                                task = self.sql_session.query(Task).get(task_id)
+                                if task:
+                                    visible_tasks_by_id[task_id] = {
+                                        "id": task_id,
+                                        "name": task.name,
+                                        "title": task.title,
+                                        "training_day_num": task.training_day_num,
+                                    }
+
+            # Omit training days where no filtered students were eligible
+            if not active_students_per_td[td.id]:
+                continue
+
+            filtered_training_days.append(td)
+
+            # Sort tasks by training_day_num for stable ordering
+            sorted_tasks = sorted(
+                visible_tasks_by_id.values(),
+                key=lambda t: (t.get("training_day_num") or 0, t["id"])
+            )
+            training_day_tasks[td.id] = sorted_tasks
 
         sorted_students = sorted(
             all_students.values(),
-            key=lambda s: student_totals.get(s.id, 0.0),
-            reverse=True
+            key=lambda s: s.participation.user.username if s.participation else ""
         )
 
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
-        self.r_params["archived_training_days"] = archived_training_days
+        self.r_params["archived_training_days"] = filtered_training_days
         self.r_params["ranking_data"] = ranking_data
-        self.r_params["student_totals"] = student_totals
         self.r_params["sorted_students"] = sorted_students
+        self.r_params["training_day_tasks"] = training_day_tasks
+        self.r_params["attendance_data"] = attendance_data
+        self.r_params["active_students_per_td"] = active_students_per_td
         self.r_params["start_date"] = start_date
         self.r_params["end_date"] = end_date
         self.r_params["training_day_types"] = training_day_types

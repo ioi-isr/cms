@@ -191,15 +191,8 @@ class RankingHandler(BaseHandler):
         main_groups_data = []
         student_tags_by_participation = {}  # participation_id -> list of tags
 
-        if training_day and training_day.groups:
-            # Get main group tag names
-            main_group_tags = {g.tag_name for g in training_day.groups}
-
-            # Build student tags lookup for each participation
-            # We need to find the Student record for each participation's user
-            # Note: Student.participation_id refers to the managing contest participation,
-            # not the training day participation. So we need to join through Participation
-            # to match by user_id.
+        # For training days, always build student tags lookup
+        if training_day:
             training_program = training_day.training_program
             for p in self.contest.participations:
                 # Find the student record for this participation's user
@@ -214,6 +207,10 @@ class RankingHandler(BaseHandler):
                     student_tags_by_participation[p.id] = student.student_tags or []
                 else:
                     student_tags_by_participation[p.id] = []
+
+        if training_day and training_day.groups:
+            # Get main group tag names
+            main_group_tags = {g.tag_name for g in training_day.groups}
 
             # Organize participations by main group
             # A participation belongs to a main group if it has that tag
