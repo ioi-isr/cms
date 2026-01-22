@@ -94,10 +94,27 @@ CMS.AWSUtils.initTagify({
       </tr>
       <tr>
         <td>
-          <span class="info" title="Whether the student's results will be visible in the external ranking."></span>
+          <span class="info" title="Whether the student's results will be visible in the external ranking. Note: This setting will automatically apply to all new training days."></span>
           Hidden participation
         </td>
-        <td><input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/></td>
+        <td>
+          <input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/>
+          <span class="hint" style="color: #666; font-size: 0.9em; margin-left: 8px;">
+            (will apply to new training days)
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="If checked, the hidden status change will also be applied to all existing training days for this student."></span>
+          Apply to existing training days
+        </td>
+        <td>
+          <input type="checkbox" name="apply_hidden_to_existing"/>
+          <span class="hint" style="color: #666; font-size: 0.9em; margin-left: 8px;">
+            (update hidden status in all existing training days)
+          </span>
+        </td>
       </tr>
       <tr>
         <td>

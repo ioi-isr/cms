@@ -735,7 +735,25 @@ class StudentHandler(BaseHandler):
             self.get_timedelta_sec(attrs, "extra_time")
             self.get_bool(attrs, "hidden")
             self.get_bool(attrs, "unrestricted")
+
+            # Get the new hidden status before applying
+            new_hidden = attrs.get("hidden", False)
+
             participation.set_attrs(attrs)
+
+            # Check if admin wants to apply hidden status to existing training days
+            apply_to_existing = self.get_argument("apply_hidden_to_existing", None) is not None
+
+            if apply_to_existing:
+                # Update hidden status in all existing training day participations
+                user = participation.user
+                for training_day in training_program.training_days:
+                    td_participation = self.sql_session.query(Participation)\
+                        .filter(Participation.contest_id == training_day.contest_id)\
+                        .filter(Participation.user_id == user.id)\
+                        .first()
+                    if td_participation:
+                        td_participation.hidden = new_hidden
 
             self.get_string(attrs, "team")
             team_code = attrs["team"]
