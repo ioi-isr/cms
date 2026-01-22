@@ -57,9 +57,9 @@ from cms.server.util import (
     check_training_day_eligibility,
     parse_tags,
 )
-from cmscommon.datetime import make_datetime
+from cmscommon.datetime import make_datetime, get_timezone, local_to_utc, get_timezone_name
 
-from .base import BaseHandler, SimpleHandler, require_permission
+from .base import BaseHandler, SimpleHandler, require_permission, parse_datetime_with_timezone
 
 
 class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
@@ -1445,6 +1445,11 @@ class AddTrainingDayHandler(BaseHandler):
         ).distinct()
         self.r_params["all_student_tags"] = sorted([row.tag for row in tags_query.all()])
 
+        # Add timezone info for the form (use managing contest timezone)
+        tz = get_timezone(None, managing_contest)
+        self.r_params["timezone"] = tz
+        self.r_params["timezone_name"] = get_timezone_name(tz)
+
         self.render("add_training_day.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -1452,6 +1457,10 @@ class AddTrainingDayHandler(BaseHandler):
         fallback_page = self.url("training_program", training_program_id, "training_days", "add")
 
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        # Get timezone for parsing datetime inputs
+        tz = get_timezone(None, managing_contest)
 
         try:
             name = self.get_argument("name")
@@ -1462,10 +1471,11 @@ class AddTrainingDayHandler(BaseHandler):
             if not description or not description.strip():
                 description = name
 
-            # Parse optional start and stop times from datetime-local inputs
-            # Format from HTML5 datetime-local: YYYY-MM-DDTHH:MM
+            # Parse optional start time and duration from inputs
+            # Times are in the managing contest timezone
             start_str = self.get_argument("start", "")
-            stop_str = self.get_argument("stop", "")
+            duration_hours_str = self.get_argument("duration_hours", "")
+            duration_minutes_str = self.get_argument("duration_minutes", "")
 
             contest_kwargs: dict = {
                 "name": name,
@@ -1473,11 +1483,12 @@ class AddTrainingDayHandler(BaseHandler):
             }
 
             if start_str:
-                # Convert from datetime-local format (YYYY-MM-DDTHH:MM) to datetime
-                contest_kwargs["start"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+                # Parse datetime in timezone and convert to UTC
+                local_start = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+                contest_kwargs["start"] = local_to_utc(local_start, tz)
             else:
                 # Default to after training program end year (so contestants can't start until configured)
-                program_end_year = training_program.managing_contest.stop.year
+                program_end_year = managing_contest.stop.year
                 default_date = dt(program_end_year + 1, 1, 1, 0, 0)
                 contest_kwargs["start"] = default_date
                 # Also set analysis_start/stop to satisfy Contest check constraints
@@ -1485,17 +1496,22 @@ class AddTrainingDayHandler(BaseHandler):
                 contest_kwargs["analysis_start"] = default_date
                 contest_kwargs["analysis_stop"] = default_date
 
-            if stop_str:
-                contest_kwargs["stop"] = dt.strptime(stop_str, "%Y-%m-%dT%H:%M")
+            # Calculate stop time from start + duration
+            duration_hours = int(duration_hours_str) if duration_hours_str.strip() else 0
+            duration_minutes = int(duration_minutes_str) if duration_minutes_str.strip() else 0
+
+            if duration_hours > 0 or duration_minutes > 0:
+                duration = timedelta(hours=duration_hours, minutes=duration_minutes)
+                contest_kwargs["stop"] = contest_kwargs["start"] + duration
             else:
-                # Default stop to same as start when not specified
-                program_end_year = training_program.managing_contest.stop.year
-                contest_kwargs["stop"] = dt(program_end_year + 1, 1, 1, 0, 0)
+                # Default stop to same as start when no duration specified
+                contest_kwargs["stop"] = contest_kwargs["start"]
 
             # Parse main group configuration (if any)
             group_tags = self.get_arguments("group_tag_name[]")
             group_starts = self.get_arguments("group_start_time[]")
-            group_ends = self.get_arguments("group_end_time[]")
+            group_duration_hours = self.get_arguments("group_duration_hours[]")
+            group_duration_minutes = self.get_arguments("group_duration_minutes[]")
             group_alphabeticals = self.get_arguments("group_alphabetical[]")
 
             # Collect valid groups and their times for defaulting
@@ -1512,16 +1528,22 @@ class AddTrainingDayHandler(BaseHandler):
                 group_end = None
 
                 if i < len(group_starts) and group_starts[i].strip():
-                    group_start = dt.strptime(group_starts[i].strip(), "%Y-%m-%dT%H:%M")
+                    local_group_start = dt.strptime(group_starts[i].strip(), "%Y-%m-%dT%H:%M")
+                    group_start = local_to_utc(local_group_start, tz)
                     group_start_times.append(group_start)
 
-                if i < len(group_ends) and group_ends[i].strip():
-                    group_end = dt.strptime(group_ends[i].strip(), "%Y-%m-%dT%H:%M")
-                    group_end_times.append(group_end)
+                # Calculate group end from start + duration
+                g_duration_hours = 0
+                g_duration_minutes = 0
+                if i < len(group_duration_hours) and group_duration_hours[i].strip():
+                    g_duration_hours = int(group_duration_hours[i].strip())
+                if i < len(group_duration_minutes) and group_duration_minutes[i].strip():
+                    g_duration_minutes = int(group_duration_minutes[i].strip())
 
-                # Validate group end is not before start
-                if group_start and group_end and group_end < group_start:
-                    raise ValueError(f"End time must be after start time for group '{tag}'")
+                if group_start and (g_duration_hours > 0 or g_duration_minutes > 0):
+                    group_duration = timedelta(hours=g_duration_hours, minutes=g_duration_minutes)
+                    group_end = group_start + group_duration
+                    group_end_times.append(group_end)
 
                 alphabetical = str(i) in group_alphabeticals
 
@@ -1535,7 +1557,7 @@ class AddTrainingDayHandler(BaseHandler):
             # Default training start/end from group times if not specified
             if not start_str and group_start_times:
                 contest_kwargs["start"] = min(group_start_times)
-            if not stop_str and group_end_times:
+            if (duration_hours == 0 and duration_minutes == 0) and group_end_times:
                 contest_kwargs["stop"] = max(group_end_times)
 
             contest = Contest(**contest_kwargs)
@@ -1574,9 +1596,11 @@ class AddTrainingDayHandler(BaseHandler):
             # Auto-add participations for all students in the training program
             # Training days are for all students, so we create participations
             # in the training day's contest for each student
+            # Pass the hidden property from the managing contest participation
             for student in training_program.students:
                 user = student.participation.user
-                participation = Participation(contest=contest, user=user)
+                hidden = student.participation.hidden
+                participation = Participation(contest=contest, user=user, hidden=hidden)
                 self.sql_session.add(participation)
 
         except Exception as error:
@@ -1683,6 +1707,9 @@ class AddTrainingDayGroupHandler(BaseHandler):
 
         fallback_page = self.url("contest", contest_id)
 
+        # Get timezone for parsing datetime inputs (use contest timezone)
+        tz = get_timezone(None, contest)
+
         try:
             tag_name = self.get_argument("tag_name")
             if not tag_name or not tag_name.strip():
@@ -1699,9 +1726,10 @@ class AddTrainingDayGroupHandler(BaseHandler):
             if existing:
                 raise ValueError(f"Tag '{tag_name}' is already a main group")
 
-            # Parse optional start and end times
+            # Parse optional start time and duration
             start_str = self.get_argument("start_time", "")
-            end_str = self.get_argument("end_time", "")
+            duration_hours_str = self.get_argument("duration_hours", "")
+            duration_minutes_str = self.get_argument("duration_minutes", "")
 
             group_kwargs: dict = {
                 "training_day": training_day,
@@ -1710,23 +1738,24 @@ class AddTrainingDayGroupHandler(BaseHandler):
             }
 
             if start_str:
-                group_kwargs["start_time"] = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+                local_start = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+                group_kwargs["start_time"] = local_to_utc(local_start, tz)
 
-            if end_str:
-                group_kwargs["end_time"] = dt.strptime(end_str, "%Y-%m-%dT%H:%M")
+            # Calculate end time from start + duration
+            duration_hours = int(duration_hours_str) if duration_hours_str.strip() else 0
+            duration_minutes = int(duration_minutes_str) if duration_minutes_str.strip() else 0
 
-            # Validate that end is not before start
-            if "start_time" in group_kwargs and "end_time" in group_kwargs:
-                if group_kwargs["end_time"] < group_kwargs["start_time"]:
-                    raise ValueError("End time must be after start time")
+            if "start_time" in group_kwargs and (duration_hours > 0 or duration_minutes > 0):
+                duration = timedelta(hours=duration_hours, minutes=duration_minutes)
+                group_kwargs["end_time"] = group_kwargs["start_time"] + duration
 
             # Validate group times are within contest bounds
             if "start_time" in group_kwargs and contest.start:
                 if group_kwargs["start_time"] < contest.start:
-                    raise ValueError(f"Group start time cannot be before training day start ({contest.start})")
+                    raise ValueError(f"Group start time cannot be before training day start")
             if "end_time" in group_kwargs and contest.stop:
                 if group_kwargs["end_time"] > contest.stop:
-                    raise ValueError(f"Group end time cannot be after training day end ({contest.stop})")
+                    raise ValueError(f"Group end time cannot be after training day end")
 
             group = TrainingDayGroup(**group_kwargs)
             self.sql_session.add(group)
@@ -1753,12 +1782,16 @@ class UpdateTrainingDayGroupsHandler(BaseHandler):
 
         fallback_page = self.url("contest", contest_id)
 
+        # Get timezone for parsing datetime inputs (use contest timezone)
+        tz = get_timezone(None, contest)
+
         try:
             group_ids = self.get_arguments("group_id[]")
             start_times = self.get_arguments("start_time[]")
-            end_times = self.get_arguments("end_time[]")
+            duration_hours_list = self.get_arguments("duration_hours[]")
+            duration_minutes_list = self.get_arguments("duration_minutes[]")
 
-            if len(group_ids) != len(start_times) or len(group_ids) != len(end_times):
+            if len(group_ids) != len(start_times):
                 raise ValueError("Mismatched form data")
 
             for i, group_id in enumerate(group_ids):
@@ -1766,24 +1799,27 @@ class UpdateTrainingDayGroupsHandler(BaseHandler):
                 if group.training_day_id != training_day.id:
                     raise ValueError(f"Group {group_id} does not belong to this training day")
 
-                # Parse start time
+                # Parse start time in timezone and convert to UTC
                 start_str = start_times[i].strip()
                 if start_str:
-                    group.start_time = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+                    local_start = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
+                    group.start_time = local_to_utc(local_start, tz)
                 else:
                     group.start_time = None
 
-                # Parse end time
-                end_str = end_times[i].strip()
-                if end_str:
-                    group.end_time = dt.strptime(end_str, "%Y-%m-%dT%H:%M")
+                # Calculate end time from start + duration
+                duration_hours = 0
+                duration_minutes = 0
+                if i < len(duration_hours_list) and duration_hours_list[i].strip():
+                    duration_hours = int(duration_hours_list[i].strip())
+                if i < len(duration_minutes_list) and duration_minutes_list[i].strip():
+                    duration_minutes = int(duration_minutes_list[i].strip())
+
+                if group.start_time and (duration_hours > 0 or duration_minutes > 0):
+                    duration = timedelta(hours=duration_hours, minutes=duration_minutes)
+                    group.end_time = group.start_time + duration
                 else:
                     group.end_time = None
-
-                # Validate end is not before start
-                if group.start_time and group.end_time:
-                    if group.end_time < group.start_time:
-                        raise ValueError(f"End time must be after start time for group '{group.tag_name}'")
 
                 # Validate group times are within contest bounds
                 if group.start_time and contest.start:
@@ -2754,9 +2790,13 @@ class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
                 # Apply student tag filter (current tags only)
                 if student_tags and student_id not in current_tag_student_ids:
                     continue
+                # Skip hidden users
+                student = attendance.student
+                if student.participation and student.participation.hidden:
+                    continue
                 if student_id not in attendance_data:
                     attendance_data[student_id] = {}
-                    all_students[student_id] = attendance.student
+                    all_students[student_id] = student
                 attendance_data[student_id][td.id] = attendance
 
         # Sort students by username
@@ -2833,6 +2873,11 @@ class TrainingProgramCombinedRankingHandler(
             for ranking in td.archived_student_rankings:
                 student_id = ranking.student_id
 
+                # Skip hidden users
+                student = ranking.student
+                if student.participation and student.participation.hidden:
+                    continue
+
                 # Apply student tag filter
                 if student_tags:
                     if student_tags_mode == "current":
@@ -2850,7 +2895,7 @@ class TrainingProgramCombinedRankingHandler(
 
                 if student_id not in ranking_data:
                     ranking_data[student_id] = {}
-                    all_students[student_id] = ranking.student
+                    all_students[student_id] = student
                 ranking_data[student_id][td.id] = ranking
 
                 # Collect all visible tasks from this student's task_scores keys

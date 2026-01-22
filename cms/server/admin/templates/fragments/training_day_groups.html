@@ -56,8 +56,8 @@ function removeMainGroup(url, xsrfToken) {
     <thead>
       <tr>
         <th>Tag Name</th>
-        <th>Start Time (UTC)</th>
-        <th>End Time (UTC)</th>
+        <th>Start Time ({{ timezone_name }})</th>
+        <th>Duration</th>
         <th>Alphabetical Task Order</th>
         <th>Actions</th>
       </tr>
@@ -70,10 +70,14 @@ function removeMainGroup(url, xsrfToken) {
           <input type="hidden" name="group_id[]" value="{{ group.id }}"/>
         </td>
         <td>
-          <input type="datetime-local" name="start_time[]" value="{{ group.start_time.strftime('%Y-%m-%dT%H:%M') if group.start_time else '' }}"/>
+          <input type="datetime-local" name="start_time[]" value="{{ group.start_time|format_datetime_input(timezone) if group.start_time else '' }}"/>
         </td>
         <td>
-          <input type="datetime-local" name="end_time[]" value="{{ group.end_time.strftime('%Y-%m-%dT%H:%M') if group.end_time else '' }}"/>
+          {% set duration_seconds = (group.end_time - group.start_time).total_seconds() if group.start_time and group.end_time else 0 %}
+          {% set duration_hours = (duration_seconds // 3600)|int %}
+          {% set duration_minutes = ((duration_seconds % 3600) // 60)|int %}
+          <input type="number" name="duration_hours[]" min="0" style="width: 60px;" value="{{ duration_hours if duration_seconds > 0 else '' }}" placeholder="0"/> h
+          <input type="number" name="duration_minutes[]" min="0" max="59" style="width: 60px;" value="{{ duration_minutes if duration_seconds > 0 else '' }}" placeholder="0"/> m
         </td>
         <td style="text-align: center;">
           <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }}/>
@@ -92,8 +96,8 @@ function removeMainGroup(url, xsrfToken) {
   <thead>
     <tr>
       <th>Tag Name</th>
-      <th>Start Time (UTC)</th>
-      <th>End Time (UTC)</th>
+      <th>Start Time ({{ timezone_name }})</th>
+      <th>Duration</th>
       <th>Alphabetical Task Order</th>
       <th>Actions</th>
     </tr>
@@ -119,17 +123,20 @@ function removeMainGroup(url, xsrfToken) {
     </tr>
     <tr>
       <td>
-        <span class="info" title="Custom start time for this group in UTC timezone (optional). Leave empty to use contest default. Note: The datetime picker shows local time but the value is interpreted as UTC."></span>
-        Start Time (UTC)
+        <span class="info" title="Custom start time for this group in contest timezone (optional). Leave empty to use contest default."></span>
+        Start Time ({{ timezone_name }})
       </td>
       <td><input type="datetime-local" name="start_time"/></td>
     </tr>
     <tr>
       <td>
-        <span class="info" title="Custom end time for this group in UTC timezone (optional). Leave empty to use contest default. Note: The datetime picker shows local time but the value is interpreted as UTC."></span>
-        End Time (UTC)
+        <span class="info" title="Duration for this group (optional). Leave empty to use contest default."></span>
+        Duration
       </td>
-      <td><input type="datetime-local" name="end_time"/></td>
+      <td>
+        <input type="number" name="duration_hours" min="0" style="width: 60px;" placeholder="0"/> hours
+        <input type="number" name="duration_minutes" min="0" max="59" style="width: 60px;" placeholder="0"/> minutes
+      </td>
     </tr>
     <tr>
       <td>

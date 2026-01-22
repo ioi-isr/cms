@@ -161,6 +161,12 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             all_student_tags = get_all_student_tags(training_program)
         self.r_params["all_student_tags"] = all_student_tags
 
+        # Add timezone info for training day groups form
+        from cmscommon.datetime import get_timezone, get_timezone_name
+        tz = get_timezone(None, self.contest)
+        self.r_params["timezone"] = tz
+        self.r_params["timezone_name"] = get_timezone_name(tz)
+
         self.render("contest.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
