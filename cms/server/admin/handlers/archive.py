@@ -53,6 +53,10 @@ from cms.server.util import (
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
+from .contestdelayrequest import (
+    compute_participation_status,
+    get_participation_main_group,
+)
 
 
 class ArchiveTrainingDayHandler(BaseHandler):
@@ -85,11 +89,37 @@ class ArchiveTrainingDayHandler(BaseHandler):
         # Filter to only IPs with more than one student
         shared_ips = {ip: count for ip, count in ip_counts.items() if count > 1}
 
+        # Check if any participants can still start or are currently in contest
+        # This is used to show a warning on the archive confirmation page
+        users_not_finished = []
+        for participation in contest.participations:
+            if participation.hidden:
+                continue
+            is_eligible, _, _ = check_training_day_eligibility(
+                self.sql_session, participation, training_day
+            )
+            if not is_eligible:
+                continue
+            main_group = get_participation_main_group(contest, participation)
+            main_group_start = main_group.start_time if main_group else None
+            main_group_end = main_group.end_time if main_group else None
+            status_class, status_label = compute_participation_status(
+                contest, participation, self.timestamp,
+                main_group_start, main_group_end
+            )
+            if status_class not in ('finished', 'missed'):
+                users_not_finished.append({
+                    'participation': participation,
+                    'status_class': status_class,
+                    'status_label': status_label,
+                })
+
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
         self.r_params["training_day"] = training_day
         self.r_params["contest"] = contest
         self.r_params["shared_ips"] = shared_ips
+        self.r_params["users_not_finished"] = users_not_finished
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == training_program.managing_contest.id)\
