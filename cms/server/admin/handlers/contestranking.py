@@ -197,14 +197,18 @@ class RankingHandler(BaseHandler):
             main_group_tags = {g.tag_name for g in training_day.groups}
 
             # Build student tags lookup for each participation
-            # We need to find the Student record for each participation
+            # We need to find the Student record for each participation's user
+            # Note: Student.participation_id refers to the managing contest participation,
+            # not the training day participation. So we need to join through Participation
+            # to match by user_id.
             training_program = training_day.training_program
             for p in self.contest.participations:
                 # Find the student record for this participation's user
                 student = (
                     self.sql_session.query(Student)
+                    .join(Participation, Student.participation_id == Participation.id)
                     .filter(Student.training_program_id == training_program.id)
-                    .filter(Student.participation_id == p.id)
+                    .filter(Participation.user_id == p.user_id)
                     .first()
                 )
                 if student:

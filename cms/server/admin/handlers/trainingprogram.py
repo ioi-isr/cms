@@ -1124,10 +1124,26 @@ class TrainingProgramRankingHandler(BaseHandler):
             total_score = round(total_score, self.contest.score_precision)
             p.total_score = (total_score, partial)
 
+        # Build student tags lookup for each participation
+        student_tags_by_participation = {}
+        for p in self.contest.participations:
+            # Find the student record for this participation
+            student = (
+                self.sql_session.query(Student)
+                .filter(Student.training_program_id == training_program.id)
+                .filter(Student.participation_id == p.id)
+                .first()
+            )
+            if student:
+                student_tags_by_participation[p.id] = student.student_tags or []
+            else:
+                student_tags_by_participation[p.id] = []
+
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
         self.r_params["contest"] = self.contest
         self.r_params["show_teams"] = show_teams
+        self.r_params["student_tags_by_participation"] = student_tags_by_participation
         self.r_params["unanswered"] = self.sql_session.query(Question)\
             .join(Participation)\
             .filter(Participation.contest_id == self.contest.id)\
@@ -1151,6 +1167,8 @@ class TrainingProgramRankingHandler(BaseHandler):
             include_partial = True
 
             row = ["Username", "User"]
+            if student_tags_by_participation:
+                row.append("Tags")
             if show_teams:
                 row.append("Team")
             for task in self.contest.tasks:
@@ -1171,6 +1189,9 @@ class TrainingProgramRankingHandler(BaseHandler):
 
                 row = [p.user.username,
                        "%s %s" % (p.user.first_name, p.user.last_name)]
+                if student_tags_by_participation:
+                    tags = student_tags_by_participation.get(p.id, [])
+                    row.append(", ".join(tags))
                 if show_teams:
                     row.append(p.team.name if p.team else "")
                 assert len(self.contest.tasks) == len(p.task_statuses)
