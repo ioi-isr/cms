@@ -166,6 +166,15 @@ class DelaysAndExtraTimesHandler(BaseHandler):
             })
 
         self.r_params["participation_statuses"] = participation_statuses
+
+        # Check if all participants are in stage ≥1 (finished or missed)
+        # This is used to show the "Archive Training" button on training day attendance pages
+        all_finished_or_missed = all(
+            item['status_class'] in ('finished', 'missed')
+            for item in participation_statuses
+        ) if participation_statuses else False
+        self.r_params["all_finished_or_missed"] = all_finished_or_missed
+
         delay_requests = self.sql_session.query(DelayRequest)\
             .join(Participation)\
             .filter(Participation.contest_id == contest_id)\

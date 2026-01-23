@@ -8,7 +8,14 @@
 
 {% block core %}
 <h1>
-  Participation of <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
+  Participation of
+  {# For training day participations, link to the student page in the training program #}
+  {% if contest.training_day is not none and contest.training_day.training_program is not none %}
+  <a href="{{ url("training_program", contest.training_day.training_program.id, "student", selected_user.id, "edit") }}">{{ selected_user.username }}</a>
+  {% else %}
+  <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
+  {% endif %}
+  in <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
 </h1>
 
 <h2 id="title_submissions" class="toggling_on">Submissions</h2>

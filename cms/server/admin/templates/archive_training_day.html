@@ -56,6 +56,23 @@
   {% endif %}
 
   <h2>Confirm Archive</h2>
+
+  {% if users_not_finished %}
+  <div class="notification notification_warning" style="margin-bottom: 15px;">
+    <p><strong>Warning: Some students can still start or are currently in the training!</strong></p>
+    <p>The following {{ users_not_finished|length }} student(s) have not finished or missed the training yet:</p>
+    <ul style="margin-top: 8px; margin-bottom: 8px;">
+      {% for item in users_not_finished %}
+      <li>
+        <strong>{{ item.participation.user.first_name }} {{ item.participation.user.last_name }}</strong>
+        ({{ item.participation.user.username }}) - {{ item.status_label }}
+      </li>
+      {% endfor %}
+    </ul>
+    <p>Archiving now will mark these students as "missed" and they will not be able to participate.</p>
+  </div>
+  {% endif %}
+
   <p>
     <label>
       <input type="checkbox" name="confirm_archive" required />

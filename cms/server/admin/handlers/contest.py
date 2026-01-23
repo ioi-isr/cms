@@ -232,6 +232,26 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             # Update the contest first
             contest.set_attrs(attrs)
 
+            # Validate training day times against main group times
+            training_day = contest.training_day
+            if training_day is not None and training_day.groups:
+                new_start = attrs.get("start")
+                new_stop = attrs.get("stop")
+
+                for group in training_day.groups:
+                    if group.start_time is not None and new_start is not None:
+                        if new_start > group.start_time:
+                            raise ValueError(
+                                f"Training day start cannot be after main group "
+                                f"'{group.tag_name}' start time"
+                            )
+                    if group.end_time is not None and new_stop is not None:
+                        if new_stop < group.end_time:
+                            raise ValueError(
+                                f"Training day end cannot be before main group "
+                                f"'{group.tag_name}' end time"
+                            )
+
             # Folder assignment (relationship)
             folder_id_str = self.get_argument("folder_id", None)
             if folder_id_str is None or folder_id_str == "" or folder_id_str == "none":
