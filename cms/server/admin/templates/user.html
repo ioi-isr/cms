@@ -12,6 +12,7 @@
   <table class="bordered">
     <thead>
       <tr>
+        <th>Participation</th>
         <th>Training Program</th>
         <th>Description</th>
         <th>Actions</th>
@@ -20,6 +21,7 @@
     <tbody>
       {% for p in training_program_participations %}
       <tr>
+        <td><a href="{{ url("training_program", p.contest.training_program.id, "student", p.user.id, "edit") }}">{{ p.user.username }}</a></td>
         <td><a href="{{ url("training_program", p.contest.training_program.id) }}">{{ p.contest.training_program.name }}</a></td>
         <td>{{ p.contest.training_program.description }}</td>
         <td>
