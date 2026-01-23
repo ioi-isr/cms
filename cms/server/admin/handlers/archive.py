@@ -898,6 +898,10 @@ class TrainingProgramCombinedRankingDetailHandler(
     def get(self, training_program_id: str, student_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         student = self.safe_get_item(Student, student_id)
+        if student.training_program_id != training_program.id:
+            raise tornado.web.HTTPError(404)
+        if student.participation and student.participation.hidden:
+            raise tornado.web.HTTPError(404)
 
         (
             start_date,
@@ -916,6 +920,13 @@ class TrainingProgramCombinedRankingDetailHandler(
             for td in archived_training_days:
                 active_students_per_td[td.id] = set()
                 for ranking in td.archived_student_rankings:
+                    student_obj = ranking.student
+                    if (
+                        student_obj
+                        and student_obj.participation
+                        and student_obj.participation.hidden
+                    ):
+                        continue
                     if self._tags_match(ranking.student_tags, student_tags):
                         active_students_per_td[td.id].add(ranking.student_id)
 
@@ -924,6 +935,8 @@ class TrainingProgramCombinedRankingDetailHandler(
         filtered_student_ids: set[int] = set()
         for s in training_program.students:
             if s.participation and s.participation.user:
+                if s.participation.hidden:
+                    continue
                 # Apply student tag filter for current mode
                 if student_tags and student_tags_mode == "current":
                     if s.id not in current_tag_student_ids:
@@ -960,6 +973,13 @@ class TrainingProgramCombinedRankingDetailHandler(
 
             # Collect all visible task IDs from filtered students' task_scores keys
             for ranking in td.archived_student_rankings:
+                student_obj = ranking.student
+                if (
+                    student_obj
+                    and student_obj.participation
+                    and student_obj.participation.hidden
+                ):
+                    continue
                 # Apply student tag filter
                 if student_tags:
                     if student_tags_mode == "current":

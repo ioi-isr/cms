@@ -193,20 +193,27 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
 
         # Count submissions and participations from training days
         training_day_contest_ids = [td.contest_id for td in training_program.training_days]
-        training_day_participations = (
-        self.sql_session.query(Participation)
-            .filter(Participation.contest_id.in_(training_day_contest_ids))
-            .filter(Participation.user == user)
-            .count()
-        )
+        training_day_contest_ids = [
+            cid for cid in training_day_contest_ids if cid is not None
+        ]
 
-        training_day_submissions = (
-            self.sql_session.query(Submission)
-            .join(Participation)
-            .filter(Participation.contest_id.in_(training_day_contest_ids))
-            .filter(Participation.user == user)
-            .count()
-        )
+        if training_day_contest_ids:
+            training_day_participations = (
+                self.sql_session.query(Participation)
+                .filter(Participation.contest_id.in_(training_day_contest_ids))
+                .filter(Participation.user == user)
+                .count()
+            )
+            training_day_submissions = (
+                self.sql_session.query(Submission)
+                .join(Participation)
+                .filter(Participation.contest_id.in_(training_day_contest_ids))
+                .filter(Participation.user == user)
+                .count()
+            )
+        else:
+            training_day_participations = 0
+            training_day_submissions = 0
 
         self.r_params["user"] = user
         self.r_params["training_program"] = training_program
@@ -373,6 +380,8 @@ class StudentHandler(BaseHandler):
                 # Update hidden status in all existing training day participations
                 user = participation.user
                 for training_day in training_program.training_days:
+                    if training_day.contest is None:
+                        continue
                     td_participation = self.sql_session.query(Participation)\
                         .filter(Participation.contest_id == training_day.contest_id)\
                         .filter(Participation.user_id == user.id)\
