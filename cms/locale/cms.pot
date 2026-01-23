@@ -1032,3 +1032,231 @@ msgstr ""
 msgid "Sent to printer"
 msgstr ""
 
+
+msgid "A password reset link has been sent to:"
+msgstr ""
+
+msgid "An administrator must approve your password reset before it takes effect. You will be able to log in with your new password once it has been approved."
+msgstr ""
+
+msgid "Approved"
+msgstr ""
+
+msgid "Before you can view the tasks and participate in the contest, you must click the button below to register your participation."
+msgstr ""
+
+msgid "Confirm Password"
+msgstr ""
+
+msgid "Date of birth"
+msgstr ""
+
+msgid "Delay Request"
+msgstr ""
+
+msgid "Detect Language"
+msgstr ""
+
+msgid "Email Sent!"
+msgstr ""
+
+msgid "Email address is required."
+msgstr ""
+
+msgid "Enter Contest"
+msgstr ""
+
+msgid "Enter a new password for user:"
+msgstr ""
+
+msgid "Enter the text you want to translate"
+msgstr ""
+
+msgid "Enter your username or email address to request a password reset."
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Error loading details, please refresh the page."
+msgstr ""
+
+msgid "Evaluation system error"
+msgstr ""
+
+msgid "Fair"
+msgstr ""
+
+msgid "Forgot password?"
+msgstr ""
+
+msgid "If you don't receive the email within a few minutes, please check your spam folder."
+msgstr ""
+
+msgid "Image dimensions are too large. Maximum is 1280x1280 pixels."
+msgstr ""
+
+msgid "Image file is too large. Maximum size is 5MB."
+msgstr ""
+
+msgid "Invalid image type. Allowed types: JPEG, PNG, GIF, WEBP."
+msgstr ""
+
+msgid "Invalid or Expired Link"
+msgstr ""
+
+msgid "New Password"
+msgstr ""
+
+msgid "Once you start, you will be able to view tasks and submit solutions until the end of the contest."
+msgstr ""
+
+msgid "Password Reset"
+msgstr ""
+
+msgid "Password Reset Submitted!"
+msgstr ""
+
+msgid "Password strength:"
+msgstr ""
+
+msgid "Pending"
+msgstr ""
+
+msgid "Please check your email and click the link to reset your password. The link will expire in"
+msgstr ""
+
+msgid "Please contact an administrator if you need your password reset to be processed urgently."
+msgstr ""
+
+msgid "Please enter a valid date of birth."
+msgstr ""
+
+msgid "Please enter a valid email address."
+msgstr ""
+
+msgid "Please explain why you need a delay"
+msgstr ""
+
+msgid "Please request a new password reset link if you still need to reset your password."
+msgstr ""
+
+msgid "Profile picture"
+msgstr ""
+
+msgid "Reason"
+msgstr ""
+
+msgid "Reason:"
+msgstr ""
+
+msgid "Rejected"
+msgstr ""
+
+msgid "Rejection Reason:"
+msgstr ""
+
+msgid "Request Contest Delay"
+msgstr ""
+
+msgid "Request New Reset Link"
+msgstr ""
+
+msgid "Request Reset"
+msgstr ""
+
+msgid "Requested Start Time"
+msgstr ""
+
+msgid "Requested Start Time:"
+msgstr ""
+
+msgid "Reset Password"
+msgstr ""
+
+msgid "Select target language"
+msgstr ""
+
+msgid "Select the date and time when you want to start the contest"
+msgstr ""
+
+msgid "Some of the registration data is invalid. Please check all fields."
+msgstr ""
+
+msgid "Source Language"
+msgstr ""
+
+msgid "Status:"
+msgstr ""
+
+msgid "Strong"
+msgstr ""
+
+msgid "Submit Delay Request"
+msgstr ""
+
+msgid "Supported Languages"
+msgstr ""
+
+msgid "Target Language"
+msgstr ""
+
+msgid "Text to Translate"
+msgstr ""
+
+msgid "Thank you for your participation!"
+msgstr ""
+
+msgid "The uploaded file is not a valid image."
+msgstr ""
+
+msgid "This password reset link is invalid or has expired."
+msgstr ""
+
+msgid "Translate"
+msgstr ""
+
+msgid "Translation"
+msgstr ""
+
+msgid "Translation Result"
+msgstr ""
+
+msgid "Use this tool to translate text between different languages. This can help you understand problem statements and communicate more effectively."
+msgstr ""
+
+msgid "Username may not start with __."
+msgstr ""
+
+msgid "Username may only contain letters, digits, underscores, and hyphens."
+msgstr ""
+
+msgid "Username or Email"
+msgstr ""
+
+msgid "Very strong"
+msgstr ""
+
+msgid "Very weak"
+msgstr ""
+
+msgid "Weak"
+msgstr ""
+
+msgid "You haven't started the contest yet."
+msgstr ""
+
+msgid "You missed the contest window."
+msgstr ""
+
+msgid "Your password is too weak. Try using a longer phrase with a mix of letters, numbers, and symbols."
+msgstr ""
+
+msgid "Your password reset request for user"
+msgstr ""
+
+msgid "has been submitted."
+msgstr ""
+
+msgid "hours."
+msgstr ""
