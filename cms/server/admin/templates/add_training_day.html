@@ -158,6 +158,14 @@ function addGroupRow() {
 
 document.getElementById('add-group-btn').addEventListener('click', addGroupRow);
 
+// Re-index checkbox values before form submission to match visual order
+document.querySelector('form[name="add_training_day"]').addEventListener('submit', function() {
+    var checkboxes = document.querySelectorAll('#groups-tbody input[name="group_alphabetical[]"]');
+    checkboxes.forEach(function(checkbox, index) {
+        checkbox.value = index;
+    });
+});
+
 </script>
 
 <p>
