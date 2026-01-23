@@ -44,6 +44,7 @@ from cms.db import (
     Question,
     Announcement,
     Student,
+    StudentTask,
 )
 from cms.server.util import (
     get_all_student_tags,
@@ -645,6 +646,21 @@ class TrainingProgramRankingHandler(BaseHandler):
             for sv in p.statement_views:
                 statement_views_set.add((sv.participation_id, sv.task_id))
 
+        # Build a set of (participation_id, task_id) pairs for tasks that students can access
+        # A student can access a task if they have a StudentTask record for it
+        student_task_access = set()
+        participation_ids = [p.id for p in self.contest.participations]
+        if participation_ids:
+            rows = (
+                self.sql_session.query(Student.participation_id, StudentTask.task_id)
+                .join(StudentTask, Student.id == StudentTask.student_id)
+                .filter(Student.training_program_id == training_program.id)
+                .filter(Student.participation_id.in_(participation_ids))
+                .all()
+            )
+            for participation_id, task_id in rows:
+                student_task_access.add((participation_id, task_id))
+
         show_teams = False
         for p in self.contest.participations:
             show_teams = show_teams or p.team_id
@@ -657,13 +673,14 @@ class TrainingProgramRankingHandler(BaseHandler):
                 has_submissions = any(s.task_id == task.id and s.official
                                      for s in p.submissions)
                 has_opened = (p.id, task.id) in statement_views_set
+                can_access = (p.id, task.id) in student_task_access
                 p.task_statuses.append(
                     TaskStatus(
                         score=t_score,
                         partial=t_partial,
                         has_submissions=has_submissions,
                         has_opened=has_opened,
-                        can_access=True,
+                        can_access=can_access,
                     )
                 )
                 total_score += t_score

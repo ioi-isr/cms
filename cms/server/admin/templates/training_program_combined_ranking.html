@@ -644,8 +644,8 @@ $(document).ready(function() {
                 {% if has_access %}
                     {{ render_score_cell(score_val) }}
                 {% else %}
-                     <div class="cell-content inaccessible-cell" title="Task not in student's archive">
-                        <span class="inaccessible-indicator">🚫</span>
+                     <div class="cell-content inaccessible-cell" title="Inaccessible">
+                        <span style="opacity: 0.5;">&mdash;</span>
                      </div>
                 {% endif %}
             </td>
@@ -959,15 +959,6 @@ $(document).ready(function() {
 .task-header .header-text,
 .total-col-header .header-text {
   vertical-align: middle;
-}
-
-.inaccessible-cell {
-  text-align: center;
-}
-
-.inaccessible-indicator {
-  font-size: 12px;
-  opacity: 0.7;
 }
 </style>
 {% endblock core %}
