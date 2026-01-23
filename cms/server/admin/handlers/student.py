@@ -293,13 +293,7 @@ class StudentHandler(BaseHandler):
         )
 
         if student is None:
-            student = Student(
-                training_program=training_program,
-                participation=participation,
-                student_tags=[]
-            )
-            self.sql_session.add(student)
-            self.try_commit()
+            raise tornado.web.HTTPError(404)
 
         submission_query = self.sql_session.query(Submission).filter(
             Submission.participation == participation

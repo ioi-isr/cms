@@ -43,9 +43,9 @@ from cms.server.util import (
     get_all_training_day_types,
     parse_tags,
 )
-from cmscommon.datetime import make_datetime, get_timezone, local_to_utc, get_timezone_name
+from cmscommon.datetime import make_datetime, get_timezone, get_timezone_name
 
-from .base import BaseHandler, require_permission
+from .base import BaseHandler, require_permission, parse_datetime_with_timezone
 
 
 def parse_and_validate_duration(
@@ -66,8 +66,11 @@ def parse_and_validate_duration(
     Raises:
         ValueError: If validation fails
     """
-    hours = int(hours_str) if hours_str.strip() else 0
-    minutes = int(minutes_str) if minutes_str.strip() else 0
+    hours_str = hours_str.strip()
+    minutes_str = minutes_str.strip()
+    hours = int(hours_str) if hours_str else 0
+    minutes = int(minutes_str) if minutes_str else 0
+    provided = bool(hours_str or minutes_str)
 
     prefix = f"{context} " if context else ""
 
@@ -75,6 +78,8 @@ def parse_and_validate_duration(
         raise ValueError(f"{prefix}Duration hours cannot be negative")
     if minutes < 0 or minutes >= 60:
         raise ValueError(f"{prefix}Duration minutes must be between 0 and 59")
+    if provided and hours == 0 and minutes == 0:
+        raise ValueError(f"{prefix}Duration must be positive")
 
     return hours, minutes
 
@@ -233,8 +238,7 @@ class AddTrainingDayHandler(BaseHandler):
 
             if start_str:
                 # Parse datetime in timezone and convert to UTC
-                local_start = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
-                contest_kwargs["start"] = local_to_utc(local_start, tz)
+                contest_kwargs["start"] = parse_datetime_with_timezone(start_str, tz)
             else:
                 # Default to after training program end year (so contestants can't start until configured)
                 program_end_year = managing_contest.stop.year
@@ -278,8 +282,7 @@ class AddTrainingDayHandler(BaseHandler):
                 group_end = None
 
                 if i < len(group_starts) and group_starts[i].strip():
-                    local_group_start = dt.strptime(group_starts[i].strip(), "%Y-%m-%dT%H:%M")
-                    group_start = local_to_utc(local_group_start, tz)
+                    group_start = parse_datetime_with_timezone(group_starts[i].strip(), tz)
                     group_start_times.append(group_start)
 
                 # Calculate group end from start + duration
@@ -489,8 +492,7 @@ class AddTrainingDayGroupHandler(BaseHandler):
             }
 
             if start_str:
-                local_start = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
-                group_kwargs["start_time"] = local_to_utc(local_start, tz)
+                group_kwargs["start_time"] = parse_datetime_with_timezone(start_str, tz)
 
             # Calculate end time from start + duration
             duration_hours, duration_minutes = parse_and_validate_duration(
@@ -554,8 +556,7 @@ class UpdateTrainingDayGroupsHandler(BaseHandler):
                 # Parse start time in timezone and convert to UTC
                 start_str = start_times[i].strip()
                 if start_str:
-                    local_start = dt.strptime(start_str, "%Y-%m-%dT%H:%M")
-                    group.start_time = local_to_utc(local_start, tz)
+                    group.start_time = parse_datetime_with_timezone(start_str, tz)
                 else:
                     group.start_time = None
 

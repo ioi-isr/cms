@@ -33,8 +33,12 @@ function removeMainGroup(url) {
         return;
     }
     var xsrfInput = document.querySelector('input[name="_xsrf"]');
+    if (!xsrfInput) {
+        alert('Missing XSRF token');
+        return;
+    }
     var formData = new FormData();
-    formData.append('_xsrf', xsrfInput ? xsrfInput.value : '');
+    formData.append('_xsrf', xsrfInput.value);
     fetch(url, {
         method: 'POST',
         body: formData
