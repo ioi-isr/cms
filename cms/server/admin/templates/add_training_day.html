@@ -21,18 +21,21 @@
     <tr>
       <td>
         <span class="info" title="When the training day starts. If not specified and groups have start times, defaults to the earliest group start time."></span>
-        Start time (UTC)
+        Start time ({{ timezone_name }})
       </td>
       <td><input type="datetime-local" name="start"/></td>
       <td class="hint">When the training day starts (optional, defaults to earliest group time)</td>
     </tr>
     <tr>
       <td>
-        <span class="info" title="When the training day ends. If not specified and groups have end times, defaults to the latest group end time."></span>
-        End time (UTC)
+        <span class="info" title="Duration of the training day. If not specified and groups have durations, defaults to cover all group times."></span>
+        Duration
       </td>
-      <td><input type="datetime-local" name="stop"/></td>
-      <td class="hint">When the training day ends (optional, defaults to latest group time)</td>
+      <td>
+        <input type="number" name="duration_hours" min="0" style="width: 60px;" placeholder="0"/> hours
+        <input type="number" name="duration_minutes" min="0" max="59" style="width: 60px;" placeholder="0"/> minutes
+      </td>
+      <td class="hint">Duration of the training day (optional)</td>
     </tr>
   </table>
 
@@ -43,8 +46,8 @@
     <thead>
       <tr>
         <th>Tag Name</th>
-        <th>Start Time (UTC)</th>
-        <th>End Time (UTC)</th>
+        <th>Start Time ({{ timezone_name }})</th>
+        <th>Duration</th>
         <th>Alphabetical Task Order</th>
         <th>Actions</th>
       </tr>
@@ -84,12 +87,25 @@ function addGroupRow() {
     startCell.appendChild(startInput);
     row.appendChild(startCell);
 
-    var endCell = document.createElement('td');
-    var endInput = document.createElement('input');
-    endInput.type = 'datetime-local';
-    endInput.name = 'group_end_time[]';
-    endCell.appendChild(endInput);
-    row.appendChild(endCell);
+    var durationCell = document.createElement('td');
+    var hoursInput = document.createElement('input');
+    hoursInput.type = 'number';
+    hoursInput.name = 'group_duration_hours[]';
+    hoursInput.min = '0';
+    hoursInput.style.width = '60px';
+    hoursInput.placeholder = '0';
+    durationCell.appendChild(hoursInput);
+    durationCell.appendChild(document.createTextNode(' h '));
+    var minutesInput = document.createElement('input');
+    minutesInput.type = 'number';
+    minutesInput.name = 'group_duration_minutes[]';
+    minutesInput.min = '0';
+    minutesInput.max = '59';
+    minutesInput.style.width = '60px';
+    minutesInput.placeholder = '0';
+    durationCell.appendChild(minutesInput);
+    durationCell.appendChild(document.createTextNode(' m'));
+    row.appendChild(durationCell);
 
     var alphaCell = document.createElement('td');
     alphaCell.style.textAlign = 'center';
@@ -142,11 +158,14 @@ function addGroupRow() {
 
 document.getElementById('add-group-btn').addEventListener('click', addGroupRow);
 
-CMS.AWSUtils.initDateTimeValidation(
-  'form[name="add_training_day"]',
-  'input[name="start"]',
-  'input[name="stop"]'
-);
+// Re-index checkbox values before form submission to match visual order
+document.querySelector('form[name="add_training_day"]').addEventListener('submit', function() {
+    var checkboxes = document.querySelectorAll('#groups-tbody input[name="group_alphabetical[]"]');
+    checkboxes.forEach(function(checkbox, index) {
+        checkbox.value = index;
+    });
+});
+
 </script>
 
 <p>

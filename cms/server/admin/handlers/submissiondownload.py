@@ -34,6 +34,7 @@ from cms.db import (
     TrainingProgram,
     TrainingDay,
 )
+from cms.db.training_day import get_managing_participation
 from cms.grading.languagemanager import safe_get_lang_filename
 from .base import BaseHandler, require_permission
 
@@ -197,14 +198,22 @@ class DownloadUserContestSubmissionsHandler(BaseHandler):
         if participation is None:
             raise tornado.web.HTTPError(404)
 
-        # For training day contests, only download submissions made via that training day
-        if self.contest.training_day is not None:
-            submissions = (
-                self.sql_session.query(Submission)
-                .filter(Submission.participation_id == participation.id)
-                .filter(Submission.training_day_id == self.contest.training_day.id)
-                .all()
-            )
+        # For training day contests, submissions are stored with the managing
+        # contest's participation, not the training day's participation.
+        # We need to get the managing participation to find the submissions.
+        training_day = self.contest.training_day
+        if training_day is not None:
+            managing_participation = get_managing_participation(
+                self.sql_session, training_day, participation.user)
+            if managing_participation is not None:
+                submissions = (
+                    self.sql_session.query(Submission)
+                    .filter(Submission.participation_id == managing_participation.id)
+                    .filter(Submission.training_day_id == training_day.id)
+                    .all()
+                )
+            else:
+                submissions = []
         else:
             submissions = (
                 self.sql_session.query(Submission)
