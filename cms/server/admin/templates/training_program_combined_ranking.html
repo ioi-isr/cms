@@ -710,6 +710,28 @@ $(document).ready(function() {
         CMS.AWSUtils.init_table_sort($("#ranking_table"), false, 0, false);
     }
   });
+  function updateStickyHeaderOffset() {
+    var firstRow = document.querySelector('.ranking-table thead tr:first-child');
+    if (firstRow) {
+        var height = firstRow.offsetHeight;
+        document.documentElement.style.setProperty('--ranking-header-top', height + 'px');
+    }
+  }
+
+  window.addEventListener('resize', updateStickyHeaderOffset);
+
+  $(document).ready(function() {
+      initHistogramModal();
+
+      updateStickyHeaderOffset();
+
+      setTimeout(updateStickyHeaderOffset, 100);
+      setTimeout(updateStickyHeaderOffset, 500);
+
+      if (CMS && CMS.AWSUtils) {
+          CMS.AWSUtils.init_table_sort($("#ranking_table"), false, 0, false);
+      }
+  });
 </script>
 
 {% else %}
