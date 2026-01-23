@@ -242,7 +242,8 @@ def calculate_task_archive_progress(
     student: "Student",
     participation: "Participation",
     contest: "Contest",
-    include_task_details: bool = False
+    include_task_details: bool = False,
+    submission_counts: dict[int, int] | None = None
 ) -> dict:
     """Calculate task archive progress for a student.
 
@@ -253,6 +254,9 @@ def calculate_task_archive_progress(
     participation: the Participation object (with task_scores relationship).
     contest: the Contest object (managing contest for the training program).
     include_task_details: if True, include per-task breakdown in task_scores list.
+    submission_counts: optional dict mapping task_id to submission count.
+        If provided and include_task_details is True, each task will include
+        a submission_count field.
 
     return: dict with total_score, max_score, percentage, task_count.
             If include_task_details is True, also includes task_scores list.
@@ -284,13 +288,16 @@ def calculate_task_archive_progress(
 
         if include_task_details:
             student_task = student_tasks_map.get(task.id)
-            task_scores.append({
+            task_info = {
                 "task": task,
                 "score": best_score,
                 "max_score": max_task_score,
                 "source_training_day": student_task.source_training_day if student_task else None,
                 "assigned_at": student_task.assigned_at if student_task else None,
-            })
+            }
+            if submission_counts is not None:
+                task_info["submission_count"] = submission_counts.get(task.id, 0)
+            task_scores.append(task_info)
 
     percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
 

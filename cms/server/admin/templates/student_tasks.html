@@ -37,20 +37,21 @@
 <h2 id="title_assigned_tasks" class="toggling_on">Assigned Tasks ({{ student_tasks|length }})</h2>
 <div id="assigned_tasks">
   {% if student_tasks %}
-  <table class="bordered">
+  <table class="bordered sortable" id="student-tasks-table">
     <thead>
       <tr>
-        <th>Task</th>
+        <th class="sortable-header" data-sort="string">Task</th>
         <th>Source</th>
-        <th>Assigned At</th>
-        <th>Training Score</th>
-        <th>Home Score</th>
+        <th class="sortable-header" data-sort="date">Assigned At</th>
+        <th class="sortable-header" data-sort="number">Training Score</th>
+        <th class="sortable-header" data-sort="number">Home Score</th>
+        <th class="sortable-header" data-sort="number">Submissions</th>
         <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for st in student_tasks %}
-      <tr>
+      <tr data-task="{{ st.task.name }}" data-assigned="{{ st.assigned_at.timestamp() if st.assigned_at else 0 }}" data-training-score="{{ training_scores.get(st.task.id, -1) }}" data-home-score="{{ home_scores.get(st.task.id, -1) }}" data-submissions="{{ submission_counts.get(st.task.id, 0) }}">
         <td>
           <a href="{{ url("task", st.task.id) }}">{{ st.task.name }}</a> - {{ st.task.title }}
         </td>
@@ -81,6 +82,14 @@
           {% endif %}
         </td>
         <td>
+          {% set sub_count = submission_counts.get(st.task.id, 0) %}
+          {% if sub_count > 0 %}
+            <a href="{{ url("contest", training_program.managing_contest.id, "task", st.task.id, "user", selected_user.id) }}">{{ sub_count }}</a>
+          {% else %}
+            0
+          {% endif %}
+        </td>
+        <td>
           <form action="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "remove") }}" method="POST" style="display: inline;">
             {{ xsrf_form_html|safe }}
             <input type="submit" value="Remove" {% if not admin.permission_all %}disabled{% endif %} onclick="return confirm('Are you sure you want to remove this task from the student\\'s archive?');" />
@@ -90,6 +99,90 @@
       {% endfor %}
     </tbody>
   </table>
+
+  <style>
+    .sortable-header {
+      cursor: pointer;
+      user-select: none;
+    }
+    .sortable-header:hover {
+      background-color: #f0f0f0;
+    }
+    .sortable-header::after {
+      content: ' \2195';
+      opacity: 0.5;
+    }
+    .sortable-header.sort-asc::after {
+      content: ' \2191';
+      opacity: 1;
+    }
+    .sortable-header.sort-desc::after {
+      content: ' \2193';
+      opacity: 1;
+    }
+  </style>
+
+  <script>
+  (function() {
+    var table = document.getElementById('student-tasks-table');
+    if (!table) return;
+
+    var headers = table.querySelectorAll('th.sortable-header');
+    var sortState = {};
+
+    headers.forEach(function(header, index) {
+      header.addEventListener('click', function() {
+        var sortType = header.getAttribute('data-sort');
+        var ascending = !sortState[index];
+        sortState[index] = ascending;
+
+        headers.forEach(function(h) {
+          h.classList.remove('sort-asc', 'sort-desc');
+        });
+        header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+
+        var tbody = table.querySelector('tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+
+        rows.sort(function(a, b) {
+          var aVal, bVal;
+
+          if (index === 0) {
+            aVal = a.getAttribute('data-task').toLowerCase();
+            bVal = b.getAttribute('data-task').toLowerCase();
+          } else if (index === 2) {
+            aVal = parseFloat(a.getAttribute('data-assigned')) || 0;
+            bVal = parseFloat(b.getAttribute('data-assigned')) || 0;
+          } else if (index === 3) {
+            aVal = parseFloat(a.getAttribute('data-training-score'));
+            bVal = parseFloat(b.getAttribute('data-training-score'));
+            if (aVal < 0) aVal = ascending ? Infinity : -Infinity;
+            if (bVal < 0) bVal = ascending ? Infinity : -Infinity;
+          } else if (index === 4) {
+            aVal = parseFloat(a.getAttribute('data-home-score'));
+            bVal = parseFloat(b.getAttribute('data-home-score'));
+            if (aVal < 0) aVal = ascending ? Infinity : -Infinity;
+            if (bVal < 0) bVal = ascending ? Infinity : -Infinity;
+          } else if (index === 5) {
+            aVal = parseInt(a.getAttribute('data-submissions')) || 0;
+            bVal = parseInt(b.getAttribute('data-submissions')) || 0;
+          } else {
+            aVal = a.cells[index].textContent.trim().toLowerCase();
+            bVal = b.cells[index].textContent.trim().toLowerCase();
+          }
+
+          if (aVal < bVal) return ascending ? -1 : 1;
+          if (aVal > bVal) return ascending ? 1 : -1;
+          return 0;
+        });
+
+        rows.forEach(function(row) {
+          tbody.appendChild(row);
+        });
+      });
+    });
+  })();
+  </script>
   {% else %}
   <p>No tasks assigned to this student yet.</p>
   {% endif %}
