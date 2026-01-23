@@ -84,6 +84,76 @@ def parse_and_validate_duration(
     return hours, minutes
 
 
+def calculate_group_times(
+    start_str: str,
+    duration_hours_str: str,
+    duration_minutes_str: str,
+    tz,
+    context: str = "",
+) -> tuple[dt | None, dt | None]:
+    """Parse start time and duration to calculate start and end times.
+
+    Args:
+        start_str: String representation of start time
+        duration_hours_str: String representation of duration hours
+        duration_minutes_str: String representation of duration minutes
+        tz: Timezone for parsing start time
+        context: Optional context for error messages
+
+    Returns:
+        Tuple of (start_time, end_time). Both can be None.
+    """
+    start_time = None
+    if start_str and start_str.strip():
+        start_time = parse_datetime_with_timezone(start_str.strip(), tz)
+
+    duration_hours, duration_minutes = parse_and_validate_duration(
+        duration_hours_str, duration_minutes_str, context=context
+    )
+
+    end_time = None
+    if duration_hours > 0 or duration_minutes > 0:
+        if not start_time:
+            prefix = f"{context} " if context else ""
+            raise ValueError(
+                f"{prefix}Duration cannot be specified without a start time"
+            )
+
+        duration = timedelta(hours=duration_hours, minutes=duration_minutes)
+        end_time = start_time + duration
+
+    return start_time, end_time
+
+
+def validate_group_times_within_contest(
+    group_start: dt | None,
+    group_end: dt | None,
+    contest_start: dt | None,
+    contest_stop: dt | None,
+    context: str = "Group",
+):
+    """Validate that group times are within contest bounds.
+
+    Args:
+        group_start: Group start datetime
+        group_end: Group end datetime
+        contest_start: Contest start datetime
+        contest_stop: Contest stop datetime
+        context: Context string for error messages (e.g. "Group 'A'")
+
+    Raises:
+        ValueError: If group times are outside contest bounds
+    """
+    if group_start and contest_start:
+        if group_start < contest_start:
+            raise ValueError(
+                f"{context} start time cannot be before training day start"
+            )
+    if group_end and contest_stop:
+        if group_end > contest_stop:
+            raise ValueError(f"{context} end time cannot be after training day end")
+
+
 class TrainingProgramTrainingDaysHandler(BaseHandler):
     """List and manage training days in a training program."""
     REMOVE = "Remove"
@@ -225,41 +295,10 @@ class AddTrainingDayHandler(BaseHandler):
             if not description or not description.strip():
                 description = name
 
-            # Parse optional start time and duration from inputs
-            # Times are in the managing contest timezone
-            start_str = self.get_argument("start", "")
-            duration_hours_str = self.get_argument("duration_hours", "")
-            duration_minutes_str = self.get_argument("duration_minutes", "")
-
             contest_kwargs: dict = {
                 "name": name,
                 "description": description,
             }
-
-            if start_str:
-                # Parse datetime in timezone and convert to UTC
-                contest_kwargs["start"] = parse_datetime_with_timezone(start_str, tz)
-            else:
-                # Default to after training program end year (so contestants can't start until configured)
-                program_end_year = managing_contest.stop.year
-                default_date = dt(program_end_year + 1, 1, 1, 0, 0)
-                contest_kwargs["start"] = default_date
-                # Also set analysis_start/stop to satisfy Contest check constraints
-                # (stop <= analysis_start and analysis_start <= analysis_stop)
-                contest_kwargs["analysis_start"] = default_date
-                contest_kwargs["analysis_stop"] = default_date
-
-            # Calculate stop time from start + duration
-            duration_hours, duration_minutes = parse_and_validate_duration(
-                duration_hours_str, duration_minutes_str
-            )
-
-            if duration_hours > 0 or duration_minutes > 0:
-                duration = timedelta(hours=duration_hours, minutes=duration_minutes)
-                contest_kwargs["stop"] = contest_kwargs["start"] + duration
-            else:
-                # Default stop to same as start when no duration specified
-                contest_kwargs["stop"] = contest_kwargs["start"]
 
             # Parse main group configuration (if any)
             group_tags = self.get_arguments("group_tag_name[]")
@@ -270,34 +309,35 @@ class AddTrainingDayHandler(BaseHandler):
 
             # Collect valid groups and their times for defaulting
             groups_to_create = []
-            group_start_times = []
-            group_end_times = []
+            earliest_group_start = None
+            latest_group_end = None
 
             for i, tag in enumerate(group_tags):
                 tag = tag.strip()
                 if not tag:
                     continue
 
-                group_start = None
-                group_end = None
-
-                if i < len(group_starts) and group_starts[i].strip():
-                    group_start = parse_datetime_with_timezone(group_starts[i].strip(), tz)
-                    group_start_times.append(group_start)
-
-                # Calculate group end from start + duration
-                g_hours_str = group_duration_hours[i].strip() if i < len(group_duration_hours) else ""
-                g_mins_str = group_duration_minutes[i].strip() if i < len(group_duration_minutes) else ""
-                g_duration_hours, g_duration_minutes = parse_and_validate_duration(
-                    g_hours_str, g_mins_str, context=f"Group '{tag}'"
+                start_s = group_starts[i] if i < len(group_starts) else ""
+                hours_s = (
+                    group_duration_hours[i] if i < len(group_duration_hours) else ""
+                )
+                mins_s = (
+                    group_duration_minutes[i] if i < len(group_duration_minutes) else ""
                 )
 
-                if group_start and (g_duration_hours > 0 or g_duration_minutes > 0):
-                    group_duration = timedelta(
-                        hours=g_duration_hours, minutes=g_duration_minutes
-                    )
-                    group_end = group_start + group_duration
-                    group_end_times.append(group_end)
+                group_start, group_end = calculate_group_times(
+                    start_s, hours_s, mins_s, tz, context=f"Group '{tag}'"
+                )
+
+                if group_start:
+                    if (
+                        earliest_group_start is None
+                        or group_start < earliest_group_start
+                    ):
+                        earliest_group_start = group_start
+                if group_end:
+                    if latest_group_end is None or group_end > latest_group_end:
+                        latest_group_end = group_end
 
                 alphabetical = str(i) in group_alphabeticals
 
@@ -308,11 +348,36 @@ class AddTrainingDayHandler(BaseHandler):
                     "alphabetical_task_order": alphabetical,
                 })
 
-            # Default training start/end from group times if not specified
-            if not start_str and group_start_times:
-                contest_kwargs["start"] = min(group_start_times)
-            if (duration_hours == 0 and duration_minutes == 0) and group_end_times:
-                contest_kwargs["stop"] = max(group_end_times)
+                # Parse optional start time and duration from inputs
+            # Times are in the managing contest timezone
+            start_str = self.get_argument("start", "")
+            duration_hours_str = self.get_argument("duration_hours", "")
+            duration_minutes_str = self.get_argument("duration_minutes", "")
+
+            s_time, e_time = calculate_group_times(
+                start_str, duration_hours_str, duration_minutes_str, tz
+            )
+
+            if s_time:
+                contest_kwargs["start"] = s_time
+            else:
+                # Default to after training program end year (so contestants can't start until configured)
+                program_end_year = managing_contest.stop.year
+                default_date = dt(program_end_year + 1, 1, 1, 0, 0)
+                contest_kwargs["start"] = (
+                    earliest_group_start if earliest_group_start else default_date
+                )
+                # Also set analysis_start/stop to satisfy Contest check constraints
+                # (stop <= analysis_start and analysis_start <= analysis_stop)
+                contest_kwargs["analysis_start"] = default_date
+                contest_kwargs["analysis_stop"] = default_date
+
+            if e_time:
+                contest_kwargs["stop"] = e_time
+            else:
+                contest_kwargs["stop"] = (
+                    latest_group_end if latest_group_end else contest_kwargs["start"]
+                )
 
             contest = Contest(**contest_kwargs)
             self.sql_session.add(contest)
@@ -334,12 +399,13 @@ class AddTrainingDayHandler(BaseHandler):
                 seen_tags.add(group_data["tag_name"])
 
                 # Validate group times are within contest bounds
-                if group_data["start_time"] and contest_kwargs.get("start"):
-                    if group_data["start_time"] < contest_kwargs["start"]:
-                        raise ValueError(f"Group '{group_data['tag_name']}' start time cannot be before training day start")
-                if group_data["end_time"] and contest_kwargs.get("stop"):
-                    if group_data["end_time"] > contest_kwargs["stop"]:
-                        raise ValueError(f"Group '{group_data['tag_name']}' end time cannot be after training day end")
+                validate_group_times_within_contest(
+                    group_data["start_time"],
+                    group_data["end_time"],
+                    contest_kwargs.get("start"),
+                    contest_kwargs.get("stop"),
+                    context=f"Group '{group_data['tag_name']}'",
+                )
 
                 group = TrainingDayGroup(
                     training_day=training_day,
@@ -491,25 +557,24 @@ class AddTrainingDayGroupHandler(BaseHandler):
                 "alphabetical_task_order": self.get_argument("alphabetical_task_order", None) is not None,
             }
 
-            if start_str:
-                group_kwargs["start_time"] = parse_datetime_with_timezone(start_str, tz)
-
-            # Calculate end time from start + duration
-            duration_hours, duration_minutes = parse_and_validate_duration(
-                duration_hours_str, duration_minutes_str
+            # Calculate start and end times
+            s_time, e_time = calculate_group_times(
+                start_str, duration_hours_str, duration_minutes_str, tz
             )
 
-            if "start_time" in group_kwargs and (duration_hours > 0 or duration_minutes > 0):
-                duration = timedelta(hours=duration_hours, minutes=duration_minutes)
-                group_kwargs["end_time"] = group_kwargs["start_time"] + duration
+            if s_time:
+                group_kwargs["start_time"] = s_time
+            if e_time:
+                group_kwargs["end_time"] = e_time
 
             # Validate group times are within contest bounds
-            if "start_time" in group_kwargs and contest.start:
-                if group_kwargs["start_time"] < contest.start:
-                    raise ValueError("Group start time cannot be before training day start")
-            if "end_time" in group_kwargs and contest.stop:
-                if group_kwargs["end_time"] > contest.stop:
-                    raise ValueError("Group end time cannot be after training day end")
+            validate_group_times_within_contest(
+                group_kwargs.get("start_time"),
+                group_kwargs.get("end_time"),
+                contest.start,
+                contest.stop,
+                context="Group",
+            )
 
             group = TrainingDayGroup(**group_kwargs)
             self.sql_session.add(group)
@@ -553,33 +618,30 @@ class UpdateTrainingDayGroupsHandler(BaseHandler):
                 if group.training_day_id != training_day.id:
                     raise ValueError(f"Group {group_id} does not belong to this training day")
 
-                # Parse start time in timezone and convert to UTC
-                start_str = start_times[i].strip()
-                if start_str:
-                    group.start_time = parse_datetime_with_timezone(start_str, tz)
-                else:
-                    group.start_time = None
-
-                # Calculate end time from start + duration
-                hours_str = duration_hours_list[i].strip() if i < len(duration_hours_list) else ""
-                mins_str = duration_minutes_list[i].strip() if i < len(duration_minutes_list) else ""
-                duration_hours, duration_minutes = parse_and_validate_duration(
-                    hours_str, mins_str, context=f"Group '{group.tag_name}'"
+                # Calculate start and end times
+                hours_str = (
+                    duration_hours_list[i] if i < len(duration_hours_list) else ""
+                )
+                mins_str = (
+                    duration_minutes_list[i] if i < len(duration_minutes_list) else ""
                 )
 
-                if group.start_time and (duration_hours > 0 or duration_minutes > 0):
-                    duration = timedelta(hours=duration_hours, minutes=duration_minutes)
-                    group.end_time = group.start_time + duration
-                else:
-                    group.end_time = None
+                group.start_time, group.end_time = calculate_group_times(
+                    start_times[i],
+                    hours_str,
+                    mins_str,
+                    tz,
+                    context=f"Group '{group.tag_name}'",
+                )
 
                 # Validate group times are within contest bounds
-                if group.start_time and contest.start:
-                    if group.start_time < contest.start:
-                        raise ValueError(f"Group '{group.tag_name}' start time cannot be before training day start")
-                if group.end_time and contest.stop:
-                    if group.end_time > contest.stop:
-                        raise ValueError(f"Group '{group.tag_name}' end time cannot be after training day end")
+                validate_group_times_within_contest(
+                    group.start_time,
+                    group.end_time,
+                    contest.start,
+                    contest.stop,
+                    context=f"Group '{group.tag_name}'",
+                )
 
                 # Update alphabetical task order (checkbox - present means checked)
                 group.alphabetical_task_order = self.get_argument(f"alphabetical_{group_id}", None) is not None
