@@ -890,7 +890,7 @@ msgstr "פקודות קומפילציה"
 
 #, python-format
 msgid "You can find the rules for the %(type_pl)s on the <a href=\"%(contest_root)s\">contest overview page</a>."
-msgstr ""
+msgstr "תוכלו למצוא את הכללים עבור %(type_pl)s ב<a href=\"%(contest_root)s\">דף סקירת התחרות</a>."
 
 msgid "Remember that to see the detailed result of a submission you need to use both a contest-token and a task-token."
 msgstr "זכרו שכדי לראות את התוצאה המפורטת של הגשה עליכם להשתמש גם באסימון-תחרות וגם באסימון-משימה."
