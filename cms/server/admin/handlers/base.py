@@ -154,11 +154,20 @@ def parse_datetime(value: str) -> datetime:
 def parse_datetime_with_timezone(value: str, tz) -> datetime:
     """Parse a datetime in the given timezone and convert to UTC.
 
-    value: a datetime string in "YYYY-MM-DD HH:MM:SS" format.
+    value: a datetime string in "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM" format.
     tz: the timezone the datetime is in.
 
     return: a naive datetime in UTC.
     """
+    # Try HTML5 datetime-local format first (YYYY-MM-DDTHH:MM)
+    if 'T' in value and '.' not in value and len(value) == 16:
+        try:
+            local_dt = datetime.strptime(value, "%Y-%m-%dT%H:%M")
+            return local_to_utc(local_dt, tz)
+        except (ValueError, OverflowError):
+            pass  # Fall through to try other formats
+
+    # Standard format with optional microseconds
     if '.' not in value:
         value += ".0"
     try:
@@ -353,6 +362,9 @@ class BaseHandler(CommonRequestHandler):
                 remaining_path.startswith("/question/")
                 or remaining_path.startswith("/announcement/")
                 or remaining_path.endswith("/message")
+                or remaining_path.endswith("/detail")
+                or remaining_path.endswith("/submissions")
+                or remaining_path.endswith("/ranking/history")
                 or remaining_path == "/overview"
                 or remaining_path == "/resourceslist"
             ):
@@ -379,7 +391,9 @@ class BaseHandler(CommonRequestHandler):
 
                         new_path = remaining_path
                         for contest_suffix, tp_suffix in url_mappings.items():
-                            if remaining_path.startswith(contest_suffix):
+                            if remaining_path.startswith(
+                                contest_suffix
+                            ) and not remaining_path.endswith("/detail"):
                                 new_path = remaining_path.replace(
                                     contest_suffix, tp_suffix, 1
                                 )
