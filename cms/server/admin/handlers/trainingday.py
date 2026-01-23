@@ -252,8 +252,6 @@ class AddTrainingDayHandler(BaseHandler):
 
             if duration_hours > 0 or duration_minutes > 0:
                 duration = timedelta(hours=duration_hours, minutes=duration_minutes)
-                if duration <= timedelta(0):
-                    raise ValueError("Duration must be positive")
                 contest_kwargs["stop"] = contest_kwargs["start"] + duration
             else:
                 # Default stop to same as start when no duration specified
@@ -292,9 +290,9 @@ class AddTrainingDayHandler(BaseHandler):
                 )
 
                 if group_start and (g_duration_hours > 0 or g_duration_minutes > 0):
-                    group_duration = timedelta(hours=g_duration_hours, minutes=g_duration_minutes)
-                    if group_duration <= timedelta(0):
-                        raise ValueError(f"Group '{tag}' duration must be positive")
+                    group_duration = timedelta(
+                        hours=g_duration_hours, minutes=g_duration_minutes
+                    )
                     group_end = group_start + group_duration
                     group_end_times.append(group_end)
 

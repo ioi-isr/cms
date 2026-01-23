@@ -64,14 +64,16 @@ class TrainingProgramStudentsHandler(BaseHandler):
             .filter(Question.ignored.is_(False))\
             .count()
 
-        self.r_params["unassigned_users"] = \
-            self.sql_session.query(User)\
-                .filter(User.id.notin_(
-                    self.sql_session.query(Participation.user_id)
-                        .filter(Participation.contest == managing_contest)
-                        .all()))\
-                .filter(~User.username.like(r'\_\_%', escape='\\'))\
-                .all()
+        assigned_user_ids_q = self.sql_session.query(Participation.user_id).filter(
+            Participation.contest == managing_contest
+        )
+
+        self.r_params["unassigned_users"] = (
+            self.sql_session.query(User)
+            .filter(~User.id.in_(assigned_user_ids_q))
+            .filter(~User.username.like(r"\_\_%", escape="\\"))
+            .all()
+        )
 
         # Calculate task archive progress for each student using shared utility
         student_progress = {}
@@ -243,6 +245,9 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
 
         # Also delete participations from all training days
         for training_day in training_program.training_days:
+            # Skip training days that don't have a contest yet
+            if training_day.contest is None:
+                continue
             td_participation: Participation | None = (
                 self.sql_session.query(Participation)
                 .filter(Participation.contest == training_day.contest)
