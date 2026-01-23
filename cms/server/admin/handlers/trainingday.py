@@ -48,6 +48,37 @@ from cmscommon.datetime import make_datetime, get_timezone, local_to_utc, get_ti
 from .base import BaseHandler, require_permission
 
 
+def parse_and_validate_duration(
+    hours_str: str,
+    minutes_str: str,
+    context: str = ""
+) -> tuple[int, int]:
+    """Parse and validate duration hours and minutes.
+
+    Args:
+        hours_str: String representation of hours (can be empty)
+        minutes_str: String representation of minutes (can be empty)
+        context: Optional context for error messages (e.g., "Group 'advanced'")
+
+    Returns:
+        Tuple of (hours, minutes) as integers
+
+    Raises:
+        ValueError: If validation fails
+    """
+    hours = int(hours_str) if hours_str.strip() else 0
+    minutes = int(minutes_str) if minutes_str.strip() else 0
+
+    prefix = f"{context} " if context else ""
+
+    if hours < 0:
+        raise ValueError(f"{prefix}Duration hours cannot be negative")
+    if minutes < 0 or minutes >= 60:
+        raise ValueError(f"{prefix}Duration minutes must be between 0 and 59")
+
+    return hours, minutes
+
+
 class TrainingProgramTrainingDaysHandler(BaseHandler):
     """List and manage training days in a training program."""
     REMOVE = "Remove"
@@ -215,14 +246,9 @@ class AddTrainingDayHandler(BaseHandler):
                 contest_kwargs["analysis_stop"] = default_date
 
             # Calculate stop time from start + duration
-            duration_hours = int(duration_hours_str) if duration_hours_str.strip() else 0
-            duration_minutes = int(duration_minutes_str) if duration_minutes_str.strip() else 0
-
-            # Validate duration bounds
-            if duration_hours < 0:
-                raise ValueError("Duration hours cannot be negative")
-            if duration_minutes < 0 or duration_minutes >= 60:
-                raise ValueError("Duration minutes must be between 0 and 59")
+            duration_hours, duration_minutes = parse_and_validate_duration(
+                duration_hours_str, duration_minutes_str
+            )
 
             if duration_hours > 0 or duration_minutes > 0:
                 duration = timedelta(hours=duration_hours, minutes=duration_minutes)
@@ -259,18 +285,11 @@ class AddTrainingDayHandler(BaseHandler):
                     group_start_times.append(group_start)
 
                 # Calculate group end from start + duration
-                g_duration_hours = 0
-                g_duration_minutes = 0
-                if i < len(group_duration_hours) and group_duration_hours[i].strip():
-                    g_duration_hours = int(group_duration_hours[i].strip())
-                if i < len(group_duration_minutes) and group_duration_minutes[i].strip():
-                    g_duration_minutes = int(group_duration_minutes[i].strip())
-
-                # Validate group duration bounds
-                if g_duration_hours < 0:
-                    raise ValueError(f"Group '{tag}' duration hours cannot be negative")
-                if g_duration_minutes < 0 or g_duration_minutes >= 60:
-                    raise ValueError(f"Group '{tag}' duration minutes must be between 0 and 59")
+                g_hours_str = group_duration_hours[i].strip() if i < len(group_duration_hours) else ""
+                g_mins_str = group_duration_minutes[i].strip() if i < len(group_duration_minutes) else ""
+                g_duration_hours, g_duration_minutes = parse_and_validate_duration(
+                    g_hours_str, g_mins_str, context=f"Group '{tag}'"
+                )
 
                 if group_start and (g_duration_hours > 0 or g_duration_minutes > 0):
                     group_duration = timedelta(hours=g_duration_hours, minutes=g_duration_minutes)
@@ -476,8 +495,9 @@ class AddTrainingDayGroupHandler(BaseHandler):
                 group_kwargs["start_time"] = local_to_utc(local_start, tz)
 
             # Calculate end time from start + duration
-            duration_hours = int(duration_hours_str) if duration_hours_str.strip() else 0
-            duration_minutes = int(duration_minutes_str) if duration_minutes_str.strip() else 0
+            duration_hours, duration_minutes = parse_and_validate_duration(
+                duration_hours_str, duration_minutes_str
+            )
 
             if "start_time" in group_kwargs and (duration_hours > 0 or duration_minutes > 0):
                 duration = timedelta(hours=duration_hours, minutes=duration_minutes)
@@ -542,12 +562,11 @@ class UpdateTrainingDayGroupsHandler(BaseHandler):
                     group.start_time = None
 
                 # Calculate end time from start + duration
-                duration_hours = 0
-                duration_minutes = 0
-                if i < len(duration_hours_list) and duration_hours_list[i].strip():
-                    duration_hours = int(duration_hours_list[i].strip())
-                if i < len(duration_minutes_list) and duration_minutes_list[i].strip():
-                    duration_minutes = int(duration_minutes_list[i].strip())
+                hours_str = duration_hours_list[i].strip() if i < len(duration_hours_list) else ""
+                mins_str = duration_minutes_list[i].strip() if i < len(duration_minutes_list) else ""
+                duration_hours, duration_minutes = parse_and_validate_duration(
+                    hours_str, mins_str, context=f"Group '{group.tag_name}'"
+                )
 
                 if group.start_time and (duration_hours > 0 or duration_minutes > 0):
                     duration = timedelta(hours=duration_hours, minutes=duration_minutes)

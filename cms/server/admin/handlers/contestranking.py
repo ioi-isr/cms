@@ -191,18 +191,22 @@ class RankingHandler(BaseHandler):
         main_groups_data = []
         student_tags_by_participation = {}  # participation_id -> list of tags
 
-        # For training days, always build student tags lookup
+        # For training days, always build student tags lookup (batch query)
         if training_day:
             training_program = training_day.training_program
+            # Batch query: fetch all students for this training program's participations
+            participation_user_ids = {p.user_id for p in self.contest.participations}
+            students = (
+                self.sql_session.query(Student, Participation.user_id)
+                .join(Participation, Student.participation_id == Participation.id)
+                .filter(Student.training_program_id == training_program.id)
+                .filter(Participation.user_id.in_(participation_user_ids))
+                .all()
+            )
+            student_by_user_id = {uid: student for student, uid in students}
+
             for p in self.contest.participations:
-                # Find the student record for this participation's user
-                student = (
-                    self.sql_session.query(Student)
-                    .join(Participation, Student.participation_id == Participation.id)
-                    .filter(Student.training_program_id == training_program.id)
-                    .filter(Participation.user_id == p.user_id)
-                    .first()
-                )
+                student = student_by_user_id.get(p.user_id)
                 if student:
                     student_tags_by_participation[p.id] = student.student_tags or []
                 else:
@@ -419,9 +423,12 @@ class ScoreHistoryHandler(BaseHandler):
 
         main_group_user_ids = None
         if main_group_user_ids_param:
-            main_group_user_ids = set(
-                int(uid) for uid in main_group_user_ids_param.split(",") if uid
-            )
+            try:
+                main_group_user_ids = set(
+                    int(uid) for uid in main_group_user_ids_param.split(",") if uid
+                )
+            except ValueError:
+                raise tornado.web.HTTPError(400, "Invalid main_group_user_ids parameter")
 
         # Ensure all score history for the contest is valid before querying
         if ensure_valid_history(self.sql_session, int(contest_id)):

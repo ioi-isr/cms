@@ -586,6 +586,10 @@ class AddStudentTaskHandler(BaseHandler):
 
             task = self.safe_get_item(Task, task_id)
 
+            # Validate task belongs to the student's training program
+            if task.contest_id != training_program.managing_contest_id:
+                raise ValueError("Task does not belong to the student's contest")
+
             # Check if task is already assigned
             existing = (
                 self.sql_session.query(StudentTask)
@@ -721,6 +725,10 @@ class BulkAssignTaskHandler(BaseHandler):
                 raise ValueError("Please enter a tag")
 
             task = self.safe_get_item(Task, task_id)
+
+            # Validate task belongs to the training program
+            if task.contest_id != training_program.managing_contest_id:
+                raise ValueError("Task does not belong to the student's contest")
 
             # Find all students with the given tag
             matching_students = (

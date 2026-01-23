@@ -63,6 +63,13 @@
 {# Training day with main groups - show separate tables per group #}
 <label style="margin-bottom: 15px; display: block;"><input type="checkbox" id="show-indicators" checked> Show indicators</label>
 
+{# Build task index lookup once for all groups #}
+{% set all_tasks = contest.get_tasks() | list %}
+{% set task_index = {} %}
+{% for task in all_tasks %}
+  {% set _ = task_index.update({task.id: loop.index0}) %}
+{% endfor %}
+
 {% for group_data in main_groups_data %}
 {% set group_name = group_data.name %}
 {% set group_participations = group_data.participations %}
@@ -93,13 +100,6 @@
       </tr>
     </thead>
     <tbody>
-      {# Build task index lookup for task_statuses #}
-      {% set all_tasks = contest.get_tasks() | list %}
-      {% set task_index = {} %}
-      {% for task in all_tasks %}
-        {% set _ = task_index.update({task.id: loop.index0}) %}
-      {% endfor %}
-
       {% for p in group_participations %}
       <tr>
         <td><a href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}">{{ p.user.username }}</a> <a href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">[history]</a></td>

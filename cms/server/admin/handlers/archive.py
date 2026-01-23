@@ -975,10 +975,14 @@ class TrainingProgramCombinedRankingDetailHandler(
             archived_tasks_data = td.archived_tasks_data or {}
 
             # Sort task IDs by training_day_num for stable ordering
-            def get_training_day_num(task_id: int) -> tuple[int, int]:
+            # Use default argument to capture archived_tasks_data by value
+            def get_training_day_num(
+                task_id: int,
+                _tasks_data: dict = archived_tasks_data
+            ) -> tuple[int, int]:
                 task_key = str(task_id)
-                if task_key in archived_tasks_data:
-                    num = archived_tasks_data[task_key].get("training_day_num")
+                if task_key in _tasks_data:
+                    num = _tasks_data[task_key].get("training_day_num")
                     return (num if num is not None else 0, task_id)
                 return (0, task_id)
 

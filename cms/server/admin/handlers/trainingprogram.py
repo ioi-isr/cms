@@ -695,20 +695,21 @@ class TrainingProgramRankingHandler(BaseHandler):
             total_score = round(total_score, self.contest.score_precision)
             p.total_score = (total_score, partial)
 
-        # Build student tags lookup for each participation
-        student_tags_by_participation = {}
-        for p in self.contest.participations:
-            # Find the student record for this participation
-            student = (
-                self.sql_session.query(Student)
+        # Build student tags lookup for each participation (batch query)
+        student_tags_by_participation = {p.id: [] for p in self.contest.participations}
+        if student_tags_by_participation:
+            rows = (
+                self.sql_session.query(Student.participation_id, Student.student_tags)
                 .filter(Student.training_program_id == training_program.id)
-                .filter(Student.participation_id == p.id)
-                .first()
+                .filter(
+                    Student.participation_id.in_(
+                        list(student_tags_by_participation.keys())
+                    )
+                )
+                .all()
             )
-            if student:
-                student_tags_by_participation[p.id] = student.student_tags or []
-            else:
-                student_tags_by_participation[p.id] = []
+            for participation_id, tags in rows:
+                student_tags_by_participation[participation_id] = tags or []
 
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
