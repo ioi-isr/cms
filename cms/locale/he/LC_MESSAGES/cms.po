@@ -1038,7 +1038,7 @@ msgid "A password reset link has been sent to:"
 msgstr "קישור לאיפוס סיסמה נשלח אל:"
 
 msgid "An administrator must approve your password reset before it takes effect. You will be able to log in with your new password once it has been approved."
-msgstr "מנהל מערכת צריך לאשר את איפוס הסיסמה שלך לפני שייכנס לתוקף. תוכל להתחבר עם הסיסמה החדשה שלך לאחר שתאושר."
+msgstr "מנהל מערכת צריך לאשר את איפוס הסיסמה שלכם לפני שייכנס לתוקף. תוכלו להתחבר עם הסיסמה החדשה שלכם לאחר שתאושר."
 
 msgid "Approved"
 msgstr "מאושר"
