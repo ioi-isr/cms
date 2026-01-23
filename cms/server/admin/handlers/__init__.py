@@ -176,9 +176,6 @@ from .trainingprogram import \
     TrainingProgramHandler, \
     AddTrainingProgramHandler, \
     RemoveTrainingProgramHandler, \
-    TrainingProgramStudentsHandler, \
-    AddTrainingProgramStudentHandler, \
-    RemoveTrainingProgramStudentHandler, \
     TrainingProgramTasksHandler, \
     AddTrainingProgramTaskHandler, \
     RemoveTrainingProgramTaskHandler, \
@@ -187,26 +184,32 @@ from .trainingprogram import \
     TrainingProgramAnnouncementsHandler, \
     TrainingProgramAnnouncementHandler, \
     TrainingProgramQuestionsHandler, \
-    StudentHandler, \
-    StudentTagsHandler, \
-    StudentTasksHandler, \
-    AddStudentTaskHandler, \
-    RemoveStudentTaskHandler, \
-    BulkAssignTaskHandler, \
+    TrainingProgramOverviewRedirectHandler, \
+    TrainingProgramResourcesListRedirectHandler
+from .trainingday import \
     TrainingProgramTrainingDaysHandler, \
     AddTrainingDayHandler, \
     RemoveTrainingDayHandler, \
     AddTrainingDayGroupHandler, \
     UpdateTrainingDayGroupsHandler, \
     RemoveTrainingDayGroupHandler, \
-    TrainingDayTypesHandler, \
+    TrainingDayTypesHandler
+from .student import \
+    TrainingProgramStudentsHandler, \
+    AddTrainingProgramStudentHandler, \
+    RemoveTrainingProgramStudentHandler, \
+    StudentHandler, \
+    StudentTagsHandler, \
+    StudentTasksHandler, \
+    AddStudentTaskHandler, \
+    RemoveStudentTaskHandler, \
+    BulkAssignTaskHandler
+from .archive import \
     ArchiveTrainingDayHandler, \
     TrainingProgramAttendanceHandler, \
     TrainingProgramCombinedRankingHandler, \
     TrainingProgramCombinedRankingHistoryHandler, \
-    TrainingProgramCombinedRankingDetailHandler, \
-    TrainingProgramOverviewRedirectHandler, \
-    TrainingProgramResourcesListRedirectHandler
+    TrainingProgramCombinedRankingDetailHandler
 
 
 HANDLERS = [

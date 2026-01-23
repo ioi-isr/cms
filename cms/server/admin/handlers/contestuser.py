@@ -42,7 +42,8 @@ import tornado.web
 
 from sqlalchemy import and_, exists
 
-from cms.db import Contest, Message, Participation, Submission, User, Team
+from cms.db import Contest, Message, Participation, Submission, User, Team, TrainingDay
+from cms.db.training_day import get_managing_participation
 from cmscommon.crypto import validate_password_strength
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
@@ -284,8 +285,21 @@ class ParticipationHandler(BaseHandler):
         if participation is None:
             raise tornado.web.HTTPError(404)
 
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.participation == participation)
+        training_day: TrainingDay | None = self.contest.training_day
+        if training_day is not None:
+            managing_participation = get_managing_participation(
+                self.sql_session, training_day, participation.user)
+            if managing_participation is not None:
+                submission_query = self.sql_session.query(Submission)\
+                    .filter(Submission.participation == managing_participation)\
+                    .filter(Submission.training_day_id == training_day.id)
+            else:
+                submission_query = self.sql_session.query(Submission)\
+                    .filter(False)
+        else:
+            submission_query = self.sql_session.query(Submission)\
+                .filter(Submission.participation == participation)
+        
         page = int(self.get_query_argument("page", 0))
         self.render_params_for_submissions(submission_query, page)
 
