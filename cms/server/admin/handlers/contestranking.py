@@ -40,8 +40,7 @@ from cms.db import Contest, Participation, ScoreHistory, Student, \
     Submission, SubmissionResult, Task
 
 from cms.grading.scorecache import get_cached_score_entry, ensure_valid_history
-from cms.server.util import can_access_task, get_all_student_tags, \
-    calculate_task_archive_progress
+from cms.server.util import can_access_task, get_all_student_tags
 from .base import BaseHandler, require_permission
 
 logger = logging.getLogger(__name__)
@@ -219,6 +218,7 @@ class RankingCommonMixin:
         student_tags_by_participation,
         show_teams,
         include_partial=True,
+        task_archive_progress_by_participation=None,
     ):
         output = io.StringIO()
         writer = csv.writer(output)
@@ -227,6 +227,8 @@ class RankingCommonMixin:
         row = ["Username", "User"]
         if student_tags_by_participation:
             row.append("Tags")
+        if task_archive_progress_by_participation:
+            row.append("Task Archive Progress")
         if show_teams:
             row.append("Team")
         for task in tasks:
@@ -250,6 +252,16 @@ class RankingCommonMixin:
             if student_tags_by_participation:
                 tags = student_tags_by_participation.get(p.id, [])
                 row.append(", ".join(tags))
+            if task_archive_progress_by_participation:
+                progress = task_archive_progress_by_participation.get(p.id, {})
+                row.append(
+                    "%.1f%% (%.1f/%.1f)"
+                    % (
+                        progress.get("percentage", 0),
+                        progress.get("total_score", 0),
+                        progress.get("max_score", 0),
+                    )
+                )
             if show_teams:
                 row.append(p.team.name if p.team else "")
 
@@ -301,6 +313,9 @@ class RankingHandler(RankingCommonMixin, BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["show_teams"] = show_teams
+        self.r_params["task_archive_progress_by_participation"] = (
+            None  # Only for training programs
+        )
 
         # Check if this is a training day with main groups
         training_day = self.contest.training_day
@@ -442,6 +457,9 @@ class RankingHandler(RankingCommonMixin, BaseHandler):
                 student_tags_by_participation,
                 show_teams,
                 include_partial=True,
+                task_archive_progress_by_participation=self.r_params.get(
+                    "task_archive_progress_by_participation"
+                ),
             )
             self.finish(csv_content)
         else:

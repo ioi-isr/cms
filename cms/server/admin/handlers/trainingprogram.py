@@ -55,6 +55,8 @@ from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
 from .contestranking import RankingCommonMixin
+
+
 class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
     """List all training programs.
 
@@ -683,6 +685,9 @@ class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
                 )
                 task_archive_progress_by_participation[p.id] = progress
 
+        # Commit to release any advisory locks taken during score calculation
+        self.sql_session.commit()
+
         self.render_params_for_training_program(training_program)
         self.r_params["show_teams"] = show_teams
         self.r_params["student_tags_by_participation"] = student_tags_by_participation
@@ -712,6 +717,7 @@ class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
                 student_tags_by_participation,
                 show_teams,
                 include_partial=True,
+                task_archive_progress_by_participation=task_archive_progress_by_participation,
             )
             self.finish(csv_content)
         else:

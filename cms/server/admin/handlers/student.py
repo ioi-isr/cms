@@ -37,7 +37,6 @@ from cms.db import (
     Team,
     ArchivedStudentRanking,
 )
-from cms.grading.scorecache import get_cached_score_entry
 from cms.server.util import (
     get_all_student_tags,
     calculate_task_archive_progress,

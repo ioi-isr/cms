@@ -259,12 +259,7 @@ def get_student_archive_scores(
     return: dict mapping task_id -> score for tasks in the student's archive.
     """
 
-    student_task_ids = {
-        st.task_id
-        for st in sql_session.query(StudentTask)
-        .filter(StudentTask.student_id == student.id)
-        .all()
-    }
+    student_task_ids = {st.task_id for st in student.student_tasks}
     scores = {}
 
     for task in contest.get_tasks():
