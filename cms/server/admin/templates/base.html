@@ -300,8 +300,10 @@ $(document).ready(initSidebarEvents);
         {% if contest is none and training_program is not defined %}
         <div class="sidebar-section" data-section-key="training-programs">
           <h2 class="sidebar-section-title">
-            <span class="section-caret"></span>
-            <a href="{{ url("training_programs") }}">Training Programs</a>
+            <div class="sidebar-link-group">
+                <span class="section-caret"></span>
+                <a href="{{ url("training_programs") }}">Training Programs</a>
+            </div>
           </h2>
           <div class="sidebar-section-body">
             {% if training_program_list|length > 0 %}
@@ -335,8 +337,10 @@ $(document).ready(initSidebarEvents);
 
         <div class="sidebar-section" data-section-key="contests">
           <h2 class="sidebar-section-title">
-            <span class="section-caret"></span>
-            <a href="{{ url("contests") }}">Contests</a>
+            <div class="sidebar-link-group">
+                <span class="section-caret"></span>
+                <a href="{{ url("contests") }}">Contests</a>
+            </div>
           </h2>
           <div class="sidebar-section-body">
             {% if folder_list|length > 0 or root_contests|length > 0 %}
@@ -397,8 +401,10 @@ $(document).ready(initSidebarEvents);
 
         <div class="sidebar-section" data-section-key="tasks">
           <h2 class="sidebar-section-title">
-            <span class="section-caret"></span>
-            <a href="{{ url("tasks") }}">Tasks</a>
+            <div class="sidebar-link-group">
+                <span class="section-caret"></span>
+                <a href="{{ url("tasks") }}">Tasks</a>
+            </div>
           </h2>
           <div class="sidebar-section-body">
             {% if task_list|length > 0 %}
@@ -427,8 +433,10 @@ $(document).ready(initSidebarEvents);
 
         <div class="sidebar-section" data-section-key="users">
           <h2 class="sidebar-section-title">
-            <span class="section-caret"></span>
-            <a href="{{ url("users") }}">Users</a>
+            <div class="sidebar-link-group">
+                <span class="section-caret"></span>
+                <a href="{{ url("users") }}">Users</a>
+            </div>
           </h2>
           <div class="sidebar-section-body">
             {% if user_list|length > 0 %}
@@ -452,8 +460,10 @@ $(document).ready(initSidebarEvents);
 
         <div class="sidebar-section" data-section-key="teams">
           <h2 class="sidebar-section-title">
-            <span class="section-caret"></span>
-            <a href="{{ url("teams") }}">Teams</a>
+            <div class="sidebar-link-group">
+                <span class="section-caret"></span>
+                <a href="{{ url("teams") }}">Teams</a>
+            </div>
           </h2>
           <div class="sidebar-section-body">
             {% if team_list|length > 0 %}
@@ -485,18 +495,29 @@ $(document).ready(initSidebarEvents);
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "combined_ranking") }}">Combined Ranking</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a></li>
             <li class="menu_entry">
-              <span id="unanswered_questions_tp" class="unread"
-                {% if unanswered == 0 %} style="display: none;" {% endif %}>
-                {{ unanswered }}
-              </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "questions") }}">Questions</a>
+              <div class="sidebar-badge-container">
+                  <span id="unanswered_questions_tp" class="sidebar-badge is-red" {% if unanswered == 0 %} style="display: none;" {% endif %}>
+                    {{ unanswered }}
+                  </span>
+              </div>
             </li>
           </ul>
           <div class="hr"></div>
           <div class="sidebar-section" data-section-key="training-days">
             <h2 class="sidebar-section-title">
-              <span class="section-caret"></span>
-              <a href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a>
+              <div class="sidebar-link-group">
+                  <span class="section-caret"></span>
+                  <a href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a>
+              </div>
+              <div class="sidebar-badge-container">
+                  <span class="sidebar-badge is-red" style="{% if total_td_unanswered_questions is not defined or total_td_unanswered_questions == 0 %} display: none;{% endif %}">
+                    {{ total_td_unanswered_questions|default(0) }}
+                  </span>
+                  <span class="sidebar-badge is-amber" style="{% if total_td_pending_delay_requests is not defined or total_td_pending_delay_requests == 0 %} display: none;{% endif %}">
+                    {{ total_td_pending_delay_requests|default(0) }}
+                  </span>
+              </div>
             </h2>
             <div class="sidebar-section-body">
               {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
@@ -505,6 +526,13 @@ $(document).ready(initSidebarEvents);
                 {% for td in active_training_days %}
                 <li class="sidebar-contest">
                   <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
+                  {% set td_notifs = training_day_notifications.get(td.id, {}) if training_day_notifications is defined else {} %}
+                  {% set td_unanswered = td_notifs.get("unanswered_questions", 0) %}
+                  {% set td_delays = td_notifs.get("pending_delay_requests", 0) %}
+                  <div class="sidebar-badge-container">
+                      <span class="sidebar-badge is-red" style="{% if td_unanswered == 0 %} display: none;{% endif %}">{{ td_unanswered }}</span>
+                      <span class="sidebar-badge is-amber" style="{% if td_delays == 0 %} display: none;{% endif %}">{{ td_delays }}</span>
+                  </div>
                 </li>
                 {% endfor %}
               </ul>
@@ -532,18 +560,22 @@ $(document).ready(initSidebarEvents);
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "tasks") }}">Tasks</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "announcements") }}">Announcements</a></li>
             <li class="menu_entry">
-              <span id="unanswered_questions" class="unread"
-                {% if unanswered == 0 %} style="display: none;" {% endif %}>
-                {{ unanswered }}
-              </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "questions") }}">Questions</a>
+              <div class="sidebar-badge-container">
+                  <span id="unanswered_questions" class="sidebar-badge is-red"
+                    {% if unanswered == 0 %} style="display: none;" {% endif %}>
+                    {{ unanswered }}
+                  </span>
+              </div>
             </li>
             <li class="menu_entry">
-              <span id="unanswered_delay_requests" class="unread"
-                {% if unanswered_delay_requests == 0 %} style="display: none;" {% endif %}>
-                {{ unanswered_delay_requests }}
-              </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "delays_and_extra_times") }}">Attendance</a>
+              <div class="sidebar-badge-container">
+                  <span id="unanswered_delay_requests" class="sidebar-badge is-amber"
+                    {% if unanswered_delay_requests == 0 %} style="display: none;" {% endif %}>
+                    {{ unanswered_delay_requests }}
+                  </span>
+              </div>
             </li>
           </ul>
           <div class="hr"></div>
