@@ -201,6 +201,7 @@ from .student import \
     StudentHandler, \
     StudentTagsHandler, \
     StudentTasksHandler, \
+    StudentTaskSubmissionsHandler, \
     AddStudentTaskHandler, \
     RemoveStudentTaskHandler, \
     BulkAssignTaskHandler
@@ -379,6 +380,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/student/([0-9]+)/tasks", StudentTasksHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/tasks/add", AddStudentTaskHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/task/([0-9]+)/remove", RemoveStudentTaskHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/task/([0-9]+)/submissions", StudentTaskSubmissionsHandler),
     (r"/training_program/([0-9]+)/bulk_assign_task", BulkAssignTaskHandler),
     (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
     (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),

@@ -136,7 +136,7 @@
         <div style="font-size: 36px; font-weight: 800; color: #1976d2; line-height: 1;" id="attempted-count">0</div>
         <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #1565c0; margin-top: 5px; opacity: 0.8;">{% trans %}Attempted{% endtrans %}</div>
     </div>
-    <div style="flex: 1; background: #f5f5f5; border: 2px solid #9e9e9e; border-radius: 8px; padding: 15px; text-align: center; min-width: 100px;">
+    <div style="flex: 1; background: #f5f5f5; border: 2px solid #616161; border-radius: 8px; padding: 15px; text-align: center; min-width: 100px;">
         <div style="font-size: 36px; font-weight: 800; color: #616161; line-height: 1;" id="not-attempted-count">0</div>
         <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #424242; margin-top: 5px; opacity: 0.8;">{% trans %}Not Attempted{% endtrans %}</div>
     </div>
@@ -154,7 +154,7 @@
     <button class="btn btn-small btn-success filter-btn" data-filter="solved" onclick="filterTasks('solved')">{% trans %}Solved{% endtrans %}</button>
     <button class="btn btn-small btn-warning filter-btn" data-filter="partial" onclick="filterTasks('partial')">{% trans %}Partial{% endtrans %}</button>
     <button class="btn btn-small btn-info filter-btn" data-filter="attempted" onclick="filterTasks('attempted')">{% trans %}Attempted{% endtrans %}</button>
-    <button class="btn btn-small filter-btn" data-filter="not-attempted" onclick="filterTasks('not-attempted')" style="background-color: #9e9e9e; color: white;">{% trans %}Not Attempted{% endtrans %}</button>
+    <button class="btn btn-small filter-btn" data-filter="not-attempted" onclick="filterTasks('not-attempted')" style="background-color: #616161; color: white; background-image: none; text-shadow: none;">{% trans %}Not Attempted{% endtrans %}</button>
 </div>
 
 <table class="table table-bordered table-striped" id="task-table">

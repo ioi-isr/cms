@@ -84,9 +84,12 @@ class TrainingProgramOverviewHandler(ContestHandler):
                 submission_counts = {task_id: count for task_id, count in counts}
 
             progress = calculate_task_archive_progress(
-                student, participation, contest,
+                student,
+                participation,
+                contest,
+                self.sql_session,
                 include_task_details=True,
-                submission_counts=submission_counts
+                submission_counts=submission_counts,
             )
             total_score = progress["total_score"]
             max_score = progress["max_score"]

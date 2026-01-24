@@ -42,7 +42,7 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session, Contest, Student, Task, Participation
+from cms.db import Session, Contest, Student, Task, Participation, StudentTask
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
@@ -238,12 +238,39 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
     return bool(student_tags_set & task_tags_set)
 
 
+def get_student_archive_tasks(
+    student: "Student",
+    sql_session: Session,
+) -> list["StudentTask"]:
+    """Get the tasks in a student's archive.
+
+    This is a shared utility for getting the tasks assigned to a student
+    in their task archive. It's used by:
+    - Task archive progress calculation
+    - Training program home task scores page
+    - Archive building
+
+    student: the Student object.
+    sql_session: SQLAlchemy session for eager loading.
+
+    return: list of StudentTask objects for the student.
+
+    """
+    # Use explicit query for better control over loading
+    return (
+        sql_session.query(StudentTask)
+        .filter(StudentTask.student_id == student.id)
+        .all()
+    )
+
+
 def calculate_task_archive_progress(
     student: "Student",
     participation: "Participation",
     contest: "Contest",
+    sql_session: Session,
     include_task_details: bool = False,
-    submission_counts: dict[int, int] | None = None
+    submission_counts: dict[int, int] | None = None,
 ) -> dict:
     """Calculate task archive progress for a student.
 
@@ -251,8 +278,9 @@ def calculate_task_archive_progress(
     the contest training program overview page.
 
     student: the Student object (with student_tasks relationship).
-    participation: the Participation object (with task_scores relationship).
+    participation: the Participation object.
     contest: the Contest object (managing contest for the training program).
+    sql_session: SQLAlchemy session for using get_cached_score_entry.
     include_task_details: if True, include per-task breakdown in task_scores list.
     submission_counts: optional dict mapping task_id to submission count.
         If provided and include_task_details is True, each task will include
@@ -262,22 +290,29 @@ def calculate_task_archive_progress(
             If include_task_details is True, also includes task_scores list.
 
     """
-    # Build maps for efficient lookup
-    student_tasks_map = {st.task_id: st for st in student.student_tasks}
-    student_task_ids = set(student_tasks_map.keys())
+    # Get the tasks in the student's archive
+    student_tasks = get_student_archive_tasks(student, sql_session)
 
     # Build a map of task_id -> cached score for this participation
-    cached_scores = {}
-    for pts in participation.task_scores:
-        cached_scores[pts.task_id] = pts.score
+    # Use get_cached_score_entry for accurate scores
+    cached_scores: dict[int, float] = {}
+    from cms.grading.scorecache import get_cached_score_entry
+
+    for student_task in student_tasks:
+        task = student_task.task
+        if task is not None:
+            cache_entry = get_cached_score_entry(sql_session, participation, task)
+            cached_scores[task.id] = cache_entry.score
 
     total_score = 0.0
     max_score = 0.0
     task_count = 0
     task_scores = [] if include_task_details else None
 
-    for task in contest.get_tasks():
-        if task.id not in student_task_ids:
+    # Iterate only over tasks in the student's archive (StudentTask entries)
+    for student_task in student_tasks:
+        task = student_task.task
+        if task is None:
             continue
         task_count += 1
         max_task_score = task.active_dataset.score_type_object.max_score \
@@ -287,13 +322,12 @@ def calculate_task_archive_progress(
         total_score += best_score
 
         if include_task_details:
-            student_task = student_tasks_map.get(task.id)
             task_info = {
                 "task": task,
                 "score": best_score,
                 "max_score": max_task_score,
-                "source_training_day": student_task.source_training_day if student_task else None,
-                "assigned_at": student_task.assigned_at if student_task else None,
+                "source_training_day": student_task.source_training_day,
+                "assigned_at": student_task.assigned_at,
             }
             if submission_counts is not None:
                 task_info["submission_count"] = submission_counts.get(task.id, 0)

@@ -73,7 +73,7 @@ class TrainingProgramStudentsHandler(BaseHandler):
         student_progress = {}
         for student in training_program.students:
             student_progress[student.id] = calculate_task_archive_progress(
-                student, student.participation, managing_contest
+                student, student.participation, managing_contest, self.sql_session
             )
 
         self.r_params["student_progress"] = student_progress
@@ -551,6 +551,63 @@ class StudentTasksHandler(BaseHandler):
         self.r_params["training_scores"] = training_scores
         self.r_params["submission_counts"] = submission_counts
         self.render("student_tasks.html", **self.r_params)
+
+
+class StudentTaskSubmissionsHandler(BaseHandler):
+    """View submissions for a specific task in a student's archive."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str, user_id: str, task_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+        task = self.safe_get_item(Task, task_id)
+
+        # Validate task belongs to the training program
+        if task.contest_id != managing_contest.id:
+            raise tornado.web.HTTPError(404)
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == managing_contest.id)
+            .filter(Participation.user_id == user_id)
+            .first()
+        )
+
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        student: Student | None = (
+            self.sql_session.query(Student)
+            .filter(Student.participation == participation)
+            .filter(Student.training_program == training_program)
+            .first()
+        )
+
+        if student is None:
+            raise tornado.web.HTTPError(404)
+
+        # Filter submissions by task
+        self.contest = managing_contest
+        submission_query = (
+            self.sql_session.query(Submission)
+            .filter(Submission.participation == participation)
+            .filter(Submission.task_id == task.id)
+        )
+        page = int(self.get_query_argument("page", "0"))
+        self.render_params_for_submissions(submission_query, page)
+
+        self.r_params["training_program"] = training_program
+        self.r_params["participation"] = participation
+        self.r_params["student"] = student
+        self.r_params["selected_user"] = participation.user
+        self.r_params["task"] = task
+        self.r_params["unanswered"] = self.sql_session.query(Question)\
+            .join(Participation)\
+            .filter(Participation.contest_id == managing_contest.id)\
+            .filter(Question.reply_timestamp.is_(None))\
+            .filter(Question.ignored.is_(False))\
+            .count()
+        self.render("student_task_submissions.html", **self.r_params)
 
 
 class AddStudentTaskHandler(BaseHandler):
