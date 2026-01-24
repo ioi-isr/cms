@@ -463,7 +463,7 @@ msgid "Login"
 msgstr "התחברות"
 
 msgid "Don't have an account?"
-msgstr "איך לכם משתמש?"
+msgstr "אין לכם משתמש?"
 
 msgid "Register"
 msgstr "הרשמה"
@@ -579,7 +579,7 @@ msgid "Played"
 msgstr "שוחק"
 
 msgid "Play!"
-msgstr "שחק!"
+msgstr "שחקו!"
 
 msgid "No tokens"
 msgstr "אין אסימונים"
@@ -595,7 +595,7 @@ msgid "The contest will start at %(start_time)s and will end at %(stop_time)s."
 msgstr "התחרות תתחיל ב-%(start_time)s ותסתיים ב-%(stop_time)s."
 
 msgid "The contest is currently running."
-msgstr "התחרות פועלת כעת."
+msgstr "התחרות רצה כעת."
 
 #, python-format
 msgid "The contest started at %(start_time)s and will end at %(stop_time)s."
@@ -758,7 +758,7 @@ msgid "Time"
 msgstr "זמן"
 
 msgid "File name"
-msgstr "שם קובץ"
+msgstr "שם הקובץ"
 
 msgid "Status"
 msgstr "סטטוס"
@@ -852,27 +852,27 @@ msgid "%(name)s (%(short_name)s) <small>description</small>"
 msgstr "%(name)s (%(short_name)s) <small>תיאור</small>"
 
 msgid "no statement available"
-msgstr "אין הצהרת משימה זמינה"
+msgstr "אין סטייטמנט זמין"
 
 msgid "Download task statement"
-msgstr "הורדת הצהרת המשימה"
+msgstr "הורדת הסטייטמנט"
 
 msgid "The statement for this task is available in multiple versions, in different languages."
-msgstr "הצהרת המשימה זמינה במספר גרסאות, בשפות שונות."
+msgstr "הסטייטמנט זמין במספר גרסאות, בשפות שונות."
 
 msgid "You can see (and download) all of them using the list on the right."
-msgstr "תוכלו לראות (ולהוריד) את כולם באמצעות הרשימה מימין."
+msgstr "תוכלו לראות (ולהוריד) את כולן באמצעות הרשימה מימין."
 
 msgid "Some suggested translations follow."
 msgstr "להלן כמה תרגומים מוצעים."
 
 #, python-format
 msgid "Statement in <b>%(lang)s</b>"
-msgstr "הצהרה ב-<b>%(lang)s</b>"
+msgstr "סטיימנט ב-<b>%(lang)s</b>"
 
 #, python-format
 msgid "Statement in %(lang)s"
-msgstr "הצהרה ב-%(lang)s"
+msgstr "סטיימנט ב-%(lang)s"
 
 #, python-format
 msgid "<b>%(lang)s</b>"
@@ -1044,7 +1044,7 @@ msgid "Approved"
 msgstr "מאושר"
 
 msgid "Before you can view the tasks and participate in the contest, you must click the button below to register your participation."
-msgstr "לפני שתוכלו לצפות במשימות ולהשתתף בתחרות, עליכם ללחוץ על הכפתור למטה כדי לרשום את השתתפותכם."
+msgstr "לפני שתוכלו לצפות במשימות ולהשתתף בתחרות, עליכם ללחוץ על הכפתור למטה כדי להתחיל את השתתפותכם."
 
 msgid "Confirm Password"
 msgstr "אימות סיסמה"
@@ -1068,25 +1068,25 @@ msgid "Enter Contest"
 msgstr "כניסה לתחרות"
 
 msgid "Enter a new password for user:"
-msgstr "הזינו סיסמה חדשה עבור משתמש:"
+msgstr "הזינו סיסמה חדשה עבור המשתמש:"
 
 msgid "Enter the text you want to translate"
 msgstr "הזינו את הטקסט שברצונכם לתרגם"
 
 msgid "Enter your username or email address to request a password reset."
-msgstr "הזינו את שם המשתמש או כתובת האימייל שלכם כדי לבקש איפוס סיסמה."
+msgstr "הזינו את שם המשתמש או את כתובת האימייל שלכם כדי לבקש איפוס סיסמה."
 
 msgid "Error"
 msgstr "שגיאה"
 
 msgid "Error loading details, please refresh the page."
-msgstr "שגיאה בטעינת פרטים, אנא רעננו את הדף."
+msgstr "שגיאה בטעינת הפרטים, אנא רעננו את הדף."
 
 msgid "Evaluation system error"
-msgstr "שגיאת מערכת הערכה"
+msgstr "שגיאת במערכת הבדיקה"
 
 msgid "Fair"
-msgstr "בינוני"
+msgstr "בינונית"
 
 msgid "Forgot password?"
 msgstr "שכחתם סיסמה?"
@@ -1152,7 +1152,7 @@ msgid "Reason:"
 msgstr "סיבה:"
 
 msgid "Rejected"
-msgstr "נדחה"
+msgstr "נדחתה"
 
 msgid "Rejection Reason:"
 msgstr "סיבת הדחייה:"
@@ -1191,7 +1191,7 @@ msgid "Status:"
 msgstr "סטטוס:"
 
 msgid "Strong"
-msgstr "חזק"
+msgstr "חזקה"
 
 msgid "Submit Delay Request"
 msgstr "שליחת בקשת דחייה"
@@ -1215,7 +1215,7 @@ msgid "This password reset link is invalid or has expired."
 msgstr "קישור איפוס הסיסמה אינו חוקי או שפג תוקפו."
 
 msgid "Translate"
-msgstr "תרגום"
+msgstr "תרגמו"
 
 msgid "Translation"
 msgstr "תרגום"
@@ -1236,13 +1236,13 @@ msgid "Username or Email"
 msgstr "שם משתמש או אימייל"
 
 msgid "Very strong"
-msgstr "חזק מאוד"
+msgstr "חזקה מאוד"
 
 msgid "Very weak"
-msgstr "חלש מאוד"
+msgstr "חלשה מאוד"
 
 msgid "Weak"
-msgstr "חלש"
+msgstr "חלשה"
 
 msgid "You haven't started the contest yet."
 msgstr "עדיין לא התחלתם את התחרות."
@@ -1254,7 +1254,7 @@ msgid "Your password is too weak. Try using a longer phrase with a mix of letter
 msgstr "הסיסמה שלכם חלשה מדי. נסו להשתמש בביטוי ארוך יותר עם שילוב של אותיות, מספרים וסמלים."
 
 msgid "Your password reset request for user"
-msgstr "בקשת איפוס הסיסמה שלכם עבור משתמש"
+msgstr "בקשת איפוס הסיסמה שלכם עבור המשתמש"
 
 msgid "has been submitted."
 msgstr "נשלחה."
