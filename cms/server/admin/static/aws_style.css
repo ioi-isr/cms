@@ -397,6 +397,13 @@ ul.normal_list {
 .sidebar-contest, .sidebar-item {
     padding: 0;
     margin: 2px 0;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+}
+
+.sidebar-contest .unread {
+    flex-shrink: 0;
 }
 
 .sidebar-contest a, .sidebar-item a {
@@ -407,6 +414,8 @@ ul.normal_list {
     padding: 6px 10px;
     border-radius: 6px;
     transition: background-color 0.2s, color 0.2s;
+    flex: 1;
+    min-width: 0;
 }
 
 body.admin .sidebar-contest a, body.admin .sidebar-item a {

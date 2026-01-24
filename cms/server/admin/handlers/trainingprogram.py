@@ -91,15 +91,7 @@ class TrainingProgramHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
+        self.render_params_for_training_program(training_program)
         self.render("training_program.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -418,18 +410,8 @@ class TrainingProgramTasksHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
-
+        self.render_params_for_training_program(training_program)
         self.r_params["unassigned_tasks"] = \
             self.sql_session.query(Task)\
                 .filter(Task.contest_id.is_(None))\
@@ -712,18 +694,10 @@ class TrainingProgramRankingHandler(BaseHandler):
             for participation_id, tags in rows:
                 student_tags_by_participation[participation_id] = tags or []
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = self.contest
+        self.render_params_for_training_program(training_program)
         self.r_params["show_teams"] = show_teams
         self.r_params["student_tags_by_participation"] = student_tags_by_participation
         self.r_params["main_groups_data"] = None  # Not used for training program ranking
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == self.contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
 
         if format == "txt":
             self.set_header("Content-Type", "text/plain")
@@ -814,15 +788,7 @@ class TrainingProgramSubmissionsHandler(BaseHandler):
         managing_contest = training_program.managing_contest
 
         self.contest = managing_contest
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
+        self.render_params_for_training_program(training_program)
 
         query = self.sql_session.query(Submission).join(Task)\
             .filter(Task.contest == managing_contest)
@@ -841,19 +807,10 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
 
-        self.contest = managing_contest
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
+        self.contest = training_program.managing_contest
+        self.render_params_for_training_program(training_program)
         self.r_params["all_student_tags"] = get_all_student_tags(training_program)
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
 
         self.render("announcements.html", **self.r_params)
 
@@ -925,9 +882,7 @@ class TrainingProgramQuestionsHandler(BaseHandler):
         managing_contest = training_program.managing_contest
 
         self.contest = managing_contest
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
+        self.render_params_for_training_program(training_program)
 
         self.r_params["questions"] = self.sql_session.query(Question)\
             .join(Participation)\
@@ -935,24 +890,14 @@ class TrainingProgramQuestionsHandler(BaseHandler):
             .order_by(Question.question_timestamp.desc())\
             .order_by(Question.id).all()
 
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
-
-        # Get training days with unanswered questions
+        # Build training days with unanswered questions from notification data
         training_days_with_unanswered: list[dict] = []
+        td_notifications = self.r_params.get("training_day_notifications", {})
         for td in training_program.training_days:
             if td.contest is None:
                 continue
-            unanswered_count = self.sql_session.query(Question)\
-                .join(Participation)\
-                .filter(Participation.contest_id == td.contest_id)\
-                .filter(Question.reply_timestamp.is_(None))\
-                .filter(Question.ignored.is_(False))\
-                .count()
+            td_notif = td_notifications.get(td.id, {})
+            unanswered_count = td_notif.get("unanswered_questions", 0)
             if unanswered_count > 0:
                 training_days_with_unanswered.append({
                     "contest_id": td.contest_id,

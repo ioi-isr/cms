@@ -682,8 +682,7 @@ class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
             key=lambda s: s.participation.user.username if s.participation else ""
         )
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
+        self.render_params_for_training_program(training_program)
         self.r_params["archived_training_days"] = archived_training_days
         self.r_params["attendance_data"] = attendance_data
         self.r_params["sorted_students"] = sorted_students
@@ -694,23 +693,15 @@ class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
         self.r_params["all_training_day_types"] = get_all_training_day_types(
             training_program)
         self.r_params["all_student_tags"] = get_all_student_tags(training_program)
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == training_program.managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
 
-        # Get training days with pending delay requests
+        # Build training days with pending delays from notification data
         training_days_with_pending_delays: list[dict] = []
+        td_notifications = self.r_params.get("training_day_notifications", {})
         for td in training_program.training_days:
             if td.contest is None:
                 continue
-            pending_count = self.sql_session.query(DelayRequest)\
-                .join(Participation)\
-                .filter(Participation.contest_id == td.contest_id)\
-                .filter(DelayRequest.status == "pending")\
-                .count()
+            td_notif = td_notifications.get(td.id, {})
+            pending_count = td_notif.get("pending_delay_requests", 0)
             if pending_count > 0:
                 training_days_with_pending_delays.append({
                     "contest_id": td.contest_id,
@@ -838,8 +829,7 @@ class TrainingProgramCombinedRankingHandler(
             key=lambda s: s.participation.user.username if s.participation else ""
         )
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
+        self.render_params_for_training_program(training_program)
         self.r_params["archived_training_days"] = filtered_training_days
         self.r_params["ranking_data"] = ranking_data
         self.r_params["sorted_students"] = sorted_students
@@ -854,12 +844,6 @@ class TrainingProgramCombinedRankingHandler(
         self.r_params["all_training_day_types"] = get_all_training_day_types(
             training_program)
         self.r_params["all_student_tags"] = get_all_student_tags(training_program)
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == training_program.managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
         self.render("training_program_combined_ranking.html", **self.r_params)
 
 
@@ -1119,8 +1103,7 @@ class TrainingProgramCombinedRankingDetailHandler(
                 params["student_tags_mode"] = student_tags_mode
             history_url += "?" + urlencode(params)
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
+        self.render_params_for_training_program(training_program)
         self.r_params["student"] = student
         self.r_params["user_id"] = str(student.participation.user_id) if student.participation else "0"
         self.r_params["user_count"] = user_count
@@ -1136,10 +1119,4 @@ class TrainingProgramCombinedRankingDetailHandler(
         self.r_params["training_day_types"] = training_day_types
         self.r_params["student_tags"] = student_tags
         self.r_params["student_tags_mode"] = student_tags_mode
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == training_program.managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
         self.render("training_program_combined_ranking_detail.html", **self.r_params)

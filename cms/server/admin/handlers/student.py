@@ -54,17 +54,9 @@ class TrainingProgramStudentsHandler(BaseHandler):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
+        self.render_params_for_training_program(training_program)
 
-        assigned_user_ids_q = self.sql_session.query(Participation.user_id).filter(
+        assigned_user_ids_q= self.sql_session.query(Participation.user_id).filter(
             Participation.contest == managing_contest
         )
 
@@ -308,19 +300,13 @@ class StudentHandler(BaseHandler):
         page = int(self.get_query_argument("page", "0"))
         self.render_params_for_submissions(submission_query, page)
 
-        # Get all unique student tags from this training program for autocomplete
-        self.r_params["training_program"] = training_program
+        # render_params_for_training_program sets training_program, contest, unanswered
+        self.render_params_for_training_program(training_program)
         self.r_params["participation"] = participation
         self.r_params["student"] = student
         self.r_params["selected_user"] = participation.user
         self.r_params["teams"] = self.sql_session.query(Team).all()
         self.r_params["all_student_tags"] = get_all_student_tags(training_program)
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
         self.render("student.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -535,8 +521,7 @@ class StudentTasksHandler(BaseHandler):
                 if task_id_str in archived_ranking.task_scores:
                     training_scores[st.task_id] = archived_ranking.task_scores[task_id_str]
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
+        self.render_params_for_training_program(training_program)
         self.r_params["participation"] = participation
         self.r_params["student"] = student
         self.r_params["selected_user"] = participation.user
@@ -546,12 +531,6 @@ class StudentTasksHandler(BaseHandler):
         self.r_params["available_tasks"] = available_tasks
         self.r_params["home_scores"] = home_scores
         self.r_params["training_scores"] = training_scores
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
         self.render("student_tasks.html", **self.r_params)
 
 
@@ -703,16 +682,9 @@ class BulkAssignTaskHandler(BaseHandler):
         # Get all unique student tags
         all_student_tags = get_all_student_tags(training_program)
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
+        self.render_params_for_training_program(training_program)
         self.r_params["all_tasks"] = all_tasks
         self.r_params["all_student_tags"] = all_student_tags
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
         self.render("bulk_assign_task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

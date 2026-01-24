@@ -481,13 +481,7 @@ $(document).ready(initSidebarEvents);
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a></li>
-            <li class="menu_entry">
-              <span class="unread"
-                {% if total_td_pending_delay_requests is not defined or total_td_pending_delay_requests == 0 %} style="display: none;" {% endif %}>
-                {{ total_td_pending_delay_requests|default(0) }}
-              </span>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a>
-            </li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "combined_ranking") }}">Combined Ranking</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a></li>
             <li class="menu_entry">

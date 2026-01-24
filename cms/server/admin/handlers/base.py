@@ -510,48 +510,80 @@ class BaseHandler(CommonRequestHandler):
             .all()
         )
 
-        # If viewing a training program, add notification counts for training days
-        if "training_program" in params and params["training_program"] is not None:
-            training_program = params["training_program"]
-            training_day_notifications: dict[int, dict] = {}
-            total_td_unanswered_questions = 0
-            total_td_pending_delay_requests = 0
-
-            for td in training_program.training_days:
-                if td.contest is None:
-                    continue
-
-                # Count unanswered questions for this training day
-                td_unanswered = (
-                    self.sql_session.query(Question)
-                    .join(Participation)
-                    .filter(Participation.contest_id == td.contest_id)
-                    .filter(Question.reply_timestamp.is_(None))
-                    .filter(Question.ignored.is_(False))
-                    .count()
-                )
-
-                # Count pending delay requests for this training day
-                td_pending_delays = (
-                    self.sql_session.query(DelayRequest)
-                    .join(Participation)
-                    .filter(Participation.contest_id == td.contest_id)
-                    .filter(DelayRequest.status == "pending")
-                    .count()
-                )
-
-                training_day_notifications[td.id] = {
-                    "unanswered_questions": td_unanswered,
-                    "pending_delay_requests": td_pending_delays,
-                }
-                total_td_unanswered_questions += td_unanswered
-                total_td_pending_delay_requests += td_pending_delays
-
-            params["training_day_notifications"] = training_day_notifications
-            params["total_td_unanswered_questions"] = total_td_unanswered_questions
-            params["total_td_pending_delay_requests"] = total_td_pending_delay_requests
-
         return params
+
+    def render_params_for_training_program(
+        self, training_program: "TrainingProgram"
+    ) -> dict:
+        """Initialize render params for a training program page.
+
+        This is a convenience method that combines render_params(),
+        setting training_program, contest, unanswered questions count,
+        and notification counts for training days in the sidebar.
+
+        Args:
+            training_program: The training program being viewed.
+
+        Returns:
+            The initialized r_params dict.
+        """
+        managing_contest = training_program.managing_contest
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+
+        # Count unanswered questions for the managing contest (used in sidebar)
+        self.r_params["unanswered"] = (
+            self.sql_session.query(Question)
+            .join(Participation)
+            .filter(Participation.contest_id == managing_contest.id)
+            .filter(Question.reply_timestamp.is_(None))
+            .filter(Question.ignored.is_(False))
+            .count()
+        )
+
+        # Add notification counts for training days
+        training_day_notifications: dict[int, dict] = {}
+        total_td_unanswered_questions = 0
+        total_td_pending_delay_requests = 0
+
+        for td in training_program.training_days:
+            if td.contest is None:
+                continue
+
+            # Count unanswered questions for this training day
+            td_unanswered = (
+                self.sql_session.query(Question)
+                .join(Participation)
+                .filter(Participation.contest_id == td.contest_id)
+                .filter(Question.reply_timestamp.is_(None))
+                .filter(Question.ignored.is_(False))
+                .count()
+            )
+
+            # Count pending delay requests for this training day
+            td_pending_delays = (
+                self.sql_session.query(DelayRequest)
+                .join(Participation)
+                .filter(Participation.contest_id == td.contest_id)
+                .filter(DelayRequest.status == "pending")
+                .count()
+            )
+
+            training_day_notifications[td.id] = {
+                "unanswered_questions": td_unanswered,
+                "pending_delay_requests": td_pending_delays,
+            }
+            total_td_unanswered_questions += td_unanswered
+            total_td_pending_delay_requests += td_pending_delays
+
+        self.r_params["training_day_notifications"] = training_day_notifications
+        self.r_params["total_td_unanswered_questions"] = \
+            total_td_unanswered_questions
+        self.r_params["total_td_pending_delay_requests"] = \
+            total_td_pending_delay_requests
+
+        return self.r_params
 
     def write_error(self, status_code, **kwargs):
         if "exc_info" in kwargs and kwargs["exc_info"][0] != tornado.web.HTTPError:
