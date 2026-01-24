@@ -40,7 +40,8 @@ from cms.db import Contest, Participation, ScoreHistory, Student, \
     Submission, SubmissionResult, Task
 
 from cms.grading.scorecache import get_cached_score_entry, ensure_valid_history
-from cms.server.util import can_access_task, get_all_student_tags
+from cms.server.util import can_access_task, get_all_student_tags, \
+    calculate_task_archive_progress
 from .base import BaseHandler, require_permission
 
 logger = logging.getLogger(__name__)
@@ -275,6 +276,36 @@ class RankingHandler(BaseHandler):
         self.r_params["main_groups_data"] = main_groups_data
         self.r_params["student_tags_by_participation"] = student_tags_by_participation
         self.r_params["training_day"] = training_day
+
+        # Calculate task archive progress for training program managing contests
+        # This is only shown on training program ranking pages, not regular contests
+        task_archive_progress_by_participation = {}
+        if hasattr(self.contest, 'training_programs') and self.contest.training_programs:
+            # This contest is a managing contest for at least one training program
+            training_program = self.contest.training_programs[0]
+            # Build student lookup by user_id for this training program
+            students_query = (
+                self.sql_session.query(Student)
+                .filter(Student.training_program_id == training_program.id)
+                .all()
+            )
+            student_by_participation_id = {
+                s.participation_id: s for s in students_query
+            }
+
+            for p in self.contest.participations:
+                student = student_by_participation_id.get(p.id)
+                if student:
+                    progress = calculate_task_archive_progress(
+                        student, p, self.contest, self.sql_session
+                    )
+                    task_archive_progress_by_participation[p.id] = progress
+
+            # Commit to release advisory locks from cache rebuilds
+            self.sql_session.commit()
+
+        self.r_params["task_archive_progress_by_participation"] = \
+            task_archive_progress_by_participation
 
         date_str = self.contest.start.strftime("%Y%m%d")
         contest_name = self.contest.name.replace(" ", "_")
