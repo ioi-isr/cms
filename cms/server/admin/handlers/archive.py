@@ -700,6 +700,26 @@ class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
             .filter(Question.reply_timestamp.is_(None))\
             .filter(Question.ignored.is_(False))\
             .count()
+
+        # Get training days with pending delay requests
+        training_days_with_pending_delays: list[dict] = []
+        for td in training_program.training_days:
+            if td.contest is None:
+                continue
+            pending_count = self.sql_session.query(DelayRequest)\
+                .join(Participation)\
+                .filter(Participation.contest_id == td.contest_id)\
+                .filter(DelayRequest.status == "pending")\
+                .count()
+            if pending_count > 0:
+                training_days_with_pending_delays.append({
+                    "contest_id": td.contest_id,
+                    "name": td.contest.name,
+                    "pending_count": pending_count,
+                })
+        self.r_params["training_days_with_pending_delays"] = \
+            training_days_with_pending_delays
+
         self.render("training_program_attendance.html", **self.r_params)
 
 

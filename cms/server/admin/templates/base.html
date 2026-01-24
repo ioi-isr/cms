@@ -481,7 +481,13 @@ $(document).ready(initSidebarEvents);
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a></li>
+            <li class="menu_entry">
+              <span class="unread"
+                {% if total_td_pending_delay_requests is not defined or total_td_pending_delay_requests == 0 %} style="display: none;" {% endif %}>
+                {{ total_td_pending_delay_requests|default(0) }}
+              </span>
+              <a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a>
+            </li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "combined_ranking") }}">Combined Ranking</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a></li>
             <li class="menu_entry">
@@ -496,6 +502,12 @@ $(document).ready(initSidebarEvents);
           <div class="sidebar-section" data-section-key="training-days">
             <h2 class="sidebar-section-title">
               <span class="section-caret"></span>
+              <span class="unread" style="margin-right: 5px;{% if total_td_unanswered_questions is not defined or total_td_unanswered_questions == 0 %} display: none;{% endif %}">
+                {{ total_td_unanswered_questions|default(0) }}
+              </span>
+              <span class="unread unread-delay" style="margin-right: 5px;{% if total_td_pending_delay_requests is not defined or total_td_pending_delay_requests == 0 %} display: none;{% endif %}">
+                {{ total_td_pending_delay_requests|default(0) }}
+              </span>
               <a href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a>
             </h2>
             <div class="sidebar-section-body">
@@ -504,6 +516,11 @@ $(document).ready(initSidebarEvents);
               <ul class="sidebar-menu">
                 {% for td in active_training_days %}
                 <li class="sidebar-contest">
+                  {% set td_notifs = training_day_notifications.get(td.id, {}) if training_day_notifications is defined else {} %}
+                  {% set td_unanswered = td_notifs.get("unanswered_questions", 0) %}
+                  {% set td_delays = td_notifs.get("pending_delay_requests", 0) %}
+                  <span class="unread" style="margin-right: 3px;{% if td_unanswered == 0 %} display: none;{% endif %}">{{ td_unanswered }}</span>
+                  <span class="unread unread-delay" style="margin-right: 3px;{% if td_delays == 0 %} display: none;{% endif %}">{{ td_delays }}</span>
                   <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
                 </li>
                 {% endfor %}

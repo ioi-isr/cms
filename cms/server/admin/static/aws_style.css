@@ -547,6 +547,10 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     text-shadow: none;
 }
 
+.unread.unread-delay {
+    background-color: #FF8C00;
+}
+
 .secret_notice {
     font-size: 0.8em;
     line-height: 1.125em;

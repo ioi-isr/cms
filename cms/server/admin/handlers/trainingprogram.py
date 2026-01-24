@@ -35,6 +35,7 @@ from sqlalchemy import func
 
 from cms.db import (
     Contest,
+    DelayRequest,
     TrainingProgram,
     Participation,
     Submission,
@@ -940,6 +941,26 @@ class TrainingProgramQuestionsHandler(BaseHandler):
             .filter(Question.reply_timestamp.is_(None))\
             .filter(Question.ignored.is_(False))\
             .count()
+
+        # Get training days with unanswered questions
+        training_days_with_unanswered: list[dict] = []
+        for td in training_program.training_days:
+            if td.contest is None:
+                continue
+            unanswered_count = self.sql_session.query(Question)\
+                .join(Participation)\
+                .filter(Participation.contest_id == td.contest_id)\
+                .filter(Question.reply_timestamp.is_(None))\
+                .filter(Question.ignored.is_(False))\
+                .count()
+            if unanswered_count > 0:
+                training_days_with_unanswered.append({
+                    "contest_id": td.contest_id,
+                    "name": td.contest.name,
+                    "unanswered_count": unanswered_count,
+                })
+        self.r_params["training_days_with_unanswered_questions"] = \
+            training_days_with_unanswered
 
         self.render("questions.html", **self.r_params)
 

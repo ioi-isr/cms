@@ -509,6 +509,48 @@ class BaseHandler(CommonRequestHandler):
             .order_by(TrainingProgram.name)
             .all()
         )
+
+        # If viewing a training program, add notification counts for training days
+        if "training_program" in params and params["training_program"] is not None:
+            training_program = params["training_program"]
+            training_day_notifications: dict[int, dict] = {}
+            total_td_unanswered_questions = 0
+            total_td_pending_delay_requests = 0
+
+            for td in training_program.training_days:
+                if td.contest is None:
+                    continue
+
+                # Count unanswered questions for this training day
+                td_unanswered = (
+                    self.sql_session.query(Question)
+                    .join(Participation)
+                    .filter(Participation.contest_id == td.contest_id)
+                    .filter(Question.reply_timestamp.is_(None))
+                    .filter(Question.ignored.is_(False))
+                    .count()
+                )
+
+                # Count pending delay requests for this training day
+                td_pending_delays = (
+                    self.sql_session.query(DelayRequest)
+                    .join(Participation)
+                    .filter(Participation.contest_id == td.contest_id)
+                    .filter(DelayRequest.status == "pending")
+                    .count()
+                )
+
+                training_day_notifications[td.id] = {
+                    "unanswered_questions": td_unanswered,
+                    "pending_delay_requests": td_pending_delays,
+                }
+                total_td_unanswered_questions += td_unanswered
+                total_td_pending_delay_requests += td_pending_delays
+
+            params["training_day_notifications"] = training_day_notifications
+            params["total_td_unanswered_questions"] = total_td_unanswered_questions
+            params["total_td_pending_delay_requests"] = total_td_pending_delay_requests
+
         return params
 
     def write_error(self, status_code, **kwargs):
