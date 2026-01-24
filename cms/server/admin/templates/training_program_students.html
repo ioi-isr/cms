@@ -2,6 +2,7 @@
 
 {% block js_init %}
 CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
+CMS.AWSUtils.init_table_sort($("#students_table"), false, 1, true);
 {% endblock js_init %}
 
 {% block core %}
@@ -43,15 +44,15 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
          disabled
 {% endif %}
          />
-  <table class="bordered">
+  <table class="bordered" id="students_table">
     <thead>
       <tr>
-        <th></th>
+        <th class="no-sort"></th>
         <th>Username</th>
         <th>First Name</th>
         <th>Last Name</th>
         <th>Student Tags</th>
-        <th>Task Archive Progress</th>
+        <th data-sort-settings="numeric reversed">Task Archive Progress</th>
       </tr>
     </thead>
     <tbody>
@@ -72,7 +73,7 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
           <span class="no-tags-indicator">No tags</span>
           {% endif %}
         </td>
-        <td>
+        <td data-value="{{ progress.percentage|default(0) }}">
           {% if progress.task_count > 0 %}
           {{ "%.1f"|format(progress.percentage) }}% ({{ "%.1f"|format(progress.total_score) }}/{{ "%.1f"|format(progress.max_score) }}) [<a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}">details</a>]
           {% else %}

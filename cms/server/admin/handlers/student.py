@@ -38,6 +38,7 @@ from cms.db import (
 from cms.server.util import (
     get_all_student_tags,
     calculate_task_archive_progress,
+    get_student_archive_scores,
     parse_tags,
 )
 from cmscommon.datetime import make_datetime
@@ -79,8 +80,10 @@ class TrainingProgramStudentsHandler(BaseHandler):
         student_progress = {}
         for student in training_program.students:
             student_progress[student.id] = calculate_task_archive_progress(
-                student, student.participation, managing_contest
+                self.sql_session, student, student.participation, managing_contest
             )
+        # Commit to release advisory locks from cache rebuilds
+        self.sql_session.commit()
 
         self.r_params["student_progress"] = student_progress
 
@@ -502,10 +505,12 @@ class StudentTasksHandler(BaseHandler):
         assigned_task_ids = {st.task_id for st in student.student_tasks}
         available_tasks = [t for t in all_tasks if t.id not in assigned_task_ids]
 
-        # Build home scores from participation task_scores cache
-        home_scores = {}
-        for pts in participation.task_scores:
-            home_scores[pts.task_id] = pts.score
+        # Build home scores using get_student_archive_scores for fresh cache values
+        home_scores = get_student_archive_scores(
+            self.sql_session, student, participation, managing_contest
+        )
+        # Commit to release advisory locks from cache rebuilds
+        self.sql_session.commit()
 
         # Build training scores from archived student rankings (batch query)
         training_scores = {}

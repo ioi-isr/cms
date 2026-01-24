@@ -238,7 +238,46 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
     return bool(student_tags_set & task_tags_set)
 
 
+def get_student_archive_scores(
+    sql_session: Session,
+    student: "Student",
+    participation: "Participation",
+    contest: "Contest",
+) -> dict[int, float]:
+    """Get fresh task scores for all tasks in a student's archive.
+
+    This utility uses get_cached_score_entry to ensure scores are fresh
+    and not stale. It returns a mapping of task_id -> score for all tasks
+    that are both in the student's archive AND currently exist in the contest.
+
+    IMPORTANT: This function may trigger cache rebuilds which acquire advisory
+    locks. The caller MUST commit the session after calling this function to
+    release the locks and persist any cache updates.
+
+    sql_session: the database session.
+    student: the Student object (with student_tasks relationship).
+    participation: the Participation object for the managing contest.
+    contest: the Contest object (managing contest for the training program).
+
+    return: dict mapping task_id -> score for tasks in the student's archive.
+
+    """
+    from cms.grading.scorecache import get_cached_score_entry
+
+    student_task_ids = {st.task_id for st in student.student_tasks}
+    scores = {}
+
+    for task in contest.get_tasks():
+        if task.id not in student_task_ids:
+            continue
+        cache_entry = get_cached_score_entry(sql_session, participation, task)
+        scores[task.id] = cache_entry.score
+
+    return scores
+
+
 def calculate_task_archive_progress(
+    sql_session: Session,
     student: "Student",
     participation: "Participation",
     contest: "Contest",
@@ -249,6 +288,11 @@ def calculate_task_archive_progress(
     This is a shared utility used by both the admin students page and
     the contest training program overview page.
 
+    IMPORTANT: This function may trigger cache rebuilds which acquire advisory
+    locks. The caller MUST commit the session after calling this function to
+    release the locks and persist any cache updates.
+
+    sql_session: the database session.
     student: the Student object (with student_tasks relationship).
     participation: the Participation object (with task_scores relationship).
     contest: the Contest object (managing contest for the training program).
@@ -262,10 +306,10 @@ def calculate_task_archive_progress(
     student_tasks_map = {st.task_id: st for st in student.student_tasks}
     student_task_ids = set(student_tasks_map.keys())
 
-    # Build a map of task_id -> cached score for this participation
-    cached_scores = {}
-    for pts in participation.task_scores:
-        cached_scores[pts.task_id] = pts.score
+    # Get fresh scores using get_cached_score_entry
+    cached_scores = get_student_archive_scores(
+        sql_session, student, participation, contest
+    )
 
     total_score = 0.0
     max_score = 0.0

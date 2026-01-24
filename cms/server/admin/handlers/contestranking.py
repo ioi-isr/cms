@@ -40,7 +40,8 @@ from cms.db import Contest, Participation, ScoreHistory, Student, \
     Submission, SubmissionResult, Task
 
 from cms.grading.scorecache import get_cached_score_entry, ensure_valid_history
-from cms.server.util import can_access_task, get_all_student_tags
+from cms.server.util import can_access_task, get_all_student_tags, \
+    calculate_task_archive_progress
 from .base import BaseHandler, require_permission
 
 logger = logging.getLogger(__name__)
@@ -192,8 +193,11 @@ class RankingHandler(BaseHandler):
         student_tags_by_participation = {}  # participation_id -> list of tags
 
         # For training days, always build student tags lookup (batch query)
+        # Also calculate task archive progress for each student
+        task_archive_progress_by_participation = {}  # participation_id -> progress dict
         if training_day:
             training_program = training_day.training_program
+            managing_contest = training_program.managing_contest
             # Batch query: fetch all students for this training program's participations
             participation_user_ids = {p.user_id for p in self.contest.participations}
             students = (
@@ -209,8 +213,19 @@ class RankingHandler(BaseHandler):
                 student = student_by_user_id.get(p.user_id)
                 if student:
                     student_tags_by_participation[p.id] = student.student_tags or []
+                    # Calculate task archive progress for this student
+                    if managing_contest:
+                        progress = calculate_task_archive_progress(
+                            self.sql_session, student, student.participation,
+                            managing_contest
+                        )
+                        task_archive_progress_by_participation[p.id] = progress
                 else:
                     student_tags_by_participation[p.id] = []
+
+            # Commit to release advisory locks from cache rebuilds
+            if task_archive_progress_by_participation:
+                self.sql_session.commit()
 
         if training_day and training_day.groups:
             # Get main group tag names
@@ -274,6 +289,8 @@ class RankingHandler(BaseHandler):
 
         self.r_params["main_groups_data"] = main_groups_data
         self.r_params["student_tags_by_participation"] = student_tags_by_participation
+        self.r_params["task_archive_progress_by_participation"] = \
+            task_archive_progress_by_participation
         self.r_params["training_day"] = training_day
 
         date_str = self.contest.start.strftime("%Y%m%d")
