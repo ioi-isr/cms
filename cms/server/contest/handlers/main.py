@@ -70,6 +70,7 @@ from cms.server.util import validate_date_of_birth
 from cmscommon.crypto import hash_password, validate_password, \
     validate_password_strength, WeakPasswordError
 from cmscommon.datetime import make_datetime, make_timestamp
+from datetime import timedelta
 from .contest import ContestHandler, api_login_required
 from ..phase_management import actual_phase_required
 from .base import add_ip_to_list
