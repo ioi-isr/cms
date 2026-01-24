@@ -35,6 +35,13 @@ inputs.forEach(function(input) {
   <h1>Announcements</h1>
 </div>
 
+{% if training_program is defined %}
+<div class="notification notification_info" style="margin-bottom: 15px;">
+  <strong>Note:</strong> This page only handles announcements for the training program.
+  For training day announcements, go to the appropriate training day's announcements page.
+</div>
+{% endif %}
+
 <h2 id="title_announcements" class="toggling_on">Announcements</h2>
 <div id="announcements">
   <div class="notifications">

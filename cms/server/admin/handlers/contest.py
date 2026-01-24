@@ -288,7 +288,12 @@ class OverviewHandler(BaseHandler):
         if contest_id is not None:
             self.contest = self.safe_get_item(Contest, contest_id)
 
-        self.r_params = self.render_params()
+        # If this contest is a managing contest for a training program,
+        # use render_params_for_training_program to show training day notifications
+        if self.contest is not None and self.contest.training_program is not None:
+            self.render_params_for_training_program(self.contest.training_program)
+        else:
+            self.r_params = self.render_params()
         self.render("overview.html", **self.r_params)
 
 
@@ -298,7 +303,12 @@ class ResourcesListHandler(BaseHandler):
         if contest_id is not None:
             self.contest = self.safe_get_item(Contest, contest_id)
 
-        self.r_params = self.render_params()
+        # If this contest is a managing contest for a training program,
+        # use render_params_for_training_program to show training day notifications
+        if self.contest is not None and self.contest.training_program is not None:
+            self.render_params_for_training_program(self.contest.training_program)
+        else:
+            self.r_params = self.render_params()
         self.r_params["resource_addresses"] = {}
         services = get_service_shards("ResourceService")
         for i in range(services):

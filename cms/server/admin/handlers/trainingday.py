@@ -163,17 +163,8 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
+        self.render_params_for_training_program(training_program)
         self.r_params["all_training_day_types"] = get_all_training_day_types(
             training_program)
 
@@ -251,15 +242,7 @@ class AddTrainingDayHandler(BaseHandler):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
+        self.render_params_for_training_program(training_program)
 
         # Get all student tags for the tagify select dropdown
         tags_query = self.sql_session.query(
@@ -446,11 +429,9 @@ class RemoveTrainingDayHandler(BaseHandler):
         if training_day.training_program_id != training_program.id:
             raise tornado.web.HTTPError(404)
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
+        self.render_params_for_training_program(training_program)
         self.r_params["training_day"] = training_day
-        self.r_params["contest"] = managing_contest
-        self.r_params["unanswered"] = 0
+        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
 
         # Stats for warning message
         self.r_params["task_count"] = len(training_day.tasks)
