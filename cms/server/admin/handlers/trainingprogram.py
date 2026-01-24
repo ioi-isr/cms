@@ -280,10 +280,8 @@ class RemoveTrainingProgramHandler(BaseHandler):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
-        self.r_params["unanswered"] = 0
+        self.render_params_for_training_program(training_program)
+        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
 
         # Count related data that will be deleted
         self.r_params["participation_count"] = (
@@ -565,11 +563,9 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
         managing_contest = training_program.managing_contest
         task = self.safe_get_item(Task, task_id)
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
+        self.render_params_for_training_program(training_program)
         self.r_params["task"] = task
-        self.r_params["unanswered"] = 0
+        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
 
         self.render("training_program_task_remove.html", **self.r_params)
 

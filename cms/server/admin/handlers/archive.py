@@ -114,18 +114,11 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     'status_label': status_label,
                 })
 
-        self.r_params = self.render_params()
-        self.r_params["training_program"] = training_program
+        self.render_params_for_training_program(training_program)
         self.r_params["training_day"] = training_day
         self.r_params["contest"] = contest
         self.r_params["shared_ips"] = shared_ips
         self.r_params["users_not_finished"] = users_not_finished
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == training_program.managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
         self.render("archive_training_day.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

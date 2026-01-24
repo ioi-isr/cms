@@ -183,6 +183,11 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
             .filter(Submission.participation == participation)
         self.render_params_for_remove_confirmation(submission_query)
 
+        # Use the helper to set up training program params
+        self.render_params_for_training_program(training_program)
+        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
+        self.r_params["user"] = user
+
         # Count submissions and participations from training days
         training_day_contest_ids = [td.contest_id for td in training_program.training_days]
         training_day_contest_ids = [
@@ -207,10 +212,6 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
             training_day_participations = 0
             training_day_submissions = 0
 
-        self.r_params["user"] = user
-        self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
-        self.r_params["unanswered"] = 0
         self.r_params["training_day_submissions"] = training_day_submissions
         self.r_params["training_day_participations"] = training_day_participations
         self.render("training_program_student_remove.html", **self.r_params)
