@@ -1,193 +1,396 @@
 {% extends "base.html" %}
 
 {% block core %}
-<h1>
-  Task Archive for <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
-</h1>
+<style>
+    /* 1. Page Constraint: Prevents the table from looking "too wide" on large screens */
+    .content-constraint {
+        max-width: 1200px;
+        margin: 0 0 0 20px;
+        padding-bottom: 40px;
+    }
 
-<p>
-  <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "edit") }}">Back to student details</a>
-</p>
+    /* 2. Breadcrumb Navigation: Solves "Back button too right" */
+    .nav-breadcrumb {
+        margin-bottom: 12px;
+    }
+    .nav-back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+    .nav-back-link:hover {
+        color: #0F766E;
+    }
 
-<h2 id="title_add_task" class="toggling_on">Add Task</h2>
-<div id="add_task">
-  <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks", "add") }}" method="POST">
-    {{ xsrf_form_html|safe }}
-    <table class="bordered">
-      <tr>
-        <td>
-          <span class="info" title="Select a task to add to this student's task archive. This will be marked as a manual assignment."></span>
-          Task
-        </td>
-        <td>
-          <select name="task_id" class="searchable-select">
-            <option value="" selected disabled hidden>Select a task...</option>
-            {% for task in available_tasks %}
-            <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
-            {% endfor %}
-          </select>
-        </td>
-      </tr>
-    </table>
-    <input type="submit" value="Add Task" {% if not admin.permission_all %}disabled{% endif %} />
-  </form>
-  <div class="hr"></div>
+    /* Header Typography */
+    .page-title h1 {
+        font-size: 1.85rem;
+        color: #1e293b;
+        margin: 0 0 6px 0;
+        font-weight: 700;
+    }
+    .page-subtitle {
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+
+    /* Filter Card Overrides */
+    .assignment-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    /* Table visual fixes */
+    .ranking-table th {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #64748b;
+        background: #f8fafc;
+        padding: 14px 16px !important; /* Override sticky padding */
+    }
+
+    /* Disable sticky positioning for student tasks table */
+    #student-tasks-table thead th {
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        z-index: auto !important;
+        box-shadow: none !important;
+    }
+
+    .ranking-table td {
+        padding: 0; /* padding handled by wrapper */
+    }
+
+    /* Cell Wrapper: Controls alignment and spacing */
+    .list-cell-wrapper {
+        padding: 12px 16px;
+        min-height: 48px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .list-cell-wrapper.center-content { align-items: center; }
+
+    /* Badge Fixes: Clear distinction between source types */
+    .source-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 1em;
+        font-weight: 600;
+        line-height: 1;
+        white-space: nowrap;
+        width: fit-content;
+    }
+    .badge-training {
+        background: #f0fdf4;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+    .badge-training:hover {
+        background: #dcfce7;
+        text-decoration: none;
+    }
+    .badge-archived {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+    }
+    .badge-manual {
+        background: #f8fafc;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        font-style: italic;
+    }
+
+    /* Button Fixes */
+    .btn-remove {
+        background: white;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-remove:hover:not(:disabled) {
+        background: #fef2f2;
+        color: #ef4444;
+        border-color: #fca5a5;
+    }
+</style>
+
+<div class="content-constraint">
+
+    <!-- Navigation -->
+    <div class="nav-breadcrumb">
+        <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "edit") }}" class="nav-back-link">
+            <span>&larr;</span> Back to Student
+        </a>
+    </div>
+
+    <!-- Header -->
+    <div class="page-title" style="margin-bottom: 24px;">
+        <h1>Task Archive: <a href="{{ url("user", selected_user.id) }}" style="color: #0F766E; text-decoration: none;">{{ selected_user.username }}</a></h1>
+        <div class="page-subtitle">
+            Program: <a href="{{ url("training_program", training_program.id) }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+        </div>
+    </div>
+
+    <!-- Add Task Card -->
+    <div class="tp-filter-card">
+        <label class="tp-filter-label" for="start_date">Manual Task Assignment:</label>
+        <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px;">
+            {{ xsrf_form_html|safe }}
+
+            <div style="flex-grow: 1;">
+                <select name="task_id" id="task_selector" class="searchable-select" placeholder="Search for a task..." style="width: 100%;">
+                    <option value="" selected disabled hidden>Select a task...</option>
+                    {% for task in available_tasks %}
+                    <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
+                Add Task
+            </button>
+        </form>
+    </div>
+
+    <!-- List Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
+        <h2 style="font-size: 1.25rem; color: #1e293b; font-weight: 700; margin: 0;">Assigned Tasks ({{ student_tasks|length }})</h2>
+    </div>
+
+    <!-- Table -->
+    <div class="tp-table-container">
+        {% if student_tasks %}
+        <table class="ranking-table" id="student-tasks-table" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th class="sortable-header" data-sort="string" style="width: 30%;">Task</th>
+                    <th class="sortable-header" data-sort="string" style="width: 15%;">Source</th>
+                    <th class="sortable-header" data-sort="date" style="width: 15%;">Assigned At</th>
+                    <th class="sortable-header text-center" data-sort="number" style="width: 10%;">Training</th>
+                    <th class="sortable-header text-center" data-sort="number" style="width: 10%;">Home</th>
+                    <th class="sortable-header text-center" data-sort="number" style="width: 10%;">Sumbissions</th>
+                    <th class="text-center" style="width: 10%;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for st in student_tasks %}
+                <tr data-task="{{ st.task.name }}"
+                    data-assigned="{{ st.assigned_at.timestamp() if st.assigned_at else 0 }}"
+                    data-training-score="{{ training_scores.get(st.task.id, -1) }}"
+                    data-home-score="{{ home_scores.get(st.task.id, -1) }}"
+                    data-submissions="{{ submission_counts.get(st.task.id, 0) }}">
+
+                    <!-- Task -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            <div style="font-weight: 600; font-size: 0.95rem;">
+                                <a href="{{ url("task", st.task.id) }}" class="student-name-link">{{ st.task.name }}</a>
+                            </div>
+                            <div style="font-size: 0.85em; color: #64748b; margin-top: 2px;">{{ st.task.title }}</div>
+                        </div>
+                    </td>
+
+                    <!-- Source -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            {% if st.source_training_day %}
+                                {% if st.source_training_day.contest %}
+                                    <a href="{{ url("contest", st.source_training_day.contest.id) }}" class="source-badge badge-training">
+                                        {{ st.source_training_day.contest.description }}
+                                    </a>
+                                {% else %}
+                                    <span class="source-badge badge-archived">
+                                        {{ st.source_training_day.description or st.source_training_day.name or "Archived Training" }}
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="source-badge badge-manual">Manual Assignment</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Date -->
+                    <td>
+                        <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem;">
+                            {{ st.assigned_at.strftime('%Y-%m-%d') if st.assigned_at else '-' }}
+                            <span style="color: #94a3b8;">{{ st.assigned_at.strftime('%H:%M') if st.assigned_at else '' }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Training Score -->
+                    <td class="text-center">
+                        <div class="list-cell-wrapper center-content">
+                            {% if st.task.id in training_scores %}
+                                {% set score = training_scores[st.task.id] %}
+                                <span style="font-weight: 700; font-family: monospace; font-size: 1rem; color: {{ '#059669' if score >= 100 else '#d97706' if score > 0 else '#cbd5e1' }};">
+                                    {{ "%.0f"|format(score) }}
+                                </span>
+                            {% else %}
+                                <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Home Score -->
+                    <td class="text-center">
+                        <div class="list-cell-wrapper center-content">
+                            {% if st.task.id in home_scores %}
+                                {% set score = home_scores[st.task.id] %}
+                                <span style="font-weight: 700; font-family: monospace; font-size: 1rem; color: {{ '#059669' if score >= 100 else '#d97706' if score > 0 else '#cbd5e1' }};">
+                                    {{ "%.0f"|format(score) }}
+                                </span>
+                            {% else %}
+                                <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Submissions -->
+                    <td class="text-center">
+                        <div class="list-cell-wrapper center-content">
+                            {% set sub_count = submission_counts.get(st.task.id, 0) %}
+                            {% if sub_count > 0 %}
+                                <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "submissions") }}" style="text-decoration: none; color: #0F766E; font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 2px;">
+                                    {{ sub_count }}<span style="font-size: 1em; opacity: 0.6;">↗</span>
+                                </a>
+                            {% else %}
+                                <span style="color: #cbd5e1; font-weight: 500;">0</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="text-center">
+                        <div class="list-cell-wrapper center-content">
+                            <form action="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "remove") }}" method="POST" style="margin: 0;">
+                                {{ xsrf_form_html|safe }}
+                                <button type="submit" class="btn-remove" {% if not admin.permission_all %}disabled{% endif %} onclick="return confirm('Are you sure you want to remove this task from the student\'s archive?');" title="Remove task">
+                                    Remove
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 80px 20px; color: #64748b;">
+            <div style="font-size: 3em; margin-bottom: 10px; opacity: 0.15; filter: grayscale(1);">📂</div>
+            <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No tasks assigned yet</p>
+            <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.7;">Use the manual assignment box above to add one.</p>
+        </div>
+        {% endif %}
+    </div>
 </div>
 
-<h2 id="title_assigned_tasks" class="toggling_on">Assigned Tasks ({{ student_tasks|length }})</h2>
-<div id="assigned_tasks">
-  {% if student_tasks %}
-  <table class="bordered sortable" id="student-tasks-table">
-    <thead>
-      <tr>
-        <th class="sortable-header" data-sort="string">Task</th>
-        <th>Source</th>
-        <th class="sortable-header" data-sort="date">Assigned At</th>
-        <th class="sortable-header" data-sort="number">Training Score</th>
-        <th class="sortable-header" data-sort="number">Home Score</th>
-        <th class="sortable-header" data-sort="number">Submissions</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for st in student_tasks %}
-      <tr data-task="{{ st.task.name }}" data-assigned="{{ st.assigned_at.timestamp() if st.assigned_at else 0 }}" data-training-score="{{ training_scores.get(st.task.id, -1) }}" data-home-score="{{ home_scores.get(st.task.id, -1) }}" data-submissions="{{ submission_counts.get(st.task.id, 0) }}">
-        <td>
-          <a href="{{ url("task", st.task.id) }}">{{ st.task.name }}</a> - {{ st.task.title }}
-        </td>
-        <td>
-          {% if st.source_training_day %}
-            {% if st.source_training_day.contest %}
-              <a href="{{ url("contest", st.source_training_day.contest.id) }}">{{ st.source_training_day.contest.description }}</a>
-            {% else %}
-              {{ st.source_training_day.description or st.source_training_day.name or "Archived Training Day" }}
-            {% endif %}
-          {% else %}
-            <em>Manual assignment</em>
-          {% endif %}
-        </td>
-        <td>{{ st.assigned_at }}</td>
-        <td>
-          {% if st.task.id in training_scores %}
-            {{ "%.2f"|format(training_scores[st.task.id]) }}
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>
-          {% if st.task.id in home_scores %}
-            {{ "%.2f"|format(home_scores[st.task.id]) }}
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>
-          {% set sub_count = submission_counts.get(st.task.id, 0) %}
-          {% if sub_count > 0 %}
-            <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "submissions") }}">{{ sub_count }}</a>
-          {% else %}
-            0
-          {% endif %}
-        </td>
-        <td>
-          <form action="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "remove") }}" method="POST" style="display: inline;">
-            {{ xsrf_form_html|safe }}
-            <input type="submit" value="Remove" {% if not admin.permission_all %}disabled{% endif %} onclick="return confirm('Are you sure you want to remove this task from the student\\'s archive?');" />
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <style>
+<style>
+    /* Scoped sorting styles */
     .sortable-header {
-      cursor: pointer;
-      user-select: none;
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.2s;
+        white-space: nowrap;
     }
     .sortable-header:hover {
-      background-color: #f0f0f0;
+        color: #1e293b;
+        background: #f1f5f9;
     }
-    .sortable-header::after {
-      content: ' \2195';
-      opacity: 0.5;
-    }
-    .sortable-header.sort-asc::after {
-      content: ' \2191';
-      opacity: 1;
-    }
-    .sortable-header.sort-desc::after {
-      content: ' \2193';
-      opacity: 1;
-    }
-  </style>
 
-  <script>
-  (function() {
+    .sortable-header::after {
+        content: '↕';
+        font-size: 0.8em;
+        margin-left: 5px;
+        opacity: 0.3;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    .sortable-header.sort-asc::after { content: '\2191'; opacity: 1; color: #0F766E; }
+    .sortable-header.sort-desc::after { content: '\2193'; opacity: 1; color: #0F766E; }
+
+    .text-center { text-align: center !important; }
+</style>
+
+<script>
+(function() {
     var table = document.getElementById('student-tasks-table');
     if (!table) return;
 
-    var headers = table.querySelectorAll('th.sortable-header');
-    var sortState = {};
+      headers.forEach(function(h) {
+        h.classList.remove('sort-asc', 'sort-desc');
+      });
+      header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
 
     headers.forEach(function(header, index) {
-      header.addEventListener('click', function() {
-        var columnIndex = header.cellIndex;
-        var sortType = header.getAttribute('data-sort');
-        var ascending = !sortState[index];
-        sortState[index] = ascending;
+        header.addEventListener('click', function() {
+            var columnIndex = header.cellIndex;
+            var ascending = !sortState[index];
+            sortState[index] = ascending;
 
-        headers.forEach(function(h) {
-          h.classList.remove('sort-asc', 'sort-desc');
+            // Update UI
+            headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+            header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+
+            var tbody = table.querySelector('tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort(function(a, b) {
+                var aVal, bVal;
+
+                // Extract data based on column index
+                if (columnIndex === 0) { // Task Name
+                    aVal = a.getAttribute('data-task').toLowerCase();
+                    bVal = b.getAttribute('data-task').toLowerCase();
+                } else if (columnIndex === 1) { // Source
+                    aVal = a.cells[columnIndex].textContent.trim().toLowerCase();
+                    bVal = b.cells[columnIndex].textContent.trim().toLowerCase();
+                } else if (columnIndex === 2) { // Assigned At
+                    aVal = parseFloat(a.getAttribute('data-assigned')) || 0;
+                    bVal = parseFloat(b.getAttribute('data-assigned')) || 0;
+                } else if (columnIndex === 3) { // Training Score
+                    aVal = parseFloat(a.getAttribute('data-training-score'));
+                    bVal = parseFloat(b.getAttribute('data-training-score'));
+                    if (aVal < 0) aVal = ascending ? Infinity : -Infinity;
+                    if (bVal < 0) bVal = ascending ? Infinity : -Infinity;
+                } else if (columnIndex === 4) { // Home Score
+                    aVal = parseFloat(a.getAttribute('data-home-score'));
+                    bVal = parseFloat(b.getAttribute('data-home-score'));
+                    if (aVal < 0) aVal = ascending ? Infinity : -Infinity;
+                    if (bVal < 0) bVal = ascending ? Infinity : -Infinity;
+                } else if (columnIndex === 5) { // Submissions
+                    aVal = parseInt(a.getAttribute('data-submissions')) || 0;
+                    bVal = parseInt(b.getAttribute('data-submissions')) || 0;
+                }
+
+                if (aVal < bVal) return ascending ? -1 : 1;
+                if (aVal > bVal) return ascending ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(function(row) {
+                tbody.appendChild(row);
+            });
         });
-        header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
-
-        var tbody = table.querySelector('tbody');
-        var rows = Array.from(tbody.querySelectorAll('tr'));
-
-        rows.sort(function(a, b) {
-          var aVal, bVal;
-
-          if (columnIndex === 0) {
-            aVal = a.getAttribute('data-task').toLowerCase();
-            bVal = b.getAttribute('data-task').toLowerCase();
-          } else if (columnIndex === 2) {
-            aVal = parseFloat(a.getAttribute('data-assigned')) || 0;
-            bVal = parseFloat(b.getAttribute('data-assigned')) || 0;
-          } else if (columnIndex === 3) {
-            aVal = parseFloat(a.getAttribute('data-training-score'));
-            bVal = parseFloat(b.getAttribute('data-training-score'));
-            if (aVal < 0) aVal = ascending ? Infinity : -Infinity;
-            if (bVal < 0) bVal = ascending ? Infinity : -Infinity;
-          } else if (columnIndex === 4) {
-            aVal = parseFloat(a.getAttribute('data-home-score'));
-            bVal = parseFloat(b.getAttribute('data-home-score'));
-            if (aVal < 0) aVal = ascending ? Infinity : -Infinity;
-            if (bVal < 0) bVal = ascending ? Infinity : -Infinity;
-          } else if (columnIndex === 5) {
-            aVal = parseInt(a.getAttribute('data-submissions')) || 0;
-            bVal = parseInt(b.getAttribute('data-submissions')) || 0;
-          } else {
-            aVal = a.cells[columnIndex].textContent.trim().toLowerCase();
-            bVal = b.cells[columnIndex].textContent.trim().toLowerCase();
-          }
-
-          if (aVal < bVal) return ascending ? -1 : 1;
-          if (aVal > bVal) return ascending ? 1 : -1;
-          return 0;
-        });
-
-        rows.forEach(function(row) {
-          tbody.appendChild(row);
-        });
-      });
     });
-  })();
-  </script>
-  {% else %}
-  <p>No tasks assigned to this student yet.</p>
-  {% endif %}
-  <div class="hr"></div>
-</div>
-
+})();
+</script>
 {% endblock core %}

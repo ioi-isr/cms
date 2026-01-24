@@ -35,11 +35,9 @@ from sqlalchemy import func
 
 from cms.db import (
     Contest,
-    DelayRequest,
     TrainingProgram,
     Participation,
     Submission,
-    User,
     Task,
     Question,
     Announcement,
@@ -652,6 +650,12 @@ class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
 
         show_teams = self._calculate_scores(self.contest, can_access_by_pt)
 
+        # Store participation data before commit (SQLAlchemy expires attributes on commit)
+        participation_data = {}
+        for p in self.contest.participations:
+            if hasattr(p, "task_statuses"):
+                participation_data[p.id] = (p.task_statuses, p.total_score)
+
         # Build student tags lookup for each participation (batch query)
         student_tags_by_participation = {p.id: [] for p in self.contest.participations}
         if student_tags_by_participation:
@@ -687,6 +691,12 @@ class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
 
         # Commit to release any advisory locks taken during score calculation
         self.sql_session.commit()
+
+        # Re-assign task_statuses after commit (SQLAlchemy expired them)
+        if "participation_data" in locals():
+            for p in self.contest.participations:
+                if p.id in participation_data:
+                    p.task_statuses, p.total_score = participation_data[p.id]
 
         self.render_params_for_training_program(training_program)
         self.r_params["show_teams"] = show_teams

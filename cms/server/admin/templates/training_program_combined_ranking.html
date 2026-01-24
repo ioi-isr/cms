@@ -705,11 +705,6 @@ $(document).ready(function() {
 </div>
 
 <script>
-  $(document).ready(function() {
-    if (CMS && CMS.AWSUtils) {
-        CMS.AWSUtils.init_table_sort($("#ranking_table"), false, 0, false);
-    }
-  });
   function updateStickyHeaderOffset() {
     var firstRow = document.querySelector('.ranking-table thead tr:first-child');
     if (firstRow) {
@@ -721,8 +716,6 @@ $(document).ready(function() {
   window.addEventListener('resize', updateStickyHeaderOffset);
 
   $(document).ready(function() {
-      initHistogramModal();
-
       updateStickyHeaderOffset();
 
       setTimeout(updateStickyHeaderOffset, 100);

@@ -302,10 +302,12 @@ class StudentHandler(BaseHandler):
             Submission.participation == participation
         )
         page = int(self.get_query_argument("page", "0"))
-        self.render_params_for_submissions(submission_query, page)
 
         # render_params_for_training_program sets training_program, contest, unanswered
         self.render_params_for_training_program(training_program)
+
+        self.render_params_for_submissions(submission_query, page)
+
         self.r_params["participation"] = participation
         self.r_params["student"] = student
         self.r_params["selected_user"] = participation.user
@@ -598,19 +600,14 @@ class StudentTaskSubmissionsHandler(BaseHandler):
             .filter(Submission.task_id == task.id)
         )
         page = int(self.get_query_argument("page", "0"))
+
+        self.render_params_for_training_program(training_program)
         self.render_params_for_submissions(submission_query, page)
 
-        self.r_params["training_program"] = training_program
         self.r_params["participation"] = participation
         self.r_params["student"] = student
         self.r_params["selected_user"] = participation.user
         self.r_params["task"] = task
-        self.r_params["unanswered"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .filter(Question.reply_timestamp.is_(None))\
-            .filter(Question.ignored.is_(False))\
-            .count()
         self.render("student_task_submissions.html", **self.r_params)
 
 
