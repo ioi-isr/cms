@@ -31,6 +31,11 @@ timezone (tzinfo|None): the timezone to display timestamps in, or if not defined
   <button onclick="utils.do_diff()">Diff</button>
 </details>
 
+<div class="table-search">
+  <label for="submissions_search">Search: </label>
+  <input type="text" id="submissions_search" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)">
+</div>
+
 {{ macro_pages.selector(page_url, page, pages) }}
 
 <table class="bordered" id="submissions_table">

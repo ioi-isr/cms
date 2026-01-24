@@ -1372,3 +1372,13 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     white-space: pre-wrap;
     word-wrap: break-word;
 }
+
+/* Table search box */
+.table-search {
+    margin: 0.75em 0;
+}
+
+.table-search input[type="text"] {
+    padding: 0.4em 0.6em;
+    min-width: 250px;
+}
