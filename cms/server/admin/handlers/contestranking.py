@@ -52,19 +52,28 @@ TaskStatus = namedtuple(
 )
 
 
-class RankingHandler(BaseHandler):
-    """Shows the ranking for a contest.
+class RankingCommonMixin:
+    """Mixin for handlers that need ranking logic (calculation and export)."""
 
-    """
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id, format="online"):
+    def _load_contest_data(self, contest_id: str) -> Contest:
+        """Load a contest with all necessary data for ranking.
+
+        This method loads the contest with tasks, participations, and related
+        entities needed for ranking calculation and display.
+
+        Args:
+            contest_id: The ID of the contest to load.
+
+        Returns:
+            The fully loaded Contest object.
+        """
         # This validates the contest id.
         self.safe_get_item(Contest, contest_id)
 
         # Load contest with tasks, participations, and statement views.
         # We use the score cache to get score and has_submissions.
         # partial is computed at render time via SQL aggregation for correctness.
-        self.contest: Contest = (
+        contest: Contest = (
             self.sql_session.query(Contest)
             .filter(Contest.id == contest_id)
             .options(joinedload("tasks"))
@@ -75,7 +84,23 @@ class RankingHandler(BaseHandler):
             .options(joinedload("participations.statement_views"))
             .first()
         )
+        return contest
 
+    def _calculate_scores(self, contest, can_access_by_pt):
+        """Calculate scores for all participations in the contest.
+
+        This method uses the efficient approach from RankingHandler:
+        1. SQL aggregation for partial flags.
+        2. Score cache for scores and submission existence.
+        3. Two-phase commit to handle cache rebuilds safely.
+
+        contest: The contest object (with participations and tasks loaded).
+        can_access_by_pt: A dict (participation_id, task_id) -> bool indicating
+                          if a participant can access a task.
+
+        Returns:
+            show_teams (bool): Whether any participation has a team.
+        """
         # SQL aggregation to compute t_partial for all participation/task pairs.
         # t_partial is True when there's an official submission that is not yet scored.
         # has_submissions is retrieved from the cache instead.
@@ -95,9 +120,9 @@ class RankingHandler(BaseHandler):
                             SubmissionResult.public_score.is_(None),
                             SubmissionResult.public_score_details.is_(None),
                             SubmissionResult.ranking_score_details.is_(None),
-                        )
+                        ),
                     )
-                ).label('t_partial')
+                ).label("t_partial"),
             )
             .join(Participation, Submission.participation_id == Participation.id)
             .join(Task, Submission.task_id == Task.id)
@@ -105,10 +130,10 @@ class RankingHandler(BaseHandler):
                 SubmissionResult,
                 and_(
                     SubmissionResult.submission_id == Submission.id,
-                    SubmissionResult.dataset_id == Task.active_dataset_id
-                )
+                    SubmissionResult.dataset_id == Task.active_dataset_id,
+                ),
             )
-            .filter(Participation.contest_id == contest_id)
+            .filter(Participation.contest_id == contest.id)
             .filter(Submission.official.is_(True))
             .group_by(Submission.participation_id, Submission.task_id)
         )
@@ -116,23 +141,12 @@ class RankingHandler(BaseHandler):
         # Build lookup dict: (participation_id, task_id) -> t_partial
         partial_by_pt = {}
         for row in partial_flags_query.all():
-            partial_by_pt[(row.participation_id, row.task_id)] = (
-                row.t_partial or False
-            )
+            partial_by_pt[(row.participation_id, row.task_id)] = row.t_partial or False
 
         statement_views_set = set()
-        for p in self.contest.participations:
+        for p in contest.participations:
             for sv in p.statement_views:
                 statement_views_set.add((sv.participation_id, sv.task_id))
-
-        # Build lookup for task accessibility based on visibility tags.
-        training_day = self.contest.training_day
-        can_access_by_pt = {}  # (participation_id, task_id) -> bool
-        for p in self.contest.participations:
-            for task in self.contest.get_tasks():
-                can_access_by_pt[(p.id, task.id)] = can_access_task(
-                    self.sql_session, task, p, training_day
-                )
 
         # Preprocess participations: get data about teams, scores
         # Use the score cache to get score and has_submissions.
@@ -145,13 +159,13 @@ class RankingHandler(BaseHandler):
         # which would clear any dynamically added attributes like task_statuses.
         show_teams = False
         participation_data = {}  # p.id -> (task_statuses, total_score)
-        for p in self.contest.participations:
+        for p in contest.participations:
             show_teams = show_teams or p.team_id
 
             task_statuses = []
             total_score = 0.0
             partial = False
-            for task in self.contest.get_tasks():
+            for task in contest.get_tasks():
                 # Get the cache entry with score and has_submissions
                 cache_entry = get_cached_score_entry(self.sql_session, p, task)
                 t_score = round(cache_entry.score, task.score_precision)
@@ -172,7 +186,7 @@ class RankingHandler(BaseHandler):
                 )
                 total_score += t_score
                 partial = partial or t_partial
-            total_score = round(total_score, self.contest.score_precision)
+            total_score = round(total_score, contest.score_precision)
             participation_data[p.id] = (task_statuses, (total_score, partial))
 
         # Commit to persist any cache rebuilds and release advisory locks.
@@ -181,8 +195,109 @@ class RankingHandler(BaseHandler):
 
         # Now attach transient attributes after commit (so they aren't cleared
         # by SQLAlchemy's expire-on-commit behavior).
-        for p in self.contest.participations:
+        for p in contest.participations:
             p.task_statuses, p.total_score = participation_data[p.id]
+
+        return show_teams
+
+    @staticmethod
+    def _status_indicator(status: TaskStatus) -> str:
+        star = "*" if status.partial else ""
+        if not status.can_access:
+            return "N/A"
+        if not status.has_submissions:
+            return "X" if not status.has_opened else "-"
+        if not status.has_opened:
+            return "!" + star
+        return star
+
+    def _write_csv(
+        self,
+        contest,
+        participations,
+        tasks,
+        student_tags_by_participation,
+        show_teams,
+        include_partial=True,
+    ):
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Build header row
+        row = ["Username", "User"]
+        if student_tags_by_participation:
+            row.append("Tags")
+        if show_teams:
+            row.append("Team")
+        for task in tasks:
+            row.append(task.name)
+            if include_partial:
+                row.append("P")
+
+        row.append("Global")
+        if include_partial:
+            row.append("P")
+
+        writer.writerow(row)
+
+        # Build task index lookup for task_statuses.
+        # We assume p.task_statuses follows the order of contest.get_tasks().
+        all_tasks = list(contest.get_tasks())
+        task_index = {task.id: i for i, task in enumerate(all_tasks)}
+
+        for p in participations:
+            row = [p.user.username, "%s %s" % (p.user.first_name, p.user.last_name)]
+            if student_tags_by_participation:
+                tags = student_tags_by_participation.get(p.id, [])
+                row.append(", ".join(tags))
+            if show_teams:
+                row.append(p.team.name if p.team else "")
+
+            # Calculate total score for exported tasks only
+            total_score = 0.0
+            partial = False
+            for task in tasks:
+                idx = task_index.get(task.id)
+                if idx is not None and idx < len(p.task_statuses):
+                    status = p.task_statuses[idx]
+                    row.append(status.score)
+                    if include_partial:
+                        row.append(self._status_indicator(status))
+                    total_score += status.score
+                    partial = partial or status.partial
+                else:
+                    # Should not happen if data is consistent
+                    row.append(0)
+                    if include_partial:
+                        row.append("")
+
+            total_score = round(total_score, contest.score_precision)
+            row.append(total_score)
+            if include_partial:
+                row.append("*" if partial else "")
+
+            writer.writerow(row)
+
+        return output.getvalue()
+
+
+class RankingHandler(RankingCommonMixin, BaseHandler):
+    """Shows the ranking for a contest."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id, format="online"):
+        self.contest = self._load_contest_data(contest_id)
+
+        # Build lookup for task accessibility based on visibility tags.
+        training_day = self.contest.training_day
+        can_access_by_pt = {}  # (participation_id, task_id) -> bool
+        for p in self.contest.participations:
+            for task in self.contest.get_tasks():
+                can_access_by_pt[(p.id, task.id)] = can_access_task(
+                    self.sql_session, task, p, training_day
+                )
+
+        show_teams = self._calculate_scores(self.contest, can_access_by_pt)
 
         self.r_params = self.render_params()
         self.r_params["show_teams"] = show_teams
@@ -253,22 +368,19 @@ class RankingHandler(BaseHandler):
                 # Sort participations by group-specific total score (sum of accessible tasks only)
                 # Capture accessible_tasks in closure to avoid late binding issues
                 def get_group_score(p, tasks=accessible_tasks):
-                    return sum(
-                        p.task_statuses[task_index[t.id]].score
-                        for t in tasks
-                    )
+                    return sum(p.task_statuses[task_index[t.id]].score for t in tasks)
 
                 sorted_participations = sorted(
-                    group_participations,
-                    key=get_group_score,
-                    reverse=True
+                    group_participations, key=get_group_score, reverse=True
                 )
 
-                main_groups_data.append({
-                    "name": mg,
-                    "participations": sorted_participations,
-                    "tasks": accessible_tasks,
-                })
+                main_groups_data.append(
+                    {
+                        "name": mg,
+                        "participations": sorted_participations,
+                        "tasks": accessible_tasks,
+                    }
+                )
 
             # Get all student tags for display
             self.r_params["all_student_tags"] = get_all_student_tags(training_program)
@@ -276,36 +388,6 @@ class RankingHandler(BaseHandler):
         self.r_params["main_groups_data"] = main_groups_data
         self.r_params["student_tags_by_participation"] = student_tags_by_participation
         self.r_params["training_day"] = training_day
-
-        # Calculate task archive progress for training program managing contests
-        # This is only shown on training program ranking pages, not regular contests
-        task_archive_progress_by_participation = {}
-        if hasattr(self.contest, 'training_programs') and self.contest.training_programs:
-            # This contest is a managing contest for at least one training program
-            training_program = self.contest.training_programs[0]
-            # Build student lookup by user_id for this training program
-            students_query = (
-                self.sql_session.query(Student)
-                .filter(Student.training_program_id == training_program.id)
-                .all()
-            )
-            student_by_participation_id = {
-                s.participation_id: s for s in students_query
-            }
-
-            for p in self.contest.participations:
-                student = student_by_participation_id.get(p.id)
-                if student:
-                    progress = calculate_task_archive_progress(
-                        student, p, self.contest, self.sql_session
-                    )
-                    task_archive_progress_by_participation[p.id] = progress
-
-            # Commit to release advisory locks from cache rebuilds
-            self.sql_session.commit()
-
-        self.r_params["task_archive_progress_by_participation"] = \
-            task_archive_progress_by_participation
 
         date_str = self.contest.start.strftime("%Y%m%d")
         contest_name = self.contest.name.replace(" ", "_")
@@ -328,8 +410,7 @@ class RankingHandler(BaseHandler):
             else:
                 filename = f"{date_str}_{contest_name}_ranking.txt"
             self.set_header("Content-Type", "text/plain")
-            self.set_header("Content-Disposition",
-                            f"attachment; filename=\"{filename}\"")
+            self.set_header("Content-Disposition", f'attachment; filename="{filename}"')
             self.render("ranking.txt", **self.r_params)
         elif format == "csv":
             if export_group_data:
@@ -338,13 +419,7 @@ class RankingHandler(BaseHandler):
             else:
                 filename = f"{date_str}_{contest_name}_ranking.csv"
             self.set_header("Content-Type", "text/csv")
-            self.set_header("Content-Disposition",
-                            f"attachment; filename=\"{filename}\"")
-
-            output = io.StringIO()
-            writer = csv.writer(output)
-
-            include_partial = True
+            self.set_header("Content-Disposition", f'attachment; filename="{filename}"')
 
             contest: Contest = self.r_params["contest"]
 
@@ -356,73 +431,21 @@ class RankingHandler(BaseHandler):
                 export_participations = sorted(
                     [p for p in contest.participations if not p.hidden],
                     key=lambda p: p.total_score,
-                    reverse=True
+                    reverse=True,
                 )
                 export_tasks = list(contest.get_tasks())
 
-            # Build header row
-            row = ["Username", "User"]
-            if student_tags_by_participation:
-                row.append("Tags")
-            if show_teams:
-                row.append("Team")
-            for task in export_tasks:
-                row.append(task.name)
-                if include_partial:
-                    row.append("P")
-
-            row.append("Global")
-            if include_partial:
-                row.append("P")
-
-            writer.writerow(row)
-
-            # Build task index lookup for task_statuses
-            all_tasks = list(contest.get_tasks())
-            task_index = {task.id: i for i, task in enumerate(all_tasks)}
-
-            for p in export_participations:
-                row = [p.user.username,
-                       "%s %s" % (p.user.first_name, p.user.last_name)]
-                if student_tags_by_participation:
-                    tags = student_tags_by_participation.get(p.id, [])
-                    row.append(", ".join(tags))
-                if show_teams:
-                    row.append(p.team.name if p.team else "")
-
-                # Calculate total score for exported tasks only
-                total_score = 0.0
-                partial = False
-                for task in export_tasks:
-                    idx = task_index[task.id]
-                    status = p.task_statuses[idx]
-                    row.append(status.score)
-                    if include_partial:
-                        row.append(self._status_indicator(status))
-                    total_score += status.score
-                    partial = partial or status.partial
-
-                total_score = round(total_score, contest.score_precision)
-                row.append(total_score)
-                if include_partial:
-                    row.append("*" if partial else "")
-
-                writer.writerow(row)
-
-            self.finish(output.getvalue())
+            csv_content = self._write_csv(
+                contest,
+                export_participations,
+                export_tasks,
+                student_tags_by_participation,
+                show_teams,
+                include_partial=True,
+            )
+            self.finish(csv_content)
         else:
             self.render("ranking.html", **self.r_params)
-
-    @staticmethod
-    def _status_indicator(status: TaskStatus) -> str:
-        star = "*" if status.partial else ""
-        if not status.can_access:
-            return "N/A"
-        if not status.has_submissions:
-            return "X" if not status.has_opened else "-"
-        if not status.has_opened:
-            return "!" + star
-        return star
 
 
 class ScoreHistoryHandler(BaseHandler):

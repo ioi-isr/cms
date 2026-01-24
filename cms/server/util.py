@@ -43,6 +43,7 @@ import typing
 from tornado.web import RequestHandler
 
 from cms.db import Session, Contest, Student, Task, Participation, StudentTask
+from cms.grading.scorecache import get_cached_score_entry
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
@@ -238,30 +239,41 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
     return bool(student_tags_set & task_tags_set)
 
 
-def get_student_archive_tasks(
-    student: "Student",
+def get_student_archive_scores(
     sql_session: Session,
-) -> list["StudentTask"]:
-    """Get the tasks in a student's archive.
-
-    This is a shared utility for getting the tasks assigned to a student
-    in their task archive. It's used by:
-    - Task archive progress calculation
-    - Training program home task scores page
-    - Archive building
-
-    student: the Student object.
-    sql_session: SQLAlchemy session for eager loading.
-
-    return: list of StudentTask objects for the student.
-
+    student: "Student",
+    participation: "Participation",
+    contest: "Contest",
+) -> dict[int, float]:
+    """Get fresh task scores for all tasks in a student's archive.
+    This utility uses get_cached_score_entry to ensure scores are fresh
+    and not stale. It returns a mapping of task_id -> score for all tasks
+    that are both in the student's archive AND currently exist in the contest.
+    IMPORTANT: This function may trigger cache rebuilds which acquire advisory
+    locks. The caller MUST commit the session after calling this function to
+    release the locks and persist any cache updates.
+    sql_session: the database session.
+    student: the Student object (with student_tasks relationship).
+    participation: the Participation object for the managing contest.
+    contest: the Contest object (managing contest for the training program).
+    return: dict mapping task_id -> score for tasks in the student's archive.
     """
-    # Use explicit query for better control over loading
-    return (
-        sql_session.query(StudentTask)
+
+    student_task_ids = {
+        st.task_id
+        for st in sql_session.query(StudentTask)
         .filter(StudentTask.student_id == student.id)
         .all()
-    )
+    }
+    scores = {}
+
+    for task in contest.get_tasks():
+        if task.id not in student_task_ids:
+            continue
+        cache_entry = get_cached_score_entry(sql_session, participation, task)
+        scores[task.id] = cache_entry.score
+
+    return scores
 
 
 def calculate_task_archive_progress(
@@ -291,34 +303,31 @@ def calculate_task_archive_progress(
 
     """
     # Get the tasks in the student's archive
-    student_tasks = get_student_archive_tasks(student, sql_session)
-
-    # Build a map of task_id -> cached score for this participation
-    # Use get_cached_score_entry for accurate scores
-    cached_scores: dict[int, float] = {}
-    from cms.grading.scorecache import get_cached_score_entry
-
-    for student_task in student_tasks:
-        task = student_task.task
-        if task is not None:
-            cache_entry = get_cached_score_entry(sql_session, participation, task)
-            cached_scores[task.id] = cache_entry.score
+    student_tasks = (
+        sql_session.query(StudentTask)
+        .filter(StudentTask.student_id == student.id)
+        .all()
+    )
+    cached_scores = get_student_archive_scores(
+        sql_session, student, participation, contest
+    )
 
     total_score = 0.0
     max_score = 0.0
     task_count = 0
     task_scores = [] if include_task_details else None
 
+    contest_tasks = contest.get_tasks()
     # Iterate only over tasks in the student's archive (StudentTask entries)
     for student_task in student_tasks:
         task = student_task.task
-        if task is None:
+        if task is None or task not in contest_tasks:
             continue
         task_count += 1
         max_task_score = task.active_dataset.score_type_object.max_score \
             if task.active_dataset else 100.0
         max_score += max_task_score
-        best_score = cached_scores.get(task.id, 0.0)
+        best_score = cached_scores[task.id]
         total_score += best_score
 
         if include_task_details:

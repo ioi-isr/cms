@@ -41,7 +41,7 @@ from cms.grading.scorecache import get_cached_score_entry
 from cms.server.util import (
     get_all_student_tags,
     calculate_task_archive_progress,
-    get_student_archive_tasks,
+    get_student_archive_scores,
     parse_tags,
 )
 from cmscommon.datetime import make_datetime
@@ -493,17 +493,11 @@ class StudentTasksHandler(BaseHandler):
         assigned_task_ids = {st.task_id for st in student.student_tasks}
         available_tasks = [t for t in all_tasks if t.id not in assigned_task_ids]
 
-        # Build home scores using get_cached_score_entry for fresh cache values
+        # Build home scores using get_student_archive_scores for fresh cache values
         # This avoids stale entries in participation.task_scores
-        home_scores = {}
-        student_tasks = get_student_archive_tasks(student, self.sql_session)
-        for st in student_tasks:
-            task = st.task
-            if task is not None:
-                cache_entry = get_cached_score_entry(
-                    self.sql_session, participation, task
-                )
-                home_scores[task.id] = cache_entry.score
+        home_scores = get_student_archive_scores(
+            self.sql_session, student, participation, managing_contest
+        )
         # Commit to release advisory locks from cache rebuilds
         self.sql_session.commit()
 

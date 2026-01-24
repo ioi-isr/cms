@@ -49,10 +49,12 @@ from cms.db import (
 from cms.server.util import (
     get_all_student_tags,
     parse_tags,
+    calculate_task_archive_progress,
 )
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
+from .contestranking import RankingCommonMixin
 class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
     """List all training programs.
 
@@ -616,39 +618,24 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
         self.write("../../tasks")
 
 
-class TrainingProgramRankingHandler(BaseHandler):
+class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
     """Show ranking for a training program."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str, format: str = "online"):
-        import csv
-        import io
-        from sqlalchemy.orm import joinedload
-        from cms.grading.scoring import task_score
-        from .contestranking import TaskStatus
-
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
 
-        self.contest = (
-            self.sql_session.query(Contest)
-            .filter(Contest.id == managing_contest.id)
-            .options(joinedload("participations"))
-            .options(joinedload("participations.submissions"))
-            .options(joinedload("participations.submissions.token"))
-            .options(joinedload("participations.submissions.results"))
-            .options(joinedload("participations.statement_views"))
-            .first()
-        )
+        self.contest = self._load_contest_data(managing_contest.id)
 
-        statement_views_set = set()
-        for p in self.contest.participations:
-            for sv in p.statement_views:
-                statement_views_set.add((sv.participation_id, sv.task_id))
-
-        # Build a set of (participation_id, task_id) pairs for tasks that students can access
+        # Build a dict of (participation_id, task_id) -> bool for tasks that students can access
         # A student can access a task if they have a StudentTask record for it
-        student_task_access = set()
+        # Default is False since we're whitelisting access via StudentTask
+        can_access_by_pt = {}
+        for p in self.contest.participations:
+            for task in self.contest.get_tasks():
+                can_access_by_pt[(p.id, task.id)] = False
+
         participation_ids = [p.id for p in self.contest.participations]
         if participation_ids:
             rows = (
@@ -659,37 +646,9 @@ class TrainingProgramRankingHandler(BaseHandler):
                 .all()
             )
             for participation_id, task_id in rows:
-                student_task_access.add((participation_id, task_id))
+                can_access_by_pt[(participation_id, task_id)] = True
 
-        show_teams = False
-        for p in self.contest.participations:
-            show_teams = show_teams or p.team_id
-
-            p.task_statuses = []
-            total_score = 0.0
-            partial = False
-            for task in self.contest.get_tasks():
-                t_score, t_partial = task_score(p, task, rounded=True)
-                has_submissions = any(s.task_id == task.id and s.official
-                                     for s in p.submissions)
-                has_opened = (p.id, task.id) in statement_views_set
-                can_access = (p.id, task.id) in student_task_access
-                p.task_statuses.append(
-                    TaskStatus(
-                        score=t_score,
-                        partial=t_partial,
-                        has_submissions=has_submissions,
-                        has_opened=has_opened,
-                        can_access=can_access,
-                    )
-                )
-                total_score += t_score
-                partial = partial or t_partial
-
-            # Ensure task_statuses align with template header order
-            assert len(self.contest.get_tasks()) == len(p.task_statuses)
-            total_score = round(total_score, self.contest.score_precision)
-            p.total_score = (total_score, partial)
+        show_teams = self._calculate_scores(self.contest, can_access_by_pt)
 
         # Build student tags lookup for each participation (batch query)
         student_tags_by_participation = {p.id: [] for p in self.contest.participations}
@@ -707,89 +666,56 @@ class TrainingProgramRankingHandler(BaseHandler):
             for participation_id, tags in rows:
                 student_tags_by_participation[participation_id] = tags or []
 
+        # Calculate task archive progress for this training program
+        task_archive_progress_by_participation = {}
+        students_query = (
+            self.sql_session.query(Student)
+            .filter(Student.training_program_id == training_program.id)
+            .all()
+        )
+        student_by_participation_id = {s.participation_id: s for s in students_query}
+
+        for p in self.contest.participations:
+            student = student_by_participation_id.get(p.id)
+            if student:
+                progress = calculate_task_archive_progress(
+                    student, p, self.contest, self.sql_session
+                )
+                task_archive_progress_by_participation[p.id] = progress
+
         self.render_params_for_training_program(training_program)
         self.r_params["show_teams"] = show_teams
         self.r_params["student_tags_by_participation"] = student_tags_by_participation
         self.r_params["main_groups_data"] = None  # Not used for training program ranking
+        self.r_params["task_archive_progress_by_participation"] = (
+            task_archive_progress_by_participation
+        )
 
         if format == "txt":
             self.set_header("Content-Type", "text/plain")
-            self.set_header("Content-Disposition",
-                            "attachment; filename=\"ranking.txt\"")
+            self.set_header("Content-Disposition", 'attachment; filename="ranking.txt"')
             self.render("ranking.txt", **self.r_params)
         elif format == "csv":
             self.set_header("Content-Type", "text/csv")
-            self.set_header("Content-Disposition",
-                            "attachment; filename=\"ranking.csv\"")
+            self.set_header("Content-Disposition", 'attachment; filename="ranking.csv"')
 
-            output = io.StringIO()
-            writer = csv.writer(output)
+            export_participations = sorted(
+                [p for p in self.contest.participations if not p.hidden],
+                key=lambda p: p.total_score,
+                reverse=True,
+            )
 
-            include_partial = True
-
-            row = ["Username", "User"]
-            if student_tags_by_participation:
-                row.append("Tags")
-            if show_teams:
-                row.append("Team")
-            for task in self.contest.tasks:
-                row.append(task.name)
-                if include_partial:
-                    row.append("P")
-
-            row.append("Global")
-            if include_partial:
-                row.append("P")
-
-            writer.writerow(row)
-
-            for p in sorted(self.contest.participations,
-                            key=lambda p: p.total_score, reverse=True):
-                if p.hidden:
-                    continue
-
-                row = [p.user.username,
-                       "%s %s" % (p.user.first_name, p.user.last_name)]
-                if student_tags_by_participation:
-                    tags = student_tags_by_participation.get(p.id, [])
-                    row.append(", ".join(tags))
-                if show_teams:
-                    row.append(p.team.name if p.team else "")
-                assert len(self.contest.tasks) == len(p.task_statuses)
-                for status in p.task_statuses:
-                    row.append(status.score)
-                    if include_partial:
-                        row.append(self._status_indicator(status))
-
-                total_score, partial = p.total_score
-                row.append(total_score)
-                if include_partial:
-                    row.append("*" if partial else "")
-
-                writer.writerow(row)
-
-            self.finish(output.getvalue())
+            csv_content = self._write_csv(
+                self.contest,
+                export_participations,
+                list(self.contest.get_tasks()),
+                student_tags_by_participation,
+                show_teams,
+                include_partial=True,
+            )
+            self.finish(csv_content)
         else:
             self.render("ranking.html", **self.r_params)
-
-    @staticmethod
-    def _status_indicator(status) -> str:
-        """Return a status indicator string for CSV export.
-
-        status: a TaskStatus namedtuple with score, partial, has_submissions,
-            has_opened, can_access fields.
-
-        return: a string indicator for the status.
-
-        """
-        star = "*" if status.partial else ""
-        if not status.can_access:
-            return "N/A"
-        if not status.has_submissions:
-            return "X" if not status.has_opened else "-"
-        if not status.has_opened:
-            return "!" + star
-        return star
 
 
 class TrainingProgramSubmissionsHandler(BaseHandler):
