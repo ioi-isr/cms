@@ -416,12 +416,31 @@ CMS.AWSUtils.prototype.close_notification = function(item) {
  */
 function get_table_row_comparator(column_idx, numeric, ascending) {
     return function(a, b) {
-        var valA = $(a).children("td").eq(column_idx).text();
-        var valB = $(b).children("td").eq(column_idx).text();
-        var result = numeric
-            ? Number(valA) - Number(valB)
-            : valA.localeCompare(valB);
-        return ascending ? -result : result;
+        var cellA = $(a).children("td").eq(column_idx);
+        var cellB = $(b).children("td").eq(column_idx);
+
+        // Use data-value if present, otherwise fallback to text
+        var valA = cellA.attr("data-value");
+        if (typeof valA === "undefined" || valA === "") valA = cellA.text().trim();
+
+        var valB = cellB.attr("data-value");
+        if (typeof valB === "undefined" || valB === "") valB = cellB.text().trim();
+
+        var result;
+        if (numeric) {
+            var numA = parseFloat(valA);
+            var numB = parseFloat(valB);
+
+            // Treat non-numeric/empty values so they always sink to bottom regardless of sort direction
+            if (isNaN(numA)) numA = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+            if (isNaN(numB)) numB = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+
+            result = numA - numB;
+            return ascending ? result : -result;
+        } else {
+            result = valA.localeCompare(valB);
+            return ascending ? result : -result;
+        }
     }
 }
 
@@ -429,18 +448,25 @@ function get_table_row_comparator(column_idx, numeric, ascending) {
 /**
  * Sorts specified table by specified column in specified order.
  */
-CMS.AWSUtils.sort_table = function(table, column_idx, ascending) {
+CMS.AWSUtils.sort_table = function(table, column_idx, ascending, header_element) {
     var initial_column_idx = table.data("initial_sort_column_idx");
     var ranks_column = table.data("ranks_column");
-    column_idx += ranks_column ? 1 : 0;
+    var data_column_idx = column_idx + (ranks_column ? 1 : 0);
     var table_rows = table
         .children("tbody")
         .children("tr");
-    var column_header = table
-        .children("thead")
-        .children("tr")
-        .children("th")
-        .eq(column_idx);
+
+    // Use provided header element if available, otherwise find by index
+    var column_header;
+    if (header_element) {
+        column_header = $(header_element);
+    } else {
+        column_header = table
+            .children("thead")
+            .children("tr")
+            .children("th")
+            .eq(data_column_idx);
+    }
     var settings = (column_header.attr("data-sort-settings") || "").split(" ");
 
     var numeric = settings.indexOf("numeric") >= 0;
@@ -450,8 +476,13 @@ CMS.AWSUtils.sort_table = function(table, column_idx, ascending) {
         ascending = !ascending;
     }
 
-    // Normalize column index, converting negative to positive from the end.
-    column_idx = column_header.index();
+    // Normalize column index for data access, converting negative to positive from the end.
+    if (data_column_idx < 0) {
+        // For negative indices, calculate from the number of columns in data rows
+        var first_data_row = table_rows.first();
+        var num_cols = first_data_row.children("td,th").length;
+        data_column_idx = num_cols + data_column_idx;
+    }
 
     // Reassign arrows to headers
     table.find(".column-sort").html("&varr;");
@@ -460,7 +491,7 @@ CMS.AWSUtils.sort_table = function(table, column_idx, ascending) {
     // Do the sorting, by initial column and then by selected column.
     table_rows
         .sort(get_table_row_comparator(initial_column_idx, numeric, ascending))
-        .sort(get_table_row_comparator(column_idx, numeric, ascending))
+        .sort(get_table_row_comparator(data_column_idx, numeric, ascending))
         .each(function(idx, row) {
             table.children("tbody").append(row)
         });
@@ -501,16 +532,26 @@ CMS.AWSUtils.init_table_sort = function(table, ranks_column,
     var ascending = initial_ascending;
 
     // Add sorting indicators to column headers
+    // Skip headers with the "no-sort" class
+    // Use data-sort-column attribute if present for correct column index
     table_column_headers
         .children("th")
-        .each(function(column_idx, header) {
+        .not(".no-sort")
+        .each(function(idx, header) {
+            var $header = $(header);
+            // Use data-sort-column if specified, otherwise use the header's index
+            var sortColumn = $header.data("sort-column");
+            if (sortColumn === undefined) {
+                sortColumn = $header.index();
+            }
             $("<a/>", {
                 href: "#",
                 class: "column-sort",
-                click: function() {
-                    ascending = !ascending && previous_column_idx == column_idx;
-                    previous_column_idx = column_idx;
-                    CMS.AWSUtils.sort_table(table, column_idx, ascending);
+                click: function(e) {
+                    e.preventDefault();
+                    ascending = !ascending && previous_column_idx == sortColumn;
+                    previous_column_idx = sortColumn;
+                    CMS.AWSUtils.sort_table(table, sortColumn, ascending, header);
                 }
             }).appendTo(header);
         });
@@ -990,6 +1031,22 @@ CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
 
     form.querySelector('input[name="subject"]').value = subjectText;
     form.querySelector('textarea[name="text"]').value = bodyText;
+
+    // Populate visible_to_tags field if it exists
+    const visibleToTagsInput = form.querySelector('input[name="visible_to_tags"]');
+    const rawVisibleToTags = notification.querySelector('.announcement_raw_visible_to_tags');
+    if (visibleToTagsInput && rawVisibleToTags) {
+        const rawValue = rawVisibleToTags.value;
+        const tagify = visibleToTagsInput._tagify;
+        if (tagify) {
+            tagify.removeAllTags();
+            const tags = rawValue.split(",").map(t => t.trim()).filter(Boolean);
+            if (tags.length) tagify.addTags(tags);
+        } else {
+            visibleToTagsInput.value = rawValue;
+        }
+    }
+
     var obj = notification.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
@@ -1301,5 +1358,335 @@ CMS.AWSUtils.initModelSolutionSubtasks = function(options) {
                 updateScores(formOrSolId);
             }
         });
+    });
+};
+
+
+/**
+ * Validates that end time is after start time for datetime-local inputs.
+ * Attaches to a form's submit event and prevents submission if invalid.
+ *
+ * formSelector (string): jQuery selector for the form element.
+ * startSelector (string): jQuery selector for the start datetime-local input.
+ * stopSelector (string): jQuery selector for the stop/end datetime-local input.
+ */
+CMS.AWSUtils.initDateTimeValidation = function(formSelector, startSelector, stopSelector) {
+    var form = document.querySelector(formSelector);
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        // Use form-scoped selectors to avoid matching inputs in other forms
+        var startInput = form.querySelector(startSelector);
+        var stopInput = form.querySelector(stopSelector);
+        if (!startInput || !stopInput) return;
+
+        // Use valueAsNumber for reliable datetime-local comparison
+        var startValue = startInput.valueAsNumber;
+        var stopValue = stopInput.valueAsNumber;
+        if (startValue && stopValue && stopValue <= startValue) {
+            alert('End time must be after start time');
+            e.preventDefault();
+        }
+    });
+};
+
+
+/**
+ * Initializes a remove page with task handling options.
+ * Handles the radio button selection, dropdown enable/disable, and form submission.
+ *
+ * config (object): Configuration object with the following properties:
+ *   - removeUrl (string): The base URL for the DELETE request.
+ *   - hasTaskOptions (boolean): Whether task handling options are shown.
+ *   - targetSelectId (string): ID of the target dropdown (e.g., 'target_contest_select').
+ *   - targetParamName (string): Query param name for target (e.g., 'target_contest_id').
+ *   - targetLabel (string): Label for validation alert (e.g., 'contest').
+ */
+CMS.AWSUtils.initRemovePage = function(config) {
+    if (config.hasTaskOptions) {
+        // Cache DOM elements and check they exist
+        var targetSelectEl = document.getElementById(config.targetSelectId);
+        var moveRadioEl = document.getElementById('action_move');
+        if (!targetSelectEl || !moveRadioEl) return;
+
+        // Enable/disable the target dropdown based on the selected action
+        document.querySelectorAll('input[name="action"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                if (moveRadioEl.checked) {
+                    targetSelectEl.disabled = false;
+                } else {
+                    targetSelectEl.disabled = true;
+                }
+            });
+        });
+
+        // Initialize the dropdown state
+        targetSelectEl.disabled = true;
+    }
+
+    // Attach the remove function to CMS.AWSUtils namespace to avoid global pollution
+    // Also attach to window for backward compatibility with onclick handlers
+    CMS.AWSUtils.cmsDoRemove = function () {
+        var url = config.removeUrl;
+
+        if (config.hasTaskOptions) {
+            var actionRadios = document.querySelectorAll('input[name="action"]');
+            var selectedAction = null;
+            for (var i = 0; i < actionRadios.length; i++) {
+                if (actionRadios[i].checked) {
+                    selectedAction = actionRadios[i].value;
+                    break;
+                }
+            }
+
+            if (!selectedAction) {
+                alert('Please select an option for handling tasks.');
+                return;
+            }
+
+            url += '?action=' + encodeURIComponent(selectedAction);
+
+            if (selectedAction === 'move') {
+                var targetSelect = document.getElementById(config.targetSelectId);
+                if (targetSelect && targetSelect.value) {
+                    url += '&' + config.targetParamName + '=' + encodeURIComponent(targetSelect.value);
+                } else {
+                    alert('Please select a ' + config.targetLabel + ' to move tasks to.');
+                    return;
+                }
+            }
+        }
+
+        if (confirm('Are you sure you want to remove this?')) {
+            CMS.AWSUtils.ajax_delete(url);
+        }
+    };
+    // Backward compatibility alias
+    window.cmsDoRemove = CMS.AWSUtils.cmsDoRemove;
+};
+
+
+/**
+ * Initializes read-only Tagify display on input element(s).
+ * Used to display tags in a visually consistent way without editing capability.
+ *
+ * inputSelector (string): CSS selector for the input element(s).
+ */
+CMS.AWSUtils.initReadOnlyTagify = function(inputSelector) {
+    // Defensive check for Tagify library
+    if (typeof Tagify === 'undefined') {
+        return;
+    }
+
+    document.querySelectorAll(inputSelector).forEach(function(input) {
+        if (!input.value.trim()) return;
+
+        new Tagify(input, {
+            delimiters: ",",
+            readonly: true,
+            editTags: false,
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.map(function(item) {
+                    return item.value;
+                }).join(', ');
+            }
+        });
+    });
+};
+
+
+/**
+ * Initializes Tagify on input element(s) with confirmation dialogs and save-on-confirm.
+ * Provides a unified interface for tag inputs across the admin interface.
+ *
+ * All tag operations (add, edit, remove) require confirmation before saving.
+ * Automatic removals (like duplicate detection) do not require confirmation but still save.
+ *
+ * config (object): Configuration object with the following properties:
+ *   - inputSelector (string): CSS selector for the input element(s).
+ *   - whitelist (array): Array of existing tags for autocomplete suggestions.
+ *   - getSaveUrl (function): Function that receives the input element and returns the save URL.
+ *   - saveParamName (string): Parameter name for the save request (e.g., 'student_tags').
+ *   - xsrfSelector (string): CSS selector for the XSRF token input (default: 'input[name="_xsrf"]').
+ *   - placeholder (string): Placeholder text (default: 'Type tags').
+ *   - editable (boolean): Whether tags can be edited by double-clicking (default: false).
+ *   - enforceWhitelist (boolean): Whether to only allow tags from whitelist (default: false).
+ *   - pattern (RegExp): Pattern for tag validation (default: null).
+ *   - invalidMessage (string): Message to show when pattern validation fails.
+ */
+CMS.AWSUtils.initTagify = function(config) {
+    var inputs = document.querySelectorAll(config.inputSelector);
+    if (!inputs.length) return;
+
+    var xsrfSelector = config.xsrfSelector || 'input[name="_xsrf"]';
+
+    inputs.forEach(function(input) {
+        var tagifyOptions = {
+            delimiters: ",",
+            maxTags: 20,
+            placeholder: config.placeholder || "Type tags",
+            whitelist: config.whitelist || [],
+            dropdown: {
+                maxItems: 20,
+                classname: "tags-look",
+                enabled: 0,
+                closeOnSelect: true
+            },
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.map(function(item) {
+                    return item.value;
+                }).join(', ');
+            }
+        };
+
+        tagifyOptions.editTags = config.editable ? { clicks: 2, keepInvalid: false } : false;
+        tagifyOptions.enforceWhitelist = !!config.enforceWhitelist;
+        if (config.pattern) tagifyOptions.pattern = config.pattern;
+
+        // Flag to track if a save should happen on the next 'change' event
+        var pendingSave = false;
+        // Flag to track if we're rolling back a cancelled add (to skip confirmation)
+        var isRollback = false;
+        // Flag to prevent confirmations during initial page load
+        var armed = false;
+
+        function saveTags(tagifyInstance) {
+            // Use tagify.value (canonical state) instead of input.value
+            // input.value may be stale if Tagify's debounced update() hasn't run yet
+            var tags = tagifyInstance.value.map(function(t) { return t.value; }).join(', ');
+            var formData = new FormData();
+            formData.append(config.saveParamName, tags);
+            var xsrfInput = document.querySelector(xsrfSelector);
+            if (xsrfInput) {
+                formData.append('_xsrf', xsrfInput.value);
+            }
+
+            var saveUrl = config.getSaveUrl(input);
+            fetch(saveUrl, {
+                method: 'POST',
+                body: formData
+            }).then(function(response) {
+                if (!response.ok) {
+                    console.error('Failed to save tags');
+                }
+            }).catch(function(error) {
+                console.error('Error saving tags:', error);
+            });
+        }
+
+        // Track user-initiated removals (X click or backspace)
+        var userRemovalTriggeredAt = 0;
+
+        tagifyOptions.hooks = {
+            beforeRemoveTag: function(tags) {
+                return new Promise(function(resolve, reject) {
+                    // If this is a rollback from cancelled add, skip confirmation
+                    if (isRollback) {
+                        resolve();
+                        return;
+                    }
+
+                    var now = Date.now();
+                    var isUserInitiated = (now - userRemovalTriggeredAt) < 200;
+                    userRemovalTriggeredAt = 0;
+
+                    // Auto-removals (duplicates, etc.) don't need confirmation
+                    if (!isUserInitiated) {
+                        pendingSave = true;
+                        resolve();
+                        return;
+                    }
+
+                    // User-initiated removal needs confirmation
+                    var tagValue = tags[0].data.value;
+                    if (confirm('Remove tag "' + tagValue + '"?')) {
+                        pendingSave = true;
+                        resolve();
+                    } else {
+                        reject();
+                    }
+                });
+            }
+        };
+
+        var tagify = new Tagify(input, tagifyOptions);
+
+        // Detect X button clicks
+        tagify.DOM.scope.addEventListener('click', function(e) {
+            if (e.target.closest('.tagify__tag__removeBtn')) {
+                userRemovalTriggeredAt = Date.now();
+            }
+        }, true);
+
+        // Detect backspace/delete key presses
+        tagify.DOM.input.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                userRemovalTriggeredAt = Date.now();
+            }
+        }, true);
+
+        // Handle add confirmation
+        tagify.on('add', function(e) {
+            // Skip confirmation if not armed yet (initial page load)
+            if (!armed) return;
+
+            var tagValue = e.detail.data.value;
+            if (confirm('Add tag "' + tagValue + '"?')) {
+                pendingSave = true;
+            } else {
+                // Roll back the add - use isRollback flag to skip beforeRemoveTag confirmation
+                // Use non-silent removal so Tagify properly updates its internal state
+                isRollback = true;
+                tagify.removeTags(e.detail.tag);
+                isRollback = false;
+            }
+        });
+
+        // Handle edit confirmation
+        if (config.editable) {
+            var editingTagValue = null;
+
+            tagify.on('edit:start', function(e) {
+                editingTagValue = e.detail.data.value;
+            });
+
+            tagify.on('edit:beforeUpdate', function(e) {
+                var oldVal = editingTagValue;
+                var newVal = e.detail.data && e.detail.data.value;
+
+                // No change, no confirmation needed
+                if (oldVal === newVal) {
+                    return;
+                }
+
+                if (confirm('Change tag "' + oldVal + '" to "' + newVal + '"?')) {
+                    pendingSave = true;
+                } else {
+                    // Revert to old value
+                    e.detail.data.value = oldVal;
+                }
+            });
+        }
+
+        // Save on 'change' event - this fires AFTER Tagify updates its internal state
+        tagify.on('change', function() {
+            if (pendingSave) {
+                saveTags(tagify);
+                pendingSave = false;
+            }
+        });
+
+        if (config.pattern && config.invalidMessage) {
+            tagify.on('invalid', function(e) {
+                if (e.detail.message === 'pattern mismatch') {
+                    alert(config.invalidMessage);
+                }
+            });
+        }
+
+        // Arm the confirmations after a short delay to skip initial load events
+        setTimeout(function() {
+            armed = true;
+        }, 100);
     });
 };

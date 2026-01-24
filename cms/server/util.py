@@ -42,10 +42,12 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session, Contest
+from cms.db import Session, Contest, Student, Task, Participation
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
+if typing.TYPE_CHECKING:
+    from cms.db import TrainingDay, TrainingDayGroup, TrainingProgram
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,251 @@ def exclude_internal_contests(query):
     return: Query object with internal contests filtered out
     """
     return query.filter(~Contest.name.like(r'\_\_%', escape='\\'))
+
+
+def get_all_student_tags(training_program: "TrainingProgram") -> list[str]:
+    """Get all unique student tags from a training program's students.
+
+    This is a shared utility to avoid duplicating tag collection logic
+    across multiple handlers.
+
+    training_program: the training program to get tags from.
+
+    return: sorted list of unique student tags.
+
+    """
+    all_tags_set: set[str] = set()
+    for student in training_program.students:
+        if student.student_tags:
+            all_tags_set.update(student.student_tags)
+    return sorted(all_tags_set)
+
+
+def get_all_student_tags_with_historical(
+    training_program: "TrainingProgram"
+) -> list[str]:
+    """Get all unique student tags including historical tags from archived rankings.
+
+    This includes both current student tags and tags that students had during
+    past training days (stored in ArchivedStudentRanking.student_tags).
+
+    training_program: the training program to get tags from.
+
+    return: sorted list of unique student tags (current + historical).
+
+    """
+    all_tags_set: set[str] = set()
+    # Collect current tags
+    for student in training_program.students:
+        if student.student_tags:
+            all_tags_set.update(student.student_tags)
+    # Collect historical tags from archived rankings
+    for training_day in training_program.training_days:
+        for ranking in training_day.archived_student_rankings:
+            if ranking.student_tags:
+                all_tags_set.update(ranking.student_tags)
+    return sorted(all_tags_set)
+
+
+def get_all_training_day_types(training_program: "TrainingProgram") -> list[str]:
+    """Get all unique training day types from a training program's training days.
+
+    This is a shared utility to avoid duplicating tag collection logic
+    across multiple handlers.
+
+    training_program: the training program to get types from.
+
+    return: sorted list of unique training day types.
+
+    """
+    all_types_set: set[str] = set()
+    for training_day in training_program.training_days:
+        if training_day.training_day_types:
+            all_types_set.update(training_day.training_day_types)
+    return sorted(all_types_set)
+
+
+def get_student_for_training_day(
+    sql_session: Session,
+    participation: "Participation",
+    training_day: "TrainingDay"
+) -> "Student | None":
+    """Get the student record for a participation in a training day.
+
+    sql_session: the database session.
+    participation: the participation to look up.
+    training_day: the training day.
+
+    return: the Student record, or None if not found.
+
+    """
+    # Single query with join instead of two separate queries
+    managing_contest = training_day.training_program.managing_contest
+    return sql_session.query(Student).join(
+        Participation, Student.participation_id == Participation.id
+    ).filter(
+        Participation.contest_id == managing_contest.id,
+        Participation.user_id == participation.user_id,
+        Student.training_program_id == training_day.training_program_id
+    ).first()
+
+
+def check_training_day_eligibility(
+    sql_session: Session,
+    participation: "Participation",
+    training_day: "TrainingDay | None"
+) -> tuple[bool, "TrainingDayGroup | None", list[str]]:
+    """Check if a participation is eligible for a training day.
+
+    A student is eligible if:
+    - The training day has no main groups configured (all students eligible), OR
+    - The student has exactly one main group tag
+
+    sql_session: the database session.
+    participation: the participation to check.
+    training_day: the training day to check, or None for non-training-day contests.
+
+    return: tuple of (is_eligible, main_group, matching_tags)
+        - is_eligible: True if the student can participate
+        - main_group: the TrainingDayGroup if exactly one match, else None
+        - matching_tags: list of main group tags the student has
+
+    """
+    if training_day is None:
+        return True, None, []
+
+    # If no main groups configured, all students are eligible
+    if not training_day.groups:
+        return True, None, []
+
+    # Find the student record
+    student = get_student_for_training_day(sql_session, participation, training_day)
+
+    if student is None:
+        # No student record means they're not in the training program
+        return False, None, []
+
+    # Build dict for O(1) lookup of groups by tag name
+    groups_by_tag = {g.tag_name.lower(): g for g in training_day.groups}
+
+    # Find which main group tags the student has
+    student_tags = {tag.lower() for tag in (student.student_tags or [])}
+    matching_tags = sorted(student_tags & groups_by_tag.keys())
+
+    # Eligible only if exactly one main group tag
+    if len(matching_tags) == 1:
+        # O(1) lookup instead of O(n) scan
+        return True, groups_by_tag[matching_tags[0]], matching_tags
+
+    return False, None, matching_tags
+
+
+def can_access_task(sql_session: Session, task: "Task", participation: "Participation",
+                    training_day: "TrainingDay | None") -> bool:
+    """Check if a participation can access the given task.
+
+    For training day contests, tasks may have visibility restrictions
+    based on student tags. A task is accessible if:
+    - The task has no visible_to_tags (empty list = visible to all)
+    - The student has at least one tag matching the task's visible_to_tags
+
+    For non-training-day contests, all tasks are accessible.
+
+    sql_session: the database session.
+    task: the task to check access for.
+    participation: the participation to check access for.
+    training_day: the training day if this is a training day contest, else None.
+
+    return: True if the participation can access the task.
+
+    """
+    # Only apply visibility filtering for training day contests
+    if training_day is None:
+        return True
+
+    # If task has no visibility restrictions, it's visible to all
+    if not task.visible_to_tags:
+        return True
+
+    # Find the student record for this participation
+    student = get_student_for_training_day(sql_session, participation, training_day)
+
+    if student is None:
+        return False
+
+    # Check if student has any matching tag
+    student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
+    task_tags_set = {tag.lower() for tag in task.visible_to_tags}
+    return bool(student_tags_set & task_tags_set)
+
+
+def calculate_task_archive_progress(
+    student: "Student",
+    participation: "Participation",
+    contest: "Contest",
+    include_task_details: bool = False
+) -> dict:
+    """Calculate task archive progress for a student.
+
+    This is a shared utility used by both the admin students page and
+    the contest training program overview page.
+
+    student: the Student object (with student_tasks relationship).
+    participation: the Participation object (with task_scores relationship).
+    contest: the Contest object (managing contest for the training program).
+    include_task_details: if True, include per-task breakdown in task_scores list.
+
+    return: dict with total_score, max_score, percentage, task_count.
+            If include_task_details is True, also includes task_scores list.
+
+    """
+    # Build maps for efficient lookup
+    student_tasks_map = {st.task_id: st for st in student.student_tasks}
+    student_task_ids = set(student_tasks_map.keys())
+
+    # Build a map of task_id -> cached score for this participation
+    cached_scores = {}
+    for pts in participation.task_scores:
+        cached_scores[pts.task_id] = pts.score
+
+    total_score = 0.0
+    max_score = 0.0
+    task_count = 0
+    task_scores = [] if include_task_details else None
+
+    for task in contest.get_tasks():
+        if task.id not in student_task_ids:
+            continue
+        task_count += 1
+        max_task_score = task.active_dataset.score_type_object.max_score \
+            if task.active_dataset else 100.0
+        max_score += max_task_score
+        best_score = cached_scores.get(task.id, 0.0)
+        total_score += best_score
+
+        if include_task_details:
+            student_task = student_tasks_map.get(task.id)
+            task_scores.append({
+                "task": task,
+                "score": best_score,
+                "max_score": max_task_score,
+                "source_training_day": student_task.source_training_day if student_task else None,
+                "assigned_at": student_task.assigned_at if student_task else None,
+            })
+
+    percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
+
+    result = {
+        "total_score": total_score,
+        "max_score": max_score,
+        "percentage": percentage,
+        "task_count": task_count,
+    }
+
+    if include_task_details:
+        result["task_scores"] = task_scores
+
+    return result
 
 
 # TODO: multi_contest is only relevant for CWS
@@ -262,3 +509,44 @@ class CommonRequestHandler(RequestHandler):
     @property
     def service(self):
         return self.application.service
+
+
+def deduplicate_preserving_order(items: list[str]) -> list[str]:
+    """Remove duplicates from a list while preserving order.
+
+    Args:
+        items: List of strings that may contain duplicates
+
+    Returns:
+        List of strings with duplicates removed, preserving original order
+    """
+    seen: set[str] = set()
+    unique: list[str] = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            unique.append(item)
+    return unique
+
+
+def parse_tags(tags_str: str) -> list[str]:
+    """Parse a comma-separated string of tags into a list of normalized tags.
+
+    This utility handles:
+    - Splitting by comma
+    - Stripping whitespace
+    - converting to lowercase
+    - Removing empty tags
+    - Deduplicating while preserving order
+
+    Args:
+        tags_str: Comma-separated string of tags
+
+    Returns:
+        List of unique, normalized tags
+    """
+    if not tags_str:
+        return []
+
+    tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
+    return deduplicate_preserving_order(tags)

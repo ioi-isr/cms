@@ -6,6 +6,23 @@
 utils.show_page("pending_delay_requests", 1);
 utils.show_page("all_delay_requests", 1);
 
+{% if ineligible_students is defined and ineligible_students|length > 0 and all_student_tags is defined %}
+CMS.AWSUtils.initReadOnlyTagify('.main-group-tags-display');
+
+CMS.AWSUtils.initTagify({
+    inputSelector: '.student-tags-editable',
+    whitelist: {{ all_student_tags | tojson }},
+    getSaveUrl: function(input) {
+        return input.dataset.saveUrl;
+    },
+    saveParamName: 'student_tags',
+    placeholder: 'Type tags',
+    editable: true,
+    pattern: /^[^,]+$/,
+    invalidMessage: 'Tags cannot contain commas.'
+});
+{% endif %}
+
 {% endblock js_init %}
 
 {% block core %}
@@ -93,7 +110,7 @@ a.username-link:hover {
   <div id="paged_content_pending_delay_requests">
   {% for req in delay_requests %}
     {% if req.status == 'pending' %}
-      {{ macro_delay_request.delay_request(req) }}
+      {{ macro_delay_request.delay_request(req, warning=(delay_request_warnings or {}).get(req.id)) }}
     {% endif %}
   {% endfor %}
   </div>
@@ -127,6 +144,16 @@ a.username-link:hover {
     </form>
   </div>
 
+{% if contest.training_day and all_finished_or_missed and participation_statuses|length > 0 %}
+<div class="notification notification_success" style="margin-bottom: 15px;">
+  <strong>All participants have finished or missed this training day.</strong>
+  This training day is ready to be archived.
+  <a href="{{ url("training_program", contest.training_day.training_program.id, "training_day", contest.training_day.id, "archive") }}" class="btn btn-success" style="margin-left: 15px;">
+    <i class="icon-folder-close icon-white"></i> Archive Training Day
+  </a>
+</div>
+{% endif %}
+
 <table class="table table-striped table-bordered">
   <thead>
     <tr>
@@ -153,6 +180,8 @@ a.username-link:hover {
       <td>
         {% if participation.delay_time.total_seconds() > 0 %}
           {{ (contest.start + participation.delay_time)|format_datetime }}
+        {% elif item.main_group and item.main_group.start_time %}
+          {{ item.main_group.start_time|format_datetime }}
         {% else %}
           {{ contest.start|format_datetime }}
         {% endif %}
@@ -198,7 +227,7 @@ a.username-link:hover {
           {{ xsrf_form_html|safe }}
           <button type="submit" class="btn btn-warning btn-small">
             {% if participation.delay_time.total_seconds() == 0 %}
-              Remove extra time 
+              Remove extra time
             {% elif participation.extra_time.total_seconds() == 0 %}
               Remove delay
             {% else %}
@@ -213,6 +242,55 @@ a.username-link:hover {
   </tbody>
 </table>
 </div>
+
+{% if ineligible_students is defined and ineligible_students|length > 0 %}
+<h2 id="title_ineligible_students_section" class="toggling_on">Ineligible Students</h2>
+<div id="ineligible_students_section">
+  <p class="hint">These students cannot participate in this training day because they do not have exactly one main group tag. Edit their tags below to fix this.</p>
+  <table class="table table-striped table-bordered">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Username</th>
+        <th>Current Main Group Tags</th>
+        <th>Reason</th>
+        <th>All Student Tags (editable)</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for item in ineligible_students %}
+      {% set student = item.student %}
+      <tr class="missed">
+        <td>{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}</td>
+        <td>{{ student.participation.user.username }}</td>
+        <td>
+          {% if item.matching_tags %}
+            <input type="text" class="main-group-tags-display" value="{{ item.matching_tags|join(', ') }}" readonly style="border: none; background: transparent; width: 100%;"/>
+          {% else %}
+            <em>(none)</em>
+          {% endif %}
+        </td>
+        <td>
+          {% if item.reason == 'no main group' %}
+            No main group tag
+          {% else %}
+            Multiple main group tags
+          {% endif %}
+        </td>
+        <td>
+          <input type="text"
+                 class="student-tags-editable"
+                 name="student_tags"
+                 value="{{ (student.student_tags or [])|join(', ') }}"
+                 data-save-url="{{ url("training_program", ineligible_training_program.id, "student", student.participation.user.id, "tags") }}"
+                 style="width: 100%;"/>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 
 {% if delay_requests != [] %}
 <h2 id="title_all_delay_requests_section" class="toggling_on">All Delay Requests</h2>

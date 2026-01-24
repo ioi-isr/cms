@@ -1,0 +1,231 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+
+{% extends "base.html" %}
+{% import 'macro/submission.html' as macro_submission %}
+{% import 'macro/question.html' as macro_question with context %}
+{% import 'macro/markdown_input.html' as macro_markdown %}
+
+{% block js_init %}
+CMS.AWSUtils.initTagify({
+    inputSelector: 'input[name="student_tags"]',
+    whitelist: {{ all_student_tags | tojson }},
+    getSaveUrl: function() {
+        return '{{ url("training_program", training_program.id, "student", selected_user.id, "tags") }}';
+    },
+    saveParamName: 'student_tags',
+    placeholder: 'Type tags',
+    editable: true,
+    pattern: /^[^,]+$/,
+    invalidMessage: 'Tags cannot contain commas.'
+});
+{% endblock js_init %}
+
+{% block core %}
+<h1>
+  Student <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+</h1>
+
+<p>
+  <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks") }}">View/Manage Task Archive ({{ student.student_tasks|length }} tasks)</a>
+</p>
+
+<h2 id="title_submissions" class="toggling_on">Submissions</h2>
+<div id="submissions">
+  <p>
+    Reevaluate all {{ submission_count }} submissions for this student in this training program (for all datasets)
+    {{ macro_reevaluation_buttons.reevaluation_buttons(
+           admin.permission_all,
+           url("training_program", training_program.id, "student", selected_user.id, "edit"),
+           participation_id=participation.id) }}
+    <br/>
+    <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "submissions", "download") }}">Download all submissions</a>
+  </p>
+
+  {{ macro_submission.rows(
+         admin,
+         url,
+         url["training_program"][training_program.id]["student"][selected_user.id]["edit"],
+         submissions,
+         submission_page,
+         submission_pages,
+         show_training_day=true) }}
+
+  <div class="hr"></div>
+</div>
+
+
+<h2 id="title_participation_info" class="toggling_on">Student information</h2>
+<div id="participation_info">
+  <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "edit") }}" method="POST">
+    {{ xsrf_form_html|safe }}
+    <table>
+      <tr>
+        <td>
+          <span class="info" title="Tags for this student (e.g., beginner, advanced). Used to control which training questions they see. Double-click a tag to edit it."></span>
+          Student Tags
+        </td>
+        <td style="min-width: 300px;">
+          <input type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}"/>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="Code of the team of the contestant. Only used in the external ranking."></span>
+          Team
+        </td>
+        <td>
+          <input list="teams" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
+          <datalist id="teams">
+            {% for t in teams %}
+            <option value="{{ t.code }}">
+            {% endfor %}
+          </datalist>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="Student password for this training program. If empty, the student's main password is used.
+                                     Caution: stored in plain text."></span>
+          Password <strong style="color:#c00; font-weight: 700;">(only inside the training program {{ training_program.name }})</strong>
+        </td>
+        <td>
+          {% set hashed_password = participation.password %}
+          {% include "fragments/hashed_password_form.html" %}
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="Whether the student's results will be visible in the external ranking. Note: This setting will automatically apply to all new training days."></span>
+          Hidden participation
+        </td>
+        <td>
+          <input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/>
+          <span class="hint" style="color: #666; font-size: 0.9em; margin-left: 8px;">
+            (will apply to new training days)
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="If checked, the hidden status change will also be applied to all existing training days for this student."></span>
+          Apply to existing training days
+        </td>
+        <td>
+          <input type="checkbox" name="apply_hidden_to_existing"/>
+          <span class="hint" style="color: #666; font-size: 0.9em; margin-left: 8px;">
+            (update hidden status in all existing training days)
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="Whether the student is unrestricted by maximum number of submissions, user tests,
+                                    and minimum interval between submissions, user tests, and training program time."></span>
+          Unrestricted participation
+        </td>
+        <td><input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %}/></td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="A comma-separated list of IP addresses (or subnets) of the student for this training program.
+                                    Used for IP-based login restrictions and/or for autologin (in this case, it must be a single address)."></span>
+          IP address or subnet
+        </td>
+        <td><input type="text" name="ip" value="{{ participation.ip|map("string")|join(", ") if participation.ip is not none else "" }}"/></td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="Time of first login during this training program, used for USACO-style contests.
+                                    Example: '2015-12-31 15:00:00'."></span>
+          Time of first login (in UTC)
+        </td>
+        <td><input type="text" name="starting_time" value="{{ participation.starting_time if participation.starting_time is not none else "" }}"></td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time at the beginning of the training program.
+                                    If this is non-zero, all the events (token generation, end of contest) for this student will be shifted of the appropriate amount."></span>
+          Delay
+        </td>
+        <td><input type="text" name="delay_time" value="{{ participation.delay_time.total_seconds()|int }}"></td>
+      </tr>
+      <tr>
+        <td>
+          <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time during the training program.
+                                    If this is non-zero, the end of the contest will be shifted of the appropriate amount for this student."></span>
+          Extra time
+        </td>
+        <td><input type="text" name="extra_time" value="{{ participation.extra_time.total_seconds()|int }}"></td>
+      </tr>
+    </table>
+    <input type="submit" value="Update" />
+    <input type="reset" value="Reset" />
+  </form>
+  <div class="hr"></div>
+</div>
+
+
+<h2 id="title_questions" class="toggling_on">Questions</h2>
+<div id="questions">
+  {% if participation.questions != [] %}
+  <div class="notifications">
+    {% for msg in participation.questions %}
+      {{ macro_question.question(msg, selected_user.id) }}
+    {% endfor %}
+  </div>
+
+  {% else %}
+  No questions.
+
+  {% endif %}
+  <div class="hr"></div>
+</div>
+
+
+<h2 id="title_messages" class="toggling_on">Messages</h2>
+<div id="messages">
+
+  <div class="notifications">
+      <div class="notification communication">
+        <form id="send_message_form" action="{{ url("contest", training_program.managing_contest.id, "user", selected_user.id, "message") }}" method="POST">
+          {{ xsrf_form_html|safe }}
+          <div class="notification_msg">
+            <div class="notification_subject">
+              Subject:
+              <input id="send_message_subject" type="text" name="message_subject" style="width: 100%" />
+            </div>
+            <div class="notification_text">
+              Text:
+              {{ macro_markdown.markdown_input("message_text") }}
+            </div>
+          <input type="submit" value="Send"/>
+          {{ macro_markdown.markdown_preview() }}
+          </div>
+        </form>
+      </div>
+
+    {% if participation.messages != [] %}
+
+      {% for msg in participation.messages|reverse %}
+      <div class="notification communication">
+        <div class="notification_msg">
+          <div class="notification_timestamp">{{ msg.timestamp }}</div>
+          <div class="notification_subject">{{ msg.subject }}</div>
+          <div class="notification_text">{{ msg.text | markdown }}</div>
+          <hr>
+          <div class="notification_admin_owner">
+            By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+    {% else %}
+      No messages.
+    {% endif %}
+  </div>
+  <div class="hr"></div>
+</div>
+
+
+{% endblock core %}

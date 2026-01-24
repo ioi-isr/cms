@@ -12,6 +12,25 @@ utils.show_page("questions", 1);
   <h1>Questions</h1>
 </div>
 
+{% if training_program is defined %}
+<div class="notification notification_info" style="margin-bottom: 15px;">
+  <strong>Note:</strong> This page only handles questions for the training program.
+  For training day questions, go to the appropriate training day's questions page.
+  {% if training_days_with_unanswered_questions %}
+  <br><br>
+  <strong>Training days with unanswered questions:</strong>
+  <ul style="margin: 5px 0 0 20px;">
+    {% for td_info in training_days_with_unanswered_questions %}
+    <li>
+      <a href="{{ url("contest", td_info.contest_id, "questions") }}">{{ td_info.name }}</a>
+      <span class="unread" style="margin-left: 5px;">{{ td_info.unanswered_count }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if questions != [] %}
 <div id="questions" class="notifications">
   <div id="page_selector_questions"></div>

@@ -63,11 +63,15 @@ class TaskDescriptionHandler(ContestHandler):
         participation = self.current_user
         
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
         
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         self.render("task_description.html", task=task, **self.r_params)
@@ -84,11 +88,15 @@ class TaskStatementViewHandler(FileHandler):
         participation = self.current_user
         
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
         
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         if lang_code not in task.statements:
@@ -133,11 +141,15 @@ class TaskAttachmentViewHandler(FileHandler):
         participation = self.current_user
         
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
         
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         if filename not in task.attachments:

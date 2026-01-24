@@ -185,6 +185,12 @@ $(document).ready(function () {
     <h1>{% trans name=task.title, short_name=task.name %}{{ name }} ({{ short_name }}) <small>submissions</small>{% endtrans %}</h1>
 </div>
 
+{% if contest.training_program %}
+<div style="margin-bottom: 20px;">
+    <a href="{{ contest_url("tasks", task.name, "description") }}" class="btn btn-info">{% trans %}Go to statement{% endtrans %}</a>
+</div>
+{% endif %}
+
 {% if score_type is defined %}
     {% set two_task_scores = score_type.max_public_score > 0
         and score_type.max_public_score < score_type.max_score %}
@@ -361,6 +367,83 @@ $(document).ready(function () {
 </div>
 {% endif %}
 
+{% if is_task_archive %}
+{# Task archive view: show submissions grouped by source #}
+
+{# First show submissions from task archive #}
+<h3>{% trans %}Submissions from task archive{% endtrans %}</h3>
+{% if archive_submissions|rejectattr("official")|list|length > 0 %}
+<h4>{% trans %}Unofficial submissions{% endtrans %}</h4>
+  {{ macro_submission.rows(
+      url,
+      contest_url,
+      translation,
+      xsrf_form_html,
+      actual_phase,
+      task,
+      archive_submissions,
+      can_use_tokens,
+      can_play_token,
+      can_play_token_now,
+      submissions_download_allowed,
+      false) }}
+{% endif %}
+
+<h4>{% trans %}Official submissions{% endtrans %}</h4>
+{{ macro_submission.rows(
+    url,
+    contest_url,
+    translation,
+    xsrf_form_html,
+    actual_phase,
+    task,
+    archive_submissions,
+    can_use_tokens,
+    can_play_token,
+    can_play_token_now,
+    submissions_download_allowed,
+    true) }}
+
+{# Then show submissions from each training day #}
+{% for td_id, td_data in training_day_submissions.items() %}
+{% set training_day = td_data[0] %}
+{% set td_submissions = td_data[1] %}
+<h3>{% trans td_desc=(training_day.contest.description if training_day.contest else (training_day.description or training_day.name)) %}Submissions from training day: {{ td_desc }}{% endtrans %}</h3>
+{% if td_submissions|rejectattr("official")|list|length > 0 %}
+<h4>{% trans %}Unofficial submissions{% endtrans %}</h4>
+  {{ macro_submission.rows(
+      url,
+      contest_url,
+      translation,
+      xsrf_form_html,
+      actual_phase,
+      task,
+      td_submissions,
+      can_use_tokens,
+      can_play_token,
+      can_play_token_now,
+      submissions_download_allowed,
+      false) }}
+{% endif %}
+
+<h4>{% trans %}Official submissions{% endtrans %}</h4>
+{{ macro_submission.rows(
+    url,
+    contest_url,
+    translation,
+    xsrf_form_html,
+    actual_phase,
+    task,
+    td_submissions,
+    can_use_tokens,
+    can_play_token,
+    can_play_token_now,
+    submissions_download_allowed,
+    true) }}
+{% endfor %}
+
+{% else %}
+{# Regular contest or training day view: show all submissions together #}
 
 {% if submissions|rejectattr("official")|list|length > 0 %}
 <h3>{% trans %}Unofficial submissions{% endtrans %}</h3>
@@ -377,9 +460,9 @@ $(document).ready(function () {
       can_play_token_now,
       submissions_download_allowed,
       false) }}
-<h3>{% trans %}Official submissions{% endtrans %}</h3>
 {% endif %}
 
+<h3>{% trans %}Official submissions{% endtrans %}</h3>
 {{ macro_submission.rows(
     url,
     contest_url,
@@ -393,6 +476,8 @@ $(document).ready(function () {
     can_play_token_now,
     submissions_download_allowed,
     true) }}
+
+{% endif %}
 
 <div class="modal fade hide wide" id="submission_detail">
     <div class="modal-header">

@@ -55,7 +55,7 @@ import tornado.web
 from sqlalchemy.orm.exc import NoResultFound
 
 from cms import config
-from cms.db import PrintJob, User, Participation, Team
+from cms.db import PrintJob, User, Participation, Team, Student, StudentTask
 from cms.grading.languagemanager import get_language
 from cms.grading.steps import COMPILATION_MESSAGES, EVALUATION_MESSAGES
 from cms.server import multi_contest
@@ -95,9 +95,18 @@ class RegistrationError(Exception):
 class MainHandler(ContestHandler):
     """Home page handler.
 
+    For training programs, redirect to the training program overview page
+    instead of the regular contest overview, but only if the user is logged in.
+    This prevents a redirect loop with the @authenticated decorator on
+    TrainingProgramOverviewHandler, which redirects unauthenticated users
+    back to get_login_url() (the contest root).
     """
     @multi_contest
     def get(self):
+        # If this is a training program and user is logged in, redirect to training overview
+        if self.training_program is not None and self.current_user is not None:
+            self.redirect(self.contest_url("training_overview"))
+            return
         self.render("overview.html", **self.r_params)
 
 
@@ -140,9 +149,38 @@ class RegistrationHandler(ContestHandler):
 
             # Create participation
             team = self._get_team()
+            # For training programs, set starting_time to now so the user can
+            # see everything immediately (training programs don't have a start button)
+            training_program = self.contest.training_program
+            starting_time = None
+            if training_program is not None:
+                starting_time = make_datetime()
             participation = Participation(user=user, contest=self.contest,
-                                          team=team)
+                                          team=team, starting_time=starting_time)
             self.sql_session.add(participation)
+
+            # For training programs, also create a Student record and add
+            # participations to all existing training days (mirroring the
+            # behavior of AddTrainingProgramStudentHandler)
+            if training_program is not None:
+                self.sql_session.flush()  # Ensure participation has an ID
+
+                student = Student(
+                    training_program=training_program,
+                    participation=participation,
+                    student_tags=[]
+                )
+                self.sql_session.add(student)
+
+                # Add the student to all existing training days
+                for training_day in training_program.training_days:
+                    if training_day.contest is None:
+                        continue
+                    td_participation = Participation(
+                        contest=training_day.contest,
+                        user=user
+                    )
+                    self.sql_session.add(td_participation)
 
             self.sql_session.commit()
 
@@ -375,9 +413,68 @@ class StartHandler(ContestHandler):
             participation.starting_ip_addresses, client_ip
         )
 
+        # For training day contests, add visible tasks to the student's task archive
+        training_day = self.contest.training_day
+        if training_day is not None:
+            self._add_training_day_tasks_to_student(training_day, participation)
+
         self.sql_session.commit()
 
         self.redirect(self.contest_url())
+
+    def _add_training_day_tasks_to_student(self, training_day, participation: Participation):
+        """Add visible tasks from a training day to the student's task archive.
+
+        When a student starts a training day, all tasks visible to them
+        (based on their tags) are added to their StudentTask records.
+
+        training_day: the training day being started.
+        participation: the user's participation in the training day contest.
+
+        """
+        # Find the student record for this user in the training program
+        training_program = training_day.training_program
+        managing_contest = training_program.managing_contest
+
+        student = (
+            self.sql_session.query(Student)
+            .join(Participation, Student.participation_id == Participation.id)
+            .filter(Participation.contest_id == managing_contest.id)
+            .filter(Participation.user_id == participation.user_id)
+            .filter(Student.training_program_id == training_program.id)
+            .first()
+        )
+
+        if student is None:
+            logger.warning(
+                "User %s started training day but has no student record",
+                participation.user.username
+            )
+            return
+
+        # Get the visible tasks for this student
+        visible_tasks = self.get_visible_tasks()
+
+        # Add each visible task to the student's task archive if not already present
+        existing_task_ids = {st.task_id for st in student.student_tasks}
+
+        for task in visible_tasks:
+            if task.id not in existing_task_ids:
+                # Note: CMS Base.__init__ skips foreign key columns, so we must
+                # set them as attributes after creating the object
+                student_task = StudentTask(assigned_at=self.timestamp)
+                student_task.student_id = student.id
+                student_task.task_id = task.id
+                student_task.source_training_day_id = training_day.id
+                self.sql_session.add(student_task)
+                training_day_name = (
+                    training_day.contest.name if training_day.contest is not None
+                    else training_day.name or "Archived"
+                )
+                logger.info(
+                    "Added task %s to student %s from training day %s",
+                    task.name, participation.user.username, training_day_name
+                )
 
 
 class LogoutHandler(ContestHandler):
