@@ -30,6 +30,13 @@
     --tp-danger-dark: #991b1b;
     --tp-danger-border: #fecaca;
 
+    /* Info colors (blue) */
+    --tp-info: #3b82f6;
+    --tp-info-hover: #2563eb;
+    --tp-info-light: #f0f9ff;
+    --tp-info-border: #bae6fd;
+    --tp-info-dark: #0369a1;
+
     /* Neutral colors */
     --tp-text-primary: #1e293b;
     --tp-text-secondary: #374151;
@@ -176,7 +183,7 @@
     padding: 0;
     margin: -1px;
     overflow: hidden;
-    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
     border: 0;
 }
 
@@ -826,26 +833,6 @@
     padding-bottom: 40px;
 }
 
-/* Icon Only Button */
-.btn-icon-only {
-    border: none;
-    padding: 6px;
-    cursor: pointer;
-    color: var(--tp-text-light);
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.btn-icon-only:hover {
-    color: var(--tp-danger);
-    background: var(--tp-danger-light);
-}
-
-.btn-icon-only:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 /* Page Header */
 .tp-page-header {
     display: flex;
@@ -1121,12 +1108,6 @@
     color: var(--tp-primary);
 }
 
-.page-subtitle {
-    margin-top: 4px;
-    font-size: 0.9rem;
-    color: var(--tp-text-muted);
-}
-
 /* ==========================================================================
    Progress Card Styles
    ========================================================================== */
@@ -1321,13 +1302,13 @@
 }
 
 .histogram-stats {
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
+    background: var(--tp-info-light);
+    border: 1px solid var(--tp-info-border);
     border-radius: 6px;
     padding: 12px 16px;
     margin-bottom: 16px;
     font-size: 0.9rem;
-    color: #0369a1;
+    color: var(--tp-info-dark);
 }
 
 .histogram-text-section {
@@ -1351,7 +1332,7 @@
 }
 
 .copy-btn {
-    background: #3b82f6;
+    background: var(--tp-info);
     color: white;
     border: none;
     padding: 6px 12px;
@@ -1361,7 +1342,7 @@
 }
 
 .copy-btn:hover {
-    background: #2563eb;
+    background: var(--tp-info-hover);
 }
 
 #histogramTextData {

@@ -20,7 +20,7 @@
             <input type="file" name="students_file" accept=".txt" class="file-input-hidden" id="students-file-input"
                 {% if not admin.permission_all %}disabled{% endif %}
                 onchange="if(this.files.length) this.form.submit();" />
-            <label for="students-file-input" class="btn-outline" style="cursor: pointer;" {% if not admin.permission_all %}style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+            <label for="students-file-input" class="btn-outline" style="{% if admin.permission_all %}cursor: pointer;{% else %}opacity: 0.5; cursor: not-allowed;{% endif %}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="17 8 12 3 7 8"></polyline>

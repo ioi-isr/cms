@@ -96,6 +96,8 @@ class TrainingProgramOverviewHandler(ContestHandler):
             max_score = progress["max_score"]
             percentage = progress["percentage"]
             task_scores = progress["task_scores"]
+            # Commit to release any advisory locks taken by get_cached_score_entry
+            self.sql_session.commit()
         else:
             # No student record - show no tasks
             total_score = 0.0

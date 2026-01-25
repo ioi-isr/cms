@@ -43,6 +43,7 @@ import typing
 from tornado.web import RequestHandler
 
 from cms.db import Session, Contest, Student, Task, Participation, StudentTask
+from sqlalchemy.orm import joinedload
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
@@ -300,6 +301,7 @@ def calculate_task_archive_progress(
     # Get the tasks in the student's archive
     student_tasks = (
         sql_session.query(StudentTask)
+        .options(joinedload(StudentTask.task))
         .filter(StudentTask.student_id == student.id)
         .all()
     )

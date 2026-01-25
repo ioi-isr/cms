@@ -77,6 +77,8 @@ class TrainingProgramStudentsHandler(BaseHandler):
             student_progress[student.id] = calculate_task_archive_progress(
                 student, student.participation, managing_contest, self.sql_session
             )
+        # Commit to release any advisory locks taken by get_cached_score_entry
+        self.sql_session.commit()
 
         self.r_params["student_progress"] = student_progress
         self.r_params["bulk_add_results"] = None
@@ -271,6 +273,8 @@ class BulkAddTrainingProgramStudentsHandler(BaseHandler):
                 student_progress[student.id] = calculate_task_archive_progress(
                     student, student.participation, managing_contest, self.sql_session
                 )
+            # Commit to release any advisory locks taken by get_cached_score_entry
+            self.sql_session.commit()
 
             self.r_params["student_progress"] = student_progress
             self.r_params["bulk_add_results"] = results
