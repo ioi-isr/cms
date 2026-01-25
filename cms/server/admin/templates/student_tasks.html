@@ -201,10 +201,8 @@
     var table = document.getElementById('student-tasks-table');
     if (!table) return;
 
-      headers.forEach(function(h) {
-        h.classList.remove('sort-asc', 'sort-desc');
-      });
-      header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+    var headers = table.querySelectorAll('th.sortable-header');
+    var sortState = {};
 
     headers.forEach(function(header, index) {
         header.addEventListener('click', function() {

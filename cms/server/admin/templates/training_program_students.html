@@ -75,7 +75,7 @@
     .student-name-wrapper {
         display: flex;
         flex-direction: row;
-        align-items: center;
+        justify-content: flex-start;
         gap: 10px;
         padding: 8px 10px;
     }
@@ -144,6 +144,11 @@
     .btn-icon-only:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+    }
+
+    /* Override content-constraint max-width for student tasks page */
+    .content-constraint {
+        max-width: 900px !important;
     }
 </style>
 
@@ -258,12 +263,12 @@
     <form action="{{ url("training_program", training_program.id, "students") }}" method="POST" id="students-form">
         {{ xsrf_form_html|safe }}
         <div class="tp-table-container">
-            <table class="ranking-table" id="students-table" style="width: auto; min-width: 600px;">
+            <table class="ranking-table" id="students-table" style="width: 100%;">
                 <thead>
                     <tr>
                         <th class="sortable-header" data-sort="string" style="text-align: left;">Student</th>
-                        <th class="sortable-header" data-sort="number" style="text-align: left;">Task Archive Progress</th>
-                        <th class="text-center" style="width: 60px;">Actions</th>
+                        <th class="sortable-header" data-sort="number" style="text-align: left; width: 30%;">Task Archive Progress</th>
+                        <th class="text-center" style="width: 20%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
