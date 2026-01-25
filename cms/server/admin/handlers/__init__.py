@@ -197,6 +197,7 @@ from .trainingday import \
 from .student import \
     TrainingProgramStudentsHandler, \
     AddTrainingProgramStudentHandler, \
+    BulkAddTrainingProgramStudentsHandler, \
     RemoveTrainingProgramStudentHandler, \
     StudentHandler, \
     StudentTagsHandler, \
@@ -374,6 +375,7 @@ HANDLERS = [
     # Training Program tabs
     (r"/training_program/([0-9]+)/students", TrainingProgramStudentsHandler),
     (r"/training_program/([0-9]+)/students/add", AddTrainingProgramStudentHandler),
+    (r"/training_program/([0-9]+)/students/bulk_add", BulkAddTrainingProgramStudentsHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/remove", RemoveTrainingProgramStudentHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/edit", StudentHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/tags", StudentTagsHandler),

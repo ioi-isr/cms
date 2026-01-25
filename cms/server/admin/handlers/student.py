@@ -42,6 +42,7 @@ from cms.server.util import (
     calculate_task_archive_progress,
     get_student_archive_scores,
     parse_tags,
+    parse_usernames_from_file,
 )
 from cmscommon.datetime import make_datetime
 
@@ -78,6 +79,7 @@ class TrainingProgramStudentsHandler(BaseHandler):
             )
 
         self.r_params["student_progress"] = student_progress
+        self.r_params["bulk_add_results"] = None
 
         self.render("training_program_students.html", **self.r_params)
 
@@ -161,6 +163,119 @@ class AddTrainingProgramStudentHandler(BaseHandler):
             self.service.proxy_service.reinitialize()
 
         self.redirect(fallback_page)
+
+
+class BulkAddTrainingProgramStudentsHandler(BaseHandler):
+    """Bulk add students to a training program from a file."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
+
+        try:
+            if "students_file" not in self.request.files:
+                raise ValueError("No file uploaded")
+
+            file_data = self.request.files["students_file"][0]
+            file_content = file_data["body"].decode("utf-8")
+
+            usernames = parse_usernames_from_file(file_content)
+
+            if not usernames:
+                raise ValueError("File is empty or contains no usernames")
+
+            results = []
+            students_added = 0
+
+            for username in usernames:
+                user = self.sql_session.query(User).filter(
+                    User.username == username).first()
+
+                if user is None:
+                    results.append({
+                        "username": username,
+                        "status": "not_found",
+                        "message": "Username does not exist in the system"
+                    })
+                else:
+                    existing_participation = (
+                        self.sql_session.query(Participation)
+                        .filter(Participation.contest == managing_contest)
+                        .filter(Participation.user == user)
+                        .first()
+                    )
+
+                    if existing_participation is not None:
+                        results.append({
+                            "username": username,
+                            "status": "already_exists",
+                            "message": "User is already a student in this program"
+                        })
+                    else:
+                        participation = Participation(
+                            contest=managing_contest,
+                            user=user,
+                            starting_time=make_datetime()
+                        )
+                        self.sql_session.add(participation)
+                        self.sql_session.flush()
+
+                        student = Student(
+                            training_program=training_program,
+                            participation=participation,
+                            student_tags=[]
+                        )
+                        self.sql_session.add(student)
+
+                        for training_day in training_program.training_days:
+                            if training_day.contest is None:
+                                continue
+                            td_participation = Participation(
+                                contest=training_day.contest,
+                                user=user
+                            )
+                            self.sql_session.add(td_participation)
+
+                        results.append({
+                            "username": username,
+                            "status": "success",
+                            "message": "Successfully added to training program"
+                        })
+                        students_added += 1
+
+            if self.try_commit():
+                if students_added > 0:
+                    self.service.proxy_service.reinitialize()
+
+            self.render_params_for_training_program(training_program)
+
+            assigned_user_ids_q = self.sql_session.query(Participation.user_id).filter(
+                Participation.contest == managing_contest
+            )
+
+            self.r_params["unassigned_users"] = (
+                self.sql_session.query(User)
+                .filter(~User.id.in_(assigned_user_ids_q))
+                .filter(~User.username.like(r"\_\_%", escape="\\"))
+                .all()
+            )
+
+            student_progress = {}
+            for student in training_program.students:
+                student_progress[student.id] = calculate_task_archive_progress(
+                    student, student.participation, managing_contest, self.sql_session
+                )
+
+            self.r_params["student_progress"] = student_progress
+            self.r_params["bulk_add_results"] = results
+            self.r_params["students_added"] = students_added
+            self.render("training_program_students.html", **self.r_params)
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Error processing file", repr(error))
+            self.redirect(self.url("training_program", training_program_id, "students"))
 
 
 class RemoveTrainingProgramStudentHandler(BaseHandler):

@@ -208,7 +208,14 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
       {% endif %}
       {% if task_archive_progress_by_participation %}
       {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}
-      <td data-value="{{ progress.get('percentage', 0) }}">{{ "%.1f"|format(progress.get('percentage', 0)) }}% ({{ "%.1f"|format(progress.get('total_score', 0)) }}/{{ "%.1f"|format(progress.get('max_score', 0)) }})</td>
+      {% set details_url = url("training_program", training_program.id, "student", p.user.id, "tasks") %}
+      <td data-value="{{ progress.get('percentage', 0) }}">
+        {% if progress.get('task_count', 0) > 0 %}
+        {{ "%.1f"|format(progress.get('percentage', 0)) }}% ({{ "%.1f"|format(progress.get('total_score', 0)) }}/{{ "%.1f"|format(progress.get('max_score', 0)) }}) [<a href="{{ details_url }}">details</a>]
+        {% else %}
+        No tasks [<a href="{{ details_url }}">details</a>]
+        {% endif %}
+      </td>
       {% endif %}
       {% if show_teams %}
         {% if p.team %}

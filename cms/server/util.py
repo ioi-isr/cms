@@ -595,3 +595,25 @@ def parse_tags(tags_str: str) -> list[str]:
 
     tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
     return deduplicate_preserving_order(tags)
+
+
+def parse_usernames_from_file(file_content: str) -> list[str]:
+    """Parse whitespace-separated usernames from file content.
+
+    This utility handles:
+    - Splitting by whitespace (spaces, newlines, tabs)
+    - Stripping whitespace from each username
+    - Removing empty entries
+    - Deduplicating while preserving order
+
+    Args:
+        file_content: String content of the uploaded file
+
+    Returns:
+        List of unique usernames in order of first appearance
+    """
+    if not file_content:
+        return []
+
+    usernames = [u.strip() for u in file_content.split() if u.strip()]
+    return deduplicate_preserving_order(usernames)
