@@ -42,11 +42,6 @@ CMS.AWSUtils = function(url_root, timestamp,
     this.analysis_enabled = analysis_enabled;
     this.file_asked_name = "";
     this.file_asked_url = "";
-
-    // Ask permission for desktop notifications
-    if ("Notification" in window) {
-        Notification.requestPermission();
-    }
 };
 
 
@@ -313,18 +308,15 @@ CMS.AWSUtils.prototype.desktop_notification = function(type, timestamp,
         return;
     }
 
-    // Ask again, if it was not explicitly denied
-    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
+    // Only show notification if permission was granted
+    if (Notification.permission !== "granted") {
+        return;
     }
 
-    // Create notification
-    if (Notification.permission === "granted") {
-        new Notification(subject, {
-            "body": text,
-            "icon": this.url("static", "favicon.ico")
-        });
-    }
+    new Notification(subject, {
+        "body": text,
+        "icon": this.url("static", "favicon.ico")
+    });
 };
 
 
@@ -1127,6 +1119,20 @@ CMS.AWSUtils.prototype.do_diff = function() {
     var new_id = $("#diff-new-input").val();
     var show_diff = this.bind_func(this, this.show_diff);
     this.ajax_request(this.url("submission_diff", old_id, new_id), null, show_diff);
+};
+
+
+// Request notification permission on first user interaction.
+// This is required by Firefox which only allows permission requests
+// from inside a short running user-generated event handler.
+if ("Notification" in window && Notification.permission === "default") {
+    var cmsRequestNotificationPermissionOnFirstClick = function() {
+        if (Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+        document.removeEventListener("click", cmsRequestNotificationPermissionOnFirstClick);
+    };
+    document.addEventListener("click", cmsRequestNotificationPermissionOnFirstClick);
 }
 
 /**
