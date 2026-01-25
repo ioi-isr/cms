@@ -527,6 +527,35 @@ CMS.AWSUtils.init_table_sort = function(table, ranks_column,
 
 
 /**
+ * Filters table rows based on search text.
+ *
+ * table_id (string): the id of the table to filter.
+ * search_text (string): the text to search for in table rows.
+ */
+CMS.AWSUtils.filter_table = function(table_id, search_text) {
+    var table = document.getElementById(table_id);
+    if (!table) {
+        return;
+    }
+    var rows = table.querySelectorAll("tbody tr");
+    var search_lower = search_text.toLowerCase().trim();
+
+    rows.forEach(function(row) {
+        if (search_lower === "") {
+            row.style.display = "";
+            return;
+        }
+        var text = row.textContent.toLowerCase();
+        if (text.indexOf(search_lower) !== -1) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+};
+
+
+/**
  * Return a string representation of the number with two digits.
  *
  * n (int): a number with one or two digits.
