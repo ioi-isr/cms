@@ -298,14 +298,16 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
         if participation is None:
             raise tornado.web.HTTPError(404)
 
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.participation == participation)
-        self.render_params_for_remove_confirmation(submission_query)
-
-        # Use the helper to set up training program params
+        # Use the helper to set up training program params first
+        # (this initializes r_params, so it must come before render_params_for_remove_confirmation)
         self.render_params_for_training_program(training_program)
         self.r_params["unanswered"] = 0  # Override for deletion confirmation page
         self.r_params["user"] = user
+
+        # Now add submission count (this adds to existing r_params)
+        submission_query = self.sql_session.query(Submission)\
+            .filter(Submission.participation == participation)
+        self.render_params_for_remove_confirmation(submission_query)
 
         # Count submissions and participations from training days
         training_day_contest_ids = [td.contest_id for td in training_program.training_days]
