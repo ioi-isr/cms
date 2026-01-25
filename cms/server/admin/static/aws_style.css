@@ -2302,6 +2302,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     border-radius: 3px;
     transition: width 0.3s ease;
 }
+.progress-bar-inline .bar-fill.color-red { background: #dc2626; }
 .progress-bar-inline .bar-fill.color-orange { background: #f59e0b; }
 .progress-bar-inline .bar-fill.color-blue { background: #3b82f6; }
 .progress-bar-inline .bar-fill.color-green { background: #10b981; }

@@ -1,9 +1,5 @@
 {% extends "base.html" %}
 
-{% block js_init %}
-CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
-{% endblock js_init %}
-
 {% block core %}
 <style>
     /* Page-specific table overrides */
@@ -216,9 +212,8 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
             <table class="ranking-table" id="students-table" style="width: 100%;">
                 <thead>
                     <tr>
-                        <th class="sortable-header" data-sort="string" style="width: 35%; text-align: left;">Student</th>
-                        <th style="width: 25%; text-align: left;">Student Tags</th>
-                        <th class="sortable-header text-center" data-sort="number" style="width: 25%;">Task Archive Progress</th>
+                        <th class="sortable-header" data-sort="string" style="width: 50%; text-align: left;">Student</th>
+                        <th class="sortable-header text-center" data-sort="number" style="width: 35%;">Task Archive Progress</th>
                         <th class="text-center" style="width: 15%;">Actions</th>
                     </tr>
                 </thead>
@@ -228,7 +223,7 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
                     {% set progress = student_progress.get(student.id, {}) %}
                     <tr data-name="{{ u.first_name }} {{ u.last_name }}"
                         data-progress="{{ progress.percentage|default(0) }}">
-                        <!-- Student (combined name column) -->
+                        <!-- Student (combined name column with tags) -->
                         <td>
                             <div class="student-name-wrapper">
                                 <div style="flex: 1; min-width: 0;">
@@ -253,30 +248,23 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
                             </div>
                         </td>
 
-                        <!-- Student Tags (editable display) -->
-                        <td>
-                            <div class="list-cell-wrapper">
-                                {% if student.student_tags %}
-                                <input type="text" class="student-tags-display" value="{{ student.student_tags|join(", ") }}" readonly/>
-                                {% else %}
-                                <span class="no-tags-indicator">No tags</span>
-                                {% endif %}
-                            </div>
-                        </td>
-
-                        <!-- Task Archive Progress (with small bar) -->
+                        <!-- Task Archive Progress (with small bar and score) -->
                         <td class="text-center">
                             <div class="list-cell-wrapper center-content">
                                 {% if progress.task_count > 0 %}
                                 <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none; width: 100%;">
                                     <div class="progress-bar-inline">
-                                        <span class="percentage" style="color: {{ '#059669' if progress.percentage >= 80 else '#d97706' if progress.percentage > 0 else '#9ca3af' }};">
+                                        {% set pct_color = '#059669' if progress.percentage >= 80 else '#d97706' if progress.percentage >= 40 else '#dc2626' %}
+                                        {% set bar_color = 'color-green' if progress.percentage >= 80 else 'color-orange' if progress.percentage >= 40 else 'color-red' %}
+                                        <span class="percentage" style="color: {{ pct_color }};">
                                             {{ "%.0f"|format(progress.percentage) }}%
                                         </span>
                                         <div class="bar-container">
-                                            {% set color_class = 'color-green' if progress.percentage >= 80 else 'color-orange' if progress.percentage > 0 else '' %}
-                                            <div class="bar-fill {{ color_class }}" style="width: {{ progress.percentage }}%;"></div>
+                                            <div class="bar-fill {{ bar_color }}" style="width: {{ progress.percentage }}%;"></div>
                                         </div>
+                                        <span style="font-size: 0.8rem; color: #6b7280; white-space: nowrap;">
+                                            {{ "%.0f"|format(progress.total_score) }}/{{ "%.0f"|format(progress.max_score) }}
+                                        </span>
                                     </div>
                                 </a>
                                 {% else %}
@@ -356,7 +344,7 @@ document.addEventListener('click', function(event) {
                 if (columnIndex === 0) { // Student (name)
                     aVal = a.getAttribute('data-name').toLowerCase();
                     bVal = b.getAttribute('data-name').toLowerCase();
-                } else if (columnIndex === 2) { // Task Archive Progress
+                } else if (columnIndex === 1) { // Task Archive Progress
                     aVal = parseFloat(a.getAttribute('data-progress')) || 0;
                     bVal = parseFloat(b.getAttribute('data-progress')) || 0;
                 }
