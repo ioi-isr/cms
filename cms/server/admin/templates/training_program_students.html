@@ -127,6 +127,24 @@
         font-weight: normal;
         font-size: 0.7em;
     }
+    /* Icon-only button for actions */
+    .btn-icon-only {
+        background: none;
+        border: none;
+        padding: 6px;
+        cursor: pointer;
+        color: #9ca3af;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+    .btn-icon-only:hover {
+        color: #dc2626;
+        background: #fef2f2;
+    }
+    .btn-icon-only:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 </style>
 
 <div class="content-constraint">
@@ -240,12 +258,12 @@
     <form action="{{ url("training_program", training_program.id, "students") }}" method="POST" id="students-form">
         {{ xsrf_form_html|safe }}
         <div class="tp-table-container">
-            <table class="ranking-table" id="students-table" style="width: 100%;">
+            <table class="ranking-table" id="students-table" style="width: auto; min-width: 600px;">
                 <thead>
                     <tr>
-                        <th class="sortable-header" data-sort="string" style="width: 50%; text-align: left;">Student</th>
-                        <th class="sortable-header text-center" data-sort="number" style="width: 35%;">Task Archive Progress</th>
-                        <th class="text-center" style="width: 15%;">Actions</th>
+                        <th class="sortable-header" data-sort="string" style="text-align: left;">Student</th>
+                        <th class="sortable-header" data-sort="number" style="text-align: left;">Task Archive Progress</th>
+                        <th class="text-center" style="width: 60px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -278,10 +296,10 @@
                         </td>
 
                         <!-- Task Archive Progress (with small bar and score) -->
-                        <td class="text-center">
-                            <div class="list-cell-wrapper center-content">
+                        <td>
+                            <div class="list-cell-wrapper">
                                 {% if progress.task_count > 0 %}
-                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none; width: 100%;">
+                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none;">
                                     <div class="progress-bar-inline">
                                         {% set pct_color = '#059669' if progress.percentage >= 80 else '#d97706' if progress.percentage >= 40 else '#dc2626' %}
                                         {% set bar_color = 'color-green' if progress.percentage >= 80 else 'color-orange' if progress.percentage >= 40 else 'color-red' %}
@@ -289,7 +307,7 @@
                                             {{ "%.0f"|format(progress.percentage) }}%
                                         </span>
                                         <div class="bar-container">
-                                            <div class="bar-fill {{ bar_color }}" style="width: {{ progress.percentage }}%;"></div>
+                                            <div class="bar-fill {{ bar_color }}" style="width: {{ [progress.percentage, 5]|max if progress.percentage > 0 else 0 }}%;"></div>
                                         </div>
                                         <span style="font-size: 0.8rem; color: #6b7280; white-space: nowrap;">
                                             {{ "%.0f"|format(progress.total_score) }}/{{ "%.0f"|format(progress.max_score) }}
@@ -307,11 +325,16 @@
                         <!-- Actions -->
                         <td class="text-center">
                             <div class="list-cell-wrapper center-content">
-                                <button type="submit" name="operation" value="remove_{{ u.id }}" class="btn-remove"
+                                <button type="submit" name="operation" value="remove_{{ u.id }}" class="btn-icon-only"
                                     {% if not admin.permission_all %}disabled{% endif %}
                                     onclick="return confirm('Are you sure you want to remove {{ u.username }} from the training program?');"
                                     title="Remove from program">
-                                    Remove
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
                                 </button>
                             </div>
                         </td>
