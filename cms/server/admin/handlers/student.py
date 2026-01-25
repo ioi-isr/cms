@@ -81,6 +81,10 @@ class TrainingProgramStudentsHandler(BaseHandler):
         self.r_params["student_progress"] = student_progress
         self.r_params["bulk_add_results"] = None
 
+        # For bulk assign task modal
+        self.r_params["all_tasks"] = managing_contest.get_tasks()
+        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+
         self.render("training_program_students.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -864,28 +868,17 @@ class RemoveStudentTaskHandler(BaseHandler):
 
 
 class BulkAssignTaskHandler(BaseHandler):
-    """Bulk assign a task to all students with a given tag."""
+    """Bulk assign a task to all students with a given tag.
 
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-
-        # Get all tasks in the training program
-        all_tasks = managing_contest.get_tasks()
-
-        # Get all unique student tags
-        all_student_tags = get_all_student_tags(training_program)
-
-        self.render_params_for_training_program(training_program)
-        self.r_params["all_tasks"] = all_tasks
-        self.r_params["all_student_tags"] = all_student_tags
-        self.render("bulk_assign_task.html", **self.r_params)
+    Note: The GET method was removed as the bulk assign task functionality
+    is now handled via a modal dialog on the students page.
+    """
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str):
+        # Redirect to students page (modal is now on that page)
         fallback_page = self.url(
-            "training_program", training_program_id, "bulk_assign_task"
+            "training_program", training_program_id, "students"
         )
 
         training_program = self.safe_get_item(TrainingProgram, training_program_id)

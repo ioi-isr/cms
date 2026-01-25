@@ -1,157 +1,6 @@
 {% extends "base.html" %}
 
 {% block core %}
-<style>
-    /* Page-specific table overrides */
-    #students-table thead th {
-        position: static !important;
-        top: auto !important;
-        left: auto !important;
-        z-index: auto !important;
-        box-shadow: none !important;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-        color: #64748b;
-        background: #f8fafc;
-        padding: 14px 16px !important;
-    }
-
-    #students-table td {
-        padding: 0;
-    }
-
-    /* Hidden file input styling */
-    .file-input-hidden {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        border: 0;
-    }
-
-    /* Add student modal/dropdown styling */
-    .add-student-dropdown {
-        position: relative;
-        display: inline-block;
-    }
-
-    .add-student-form {
-        display: none;
-        position: absolute;
-        top: 100%;
-        right: 0;
-        margin-top: 8px;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        z-index: 100;
-        min-width: 300px;
-    }
-
-    .add-student-form.show {
-        display: block;
-    }
-
-    .add-student-form label {
-        display: block;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 6px;
-    }
-
-    .add-student-form .searchable-select {
-        width: 100%;
-        margin-bottom: 12px;
-    }
-
-    /* Student name wrapper for combined column */
-    .student-name-wrapper {
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        gap: 10px;
-        padding: 8px 10px;
-    }
-    .student-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        object-fit: cover;
-        flex-shrink: 0;
-        background: #e5e7eb;
-    }
-    .student-avatar-placeholder {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #0F766E 0%, #14b8a6 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        font-size: 0.85rem;
-        flex-shrink: 0;
-    }
-    .student-info {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px;
-        min-width: 0;
-    }
-    .student-name-link {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: #1e293b;
-        font-weight: 600;
-        text-decoration: none;
-    }
-    .student-name-link:hover {
-        color: #0F766E;
-    }
-    .student-username {
-        font-size: 0.8em;
-        color: #64748b;
-        white-space: nowrap;
-    }
-    .student-tag-inline {
-        font-weight: normal;
-        font-size: 0.7em;
-    }
-    /* Icon-only button for actions */
-    .btn-icon-only {
-        background: none;
-        border: none;
-        padding: 6px;
-        cursor: pointer;
-        color: #9ca3af;
-        border-radius: 4px;
-        transition: all 0.2s;
-    }
-    .btn-icon-only:hover {
-        color: #dc2626;
-        background: #fef2f2;
-    }
-    .btn-icon-only:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    /* Override content-constraint max-width for student tasks page */
-    .content-constraint {
-        max-width: 900px !important;
-    }
-</style>
-
 <div class="content-constraint">
     <!-- Header -->
     <div class="page-title" style="margin-bottom: 24px;">
@@ -182,13 +31,13 @@
         </form>
 
         <!-- Bulk Assign Task Button -->
-        <a href="{{ url("training_program", training_program.id, "bulk_assign_task") }}" class="btn-outline">
+        <button type="button" class="btn-outline" onclick="openBulkAssignModal()">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                 <line x1="7" y1="7" x2="7.01" y2="7"></line>
             </svg>
             Bulk Assign Task
-        </a>
+        </button>
 
         <!-- Add Student Button with Dropdown -->
         <div class="add-student-dropdown">
@@ -425,5 +274,108 @@ document.addEventListener('click', function(event) {
         });
     });
 })();
+
+// Bulk Assign Task Modal
+var bulkAssignModal = null;
+var bulkAssignTagify = null;
+
+function initBulkAssignModal() {
+    bulkAssignModal = document.getElementById('bulkAssignModal');
+    if (!bulkAssignModal) return;
+
+    // Initialize tagify for tag selection
+    var tagInput = document.getElementById('bulkAssignTagInput');
+    if (tagInput && typeof Tagify !== 'undefined') {
+        var whitelist = {{ all_student_tags | tojson }};
+        bulkAssignTagify = new Tagify(tagInput, {
+            mode: 'select',
+            whitelist: whitelist,
+            enforceWhitelist: true,
+            editTags: false,
+            dropdown: {
+                maxItems: 20,
+                enabled: 0,
+                closeOnSelect: true
+            },
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.length ? valuesArr[0].value : '';
+            }
+        });
+    }
+
+    // Close modal on backdrop click
+    bulkAssignModal.addEventListener('click', function(e) {
+        if (e.target === bulkAssignModal) {
+            closeBulkAssignModal();
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && bulkAssignModal.style.display === 'flex') {
+            closeBulkAssignModal();
+        }
+    });
+}
+
+function openBulkAssignModal() {
+    if (!bulkAssignModal) {
+        initBulkAssignModal();
+    }
+    if (bulkAssignModal) {
+        bulkAssignModal.style.display = 'flex';
+        // Reset form
+        var taskSelect = document.getElementById('bulkAssignTaskSelect');
+        if (taskSelect) taskSelect.selectedIndex = 0;
+        if (bulkAssignTagify) bulkAssignTagify.removeAllTags();
+    }
+}
+
+function closeBulkAssignModal() {
+    if (bulkAssignModal) {
+        bulkAssignModal.style.display = 'none';
+    }
+}
+
+// Initialize modal on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initBulkAssignModal();
+});
 </script>
+
+<!-- Bulk Assign Task Modal -->
+<div id="bulkAssignModal" class="bulk-assign-modal" style="display: none;">
+    <div class="bulk-assign-modal-content">
+        <div class="bulk-assign-modal-header">
+            <h2>Bulk Assign Task</h2>
+            <button type="button" class="bulk-assign-close-btn" onclick="closeBulkAssignModal()">&times;</button>
+        </div>
+        <p class="bulk-assign-description">
+            Assign a task to all students who have the specified tag.
+            Students who already have the task assigned will be skipped.
+        </p>
+        <form action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
+            {{ xsrf_form_html|safe }}
+            <div class="bulk-assign-form-group">
+                <label for="bulkAssignTaskSelect">Task</label>
+                <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
+                    <option value="" selected disabled hidden>Select a task...</option>
+                    {% for task in all_tasks %}
+                    <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="bulk-assign-form-group">
+                <label for="bulkAssignTagInput">Student Tag</label>
+                <input type="text" name="tag" id="bulkAssignTagInput" placeholder="Select a student tag..." />
+            </div>
+            <div class="bulk-assign-form-actions">
+                <button type="button" class="btn-outline" onclick="closeBulkAssignModal()">Cancel</button>
+                <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
+                    Assign Task to Group
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock core %}
