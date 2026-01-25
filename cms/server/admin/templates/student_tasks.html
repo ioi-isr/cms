@@ -94,7 +94,7 @@
 
                     <!-- Task -->
                     <td>
-                        <div class="list-cell-wrapper">
+                        <div class="list-cell-wrapper" style="flex-direction: column; align-items: flex-start;">
                             <div style="font-weight: 600; font-size: 0.95rem;">
                                 <a href="{{ url("task", st.task.id) }}" class="student-name-link">{{ st.task.name }}</a>
                             </div>
@@ -123,9 +123,9 @@
 
                     <!-- Date -->
                     <td>
-                        <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem;">
-                            {{ st.assigned_at.strftime('%Y-%m-%d') if st.assigned_at else '-' }}
-                            <span style="color: #94a3b8;">{{ st.assigned_at.strftime('%H:%M') if st.assigned_at else '' }}</span>
+                        <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                            <div>{{ st.assigned_at.strftime('%Y-%m-%d') if st.assigned_at else '-' }}</div>
+                            <div style="color: #94a3b8; font-size: 0.9em;">{{ st.assigned_at.strftime('%H:%M') if st.assigned_at else '' }}</div>
                         </div>
                     </td>
 
@@ -176,8 +176,13 @@
                         <div class="list-cell-wrapper center-content">
                             <form action="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "remove") }}" method="POST" style="margin: 0;">
                                 {{ xsrf_form_html|safe }}
-                                <button type="submit" class="btn-remove" {% if not admin.permission_all %}disabled{% endif %} onclick="return confirm('Are you sure you want to remove this task from the student\'s archive?');" title="Remove task">
-                                    Remove
+                                <button type="submit" class="btn-icon-only" {% if not admin.permission_all %}disabled{% endif %} onclick="return confirm('Are you sure you want to remove this task from the student\'s archive?');" title="Remove task">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
                                 </button>
                             </form>
                         </div>
