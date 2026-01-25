@@ -76,15 +76,41 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
+        gap: 10px;
+        padding: 8px 10px;
+    }
+    .student-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: #e5e7eb;
+    }
+    .student-avatar-placeholder {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0F766E 0%, #14b8a6 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+    .student-info {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
     }
     .student-name-link {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        display: block;
-        max-width: 100%;
         color: #1e293b;
         font-weight: 600;
         text-decoration: none;
@@ -95,6 +121,11 @@
     .student-username {
         font-size: 0.8em;
         color: #64748b;
+        white-space: nowrap;
+    }
+    .student-tag-inline {
+        font-weight: normal;
+        font-size: 0.7em;
     }
 </style>
 
@@ -222,28 +253,26 @@
                     {% set u = student.participation.user %}
                     {% set progress = student_progress.get(student.id, {}) %}
                     <tr data-name="{{ u.first_name }} {{ u.last_name }}"
-                        data-progress="{{ progress.percentage|default(0) }}">
-                        <!-- Student (combined name column with tags) -->
+                        data-progress="{{ progress.percentage|default(0) }}"
+                        data-has-tasks="{{ 'true' if progress.task_count > 0 else 'false' }}">
+                        <!-- Student (combined name column with avatar and tags inline) -->
                         <td>
                             <div class="student-name-wrapper">
-                                <div style="flex: 1; min-width: 0;">
-                                    <div style="display: flex; align-items: baseline; gap: 6px; max-width: 100%;">
-                                        <a class="student-name-link"
-                                           href="{{ url("training_program", training_program.id, "student", u.id, "edit") }}"
-                                           title="{{ u.first_name }} {{ u.last_name }}">
-                                            {{ u.first_name }} {{ u.last_name }}
-                                        </a>
-                                        <span class="student-username">
-                                            ({{ u.username }})
-                                        </span>
-                                    </div>
-                                    {% if student.student_tags %}
-                                    <div style="margin-top: 3px; display: flex; flex-wrap: wrap; gap: 2px;">
-                                        {% for tag in student.student_tags %}
-                                          <span class="badge badge-teal" style="font-weight: normal; font-size: 0.7em;">{{ tag }}</span>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
+                                {% if u.picture %}
+                                <img class="student-avatar" src="{{ url("file", u.picture, "picture") }}" alt="{{ u.first_name }} {{ u.last_name }}"/>
+                                {% else %}
+                                <div class="student-avatar-placeholder">{{ u.first_name[0] }}{{ u.last_name[0] }}</div>
+                                {% endif %}
+                                <div class="student-info">
+                                    <a class="student-name-link"
+                                       href="{{ url("training_program", training_program.id, "student", u.id, "edit") }}"
+                                       title="{{ u.first_name }} {{ u.last_name }}">
+                                        {{ u.first_name }} {{ u.last_name }}
+                                    </a>
+                                    <span class="student-username">({{ u.username }})</span>
+                                    {% for tag in student.student_tags %}
+                                    <span class="badge badge-teal student-tag-inline">{{ tag }}</span>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </td>
@@ -340,6 +369,14 @@ document.addEventListener('click', function(event) {
 
             rows.sort(function(a, b) {
                 var aVal, bVal;
+                var aHasTasks = a.getAttribute('data-has-tasks') === 'true';
+                var bHasTasks = b.getAttribute('data-has-tasks') === 'true';
+
+                // Always put "No tasks" students at the end
+                if (columnIndex === 1) { // Task Archive Progress
+                    if (!aHasTasks && bHasTasks) return 1;
+                    if (aHasTasks && !bHasTasks) return -1;
+                }
 
                 if (columnIndex === 0) { // Student (name)
                     aVal = a.getAttribute('data-name').toLowerCase();
