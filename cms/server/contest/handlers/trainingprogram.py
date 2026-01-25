@@ -24,8 +24,10 @@ including the overview page and training days page.
 from datetime import timedelta
 
 import tornado.web
+from sqlalchemy import func
 
-from cms.db import Participation, Student, ArchivedStudentRanking
+from cms.db import Participation, Student, ArchivedStudentRanking, Submission, Task
+from cms.grading.scorecache import get_cached_score_entry
 from cms.server import multi_contest
 from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
 from cms.server.util import check_training_day_eligibility, calculate_task_archive_progress
@@ -66,13 +68,36 @@ class TrainingProgramOverviewHandler(ContestHandler):
 
         # Calculate task archive progress using shared utility
         if student is not None:
+            # Get submission counts for each task (batch query for efficiency)
+            student_task_ids = [st.task_id for st in student.student_tasks]
+            submission_counts = {}
+            if student_task_ids:
+                counts = (
+                    self.sql_session.query(
+                        Submission.task_id,
+                        func.count(Submission.id)
+                    )
+                    .filter(Submission.participation_id == participation.id)
+                    .filter(Submission.task_id.in_(student_task_ids))
+                    .group_by(Submission.task_id)
+                    .all()
+                )
+                submission_counts = {task_id: count for task_id, count in counts}
+
             progress = calculate_task_archive_progress(
-                student, participation, contest, include_task_details=True
+                student,
+                participation,
+                contest,
+                self.sql_session,
+                include_task_details=True,
+                submission_counts=submission_counts,
             )
             total_score = progress["total_score"]
             max_score = progress["max_score"]
             percentage = progress["percentage"]
             task_scores = progress["task_scores"]
+            # Commit to release any advisory locks taken by get_cached_score_entry
+            self.sql_session.commit()
         else:
             # No student record - show no tasks
             total_score = 0.0
@@ -217,12 +242,17 @@ class TrainingDaysHandler(ContestHandler):
             )
             archived_rankings_map = {r.training_day_id: r for r in archived_rankings}
 
+        # Build task_by_id mapping for get_cached_score_entry in _build_past_training_info
+        managing_contest = training_program.managing_contest
+        task_by_id = {task.id: task for task in managing_contest.get_tasks()}
+
         for training_day in training_program.training_days:
             td_contest = training_day.contest
 
             if td_contest is None:
                 past_trainings.append(self._build_past_training_info(
-                    training_day, student, participation, archived_rankings_map
+                    training_day, student, participation, archived_rankings_map,
+                    task_by_id
                 ))
                 continue
 
@@ -282,6 +312,9 @@ class TrainingDaysHandler(ContestHandler):
                 "can_enter_soon": can_enter_soon,
             })
 
+        # Commit to release advisory locks from cache rebuilds in _build_past_training_info
+        self.sql_session.commit()
+
         ongoing_upcoming_trainings.sort(key=lambda x: x["user_start_time"])
         past_trainings.sort(
             key=lambda x: x["start_time"] if x["start_time"] else self.timestamp,
@@ -301,9 +334,14 @@ class TrainingDaysHandler(ContestHandler):
         training_day,
         student: Student | None,
         participation: Participation,
-        archived_rankings_map: dict
+        archived_rankings_map: dict,
+        task_by_id: dict[int, Task],
     ) -> dict:
-        """Build info dict for a past (archived) training day."""
+        """Build info dict for a past (archived) training day.
+
+        task_by_id: mapping of task_id -> Task for tasks in the managing contest.
+                    Used to get fresh home scores via get_cached_score_entry.
+        """
         training_score = 0.0
         home_score = 0.0
         max_score = 0.0
@@ -318,10 +356,6 @@ class TrainingDaysHandler(ContestHandler):
             if archived_ranking and archived_ranking.task_scores:
                 archived_task_scores = archived_ranking.task_scores
 
-            cached_scores = {}
-            for pts in participation.task_scores:
-                cached_scores[pts.task_id] = pts.score
-
             for task_id_str, task_data in archived_tasks_data.items():
                 task_max_score = task_data.get("max_score", 100.0)
                 max_score += task_max_score
@@ -330,7 +364,16 @@ class TrainingDaysHandler(ContestHandler):
                 training_score += task_training_score
 
                 task_id = int(task_id_str)
-                task_home_score = cached_scores.get(task_id, 0.0)
+                # Get fresh home score using get_cached_score_entry if task exists
+                task = task_by_id.get(task_id)
+                if task is not None:
+                    cache_entry = get_cached_score_entry(
+                        self.sql_session, participation, task
+                    )
+                    task_home_score = cache_entry.score
+                else:
+                    # Task no longer exists in managing contest
+                    task_home_score = 0.0
                 home_score += task_home_score
 
                 tasks_info.append({

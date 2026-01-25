@@ -197,10 +197,12 @@ from .trainingday import \
 from .student import \
     TrainingProgramStudentsHandler, \
     AddTrainingProgramStudentHandler, \
+    BulkAddTrainingProgramStudentsHandler, \
     RemoveTrainingProgramStudentHandler, \
     StudentHandler, \
     StudentTagsHandler, \
     StudentTasksHandler, \
+    StudentTaskSubmissionsHandler, \
     AddStudentTaskHandler, \
     RemoveStudentTaskHandler, \
     BulkAssignTaskHandler
@@ -373,12 +375,14 @@ HANDLERS = [
     # Training Program tabs
     (r"/training_program/([0-9]+)/students", TrainingProgramStudentsHandler),
     (r"/training_program/([0-9]+)/students/add", AddTrainingProgramStudentHandler),
+    (r"/training_program/([0-9]+)/students/bulk_add", BulkAddTrainingProgramStudentsHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/remove", RemoveTrainingProgramStudentHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/edit", StudentHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/tags", StudentTagsHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/tasks", StudentTasksHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/tasks/add", AddStudentTaskHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/task/([0-9]+)/remove", RemoveStudentTaskHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/task/([0-9]+)/submissions", StudentTaskSubmissionsHandler),
     (r"/training_program/([0-9]+)/bulk_assign_task", BulkAssignTaskHandler),
     (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
     (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),

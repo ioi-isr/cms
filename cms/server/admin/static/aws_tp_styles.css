@@ -1,0 +1,1451 @@
+/**
+ * Training Program Styles (aws_tp_styles.css)
+ *
+ * This file contains styles specific to training program pages in the admin interface.
+ * It uses CSS custom properties (variables) for colors to enable easy theming.
+ */
+
+/* ==========================================================================
+   Color Variables for Theming
+   ========================================================================== */
+
+:root {
+    /* Primary colors (teal theme) */
+    --tp-primary: #0F766E;
+    --tp-primary-hover: #0d655e;
+    --tp-primary-light: #14b8a6;
+    --tp-primary-gradient: linear-gradient(135deg, #0F766E 0%, #14b8a6 100%);
+
+    /* Status colors */
+    --tp-success: #059669;
+    --tp-success-light: #d1fae5;
+    --tp-success-dark: #065f46;
+
+    --tp-warning: #d97706;
+    --tp-warning-light: #fef3c7;
+    --tp-warning-dark: #92400e;
+
+    --tp-danger: #dc2626;
+    --tp-danger-light: #fef2f2;
+    --tp-danger-dark: #991b1b;
+    --tp-danger-border: #fecaca;
+
+    /* Info colors (blue) */
+    --tp-info: #3b82f6;
+    --tp-info-hover: #2563eb;
+    --tp-info-light: #f0f9ff;
+    --tp-info-border: #bae6fd;
+    --tp-info-dark: #0369a1;
+
+    /* Neutral colors */
+    --tp-text-primary: #1e293b;
+    --tp-text-secondary: #374151;
+    --tp-text-muted: #64748b;
+    --tp-text-light: #9ca3af;
+    --tp-text-lighter: #6b7280;
+
+    /* Background colors */
+    --tp-bg-white: #ffffff;
+    --tp-bg-light: #f8fafc;
+    --tp-bg-gray: #f3f4f6;
+    --tp-bg-hover: #f9fafb;
+
+    /* Border colors */
+    --tp-border: #e5e7eb;
+    --tp-border-light: #e2e8f0;
+    --tp-border-dark: #cbd5e1;
+
+    /* Shadow */
+    --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+    --tp-shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ==========================================================================
+   Page Layout
+   ========================================================================== */
+
+.page-title {
+    margin-bottom: 24px;
+}
+
+.page-title h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: var(--tp-text-primary);
+}
+
+.page-subtitle {
+    margin-top: 4px;
+    font-size: 0.9rem;
+    color: var(--tp-text-muted);
+}
+
+.page-subtitle a {
+    color: #475569;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.page-subtitle a:hover {
+    color: var(--tp-primary);
+}
+
+/* ==========================================================================
+   Action Buttons Row
+   ========================================================================== */
+
+.action-buttons-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 0;
+    margin-bottom: 16px;
+}
+
+/* Outline button style */
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--tp-bg-white);
+    color: var(--tp-text-secondary);
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    font-family: inherit;
+}
+
+.btn-outline:hover {
+    background: var(--tp-bg-hover);
+    border-color: var(--tp-text-light);
+    color: var(--tp-text-primary);
+}
+
+.btn-outline svg,
+.btn-outline .btn-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* ==========================================================================
+   Sortable Table Headers
+   ========================================================================== */
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+    white-space: nowrap;
+}
+
+.sortable-header:hover {
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-light);
+}
+
+.sortable-header::after {
+    content: '\2195';
+    font-size: 1.1em;
+    margin-left: 5px;
+    opacity: 0.3;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.sortable-header.sort-asc::after {
+    content: '\2191';
+    opacity: 1;
+    color: var(--tp-primary);
+}
+
+.sortable-header.sort-desc::after {
+    content: '\2193';
+    opacity: 1;
+    color: var(--tp-primary);
+}
+
+/* ==========================================================================
+   Hidden File Input (for file upload buttons)
+   ========================================================================== */
+
+.file-input-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+}
+
+/* ==========================================================================
+   Add Student Dropdown/Modal
+   ========================================================================== */
+
+.add-student-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.add-student-form {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: var(--tp-shadow-lg);
+    z-index: 100;
+    min-width: 300px;
+}
+
+.add-student-form.show {
+    display: block;
+}
+
+.add-student-form label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    margin-bottom: 6px;
+}
+
+.add-student-form .searchable-select {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+/* ==========================================================================
+   Student Table Styles
+   ========================================================================== */
+
+/* Page-specific table overrides */
+#students-table thead th {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--tp-text-muted);
+    background: var(--tp-bg-light);
+    padding: 14px 16px !important;
+}
+
+#students-table td {
+    padding: 0;
+}
+
+.student-name-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+}
+
+.student-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--tp-border);
+}
+
+.student-avatar-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--tp-primary-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.student-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.student-name-link {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--tp-text-primary);
+    font-weight: 600;
+    text-decoration: none;
+    max-width: 150px;
+    display: block;
+}
+
+.student-name-link:hover {
+    color: var(--tp-primary);
+}
+
+.student-username {
+    font-size: 0.8em;
+    color: var(--tp-text-muted);
+    white-space: nowrap;
+}
+
+.student-tag-inline {
+    font-weight: normal;
+    font-size: 0.7em;
+}
+
+/* ==========================================================================
+   Progress Bar (inline style)
+   ========================================================================== */
+
+.progress-bar-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-bar-inline .percentage {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    min-width: 40px;
+    text-align: right;
+}
+
+.progress-bar-inline .bar-container {
+    flex: 1;
+    height: 6px;
+    background: var(--tp-border);
+    border-radius: 3px;
+    overflow: hidden;
+    width: 120px;
+}
+
+.progress-bar-inline .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-bar-inline .bar-fill.color-green {
+    background: var(--tp-success);
+}
+
+.progress-bar-inline .bar-fill.color-orange {
+    background: var(--tp-warning);
+}
+
+.progress-bar-inline .bar-fill.color-red {
+    background: var(--tp-danger);
+}
+
+/* ==========================================================================
+   Icon-only Button (for actions like delete)
+   ========================================================================== */
+
+.btn-icon-only {
+    background: none;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--tp-text-light);
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-icon-only:hover {
+    color: var(--tp-danger);
+    background: var(--tp-danger-light);
+}
+
+.btn-icon-only:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   List Cell Wrapper (for table cells)
+   ========================================================================== */
+
+.list-cell-wrapper {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+}
+
+.list-cell-wrapper.center-content {
+    justify-content: center;
+}
+
+/* ==========================================================================
+   Form Groups (for modals and forms)
+   ========================================================================== */
+
+.tp-form-group {
+    margin-bottom: 16px;
+}
+
+.tp-form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    margin-bottom: 6px;
+}
+
+.tp-form-group input[type="text"],
+.tp-form-group select {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.tp-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--tp-border);
+}
+
+/* ==========================================================================
+   Bulk Assign Task Modal (specific styles)
+   ========================================================================== */
+
+.bulk-assign-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+/* Ensure Tagify dropdown appears above the modal */
+.tagify__dropdown {
+    z-index: 10001 !important;
+}
+
+.bulk-assign-modal-content {
+    background: var(--tp-bg-white);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: var(--tp-shadow-xl);
+}
+
+.bulk-assign-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+.bulk-assign-modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--tp-text-primary);
+}
+
+.bulk-assign-close-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--tp-text-lighter);
+    line-height: 1;
+    padding: 0;
+}
+
+.bulk-assign-close-btn:hover {
+    color: var(--tp-text-primary);
+}
+
+.bulk-assign-description {
+    color: var(--tp-text-lighter);
+    font-size: 0.9rem;
+    margin: 0 0 20px 0;
+    padding: 0;
+}
+
+.bulk-assign-form-group {
+    margin-bottom: 16px;
+}
+
+.bulk-assign-form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    margin-bottom: 6px;
+}
+
+.bulk-assign-form-group input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.bulk-assign-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--tp-border);
+}
+
+/* ==========================================================================
+   Text Utilities
+   ========================================================================== */
+
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-muted {
+    color: var(--tp-text-muted);
+}
+
+.text-success {
+    color: var(--tp-success);
+}
+
+.text-warning {
+    color: var(--tp-warning);
+}
+
+.text-danger {
+    color: var(--tp-danger);
+}
+
+/* ==========================================================================
+   Table Styles
+   ========================================================================== */
+
+/* Common Table Styles */
+.attendance-table,
+.ranking-table {
+    width: auto;
+    border-collapse: separate; /* Required for sticky headers */
+    border-spacing: 0;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+/* Force border-box for consistency */
+.ranking-table *, .attendance-table * {
+    box-sizing: border-box;
+}
+
+.attendance-table th,
+.attendance-table td,
+.ranking-table th,
+.ranking-table td {
+    padding: 0; /* Reset padding, inner divs handle it */
+    border-bottom: 1px solid var(--tp-border);
+    border-right: 1px solid var(--tp-border);
+    background-clip: padding-box;
+    vertical-align: middle;
+    height: 1px;
+}
+
+.attendance-table th,
+.attendance-table td {
+    vertical-align: top;
+}
+
+/* --- Sticky Headers & Columns --- */
+
+/* 1. Header Rows */
+.attendance-table thead th,
+.ranking-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: var(--tp-bg-light);
+    z-index: 10;
+    color: var(--tp-text-secondary);
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 1px 0 var(--tp-border); /* Visual bottom border */
+    padding: 10px 12px; /* Headers get direct padding */
+}
+
+.ranking-table thead th.student-header {
+    text-align: left;
+    vertical-align: middle;
+}
+
+/* 2. First Column (Students) */
+.attendance-table tbody th,
+.ranking-table tbody th {
+    position: sticky;
+    left: 0;
+    background-color: var(--tp-bg-white);
+    z-index: 8;
+    text-align: left;
+    min-width: 250px;
+    max-width: 300px;
+    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.1);
+    clip-path: inset(0px -10px 0px 0px);
+    border-right: 1px solid var(--tp-border);
+    border-bottom: 1px solid var(--tp-bg-gray);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--tp-text-primary);
+    padding: 0;
+}
+
+/* 3. Top-Left Corner */
+.attendance-table thead tr:first-child th:first-child,
+.ranking-table thead tr:first-child th:first-child {
+    left: 0;
+    z-index: 20;
+    background-color: var(--tp-bg-light);
+    box-shadow: 1px 1px 0 var(--tp-border);
+}
+
+/* --- Attendance Table Specifics --- */
+.date-header-main {
+    font-size: 0.95rem;
+    color: var(--tp-text-primary);
+}
+
+.date-header-sub {
+    font-size: 0.75rem;
+    color: var(--tp-text-muted);
+    font-weight: normal;
+    margin-top: 2px;
+}
+
+/* Wrapper for cell content */
+.cell-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px;
+    padding: 10px 12px;
+}
+
+/* Modern Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.status-on-time {
+    background-color: var(--tp-success-light);
+    color: var(--tp-success-dark);
+}
+
+.status-delayed {
+    background-color: var(--tp-warning-light);
+    color: var(--tp-warning-dark);
+}
+
+.status-missed  {
+    background-color: var(--tp-danger-light);
+    color: var(--tp-danger-dark);
+}
+
+.status-unknown {
+    background-color: var(--tp-bg-gray);
+    color: var(--tp-text-light);
+}
+
+.location-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--tp-text-light);
+}
+
+.location-icon {
+    font-size: 0.85rem;
+}
+
+.reason-text {
+    font-size: 0.75rem;
+    color: var(--tp-text-muted);
+    background: var(--tp-bg-hover);
+    border-left: 2px solid var(--tp-border);
+    padding: 2px 6px;
+    margin-top: 2px;
+    white-space: normal;
+    max-width: 200px;
+}
+
+.attendance-table .empty-cell {
+    color: var(--tp-border);
+    font-size: 1.5rem;
+    line-height: 0.5;
+    padding: 10px;
+    text-align: center;
+}
+
+/* Content wrapper for Ranking cells */
+.cell-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    font-size: 1.25rem; /* Much smaller than 1.5em */
+    font-weight: 600;
+    border-radius: 6px; /* Soften the blockiness */
+    margin: 4px; /* Give the cell breathing room inside the grid */
+    height: calc(100% - 8px);
+    width: calc(100% - 8px);
+    color: var(--tp-text-primary); /* Dark Slate, not black */
+    background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3));
+}
+
+/* Hover effects */
+.ranking-table tbody tr:hover td {
+    background-color: var(--tp-bg-hover);
+}
+
+.ranking-table tbody tr:hover th {
+    background-color: var(--tp-bg-hover);
+}
+
+.ranking-table tbody tr:nth-child(even) {
+    background-color: var(--tp-bg-light); /* Very light gray */
+}
+
+/* Badge Styles */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 9999px;
+    margin-right: 4px;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+}
+
+.badge-pill {
+    border-radius: 9999px;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.badge-teal {
+    background-color: var(--tp-success-light);
+    color: var(--tp-success-dark);
+    border-color: #ccfbf1;
+}
+
+.badge-slate {
+    background-color: var(--tp-bg-light);
+    color: var(--tp-text-secondary);
+    border-color: var(--tp-border);
+}
+
+.ranking-table thead th {
+    position: sticky;
+}
+
+.ranking-table thead tr:first-child th {
+    height: auto;
+    padding: 12px 8px;
+    background-color: var(--tp-bg-white);
+    border-bottom: 2px solid var(--tp-border);
+}
+
+.ranking-table thead tr:nth-child(2) th {
+    top: var(--ranking-header-top);
+    z-index: 15;
+    box-shadow: 0 2px 4px -2px rgba(0,0,0,0.1);
+    background-color: var(--tp-bg-white);
+}
+
+.ranking-table thead tr:first-child th[rowspan="2"] {
+    top: 0;
+    height: auto;
+    z-index: 30;
+    background-color: var(--tp-bg-light);
+    vertical-align: middle;
+}
+
+.ranking-table thead tr:first-child th.student-header {
+    left: 0;
+    z-index: 40;
+    border-right: 2px solid var(--tp-border);
+    width: 250px;
+}
+
+.ranking-table thead th.global-total-header {
+    z-index: 25;
+}
+
+/* ==========================================================================
+   Training Program Layout & Components
+   ========================================================================== */
+
+/* Page Constraint */
+.content-constraint {
+    max-width: 1200px;
+    margin: 0 0 0 20px;
+    padding-bottom: 40px;
+}
+
+/* Page Header */
+.tp-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+/* Filter Bar */
+.tp-filter-card {
+    background-color: var(--tp-bg-light);
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tp-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tp-filter-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--tp-text-secondary);
+}
+
+.tp-filter-input {
+    padding: 6px 10px;
+    border: 1px solid var(--tp-border-dark);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--tp-text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.tp-filter-input:focus {
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    outline: none;
+}
+
+/* Buttons */
+.tp-btn-primary {
+    background-color: var(--tp-primary);
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+    line-height: 1.5;
+    box-sizing: border-box;
+    vertical-align: middle;
+}
+
+.tp-btn-primary:hover {
+    background-color: var(--tp-primary-hover);
+    color: white;
+}
+
+.tp-btn-text {
+    color: var(--tp-text-lighter);
+    text-decoration: underline;
+    font-size: 0.85rem;
+    margin-left: auto;
+}
+
+.tp-btn-secondary {
+    background-color: white;
+    color: var(--tp-primary);
+    border: 1px solid var(--tp-border-dark);
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.btn-filled-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--tp-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    font-family: inherit;
+}
+
+.btn-filled-primary:hover {
+    background: var(--tp-primary-hover);
+    color: white;
+}
+
+/* Data Table Wrapper */
+.tp-table-container {
+    overflow-x: auto;
+    max-height: 75vh;
+    border: 1px solid var(--tp-border-light);
+    border-radius: 8px;
+}
+
+/* ==========================================================================
+   Training Day & Ranking Table Styles
+   ========================================================================== */
+
+/* Training Day Headers */
+.training-day-header {
+    background-color: var(--tp-bg-light) !important;
+    text-align: center;
+    border-bottom: 1px solid var(--tp-border-dark) !important;
+    pointer-events: none;
+}
+
+.global-total-header {
+    background-color: var(--tp-bg-light) !important;
+    color: var(--tp-text-primary);
+    font-weight: 800;
+    border-left: none !important;
+    border-right: 1px solid var(--tp-border-light) !important;
+}
+
+.ranking-table td.global-cell {
+    background-color: var(--tp-bg-gray) !important;
+    font-weight: 700;
+    border-left: none !important;
+    border-right: 1px solid var(--tp-border-light) !important;
+}
+
+.global-total-header::after,
+.ranking-table td.global-cell::after {
+    content: none !important;
+    display: none !important;
+}
+
+.training-day-header-main {
+    font-size: 0.95rem;
+    color: var(--tp-text-primary);
+    font-weight: 700;
+}
+
+.training-day-header-sub {
+    font-size: 0.75rem;
+    color: var(--tp-text-muted);
+    font-weight: normal;
+    margin-top: 2px;
+}
+
+.task-header {
+    background-color: var(--tp-bg-white) !important;
+    font-size: 0.8rem;
+    color: var(--tp-text-secondary);
+    vertical-align: bottom;
+    border-left: 1px solid var(--tp-border-light) !important;
+    border-top: 3px solid var(--tp-border-light);
+}
+
+/* Total Column specific styling */
+.total-col {
+    border-left: 2px solid var(--tp-border-light) !important;
+    background-color: var(--tp-bg-light);
+}
+
+.ranking-table thead th.total-col {
+    background-color: var(--tp-bg-light) !important;
+    color: var(--tp-text-primary);
+    font-weight: 800;
+}
+
+.ranking-table tbody td.total-col {
+    background-color: var(--tp-bg-light) !important;
+    font-weight: 700;
+    color: var(--tp-text-primary);
+}
+
+.ranking-table th.training-day-header,
+.ranking-table th.total-col,
+.ranking-table td.total-col {
+    border-right: none !important;
+}
+
+.ranking-table th.training-day-header,
+.ranking-table th.total-col {
+    position: sticky;
+    z-index: 11;
+}
+
+.ranking-table td.total-col {
+    position: relative;
+    z-index: 5;
+}
+
+.ranking-table th.training-day-header::after,
+.ranking-table th.total-col::after,
+.ranking-table td.total-col::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 4px;
+    background-color: var(--tp-border-dark);
+    z-index: 10;
+}
+
+.ranking-table .empty-cell-content {
+    color: var(--tp-border-dark);
+    text-align: center;
+    font-weight: normal;
+}
+
+.inaccessible-cell {
+    background-color: var(--tp-bg-gray);
+    background-image: radial-gradient(var(--tp-border) 1px, transparent 1px);
+    background-size: 10px 10px;
+    color: var(--tp-text-light);
+}
+
+/* Attendance badges for combined ranking */
+.attendance-badge {
+    margin-left: 4px;
+    font-size: 0.75em;
+    vertical-align: middle;
+}
+
+.home-badge {
+    opacity: 0.7;
+}
+
+/* ==========================================================================
+   Navigation & Header Components
+   ========================================================================== */
+
+/* Breadcrumb Navigation */
+.nav-breadcrumb {
+    margin-bottom: 12px;
+}
+
+.nav-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--tp-text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.nav-back-link:hover {
+    color: var(--tp-primary);
+}
+
+/* ==========================================================================
+   Progress Card Styles
+   ========================================================================== */
+
+.progress-card {
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--tp-shadow-sm);
+}
+
+.progress-card-header {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tp-text-lighter);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--tp-bg-gray);
+}
+
+.progress-item {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--tp-bg-gray);
+}
+
+.progress-item:last-child {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   Source Badges
+   ========================================================================== */
+
+.source-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 1em;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    width: fit-content;
+}
+
+.badge-training {
+    background: var(--tp-success-light);
+    color: var(--tp-success-dark);
+    border: 1px solid #bbf7d0;
+}
+
+.badge-training:hover {
+    background: #dcfce7;
+    text-decoration: none;
+}
+
+.badge-archived {
+    background: var(--tp-warning-light);
+    color: var(--tp-warning-dark);
+    border: 1px solid #fde68a;
+}
+
+.badge-manual {
+    background: var(--tp-bg-light);
+    color: var(--tp-text-muted);
+    border: 1px solid var(--tp-border);
+}
+
+/* ==========================================================================
+   Histogram Modal Styles
+   ========================================================================== */
+
+.histogram-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.histogram-modal-content {
+    background: var(--tp-bg-white);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--tp-shadow-xl);
+}
+
+.histogram-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+.histogram-modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--tp-text-primary);
+}
+
+.histogram-close-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--tp-text-lighter);
+    line-height: 1;
+    padding: 0;
+}
+
+.histogram-close-btn:hover {
+    color: var(--tp-text-primary);
+}
+
+.histogram-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.histogram-filter-row label {
+    font-weight: 500;
+    color: var(--tp-text-secondary);
+    white-space: nowrap;
+}
+
+.histogram-chart-container {
+    background: var(--tp-bg-light);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.histogram-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 200px;
+    gap: 4px;
+}
+
+.histogram-bar-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.histogram-bar-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.histogram-bar {
+    width: 100%;
+    min-height: 2px;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.3s ease;
+}
+
+.histogram-label {
+    font-size: 10px;
+    color: var(--tp-text-lighter);
+    margin-top: 4px;
+    text-align: center;
+}
+
+.histogram-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    margin-top: 2px;
+}
+
+.histogram-stats {
+    background: var(--tp-info-light);
+    border: 1px solid var(--tp-info-border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    color: var(--tp-info-dark);
+}
+
+.histogram-text-section {
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.histogram-text-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--tp-bg-light);
+    border-bottom: 1px solid var(--tp-border);
+}
+
+.histogram-text-header span {
+    font-weight: 500;
+    color: var(--tp-text-secondary);
+}
+
+.copy-btn {
+    background: var(--tp-info);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.copy-btn:hover {
+    background: var(--tp-info-hover);
+}
+
+#histogramTextData {
+    width: 100%;
+    border: none;
+    padding: 12px 14px;
+    font-family: monospace;
+    font-size: 12px;
+    resize: vertical;
+    background: var(--tp-bg-white);
+}
+
+.histogram-icon {
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 4px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    vertical-align: middle;
+}
+
+.histogram-icon:hover {
+    opacity: 1;
+}
+
+.task-header .header-text,
+.total-col-header .header-text {
+    vertical-align: middle;
+}
+
+/* ==========================================================================
+   Combined Ranking Page Specific Styles
+   ========================================================================== */
+
+.combined-ranking-student-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+}
+
+.combined-ranking-student-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.combined-ranking-name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    max-width: 100%;
+}
+
+.combined-ranking-name-link {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
+}
+
+.combined-ranking-tags {
+    margin-top: 3px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.combined-ranking-tag {
+    font-weight: normal;
+    font-size: 0.7em;
+}
+
+.history-link {
+    margin-left: auto;
+    text-decoration: none;
+}
+
+.inaccessible-cell span {
+    opacity: 0.5;
+}
+
+.empty-state-box {
+    text-align: center;
+    padding: 40px;
+    background: var(--tp-bg-light);
+    border-radius: 8px;
+    border: 1px dashed var(--tp-border-dark);
+    margin-top: 20px;
+}
+
+.empty-state-box h3 {
+    color: var(--tp-text-secondary);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.empty-state-box p {
+    color: var(--tp-text-lighter);
+}
