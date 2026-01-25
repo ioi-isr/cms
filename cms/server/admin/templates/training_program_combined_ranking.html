@@ -586,17 +586,16 @@ $(document).ready(function() {
       {% set global_total = namespace(value=0) %}
       <tr data-student-id="{{ student.id }}">
         <th>
-          <div class="student-name-wrapper" style="display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 10px;">
+          <div class="student-name-wrapper combined-ranking-student-wrapper">
             {% if student.participation %}
-                <div style="flex: 1; min-width: 0;">
-                    <div style="display: flex; align-items: baseline; gap: 6px; max-width: 100%;">
-                        <a class="student-name-link"
+                <div class="combined-ranking-student-info">
+                    <div class="combined-ranking-name-row">
+                        <a class="student-name-link combined-ranking-name-link"
                            href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}"
-                           title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}"
-                           style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%;">
+                           title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}">
                             {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
                         </a>
-                        <span class="student-username" style="font-size: 0.8em; color: #64748b;">
+                        <span class="student-username">
                             ({{ student.participation.user.username }})
                         </span>
 
@@ -609,21 +608,20 @@ $(document).ready(function() {
 
                         <a class="history-link"
                            href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if params %}?{{ params | join('&') }}{% endif %}"
-                           title="View score/rank history"
-                           style="margin-left: auto; text-decoration: none;">
+                           title="View score/rank history">
                             📊
                         </a>
                     </div>
                     {% if student.student_tags %}
-                    <div style="margin-top: 3px; display: flex; flex-wrap: wrap; gap: 2px;">
+                    <div class="combined-ranking-tags">
                         {% for tag in student.student_tags %}
-                          <span class="badge badge-teal" style="font-weight: normal; font-size: 0.7em;">{{ tag }}</span>
+                          <span class="badge badge-teal combined-ranking-tag">{{ tag }}</span>
                         {% endfor %}
                     </div>
                     {% endif %}
                 </div>
             {% else %}
-                <span style="color:#9ca3af;">(Unknown)</span>
+                <span class="text-muted">(Unknown)</span>
             {% endif %}
           </div>
         </th>
@@ -645,7 +643,7 @@ $(document).ready(function() {
                     {{ render_score_cell(score_val) }}
                 {% else %}
                      <div class="cell-content inaccessible-cell" title="Inaccessible">
-                        <span style="opacity: 0.5;">&mdash;</span>
+                        <span>&mdash;</span>
                      </div>
                 {% endif %}
             </td>
@@ -728,9 +726,9 @@ $(document).ready(function() {
 </script>
 
 {% else %}
-  <div style="text-align: center; padding: 40px; background: #f9fafb; border-radius: 8px; border: 1px dashed #d1d5db; margin-top: 20px;">
-    <h3 style="color: #4b5563; margin-bottom: 8px; font-weight: 600;">No Data Available</h3>
-    <p style="color: #6b7280;">No archived training days found matching your current filter.</p>
+  <div class="empty-state-box">
+    <h3>No Data Available</h3>
+    <p>No archived training days found matching your current filter.</p>
   </div>
 {% endif %}
 
@@ -758,200 +756,4 @@ $(document).ready(function() {
   </div>
 </div>
 
-<style>
-.histogram-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10000;
-}
-
-/* Ensure Tagify dropdown appears above the modal */
-.tagify__dropdown {
-  z-index: 10001 !important;
-}
-
-.histogram-modal-content {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  max-width: 800px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.histogram-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.histogram-modal-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: #1f2937;
-}
-
-.histogram-close-btn {
-  background: none;
-  border: none;
-  font-size: 28px;
-  cursor: pointer;
-  color: #6b7280;
-  line-height: 1;
-  padding: 0;
-}
-
-.histogram-close-btn:hover {
-  color: #1f2937;
-}
-
-.histogram-filter-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.histogram-filter-row label {
-  font-weight: 500;
-  color: #374151;
-  white-space: nowrap;
-}
-
-.histogram-chart-container {
-  background: #f9fafb;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 16px;
-}
-
-.histogram-bars {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  height: 200px;
-  gap: 4px;
-}
-
-.histogram-bar-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100%;
-}
-
-.histogram-bar-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  width: 100%;
-}
-
-.histogram-bar {
-  width: 100%;
-  min-height: 2px;
-  border-radius: 4px 4px 0 0;
-  transition: height 0.3s ease;
-}
-
-.histogram-label {
-  font-size: 10px;
-  color: #6b7280;
-  margin-top: 4px;
-  text-align: center;
-}
-
-.histogram-count {
-  font-size: 11px;
-  font-weight: 600;
-  color: #374151;
-  margin-top: 2px;
-}
-
-.histogram-stats {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 6px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  font-size: 0.9rem;
-  color: #0369a1;
-}
-
-.histogram-text-section {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.histogram-text-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.histogram-text-header span {
-  font-weight: 500;
-  color: #374151;
-}
-
-.copy-btn {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.copy-btn:hover {
-  background: #2563eb;
-}
-
-#histogramTextData {
-  width: 100%;
-  border: none;
-  padding: 12px 14px;
-  font-family: monospace;
-  font-size: 12px;
-  resize: vertical;
-  background: white;
-}
-
-.histogram-icon {
-  cursor: pointer;
-  font-size: 12px;
-  margin-left: 4px;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-  vertical-align: middle;
-}
-
-.histogram-icon:hover {
-  opacity: 1;
-}
-
-.task-header .header-text,
-.total-col-header .header-text {
-  vertical-align: middle;
-}
-</style>
 {% endblock core %}
