@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="content-constraint">
+<div class="content-constraint" style="max-width: 900px;">
     <!-- Header -->
     <div class="page-title" style="margin-bottom: 24px;">
         <h1>Students</h1>
@@ -286,7 +286,7 @@ function initBulkAssignModal() {
     // Initialize tagify for tag selection
     var tagInput = document.getElementById('bulkAssignTagInput');
     if (tagInput && typeof Tagify !== 'undefined') {
-        var whitelist = {{ all_student_tags | tojson }};
+        var whitelist = {{ (all_student_tags or []) | tojson }};
         bulkAssignTagify = new Tagify(tagInput, {
             mode: 'select',
             whitelist: whitelist,
@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <label for="bulkAssignTaskSelect">Task</label>
                 <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
                     <option value="" selected disabled hidden>Select a task...</option>
-                    {% for task in all_tasks %}
+                    {% for task in (all_tasks or []) %}
                     <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
                     {% endfor %}
                 </select>

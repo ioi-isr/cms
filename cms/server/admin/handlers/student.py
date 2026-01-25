@@ -275,6 +275,8 @@ class BulkAddTrainingProgramStudentsHandler(BaseHandler):
             self.r_params["student_progress"] = student_progress
             self.r_params["bulk_add_results"] = results
             self.r_params["students_added"] = students_added
+            self.r_params["all_tasks"] = managing_contest.get_tasks()
+            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
             self.render("training_program_students.html", **self.r_params)
 
         except Exception as error:
