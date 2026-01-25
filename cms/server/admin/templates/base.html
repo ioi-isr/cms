@@ -52,6 +52,7 @@
     <link rel="shortcut icon" href="{{ url("static", "favicon.ico") }}" />
     <link rel="stylesheet" type="text/css" href="{{ url("static", "reset.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_tp_styles.css") }}">
     <script src="{{ url("static", "web_rpc.js") }}"></script>
     <script src="{{ url("static", "aws_utils.js") }}"></script>
     <script src="{{ url("static", "jq", "jquery-3.6.0.min.js") }}"></script>
@@ -487,7 +488,7 @@ $(document).ready(initSidebarEvents);
         {% elif training_program is defined %}
           <ul class="menu">
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id) }}">General</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "ranking") }}">Ranking</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "ranking") }}">Home Task Scores</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a></li>
             <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a></li>

@@ -1,0 +1,202 @@
+<style>
+#UserDetail_bg {
+  display: block;
+}
+
+#UserDetail {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+#UserDetail_close {
+  display: none;
+}
+
+#UserDetail_header {
+  display: flex;
+  min-height: 120px;
+  margin-bottom: 20px;
+}
+
+#UserDetail_summary {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 1.5em;
+  line-height: 1.5em;
+}
+
+#UserDetail_face {
+  display: block;
+  max-width: 160px;
+  max-height: 240px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+#UserDetail_flag {
+  display: none;
+}
+
+#UserDetail_navigator {
+  flex: 1;
+  max-width: 450px;
+}
+
+#UserDetail_navigator table {
+  width: 100%;
+  table-layout: fixed;
+  border-spacing: 2px;
+  border-collapse: separate;
+}
+
+#UserDetail_navigator tr {
+  height: 28px;
+}
+
+#UserDetail_navigator col.name {
+  width: 55%;
+}
+
+#UserDetail_navigator col.score,
+#UserDetail_navigator col.rank {
+  width: 15%;
+}
+
+#UserDetail_navigator col.show {
+  width: 15%;
+}
+
+#UserDetail_navigator tr td.score,
+#UserDetail_navigator tr td.rank {
+  padding-left: 4px;
+  text-align: right;
+}
+
+#UserDetail_navigator tbody tr td.btn {
+  text-align: center;
+  border: 1px solid #999999;
+  box-shadow: 0 0 2px gray;
+  background-color: #EEEEEE;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+}
+
+#UserDetail_navigator tbody tr td.btn:hover {
+  background-color: #DDDDDD;
+}
+
+#UserDetail_navigator tbody tr td.btn:active {
+  background-color: #CCCCCC;
+}
+
+#UserDetail_navigator tbody tr.active td.btn {
+  background-color: #EEEEEE;
+  opacity: 0.4;
+  cursor: default;
+}
+
+#UserDetail_navigator tr.global,
+#UserDetail_navigator tr.contest {
+  background-color: #DDDDDD;
+}
+
+#UserDetail_navigator tr.task {
+  background-color: #FFFFFF;
+}
+
+#UserDetail_navigator tr.global td.name,
+#UserDetail_navigator tr.contest td.name {
+  padding-left: 5px;
+  font-weight: bold;
+}
+
+#UserDetail_navigator tr.task td.name {
+  padding-left: 25px;
+}
+
+#UserDetail_title {
+  margin-top: 24px;
+  font-size: 1.5em;
+  line-height: 1.5em;
+  text-align: center;
+}
+
+#UserDetail_charts {
+  margin-top: 24px;
+  width: 100%;
+  text-align: center;
+}
+
+#UserDetail_charts canvas {
+  display: block;
+  margin: 10px auto;
+}
+
+#UserDetail_submissions {
+  margin-top: 24px;
+  width: 100%;
+}
+
+#UserDetail_submissions:empty {
+  margin-top: 0;
+}
+
+#UserDetail_submissions table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+#UserDetail_submissions td,
+#UserDetail_submissions th {
+  height: 28px;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+#UserDetail_submissions thead {
+  background-color: #DDDDDD;
+}
+
+#UserDetail_submissions tbody tr:nth-child(even) {
+  background-color: #EEEEEE;
+}
+
+#UserDetail_submissions tbody tr:nth-child(odd) {
+  background-color: #F8F8F8;
+}
+
+#UserDetail_submissions tbody td[colspan] {
+  text-align: center;
+  font-style: italic;
+}
+
+.user-detail-back-link {
+  margin-bottom: 20px;
+}
+
+.user-detail-back-link a {
+  color: #0F766E;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.user-detail-back-link a:hover {
+  text-decoration: underline;
+  color: #0d655e;
+}
+
+.user-detail-filter-info {
+  background-color: #F0FDFA;
+  border: 1px solid #0F766E;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  color: #0F766E;
+}
+</style>

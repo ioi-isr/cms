@@ -42,7 +42,9 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session, Contest, Student, Task, Participation
+from cms.db import Session, Contest, Student, Task, Participation, StudentTask
+from sqlalchemy.orm import joinedload
+from cms.grading.scorecache import get_cached_score_entry
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
@@ -238,11 +240,45 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
     return bool(student_tags_set & task_tags_set)
 
 
+def get_student_archive_scores(
+    sql_session: Session,
+    student: "Student",
+    participation: "Participation",
+    contest: "Contest",
+) -> dict[int, float]:
+    """Get fresh task scores for all tasks in a student's archive.
+    This utility uses get_cached_score_entry to ensure scores are fresh
+    and not stale. It returns a mapping of task_id -> score for all tasks
+    that are both in the student's archive AND currently exist in the contest.
+    IMPORTANT: This function may trigger cache rebuilds which acquire advisory
+    locks. The caller MUST commit the session after calling this function to
+    release the locks and persist any cache updates.
+    sql_session: the database session.
+    student: the Student object (with student_tasks relationship).
+    participation: the Participation object for the managing contest.
+    contest: the Contest object (managing contest for the training program).
+    return: dict mapping task_id -> score for tasks in the student's archive.
+    """
+
+    student_task_ids = {st.task_id for st in student.student_tasks}
+    scores = {}
+
+    for task in contest.get_tasks():
+        if task.id not in student_task_ids:
+            continue
+        cache_entry = get_cached_score_entry(sql_session, participation, task)
+        scores[task.id] = cache_entry.score
+
+    return scores
+
+
 def calculate_task_archive_progress(
     student: "Student",
     participation: "Participation",
     contest: "Contest",
-    include_task_details: bool = False
+    sql_session: Session,
+    include_task_details: bool = False,
+    submission_counts: dict[int, int] | None = None,
 ) -> dict:
     """Calculate task archive progress for a student.
 
@@ -250,47 +286,58 @@ def calculate_task_archive_progress(
     the contest training program overview page.
 
     student: the Student object (with student_tasks relationship).
-    participation: the Participation object (with task_scores relationship).
+    participation: the Participation object.
     contest: the Contest object (managing contest for the training program).
+    sql_session: SQLAlchemy session for using get_cached_score_entry.
     include_task_details: if True, include per-task breakdown in task_scores list.
+    submission_counts: optional dict mapping task_id to submission count.
+        If provided and include_task_details is True, each task will include
+        a submission_count field.
 
     return: dict with total_score, max_score, percentage, task_count.
             If include_task_details is True, also includes task_scores list.
 
     """
-    # Build maps for efficient lookup
-    student_tasks_map = {st.task_id: st for st in student.student_tasks}
-    student_task_ids = set(student_tasks_map.keys())
-
-    # Build a map of task_id -> cached score for this participation
-    cached_scores = {}
-    for pts in participation.task_scores:
-        cached_scores[pts.task_id] = pts.score
+    # Get the tasks in the student's archive
+    student_tasks = (
+        sql_session.query(StudentTask)
+        .options(joinedload(StudentTask.task))
+        .filter(StudentTask.student_id == student.id)
+        .all()
+    )
+    cached_scores = get_student_archive_scores(
+        sql_session, student, participation, contest
+    )
 
     total_score = 0.0
     max_score = 0.0
     task_count = 0
     task_scores = [] if include_task_details else None
 
-    for task in contest.get_tasks():
-        if task.id not in student_task_ids:
+    contest_tasks = contest.get_tasks()
+    # Iterate only over tasks in the student's archive (StudentTask entries)
+    for student_task in student_tasks:
+        task = student_task.task
+        if task is None or task not in contest_tasks:
             continue
         task_count += 1
         max_task_score = task.active_dataset.score_type_object.max_score \
             if task.active_dataset else 100.0
         max_score += max_task_score
-        best_score = cached_scores.get(task.id, 0.0)
+        best_score = cached_scores[task.id]
         total_score += best_score
 
         if include_task_details:
-            student_task = student_tasks_map.get(task.id)
-            task_scores.append({
+            task_info = {
                 "task": task,
                 "score": best_score,
                 "max_score": max_task_score,
-                "source_training_day": student_task.source_training_day if student_task else None,
-                "assigned_at": student_task.assigned_at if student_task else None,
-            })
+                "source_training_day": student_task.source_training_day,
+                "assigned_at": student_task.assigned_at,
+            }
+            if submission_counts is not None:
+                task_info["submission_count"] = submission_counts.get(task.id, 0)
+            task_scores.append(task_info)
 
     percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
 
@@ -550,3 +597,25 @@ def parse_tags(tags_str: str) -> list[str]:
 
     tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
     return deduplicate_preserving_order(tags)
+
+
+def parse_usernames_from_file(file_content: str) -> list[str]:
+    """Parse whitespace-separated usernames from file content.
+
+    This utility handles:
+    - Splitting by whitespace (spaces, newlines, tabs)
+    - Stripping whitespace from each username
+    - Removing empty entries
+    - Deduplicating while preserving order
+
+    Args:
+        file_content: String content of the uploaded file
+
+    Returns:
+        List of unique usernames in order of first appearance
+    """
+    if not file_content:
+        return []
+
+    usernames = [u.strip() for u in file_content.split() if u.strip()]
+    return deduplicate_preserving_order(usernames)

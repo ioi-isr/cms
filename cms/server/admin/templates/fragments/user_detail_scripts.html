@@ -1,0 +1,138 @@
+{# Common JavaScript utilities for user detail pages #}
+<script>
+function format_time(time, full) {
+  var h = Math.floor(time / 3600);
+  var m = Math.floor((time % 3600) / 60);
+  var s = Math.floor(time % 60);
+  h = full && h < 10 ? "0" + h : "" + h;
+  m = m < 10 ? "0" + m : "" + m;
+  s = s < 10 ? "0" + s : "" + s;
+  return (h + ":" + m + ":" + s);
+}
+
+function round_to_str(value, ndigits) {
+  if (ndigits > 0) {
+    return value.toFixed(ndigits).replace(/\.?0+$/, "");
+  } else {
+    return value.toFixed(0);
+  }
+}
+</script>
+
+<script src="{{ url("static", "js", "Chart.js") }}"></script>
+<script src="{{ url("static", "js", "HistoryStore.js") }}"></script>
+<script src="{{ url("static", "js", "UserDetail.js") }}"></script>
+
+<script>
+{# Common UserDetail initialization that can be customized per page #}
+function initUserDetail(options) {
+  var userId = options.userId;
+  var showContestRows = options.showContestRows || false;
+  var fetchSubmissionsViaAjax = options.fetchSubmissionsViaAjax || false;
+  var submissionsData = options.submissionsData || [];
+
+  HistoryStore.init();
+
+  UserDetail.init = function() {
+    UserDetail.f_name_label = $('#UserDetail_f_name');
+    UserDetail.l_name_label = $('#UserDetail_l_name');
+    UserDetail.team_label = $('#UserDetail_team');
+    UserDetail.flag_image = $('#UserDetail_flag');
+    UserDetail.face_image = $('#UserDetail_face');
+    UserDetail.title_label = $('#UserDetail_title');
+    UserDetail.navigator = $('#UserDetail_navigator table tbody');
+    UserDetail.submission_table = $('#UserDetail_submissions');
+    UserDetail.score_chart = $('#UserDetail_score_chart')[0];
+    UserDetail.rank_chart = $('#UserDetail_rank_chart')[0];
+
+    UserDetail.navigator.on("click", "td.btn", function() {
+      if (UserDetail.active !== null) {
+        UserDetail.active.removeClass("active");
+      }
+      UserDetail.active = $(this).parent();
+      UserDetail.active.addClass("active");
+
+      if (UserDetail.active.hasClass('global')) {
+        UserDetail.show_global();
+      } else if (UserDetail.active.hasClass('contest')) {
+        UserDetail.show_contest(UserDetail.active.attr('data-contest'));
+      } else if (UserDetail.active.hasClass('task')) {
+        UserDetail.show_task(UserDetail.active.attr('data-task'));
+      }
+    });
+  };
+
+  UserDetail.show = function(user_id) {
+    UserDetail.user_id = user_id;
+    UserDetail.user = DataStore.users[user_id];
+    UserDetail.data_fetched = 0;
+
+    HistoryStore.request_update(UserDetail.history_callback);
+
+    if (fetchSubmissionsViaAjax) {
+      $.ajax({
+        url: Config.get_submissions_url(UserDetail.user_id),
+        dataType: "json",
+        success: UserDetail.submissions_callback,
+        error: function() {
+          console.error("Error while getting the submissions for " + UserDetail.user_id);
+          UserDetail.submission_table.html('<p style="color: red; text-align: center;">Failed to load submissions. Please refresh the page.</p>');
+        }
+      });
+    } else {
+      UserDetail.submissions = submissionsData;
+      UserDetail.data_fetched += 1;
+      UserDetail.do_show();
+    }
+  };
+
+  UserDetail.do_show = function() {
+    if (UserDetail.data_fetched == 2) {
+      var s = "<tr class=\"global\"> \
+                  <td class=\"name\">Global</td> \
+                  <td class=\"score\">" + (UserDetail.global_s.length > 0 ? round_to_str(UserDetail.global_s[UserDetail.global_s.length-1][1], DataStore.global_score_precision) : 0) + "</td> \
+                  <td class=\"rank\">" + (UserDetail.global_r.length > 0 ? UserDetail.global_r[UserDetail.global_r.length-1][1] : 1) + "</td> \
+                  <td class=\"btn\"><a>Show</a></td> \
+              </tr>";
+
+      var contests = DataStore.contest_list;
+      for (var i in contests) {
+        var contest = contests[i];
+        var c_id = contest["key"];
+
+        if (showContestRows) {
+          s += "<tr class=\"contest\" data-contest=\"" + c_id +"\"> \
+                   <td class=\"name\">" + contest['name'] + "</td> \
+                   <td class=\"score\">" + (UserDetail.contest_s[c_id] && UserDetail.contest_s[c_id].length > 0 ? round_to_str(UserDetail.contest_s[c_id][UserDetail.contest_s[c_id].length-1][1], contest["score_precision"]) : 0) + "</td> \
+                   <td class=\"rank\">" + (UserDetail.contest_r[c_id] && UserDetail.contest_r[c_id].length > 0 ? UserDetail.contest_r[c_id][UserDetail.contest_r[c_id].length-1][1] : 1) + "</td> \
+                   <td class=\"btn\"><a>Show</a></td> \
+                </tr>";
+        }
+
+        var tasks = contest["tasks"];
+        for (var j in tasks) {
+          var task = tasks[j];
+          var t_id = task["key"];
+
+          s += "<tr class=\"task\" data-task=\"" + t_id +"\"> \
+                   <td class=\"name\">" + task['name'] + "</td> \
+                   <td class=\"score\">" + (UserDetail.task_s[t_id] && UserDetail.task_s[t_id].length > 0 ? round_to_str(UserDetail.task_s[t_id][UserDetail.task_s[t_id].length-1][1], task["score_precision"]) : 0) + "</td> \
+                   <td class=\"rank\">" + (UserDetail.task_r[t_id] && UserDetail.task_r[t_id].length > 0 ? UserDetail.task_r[t_id][UserDetail.task_r[t_id].length-1][1] : 1) + "</td> \
+                   <td class=\"btn\"><a>Show</a></td> \
+                </tr>";
+        }
+      }
+
+      UserDetail.navigator.html(s);
+      UserDetail.active = null;
+
+      $('tr.global td.btn', UserDetail.navigator).click();
+    }
+  };
+
+  UserDetail.hide = function() {};
+
+  UserDetail.init();
+  UserDetail.show(userId);
+}
+</script>

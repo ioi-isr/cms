@@ -44,6 +44,7 @@ from sqlalchemy import and_, exists
 
 from cms.db import Contest, Message, Participation, Submission, User, Team, TrainingDay
 from cms.db.training_day import get_managing_participation
+from cms.server.util import parse_usernames_from_file
 from cmscommon.crypto import validate_password_strength
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
@@ -193,7 +194,7 @@ class BulkAddContestUsersHandler(BaseHandler):
             file_data = self.request.files["users_file"][0]
             file_content = file_data["body"].decode("utf-8")
 
-            usernames = file_content.split()
+            usernames = parse_usernames_from_file(file_content)
 
             if not usernames:
                 raise ValueError("File is empty or contains no usernames")
@@ -202,10 +203,6 @@ class BulkAddContestUsersHandler(BaseHandler):
             users_added = 0
 
             for username in usernames:
-                username = username.strip()
-                if not username:
-                    continue
-
                 user = self.sql_session.query(User).filter(
                     User.username == username).first()
 
