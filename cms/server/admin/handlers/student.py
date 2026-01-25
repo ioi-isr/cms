@@ -90,24 +90,25 @@ class TrainingProgramStudentsHandler(BaseHandler):
         self.safe_get_item(TrainingProgram, training_program_id)
 
         try:
-            user_id = self.get_argument("user_id")
             operation = self.get_argument("operation")
-            assert operation in (
-                self.REMOVE_FROM_PROGRAM,
-            ), "Please select a valid operation"
+            # Support both old format (radio button + "Remove from training program")
+            # and new format (button with value "remove_<user_id>")
+            if operation == self.REMOVE_FROM_PROGRAM:
+                user_id = self.get_argument("user_id")
+            elif operation.startswith("remove_"):
+                user_id = operation.replace("remove_", "")
+            else:
+                raise ValueError("Please select a valid operation")
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback_page)
             return
 
-        if operation == self.REMOVE_FROM_PROGRAM:
-            asking_page = \
-                self.url("training_program", training_program_id, "student", user_id, "remove")
-            self.redirect(asking_page)
-            return
-
-        self.redirect(fallback_page)
+        # Redirect to confirmation page
+        asking_page = \
+            self.url("training_program", training_program_id, "student", user_id, "remove")
+        self.redirect(asking_page)
 
 
 class AddTrainingProgramStudentHandler(BaseHandler):

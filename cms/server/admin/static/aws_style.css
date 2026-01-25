@@ -2014,3 +2014,270 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .sidebar-contest a, .sidebar-item a {
     flex: 1;
 }
+
+/* --- Shared Student/Task List Styles --- */
+
+/* Page Constraint: Prevents content from looking too wide on large screens */
+.content-constraint {
+    max-width: 1200px;
+    margin: 0 0 0 20px;
+    padding-bottom: 40px;
+}
+
+/* Breadcrumb Navigation */
+.nav-breadcrumb {
+    margin-bottom: 12px;
+}
+.nav-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+.nav-back-link:hover {
+    color: #0F766E;
+}
+
+/* Header Typography */
+.page-title h1 {
+    font-size: 1.85rem;
+    color: #1e293b;
+    margin: 0 0 6px 0;
+    font-weight: 700;
+}
+.page-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+/* Cell Wrapper: Controls alignment and spacing in tables */
+.list-cell-wrapper {
+    padding: 12px 16px;
+    min-height: 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.list-cell-wrapper.center-content { align-items: center; }
+
+/* Source Badges: Clear distinction between source types */
+.source-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 1em;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    width: fit-content;
+}
+.badge-training {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+.badge-training:hover {
+    background: #dcfce7;
+    text-decoration: none;
+}
+.badge-archived {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+.badge-manual {
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    font-style: italic;
+}
+
+/* Remove Button */
+.btn-remove {
+    background: white;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-remove:hover:not(:disabled) {
+    background: #fef2f2;
+    color: #ef4444;
+    border-color: #fca5a5;
+}
+
+/* Sortable Table Headers */
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+    white-space: nowrap;
+}
+.sortable-header:hover {
+    color: #1e293b;
+    background: #f1f5f9;
+}
+
+.sortable-header::after {
+    content: '\2195';
+    font-size: 0.8em;
+    margin-left: 5px;
+    opacity: 0.3;
+    display: inline-block;
+    vertical-align: middle;
+}
+.sortable-header.sort-asc::after { content: '\2191'; opacity: 1; color: #0F766E; }
+.sortable-header.sort-desc::after { content: '\2193'; opacity: 1; color: #0F766E; }
+
+.text-center { text-align: center !important; }
+
+/* --- Action Buttons Row (Screenshot-style) --- */
+.action-buttons-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 0;
+    margin-bottom: 16px;
+}
+
+/* Outline button style */
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: white;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    font-family: inherit;
+}
+.btn-outline:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    color: #111827;
+}
+.btn-outline svg, .btn-outline .btn-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* Primary filled button style */
+.btn-filled-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    font-family: inherit;
+}
+.btn-filled-primary:hover {
+    background: #4f46e5;
+    color: white;
+}
+
+/* --- Progress Card Styles (Screenshot-style) --- */
+.progress-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.progress-card-header {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.progress-item {
+    padding: 16px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+.progress-item:last-child {
+    border-bottom: none;
+}
+
+.progress-info {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.progress-percentage {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    min-width: 50px;
+}
+
+.progress-score {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.progress-bar-container {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-bar-fill.color-orange {
+    background: #f59e0b;
+}
+.progress-bar-fill.color-blue {
+    background: #3b82f6;
+}
+.progress-bar-fill.color-green {
+    background: #10b981;
+}
+.progress-bar-fill.color-teal {
+    background: #0F766E;
+}
+
+.no-tasks-text {
+    color: #9ca3af;
+    font-style: italic;
+    padding: 16px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+.no-tasks-text:last-child {
+    border-bottom: none;
+}
