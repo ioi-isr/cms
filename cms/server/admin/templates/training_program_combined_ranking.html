@@ -248,56 +248,81 @@ function renderHistogram(scores, title, type) {
     var trainingDayId = currentHistogramData ? currentHistogramData.trainingDayId : null;
     var maxPossibleScore = calculateFilteredMaxScore(filteredScores, trainingDayId, type);
 
-    // Calculate bucket size: divide max score into 10 equal parts
-    // For max=100: buckets are 0, (0,10], (10,20], ..., (80,90], >90
-    // For max=200: buckets are 0, (0,20], (20,40], ..., (160,180], >180
-    // Guard against division by zero when maxPossibleScore is 0
-    if (maxPossibleScore === 0) {
-        maxPossibleScore = 1; // Avoid division by zero
-    }
-    var bucketSize = maxPossibleScore / 10;
-    var lastBucketThreshold = maxPossibleScore * 0.9; // 90% of max
-
     // Build histogram buckets dynamically based on max possible score
     var buckets = {};
     var bucketLabels = {};
     var bucketOrder = [];
 
-    // First bucket: exactly 0
-    buckets['0'] = 0;
-    bucketLabels['0'] = '0';
-    bucketOrder.push('0');
-
-    // Middle buckets: (0, bucketSize], (bucketSize, 2*bucketSize], ..., up to 90% of max
-    for (var i = 1; i <= 9; i++) {
-        var upperBound = Math.round(i * bucketSize);
-        var lowerBound = Math.round((i - 1) * bucketSize);
-        var key = upperBound.toString();
-        buckets[key] = 0;
-        bucketLabels[key] = '(' + lowerBound + ',' + upperBound + ']';
-        bucketOrder.push(key);
+    // Guard against division by zero when maxPossibleScore is 0
+    if (maxPossibleScore === 0) {
+        maxPossibleScore = 1; // Avoid division by zero
     }
 
-    // Last bucket: >90% of max
-    var lastKey = Math.round(maxPossibleScore).toString();
-    buckets[lastKey] = 0;
-    bucketLabels[lastKey] = '>' + Math.round(lastBucketThreshold);
-    bucketOrder.push(lastKey);
+    if (maxPossibleScore <= 15) {
+        var maxInt = Math.ceil(maxPossibleScore);
 
-    scoreValues.forEach(function(score) {
-        if (score === 0) {
-            buckets['0']++;
-        } else if (score > lastBucketThreshold) {
-            buckets[lastKey]++;
-        } else {
-            // For (0,bucketSize], (bucketSize,2*bucketSize], etc. - use ceiling to get the bucket
-            var bucketIndex = Math.ceil(score / bucketSize);
-            if (bucketIndex < 1) bucketIndex = 1;
-            if (bucketIndex > 9) bucketIndex = 9;
-            var bucketKey = Math.round(bucketIndex * bucketSize).toString();
-            buckets[bucketKey]++;
+        // Create a bucket for every integer from 0 to max
+        for (var i = 0; i <= maxInt; i++) {
+            var key = i.toString();
+            buckets[key] = 0;
+            bucketLabels[key] = key; // Label is just "1", "2", etc.
+            bucketOrder.push(key);
         }
-    });
+
+        // Fill buckets
+        scoreValues.forEach(function(score) {
+            // Round score to nearest integer to fit in bucket
+            // (e.g., 4.9 becomes 5, 4.1 becomes 4)
+            var rounded = Math.round(score);
+
+            // Safety clamp: if score exceeds max (e.g. bonus points), put in last bucket
+            if (rounded > maxInt) rounded = maxInt;
+            if (rounded < 0) rounded = 0;
+
+            buckets[rounded.toString()]++;
+        });
+    } else {
+        // Calculate bucket size: divide max score into 10 equal parts
+        // For max=100: buckets are 0, (0,10], (10,20], ..., (80,90], >90
+        // For max=200: buckets are 0, (0,20], (20,40], ..., (160,180], >180
+        var bucketSize = maxPossibleScore / 10;
+        var lastBucketThreshold = maxPossibleScore * 0.9; // 90% of max
+        // First bucket: exactly 0
+        buckets['0'] = 0;
+        bucketLabels['0'] = '0';
+        bucketOrder.push('0');
+
+        // Middle buckets: (0, bucketSize], (bucketSize, 2*bucketSize], ..., up to 90% of max
+        for (var i = 1; i <= 9; i++) {
+            var upperBound = Math.round(i * bucketSize);
+            var lowerBound = Math.round((i - 1) * bucketSize);
+            var key = upperBound.toString();
+            buckets[key] = 0;
+            bucketLabels[key] = '(' + lowerBound + ',' + upperBound + ']';
+            bucketOrder.push(key);
+        }
+
+        // Last bucket: >90% of max
+        var lastKey = Math.round(maxPossibleScore).toString();
+        buckets[lastKey] = 0;
+        bucketLabels[lastKey] = '>' + Math.round(lastBucketThreshold);
+        bucketOrder.push(lastKey);
+
+        scoreValues.forEach(function(score) {
+            if (score === 0) {
+                buckets['0']++;
+            } else if (score > lastBucketThreshold) {
+                buckets[lastKey]++;
+            } else {
+                // For (0,bucketSize], (bucketSize,2*bucketSize], etc. - use ceiling to get the bucket
+                var bucketIndex = Math.ceil(score / bucketSize);
+                if (bucketIndex < 1) bucketIndex = 1;
+                if (bucketIndex > 9) bucketIndex = 9;
+                var bucketKey = Math.round(bucketIndex * bucketSize).toString();
+                buckets[bucketKey]++;
+            }
+        });
+    }
 
     // Render histogram bars
     var histogramBars = document.getElementById('histogramBars');

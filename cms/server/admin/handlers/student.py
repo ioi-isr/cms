@@ -720,6 +720,17 @@ class StudentTaskSubmissionsHandler(BaseHandler):
         if student is None:
             raise tornado.web.HTTPError(404)
 
+        # Verify student is assigned this specific task
+        student_task = (
+            self.sql_session.query(StudentTask)
+            .filter(StudentTask.student == student)
+            .filter(StudentTask.task == task)
+            .first()
+        )
+
+        if student_task is None:
+            raise tornado.web.HTTPError(404)
+
         # Filter submissions by task
         self.contest = managing_contest
         submission_query = (

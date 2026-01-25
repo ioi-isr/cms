@@ -587,6 +587,11 @@
     height: 1px;
 }
 
+.attendance-table th,
+.attendance-table td {
+    vertical-align: top;
+}
+
 /* --- Sticky Headers & Columns --- */
 
 /* 1. Header Rows */
