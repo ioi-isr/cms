@@ -90,13 +90,18 @@
         <th>Username</th>
         <th>User</th>
         <th>Tags</th>
+        {% if task_archive_progress_by_participation %}
+        <th data-sort-settings="numeric reversed">Task Archive Progress</th>
+        {% endif %}
         {% if show_teams %}
         <th>Team</th>
         {% endif %}
         {% for task in group_tasks %}
         <th data-sort-settings="numeric reversed"><a href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
         {% endfor %}
+        {% if not task_archive_progress_by_participation %}
         <th data-sort-settings="numeric reversed">Global</th>
+        {% endif %}
       </tr>
     </thead>
     <tbody>
@@ -109,6 +114,10 @@
             <span class="badge">{{ tag }}</span>
           {% endfor %}
         </td>
+        {% if task_archive_progress_by_participation %}
+        {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}
+        <td data-value="{{ progress.get('percentage', 0) }}">{{ "%.1f"|format(progress.get('percentage', 0)) }}% ({{ "%.1f"|format(progress.get('total_score', 0)) }}/{{ "%.1f"|format(progress.get('max_score', 0)) }})</td>
+        {% endif %}
         {% if show_teams %}
           {% if p.team %}
           <td><a href="{{ url("team", p.team_id) }}">{{ p.team.name }}</a></td>
@@ -125,7 +134,9 @@
           {% set total_score.value = total_score.value + status.score %}
           {% if status.partial %}{% set partial.value = true %}{% endif %}
         {% endfor %}
+        {% if not task_archive_progress_by_participation %}
         <td {%- if partial.value %} class="partial" {%- endif -%}>{{ ("%%.%df"|format(contest.score_precision))|format(total_score.value) }}</td>
+        {% endif %}
       </tr>
       {% else %}
       <tr>
@@ -165,13 +176,18 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
       {% if student_tags_by_participation %}
       <th>Tags</th>
       {% endif %}
+      {% if task_archive_progress_by_participation %}
+      <th data-sort-settings="numeric reversed">Task Archive Progress</th>
+      {% endif %}
       {% if show_teams %}
       <th>Team</th>
       {% endif %}
       {% for task in contest.get_tasks() %}
       <th data-sort-settings="numeric reversed"><a href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
       {% endfor %}
+      {% if not task_archive_progress_by_participation %}
       <th data-sort-settings="numeric reversed">Global</th>
+      {% endif %}
     </tr>
   </thead>
   <tbody>
@@ -190,6 +206,17 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
         {% endfor %}
       </td>
       {% endif %}
+      {% if task_archive_progress_by_participation %}
+      {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}
+      {% set details_url = url("training_program", training_program.id, "student", p.user.id, "tasks") %}
+      <td data-value="{{ progress.get('percentage', 0) }}">
+        {% if progress.get('task_count', 0) > 0 %}
+        {{ "%.1f"|format(progress.get('percentage', 0)) }}% ({{ "%.1f"|format(progress.get('total_score', 0)) }}/{{ "%.1f"|format(progress.get('max_score', 0)) }}) [<a href="{{ details_url }}">details</a>]
+        {% else %}
+        No tasks [<a href="{{ details_url }}">details</a>]
+        {% endif %}
+      </td>
+      {% endif %}
       {% if show_teams %}
         {% if p.team %}
         <td><a href="{{ url("team", p.team_id) }}">{{ p.team.name }}</a></td>
@@ -200,8 +227,10 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
       {% for status in p.task_statuses %}
       <td data-value="{{ status.score }}">{{ task_html(status) }}</td>
       {% endfor %}
+      {% if not task_archive_progress_by_participation %}
       {% set total_score, partial = p.total_score %}
       <td {%- if partial %} class="partial" {%- endif -%}>{{ total_score }}</td>
+      {% endif %}
     </tr>
       {% endif %}
     {% endfor %}

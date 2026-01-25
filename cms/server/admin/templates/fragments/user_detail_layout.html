@@ -1,0 +1,66 @@
+{# Common layout for user detail pages (participation_detail and combined_ranking_detail) #}
+{# Parameters:
+   - first_name: User's first name
+   - last_name: User's last name
+   - username: User's username
+   - picture_url: URL to user's profile picture (optional)
+   - team_name: Team name (optional)
+#}
+
+<div id="UserDetail_bg">
+  <div id="UserDetail">
+    <button id="UserDetail_close"
+            type="button"
+            aria-label="Close"
+            style="cursor: pointer; position: absolute; top: 8px; right: 8px; background: none; border: 0; padding: 0;">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+        <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
+      </svg>
+    </button>
+    <div id="UserDetail_header">
+      <div id="UserDetail_summary">
+        <div>
+          <span id="UserDetail_f_name">{{ first_name }}</span>
+          <span id="UserDetail_l_name">{{ last_name }}</span>
+        </div>
+        <div style="font-size: 0.6em; color: #666;">
+          {{ username }}
+        </div>
+        {% if picture_url %}<img id="UserDetail_face" src="{{ picture_url }}" alt="Profile picture of {{ first_name }} {{ last_name }}"/>{% endif %}
+        <div id="UserDetail_spacer"></div>
+        <div id="UserDetail_team">{{ team_name or '' }}</div>
+        <img id="UserDetail_flag" src="data:," alt="Flag" style="display: none;"/>
+      </div>
+      <div id="UserDetail_navigator">
+        <table>
+          <col class="name"/>
+          <col class="score"/>
+          <col class="rank"/>
+          <col class="show"/>
+          <thead>
+            <tr>
+              <th></th>
+              <th style="text-align: right;">Score</th>
+              <th style="text-align: right;">Rank</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="UserDetail_scores">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="UserDetail_title"></div>
+
+    <div id="UserDetail_charts">
+      <div style="margin-bottom: 10px;"><strong>Score</strong></div>
+      <canvas id="UserDetail_score_chart" width="920" height="200"></canvas>
+      <div style="margin-top: 20px; margin-bottom: 10px;"><strong>Rank</strong></div>
+      <canvas id="UserDetail_rank_chart" width="920" height="200"></canvas>
+    </div>
+
+    <div id="UserDetail_submissions">
+    </div>
+  </div>
+</div>
