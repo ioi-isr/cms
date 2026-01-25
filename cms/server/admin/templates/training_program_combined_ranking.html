@@ -145,7 +145,7 @@ function initHistogramModal() {
 
 function openHistogramModal(scores, title, type, trainingDayId, maxPossibleScore) {
     if (!histogramModal) return;
-    currentHistogramData = { scores: scores, title: title, type: type, trainingDayId: trainingDayId, maxPossibleScore: maxPossibleScore || 100 };
+    currentHistogramData = { scores: scores, title: title, type: type, trainingDayId: trainingDayId, maxPossibleScore: (maxPossibleScore === undefined || maxPossibleScore === null) ? 100 : maxPossibleScore };
     document.getElementById('histogramTitle').textContent = title + ' - Score Distribution';
 
     // Update the whitelist to only show tags that existed in this training day
@@ -448,7 +448,7 @@ window.showTaskHistogram = function(taskId, taskName, trainingDayId) {
     if (!table) return;
 
     // Get max possible score for this task
-    var maxPossibleScore = taskMaxScores[taskId] || 100;
+    var maxPossibleScore = (taskMaxScores[taskId] === undefined) ? 100 : taskMaxScores[taskId];
 
     // Collect scores from the table - only include students who had access to the task
     var rows = table.querySelectorAll('tbody tr');
@@ -479,7 +479,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
     if (!table) return;
 
     // Get max possible score for this training day (sum of all task max scores)
-    var maxPossibleScore = trainingDayMaxScores[trainingDayId] || 100;
+    var maxPossibleScore = (trainingDayMaxScores[trainingDayId] === undefined) ? 100 : trainingDayMaxScores[trainingDayId];
 
     // Collect total scores for this training day - only include students who participated
     var rows = table.querySelectorAll('tbody tr');

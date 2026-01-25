@@ -254,6 +254,12 @@ class BulkAddTrainingProgramStudentsHandler(BaseHandler):
             if self.try_commit():
                 if students_added > 0:
                     self.service.proxy_service.reinitialize()
+            else:
+                # Commit failed - redirect to avoid showing misleading results
+                self.redirect(
+                    self.url("training_program", training_program_id, "students")
+                )
+                return
 
             self.render_params_for_training_program(training_program)
 
