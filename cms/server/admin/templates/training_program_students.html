@@ -74,6 +74,32 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
         width: 100%;
         margin-bottom: 12px;
     }
+
+    /* Student name wrapper for combined column */
+    .student-name-wrapper {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+    }
+    .student-name-link {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+        max-width: 100%;
+        color: #1e293b;
+        font-weight: 600;
+        text-decoration: none;
+    }
+    .student-name-link:hover {
+        color: #0F766E;
+    }
+    .student-username {
+        font-size: 0.8em;
+        color: #64748b;
+    }
 </style>
 
 <div class="content-constraint">
@@ -87,9 +113,9 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
 
     {% include "fragments/overload_warning.html" %}
 
-    <!-- Action Buttons Row (Screenshot-style) -->
+    <!-- Action Buttons Row -->
     <div class="action-buttons-row">
-        <!-- Import List Button -->
+        <!-- Add Students from List Button -->
         <form id="bulk-add-form" action="{{ url("training_program", training_program.id, "students", "bulk_add") }}" method="POST" enctype="multipart/form-data" style="display: inline;">
             {{ xsrf_form_html|safe }}
             <input type="file" name="students_file" accept=".txt" class="file-input-hidden" id="students-file-input"
@@ -101,7 +127,7 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
                     <polyline points="17 8 12 3 7 8"></polyline>
                     <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
-                Import List
+                Add Students from List
             </label>
         </form>
 
@@ -179,36 +205,6 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
     </div>
     {% endif %}
 
-    <!-- Task Archive Progress Card -->
-    <div class="progress-card">
-        <div class="progress-card-header">Task Archive Progress</div>
-        {% for student in training_program.students|sort(attribute="participation.user.username") %}
-        {% set u = student.participation.user %}
-        {% set progress = student_progress.get(student.id, {}) %}
-        {% if progress.task_count > 0 %}
-        <div class="progress-item">
-            <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none; display: block;">
-                <div class="progress-info">
-                    <span class="progress-percentage">{{ "%.1f"|format(progress.percentage) }}%</span>
-                    <span class="progress-score">{{ "%.0f"|format(progress.total_score) }}/{{ "%.0f"|format(progress.max_score) }}</span>
-                    <span style="margin-left: auto; color: #6b7280; font-size: 0.85rem;">{{ u.username }}</span>
-                </div>
-                <div class="progress-bar-container">
-                    {% set color_class = 'color-green' if progress.percentage >= 80 else 'color-blue' if progress.percentage >= 40 else 'color-orange' %}
-                    <div class="progress-bar-fill {{ color_class }}" style="width: {{ progress.percentage }}%;"></div>
-                </div>
-            </a>
-        </div>
-        {% else %}
-        <div class="no-tasks-text">
-            <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="color: inherit; text-decoration: none;">
-                No tasks assigned - {{ u.username }}
-            </a>
-        </div>
-        {% endif %}
-        {% endfor %}
-    </div>
-
     <!-- Students Table -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
         <h2 style="font-size: 1.25rem; color: #1e293b; font-weight: 700; margin: 0;">All Students ({{ training_program.students|length }})</h2>
@@ -220,46 +216,44 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
             <table class="ranking-table" id="students-table" style="width: 100%;">
                 <thead>
                     <tr>
-                        <th class="sortable-header" data-sort="string" style="width: 20%; text-align: left;">Username</th>
-                        <th class="sortable-header" data-sort="string" style="width: 20%; text-align: left;">First Name</th>
-                        <th class="sortable-header" data-sort="string" style="width: 20%; text-align: left;">Last Name</th>
+                        <th class="sortable-header" data-sort="string" style="width: 35%; text-align: left;">Student</th>
                         <th style="width: 25%; text-align: left;">Student Tags</th>
-                        <th class="sortable-header text-center" data-sort="number" style="width: 10%;">Progress</th>
-                        <th class="text-center" style="width: 5%;">Actions</th>
+                        <th class="sortable-header text-center" data-sort="number" style="width: 25%;">Task Archive Progress</th>
+                        <th class="text-center" style="width: 15%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for student in training_program.students|sort(attribute="participation.user.username") %}
                     {% set u = student.participation.user %}
                     {% set progress = student_progress.get(student.id, {}) %}
-                    <tr data-username="{{ u.username }}"
-                        data-firstname="{{ u.first_name }}"
-                        data-lastname="{{ u.last_name }}"
+                    <tr data-name="{{ u.first_name }} {{ u.last_name }}"
                         data-progress="{{ progress.percentage|default(0) }}">
-                        <!-- Username -->
+                        <!-- Student (combined name column) -->
                         <td>
-                            <div class="list-cell-wrapper">
-                                <div style="font-weight: 600; font-size: 0.95rem;">
-                                    <a href="{{ url("training_program", training_program.id, "student", u.id, "edit") }}" class="student-name-link">{{ u.username }}</a>
+                            <div class="student-name-wrapper">
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; align-items: baseline; gap: 6px; max-width: 100%;">
+                                        <a class="student-name-link"
+                                           href="{{ url("training_program", training_program.id, "student", u.id, "edit") }}"
+                                           title="{{ u.first_name }} {{ u.last_name }}">
+                                            {{ u.first_name }} {{ u.last_name }}
+                                        </a>
+                                        <span class="student-username">
+                                            ({{ u.username }})
+                                        </span>
+                                    </div>
+                                    {% if student.student_tags %}
+                                    <div style="margin-top: 3px; display: flex; flex-wrap: wrap; gap: 2px;">
+                                        {% for tag in student.student_tags %}
+                                          <span class="badge badge-teal" style="font-weight: normal; font-size: 0.7em;">{{ tag }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
 
-                        <!-- First Name -->
-                        <td>
-                            <div class="list-cell-wrapper" style="color: #475569;">
-                                {{ u.first_name }}
-                            </div>
-                        </td>
-
-                        <!-- Last Name -->
-                        <td>
-                            <div class="list-cell-wrapper" style="color: #475569;">
-                                {{ u.last_name }}
-                            </div>
-                        </td>
-
-                        <!-- Student Tags -->
+                        <!-- Student Tags (editable display) -->
                         <td>
                             <div class="list-cell-wrapper">
                                 {% if student.student_tags %}
@@ -270,14 +264,20 @@ CMS.AWSUtils.initReadOnlyTagify('.student-tags-display');
                             </div>
                         </td>
 
-                        <!-- Progress -->
+                        <!-- Task Archive Progress (with small bar) -->
                         <td class="text-center">
                             <div class="list-cell-wrapper center-content">
                                 {% if progress.task_count > 0 %}
-                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none;">
-                                    <span style="font-weight: 700; font-family: monospace; font-size: 1rem; color: {{ '#059669' if progress.percentage >= 80 else '#d97706' if progress.percentage > 0 else '#cbd5e1' }};">
-                                        {{ "%.0f"|format(progress.percentage) }}%
-                                    </span>
+                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none; width: 100%;">
+                                    <div class="progress-bar-inline">
+                                        <span class="percentage" style="color: {{ '#059669' if progress.percentage >= 80 else '#d97706' if progress.percentage > 0 else '#9ca3af' }};">
+                                            {{ "%.0f"|format(progress.percentage) }}%
+                                        </span>
+                                        <div class="bar-container">
+                                            {% set color_class = 'color-green' if progress.percentage >= 80 else 'color-orange' if progress.percentage > 0 else '' %}
+                                            <div class="bar-fill {{ color_class }}" style="width: {{ progress.percentage }}%;"></div>
+                                        </div>
+                                    </div>
                                 </a>
                                 {% else %}
                                 <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none; color: #9ca3af; font-size: 0.85rem;">
@@ -353,16 +353,10 @@ document.addEventListener('click', function(event) {
             rows.sort(function(a, b) {
                 var aVal, bVal;
 
-                if (columnIndex === 0) { // Username
-                    aVal = a.getAttribute('data-username').toLowerCase();
-                    bVal = b.getAttribute('data-username').toLowerCase();
-                } else if (columnIndex === 1) { // First Name
-                    aVal = a.getAttribute('data-firstname').toLowerCase();
-                    bVal = b.getAttribute('data-firstname').toLowerCase();
-                } else if (columnIndex === 2) { // Last Name
-                    aVal = a.getAttribute('data-lastname').toLowerCase();
-                    bVal = b.getAttribute('data-lastname').toLowerCase();
-                } else if (columnIndex === 4) { // Progress
+                if (columnIndex === 0) { // Student (name)
+                    aVal = a.getAttribute('data-name').toLowerCase();
+                    bVal = b.getAttribute('data-name').toLowerCase();
+                } else if (columnIndex === 2) { // Task Archive Progress
                     aVal = parseFloat(a.getAttribute('data-progress')) || 0;
                     bVal = parseFloat(b.getAttribute('data-progress')) || 0;
                 }

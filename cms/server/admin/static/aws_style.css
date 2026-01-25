@@ -2176,13 +2176,13 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     height: 18px;
 }
 
-/* Primary filled button style */
+/* Primary filled button style (teal - training program theme) */
 .btn-filled-primary {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
-    background: #6366f1;
+    background: #0F766E;
     color: white;
     border: none;
     border-radius: 8px;
@@ -2194,7 +2194,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     font-family: inherit;
 }
 .btn-filled-primary:hover {
-    background: #4f46e5;
+    background: #0d6560;
     color: white;
 }
 
@@ -2280,4 +2280,36 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 .no-tasks-text:last-child {
     border-bottom: none;
+}
+
+/* Small inline progress bar for table cells */
+.progress-bar-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.progress-bar-inline .bar-container {
+    flex: 1;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 60px;
+    max-width: 100px;
+}
+.progress-bar-inline .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+.progress-bar-inline .bar-fill.color-orange { background: #f59e0b; }
+.progress-bar-inline .bar-fill.color-blue { background: #3b82f6; }
+.progress-bar-inline .bar-fill.color-green { background: #10b981; }
+.progress-bar-inline .bar-fill.color-teal { background: #0F766E; }
+.progress-bar-inline .percentage {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    min-width: 40px;
+    text-align: right;
 }
