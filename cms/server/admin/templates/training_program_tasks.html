@@ -3,10 +3,10 @@
 {% block core %}
 <div class="content-constraint" style="max-width: 900px;">
     <!-- Header -->
-    <div class="page-title" style="margin-bottom: 24px;">
+    <div class="page-title">
         <h1>Tasks</h1>
         <div class="page-subtitle">
-            Program: <a href="{{ url("training_program", training_program.id) }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+            Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
         </div>
     </div>
 
@@ -42,43 +42,53 @@
     </div>
 
     <!-- Tasks Table -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
-        <h2 style="font-size: 1.25rem; color: #1e293b; font-weight: 700; margin: 0;">All Tasks ({{ training_program.managing_contest.tasks|length }})</h2>
+    <div class="tp-section-header">
+        <h2>All Tasks ({{ training_program.managing_contest.tasks|length }})</h2>
     </div>
 
     <form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST" id="tasks-form">
         {{ xsrf_form_html|safe }}
+        <input type="hidden" name="reorder_data" id="reorder-data" value="" />
         <div class="tp-table-container">
-            <table class="ranking-table" id="tasks-table" style="width: 100%;">
+            <table class="ranking-table tp-tasks-table" id="tasks-table">
                 <thead>
                     <tr>
-                        <th style="width: 40px; text-align: center;"></th>
+                        <th class="grip-column"></th>
                         <th class="sortable-header" data-sort="string" style="text-align: left;">Task</th>
                         <th class="sortable-header" data-sort="string" style="text-align: left;">Training Day</th>
-                        <th class="text-center" style="width: 20%;">Actions</th>
+                        <th class="text-center" style="width: 120px;">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="tasks-tbody">
                     {% for t in training_program.managing_contest.tasks %}
                     {% set is_archived = t.training_day is not none and t.training_day.contest is none %}
-                    <tr data-name="{{ t.name }}"
+                    <tr data-task-id="{{ t.id }}"
+                        data-name="{{ t.name }}"
                         data-training-day="{{ t.training_day.name if t.training_day else '' }}"
-                        data-is-archived="{{ 'true' if is_archived else 'false' }}">
-                        <!-- Radio button for selection -->
-                        <td class="text-center">
-                            <div class="list-cell-wrapper center-content">
-                                <input type="radio" name="task_id" value="{{ t.id }}" style="cursor: pointer;"/>
+                        data-is-archived="{{ 'true' if is_archived else 'false' }}"
+                        draggable="true">
+                        <!-- Drag handle -->
+                        <td class="grip-cell">
+                            <div class="grip-handle" title="Drag to reorder">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="5" r="1.5"/>
+                                    <circle cx="15" cy="5" r="1.5"/>
+                                    <circle cx="9" cy="12" r="1.5"/>
+                                    <circle cx="15" cy="12" r="1.5"/>
+                                    <circle cx="9" cy="19" r="1.5"/>
+                                    <circle cx="15" cy="19" r="1.5"/>
+                                </svg>
                             </div>
                         </td>
 
                         <!-- Task name and title -->
                         <td>
-                            <div class="task-name-wrapper">
-                                <div class="task-info">
-                                    <a class="task-name-link" href="{{ url("task", t.id) }}" title="{{ t.title }}">
+                            <div class="student-name-wrapper">
+                                <div class="student-info">
+                                    <a class="student-name-link" href="{{ url("task", t.id) }}" title="{{ t.title }}">
                                         {{ t.name }}
                                     </a>
-                                    <span class="task-title">{{ t.title }}</span>
+                                    <span class="student-username">{{ t.title }}</span>
                                 </div>
                             </div>
                         </td>
@@ -87,7 +97,7 @@
                         <td>
                             <div class="list-cell-wrapper">
                                 {% if t.training_day is not none and t.training_day.contest is not none %}
-                                <a href="{{ url("contest", t.training_day.contest.id) }}" class="source-badge badge-training" style="text-decoration: none;">
+                                <a href="{{ url("contest", t.training_day.contest.id) }}" class="source-badge badge-training">
                                     {{ t.training_day.contest.name }}
                                 </a>
                                 {% elif t.training_day is not none %}
@@ -95,7 +105,7 @@
                                     {{ t.training_day.name or "(archived)" }}
                                 </span>
                                 {% else %}
-                                <span style="color: #9ca3af; font-size: 0.85rem;">Not assigned</span>
+                                <span class="text-muted" style="font-size: 0.85rem;">Not assigned</span>
                                 {% endif %}
                             </div>
                         </td>
@@ -115,15 +125,11 @@
                                     </svg>
                                 </button>
                                 {% endif %}
-                                <!-- Remove button -->
+                                <!-- Remove button - always goes to confirmation page -->
                                 <button type="submit" name="operation" value="remove_{{ t.id }}" class="btn-icon-only"
                                     {% if not admin.permission_all %}disabled{% endif %}
-                                    {% if t.training_day is not none and t.training_day.contest is not none %}
                                     formaction="{{ url("training_program", training_program.id, "task", t.id, "remove") }}"
                                     formmethod="GET"
-                                    {% else %}
-                                    onclick="return confirm('Remove {{ t.name }} from the training program?');"
-                                    {% endif %}
                                     title="Remove from program">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -139,48 +145,12 @@
                 </tbody>
             </table>
         </div>
-
-        <!-- Move buttons -->
-        <div class="task-move-buttons">
-            <span style="color: #64748b; font-size: 0.9rem; font-weight: 500;">Move selected task:</span>
-            <button type="submit" name="operation" value="to the top" class="btn-outline btn-sm"
-                {% if not admin.permission_all %}disabled{% endif %}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="17 11 12 6 7 11"></polyline>
-                    <polyline points="17 18 12 13 7 18"></polyline>
-                </svg>
-                Top
-            </button>
-            <button type="submit" name="operation" value="up by 1" class="btn-outline btn-sm"
-                {% if not admin.permission_all %}disabled{% endif %}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="18 15 12 9 6 15"></polyline>
-                </svg>
-                Up
-            </button>
-            <button type="submit" name="operation" value="down by 1" class="btn-outline btn-sm"
-                {% if not admin.permission_all %}disabled{% endif %}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-                Down
-            </button>
-            <button type="submit" name="operation" value="to the bottom" class="btn-outline btn-sm"
-                {% if not admin.permission_all %}disabled{% endif %}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="7 13 12 18 17 13"></polyline>
-                    <polyline points="7 6 12 11 17 6"></polyline>
-                </svg>
-                Bottom
-            </button>
-        </div>
     </form>
 
     {% if not training_program.managing_contest.tasks %}
-    <div style="text-align: center; padding: 80px 20px; color: #64748b;">
-        <div style="font-size: 3em; margin-bottom: 10px; opacity: 0.15; filter: grayscale(1);">📋</div>
-        <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No tasks in this program yet</p>
-        <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.7;">Use the "Add Task" button above to add tasks.</p>
+    <div class="empty-state-box">
+        <h3>No tasks in this program yet</h3>
+        <p>Use the "Add Task" button above to add tasks.</p>
     </div>
     {% endif %}
 </div>
@@ -199,6 +169,93 @@ document.addEventListener('click', function(event) {
         form.classList.remove('show');
     }
 });
+
+// Drag and drop reordering
+(function() {
+    var tbody = document.getElementById('tasks-tbody');
+    if (!tbody) return;
+
+    var draggedRow = null;
+    var placeholder = null;
+
+    function createPlaceholder() {
+        var tr = document.createElement('tr');
+        tr.className = 'drag-placeholder';
+        tr.innerHTML = '<td colspan="4"></td>';
+        return tr;
+    }
+
+    tbody.addEventListener('dragstart', function(e) {
+        if (e.target.tagName !== 'TR') return;
+        draggedRow = e.target;
+        draggedRow.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+        placeholder = createPlaceholder();
+    });
+
+    tbody.addEventListener('dragend', function(e) {
+        if (draggedRow) {
+            draggedRow.classList.remove('dragging');
+            if (placeholder && placeholder.parentNode) {
+                placeholder.parentNode.removeChild(placeholder);
+            }
+            draggedRow = null;
+            placeholder = null;
+            saveNewOrder();
+        }
+    });
+
+    tbody.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        var targetRow = e.target.closest('tr');
+        if (!targetRow || targetRow === draggedRow || targetRow === placeholder) return;
+
+        var rect = targetRow.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+
+        if (e.clientY < midY) {
+            targetRow.parentNode.insertBefore(placeholder, targetRow);
+        } else {
+            targetRow.parentNode.insertBefore(placeholder, targetRow.nextSibling);
+        }
+    });
+
+    tbody.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (placeholder && placeholder.parentNode && draggedRow) {
+            placeholder.parentNode.insertBefore(draggedRow, placeholder);
+            placeholder.parentNode.removeChild(placeholder);
+        }
+    });
+
+    function saveNewOrder() {
+        var rows = tbody.querySelectorAll('tr[data-task-id]');
+        var order = [];
+        rows.forEach(function(row, index) {
+            order.push({
+                task_id: row.getAttribute('data-task-id'),
+                new_num: index
+            });
+        });
+
+        // Submit via form
+        var form = document.getElementById('tasks-form');
+        var reorderInput = document.getElementById('reorder-data');
+        reorderInput.value = JSON.stringify(order);
+
+        // Create a hidden operation input
+        var operationInput = document.createElement('input');
+        operationInput.type = 'hidden';
+        operationInput.name = 'operation';
+        operationInput.value = 'reorder';
+        form.appendChild(operationInput);
+
+        form.submit();
+    }
+})();
 
 // Table sorting
 (function() {
@@ -247,86 +304,4 @@ document.addEventListener('click', function(event) {
     });
 })();
 </script>
-
-<style>
-/* Task-specific styles */
-.task-name-wrapper {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-}
-
-.task-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.task-name-link {
-    color: var(--tp-text-primary, #1e293b);
-    font-weight: 600;
-    text-decoration: none;
-    font-size: 0.95rem;
-}
-
-.task-name-link:hover {
-    color: var(--tp-primary, #0F766E);
-}
-
-.task-title {
-    font-size: 0.8rem;
-    color: var(--tp-text-muted, #64748b);
-}
-
-/* Move buttons row */
-.task-move-buttons {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 16px 0;
-    margin-top: 8px;
-    border-top: 1px solid var(--tp-border, #e5e7eb);
-}
-
-.btn-sm {
-    padding: 6px 12px !important;
-    font-size: 0.85rem !important;
-}
-
-.btn-sm svg {
-    width: 16px;
-    height: 16px;
-}
-
-.btn-detach:hover {
-    color: var(--tp-info-hover, #2563eb) !important;
-    background: var(--tp-info-light, #f0f9ff) !important;
-}
-
-/* Override table header styles for this page */
-#tasks-table thead th {
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    z-index: auto !important;
-    box-shadow: none !important;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--tp-text-muted, #64748b);
-    background: var(--tp-bg-light, #f8fafc);
-    padding: 14px 16px !important;
-}
-
-#tasks-table td {
-    padding: 0;
-}
-
-#tasks-table tbody tr:hover {
-    background-color: var(--tp-bg-hover, #f9fafb);
-}
-</style>
 {% endblock core %}

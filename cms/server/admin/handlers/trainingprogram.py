@@ -28,6 +28,8 @@ split into separate modules:
 """
 
 from datetime import datetime as dt
+import json
+from typing import Optional
 
 import tornado.web
 
@@ -53,6 +55,45 @@ from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
 from .contestranking import RankingCommonMixin
+
+
+def _shift_task_nums(
+    sql_session,
+    filter_attr,
+    filter_value,
+    num_attr,
+    threshold: int,
+    delta: int
+) -> None:
+    """Shift task numbers after insertion or removal.
+
+    This utility function handles the common pattern of incrementing or
+    decrementing task numbers when a task is added or removed from a
+    sequence (e.g., contest tasks or training day tasks).
+
+    sql_session: The SQLAlchemy session.
+    filter_attr: The attribute to filter by (e.g., Task.contest, Task.training_day).
+    filter_value: The value to filter for.
+    num_attr: The num attribute to shift (e.g., Task.num, Task.training_day_num).
+    threshold: The threshold value - tasks with num > threshold will be shifted.
+    delta: The amount to shift by (+1 for insertion, -1 for removal).
+    """
+    if delta > 0:
+        # For insertion, process in descending order to avoid conflicts
+        order = num_attr.desc()
+        condition = num_attr >= threshold
+    else:
+        # For removal, process in ascending order
+        order = num_attr
+        condition = num_attr > threshold
+
+    for t in sql_session.query(Task)\
+                 .filter(filter_attr == filter_value)\
+                 .filter(condition)\
+                 .order_by(order)\
+                 .all():
+        setattr(t, num_attr.key, getattr(t, num_attr.key) + delta)
+        sql_session.flush()
 
 
 class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
@@ -402,11 +443,6 @@ class RemoveTrainingProgramHandler(BaseHandler):
         self.write("../../training_programs")
 class TrainingProgramTasksHandler(BaseHandler):
     """Manage tasks in a training program."""
-    REMOVE_FROM_PROGRAM = "Remove from training program"
-    MOVE_UP = "up by 1"
-    MOVE_DOWN = "down by 1"
-    MOVE_TOP = "to the top"
-    MOVE_BOTTOM = "to the bottom"
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
@@ -430,132 +466,61 @@ class TrainingProgramTasksHandler(BaseHandler):
         try:
             operation: str = self.get_argument("operation")
 
-            # Handle operations that include task_id in the operation value
-            # (e.g., "detach_123", "remove_123")
+            # Handle detach operation for archived training day tasks
             if operation.startswith("detach_"):
                 task_id = operation.split("_", 1)[1]
                 task = self.safe_get_item(Task, task_id)
-                self._detach_task_from_archived_training_day(task)
+                self._detach_task_from_training_day(task)
                 if self.try_commit():
                     self.service.proxy_service.reinitialize()
                 self.redirect(fallback_page)
                 return
 
-            if operation.startswith("remove_"):
-                task_id = operation.split("_", 1)[1]
-                task = self.safe_get_item(Task, task_id)
-
-                # If the task is in an active training day, redirect to confirmation
-                if task.training_day is not None and task.training_day.contest is not None:
-                    asking_page = self.url(
-                        "training_program", training_program_id, "task", task_id, "remove"
-                    )
-                    self.redirect(asking_page)
-                    return
-
-                # For archived training days or no training day, remove directly
-                self._remove_task_from_program(task, managing_contest)
-                if self.try_commit():
-                    self.service.proxy_service.reinitialize()
+            # Handle reorder operation from drag-and-drop
+            if operation == "reorder":
+                reorder_data = self.get_argument("reorder_data", "")
+                if reorder_data:
+                    self._reorder_tasks(managing_contest, reorder_data)
+                    if self.try_commit():
+                        self.service.proxy_service.reinitialize()
                 self.redirect(fallback_page)
                 return
 
-            # For move operations, task_id comes from the form field
-            task_id = self.get_argument("task_id")
-            assert operation in (
-                self.REMOVE_FROM_PROGRAM,
-                self.MOVE_UP,
-                self.MOVE_DOWN,
-                self.MOVE_TOP,
-                self.MOVE_BOTTOM
-            ), "Please select a valid operation"
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback_page)
             return
 
-        task = self.safe_get_item(Task, task_id)
-        task2 = None
-
-        task_num = task.num
-
-        if operation == self.REMOVE_FROM_PROGRAM:
-            # If the task is in a training day, redirect to confirmation page
-            if task.training_day is not None:
-                asking_page = self.url(
-                    "training_program", training_program_id, "task", task_id, "remove"
-                )
-                self.redirect(asking_page)
-                return
-
-            task.contest = None
-            task.num = None
-
-            self.sql_session.flush()
-
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == managing_contest)\
-                         .filter(Task.num > task_num)\
-                         .order_by(Task.num)\
-                         .all():
-                t.num -= 1
-                self.sql_session.flush()
-
-        elif operation == self.MOVE_UP:
-            task2 = self.sql_session.query(Task)\
-                        .filter(Task.contest == managing_contest)\
-                        .filter(Task.num == task.num - 1)\
-                        .first()
-
-        elif operation == self.MOVE_DOWN:
-            task2 = self.sql_session.query(Task)\
-                        .filter(Task.contest == managing_contest)\
-                        .filter(Task.num == task.num + 1)\
-                        .first()
-
-        elif operation == self.MOVE_TOP:
-            task.num = None
-            self.sql_session.flush()
-
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == managing_contest)\
-                         .filter(Task.num < task_num)\
-                         .order_by(Task.num.desc())\
-                         .all():
-                t.num += 1
-                self.sql_session.flush()
-
-            task.num = 0
-
-        elif operation == self.MOVE_BOTTOM:
-            task.num = None
-            self.sql_session.flush()
-
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == managing_contest)\
-                         .filter(Task.num > task_num)\
-                         .order_by(Task.num)\
-                         .all():
-                t.num -= 1
-                self.sql_session.flush()
-
-            self.sql_session.flush()
-            task.num = len(managing_contest.tasks) - 1
-
-        if task2 is not None:
-            tmp_a, tmp_b = task.num, task2.num
-            task.num, task2.num = None, None
-            self.sql_session.flush()
-            task.num, task2.num = tmp_b, tmp_a
-
-        if self.try_commit():
-            self.service.proxy_service.reinitialize()
-
         self.redirect(fallback_page)
 
-    def _detach_task_from_archived_training_day(self, task: Task) -> None:
-        """Detach a task from an archived training day.
+    def _reorder_tasks(self, contest: Contest, reorder_data: str) -> None:
+        """Reorder tasks based on drag-and-drop data.
+
+        reorder_data: JSON string with list of {task_id, new_num} objects.
+        """
+        try:
+            order_list = json.loads(reorder_data)
+        except json.JSONDecodeError:
+            return
+
+        # First, set all task nums to None to avoid unique constraint issues
+        task_map = {}
+        for item in order_list:
+            task = self.safe_get_item(Task, item["task_id"])
+            if task.contest == contest:
+                task_map[item["task_id"]] = item["new_num"]
+                task.num = None
+        self.sql_session.flush()
+
+        # Then set the new nums
+        for task_id, new_num in task_map.items():
+            task = self.safe_get_item(Task, task_id)
+            task.num = new_num
+        self.sql_session.flush()
+
+    def _detach_task_from_training_day(self, task: Task) -> None:
+        """Detach a task from its training day.
 
         This removes the training_day association from the task, making it
         available for assignment to new training days. The task remains in
@@ -575,45 +540,10 @@ class TrainingProgramTasksHandler(BaseHandler):
         self.sql_session.flush()
 
         # Reorder remaining tasks in the training day
-        for t in self.sql_session.query(Task)\
-                     .filter(Task.training_day == training_day)\
-                     .filter(Task.training_day_num > training_day_num)\
-                     .order_by(Task.training_day_num)\
-                     .all():
-            t.training_day_num -= 1
-            self.sql_session.flush()
-
-    def _remove_task_from_program(
-        self, task: Task, managing_contest: Contest
-    ) -> None:
-        """Remove a task from the training program.
-
-        This removes the task from both the training day (if assigned) and
-        the training program's managing contest.
-
-        task: the task to remove.
-        managing_contest: the training program's managing contest.
-        """
-        task_num = task.num
-
-        # Remove from training day if assigned
-        if task.training_day is not None:
-            self._detach_task_from_archived_training_day(task)
-
-        # Remove from training program
-        task.contest = None
-        task.num = None
-
-        self.sql_session.flush()
-
-        # Reorder remaining tasks in the training program
-        for t in self.sql_session.query(Task)\
-                     .filter(Task.contest == managing_contest)\
-                     .filter(Task.num > task_num)\
-                     .order_by(Task.num)\
-                     .all():
-            t.num -= 1
-            self.sql_session.flush()
+        _shift_task_nums(
+            self.sql_session, Task.training_day, training_day,
+            Task.training_day_num, training_day_num, -1
+        )
 
 
 class AddTrainingProgramTaskHandler(BaseHandler):
@@ -682,13 +612,10 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
             self.sql_session.flush()
 
             # Reorder remaining tasks in the training day
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.training_day == training_day)\
-                         .filter(Task.training_day_num > training_day_num)\
-                         .order_by(Task.training_day_num)\
-                         .all():
-                t.training_day_num -= 1
-                self.sql_session.flush()
+            _shift_task_nums(
+                self.sql_session, Task.training_day, training_day,
+                Task.training_day_num, training_day_num, -1
+            )
 
         # Remove from training program
         task.contest = None
@@ -697,13 +624,10 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
         self.sql_session.flush()
 
         # Reorder remaining tasks in the training program
-        for t in self.sql_session.query(Task)\
-                     .filter(Task.contest == managing_contest)\
-                     .filter(Task.num > task_num)\
-                     .order_by(Task.num)\
-                     .all():
-            t.num -= 1
-            self.sql_session.flush()
+        _shift_task_nums(
+            self.sql_session, Task.contest, managing_contest,
+            Task.num, task_num, -1
+        )
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()

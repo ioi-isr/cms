@@ -381,9 +381,11 @@
     background: var(--tp-danger-light);
 }
 
+/* Disabled state for both buttons and anchors */
 .btn-icon-only:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    pointer-events: none;
 }
 
 /* ==========================================================================
@@ -1448,4 +1450,108 @@
 
 .empty-state-box p {
     color: var(--tp-text-lighter);
+}
+
+/* ==========================================================================
+   Tasks Page Styles
+   ========================================================================== */
+
+/* Section header */
+.tp-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+
+.tp-section-header h2 {
+    font-size: 1.25rem;
+    color: var(--tp-text-primary);
+    font-weight: 700;
+    margin: 0;
+}
+
+/* Tasks table specific styles */
+.tp-tasks-table {
+    width: 100%;
+}
+
+.tp-tasks-table thead th {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--tp-text-muted);
+    background: var(--tp-bg-light);
+    padding: 14px 16px !important;
+}
+
+.tp-tasks-table td {
+    padding: 0;
+}
+
+.tp-tasks-table tbody tr:hover {
+    background-color: var(--tp-bg-hover);
+}
+
+/* Grip handle for drag and drop */
+.grip-column {
+    width: 40px;
+    text-align: center;
+}
+
+.grip-cell {
+    width: 40px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.grip-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    cursor: grab;
+    color: var(--tp-text-light);
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.grip-handle:hover {
+    color: var(--tp-text-secondary);
+    background: var(--tp-bg-gray);
+}
+
+.grip-handle:active {
+    cursor: grabbing;
+}
+
+/* Drag and drop states */
+.tp-tasks-table tbody tr[draggable="true"] {
+    transition: opacity 0.2s, background-color 0.2s;
+}
+
+.tp-tasks-table tbody tr.dragging {
+    opacity: 0.5;
+    background: var(--tp-bg-gray);
+}
+
+.drag-placeholder {
+    background: var(--tp-info-light);
+    border: 2px dashed var(--tp-info);
+}
+
+.drag-placeholder td {
+    height: 50px;
+}
+
+/* Detach button hover state */
+.btn-detach:hover {
+    color: var(--tp-info-hover) !important;
+    background: var(--tp-info-light) !important;
 }
