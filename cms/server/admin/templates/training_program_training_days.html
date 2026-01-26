@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% import 'fragments/info_alert.html' as info_alert %}
+{% import 'fragments/histogram_modal.html' as histogram %}
 
 {% block js_init %}
 {% for td in training_program.training_days %}
@@ -15,130 +17,212 @@ CMS.AWSUtils.initTagify({
     invalidMessage: 'Types cannot contain commas.'
 });
 {% endfor %}
+
+// Store archived task scores for histograms
+var archivedTaskScores = {};
+var archivedTaskMaxScores = {};
+{% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
+{% for td in archived_training_days %}
+{% if td.archived_tasks_data %}
+{% for task_id_str, task_info in td.archived_tasks_data.items() %}
+archivedTaskMaxScores['{{ td.id }}_{{ task_id_str }}'] = {{ task_info.get('max_score', 100) }};
+archivedTaskScores['{{ td.id }}_{{ task_id_str }}'] = [];
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+// Populate scores from archived ranking data
+{% for td in archived_training_days %}
+{% for ranking in td.archived_student_rankings %}
+{% if ranking.task_scores %}
+{% for task_id_str, score in ranking.task_scores.items() %}
+if (archivedTaskScores['{{ td.id }}_{{ task_id_str }}']) {
+    archivedTaskScores['{{ td.id }}_{{ task_id_str }}'].push({
+        studentId: {{ ranking.student_id }},
+        score: {{ score if score is not none else 0 }}
+    });
+}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
+    var key = trainingDayId + '_' + taskId;
+    var scores = archivedTaskScores[key] || [];
+    var maxScore = archivedTaskMaxScores[key] || 100;
+    openHistogramModal(scores, taskName, 'task', trainingDayId, maxScore);
+};
 {% endblock js_init %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Training Days of <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
+<div class="core_title tp-page-header">
+  <h1>Training Days: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
 </div>
 
-<p>
-  <a href="{{ url("training_program", training_program.id, "training_days", "add") }}">Add a new training day</a>
-</p>
+<div style="margin-bottom: 20px;">
+  <a href="{{ url("training_program", training_program.id, "training_days", "add") }}" class="tp-btn-primary">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+    Add Training Day
+  </a>
+</div>
 
-<h2>Active Training Days</h2>
+<h2 class="tp-section-title">Active Training Days</h2>
+
+{{ info_alert.alert(
+    title="Active Training Days",
+    message="These training days have an associated contest and can accept student participation. Use the Archive action when a training day is complete.",
+    type="info"
+) }}
 
 <form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  Remove selected training day:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="Remove" />
 
-  <br>
+  <div class="tp-table-container">
+    <table class="ranking-table" id="training_days_table">
+      <thead>
+        <tr>
+          <th class="no-sort" style="width: 40px;"></th>
+          <th data-sort-settings="string">Name</th>
+          <th data-sort-settings="string">Description</th>
+          <th class="no-sort">Types</th>
+          <th data-sort-settings="date">Start</th>
+          <th class="no-sort">Tasks</th>
+          <th class="no-sort">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
+        {% for td in active_training_days %}
+        <tr>
+          <td style="text-align: center;">
+            <input type="radio" name="training_day_id" value="{{ td.id }}"/>
+          </td>
+          <td>
+            <a href="{{ url("contest", td.contest.id) }}" class="tp-link">{{ td.contest.name }}</a>
+          </td>
+          <td>{{ td.contest.description or "-" }}</td>
+          <td style="min-width: 180px;">
+            <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} class="tp-filter-input" style="width: 100%;"/>
+          </td>
+          <td>
+            {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
+              {{ td.contest.start.strftime("%Y-%m-%d %H:%M") }}
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% set tasks = td.contest.get_tasks() %}
+            {% if tasks %}
+              <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                {% for task in tasks %}
+                  <a href="{{ url("task", task.id) }}" class="badge badge-teal" title="{{ task.title }}">{{ task.name }}</a>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-muted">No tasks</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url("training_program", training_program.id, "training_day", td.id, "archive") }}" class="tp-btn-secondary" style="font-size: 0.85rem; padding: 4px 10px;">Archive</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="empty-state-cell">(no active training days)</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-  Move selected training day:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="up by 1" />
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="down by 1" />
+  {% if active_training_days %}
+  <div class="tp-form-actions" style="margin-top: 16px;">
+    <span style="color: var(--tp-text-secondary); margin-right: 12px;">Selected training day:</span>
+    <button type="submit" name="operation" value="Remove" class="tp-btn-secondary" {% if not admin.permission_all %}disabled{% endif %}>Remove</button>
+    <button type="submit" name="operation" value="up by 1" class="tp-btn-secondary" {% if not admin.permission_all %}disabled{% endif %}>Move Up</button>
+    <button type="submit" name="operation" value="down by 1" class="tp-btn-secondary" {% if not admin.permission_all %}disabled{% endif %}>Move Down</button>
+  </div>
+  {% endif %}
+</form>
 
-  <table class="bordered" id="training_days_table">
+<h2 class="tp-section-title" style="margin-top: 40px;">Archived Training Days</h2>
+
+{{ info_alert.alert(
+    title="Archived Training Days",
+    message="These training days have been archived. Their contest data has been deleted, but attendance and ranking data is preserved. Click on task badges to view score histograms.",
+    type="info"
+) }}
+
+<div class="tp-table-container">
+  <table class="ranking-table" id="archived_training_days_table">
     <thead>
       <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Description</th>
-        <th>Types</th>
-        <th>Start</th>
-        <th>Actions</th>
+        <th data-sort-settings="string">Name</th>
+        <th data-sort-settings="string">Description</th>
+        <th class="no-sort">Types</th>
+        <th data-sort-settings="date">Start</th>
+        <th class="no-sort">Tasks</th>
       </tr>
     </thead>
     <tbody>
-      {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
-      {% for td in active_training_days %}
+      {% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
+      {% for td in archived_training_days %}
       <tr>
-        <td>
-          <input type="radio" name="training_day_id" value="{{ td.id }}"/>
-        </td>
-        <td><a href="{{ url("contest", td.contest.id) }}">{{ td.contest.name }}</a></td>
-        <td>{{ td.contest.description }}</td>
-        <td style="min-width: 200px;">
-          <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
+        <td>{{ td.name or "(no name)" }}</td>
+        <td>{{ td.description or "(no description)" }}</td>
+        <td style="min-width: 180px;">
+          <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} class="tp-filter-input" style="width: 100%;"/>
         </td>
         <td>
-          {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
-            {{ td.contest.start.strftime("%Y-%m-%d %H:%M") }}
+          {% if td.start_time %}
+            {{ td.start_time.strftime("%Y-%m-%d %H:%M") }}
           {% else %}
-            -
+            <span class="text-muted">-</span>
           {% endif %}
         </td>
         <td>
-          <a href="{{ url("training_program", training_program.id, "training_day", td.id, "archive") }}">Archive</a>
+          {% if td.archived_tasks_data %}
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+              {% for task_id_str, task_info in td.archived_tasks_data.items() %}
+                <span class="badge badge-amber histogram-task-badge" 
+                      title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
+                      onclick="showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get('name', 'Task ' ~ task_id_str) | tojson }})"
+                      style="cursor: pointer;">
+                  {{ task_info.get('name', 'Task ' ~ task_id_str) }}
+                  <span class="histogram-icon" style="margin-left: 2px;">&#128202;</span>
+                </span>
+              {% endfor %}
+            </div>
+          {% else %}
+            <span class="text-muted">No tasks</span>
+          {% endif %}
         </td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="6">(no active training days)</td>
+        <td colspan="5" class="empty-state-cell">(no archived training days)</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-
-  <script>
-    $(document).ready(function() {
-      CMS.AWSUtils.init_table_sort($("#training_days_table"), false, 3, false);
-    });
-  </script>
-</form>
-
-<h2>Archived Training Days</h2>
-
-<table class="bordered" id="archived_training_days_table">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Description</th>
-      <th>Types</th>
-      <th>Start</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
-    {% for td in archived_training_days %}
-    <tr>
-      <td>{{ td.name or "(no name)" }}</td>
-      <td>{{ td.description or "(no description)" }}</td>
-      <td style="min-width: 200px;">
-        <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
-      </td>
-      <td>
-        {% if td.start_time %}
-          {{ td.start_time.strftime("%Y-%m-%d %H:%M") }}
-        {% else %}
-          -
-        {% endif %}
-      </td>
-    </tr>
-    {% else %}
-    <tr>
-      <td colspan="4">(no archived training days)</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+</div>
 
 <script>
   $(document).ready(function() {
-    CMS.AWSUtils.init_table_sort($("#archived_training_days_table"), false, 2, false);
+    if (CMS && CMS.AWSUtils) {
+      CMS.AWSUtils.init_table_sort($("#training_days_table"), false, 4, false);
+      CMS.AWSUtils.init_table_sort($("#archived_training_days_table"), false, 3, false);
+    }
   });
 </script>
+
+{{ histogram.histogram_styles() }}
+{{ histogram.histogram_modal_html() }}
+{{ histogram.histogram_scripts() }}
+
 {% endblock core %}

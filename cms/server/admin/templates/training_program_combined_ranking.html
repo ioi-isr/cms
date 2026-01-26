@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'fragments/info_alert.html' as info_alert %}
 
 {% block js_init %}
 // Initialize read-only filter tagify for training day types (no AJAX save)
@@ -531,6 +532,12 @@ $(document).ready(function() {
 <div class="core_title tp-page-header">
   <h1>Combined Ranking: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
 </div>
+
+{{ info_alert.alert(
+    title="Archived Training Days",
+    message="This page shows ranking data from archived training days only. For active training day rankings, go to the appropriate training day's ranking page.",
+    type="info"
+) }}
 
 <form action="{{ url('training_program', training_program.id, 'combined_ranking') }}" method="GET" class="tp-filter-card">
   <div class="tp-filter-group">
