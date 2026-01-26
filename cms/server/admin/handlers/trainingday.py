@@ -704,7 +704,18 @@ class ScoreboardSharingHandler(BaseHandler):
                 if not isinstance(sharing_data, dict):
                     raise ValueError("Invalid format: expected object")
 
+                seen_tags: set[str] = set()
                 for tag, settings in sharing_data.items():
+                    normalized_tag = tag.strip()
+                    if not normalized_tag:
+                        raise ValueError("Tag cannot be empty")
+                    if normalized_tag != tag:
+                        raise ValueError(f"Invalid tag '{tag}': remove leading/trailing spaces")
+                    normalized_key = normalized_tag.lower()
+                    if normalized_key in seen_tags:
+                        raise ValueError(f"Duplicate tag '{tag}'")
+                    seen_tags.add(normalized_key)
+
                     if not isinstance(settings, dict):
                         raise ValueError(f"Invalid settings for tag '{tag}'")
                     if "top_names" not in settings:

@@ -92,6 +92,8 @@ Object.keys(tagsPerTrainingDay).forEach(function(tdId) {
     tagsPerTrainingDay[tdId] = Array.from(tagsPerTrainingDay[tdId]).sort();
 });
 allStudentTags = Array.from(allStudentTagsSet).sort();
+window.tagsPerTrainingDay = tagsPerTrainingDay;
+window.allStudentTags = allStudentTags;
 
 {% include 'fragments/histogram_js.html' %}
 
@@ -110,10 +112,23 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 {% block core %}
 <div class="content-constraint" style="max-width: 1100px;">
     <!-- Header -->
-    <div class="page-title">
-        <h1>Training Days</h1>
-        <div class="page-subtitle">
-            Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+    <div class="page-title" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h1>Training Days</h1>
+            <div class="page-subtitle">
+                Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <a href="{{ url("training_program", training_program.id, "training_days", "add") }}"
+               class="btn-filled-primary"
+               style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Training Day
+            </a>
         </div>
     </div>
 
@@ -193,7 +208,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                     <div>{{ td.contest.start.strftime('%Y-%m-%d') }}</div>
                                     <div style="color: #94a3b8; font-size: 0.9em;">{{ td.contest.start.strftime('%H:%M') }}</div>
                                 {% else %}
-                                    <span class="badge-pill badge-slate" style="font-size: 0.7em;">Unscheduled</span>
+                                    <span class="badge-pill badge-slate" style="font-size: 0.85rem; font-weight: 600;">Unscheduled</span>
                                 {% endif %}
                             </div>
                         </td>
@@ -254,15 +269,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         <p>Use the "Add New Training Day" button above to create one.</p>
     </div>
     {% endif %}
-    <div>
-      <a href="{{ url("training_program", training_program.id, "training_days", "add") }}" class="btn-filled-primary" style="text-decoration: none;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        Add New Training Day
-      </a>
-    </div>
+    <div></div>
 
     <!-- Archived Training Days Section -->
     <div class="tp-section-header" style="margin-top: 40px;">
@@ -617,24 +624,26 @@ function closeScoreboardSharingModal() {
 function addSharingEntry(tag, topNames) {
     tag = tag || '';
     topNames = topNames || 5;
-
+    
     var entriesContainer = document.getElementById('scoreboardSharingEntries');
     var entryDiv = document.createElement('div');
     entryDiv.className = 'sharing-entry';
     entryDiv.style.cssText = 'display: flex; gap: 12px; align-items: center; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px;';
-
-    entryDiv.innerHTML =
+    
+    entryDiv.innerHTML = 
         '<div style="flex: 1;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
-            '<input type="text" class="sharing-tag" value="' + escapeHtml(tag) + '" placeholder="e.g., advanced" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
+            '<input type="text" class="sharing-tag" data-sharing-tag-input="true" value="" placeholder="Select a tag" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
         '</div>' +
         '<div style="width: 120px;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Top Names</label>' +
             '<input type="number" class="sharing-top-names" value="' + topNames + '" min="0" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
         '</div>' +
         '<button type="button" onclick="this.parentElement.remove()" style="margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">&times;</button>';
-
+    
     entriesContainer.appendChild(entryDiv);
+
+    initSharingTagInput(entryDiv.querySelector('.sharing-tag'), tag);
 }
 
 function escapeHtml(text) {
@@ -643,25 +652,81 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function saveScoreboardSharing() {
-    if (!currentSharingTrainingDayId) return;
+function initSharingTagInput(input, initialTag) {
+    if (!input || typeof Tagify === 'undefined') return;
+    if (!input.dataset.sharingTagInput) {
+        input.dataset.sharingTagInput = 'true';
+    }
 
-    var entries = document.querySelectorAll('#scoreboardSharingEntries .sharing-entry');
-    var sharingData = {};
+    var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
+        tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
 
-    entries.forEach(function(entry) {
-        var tag = entry.querySelector('.sharing-tag').value.trim();
-        var topNames = parseInt(entry.querySelector('.sharing-top-names').value, 10);
-
-        if (tag) {
-            sharingData[tag] = { top_names: isNaN(topNames) ? 5 : topNames };
+    var tagify = new Tagify(input, {
+        delimiters: ",",
+        whitelist: whitelist,
+        enforceWhitelist: true,
+        editTags: false,
+        maxTags: 1,
+        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
+        originalInputValueFormat: function(valuesArr) {
+            return valuesArr.map(function(item) { return item.value; }).join(', ');
         }
     });
 
+    if (initialTag) {
+        tagify.addTags([initialTag]);
+    }
+}
+
+function saveScoreboardSharing() {
+    if (!currentSharingTrainingDayId) return;
+    
+    var entries = document.querySelectorAll('#scoreboardSharingEntries .sharing-entry');
+    var sharingData = {};
+    var seenTags = {};
+    var hasDuplicate = false;
+    
+    entries.forEach(function(entry) {
+        var tagInput = entry.querySelector('input[data-sharing-tag-input="true"]');
+        var tag = '';
+        var tagify = tagInput && tagInput.tagify ? tagInput.tagify : null;
+        if (tagify) {
+            if ((!tagify.value || tagify.value.length === 0) && tagify.DOM && tagify.DOM.input) {
+                var pendingValue = tagify.DOM.input.value.trim();
+                if (pendingValue) {
+                    tagify.addTags([pendingValue], true);
+                }
+            }
+            if (tagify.value && tagify.value.length > 0) {
+                var tagValue = tagify.value[0] ? tagify.value[0].value : '';
+                tag = (tagValue || '').trim();
+            }
+        } else if (tagInput && typeof tagInput.value === 'string') {
+            tag = tagInput.value.trim();
+        }
+        var topNames = parseInt(entry.querySelector('.sharing-top-names').value, 10);
+        
+        if (tag) {
+            var normalized = tag.toLowerCase();
+            if (seenTags[normalized]) {
+                hasDuplicate = true;
+            } else {
+                seenTags[normalized] = true;
+                sharingData[tag] = { top_names: isNaN(topNames) ? 5 : topNames };
+            }
+        }
+    });
+
+    if (hasDuplicate) {
+        alert('Duplicate tags are not allowed.');
+        return;
+    }
+    
     // Send AJAX request
     var formData = new FormData();
     formData.append('_xsrf', document.querySelector('input[name="_xsrf"]').value);
-    formData.append('scoreboard_sharing', JSON.stringify(Object.keys(sharingData).length > 0 ? sharingData : null));
+    var sharingPayload = Object.keys(sharingData).length > 0 ? JSON.stringify(sharingData) : '';
+    formData.append('scoreboard_sharing', sharingPayload);
 
     fetch('{{ url("training_program", training_program.id) }}/training_day/' + currentSharingTrainingDayId + '/scoreboard_sharing', {
         method: 'POST',
