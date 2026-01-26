@@ -104,15 +104,14 @@
                         <td class="text-center">
                             <div class="list-cell-wrapper center-content" style="gap: 8px;">
                                 {% if is_archived %}
-                                <!-- Release/Reuse button for archived training day tasks -->
-                                <button type="submit" name="operation" value="release_{{ t.id }}" class="btn-icon-only btn-release"
+                                <!-- Detach button for archived training day tasks -->
+                                <button type="submit" name="operation" value="detach_{{ t.id }}" class="btn-icon-only btn-detach"
                                     {% if not admin.permission_all %}disabled{% endif %}
-                                    onclick="return confirm('Release this task from the archived training day? It will become available for new training days.');"
-                                    title="Release from archived training day">
+                                    onclick="return confirm('Detach this task from the archived training day? It will become available for new training days.');"
+                                    title="Detach from archived training day">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                        <polyline points="15 3 21 3 21 9"></polyline>
-                                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                      <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
                                     </svg>
                                 </button>
                                 {% endif %}
@@ -302,12 +301,7 @@ document.addEventListener('click', function(event) {
     height: 16px;
 }
 
-/* Release button styling */
-.btn-release {
-    color: var(--tp-info, #3b82f6) !important;
-}
-
-.btn-release:hover {
+.btn-detach:hover {
     color: var(--tp-info-hover, #2563eb) !important;
     background: var(--tp-info-light, #f0f9ff) !important;
 }

@@ -431,11 +431,11 @@ class TrainingProgramTasksHandler(BaseHandler):
             operation: str = self.get_argument("operation")
 
             # Handle operations that include task_id in the operation value
-            # (e.g., "release_123", "remove_123")
-            if operation.startswith("release_"):
+            # (e.g., "detach_123", "remove_123")
+            if operation.startswith("detach_"):
                 task_id = operation.split("_", 1)[1]
                 task = self.safe_get_item(Task, task_id)
-                self._release_task_from_archived_training_day(task)
+                self._detach_task_from_archived_training_day(task)
                 if self.try_commit():
                     self.service.proxy_service.reinitialize()
                 self.redirect(fallback_page)
@@ -554,14 +554,14 @@ class TrainingProgramTasksHandler(BaseHandler):
 
         self.redirect(fallback_page)
 
-    def _release_task_from_archived_training_day(self, task: Task) -> None:
-        """Release a task from an archived training day.
+    def _detach_task_from_archived_training_day(self, task: Task) -> None:
+        """Detach a task from an archived training day.
 
         This removes the training_day association from the task, making it
         available for assignment to new training days. The task remains in
         the training program.
 
-        task: the task to release.
+        task: the task to detach.
         """
         if task.training_day is None:
             return
@@ -598,7 +598,7 @@ class TrainingProgramTasksHandler(BaseHandler):
 
         # Remove from training day if assigned
         if task.training_day is not None:
-            self._release_task_from_archived_training_day(task)
+            self._detach_task_from_archived_training_day(task)
 
         # Remove from training program
         task.contest = None
