@@ -665,3 +665,66 @@ class TrainingDayTypesHandler(BaseHandler):
         except Exception as error:
             self.set_status(400)
             self.write({"error": str(error)})
+
+
+class ScoreboardSharingHandler(BaseHandler):
+    """Handler for updating scoreboard sharing settings for archived training days."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, training_day_id: str):
+        self.set_header("Content-Type", "application/json")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            self.set_status(404)
+            self.write({"error": "Training day does not belong to this program"})
+            return
+
+        # Only allow for archived training days
+        if training_day.contest is not None:
+            self.set_status(400)
+            self.write({"error": "Scoreboard sharing is only available for archived training days"})
+            return
+
+        try:
+            import json
+            sharing_data_str = self.get_argument("scoreboard_sharing", "")
+
+            if not sharing_data_str or sharing_data_str.strip() == "":
+                # Clear sharing settings
+                training_day.scoreboard_sharing = None
+            else:
+                sharing_data = json.loads(sharing_data_str)
+
+                # Validate the format
+                if not isinstance(sharing_data, dict):
+                    raise ValueError("Invalid format: expected object")
+
+                for tag, settings in sharing_data.items():
+                    if not isinstance(settings, dict):
+                        raise ValueError(f"Invalid settings for tag '{tag}'")
+                    if "top_names" not in settings:
+                        raise ValueError(f"Missing 'top_names' for tag '{tag}'")
+                    top_names = settings["top_names"]
+                    if not isinstance(top_names, int) or top_names < 0:
+                        raise ValueError(f"Invalid 'top_names' for tag '{tag}': must be non-negative integer")
+
+                training_day.scoreboard_sharing = sharing_data
+
+            if self.try_commit():
+                self.write({
+                    "success": True,
+                    "scoreboard_sharing": training_day.scoreboard_sharing
+                })
+            else:
+                self.set_status(500)
+                self.write({"error": "Failed to save"})
+
+        except json.JSONDecodeError as error:
+            self.set_status(400)
+            self.write({"error": f"Invalid JSON: {str(error)}"})
+        except Exception as error:
+            self.set_status(400)
+            self.write({"error": str(error)})

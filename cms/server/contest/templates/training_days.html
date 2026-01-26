@@ -114,6 +114,7 @@
             <th>{% trans %}Tasks{% endtrans %}</th>
             <th style="cursor: pointer;" onclick="sortPastTrainings(3)">{% trans %}Training Score{% endtrans %} <span class="sort-icon"></span></th>
             <th style="cursor: pointer;" onclick="sortPastTrainings(4)">{% trans %}Home Score{% endtrans %} <span class="sort-icon"></span></th>
+            <th>{% trans %}Scoreboard{% endtrans %}</th>
         </tr>
     </thead>
     <tbody>
@@ -146,6 +147,18 @@
             <td>
                 <span class="score-value">{{ "%.0f"|format(pt.home_score) }}</span>
                 <span class="score-max">/ {{ "%.0f"|format(pt.max_score) }}</span>
+            </td>
+            <td>
+                {% if pt.eligible_scoreboards %}
+                    {% for sb in pt.eligible_scoreboards %}
+                    <button type="button" class="btn btn-mini btn-info scoreboard-badge" 
+                            onclick="openScoreboardModal({{ pt.training_day.id }}, '{{ sb.tag }}')">
+                        {{ sb.tag }}
+                    </button>
+                    {% endfor %}
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
             </td>
         </tr>
 {% endfor %}
@@ -259,6 +272,55 @@
     0%, 100% { box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3); }
     50% { box-shadow: 0 2px 16px rgba(40, 167, 69, 0.6); }
 }
+.scoreboard-badge {
+    margin: 2px;
+    font-size: 11px;
+    padding: 2px 8px;
+}
+.scoreboard-table {
+    font-size: 13px;
+}
+.scoreboard-table .rank-col {
+    width: 40px;
+    text-align: center;
+}
+.scoreboard-table .name-col {
+    min-width: 120px;
+}
+.scoreboard-table .task-col {
+    width: 60px;
+    text-align: center;
+}
+.scoreboard-table .total-col {
+    width: 70px;
+    text-align: center;
+}
+.scoreboard-table .score-full {
+    background-color: #d4edda;
+    color: #155724;
+}
+.scoreboard-table .score-partial {
+    background-color: #fff3cd;
+    color: #856404;
+}
+.scoreboard-table .score-zero {
+    color: #999;
+}
+.scoreboard-table .highlight-row {
+    background-color: #cce5ff !important;
+    font-weight: bold;
+}
+.scoreboard-table .highlight-row td {
+    background-color: #cce5ff !important;
+}
+.scoreboard-note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #666;
+}
+#scoreboard-modal .modal-body {
+    min-height: 200px;
+}
 </style>
 
 <script>
@@ -370,6 +432,96 @@ function sortPastTrainings(columnIndex) {
         tbody.appendChild(row);
     });
 }
+
+function openScoreboardModal(trainingDayId, tag) {
+    var modal = document.getElementById('scoreboard-modal');
+    var title = document.getElementById('scoreboard-modal-title');
+    var body = document.getElementById('scoreboard-modal-body');
+    
+    title.textContent = 'Loading...';
+    body.innerHTML = '<div class="text-center"><em>Loading scoreboard...</em></div>';
+    
+    $(modal).modal('show');
+    
+    fetch('{{ contest_url("training_days") }}/scoreboard/' + trainingDayId + '/' + encodeURIComponent(tag))
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.error) {
+                title.textContent = 'Error';
+                body.innerHTML = '<div class="alert alert-error">' + data.error + '</div>';
+                return;
+            }
+            
+            title.textContent = data.training_day_name + ' - ' + data.tag + ' Scoreboard';
+            
+            var html = '<table class="table table-bordered table-striped scoreboard-table">';
+            html += '<thead><tr>';
+            html += '<th class="rank-col">#</th>';
+            html += '<th class="name-col">Name</th>';
+            
+            data.tasks.forEach(function(task) {
+                html += '<th class="task-col" title="' + task.name + '">' + task.name + '</th>';
+            });
+            
+            html += '<th class="total-col">Total</th>';
+            html += '</tr></thead><tbody>';
+            
+            data.scoreboard.forEach(function(entry) {
+                var rowClass = entry.is_current_student ? 'highlight-row' : '';
+                html += '<tr class="' + rowClass + '">';
+                html += '<td class="rank-col">' + entry.rank + '</td>';
+                html += '<td class="name-col">' + escapeHtml(entry.student_name) + '</td>';
+                
+                entry.task_scores.forEach(function(ts) {
+                    var scoreClass = '';
+                    if (ts.score >= ts.max_score) {
+                        scoreClass = 'score-full';
+                    } else if (ts.score > 0) {
+                        scoreClass = 'score-partial';
+                    } else {
+                        scoreClass = 'score-zero';
+                    }
+                    html += '<td class="task-col ' + scoreClass + '">' + Math.round(ts.score) + '</td>';
+                });
+                
+                html += '<td class="total-col"><strong>' + Math.round(entry.total_score) + '</strong></td>';
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            
+            if (data.top_names > 0) {
+                html += '<p class="scoreboard-note"><em>Top ' + data.top_names + ' students shown with full names. Others are anonymized.</em></p>';
+            }
+            
+            body.innerHTML = html;
+        })
+        .catch(function(error) {
+            title.textContent = 'Error';
+            body.innerHTML = '<div class="alert alert-error">Failed to load scoreboard: ' + error.message + '</div>';
+        });
+}
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 </script>
+
+<!-- Scoreboard Modal -->
+<div id="scoreboard-modal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="scoreboard-modal-label" aria-hidden="true">
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
+        <h3 id="scoreboard-modal-title">{% trans %}Scoreboard{% endtrans %}</h3>
+    </div>
+    <div class="modal-body" id="scoreboard-modal-body" style="max-height: 500px; overflow-y: auto;">
+    </div>
+    <div class="modal-footer">
+        <button class="btn" data-dismiss="modal" aria-hidden="true">{% trans %}Close{% endtrans %}</button>
+    </div>
+</div>
 
 {% endblock core %}

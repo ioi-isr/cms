@@ -26,7 +26,7 @@ from datetime import timedelta
 import tornado.web
 from sqlalchemy import func
 
-from cms.db import Participation, Student, ArchivedStudentRanking, Submission, Task
+from cms.db import Participation, Student, ArchivedStudentRanking, Submission, Task, TrainingDay
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server import multi_contest
 from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
@@ -397,6 +397,20 @@ class TrainingDaysHandler(ContestHandler):
                     "max_score": task_max_score,
                 })
 
+        # Determine eligible scoreboards based on student's tags during training
+        eligible_scoreboards = []
+        scoreboard_sharing = training_day.scoreboard_sharing or {}
+        if student is not None and scoreboard_sharing:
+            archived_ranking = archived_rankings_map.get(training_day.id)
+            if archived_ranking and archived_ranking.student_tags:
+                student_tags_during_training = set(archived_ranking.student_tags)
+                for tag in scoreboard_sharing.keys():
+                    if tag in student_tags_during_training:
+                        eligible_scoreboards.append({
+                            "tag": tag,
+                            "top_names": scoreboard_sharing[tag].get("top_names", 5),
+                        })
+
         return {
             "training_day": training_day,
             "name": training_day.name,
@@ -406,4 +420,157 @@ class TrainingDaysHandler(ContestHandler):
             "home_score": home_score,
             "max_score": max_score,
             "tasks": tasks_info,
+            "eligible_scoreboards": eligible_scoreboards,
         }
+
+
+class ScoreboardDataHandler(ContestHandler):
+    """Handler for fetching scoreboard data for a specific training day and tag.
+
+    Returns JSON data for the scoreboard modal, filtered by tag and with
+    appropriate anonymization based on the top_names setting.
+    """
+
+    @tornado.web.authenticated
+    @multi_contest
+    def get(self, training_day_id: str, tag: str):
+        self.set_header("Content-Type", "application/json")
+
+        participation: Participation = self.current_user
+        training_program = self.training_program
+        if training_program is None:
+            self.set_status(404)
+            self.write({"error": "Training program not found"})
+            return
+
+        # Get the training day
+        training_day = (
+            self.sql_session.query(TrainingDay)
+            .filter(TrainingDay.id == int(training_day_id))
+            .filter(TrainingDay.training_program_id == training_program.id)
+            .first()
+        )
+
+        if training_day is None or training_day.contest is not None:
+            self.set_status(404)
+            self.write({"error": "Archived training day not found"})
+            return
+
+        # Check if scoreboard is shared for this tag
+        scoreboard_sharing = training_day.scoreboard_sharing or {}
+        if tag not in scoreboard_sharing:
+            self.set_status(403)
+            self.write({"error": "Scoreboard not shared for this tag"})
+            return
+
+        top_names = scoreboard_sharing[tag].get("top_names", 5)
+
+        # Get the current student
+        student = (
+            self.sql_session.query(Student)
+            .join(Participation, Student.participation_id == Participation.id)
+            .filter(Participation.contest_id == self.contest.id)
+            .filter(Participation.user_id == participation.user_id)
+            .filter(Student.training_program_id == training_program.id)
+            .first()
+        )
+
+        if student is None:
+            self.set_status(403)
+            self.write({"error": "Student not found"})
+            return
+
+        # Check if student had this tag during training
+        student_archived_ranking = (
+            self.sql_session.query(ArchivedStudentRanking)
+            .filter(ArchivedStudentRanking.training_day_id == training_day.id)
+            .filter(ArchivedStudentRanking.student_id == student.id)
+            .first()
+        )
+
+        if student_archived_ranking is None:
+            self.set_status(403)
+            self.write({"error": "No ranking data for this student"})
+            return
+
+        student_tags_during_training = set(student_archived_ranking.student_tags or [])
+        if tag not in student_tags_during_training:
+            self.set_status(403)
+            self.write({"error": "Not eligible to view this scoreboard"})
+            return
+
+        # Get all archived rankings for students with this tag during training
+        all_rankings = (
+            self.sql_session.query(ArchivedStudentRanking)
+            .filter(ArchivedStudentRanking.training_day_id == training_day.id)
+            .all()
+        )
+
+        # Filter to students who had this tag during training
+        tag_rankings = [
+            r for r in all_rankings
+            if r.student_tags and tag in r.student_tags
+        ]
+
+        # Get archived tasks data to filter by tag accessibility
+        archived_tasks_data = training_day.archived_tasks_data or {}
+
+        # Filter tasks to those accessible to this tag during training
+        accessible_tasks = {}
+        for task_id_str, task_data in archived_tasks_data.items():
+            task_tags = task_data.get("tags", [])
+            if not task_tags or tag in task_tags:
+                accessible_tasks[task_id_str] = task_data
+
+        # Build scoreboard data
+        scoreboard_entries = []
+        for ranking in tag_rankings:
+            task_scores = ranking.task_scores or {}
+            total_score = 0.0
+            task_score_list = []
+
+            for task_id_str, task_data in accessible_tasks.items():
+                score = task_scores.get(task_id_str, 0.0)
+                total_score += score
+                task_score_list.append({
+                    "task_id": task_id_str,
+                    "score": score,
+                    "max_score": task_data.get("max_score", 100.0),
+                })
+
+            scoreboard_entries.append({
+                "student_id": ranking.student_id,
+                "student_name": ranking.student.participation.user.username if ranking.student else "Unknown",
+                "total_score": total_score,
+                "task_scores": task_score_list,
+                "is_current_student": ranking.student_id == student.id,
+            })
+
+        # Sort by total score descending
+        scoreboard_entries.sort(key=lambda x: x["total_score"], reverse=True)
+
+        # Apply anonymization: only top N students show full names
+        for i, entry in enumerate(scoreboard_entries):
+            entry["rank"] = i + 1
+            if i >= top_names and not entry["is_current_student"]:
+                entry["student_name"] = f"#{i + 1}"
+
+        # Build tasks list for header
+        tasks_list = [
+            {
+                "task_id": task_id_str,
+                "name": task_data.get("name", task_data.get("short_name", f"Task {task_id_str}")),
+                "max_score": task_data.get("max_score", 100.0),
+            }
+            for task_id_str, task_data in accessible_tasks.items()
+        ]
+
+        self.write({
+            "success": True,
+            "training_day_name": training_day.name,
+            "tag": tag,
+            "top_names": top_names,
+            "tasks": tasks_list,
+            "scoreboard": scoreboard_entries,
+            "current_student_id": student.id,
+        })

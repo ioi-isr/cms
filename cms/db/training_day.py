@@ -143,6 +143,16 @@ class TrainingDay(Base):
         default=list,
     )
 
+    # Scoreboard sharing settings for archived training days.
+    # Format: {"tag1": {"top_names": 5}, "tag2": {"top_names": 10}, ...}
+    # - Keys are student tags that the scoreboard is shared with
+    # - top_names: number of top students to show full names (others show rank only)
+    # Eligibility to view is based on student_tags during the training (from ArchivedStudentRanking)
+    scoreboard_sharing: dict | None = Column(
+        JSONB,
+        nullable=True,
+    )
+
     training_program: "TrainingProgram" = relationship(
         "TrainingProgram",
         back_populates="training_days",

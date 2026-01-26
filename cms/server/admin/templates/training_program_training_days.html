@@ -448,6 +448,7 @@ $(document).ready(function() {
                     <th style="text-align: left; min-width: 150px;">Types</th>
                     <th class="sortable-header" data-sort="date" style="text-align: left;">Start</th>
                     <th style="text-align: left;">Tasks</th>
+                    <th style="text-align: center; width: 100px;">Share</th>
                 </tr>
             </thead>
             <tbody>
@@ -506,6 +507,26 @@ $(document).ready(function() {
                             {% endif %}
                         </div>
                     </td>
+
+                    <!-- Share Scoreboard -->
+                    <td style="text-align: center;">
+                        <div class="list-cell-wrapper" style="justify-content: center;">
+                            <button type="button" class="tp-btn-icon" title="Configure scoreboard sharing"
+                                    onclick="openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | tojson | default('{}') }}, {{ td.name | tojson }})"
+                                    {% if not admin.permission_all %}disabled{% endif %}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                                    <polyline points="16 6 12 2 8 6"/>
+                                    <line x1="12" y1="2" x2="12" y2="15"/>
+                                </svg>
+                            </button>
+                            {% if td.scoreboard_sharing %}
+                            <span class="source-badge badge-shared" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
+                                {{ td.scoreboard_sharing | length }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -537,6 +558,34 @@ $(document).ready(function() {
                 <button class="copy-btn" onclick="copyHistogramData()">Copy to Clipboard</button>
             </div>
             <textarea id="histogramTextData" readonly rows="10"></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- Scoreboard Sharing Modal -->
+<div id="scoreboardSharingModal" class="histogram-modal" style="display: none;">
+    <div class="histogram-modal-content" style="max-width: 600px;">
+        <div class="histogram-modal-header">
+            <h2 id="scoreboardSharingTitle">Scoreboard Sharing</h2>
+            <button class="histogram-close-btn" onclick="closeScoreboardSharingModal()">&times;</button>
+        </div>
+        <div class="scoreboard-sharing-body" style="padding: 20px;">
+            <p style="margin-bottom: 16px; color: var(--tp-text-secondary);">
+                Configure which student tags can view the scoreboard for this training day.
+                Students will only see results for their tag group.
+            </p>
+            
+            <div id="scoreboardSharingEntries" style="margin-bottom: 16px;">
+            </div>
+            
+            <button type="button" class="tp-btn-secondary" onclick="addSharingEntry()" style="margin-bottom: 20px;">
+                + Add Tag
+            </button>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--tp-border); padding-top: 16px;">
+                <button type="button" class="tp-btn-secondary" onclick="closeScoreboardSharingModal()">Cancel</button>
+                <button type="button" class="tp-btn-primary" onclick="saveScoreboardSharing()">Save</button>
+            </div>
         </div>
     </div>
 </div>
@@ -716,6 +765,113 @@ $(document).ready(function() {
         });
     });
 })();
+
+// Scoreboard Sharing Modal
+var currentSharingTrainingDayId = null;
+
+function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayName) {
+    currentSharingTrainingDayId = trainingDayId;
+    document.getElementById('scoreboardSharingTitle').textContent = 'Scoreboard Sharing - ' + (trainingDayName || 'Training Day');
+    
+    var entriesContainer = document.getElementById('scoreboardSharingEntries');
+    entriesContainer.innerHTML = '';
+    
+    // Add existing entries
+    if (currentSharing && typeof currentSharing === 'object') {
+        Object.keys(currentSharing).forEach(function(tag) {
+            var topNames = currentSharing[tag].top_names || 5;
+            addSharingEntry(tag, topNames);
+        });
+    }
+    
+    // If no entries, add an empty one
+    if (entriesContainer.children.length === 0) {
+        addSharingEntry('', 5);
+    }
+    
+    document.getElementById('scoreboardSharingModal').style.display = 'flex';
+}
+
+function closeScoreboardSharingModal() {
+    document.getElementById('scoreboardSharingModal').style.display = 'none';
+    currentSharingTrainingDayId = null;
+}
+
+function addSharingEntry(tag, topNames) {
+    tag = tag || '';
+    topNames = topNames || 5;
+    
+    var entriesContainer = document.getElementById('scoreboardSharingEntries');
+    var entryDiv = document.createElement('div');
+    entryDiv.className = 'sharing-entry';
+    entryDiv.style.cssText = 'display: flex; gap: 12px; align-items: center; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px;';
+    
+    entryDiv.innerHTML = 
+        '<div style="flex: 1;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
+            '<input type="text" class="sharing-tag" value="' + escapeHtml(tag) + '" placeholder="e.g., advanced" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
+        '</div>' +
+        '<div style="width: 120px;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Top Names</label>' +
+            '<input type="number" class="sharing-top-names" value="' + topNames + '" min="0" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
+        '</div>' +
+        '<button type="button" onclick="this.parentElement.remove()" style="margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">&times;</button>';
+    
+    entriesContainer.appendChild(entryDiv);
+}
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function saveScoreboardSharing() {
+    if (!currentSharingTrainingDayId) return;
+    
+    var entries = document.querySelectorAll('#scoreboardSharingEntries .sharing-entry');
+    var sharingData = {};
+    
+    entries.forEach(function(entry) {
+        var tag = entry.querySelector('.sharing-tag').value.trim();
+        var topNames = parseInt(entry.querySelector('.sharing-top-names').value, 10);
+        
+        if (tag) {
+            sharingData[tag] = { top_names: isNaN(topNames) ? 5 : topNames };
+        }
+    });
+    
+    // Send AJAX request
+    var formData = new FormData();
+    formData.append('_xsrf', document.querySelector('input[name="_xsrf"]').value);
+    formData.append('scoreboard_sharing', JSON.stringify(Object.keys(sharingData).length > 0 ? sharingData : null));
+    
+    fetch('{{ url("training_program", training_program.id) }}/training_day/' + currentSharingTrainingDayId + '/scoreboard_sharing', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            closeScoreboardSharingModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(function(error) {
+        alert('Error saving: ' + error.message);
+    });
+}
+
+// Close modal when clicking outside
+document.getElementById('scoreboardSharingModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeScoreboardSharingModal();
+    }
+});
 </script>
 
 {% endblock core %}

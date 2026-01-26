@@ -1180,6 +1180,12 @@
     border: 1px solid #fde68a;
 }
 
+.badge-shared {
+    background: var(--tp-info-light);
+    color: var(--tp-info-dark);
+    border: 1px solid var(--tp-info-border);
+}
+
 .badge-manual {
     background: var(--tp-bg-light);
     color: var(--tp-text-muted);
