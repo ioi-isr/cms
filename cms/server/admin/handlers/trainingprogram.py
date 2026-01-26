@@ -428,8 +428,40 @@ class TrainingProgramTasksHandler(BaseHandler):
         managing_contest = training_program.managing_contest
 
         try:
-            task_id: str = self.get_argument("task_id")
             operation: str = self.get_argument("operation")
+
+            # Handle operations that include task_id in the operation value
+            # (e.g., "release_123", "remove_123")
+            if operation.startswith("release_"):
+                task_id = operation.split("_", 1)[1]
+                task = self.safe_get_item(Task, task_id)
+                self._release_task_from_archived_training_day(task)
+                if self.try_commit():
+                    self.service.proxy_service.reinitialize()
+                self.redirect(fallback_page)
+                return
+
+            if operation.startswith("remove_"):
+                task_id = operation.split("_", 1)[1]
+                task = self.safe_get_item(Task, task_id)
+
+                # If the task is in an active training day, redirect to confirmation
+                if task.training_day is not None and task.training_day.contest is not None:
+                    asking_page = self.url(
+                        "training_program", training_program_id, "task", task_id, "remove"
+                    )
+                    self.redirect(asking_page)
+                    return
+
+                # For archived training days or no training day, remove directly
+                self._remove_task_from_program(task, managing_contest)
+                if self.try_commit():
+                    self.service.proxy_service.reinitialize()
+                self.redirect(fallback_page)
+                return
+
+            # For move operations, task_id comes from the form field
+            task_id = self.get_argument("task_id")
             assert operation in (
                 self.REMOVE_FROM_PROGRAM,
                 self.MOVE_UP,
@@ -521,6 +553,67 @@ class TrainingProgramTasksHandler(BaseHandler):
             self.service.proxy_service.reinitialize()
 
         self.redirect(fallback_page)
+
+    def _release_task_from_archived_training_day(self, task: Task) -> None:
+        """Release a task from an archived training day.
+
+        This removes the training_day association from the task, making it
+        available for assignment to new training days. The task remains in
+        the training program.
+
+        task: the task to release.
+        """
+        if task.training_day is None:
+            return
+
+        training_day = task.training_day
+        training_day_num = task.training_day_num
+
+        task.training_day = None
+        task.training_day_num = None
+
+        self.sql_session.flush()
+
+        # Reorder remaining tasks in the training day
+        for t in self.sql_session.query(Task)\
+                     .filter(Task.training_day == training_day)\
+                     .filter(Task.training_day_num > training_day_num)\
+                     .order_by(Task.training_day_num)\
+                     .all():
+            t.training_day_num -= 1
+            self.sql_session.flush()
+
+    def _remove_task_from_program(
+        self, task: Task, managing_contest: Contest
+    ) -> None:
+        """Remove a task from the training program.
+
+        This removes the task from both the training day (if assigned) and
+        the training program's managing contest.
+
+        task: the task to remove.
+        managing_contest: the training program's managing contest.
+        """
+        task_num = task.num
+
+        # Remove from training day if assigned
+        if task.training_day is not None:
+            self._release_task_from_archived_training_day(task)
+
+        # Remove from training program
+        task.contest = None
+        task.num = None
+
+        self.sql_session.flush()
+
+        # Reorder remaining tasks in the training program
+        for t in self.sql_session.query(Task)\
+                     .filter(Task.contest == managing_contest)\
+                     .filter(Task.num > task_num)\
+                     .order_by(Task.num)\
+                     .all():
+            t.num -= 1
+            self.sql_session.flush()
 
 
 class AddTrainingProgramTaskHandler(BaseHandler):
