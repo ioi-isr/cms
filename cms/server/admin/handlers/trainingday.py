@@ -200,10 +200,12 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
                     new_pos = int(item["new_position"])
                     if td_id in td_by_id:
                         td_by_id[td_id].position = new_pos
+                self.sql_session.flush()
 
             except Exception as error:
                 self.service.add_notification(
-                    make_datetime(), "Reorder failed", repr(error))
+                    make_datetime(), "Reorder failed", repr(error)
+                )
                 self.redirect(fallback_page)
                 return
 
