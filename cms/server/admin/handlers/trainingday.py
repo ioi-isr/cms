@@ -156,9 +156,7 @@ def validate_group_times_within_contest(
 
 class TrainingProgramTrainingDaysHandler(BaseHandler):
     """List and manage training days in a training program."""
-    REMOVE = "Remove"
-    MOVE_UP = "up by 1"
-    MOVE_DOWN = "down by 1"
+    REORDER = "reorder"
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
@@ -176,59 +174,38 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
 
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
-        try:
-            training_day_id: str = self.get_argument("training_day_id")
-            operation: str = self.get_argument("operation")
-            assert operation in (
-                self.REMOVE,
-                self.MOVE_UP,
-                self.MOVE_DOWN,
-            ), "Please select a valid operation"
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
-            return
+        operation: str = self.get_argument("operation", "")
 
-        training_day = self.safe_get_item(TrainingDay, training_day_id)
+        if operation == self.REORDER:
+            import json
+            try:
+                reorder_data = self.get_argument("reorder_data", "")
+                if not reorder_data:
+                    raise ValueError("No reorder data provided")
 
-        if training_day.training_program_id != training_program.id:
-            self.service.add_notification(
-                make_datetime(), "Invalid training day", "Training day does not belong to this program")
-            self.redirect(fallback_page)
-            return
+                order_list = json.loads(reorder_data)
 
-        if operation == self.REMOVE:
-            asking_page = self.url(
-                "training_program", training_program_id,
-                "training_day", training_day_id, "remove"
-            )
-            self.redirect(asking_page)
-            return
+                active_training_days = [
+                    td for td in training_program.training_days
+                    if td.contest is not None
+                ]
+                td_by_id = {str(td.id): td for td in active_training_days}
 
-        elif operation == self.MOVE_UP:
-            training_day2 = self.sql_session.query(TrainingDay)\
-                .filter(TrainingDay.training_program == training_program)\
-                .filter(TrainingDay.position == training_day.position - 1)\
-                .first()
-
-            if training_day2 is not None:
-                tmp_a, tmp_b = training_day.position, training_day2.position
-                training_day.position, training_day2.position = None, None
+                for td in active_training_days:
+                    td.position = None
                 self.sql_session.flush()
-                training_day.position, training_day2.position = tmp_b, tmp_a
 
-        elif operation == self.MOVE_DOWN:
-            training_day2 = self.sql_session.query(TrainingDay)\
-                .filter(TrainingDay.training_program == training_program)\
-                .filter(TrainingDay.position == training_day.position + 1)\
-                .first()
+                for item in order_list:
+                    td_id = str(item["training_day_id"])
+                    new_pos = int(item["new_position"])
+                    if td_id in td_by_id:
+                        td_by_id[td_id].position = new_pos
 
-            if training_day2 is not None:
-                tmp_a, tmp_b = training_day.position, training_day2.position
-                training_day.position, training_day2.position = None, None
-                self.sql_session.flush()
-                training_day.position, training_day2.position = tmp_b, tmp_a
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(), "Reorder failed", repr(error))
+                self.redirect(fallback_page)
+                return
 
         self.try_commit()
         self.redirect(fallback_page)

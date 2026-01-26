@@ -274,187 +274,448 @@ $(document).ready(function() {
 {% endblock js_init %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Training Days of <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
+<div class="content-constraint" style="max-width: 1100px;">
+    <!-- Header -->
+    <div class="page-title">
+        <h1>Training Days</h1>
+        <div class="page-subtitle">
+            Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+        </div>
+    </div>
+
+    <!-- Add Training Day Card -->
+    <div class="tp-filter-card">
+        <label class="tp-filter-label">Add Training Day:</label>
+        <a href="{{ url("training_program", training_program.id, "training_days", "add") }}" class="tp-btn-primary" style="text-decoration: none;">
+            Add New Training Day
+        </a>
+    </div>
+
+    <!-- Active Training Days Section -->
+    <div class="tp-section-header">
+        <h2>Active Training Days ({{ training_program.training_days | selectattr("contest") | list | length }})</h2>
+    </div>
+
+    {{ info_alert.alert(
+        title="Active Training Days",
+        message="These training days have an associated contest and can accept student participation. Drag to reorder. Use the Archive action when a training day is complete.",
+        type="info"
+    ) }}
+
+    <form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST" id="training-days-form">
+        {{ xsrf_form_html|safe }}
+        <input type="hidden" name="reorder_data" id="reorder-data" value="" />
+        <div class="tp-table-container">
+            <table class="ranking-table tp-tasks-table" id="training-days-table">
+                <thead>
+                    <tr>
+                        <th class="grip-column"></th>
+                        <th class="sortable-header" data-sort="string" style="text-align: left;">Name</th>
+                        <th style="text-align: left;">Description</th>
+                        <th style="text-align: left; min-width: 150px;">Types</th>
+                        <th class="sortable-header" data-sort="date" style="text-align: left;">Start</th>
+                        <th style="text-align: left;">Tasks</th>
+                        <th class="text-center" style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="training-days-tbody">
+                    {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
+                    {% for td in active_training_days %}
+                    <tr data-training-day-id="{{ td.id }}"
+                        data-name="{{ td.contest.name }}"
+                        data-start="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 0 }}"
+                        draggable="true">
+                        <!-- Drag handle -->
+                        <td class="grip-cell">
+                            <div class="grip-handle" title="Drag to reorder">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="5" r="1.5"/>
+                                    <circle cx="15" cy="5" r="1.5"/>
+                                    <circle cx="9" cy="12" r="1.5"/>
+                                    <circle cx="15" cy="12" r="1.5"/>
+                                    <circle cx="9" cy="19" r="1.5"/>
+                                    <circle cx="15" cy="19" r="1.5"/>
+                                </svg>
+                            </div>
+                        </td>
+
+                        <!-- Name -->
+                        <td>
+                            <div class="list-cell-wrapper" style="flex-direction: column; align-items: flex-start;">
+                                <a href="{{ url("contest", td.contest.id) }}" class="student-name-link" style="max-width: none;">{{ td.contest.name }}</a>
+                            </div>
+                        </td>
+
+                        <!-- Description -->
+                        <td>
+                            <div class="list-cell-wrapper">
+                                <span style="color: var(--tp-text-secondary);">{{ td.contest.description }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Types -->
+                        <td>
+                            <div class="list-cell-wrapper">
+                                <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
+                            </div>
+                        </td>
+
+                        <!-- Start Time -->
+                        <td>
+                            <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                                {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
+                                    <div>{{ td.contest.start.strftime('%Y-%m-%d') }}</div>
+                                    <div style="color: #94a3b8; font-size: 0.9em;">{{ td.contest.start.strftime('%H:%M') }}</div>
+                                {% else %}
+                                    <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Tasks -->
+                        <td>
+                            <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
+                                {% set tasks = td.contest.get_tasks() %}
+                                {% if tasks %}
+                                    {% for task in tasks %}
+                                        <a href="{{ url("task", task.id) }}" class="source-badge badge-training" title="{{ task.title }}">{{ task.name }}</a>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="text-center">
+                            <div class="list-cell-wrapper center-content" style="gap: 4px;">
+                                <!-- Archive button -->
+                                <a href="{{ url("training_program", training_program.id, "training_day", td.id, "archive") }}"
+                                   class="btn-icon-only btn-archive"
+                                   {% if not admin.permission_all %}style="pointer-events: none; opacity: 0.5;"{% endif %}
+                                   title="Archive training day">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                                        <rect x="1" y="3" width="22" height="5"></rect>
+                                        <line x1="10" y1="12" x2="14" y2="12"></line>
+                                    </svg>
+                                </a>
+                                <!-- Remove button -->
+                                <a href="{{ url("training_program", training_program.id, "training_day", td.id, "remove") }}"
+                                   class="btn-icon-only"
+                                   {% if not admin.permission_all %}style="pointer-events: none; opacity: 0.5;"{% endif %}
+                                   title="Remove training day">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% if not (training_program.training_days | selectattr("contest") | list) %}
+    <div class="empty-state-box">
+        <h3>No active training days</h3>
+        <p>Use the "Add New Training Day" button above to create one.</p>
+    </div>
+    {% endif %}
+
+    <!-- Archived Training Days Section -->
+    <div class="tp-section-header" style="margin-top: 40px;">
+        <h2>Archived Training Days ({{ training_program.training_days | rejectattr("contest") | list | length }})</h2>
+    </div>
+
+    {{ info_alert.alert(
+        title="Archived Training Days",
+        message="These training days have been archived. Their contest data has been deleted, but attendance and ranking data is preserved. Click on task badges to view score histograms.",
+        type="info"
+    ) }}
+
+    <div class="tp-table-container">
+        <table class="ranking-table tp-tasks-table" id="archived-training-days-table">
+            <thead>
+                <tr>
+                    <th class="sortable-header" data-sort="string" style="text-align: left;">Name</th>
+                    <th style="text-align: left;">Description</th>
+                    <th style="text-align: left; min-width: 150px;">Types</th>
+                    <th class="sortable-header" data-sort="date" style="text-align: left;">Start</th>
+                    <th style="text-align: left;">Tasks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
+                {% for td in archived_training_days %}
+                <tr data-name="{{ td.name or '' }}"
+                    data-start="{{ td.start_time.timestamp() if td.start_time else 0 }}">
+                    <!-- Name -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            <span style="font-weight: 600; color: var(--tp-text-primary);">{{ td.name or "(no name)" }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Description -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            <span style="color: var(--tp-text-secondary);">{{ td.description or "(no description)" }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Types -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
+                        </div>
+                    </td>
+
+                    <!-- Start Time -->
+                    <td>
+                        <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                            {% if td.start_time %}
+                                <div>{{ td.start_time.strftime('%Y-%m-%d') }}</div>
+                                <div style="color: #94a3b8; font-size: 0.9em;">{{ td.start_time.strftime('%H:%M') }}</div>
+                            {% else %}
+                                <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Tasks -->
+                    <td>
+                        <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
+                            {% if td.archived_tasks_data %}
+                                {% for task_id_str, task_info in td.archived_tasks_data.items() %}
+                                    <span class="source-badge badge-archived"
+                                          title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
+                                          onclick="showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get('name', 'Task ' ~ task_id_str) | tojson }})"
+                                          style="cursor: pointer;">
+                                        {{ task_info.get('name', 'Task ' ~ task_id_str) }}
+                                        <span class="histogram-icon">&#128202;</span>
+                                    </span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if not (training_program.training_days | rejectattr("contest") | list) %}
+    <div class="empty-state-box">
+        <h3>No archived training days</h3>
+        <p>Training days will appear here after being archived.</p>
+    </div>
+    {% endif %}
 </div>
 
-<p>
-  <a href="{{ url("training_program", training_program.id, "training_days", "add") }}">Add a new training day</a>
-</p>
-
-<h2>Active Training Days</h2>
-
-{{ info_alert.alert(
-    title="Active Training Days",
-    message="These training days have an associated contest and can accept student participation. Use the Archive action when a training day is complete.",
-    type="info"
-) }}
-
-<form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Remove selected training day:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="Remove" />
-
-  <br>
-
-  Move selected training day:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="up by 1" />
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="down by 1" />
-
-  <table class="bordered" id="training_days_table">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Description</th>
-        <th>Types</th>
-        <th>Start</th>
-        <th>Tasks</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
-      {% for td in active_training_days %}
-      <tr>
-        <td>
-          <input type="radio" name="training_day_id" value="{{ td.id }}"/>
-        </td>
-        <td><a href="{{ url("contest", td.contest.id) }}">{{ td.contest.name }}</a></td>
-        <td>{{ td.contest.description }}</td>
-        <td style="min-width: 200px;">
-          <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
-        </td>
-        <td>
-          {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
-            {{ td.contest.start.strftime("%Y-%m-%d %H:%M") }}
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>
-          {% set tasks = td.contest.get_tasks() %}
-          {% if tasks %}
-            {% for task in tasks %}
-              <a href="{{ url("task", task.id) }}" class="badge badge-training" title="{{ task.title }}">{{ task.name }}</a>
-            {% endfor %}
-          {% else %}
-            <span style="color: #999;">No tasks</span>
-          {% endif %}
-        </td>
-        <td>
-          <a href="{{ url("training_program", training_program.id, "training_day", td.id, "archive") }}">Archive</a>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="7">(no active training days)</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <script>
-    $(document).ready(function() {
-      CMS.AWSUtils.init_table_sort($("#training_days_table"), false, 4, false);
-    });
-  </script>
-</form>
-
-<h2>Archived Training Days</h2>
-
-{{ info_alert.alert(
-    title="Archived Training Days",
-    message="These training days have been archived. Their contest data has been deleted, but attendance and ranking data is preserved. Click on task badges to view score histograms.",
-    type="info"
-) }}
-
-<table class="bordered" id="archived_training_days_table">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Description</th>
-      <th>Types</th>
-      <th>Start</th>
-      <th>Tasks</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
-    {% for td in archived_training_days %}
-    <tr>
-      <td>{{ td.name or "(no name)" }}</td>
-      <td>{{ td.description or "(no description)" }}</td>
-      <td style="min-width: 200px;">
-        <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
-      </td>
-      <td>
-        {% if td.start_time %}
-          {{ td.start_time.strftime("%Y-%m-%d %H:%M") }}
-        {% else %}
-          -
-        {% endif %}
-      </td>
-      <td>
-        {% if td.archived_tasks_data %}
-          {% for task_id_str, task_info in td.archived_tasks_data.items() %}
-            <span class="badge badge-archived" 
-                  title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
-                  onclick="showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get('name', 'Task ' ~ task_id_str) | tojson }})"
-                  style="cursor: pointer;">
-              {{ task_info.get('name', 'Task ' ~ task_id_str) }}
-              <span class="histogram-icon">&#128202;</span>
-            </span>
-          {% endfor %}
-        {% else %}
-          <span style="color: #999;">No tasks</span>
-        {% endif %}
-      </td>
-    </tr>
-    {% else %}
-    <tr>
-      <td colspan="5">(no archived training days)</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<!-- Histogram Modal -->
+<div id="histogramModal" class="histogram-modal" style="display: none;">
+    <div class="histogram-modal-content">
+        <div class="histogram-modal-header">
+            <h2 id="histogramTitle">Score Distribution</h2>
+            <button class="histogram-close-btn" onclick="closeHistogramModal()">&times;</button>
+        </div>
+        <div class="histogram-chart-container">
+            <div id="histogramBars" class="histogram-bars"></div>
+        </div>
+        <div id="histogramStats" class="histogram-stats"></div>
+        <div class="histogram-text-section">
+            <div class="histogram-text-header">
+                <span>Text Data (for copying)</span>
+                <button class="copy-btn" onclick="copyHistogramData()">Copy to Clipboard</button>
+            </div>
+            <textarea id="histogramTextData" readonly rows="10"></textarea>
+        </div>
+    </div>
+</div>
 
 <script>
-  $(document).ready(function() {
-    CMS.AWSUtils.init_table_sort($("#archived_training_days_table"), false, 3, false);
-  });
-</script>
+// Drag and drop reordering for active training days
+(function() {
+    var tbody = document.getElementById('training-days-tbody');
+    if (!tbody) return;
 
-<div id="histogramModal" class="histogram-modal" style="display: none;">
-  <div class="histogram-modal-content">
-    <div class="histogram-modal-header">
-      <h2 id="histogramTitle">Score Distribution</h2>
-      <button class="histogram-close-btn" onclick="closeHistogramModal()">&times;</button>
-    </div>
-    <div class="histogram-chart-container">
-      <div id="histogramBars" class="histogram-bars"></div>
-    </div>
-    <div id="histogramStats" class="histogram-stats"></div>
-    <div class="histogram-text-section">
-      <div class="histogram-text-header">
-        <span>Text Data (for copying)</span>
-        <button class="copy-btn" onclick="copyHistogramData()">Copy to Clipboard</button>
-      </div>
-      <textarea id="histogramTextData" readonly rows="10"></textarea>
-    </div>
-  </div>
-</div>
+    var draggedRow = null;
+    var placeholder = null;
+
+    function createPlaceholder() {
+        var tr = document.createElement('tr');
+        tr.className = 'drag-placeholder';
+        tr.innerHTML = '<td colspan="7"></td>';
+        return tr;
+    }
+
+    tbody.addEventListener('dragstart', function(e) {
+        if (e.target.tagName !== 'TR') return;
+        draggedRow = e.target;
+        draggedRow.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+        placeholder = createPlaceholder();
+    });
+
+    tbody.addEventListener('dragend', function(e) {
+        if (draggedRow) {
+            draggedRow.classList.remove('dragging');
+            if (placeholder && placeholder.parentNode) {
+                placeholder.parentNode.removeChild(placeholder);
+            }
+            draggedRow = null;
+            placeholder = null;
+            saveNewOrder();
+        }
+    });
+
+    tbody.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        var targetRow = e.target.closest('tr');
+        if (!targetRow || targetRow === draggedRow || targetRow === placeholder) return;
+
+        var rect = targetRow.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+
+        if (e.clientY < midY) {
+            targetRow.parentNode.insertBefore(placeholder, targetRow);
+        } else {
+            targetRow.parentNode.insertBefore(placeholder, targetRow.nextSibling);
+        }
+    });
+
+    tbody.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (placeholder && placeholder.parentNode && draggedRow) {
+            placeholder.parentNode.insertBefore(draggedRow, placeholder);
+            placeholder.parentNode.removeChild(placeholder);
+        }
+    });
+
+    function saveNewOrder() {
+        var rows = tbody.querySelectorAll('tr[data-training-day-id]');
+        var order = [];
+        rows.forEach(function(row, index) {
+            order.push({
+                training_day_id: row.getAttribute('data-training-day-id'),
+                new_position: index
+            });
+        });
+
+        // Submit via form
+        var form = document.getElementById('training-days-form');
+        var reorderInput = document.getElementById('reorder-data');
+        reorderInput.value = JSON.stringify(order);
+
+        // Create a hidden operation input
+        var operationInput = document.createElement('input');
+        operationInput.type = 'hidden';
+        operationInput.name = 'operation';
+        operationInput.value = 'reorder';
+        form.appendChild(operationInput);
+
+        form.submit();
+    }
+})();
+
+// Table sorting for active training days
+(function() {
+    var table = document.getElementById('training-days-table');
+    if (!table) return;
+
+    var headers = table.querySelectorAll('.sortable-header');
+    var sortState = {};
+
+    headers.forEach(function(header, index) {
+        header.addEventListener('click', function() {
+            var columnIndex = header.cellIndex;
+            var ascending = !sortState[index];
+            sortState[index] = ascending;
+
+            // Update UI
+            headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+            header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+
+            var tbody = table.querySelector('tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr[data-training-day-id]'));
+
+            rows.sort(function(a, b) {
+                var aVal, bVal;
+
+                if (columnIndex === 1) { // Name
+                    aVal = a.getAttribute('data-name').toLowerCase();
+                    bVal = b.getAttribute('data-name').toLowerCase();
+                } else if (columnIndex === 4) { // Start date
+                    aVal = parseFloat(a.getAttribute('data-start')) || 0;
+                    bVal = parseFloat(b.getAttribute('data-start')) || 0;
+                }
+
+                if (aVal < bVal) return ascending ? -1 : 1;
+                if (aVal > bVal) return ascending ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(function(row) {
+                tbody.appendChild(row);
+            });
+        });
+    });
+})();
+
+// Table sorting for archived training days
+(function() {
+    var table = document.getElementById('archived-training-days-table');
+    if (!table) return;
+
+    var headers = table.querySelectorAll('.sortable-header');
+    var sortState = {};
+
+    headers.forEach(function(header, index) {
+        header.addEventListener('click', function() {
+            var columnIndex = header.cellIndex;
+            var ascending = !sortState[index];
+            sortState[index] = ascending;
+
+            // Update UI
+            headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+            header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+
+            var tbody = table.querySelector('tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort(function(a, b) {
+                var aVal, bVal;
+
+                if (columnIndex === 0) { // Name
+                    aVal = a.getAttribute('data-name').toLowerCase();
+                    bVal = b.getAttribute('data-name').toLowerCase();
+                } else if (columnIndex === 3) { // Start date
+                    aVal = parseFloat(a.getAttribute('data-start')) || 0;
+                    bVal = parseFloat(b.getAttribute('data-start')) || 0;
+                }
+
+                if (aVal < bVal) return ascending ? -1 : 1;
+                if (aVal > bVal) return ascending ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(function(row) {
+                tbody.appendChild(row);
+            });
+        });
+    });
+})();
+</script>
 
 {% endblock core %}

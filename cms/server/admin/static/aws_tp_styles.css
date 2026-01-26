@@ -1556,6 +1556,12 @@
     background: var(--tp-info-light) !important;
 }
 
+/* Archive button hover state */
+.btn-archive:hover {
+    color: var(--tp-warning) !important;
+    background: var(--tp-warning-light) !important;
+}
+
 /* ==========================================================================
    Info Alert Component
    ========================================================================== */
