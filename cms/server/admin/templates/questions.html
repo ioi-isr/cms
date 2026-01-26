@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import 'macro/question.html' as macro_question with context %}
+{% import 'fragments/info_alert.html' as info_alert %}
 
 {% block js_init %}
 
@@ -13,22 +14,35 @@ utils.show_page("questions", 1);
 </div>
 
 {% if training_program is defined %}
-<div class="notification notification_info" style="margin-bottom: 15px;">
-  <strong>Note:</strong> This page only handles questions for the training program.
-  For training day questions, go to the appropriate training day's questions page.
-  {% if training_days_with_unanswered_questions %}
-  <br><br>
-  <strong>Training days with unanswered questions:</strong>
-  <ul style="margin: 5px 0 0 20px;">
-    {% for td_info in training_days_with_unanswered_questions %}
-    <li>
-      <a href="{{ url("contest", td_info.contest_id, "questions") }}">{{ td_info.name }}</a>
-      <span class="unread" style="margin-left: 5px;">{{ td_info.unanswered_count }}</span>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+{{ info_alert.alert(
+    title="Training Program Questions",
+    message="This page only handles questions for the training program. For training day questions, go to the appropriate training day's questions page.",
+    type="info"
+) }}
+
+{% if training_days_with_unanswered_questions %}
+<div class="tp-info-alert tp-info-alert-warning">
+    <div class="tp-info-alert-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+    </div>
+    <div class="tp-info-alert-content">
+        <div class="tp-info-alert-title">Unanswered Questions</div>
+        <div class="tp-info-alert-message">The following training days have unanswered questions:</div>
+        <div class="tp-info-alert-items">
+            {% for td_info in training_days_with_unanswered_questions %}
+            <a href="{{ url("contest", td_info.contest_id, "questions") }}" class="tp-info-alert-badge">
+                {{ td_info.name }}
+                <span class="tp-info-alert-count">{{ td_info.unanswered_count }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
 </div>
+{% endif %}
 {% endif %}
 
 {% if questions != [] %}

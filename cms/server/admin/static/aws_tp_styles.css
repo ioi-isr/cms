@@ -1555,3 +1555,129 @@
     color: var(--tp-info-hover) !important;
     background: var(--tp-info-light) !important;
 }
+
+/* ==========================================================================
+   Info Alert Component
+   ========================================================================== */
+
+.tp-info-alert {
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid;
+}
+
+.tp-info-alert-warning {
+    background: var(--tp-warning-light);
+    border-left-color: var(--tp-warning);
+}
+
+.tp-info-alert-warning .tp-info-alert-icon {
+    color: var(--tp-warning);
+}
+
+.tp-info-alert-warning .tp-info-alert-title {
+    color: var(--tp-warning-dark);
+}
+
+.tp-info-alert-warning .tp-info-alert-message {
+    color: var(--tp-warning-dark);
+}
+
+.tp-info-alert-info {
+    background: var(--tp-info-light);
+    border-left-color: var(--tp-info);
+}
+
+.tp-info-alert-info .tp-info-alert-icon {
+    color: var(--tp-info);
+}
+
+.tp-info-alert-info .tp-info-alert-title {
+    color: var(--tp-info-dark);
+}
+
+.tp-info-alert-info .tp-info-alert-message {
+    color: var(--tp-info-dark);
+}
+
+.tp-info-alert-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.tp-info-alert-content {
+    flex: 1;
+}
+
+.tp-info-alert-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.tp-info-alert-message {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    line-height: 1.5;
+}
+
+.tp-info-alert-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.tp-info-alert-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.tp-info-alert-warning .tp-info-alert-badge {
+    color: var(--tp-warning-dark);
+}
+
+.tp-info-alert-warning .tp-info-alert-badge:hover {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.tp-info-alert-info .tp-info-alert-badge {
+    color: var(--tp-info-dark);
+}
+
+.tp-info-alert-info .tp-info-alert-badge:hover {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.tp-info-alert-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tp-info-alert-warning .tp-info-alert-count {
+    background: var(--tp-warning);
+    color: white;
+}
+
+.tp-info-alert-info .tp-info-alert-count {
+    background: var(--tp-info);
+    color: white;
+}

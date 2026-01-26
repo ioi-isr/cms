@@ -577,23 +577,10 @@ class AddTrainingProgramTaskHandler(BaseHandler):
 
 
 class RemoveTrainingProgramTaskHandler(BaseHandler):
-    """Confirm and remove a task from a training program.
+    """Remove a task from a training program.
 
-    This handler is used when a task is assigned to a training day,
-    to warn the user that the task will also be removed from the training day.
+    The confirmation is now handled via a modal in the tasks page.
     """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, training_program_id: str, task_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-        task = self.safe_get_item(Task, task_id)
-
-        self.render_params_for_training_program(training_program)
-        self.r_params["task"] = task
-        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
-
-        self.render("training_program_task_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str, task_id: str):
@@ -632,7 +619,8 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
         if self.try_commit():
             self.service.proxy_service.reinitialize()
 
-        self.write("../../tasks")
+        # Return absolute path to tasks page
+        self.write(f"../../../training_program/{training_program_id}/tasks")
 
 
 class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
