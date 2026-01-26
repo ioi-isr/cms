@@ -96,10 +96,10 @@ def _shift_task_nums(
         sql_session.flush()
 
 
-class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
+class TrainingProgramListHandler(BaseHandler):
     """List all training programs.
 
-    GET returns the list of all training programs.
+    GET returns the list of all training programs with stats.
     POST handles operations on a specific training program (e.g., removing).
     """
     REMOVE = "Remove"
@@ -107,11 +107,31 @@ class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self):
         self.r_params = self.render_params()
-        self.r_params["training_programs"] = (
+        training_programs = (
             self.sql_session.query(TrainingProgram)
             .order_by(TrainingProgram.name)
             .all()
         )
+        self.r_params["training_programs"] = training_programs
+
+        # Calculate aggregate stats for the stats cards
+        total_students = 0
+        active_programs = 0
+        active_training_days = 0
+
+        for tp in training_programs:
+            total_students += len(tp.managing_contest.participations)
+            # Count active training days (those with a contest)
+            active_tds = [td for td in tp.training_days if td.contest is not None]
+            active_training_days += len(active_tds)
+            # A program is "active" if it has at least one active training day
+            if active_tds:
+                active_programs += 1
+
+        self.r_params["total_students"] = total_students
+        self.r_params["active_programs"] = active_programs
+        self.r_params["active_training_days"] = active_training_days
+
         self.render("training_programs.html", **self.r_params)
 
     @require_permission(BaseHandler.AUTHENTICATED)
