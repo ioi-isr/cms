@@ -12,33 +12,23 @@
 
     {% include "fragments/overload_warning.html" %}
 
-    <!-- Action Buttons Row -->
-    <div class="action-buttons-row">
-        <!-- Add Task Button with Dropdown -->
-        <div class="add-student-dropdown">
-            <button type="button" class="btn-filled-primary" onclick="toggleAddTaskForm()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
+    <!-- Add Task Card -->
+    <div class="tp-filter-card">
+        <label class="tp-filter-label" for="task_id">Add Task:</label>
+        <form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px; flex: 1;">
+            {{ xsrf_form_html|safe }}
+            <div style="flex-grow: 1;">
+                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;">
+                    <option value="" selected disabled hidden>Select a task...</option>
+                    {% for t in unassigned_tasks %}
+                    <option value="{{ t.id }}">{{ t.name }} - {{ t.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
                 Add Task
             </button>
-            <div id="add-task-form" class="add-student-form">
-                <form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST">
-                    {{ xsrf_form_html|safe }}
-                    <label for="task_id">Select a task to add:</label>
-                    <select name="task_id" id="task_id" class="searchable-select">
-                        <option value="null" selected disabled hidden>Search for a task...</option>
-                        {% for t in unassigned_tasks %}
-                        <option value="{{ t.id }}">{{ t.name }} - {{ t.title }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%;">
-                        Add to Program
-                    </button>
-                </form>
-            </div>
-        </div>
+        </form>
     </div>
 
     <!-- Tasks Table -->
@@ -125,11 +115,10 @@
                                     </svg>
                                 </button>
                                 {% endif %}
-                                <!-- Remove button - always goes to confirmation page -->
-                                <button type="submit" name="operation" value="remove_{{ t.id }}" class="btn-icon-only"
+                                <!-- Remove button - opens modal -->
+                                <button type="button" class="btn-icon-only"
                                     {% if not admin.permission_all %}disabled{% endif %}
-                                    formaction="{{ url("training_program", training_program.id, "task", t.id, "remove") }}"
-                                    formmethod="GET"
+                                    onclick="openRemoveModal('{{ t.id }}', '{{ t.name }}', {% if t.training_day %}true{% else %}false{% endif %}, {% if t.training_day and t.training_day.contest %}'{{ t.training_day.contest.description }}'{% elif t.training_day %}'{{ t.training_day.description or t.training_day.name or "Archived" }}'{% else %}null{% endif %}, {% if t.training_day and t.training_day.contest %}true{% else %}false{% endif %})"
                                     title="Remove from program">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -155,18 +144,71 @@
     {% endif %}
 </div>
 
+<!-- Remove Task Modal -->
+<div id="remove-task-modal" class="bulk-assign-modal" style="display: none;">
+    <div class="bulk-assign-modal-content" style="max-width: 500px;">
+        <div class="bulk-assign-modal-header">
+            <h2>Remove Task</h2>
+            <button type="button" class="bulk-assign-close-btn" onclick="closeRemoveModal()">&times;</button>
+        </div>
+        <p id="remove-modal-message" style="color: var(--tp-text-secondary); margin-bottom: 16px;"></p>
+        <div id="remove-modal-warning" style="display: none; background: var(--tp-warning-light); border: 1px solid #fde68a; border-radius: 6px; padding: 12px; margin-bottom: 16px; color: var(--tp-warning-dark);">
+            <strong>Warning:</strong> <span id="remove-modal-warning-text"></span>
+        </div>
+        <p style="color: var(--tp-text-muted); font-size: 0.9rem; margin-bottom: 20px;">This operation cannot be undone.</p>
+        <div class="tp-form-actions">
+            <button type="button" class="tp-btn-secondary" onclick="closeRemoveModal()">Cancel</button>
+            {% if admin.permission_all %}
+            <button type="button" class="tp-btn-primary" style="background: var(--tp-danger); border-color: var(--tp-danger);" onclick="confirmRemoveTask()">Yes, Remove</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 <script>
-function toggleAddTaskForm() {
-    var form = document.getElementById('add-task-form');
-    form.classList.toggle('show');
+// Remove task modal
+var currentRemoveTaskId = null;
+
+function openRemoveModal(taskId, taskName, hasTrainingDay, trainingDayName, isActive) {
+    currentRemoveTaskId = taskId;
+    var modal = document.getElementById('remove-task-modal');
+    var message = document.getElementById('remove-modal-message');
+    var warning = document.getElementById('remove-modal-warning');
+    var warningText = document.getElementById('remove-modal-warning-text');
+
+    message.textContent = 'Are you sure you want to remove task "' + taskName + '" from training program "{{ training_program.name }}"?';
+
+    if (hasTrainingDay && trainingDayName) {
+        warning.style.display = 'block';
+        if (isActive) {
+            warningText.textContent = 'This task is also assigned to training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+        } else {
+            warningText.textContent = 'This task is also assigned to archived training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+        }
+    } else {
+        warning.style.display = 'none';
+    }
+
+    modal.style.display = 'flex';
 }
 
-// Close dropdown when clicking outside
-document.addEventListener('click', function(event) {
-    var dropdown = document.querySelector('.add-student-dropdown');
-    var form = document.getElementById('add-task-form');
-    if (dropdown && !dropdown.contains(event.target)) {
-        form.classList.remove('show');
+function closeRemoveModal() {
+    var modal = document.getElementById('remove-task-modal');
+    modal.style.display = 'none';
+    currentRemoveTaskId = null;
+}
+
+function confirmRemoveTask() {
+    if (currentRemoveTaskId) {
+        CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id) }}/task/' + currentRemoveTaskId + '/remove');
+    }
+    closeRemoveModal();
+}
+
+// Close modal when clicking outside
+document.getElementById('remove-task-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRemoveModal();
     }
 });
 
