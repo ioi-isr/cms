@@ -119,6 +119,9 @@ class TrainingProgramListHandler(BaseHandler):
         active_programs = 0
         active_training_days = 0
 
+        # Calculate notifications for each training day (keyed by td.id)
+        training_day_notifications: dict[int, dict] = {}
+
         for tp in training_programs:
             total_students += len(tp.managing_contest.participations)
             # Count active training days (those with a contest)
@@ -128,9 +131,32 @@ class TrainingProgramListHandler(BaseHandler):
             if active_tds:
                 active_programs += 1
 
+            # Calculate notifications for each active training day
+            for td in active_tds:
+                td_unanswered = (
+                    self.sql_session.query(Question)
+                    .join(Participation)
+                    .filter(Participation.contest_id == td.contest_id)
+                    .filter(Question.reply_timestamp.is_(None))
+                    .filter(Question.ignored.is_(False))
+                    .count()
+                )
+                td_pending_delays = (
+                    self.sql_session.query(DelayRequest)
+                    .join(Participation)
+                    .filter(Participation.contest_id == td.contest_id)
+                    .filter(DelayRequest.status == "pending")
+                    .count()
+                )
+                training_day_notifications[td.id] = {
+                    "unanswered_questions": td_unanswered,
+                    "pending_delay_requests": td_pending_delays,
+                }
+
         self.r_params["total_students"] = total_students
         self.r_params["active_programs"] = active_programs
         self.r_params["active_training_days"] = active_training_days
+        self.r_params["training_day_notifications"] = training_day_notifications
 
         self.render("training_programs.html", **self.r_params)
 

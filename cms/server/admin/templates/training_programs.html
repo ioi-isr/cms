@@ -6,17 +6,7 @@
     <div class="tp-page-header">
         <div class="page-title">
             <h1>Training Programs</h1>
-            <div class="page-subtitle">Manage active educational tracks and view archived training days.</div>
         </div>
-        {% if admin.permission_all %}
-        <a href="{{ url("training_programs", "add") }}" class="btn-filled-primary" style="text-decoration: none;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Create Program
-        </a>
-        {% endif %}
     </div>
 
     <!-- Stats Cards Row -->
@@ -174,10 +164,10 @@
             <div class="tp-card-training-days">
                 <div class="tp-training-days-header">
                     <span class="tp-training-days-label">ACTIVE TRAINING DAYS</span>
-                    <span class="tp-training-days-count">{{ active_tds|length }}</span>
                 </div>
                 <div class="tp-training-days-list">
                     {% for td in active_tds[:3] %}
+                    {% set td_notif = training_day_notifications.get(td.id, {}) %}
                     <a href="{{ url("contest", td.contest.id) }}" class="tp-training-day-item">
                         <div class="tp-training-day-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -195,9 +185,27 @@
                             <div class="tp-training-day-date">Unscheduled</div>
                             {% endif %}
                         </div>
-                        {% if td.contest.tasks|length > 0 %}
-                        <span class="tp-training-day-tasks-badge">{{ td.contest.tasks|length }}</span>
-                        {% endif %}
+                        <div class="tp-training-day-indicators">
+                            {% if td_notif.get("unanswered_questions", 0) > 0 %}
+                            <span class="tp-indicator tp-indicator-question" title="{{ td_notif.unanswered_questions }} unanswered question{{ 's' if td_notif.unanswered_questions != 1 else '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                                {{ td_notif.unanswered_questions }}
+                            </span>
+                            {% endif %}
+                            {% if td_notif.get("pending_delay_requests", 0) > 0 %}
+                            <span class="tp-indicator tp-indicator-delay" title="{{ td_notif.pending_delay_requests }} pending delay request{{ 's' if td_notif.pending_delay_requests != 1 else '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                {{ td_notif.pending_delay_requests }}
+                            </span>
+                            {% endif %}
+                        </div>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tp-training-day-arrow">
                             <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>
@@ -212,18 +220,15 @@
             </div>
             {% endif %}
 
-            <!-- Year Progress -->
-            <div class="tp-card-progress">
-                <div class="tp-progress-header">
-                    <span class="tp-progress-label">Year Progress</span>
-                    <span class="tp-progress-value">{{ archived_tds|length }}/{{ total_tds }} Archived Days</span>
-                </div>
-                <div class="tp-progress-bar">
-                    {% if total_tds > 0 %}
-                    <div class="tp-progress-fill" style="width: {{ (archived_tds|length / total_tds * 100)|round|int }}%;"></div>
-                    {% else %}
-                    <div class="tp-progress-fill" style="width: 0%;"></div>
-                    {% endif %}
+            <!-- Archived Training Days Counter -->
+            <div class="tp-card-stats tp-card-stats-bottom">
+                <div class="tp-card-stat">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 8v13H3V8"></path>
+                        <path d="M1 3h22v5H1z"></path>
+                        <path d="M10 12h4"></path>
+                    </svg>
+                    <span>{{ archived_tds|length }} Archived Days</span>
                 </div>
             </div>
         </div>

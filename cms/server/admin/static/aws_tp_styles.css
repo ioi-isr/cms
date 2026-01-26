@@ -2172,3 +2172,175 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Training Day Indicators */
+.tp-training-day-indicators {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+}
+
+.tp-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tp-indicator svg {
+    flex-shrink: 0;
+}
+
+.tp-indicator-question {
+    background: var(--tp-info-light);
+    color: var(--tp-info);
+}
+
+.tp-indicator-delay {
+    background: var(--tp-warning-light);
+    color: var(--tp-warning-dark);
+}
+
+/* Bottom stats row (for archived days counter) */
+.tp-card-stats-bottom {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--tp-border);
+    margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Form Card Styles
+   ========================================================================== */
+
+.tp-form-card {
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: var(--tp-shadow-sm);
+}
+
+.tp-form-group {
+    margin-bottom: 24px;
+}
+
+.tp-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.tp-form-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+    margin-bottom: 8px;
+}
+
+.tp-form-required {
+    color: var(--tp-danger);
+    margin-left: 2px;
+}
+
+.tp-form-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    background: var(--tp-bg-white);
+    color: var(--tp-text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.tp-form-input:focus {
+    outline: none;
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.tp-form-input::placeholder {
+    color: var(--tp-text-light);
+}
+
+.tp-form-hint {
+    font-size: 0.8rem;
+    color: var(--tp-text-muted);
+    margin-top: 6px;
+}
+
+.tp-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 600px) {
+    .tp-form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.tp-form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--tp-border);
+}
+
+.tp-form-submit-group {
+    display: flex;
+    gap: 12px;
+}
+
+.tp-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+    background: var(--tp-primary);
+    border: 1px solid var(--tp-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.tp-btn-primary:hover {
+    background: var(--tp-primary-dark);
+    border-color: var(--tp-primary-dark);
+}
+
+.tp-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.tp-btn-secondary:hover {
+    background: var(--tp-bg-gray);
+    border-color: var(--tp-border-dark);
+    color: var(--tp-text-primary);
+}
