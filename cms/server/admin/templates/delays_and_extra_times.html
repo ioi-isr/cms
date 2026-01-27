@@ -101,6 +101,46 @@ a.username-link:hover {
 </div>
 {% endif %}
 
+<h2 id="title_admin_configure_delay_section" class="toggling_on">Set Delay for User</h2>
+<div id="admin_configure_delay_section">
+  <p class="muted">Configure a delayed start time for a user. This will create an approved delay request and set the user's delay time.</p>
+  <form action="{{ url("contest", contest.id, "delays_and_extra_times", "admin_configure") }}" method="POST" class="form-horizontal" style="margin-top: 10px;">
+    {{ xsrf_form_html|safe }}
+    <div class="control-group">
+      <label class="control-label" for="participation_id">User</label>
+      <div class="controls">
+        <select name="participation_id" id="participation_id" required>
+          <option value="">-- Select a user --</option>
+          {% for item in participation_statuses %}
+            {% set participation = item.participation %}
+            <option value="{{ participation.id }}">{{ participation.user.first_name }} {{ participation.user.last_name }} ({{ participation.user.username }})</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="control-label" for="requested_start_time">Start Time</label>
+      <div class="controls">
+        <input type="datetime-local" name="requested_start_time" id="requested_start_time" required>
+        <span class="help-inline">Contest starts at {{ contest.start|format_datetime }}</span>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="control-label" for="reason">Reason</label>
+      <div class="controls">
+        <textarea name="reason" id="reason" rows="2" style="width: 400px;" required placeholder="Brief reason for the delay"></textarea>
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="controls">
+        <button type="submit" class="btn btn-primary">
+          <i class="icon-time icon-white"></i> Set Delay
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
 <h2 id="title_participations_section" class="toggling_on">All Participations</h2>
 <div id="participations_section">
   <div class="btn-group" style="margin-top: 10px;">

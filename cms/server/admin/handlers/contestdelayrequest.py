@@ -380,3 +380,86 @@ class ResetAllIPAddressesHandler(BaseHandler):
                        count)
         
         self.redirect(ref)
+
+
+class AdminConfiguredDelayHandler(BaseHandler):
+    """Handler for admin to create and approve a delay request for a user.
+
+    This allows admins to set a delay for a student based on a configured
+    start time, creating a delay request with 'admin_configured' status.
+    """
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, contest_id):
+        ref = self.url("contest", contest_id, "delays_and_extra_times")
+
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        participation_id = self.get_argument("participation_id", "")
+        requested_start_time_str = self.get_argument("requested_start_time", "")
+        reason = self.get_argument("reason", "").strip()
+
+        if not participation_id or not requested_start_time_str or not reason:
+            self.service.add_notification(
+                make_datetime(),
+                "Missing fields",
+                "Please fill in all required fields: user, start time, and reason."
+            )
+            self.redirect(ref)
+            return
+
+        participation = self.safe_get_item(Participation, participation_id)
+
+        if participation.contest_id != self.contest.id:
+            raise tornado.web.HTTPError(404)
+
+        try:
+            requested_start_time = make_datetime(requested_start_time_str)
+        except (ValueError, TypeError):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid date",
+                "The start time format is invalid."
+            )
+            self.redirect(ref)
+            return
+
+        contest_start = self.contest.start
+        delay_seconds = (requested_start_time - contest_start).total_seconds()
+
+        if delay_seconds < 0:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid start time",
+                "The requested start time cannot be before the contest start time."
+            )
+            self.redirect(ref)
+            return
+
+        now = make_datetime()
+
+        delay_request = DelayRequest(
+            request_timestamp=now,
+            requested_start_time=requested_start_time,
+            reason=reason,
+            status='admin_configured',
+            processed_timestamp=now,
+            participation=participation,
+            admin=self.current_user
+        )
+        self.sql_session.add(delay_request)
+
+        participation.delay_time = timedelta(seconds=delay_seconds)
+
+        if self.try_commit():
+            logger.info(
+                "Admin %s configured delay for user %s in contest %s: "
+                "start time %s, delay %d seconds, reason: %s",
+                self.current_user.name,
+                participation.user.username,
+                self.contest.name,
+                requested_start_time,
+                delay_seconds,
+                reason
+            )
+
+        self.redirect(ref)
