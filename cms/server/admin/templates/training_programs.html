@@ -163,7 +163,7 @@
             {% if active_tds %}
             <div class="tp-card-training-days">
                 <div class="tp-training-days-header">
-                    <span class="tp-training-days-label">ACTIVE TRAINING DAYS</span>
+                    <a href="{{ url("training_program", tp.id, "training_days") }}" class="tp-training-days-label tp-training-days-link">ACTIVE TRAINING DAYS</a>
                 </div>
                 <div class="tp-training-days-list">
                     {% for td in active_tds[:3] %}

@@ -1976,6 +1976,16 @@
     letter-spacing: 0.05em;
 }
 
+.tp-training-days-link {
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.tp-training-days-link:hover {
+    color: var(--tp-primary);
+    text-decoration: underline;
+}
+
 .tp-training-days-count {
     background: var(--tp-primary);
     color: white;

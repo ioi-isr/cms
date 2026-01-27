@@ -20,10 +20,12 @@
         <div class="training-day-meta">
             <h3 class="training-day-title">{{ td_info.contest.description }}</h3>
             <div class="training-day-detail">
-                <strong>{% trans %}Start:{% endtrans %}</strong> {{ td_info.user_start_time|format_datetime_smart }}
+                <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span class="detail-label">{% trans %}Start:{% endtrans %}</span> {{ td_info.user_start_time|format_datetime_smart }}
             </div>
             <div class="training-day-detail">
-                <strong>{% trans %}Duration:{% endtrans %}</strong> {{ (td_info.duration.total_seconds() // 3600)|int }}h{% if (td_info.duration.total_seconds() % 3600) // 60 > 0 %} {{ ((td_info.duration.total_seconds() % 3600) // 60)|int }}m{% endif %}
+                <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                <span class="detail-label">{% trans %}Duration:{% endtrans %}</span> {{ (td_info.duration.total_seconds() // 3600)|int }}h{% if (td_info.duration.total_seconds() % 3600) // 60 > 0 %} {{ ((td_info.duration.total_seconds() % 3600) // 60)|int }}m{% endif %}
             </div>
         </div>
 
@@ -97,29 +99,29 @@
 
 <h2 style="margin-bottom: 15px;">{% trans %}Statistics{% endtrans %}</h2>
 
-<div class="training-program-summary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 25px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-    <p style="font-size: 16px; opacity: 0.9; margin-bottom: 20px;">{{ training_program.description }}</p>
-
-    <div style="display: flex; gap: 40px; align-items: center; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 200px;">
-            <div style="font-size: 48px; font-weight: bold;">
-                {{ "%.1f"|format(percentage) }}%
-            </div>
-            <div style="margin-top: 15px; font-size: 14px; opacity: 0.8;">{% trans %}Completion{% endtrans %}</div>
+<div class="stats-card">
+    {% set clamped_percentage = [percentage, 0]|max %}
+    {% set clamped_percentage = [clamped_percentage, 100]|min %}
+    <div class="stats-content">
+        <div class="stats-percentage">
+            <div class="stats-percentage-value">{{ "%.1f"|format(percentage) }}%</div>
+            <div class="stats-percentage-label">{% trans %}Overall Completion Rate{% endtrans %}</div>
         </div>
-        <div style="flex: 2; min-width: 300px;">
-          {% set clamped_percentage = [percentage, 0]|max %}
-          {% set clamped_percentage = [clamped_percentage, 100]|min %}
-          <div class="progress-track" role="progressbar" aria-valuenow="{{ clamped_percentage }}" aria-valuemin="0" aria-valuemax="100">
-              <div class="progress-fill {% if percentage >= 80 %}high{% elif percentage >= 50 %}med{% else %}low{% endif %}"
-                  style="width: {{ clamped_percentage }}%;">
-              </div>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; opacity: 0.8;">
-              <span>{{ "%.1f"|format(total_score) }} {% trans %}points{% endtrans %}</span>
-              <span>{{ "%.1f"|format(max_score) }} {% trans %}total{% endtrans %}</span>
-          </div>
-      </div>
+        <div class="stats-score-section">
+            <div class="stats-score-header">
+                <div class="stats-score-item">
+                    <div class="stats-score-label">{% trans %}YOUR SCORE{% endtrans %}</div>
+                    <div class="stats-score-value">{{ "%.1f"|format(total_score) }}</div>
+                </div>
+                <div class="stats-score-item stats-score-total">
+                    <div class="stats-score-label">{% trans %}TOTAL POINTS{% endtrans %}</div>
+                    <div class="stats-score-value">{{ "%.1f"|format(max_score) }}</div>
+                </div>
+            </div>
+            <div class="stats-progress-track" role="progressbar" aria-valuenow="{{ clamped_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                <div class="stats-progress-fill" style="width: {{ clamped_percentage }}%;"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -207,7 +209,7 @@
     {% endif %}
             </td>
             <td>
-                <a href="{{ contest_url("tasks", ts.task.name, "submissions") }}" class="btn btn-small btn-primary">{% trans %}Submit{% endtrans %}</a>
+                <a href="{{ contest_url("tasks", ts.task.name, "submissions") }}" class="btn btn-small btn-primary"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>{% trans %}Submit{% endtrans %}</a>
             </td>
         </tr>
 {% endfor %}
@@ -251,7 +253,9 @@
 .training-day-card.upcoming { border-left-color: #0d6efd; }
 .training-day-meta { flex: 1; min-width: 250px; }
 .training-day-title { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #333; }
-.training-day-detail { font-size: 14px; color: #666; margin-bottom: 4px; }
+.training-day-detail { font-size: 14px; color: #666; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.training-day-detail .detail-icon { flex-shrink: 0; color: #888; }
+.training-day-detail .detail-label { color: #888; }
 .training-day-status { text-align: center; flex: 0 0 auto; }
 .training-day-status-label { font-size: 13px; color: #28a745; font-weight: 600; margin-bottom: 8px; }
 .countdown-display { display: inline-block; border-radius: 8px; padding: 10px 15px; }
@@ -303,6 +307,72 @@
 @keyframes pulse {
     0%, 100% { box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); }
     50% { box-shadow: 0 2px 16px rgba(220, 53, 69, 0.6); }
+}
+.stats-card {
+    background: #1e293b;
+    border-radius: 16px;
+    padding: 30px 40px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+.stats-content {
+    display: flex;
+    align-items: center;
+    gap: 50px;
+    flex-wrap: wrap;
+}
+.stats-percentage {
+    flex: 0 0 auto;
+}
+.stats-percentage-value {
+    font-size: 52px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+}
+.stats-percentage-label {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 10px;
+}
+.stats-score-section {
+    flex: 1;
+    min-width: 300px;
+}
+.stats-score-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.stats-score-item {
+    text-align: left;
+}
+.stats-score-total {
+    text-align: right;
+}
+.stats-score-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+.stats-score-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+}
+.stats-progress-track {
+    height: 12px;
+    background: #334155;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.stats-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444, #f87171);
+    border-radius: 6px;
+    transition: width 0.5s ease;
 }
 </style>
 
