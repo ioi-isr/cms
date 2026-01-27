@@ -151,10 +151,10 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                 <thead>
                     <tr>
                         <th class="grip-column"></th>
-                        <th class="sortable-header" data-sort="string" style="text-align: left;">Name</th>
+                        <th class="sortable-header" data-sort="string" data-sort-key="name" style="text-align: left;">Name</th>
                         <th style="text-align: left;">Description</th>
                         <th style="text-align: left; min-width: 150px;">Types</th>
-                        <th class="sortable-header" data-sort="date" style="text-align: left;">Start</th>
+                        <th class="sortable-header" data-sort="date" data-sort-key="start" style="text-align: left;">Start</th>
                         <th style="text-align: left;">Tasks</th>
                         <th class="text-center" style="width: 100px;">Actions</th>
                     </tr>
@@ -286,10 +286,10 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         <table class="ranking-table tp-tasks-table" id="archived-training-days-table">
             <thead>
                 <tr>
-                    <th class="sortable-header" data-sort="string" style="text-align: left;">Name</th>
+                    <th class="sortable-header" data-sort="string" data-sort-key="name" style="text-align: left;">Name</th>
                     <th style="text-align: left;">Description</th>
                     <th style="text-align: left; min-width: 150px;">Types</th>
-                    <th class="sortable-header" data-sort="date" style="text-align: left;">Start</th>
+                    <th class="sortable-header" data-sort="date" data-sort-key="start" style="text-align: left;">Start</th>
                     <th style="text-align: left;">Tasks</th>
                     <th style="text-align: center; width: 100px;">Share</th>
                 </tr>
@@ -339,7 +339,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                 {% for task_id_str, task_info in td.archived_tasks_data.items() %}
                                     <span class="source-badge badge-archived"
                                           title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
-                                          onclick="showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get('name', 'Task ' ~ task_id_str) | tojson | forceescape }})"
+                                          onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
                                           style="cursor: pointer;">
                                         {{ task_info.get('name', 'Task ' ~ task_id_str) }}
                                         <span class="histogram-icon">&#128202;</span>
@@ -355,7 +355,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     <td style="text-align: center;">
                         <div class="list-cell-wrapper" style="justify-content: center;">
                             <button type="button" class="btn-icon-only" title="Configure scoreboard sharing"
-                                    onclick="openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson | forceescape }}, {{ td.name | default('') | tojson | forceescape }})"
+                                    onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
                                     {% if not admin.permission_all %}disabled{% endif %}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
@@ -422,6 +422,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
     var draggedRow = null;
     var placeholder = null;
+    var originalOrder = null;
 
     function createPlaceholder() {
         var tr = document.createElement('tr');
@@ -433,6 +434,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     tbody.addEventListener('dragstart', function(e) {
         if (e.target.tagName !== 'TR') return;
         draggedRow = e.target;
+        originalOrder = Array.from(tbody.querySelectorAll('tr[data-training-day-id]'));
         draggedRow.classList.add('dragging');
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', '');
@@ -477,6 +479,10 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     });
 
     function saveNewOrder() {
+        if (!confirm('Save the new training day order?')) {
+            restoreOriginalOrder();
+            return;
+        }
         var rows = tbody.querySelectorAll('tr[data-training-day-id]');
         var order = [];
         rows.forEach(function(row, index) {
@@ -500,6 +506,14 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
         form.submit();
     }
+
+    function restoreOriginalOrder() {
+        if (!originalOrder) return;
+        originalOrder.forEach(function(row) {
+            tbody.appendChild(row);
+        });
+        originalOrder = null;
+    }
 })();
 
 // Table sorting for active training days
@@ -512,7 +526,8 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
     headers.forEach(function(header, index) {
         header.addEventListener('click', function() {
-            var columnIndex = header.cellIndex;
+            var sortKey = header.getAttribute('data-sort-key') || '';
+            var sortType = header.getAttribute('data-sort') || 'string';
             var ascending = !sortState[index];
             sortState[index] = ascending;
 
@@ -526,12 +541,12 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             rows.sort(function(a, b) {
                 var aVal, bVal;
 
-                if (columnIndex === 1) { // Name
-                    aVal = a.getAttribute('data-name').toLowerCase();
-                    bVal = b.getAttribute('data-name').toLowerCase();
-                } else if (columnIndex === 4) { // Start date
-                    aVal = parseFloat(a.getAttribute('data-start')) || 0;
-                    bVal = parseFloat(b.getAttribute('data-start')) || 0;
+                if (sortType === 'date') {
+                    aVal = parseFloat(a.getAttribute('data-' + sortKey)) || 0;
+                    bVal = parseFloat(b.getAttribute('data-' + sortKey)) || 0;
+                } else {
+                    aVal = (a.getAttribute('data-' + sortKey) || '').toLowerCase();
+                    bVal = (b.getAttribute('data-' + sortKey) || '').toLowerCase();
                 }
 
                 if (aVal < bVal) return ascending ? -1 : 1;
@@ -556,7 +571,8 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
     headers.forEach(function(header, index) {
         header.addEventListener('click', function() {
-            var columnIndex = header.cellIndex;
+            var sortKey = header.getAttribute('data-sort-key') || '';
+            var sortType = header.getAttribute('data-sort') || 'string';
             var ascending = !sortState[index];
             sortState[index] = ascending;
 
@@ -570,12 +586,12 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             rows.sort(function(a, b) {
                 var aVal, bVal;
 
-                if (columnIndex === 0) { // Name
-                    aVal = a.getAttribute('data-name').toLowerCase();
-                    bVal = b.getAttribute('data-name').toLowerCase();
-                } else if (columnIndex === 3) { // Start date
-                    aVal = parseFloat(a.getAttribute('data-start')) || 0;
-                    bVal = parseFloat(b.getAttribute('data-start')) || 0;
+                if (sortType === 'date') {
+                    aVal = parseFloat(a.getAttribute('data-' + sortKey)) || 0;
+                    bVal = parseFloat(b.getAttribute('data-' + sortKey)) || 0;
+                } else {
+                    aVal = (a.getAttribute('data-' + sortKey) || '').toLowerCase();
+                    bVal = (b.getAttribute('data-' + sortKey) || '').toLowerCase();
                 }
 
                 if (aVal < bVal) return ascending ? -1 : 1;
@@ -646,17 +662,8 @@ function addSharingEntry(tag, topNames) {
     initSharingTagInput(entryDiv.querySelector('.sharing-tag'), tag);
 }
 
-function escapeHtml(text) {
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 function initSharingTagInput(input, initialTag) {
     if (!input || typeof Tagify === 'undefined') return;
-    if (!input.dataset.sharingTagInput) {
-        input.dataset.sharingTagInput = 'true';
-    }
 
     var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
         tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
@@ -733,6 +740,11 @@ function saveScoreboardSharing() {
         body: formData
     })
     .then(function(response) {
+        if (!response.ok) {
+            return response.text().then(function() {
+                throw new Error('Server error: ' + response.status);
+            });
+        }
         return response.json();
     })
     .then(function(data) {

@@ -151,8 +151,8 @@
             <td>
                 {% if pt.eligible_scoreboards %}
                     {% for sb in pt.eligible_scoreboards %}
-                    <button type="button" class="btn btn-mini btn-info scoreboard-badge" 
-                            onclick="openScoreboardModal({{ pt.training_day.id }}, '{{ sb.tag }}')">
+                    <button type="button" class="btn btn-mini btn-info scoreboard-badge"
+                            onclick='openScoreboardModal({{ pt.training_day.id }}, {{ sb.tag | tojson }})'>
                         {{ sb.tag }}
                     </button>
                     {% endfor %}
@@ -450,7 +450,7 @@ function openScoreboardModal(trainingDayId, tag) {
         .then(function(data) {
             if (data.error) {
                 title.textContent = 'Error';
-                body.innerHTML = '<div class="alert alert-error">' + data.error + '</div>';
+                body.innerHTML = '<div class="alert alert-error">' + escapeHtml(data.error) + '</div>';
                 return;
             }
             
@@ -462,7 +462,8 @@ function openScoreboardModal(trainingDayId, tag) {
             html += '<th class="name-col">Name</th>';
             
             data.tasks.forEach(function(task) {
-                html += '<th class="task-col" title="' + task.name + '">' + task.name + '</th>';
+                var safeTaskName = escapeHtml(task.name);
+                html += '<th class="task-col" title="' + safeTaskName + '">' + safeTaskName + '</th>';
             });
             
             html += '<th class="total-col">Total</th>';
@@ -500,7 +501,7 @@ function openScoreboardModal(trainingDayId, tag) {
         })
         .catch(function(error) {
             title.textContent = 'Error';
-            body.innerHTML = '<div class="alert alert-error">Failed to load scoreboard: ' + error.message + '</div>';
+            body.innerHTML = '<div class="alert alert-error">Failed to load scoreboard: ' + escapeHtml(error.message) + '</div>';
         });
 }
 

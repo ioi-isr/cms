@@ -116,9 +116,13 @@
                                 </button>
                                 {% endif %}
                                 <!-- Remove button - opens modal -->
-                                <button type="button" class="btn-icon-only"
+                                <button type="button" class="btn-icon-only remove-task-btn"
+                                    data-task-id="{{ t.id }}"
+                                    data-task-name="{{ t.name | e }}"
+                                    data-has-training-day="{{ 'true' if t.training_day else 'false' }}"
+                                    data-training-day-name="{% if t.training_day and t.training_day.contest %}{{ t.training_day.contest.description | e }}{% elif t.training_day %}{{ (t.training_day.description or t.training_day.name or 'Archived') | e }}{% else %}{% endif %}"
+                                    data-is-active="{{ 'true' if (t.training_day and t.training_day.contest) else 'false' }}"
                                     {% if not admin.permission_all %}disabled{% endif %}
-                                    onclick="openRemoveModal('{{ t.id }}', '{{ t.name }}', {% if t.training_day %}true{% else %}false{% endif %}, {% if t.training_day and t.training_day.contest %}'{{ t.training_day.contest.description }}'{% elif t.training_day %}'{{ t.training_day.description or t.training_day.name or "Archived" }}'{% else %}null{% endif %}, {% if t.training_day and t.training_day.contest %}true{% else %}false{% endif %})"
                                     title="Remove from program">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -168,6 +172,7 @@
 <script>
 // Remove task modal
 var currentRemoveTaskId = null;
+var programName = {{ training_program.name | tojson }};
 
 function openRemoveModal(taskId, taskName, hasTrainingDay, trainingDayName, isActive) {
     currentRemoveTaskId = taskId;
@@ -176,7 +181,7 @@ function openRemoveModal(taskId, taskName, hasTrainingDay, trainingDayName, isAc
     var warning = document.getElementById('remove-modal-warning');
     var warningText = document.getElementById('remove-modal-warning-text');
 
-    message.textContent = 'Are you sure you want to remove task "' + taskName + '" from training program "{{ training_program.name }}"?';
+    message.textContent = 'Are you sure you want to remove task "' + taskName + '" from training program "' + programName + '"?';
 
     if (hasTrainingDay && trainingDayName) {
         warning.style.display = 'block';
@@ -191,6 +196,18 @@ function openRemoveModal(taskId, taskName, hasTrainingDay, trainingDayName, isAc
 
     modal.style.display = 'flex';
 }
+
+document.querySelectorAll('.remove-task-btn').forEach(function(button) {
+    button.addEventListener('click', function() {
+        openRemoveModal(
+            this.dataset.taskId,
+            this.dataset.taskName,
+            this.dataset.hasTrainingDay === 'true',
+            this.dataset.trainingDayName || null,
+            this.dataset.isActive === 'true'
+        );
+    });
+});
 
 function closeRemoveModal() {
     var modal = document.getElementById('remove-task-modal');
@@ -219,6 +236,7 @@ document.getElementById('remove-task-modal').addEventListener('click', function(
 
     var draggedRow = null;
     var placeholder = null;
+    var originalOrder = null;
 
     function createPlaceholder() {
         var tr = document.createElement('tr');
@@ -230,6 +248,7 @@ document.getElementById('remove-task-modal').addEventListener('click', function(
     tbody.addEventListener('dragstart', function(e) {
         if (e.target.tagName !== 'TR') return;
         draggedRow = e.target;
+        originalOrder = Array.from(tbody.querySelectorAll('tr'));
         draggedRow.classList.add('dragging');
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', '');
@@ -273,7 +292,19 @@ document.getElementById('remove-task-modal').addEventListener('click', function(
         }
     });
 
+    function restoreOriginalOrder() {
+        if (!originalOrder) return;
+        originalOrder.forEach(function(row) {
+            tbody.appendChild(row);
+        });
+        originalOrder = null;
+    }
+
     function saveNewOrder() {
+        if (!confirm('Save the new task order?')) {
+            restoreOriginalOrder();
+            return;
+        }
         var rows = tbody.querySelectorAll('tr[data-task-id]');
         var order = [];
         rows.forEach(function(row, index) {
@@ -288,7 +319,6 @@ document.getElementById('remove-task-modal').addEventListener('click', function(
         var reorderInput = document.getElementById('reorder-data');
         reorderInput.value = JSON.stringify(order);
 
-        // Create a hidden operation input
         var operationInput = document.createElement('input');
         operationInput.type = 'hidden';
         operationInput.name = 'operation';

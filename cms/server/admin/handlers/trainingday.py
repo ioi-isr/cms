@@ -23,6 +23,7 @@ with custom timing configurations.
 """
 
 from datetime import datetime as dt, timedelta
+import json
 
 import tornado.web
 
@@ -191,7 +192,7 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
                 ]
                 td_by_id = {str(td.id): td for td in active_training_days}
 
-                for td in active_training_days:
+                for td in training_program.training_days:
                     td.position = None
                 self.sql_session.flush()
 
@@ -691,7 +692,6 @@ class ScoreboardSharingHandler(BaseHandler):
             return
 
         try:
-            import json
             sharing_data_str = self.get_argument("scoreboard_sharing", "")
 
             if not sharing_data_str or sharing_data_str.strip() == "":
@@ -711,10 +711,9 @@ class ScoreboardSharingHandler(BaseHandler):
                         raise ValueError("Tag cannot be empty")
                     if normalized_tag != tag:
                         raise ValueError(f"Invalid tag '{tag}': remove leading/trailing spaces")
-                    normalized_key = normalized_tag.lower()
-                    if normalized_key in seen_tags:
+                    if normalized_tag in seen_tags:
                         raise ValueError(f"Duplicate tag '{tag}'")
-                    seen_tags.add(normalized_key)
+                    seen_tags.add(normalized_tag)
 
                     if not isinstance(settings, dict):
                         raise ValueError(f"Invalid settings for tag '{tag}'")

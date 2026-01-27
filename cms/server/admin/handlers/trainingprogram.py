@@ -45,6 +45,7 @@ from cms.db import (
     Announcement,
     Student,
     StudentTask,
+    DelayRequest,
 )
 from cms.server.util import (
     get_all_student_tags,
@@ -550,18 +551,29 @@ class TrainingProgramTasksHandler(BaseHandler):
         except json.JSONDecodeError:
             return
 
+        if not isinstance(order_list, list):
+            raise ValueError("Reorder data must be a list")
+
+        expected_ids = {t.id for t in contest.tasks}
+        received_ids = {item.get("task_id") for item in order_list}
+        if received_ids != expected_ids:
+            raise ValueError("Reorder data must include each task exactly once")
+
+        new_nums = [item.get("new_num") for item in order_list]
+        if len(set(new_nums)) != len(new_nums):
+            raise ValueError("Duplicate task numbers in reorder data")
+
         # First, set all task nums to None to avoid unique constraint issues
-        task_map = {}
+        task_updates = []
         for item in order_list:
             task = self.safe_get_item(Task, item["task_id"])
             if task.contest == contest:
-                task_map[item["task_id"]] = item["new_num"]
+                task_updates.append((task, item["new_num"]))
                 task.num = None
         self.sql_session.flush()
 
         # Then set the new nums
-        for task_id, new_num in task_map.items():
-            task = self.safe_get_item(Task, task_id)
+        for task, new_num in task_updates:
             task.num = new_num
         self.sql_session.flush()
 
@@ -585,11 +597,16 @@ class TrainingProgramTasksHandler(BaseHandler):
 
         self.sql_session.flush()
 
-        # Reorder remaining tasks in the training day
-        _shift_task_nums(
-            self.sql_session, Task.training_day, training_day,
-            Task.training_day_num, training_day_num, -1
-        )
+        # Reorder remaining tasks in the training day (only if there was a valid position)
+        if training_day_num is not None:
+            _shift_task_nums(
+                self.sql_session,
+                Task.training_day,
+                training_day,
+                Task.training_day_num,
+                training_day_num,
+                -1,
+            )
 
 
 class AddTrainingProgramTaskHandler(BaseHandler):

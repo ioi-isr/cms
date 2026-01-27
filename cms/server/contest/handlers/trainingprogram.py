@@ -523,13 +523,17 @@ class ScoreboardDataHandler(ContestHandler):
                 accessible_tasks[task_id_str] = task_data
 
         # Build scoreboard data
+        sorted_accessible_tasks = sorted(
+            accessible_tasks.items(),
+            key=lambda kv: (kv[1].get("training_day_num") or 0, int(kv[0]))
+        )
         scoreboard_entries = []
         for ranking in tag_rankings:
             task_scores = ranking.task_scores or {}
             total_score = 0.0
             task_score_list = []
 
-            for task_id_str, task_data in accessible_tasks.items():
+            for task_id_str, task_data in sorted_accessible_tasks:
                 score = task_scores.get(task_id_str, 0.0)
                 total_score += score
                 task_score_list.append({
@@ -538,9 +542,13 @@ class ScoreboardDataHandler(ContestHandler):
                     "max_score": task_data.get("max_score", 100.0),
                 })
 
+            student_name = "Unknown"
+            if ranking.student and ranking.student.participation and ranking.student.participation.user:
+                student_name = ranking.student.participation.user.username
+
             scoreboard_entries.append({
                 "student_id": ranking.student_id,
-                "student_name": ranking.student.participation.user.username if ranking.student else "Unknown",
+                "student_name": student_name,
                 "total_score": total_score,
                 "task_scores": task_score_list,
                 "is_current_student": ranking.student_id == student.id,
@@ -562,7 +570,7 @@ class ScoreboardDataHandler(ContestHandler):
                 "name": task_data.get("name", task_data.get("short_name", f"Task {task_id_str}")),
                 "max_score": task_data.get("max_score", 100.0),
             }
-            for task_id_str, task_data in accessible_tasks.items()
+            for task_id_str, task_data in sorted_accessible_tasks
         ]
 
         self.write({

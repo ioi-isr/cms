@@ -1,8 +1,9 @@
-<div id="histogramModal" class="histogram-modal" style="display: none;">
+<div id="histogramModal" class="histogram-modal" style="display: none;"
+     role="dialog" aria-modal="true" aria-labelledby="histogramTitle" tabindex="-1">
   <div class="histogram-modal-content">
     <div class="histogram-modal-header">
       <h2 id="histogramTitle">Score Distribution</h2>
-      <button class="histogram-close-btn" onclick="closeHistogramModal()">&times;</button>
+      <button class="histogram-close-btn" onclick="closeHistogramModal()" aria-label="Close histogram">&times;</button>
     </div>
     <div class="histogram-filter-row">
       <label for="histogramTagsFilter">Filter by student tags:</label>

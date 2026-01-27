@@ -1891,15 +1891,15 @@
     align-items: center;
     gap: 10px;
     padding: 10px 16px;
-    color: var(--tp-text-secondary);
+    color: var(--tp-text-secondary) !important;
     text-decoration: none;
     font-size: 0.9rem;
     transition: background 0.15s;
 }
 
 .tp-menu-item:hover {
-    background: var(--tp-bg-hover);
-    color: var(--tp-text-primary);
+    background: var(--tp-bg-hover) !important;
+    color: var(--tp-text-primary) !important;
 }
 
 .tp-menu-item svg {
@@ -1907,12 +1907,12 @@
 }
 
 .tp-menu-item-danger {
-    color: var(--tp-danger);
+    color: var(--tp-danger) !important;
 }
 
 .tp-menu-item-danger:hover {
-    background: var(--tp-danger-light);
-    color: var(--tp-danger-dark);
+    background: var(--tp-danger-light) !important;
+    color: var(--tp-danger-dark) !important;
 }
 
 .tp-menu-divider {
@@ -2298,28 +2298,6 @@
 .tp-form-submit-group {
     display: flex;
     gap: 12px;
-}
-
-.tp-btn-primary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: white;
-    background: var(--tp-primary);
-    border: 1px solid var(--tp-primary);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-}
-
-.tp-btn-primary:hover {
-    background: var(--tp-primary-dark);
-    border-color: var(--tp-primary-dark);
 }
 
 .tp-btn-secondary {
