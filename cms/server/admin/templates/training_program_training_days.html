@@ -94,6 +94,7 @@ Object.keys(tagsPerTrainingDay).forEach(function(tdId) {
 allStudentTags = Array.from(allStudentTagsSet).sort();
 window.tagsPerTrainingDay = tagsPerTrainingDay;
 window.allStudentTags = allStudentTags;
+window.historicalStudentTags = historicalStudentTags;
 
 {% include 'fragments/histogram_js.html' %}
 
@@ -388,7 +389,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
 <!-- Scoreboard Sharing Modal -->
 <div id="scoreboardSharingModal" class="histogram-modal" style="display: none;">
-    <div class="histogram-modal-content" style="max-width: 600px;">
+    <div class="histogram-modal-content" style="max-width: 700px;">
         <div class="histogram-modal-header">
             <h2 id="scoreboardSharingTitle">Scoreboard Sharing</h2>
             <button class="histogram-close-btn" onclick="closeScoreboardSharingModal()">&times;</button>
@@ -398,6 +399,37 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                 Configure which student tags can view the scoreboard for this training day.
                 Students will only see results for their tag group.
             </p>
+
+            <!-- Share with Everyone option -->
+            <div id="everyoneShareSection" style="margin-bottom: 20px; padding: 16px; background: var(--tp-bg-secondary); border-radius: 8px; border: 1px solid var(--tp-border);">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <input type="checkbox" id="shareWithEveryone" onchange="toggleEveryoneSettings()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="shareWithEveryone" style="font-weight: 600; cursor: pointer;">Share with Everyone</label>
+                    <span style="font-size: 0.85rem; color: var(--tp-text-secondary);">(All students can view, regardless of tags)</span>
+                </div>
+                <div id="everyoneSettings" style="display: none; margin-left: 30px;">
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" id="everyoneTopToShow" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
+                                <input type="checkbox" id="everyoneTopToShowAll" onchange="toggleEveryoneTopToShowAll()" style="cursor: pointer;">
+                                <label for="everyoneTopToShowAll" style="font-size: 0.85rem; cursor: pointer;">All</label>
+                            </div>
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names to Show</label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" id="everyoneTopNames" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
+                                <input type="checkbox" id="everyoneTopNamesAll" onchange="toggleEveryoneTopNamesAll()" style="cursor: pointer;">
+                                <label for="everyoneTopNamesAll" style="font-size: 0.85rem; cursor: pointer;">All</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 12px; font-weight: 600;">Share by Tag</div>
 
             <div id="scoreboardSharingEntries" style="margin-bottom: 16px;">
             </div>
@@ -608,28 +640,153 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
 // Scoreboard Sharing Modal
 var currentSharingTrainingDayId = null;
+var totalStudentsForTrainingDay = 0;
 
 function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayName) {
     currentSharingTrainingDayId = trainingDayId;
     document.getElementById('scoreboardSharingTitle').textContent = 'Scoreboard Sharing - ' + (trainingDayName || 'Training Day');
 
+    // Count total students for this training day (for "everyone" option)
+    totalStudentsForTrainingDay = 0;
+    if (window.historicalStudentTags && window.historicalStudentTags[trainingDayId]) {
+        totalStudentsForTrainingDay = Object.keys(window.historicalStudentTags[trainingDayId]).length;
+    }
+
     var entriesContainer = document.getElementById('scoreboardSharingEntries');
     entriesContainer.innerHTML = '';
 
-    // Add existing entries
+    // Handle "__everyone__" option
+    var everyoneCheckbox = document.getElementById('shareWithEveryone');
+    var everyoneSettings = document.getElementById('everyoneSettings');
+    if (currentSharing && currentSharing['__everyone__']) {
+        everyoneCheckbox.checked = true;
+        everyoneSettings.style.display = 'block';
+        var everyoneData = currentSharing['__everyone__'];
+
+        // Set top_to_show
+        var topToShow = everyoneData.top_to_show;
+        if (topToShow === 'all') {
+            document.getElementById('everyoneTopToShowAll').checked = true;
+            document.getElementById('everyoneTopToShow').disabled = true;
+            document.getElementById('everyoneTopToShow').value = totalStudentsForTrainingDay;
+        } else {
+            document.getElementById('everyoneTopToShowAll').checked = false;
+            document.getElementById('everyoneTopToShow').disabled = false;
+            var topToShowValue = Number.isFinite(topToShow) ? topToShow : 0;
+            document.getElementById('everyoneTopToShow').value = topToShowValue;
+        }
+
+        // Set top_names
+        var topNames = everyoneData.top_names;
+        if (topNames === 'all') {
+            document.getElementById('everyoneTopNamesAll').checked = true;
+            document.getElementById('everyoneTopNames').disabled = true;
+            document.getElementById('everyoneTopNames').value = totalStudentsForTrainingDay;
+        } else {
+            document.getElementById('everyoneTopNamesAll').checked = false;
+            document.getElementById('everyoneTopNames').disabled = false;
+            var topNamesValue = Number.isFinite(topNames) ? topNames : 0;
+            document.getElementById('everyoneTopNames').value = topNamesValue;
+        }
+    } else {
+        everyoneCheckbox.checked = false;
+        everyoneSettings.style.display = 'none';
+        document.getElementById('everyoneTopToShow').value = 0;
+        document.getElementById('everyoneTopNames').value = 0;
+        document.getElementById('everyoneTopToShowAll').checked = false;
+        document.getElementById('everyoneTopNamesAll').checked = false;
+        document.getElementById('everyoneTopToShow').disabled = false;
+        document.getElementById('everyoneTopNames').disabled = false;
+    }
+    document.getElementById('everyoneTopToShow').oninput = validateEveryoneFields;
+    document.getElementById('everyoneTopNames').oninput = validateEveryoneFields;
+
+    // Add existing tag entries (excluding __everyone__)
     if (currentSharing && typeof currentSharing === 'object') {
         Object.keys(currentSharing).forEach(function(tag) {
-            var topNames = currentSharing[tag].top_names || 5;
-            addSharingEntry(tag, topNames);
+            if (tag === '__everyone__') return;
+            var settings = currentSharing[tag];
+            addSharingEntry(tag, settings.top_names, settings.top_to_show);
         });
     }
 
-    // If no entries, add an empty one
+    // If no tag entries, add an empty one
     if (entriesContainer.children.length === 0) {
-        addSharingEntry('', 5);
+        addSharingEntry('', 0, 0);
     }
 
     document.getElementById('scoreboardSharingModal').style.display = 'flex';
+}
+
+function toggleEveryoneSettings() {
+    var checkbox = document.getElementById('shareWithEveryone');
+    var settings = document.getElementById('everyoneSettings');
+    settings.style.display = checkbox.checked ? 'block' : 'none';
+}
+
+function toggleEveryoneTopToShowAll() {
+    var checkbox = document.getElementById('everyoneTopToShowAll');
+    var input = document.getElementById('everyoneTopToShow');
+    input.disabled = checkbox.checked;
+    if (checkbox.checked) {
+        input.value = totalStudentsForTrainingDay;
+    }
+    validateEveryoneFields();
+}
+
+function toggleEveryoneTopNamesAll() {
+    var checkbox = document.getElementById('everyoneTopNamesAll');
+    var input = document.getElementById('everyoneTopNames');
+    input.disabled = checkbox.checked;
+    if (checkbox.checked) {
+        var topToShowAll = document.getElementById('everyoneTopToShowAll').checked;
+        var topToShowVal = topToShowAll ? totalStudentsForTrainingDay : parseIntOrZero(document.getElementById('everyoneTopToShow').value);
+        input.value = topToShowVal;
+    }
+}
+
+function clampNonNegativeInput(input) {
+    if (!input) return;
+    var value = parseInt(input.value, 10);
+    if (isNaN(value)) return;
+    if (value < 0) {
+        input.value = 0;
+    }
+}
+function parseIntOrZero(value) {
+    var parsed = parseInt(value, 10);
+    return isNaN(parsed) ? 0 : parsed;
+}
+
+function validateEveryoneFields() {
+    var topToShowAll = document.getElementById('everyoneTopToShowAll').checked;
+    var topNamesAll = document.getElementById('everyoneTopNamesAll').checked;
+    var topToShowInput = document.getElementById('everyoneTopToShow');
+    var topNamesInput = document.getElementById('everyoneTopNames');
+
+    // Cap top_to_show to total students
+    if (topToShowAll) {
+        topToShowInput.value = totalStudentsForTrainingDay;
+    } else {
+        clampNonNegativeInput(topToShowInput);
+        var topToShowVal = parseIntOrZero(topToShowInput.value);
+        if (topToShowVal > totalStudentsForTrainingDay) {
+            topToShowInput.value = totalStudentsForTrainingDay;
+        }
+    }
+
+    // Cap top_names to top_to_show
+    if (topNamesAll) {
+        var allNamesMax = topToShowAll ? totalStudentsForTrainingDay : parseIntOrZero(topToShowInput.value);
+        topNamesInput.value = allNamesMax;
+    } else {
+        var maxNames = topToShowAll ? totalStudentsForTrainingDay : parseIntOrZero(topToShowInput.value);
+        clampNonNegativeInput(topNamesInput);
+        var topNamesVal = parseIntOrZero(topNamesInput.value);
+        if (topNamesVal > maxNames) {
+            topNamesInput.value = maxNames;
+        }
+    }
 }
 
 function closeScoreboardSharingModal() {
@@ -637,32 +794,167 @@ function closeScoreboardSharingModal() {
     currentSharingTrainingDayId = null;
 }
 
-function addSharingEntry(tag, topNames) {
+function addSharingEntry(tag, topNames, topToShow) {
     tag = tag || '';
-    topNames = topNames || 5;
-    
+    topNames = topNames === undefined ? 0 : topNames;
+    topToShow = topToShow === undefined ? 0 : topToShow;
+
     var entriesContainer = document.getElementById('scoreboardSharingEntries');
     var entryDiv = document.createElement('div');
     entryDiv.className = 'sharing-entry';
-    entryDiv.style.cssText = 'display: flex; gap: 12px; align-items: center; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px;';
-    
-    entryDiv.innerHTML = 
-        '<div style="flex: 1;">' +
+    entryDiv.style.cssText = 'display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px; flex-wrap: wrap;';
+
+    // Get student count for this tag
+    var tagStudentCount = 0;
+    if (tag && currentSharingTrainingDayId && window.historicalStudentTags && window.historicalStudentTags[currentSharingTrainingDayId]) {
+        Object.keys(window.historicalStudentTags[currentSharingTrainingDayId]).forEach(function(studentId) {
+            var studentTags = window.historicalStudentTags[currentSharingTrainingDayId][studentId];
+            if (studentTags && studentTags.indexOf(tag) !== -1) {
+                tagStudentCount++;
+            }
+        });
+    }
+
+    var topToShowIsAll = topToShow === 'all';
+    var topNamesIsAll = topNames === 'all';
+    var topToShowVal = topToShowIsAll ? tagStudentCount : topToShow;
+    var topNamesVal = topNamesIsAll ? tagStudentCount : topNames;
+
+    entryDiv.innerHTML =
+        '<div style="flex: 1; min-width: 120px;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
             '<input type="text" class="sharing-tag" data-sharing-tag-input="true" value="" placeholder="Select a tag" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
         '</div>' +
-        '<div style="width: 120px;">' +
-            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Top Names</label>' +
-            '<input type="number" class="sharing-top-names" value="' + topNames + '" min="0" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
+        '<div style="min-width: 140px;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>' +
+            '<div style="display: flex; align-items: center; gap: 6px;">' +
+                '<input type="number" class="sharing-top-to-show" value="' + topToShowVal + '" min="0" ' + (topToShowIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
+                '<input type="checkbox" class="sharing-top-to-show-all" ' + (topToShowIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
+                '<span style="font-size: 0.85rem;">All</span>' +
+            '</div>' +
         '</div>' +
-        '<button type="button" onclick="this.parentElement.remove()" style="margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">&times;</button>';
-    
+        '<div style="min-width: 140px;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names</label>' +
+            '<div style="display: flex; align-items: center; gap: 6px;">' +
+                '<input type="number" class="sharing-top-names" value="' + topNamesVal + '" min="0" ' + (topNamesIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
+                '<input type="checkbox" class="sharing-top-names-all" ' + (topNamesIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
+                '<span style="font-size: 0.85rem;">All</span>' +
+            '</div>' +
+        '</div>' +
+        '<button type="button" class="sharing-remove-btn" style="margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">&times;</button>';
+
     entriesContainer.appendChild(entryDiv);
 
-    initSharingTagInput(entryDiv.querySelector('.sharing-tag'), tag);
+    // Set up event listeners for checkboxes and validation
+    var topToShowInput = entryDiv.querySelector('.sharing-top-to-show');
+    var topToShowAllCheckbox = entryDiv.querySelector('.sharing-top-to-show-all');
+    var topNamesInput = entryDiv.querySelector('.sharing-top-names');
+    var topNamesAllCheckbox = entryDiv.querySelector('.sharing-top-names-all');
+    var removeBtn = entryDiv.querySelector('.sharing-remove-btn');
+
+    removeBtn.onclick = function() { entryDiv.remove(); };
+
+    topToShowAllCheckbox.onchange = function() {
+        topToShowInput.disabled = this.checked;
+        normalizeTagEntry(entryDiv);
+    };
+
+    topNamesAllCheckbox.onchange = function() {
+        topNamesInput.disabled = this.checked;
+        normalizeTagEntry(entryDiv);
+    };
+
+    topToShowInput.oninput = function() { normalizeTagEntry(entryDiv); };
+    topNamesInput.oninput = function() { normalizeTagEntry(entryDiv); };
+
+    initSharingTagInput(entryDiv, entryDiv.querySelector('.sharing-tag'), tag);
+    normalizeTagEntry(entryDiv);
 }
 
-function initSharingTagInput(input, initialTag) {
+function getTagStudentCount(tag) {
+    if (!tag || !currentSharingTrainingDayId || !window.historicalStudentTags || !window.historicalStudentTags[currentSharingTrainingDayId]) {
+        return 0;
+    }
+    var trimmedTag = tag.trim();
+    if (!trimmedTag) {
+        return 0;
+    }
+    var count = 0;
+    Object.keys(window.historicalStudentTags[currentSharingTrainingDayId]).forEach(function(studentId) {
+        var studentTags = window.historicalStudentTags[currentSharingTrainingDayId][studentId];
+        if (studentTags && studentTags.indexOf(trimmedTag) !== -1) {
+            count++;
+        }
+    });
+    return count;
+}
+
+function getTagFromEntry(entryDiv) {
+    if (!entryDiv) return '';
+    if (entryDiv.dataset && entryDiv.dataset.tag) {
+        return entryDiv.dataset.tag;
+    }
+    var tagInput = entryDiv.querySelector('.sharing-tag');
+    if (tagInput && tagInput.tagify && tagInput.tagify.value && tagInput.tagify.value.length > 0) {
+        return (tagInput.tagify.value[0].value || '').trim();
+    }
+    if (tagInput && typeof tagInput.value === 'string') {
+        return tagInput.value.trim();
+    }
+    return '';
+}
+
+function normalizeTagEntry(entryDiv) {
+    var tag = getTagFromEntry(entryDiv);
+    if (!tag) {
+        return;
+    }
+    var studentCount = getTagStudentCount(tag);
+
+    var topToShowInput = entryDiv.querySelector('.sharing-top-to-show');
+    var topToShowAllCheckbox = entryDiv.querySelector('.sharing-top-to-show-all');
+    var topNamesInput = entryDiv.querySelector('.sharing-top-names');
+    var topNamesAllCheckbox = entryDiv.querySelector('.sharing-top-names-all');
+
+    // Cap top_to_show to student count
+    if (topToShowAllCheckbox.checked) {
+        topToShowInput.value = studentCount;
+    } else {
+        clampNonNegativeInput(topToShowInput);
+        var topToShowVal = parseInt(topToShowInput.value, 10);
+        if (isNaN(topToShowVal)) {
+            topToShowVal = 0;
+            topToShowInput.value = 0;
+        }
+        if (topToShowVal > studentCount) {
+            topToShowInput.value = studentCount;
+        }
+    }
+    topToShowInput.max = studentCount;
+
+    // Cap top_names to top_to_show
+    var parsedTopToShow = parseInt(topToShowInput.value, 10);
+    if (isNaN(parsedTopToShow)) {
+        parsedTopToShow = 0;
+    }
+    var maxNames = topToShowAllCheckbox.checked ? studentCount : parsedTopToShow;
+    if (topNamesAllCheckbox.checked) {
+        topNamesInput.value = maxNames;
+    } else {
+        clampNonNegativeInput(topNamesInput);
+        var topNamesVal = parseInt(topNamesInput.value, 10);
+        if (isNaN(topNamesVal)) {
+            topNamesVal = 0;
+            topNamesInput.value = 0;
+        }
+        if (topNamesVal > maxNames) {
+            topNamesInput.value = maxNames;
+        }
+    }
+    topNamesInput.max = maxNames;
+}
+
+function initSharingTagInput(entryDiv, input, initialTag) {
     if (!input || typeof Tagify === 'undefined') return;
 
     var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
@@ -682,18 +974,52 @@ function initSharingTagInput(input, initialTag) {
 
     if (initialTag) {
         tagify.addTags([initialTag]);
+        entryDiv.dataset.tag = initialTag;
     }
+
+    tagify.on('change', function() {
+        var tagValue = '';
+        if (tagify.value && tagify.value.length > 0) {
+            tagValue = tagify.value[0].value || '';
+        }
+        entryDiv.dataset.tag = tagValue;
+        normalizeTagEntry(entryDiv);
+    });
 }
 
 function saveScoreboardSharing() {
     if (!currentSharingTrainingDayId) return;
-    
-    var entries = document.querySelectorAll('#scoreboardSharingEntries .sharing-entry');
+
     var sharingData = {};
     var seenTags = {};
     var hasDuplicate = false;
-    
+
+    // Handle "everyone" option
+    var everyoneCheckbox = document.getElementById('shareWithEveryone');
+    if (everyoneCheckbox.checked) {
+        var topToShowAll = document.getElementById('everyoneTopToShowAll').checked;
+        var topNamesAll = document.getElementById('everyoneTopNamesAll').checked;
+        var topToShow = topToShowAll ? 'all' : parseInt(document.getElementById('everyoneTopToShow').value) || 0;
+        var topNames = topNamesAll ? 'all' : parseInt(document.getElementById('everyoneTopNames').value) || 0;
+        if (!topToShowAll && topToShow < 0) {
+            alert('Results to show cannot be negative.');
+            return;
+        }
+        if (!topNamesAll && topNames < 0) {
+            alert('Full names cannot be negative.');
+            return;
+        }
+
+        sharingData['__everyone__'] = {
+            top_to_show: topToShow,
+            top_names: topNames
+        };
+    }
+
+    // Handle tag entries
+    var entries = document.querySelectorAll('#scoreboardSharingEntries .sharing-entry');
     entries.forEach(function(entry) {
+        normalizeTagEntry(entry);
         var tagInput = entry.querySelector('input[data-sharing-tag-input="true"]');
         var tag = '';
         var tagify = tagInput && tagInput.tagify ? tagInput.tagify : null;
@@ -711,15 +1037,33 @@ function saveScoreboardSharing() {
         } else if (tagInput && typeof tagInput.value === 'string') {
             tag = tagInput.value.trim();
         }
-        var topNames = parseInt(entry.querySelector('.sharing-top-names').value, 10);
-        
+
+        var topToShowAllCheckbox = entry.querySelector('.sharing-top-to-show-all');
+        var topNamesAllCheckbox = entry.querySelector('.sharing-top-names-all');
+        var topToShowInput = entry.querySelector('.sharing-top-to-show');
+        var topNamesInput = entry.querySelector('.sharing-top-names');
+
+        var topToShow = topToShowAllCheckbox.checked ? 'all' : parseInt(topToShowInput.value, 10);
+        var topNames = topNamesAllCheckbox.checked ? 'all' : parseInt(topNamesInput.value, 10);
+        if (!topToShowAllCheckbox.checked && topToShow < 0) {
+            alert('Results to show cannot be negative.');
+            return;
+        }
+        if (!topNamesAllCheckbox.checked && topNames < 0) {
+            alert('Full names cannot be negative.');
+            return;
+        }
+
         if (tag) {
             var normalized = tag.toLowerCase();
             if (seenTags[normalized]) {
                 hasDuplicate = true;
             } else {
                 seenTags[normalized] = true;
-                sharingData[tag] = { top_names: isNaN(topNames) ? 5 : topNames };
+                sharingData[tag] = {
+                    top_to_show: isNaN(topToShow) ? 0 : topToShow,
+                    top_names: isNaN(topNames) ? 0 : topNames
+                };
             }
         }
     });
@@ -728,7 +1072,7 @@ function saveScoreboardSharing() {
         alert('Duplicate tags are not allowed.');
         return;
     }
-    
+
     // Send AJAX request
     var formData = new FormData();
     formData.append('_xsrf', document.querySelector('input[name="_xsrf"]').value);
@@ -769,3 +1113,5 @@ document.getElementById('scoreboardSharingModal').addEventListener('click', func
 </script>
 
 {% endblock core %}
+
+

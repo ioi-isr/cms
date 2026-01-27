@@ -402,13 +402,28 @@ class TrainingDaysHandler(ContestHandler):
         scoreboard_sharing = training_day.scoreboard_sharing or {}
         if student is not None and scoreboard_sharing:
             archived_ranking = archived_rankings_map.get(training_day.id)
+            # Check for "__everyone__" option first - available to all students with ranking
+            if "__everyone__" in scoreboard_sharing and archived_ranking:
+                settings = scoreboard_sharing["__everyone__"]
+                eligible_scoreboards.append({
+                    "tag": "__everyone__",
+                    "display_name": "Everyone",
+                    "top_names": settings.get("top_names", 5),
+                    "top_to_show": settings.get("top_to_show", "all"),
+                })
+            # Then check tag-specific scoreboards
             if archived_ranking and archived_ranking.student_tags:
                 student_tags_during_training = set(archived_ranking.student_tags)
                 for tag in scoreboard_sharing.keys():
+                    if tag == "__everyone__":
+                        continue
                     if tag in student_tags_during_training:
+                        settings = scoreboard_sharing[tag]
                         eligible_scoreboards.append({
                             "tag": tag,
-                            "top_names": scoreboard_sharing[tag].get("top_names", 5),
+                            "display_name": tag,
+                            "top_names": settings.get("top_names", 5),
+                            "top_to_show": settings.get("top_to_show", "all"),
                         })
 
         return {
@@ -429,6 +444,14 @@ class ScoreboardDataHandler(ContestHandler):
 
     Returns JSON data for the scoreboard modal, filtered by tag and with
     appropriate anonymization based on the top_names setting.
+
+    Supports:
+    - "__everyone__" tag for sharing with all students
+    - "top_to_show" to limit how many students are displayed
+    - "top_names" to control how many show full names (others show "#rank")
+    - Tie handling: students with same score get same rank
+    - Always shows current student even if past top_to_show limit
+    - Shows all tied students at the cutoff point
     """
 
     @tornado.web.authenticated
@@ -463,7 +486,9 @@ class ScoreboardDataHandler(ContestHandler):
             self.write({"error": "Scoreboard not shared for this tag"})
             return
 
-        top_names = scoreboard_sharing[tag].get("top_names", 5)
+        settings = scoreboard_sharing[tag]
+        top_names = settings.get("top_names", 5)
+        top_to_show = settings.get("top_to_show", "all")
 
         # Get the current student
         student = (
@@ -480,37 +505,48 @@ class ScoreboardDataHandler(ContestHandler):
             self.write({"error": "Student not found"})
             return
 
-        # Check if student had this tag during training
-        student_archived_ranking = (
-            self.sql_session.query(ArchivedStudentRanking)
-            .filter(ArchivedStudentRanking.training_day_id == training_day.id)
-            .filter(ArchivedStudentRanking.student_id == student.id)
-            .first()
-        )
-
-        if student_archived_ranking is None:
-            self.set_status(403)
-            self.write({"error": "No ranking data for this student"})
-            return
-
-        student_tags_during_training = set(student_archived_ranking.student_tags or [])
-        if tag not in student_tags_during_training:
-            self.set_status(403)
-            self.write({"error": "Not eligible to view this scoreboard"})
-            return
-
-        # Get all archived rankings for students with this tag during training
+        # Get all archived rankings
         all_rankings = (
             self.sql_session.query(ArchivedStudentRanking)
             .filter(ArchivedStudentRanking.training_day_id == training_day.id)
             .all()
         )
 
-        # Filter to students who had this tag during training
-        tag_rankings = [
-            r for r in all_rankings
-            if r.student_tags and tag in r.student_tags
-        ]
+        # Check eligibility based on tag
+        is_everyone = tag == "__everyone__"
+
+        if is_everyone:
+            # For "__everyone__", any student with a ranking can view
+            student_archived_ranking = next(
+                (r for r in all_rankings if r.student_id == student.id), None
+            )
+            if student_archived_ranking is None:
+                self.set_status(403)
+                self.write({"error": "No ranking data for this student"})
+                return
+            # Include all students
+            tag_rankings = all_rankings
+        else:
+            # Check if student had this tag during training
+            student_archived_ranking = next(
+                (r for r in all_rankings if r.student_id == student.id), None
+            )
+            if student_archived_ranking is None:
+                self.set_status(403)
+                self.write({"error": "No ranking data for this student"})
+                return
+
+            student_tags_during_training = set(student_archived_ranking.student_tags or [])
+            if tag not in student_tags_during_training:
+                self.set_status(403)
+                self.write({"error": "Not eligible to view this scoreboard"})
+                return
+
+            # Filter to students who had this tag during training
+            tag_rankings = [
+                r for r in all_rankings
+                if r.student_tags and tag in r.student_tags
+            ]
 
         # Get archived tasks data to filter by tag accessibility
         archived_tasks_data = training_day.archived_tasks_data or {}
@@ -519,7 +555,8 @@ class ScoreboardDataHandler(ContestHandler):
         accessible_tasks = {}
         for task_id_str, task_data in archived_tasks_data.items():
             task_tags = task_data.get("tags", [])
-            if not task_tags or tag in task_tags:
+            # For "__everyone__", show all tasks; otherwise filter by tag
+            if is_everyone or not task_tags or tag in task_tags:
                 accessible_tasks[task_id_str] = task_data
 
         # Build scoreboard data
@@ -555,13 +592,64 @@ class ScoreboardDataHandler(ContestHandler):
             })
 
         # Sort by total score descending
-        scoreboard_entries.sort(key=lambda x: x["total_score"], reverse=True)
+        scoreboard_entries.sort(key=lambda x: (-x["total_score"], x["student_name"]))
+
+        # Assign ranks with tie handling
+        # Students with same score get same rank
+        # Example: 300, 300, 260, 245, 245, 190 -> ranks 1, 1, 3, 4, 4, 6
+        current_rank = 1
+        for i, entry in enumerate(scoreboard_entries):
+            if i > 0 and entry["total_score"] < scoreboard_entries[i - 1]["total_score"]:
+                current_rank = i + 1
+            entry["rank"] = current_rank
+
+        # Determine which entries to show based on top_to_show
+        # Always include current student, and include all tied students at cutoff
+        total_students = len(scoreboard_entries)
+
+        if top_to_show == "all":
+            entries_to_show = scoreboard_entries
+        else:
+            top_to_show = int(top_to_show)
+            if top_to_show <= 0:
+                # Show only current student
+                entries_to_show = [e for e in scoreboard_entries if e["is_current_student"]]
+            else:
+                # Find the cutoff: include all students tied at position top_to_show
+                cutoff_score = None
+                if top_to_show <= total_students:
+                    cutoff_score = scoreboard_entries[top_to_show - 1]["total_score"]
+
+                entries_to_show = []
+                current_student_included = False
+
+                for entry in scoreboard_entries:
+                    # Include if within top_to_show or tied at cutoff
+                    if entry["rank"] <= top_to_show:
+                        entries_to_show.append(entry)
+                        if entry["is_current_student"]:
+                            current_student_included = True
+                    elif cutoff_score is not None and entry["total_score"] == cutoff_score:
+                        # Include tied students at cutoff
+                        entries_to_show.append(entry)
+                        if entry["is_current_student"]:
+                            current_student_included = True
+                    elif entry["is_current_student"]:
+                        # Always include current student
+                        entries_to_show.append(entry)
+                        current_student_included = True
 
         # Apply anonymization: only top N students show full names
-        for i, entry in enumerate(scoreboard_entries):
-            entry["rank"] = i + 1
-            if i >= top_names and not entry["is_current_student"]:
-                entry["student_name"] = f"#{i + 1}"
+        # Current student always sees their own name
+        if top_names == "all":
+            top_names_int = total_students
+        else:
+            top_names_int = int(top_names)
+
+        for entry in entries_to_show:
+            # Anonymize if rank > top_names and not current student
+            if entry["rank"] > top_names_int and not entry["is_current_student"]:
+                entry["student_name"] = f"#{entry['rank']}"
 
         # Build tasks list for header
         tasks_list = [
@@ -576,9 +664,11 @@ class ScoreboardDataHandler(ContestHandler):
         self.write({
             "success": True,
             "training_day_name": training_day.name,
-            "tag": tag,
+            "tag": tag if tag != "__everyone__" else "Everyone",
             "top_names": top_names,
+            "top_to_show": top_to_show,
+            "total_students": total_students,
             "tasks": tasks_list,
-            "scoreboard": scoreboard_entries,
+            "scoreboard": entries_to_show,
             "current_student_id": student.id,
         })

@@ -671,7 +671,21 @@ class TrainingDayTypesHandler(BaseHandler):
 
 
 class ScoreboardSharingHandler(BaseHandler):
-    """Handler for updating scoreboard sharing settings for archived training days."""
+    """Handler for updating scoreboard sharing settings for archived training days.
+
+    The scoreboard_sharing format is:
+    {
+        "tag_name": {
+            "top_names": int or "all",  # How many top students show full names
+            "top_to_show": int or "all"  # How many students to show in total
+        },
+        ...
+        "__everyone__": {  # Special key for sharing with all students
+            "top_names": int or "all",
+            "top_to_show": int or "all"
+        }
+    }
+    """
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str, training_day_id: str):
@@ -706,22 +720,36 @@ class ScoreboardSharingHandler(BaseHandler):
 
                 seen_tags: set[str] = set()
                 for tag, settings in sharing_data.items():
-                    normalized_tag = tag.strip()
-                    if not normalized_tag:
-                        raise ValueError("Tag cannot be empty")
-                    if normalized_tag != tag:
-                        raise ValueError(f"Invalid tag '{tag}': remove leading/trailing spaces")
+                    # Allow special "__everyone__" key
+                    if tag == "__everyone__":
+                        normalized_tag = tag
+                    else:
+                        normalized_tag = tag.strip()
+                        if not normalized_tag:
+                            raise ValueError("Tag cannot be empty")
+                        if normalized_tag != tag:
+                            raise ValueError(f"Invalid tag '{tag}': remove leading/trailing spaces")
+
                     if normalized_tag in seen_tags:
                         raise ValueError(f"Duplicate tag '{tag}'")
                     seen_tags.add(normalized_tag)
 
                     if not isinstance(settings, dict):
                         raise ValueError(f"Invalid settings for tag '{tag}'")
+
+                    # Validate top_names (required)
                     if "top_names" not in settings:
                         raise ValueError(f"Missing 'top_names' for tag '{tag}'")
                     top_names = settings["top_names"]
-                    if not isinstance(top_names, int) or top_names < 0:
-                        raise ValueError(f"Invalid 'top_names' for tag '{tag}': must be non-negative integer")
+                    if top_names != "all":
+                        if not isinstance(top_names, int) or top_names < 0:
+                            raise ValueError(f"Invalid 'top_names' for tag '{tag}': must be non-negative integer or 'all'")
+
+                    # Validate top_to_show (optional, defaults to "all")
+                    top_to_show = settings.get("top_to_show", "all")
+                    if top_to_show != "all":
+                        if not isinstance(top_to_show, int) or top_to_show < 0:
+                            raise ValueError(f"Invalid 'top_to_show' for tag '{tag}': must be non-negative integer or 'all'")
 
                 training_day.scoreboard_sharing = sharing_data
 
