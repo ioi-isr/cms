@@ -10,7 +10,7 @@ user_id (int|None): if we are rendering one of the delay requests on a single us
     the contest attendance page, then None.
 show_buttons (bool): whether to show approve/reject buttons for pending requests.
 #}
-<div class="notification {% if req.status == 'approved' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
+<div class="notification {% if req.status == 'approved' or req.status == 'admin_configured' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
   <div class="notification_msg">
     <div class="notification_timestamp">
       {% if user_id is none %}
@@ -31,7 +31,7 @@ show_buttons (bool): whether to show approve/reject buttons for pending requests
       {% endif %}
       <strong>Reason:</strong> {{ req.reason }}<br>
       {% if req.status != 'pending' %}
-        <strong>Status:</strong> {{ req.status }}
+        <strong>Status:</strong> {% if req.status == 'admin_configured' %}Admin Configured{% else %}{{ req.status }}{% endif %}
         {% if req.status == 'rejected' and req.rejection_reason %}
           <br><strong>Rejection Reason:</strong> {{ req.rejection_reason }}
         {% endif %}
