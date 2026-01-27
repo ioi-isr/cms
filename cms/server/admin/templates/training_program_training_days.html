@@ -820,10 +820,19 @@ function addSharingEntry(tag, topNames, topToShow) {
     var topToShowVal = topToShowIsAll ? tagStudentCount : topToShow;
     var topNamesVal = topNamesIsAll ? tagStudentCount : topNames;
 
+    // Build select options from available tags
+    var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
+        tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
+    var selectOptions = '<option value="">Select a tag</option>';
+    whitelist.forEach(function(t) {
+        var selected = (t === tag) ? ' selected' : '';
+        selectOptions += '<option value="' + t + '"' + selected + '>' + t + '</option>';
+    });
+
     entryDiv.innerHTML =
         '<div style="flex: 1; min-width: 120px;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
-            '<input type="text" class="sharing-tag" data-sharing-tag-input="true" value="" placeholder="Select a tag" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
+            '<select class="sharing-tag" data-sharing-tag-input="true" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px; background: white;">' + selectOptions + '</select>' +
         '</div>' +
         '<div style="min-width: 140px;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>' +
@@ -846,6 +855,7 @@ function addSharingEntry(tag, topNames, topToShow) {
     entriesContainer.appendChild(entryDiv);
 
     // Set up event listeners for checkboxes and validation
+    var tagSelect = entryDiv.querySelector('.sharing-tag');
     var topToShowInput = entryDiv.querySelector('.sharing-top-to-show');
     var topToShowAllCheckbox = entryDiv.querySelector('.sharing-top-to-show-all');
     var topNamesInput = entryDiv.querySelector('.sharing-top-names');
@@ -853,6 +863,14 @@ function addSharingEntry(tag, topNames, topToShow) {
     var removeBtn = entryDiv.querySelector('.sharing-remove-btn');
 
     removeBtn.onclick = function() { entryDiv.remove(); };
+
+    tagSelect.onchange = function() {
+        entryDiv.dataset.tag = this.value;
+        normalizeTagEntry(entryDiv);
+    };
+    if (tag) {
+        entryDiv.dataset.tag = tag;
+    }
 
     topToShowAllCheckbox.onchange = function() {
         topToShowInput.disabled = this.checked;
@@ -867,7 +885,6 @@ function addSharingEntry(tag, topNames, topToShow) {
     topToShowInput.oninput = function() { normalizeTagEntry(entryDiv); };
     topNamesInput.oninput = function() { normalizeTagEntry(entryDiv); };
 
-    initSharingTagInput(entryDiv, entryDiv.querySelector('.sharing-tag'), tag);
     normalizeTagEntry(entryDiv);
 }
 
@@ -894,12 +911,9 @@ function getTagFromEntry(entryDiv) {
     if (entryDiv.dataset && entryDiv.dataset.tag) {
         return entryDiv.dataset.tag;
     }
-    var tagInput = entryDiv.querySelector('.sharing-tag');
-    if (tagInput && tagInput.tagify && tagInput.tagify.value && tagInput.tagify.value.length > 0) {
-        return (tagInput.tagify.value[0].value || '').trim();
-    }
-    if (tagInput && typeof tagInput.value === 'string') {
-        return tagInput.value.trim();
+    var tagSelect = entryDiv.querySelector('.sharing-tag');
+    if (tagSelect && typeof tagSelect.value === 'string') {
+        return tagSelect.value.trim();
     }
     return '';
 }
@@ -954,40 +968,7 @@ function normalizeTagEntry(entryDiv) {
     topNamesInput.max = maxNames;
 }
 
-function initSharingTagInput(entryDiv, input, initialTag) {
-    if (!input || typeof Tagify === 'undefined') return;
-
-    var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
-        tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
-
-    var tagify = new Tagify(input, {
-        delimiters: ",",
-        whitelist: whitelist,
-        enforceWhitelist: true,
-        editTags: false,
-        maxTags: 1,
-        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
-        originalInputValueFormat: function(valuesArr) {
-            return valuesArr.map(function(item) { return item.value; }).join(', ');
-        }
-    });
-
-    if (initialTag) {
-        tagify.addTags([initialTag]);
-        entryDiv.dataset.tag = initialTag;
-    }
-
-    tagify.on('change', function() {
-        var tagValue = '';
-        if (tagify.value && tagify.value.length > 0) {
-            tagValue = tagify.value[0].value || '';
-        }
-        entryDiv.dataset.tag = tagValue;
-        normalizeTagEntry(entryDiv);
-    });
-}
-
-function saveScoreboardSharing() {
+function saveScoreboardSharing(){
     if (!currentSharingTrainingDayId) return;
 
     var sharingData = {};
@@ -1020,22 +1001,10 @@ function saveScoreboardSharing() {
     var entries = document.querySelectorAll('#scoreboardSharingEntries .sharing-entry');
     entries.forEach(function(entry) {
         normalizeTagEntry(entry);
-        var tagInput = entry.querySelector('input[data-sharing-tag-input="true"]');
+        var tagSelect = entry.querySelector('select[data-sharing-tag-input="true"]');
         var tag = '';
-        var tagify = tagInput && tagInput.tagify ? tagInput.tagify : null;
-        if (tagify) {
-            if ((!tagify.value || tagify.value.length === 0) && tagify.DOM && tagify.DOM.input) {
-                var pendingValue = tagify.DOM.input.value.trim();
-                if (pendingValue) {
-                    tagify.addTags([pendingValue], true);
-                }
-            }
-            if (tagify.value && tagify.value.length > 0) {
-                var tagValue = tagify.value[0] ? tagify.value[0].value : '';
-                tag = (tagValue || '').trim();
-            }
-        } else if (tagInput && typeof tagInput.value === 'string') {
-            tag = tagInput.value.trim();
+        if (tagSelect && typeof tagSelect.value === 'string') {
+            tag = tagSelect.value.trim();
         }
 
         var topToShowAllCheckbox = entry.querySelector('.sharing-top-to-show-all');

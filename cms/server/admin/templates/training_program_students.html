@@ -155,8 +155,8 @@
                                 {% if progress.task_count > 0 %}
                                 <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none;">
                                     <div class="progress-bar-inline">
-                                        {% set pct_color = '#059669' if progress.percentage >= 80 else '#d97706' if progress.percentage >= 40 else '#dc2626' %}
-                                        {% set bar_color = 'color-green' if progress.percentage >= 80 else 'color-orange' if progress.percentage >= 40 else 'color-red' %}
+                                        {% set pct_color = '#059669' if progress.percentage >= 80 else '#d97706' if progress.percentage >= 50 else '#dc2626' %}
+                                        {% set bar_color = 'color-green' if progress.percentage >= 80 else 'color-orange' if progress.percentage >= 50 else 'color-red' %}
                                         <span class="percentage" style="color: {{ pct_color }};">
                                             {{ "%.0f"|format(progress.percentage) }}%
                                         </span>
