@@ -24,7 +24,7 @@ import csv
 import io
 import logging
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import collections
 try:
@@ -413,7 +413,10 @@ class AdminConfiguredDelayHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         try:
-            requested_start_time = make_datetime(requested_start_time_str)
+            # Parse HTML5 datetime-local format: YYYY-MM-DDTHH:MM
+            requested_start_time = datetime.strptime(
+                requested_start_time_str, "%Y-%m-%dT%H:%M"
+            )
         except (ValueError, TypeError):
             self.service.add_notification(
                 make_datetime(),
