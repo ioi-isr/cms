@@ -90,120 +90,6 @@
     </div>
 </div>
 
-<style>
-.tp-form-section {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #e5e7eb;
-}
-.tp-form-section:last-of-type {
-    border-bottom: none;
-    margin-bottom: 20px;
-}
-.tp-form-section-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #374151;
-    margin: 0 0 8px 0;
-}
-.tp-form-section-desc {
-    font-size: 13px;
-    color: #6b7280;
-    margin: 0 0 20px 0;
-}
-.tp-form-info {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #e5e7eb;
-    color: #6b7280;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: help;
-    margin-left: 4px;
-}
-.tp-form-duration {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.tp-form-input-small {
-    width: 80px !important;
-}
-.tp-form-duration-label {
-    font-size: 13px;
-    color: #6b7280;
-}
-.tp-groups-table-container {
-    overflow-x: auto;
-    margin-bottom: 15px;
-}
-.tp-groups-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-}
-.tp-groups-table th {
-    text-align: left;
-    padding: 10px 12px;
-    background: #f9fafb;
-    border-bottom: 2px solid #e5e7eb;
-    font-weight: 600;
-    color: #374151;
-    font-size: 13px;
-}
-.tp-groups-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #e5e7eb;
-    vertical-align: middle;
-}
-.tp-groups-table tbody tr:hover {
-    background: #f9fafb;
-}
-.tp-groups-table input[type="text"],
-.tp-groups-table input[type="datetime-local"],
-.tp-groups-table input[type="number"] {
-    padding: 8px 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 13px;
-}
-.tp-groups-table input[type="number"] {
-    width: 50px;
-}
-.tp-groups-table .tp-group-duration {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.tp-groups-table .tp-group-duration span {
-    font-size: 12px;
-    color: #6b7280;
-}
-.tp-btn-add-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-.tp-btn-remove {
-    padding: 6px 12px;
-    background: #fee2e2;
-    color: #dc2626;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.tp-btn-remove:hover {
-    background: #fecaca;
-}
-</style>
-
 <script>
 var allStudentTags = {{ all_student_tags | tojson }};
 var groupRowIndex = 0;
@@ -307,6 +193,10 @@ document.querySelector('form[name="add_training_day"]').addEventListener('submit
     var checkboxes = document.querySelectorAll('#groups-tbody input[name="group_alphabetical[]"]');
     checkboxes.forEach(function(checkbox, index) {
         checkbox.value = index;
+    });
+    var groupIds = document.querySelectorAll('#groups-tbody input[name="group_id[]"]');
+    groupIds.forEach(function(input, index) {
+        input.value = index;
     });
 });
 </script>

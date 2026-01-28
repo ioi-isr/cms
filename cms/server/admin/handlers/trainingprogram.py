@@ -29,7 +29,7 @@ split into separate modules:
 
 from datetime import datetime as dt
 import json
-from typing import Optional
+import logging
 
 import tornado.web
 
@@ -548,14 +548,19 @@ class TrainingProgramTasksHandler(BaseHandler):
         """
         try:
             order_list = json.loads(reorder_data)
-        except json.JSONDecodeError:
-            return
+        except json.JSONDecodeError as e:
+            logging.warning(
+                "Failed to parse reorder data: %s. Payload: %s",
+                e.msg,
+                reorder_data[:500],
+            )
+            raise ValueError(f"Invalid JSON in reorder data: {e.msg}")
 
         if not isinstance(order_list, list):
             raise ValueError("Reorder data must be a list")
 
         expected_ids = {t.id for t in contest.tasks}
-        received_ids = {item.get("task_id") for item in order_list}
+        received_ids = {int(item.get("task_id")) for item in order_list}
         if received_ids != expected_ids:
             raise ValueError("Reorder data must include each task exactly once")
 

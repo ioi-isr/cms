@@ -382,7 +382,9 @@
 }
 
 /* Disabled state for both buttons and anchors */
-.btn-icon-only:disabled {
+.btn-icon-only:disabled,
+.btn-icon-only[aria-disabled="true"],
+.btn-icon-only.disabled {
     opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;
@@ -2331,4 +2333,139 @@
     background: var(--tp-bg-gray);
     border-color: var(--tp-border-dark);
     color: var(--tp-text-primary);
+}
+
+/* ==========================================================================
+   Training Day Form Styles (add/edit training day)
+   ========================================================================== */
+
+.tp-form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+.tp-form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 20px;
+}
+
+.tp-form-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    margin: 0 0 8px 0;
+}
+
+.tp-form-section-desc {
+    font-size: 13px;
+    color: var(--tp-text-lighter);
+    margin: 0 0 20px 0;
+}
+
+.tp-form-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--tp-bg-gray);
+    color: var(--tp-text-lighter);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: help;
+    margin-left: 4px;
+}
+
+.tp-form-duration {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tp-form-input-small {
+    width: 80px !important;
+}
+
+.tp-form-duration-label {
+    font-size: 13px;
+    color: var(--tp-text-lighter);
+}
+
+.tp-groups-table-container {
+    overflow-x: auto;
+    margin-bottom: 15px;
+}
+
+.tp-groups-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.tp-groups-table th {
+    text-align: left;
+    padding: 10px 12px;
+    background: var(--tp-bg-light);
+    border-bottom: 2px solid var(--tp-border);
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    font-size: 13px;
+}
+
+.tp-groups-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--tp-border);
+    vertical-align: middle;
+}
+
+.tp-groups-table tbody tr:hover {
+    background: var(--tp-bg-light);
+}
+
+.tp-groups-table input[type="text"],
+.tp-groups-table input[type="datetime-local"],
+.tp-groups-table input[type="number"] {
+    padding: 8px 10px;
+    border: 1px solid var(--tp-border);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.tp-groups-table input[type="number"] {
+    width: 50px;
+}
+
+.tp-groups-table .tp-group-duration {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tp-groups-table .tp-group-duration span {
+    font-size: 12px;
+    color: var(--tp-text-lighter);
+}
+
+.tp-btn-add-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tp-btn-remove {
+    padding: 6px 12px;
+    background: var(--tp-danger-light);
+    color: var(--tp-danger);
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tp-btn-remove:hover {
+    background: var(--tp-danger-border);
 }

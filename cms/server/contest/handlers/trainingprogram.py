@@ -25,6 +25,7 @@ from datetime import timedelta
 
 import tornado.web
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from cms.db import Participation, Student, ArchivedStudentRanking, Submission, Task, TrainingDay
 from cms.grading.scorecache import get_cached_score_entry
@@ -508,6 +509,11 @@ class ScoreboardDataHandler(ContestHandler):
         # Get all archived rankings
         all_rankings = (
             self.sql_session.query(ArchivedStudentRanking)
+            .options(
+                joinedload(ArchivedStudentRanking.student)
+                .joinedload(Student.participation)
+                .joinedload(Participation.user)
+            )
             .filter(ArchivedStudentRanking.training_day_id == training_day.id)
             .all()
         )
@@ -621,23 +627,17 @@ class ScoreboardDataHandler(ContestHandler):
                     cutoff_score = scoreboard_entries[top_to_show - 1]["total_score"]
 
                 entries_to_show = []
-                current_student_included = False
 
                 for entry in scoreboard_entries:
                     # Include if within top_to_show or tied at cutoff
                     if entry["rank"] <= top_to_show:
                         entries_to_show.append(entry)
-                        if entry["is_current_student"]:
-                            current_student_included = True
                     elif cutoff_score is not None and entry["total_score"] == cutoff_score:
                         # Include tied students at cutoff
                         entries_to_show.append(entry)
-                        if entry["is_current_student"]:
-                            current_student_included = True
                     elif entry["is_current_student"]:
                         # Always include current student
                         entries_to_show.append(entry)
-                        current_student_included = True
 
         # Apply anonymization: only top N students show full names
         # Current student always sees their own name

@@ -65,7 +65,8 @@
                     <div class="tp-card-description">{{ tp.description }}</div>
                 </div>
                 <div class="tp-card-menu">
-                    <button class="tp-menu-btn" onclick="toggleMenu(this)" title="More options">
+                    <button type="button" class="tp-menu-btn" onclick="toggleMenu(this)"
+                            title="More options" aria-haspopup="menu" aria-expanded="false">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                             <circle cx="12" cy="5" r="2"></circle>
                             <circle cx="12" cy="12" r="2"></circle>
@@ -251,26 +252,31 @@
 </div>
 
 <script>
+function closeAllMenus() {
+    document.querySelectorAll('.tp-menu-dropdown.show').forEach(function(d) {
+        d.classList.remove('show');
+    });
+    document.querySelectorAll('.tp-menu-btn[aria-expanded="true"]').forEach(function(b) {
+        b.setAttribute('aria-expanded', 'false');
+    });
+}
+
 function toggleMenu(btn) {
     var dropdown = btn.nextElementSibling;
     var isOpen = dropdown.classList.contains('show');
 
-    // Close all other dropdowns
-    document.querySelectorAll('.tp-menu-dropdown.show').forEach(function(d) {
-        d.classList.remove('show');
-    });
+    closeAllMenus();
 
     if (!isOpen) {
         dropdown.classList.add('show');
+        btn.setAttribute('aria-expanded', 'true');
     }
 }
 
 // Close dropdowns when clicking outside
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.tp-card-menu')) {
-        document.querySelectorAll('.tp-menu-dropdown.show').forEach(function(d) {
-            d.classList.remove('show');
-        });
+        closeAllMenus();
     }
 });
 </script>

@@ -88,10 +88,11 @@ function getFilteredScores(scores) {
         var studentTags = [];
 
         // Try to get historical tags for this training day
-        if (trainingDayId && historicalStudentTags[trainingDayId] && historicalStudentTags[trainingDayId][item.studentId]) {
+        if (trainingDayId && typeof historicalStudentTags !== 'undefined' && historicalStudentTags[trainingDayId] && historicalStudentTags[trainingDayId][item.studentId]) {
             studentTags = historicalStudentTags[trainingDayId][item.studentId];
         } else {
             // Fall back to current tags
+            if (typeof studentData === 'undefined') return false;
             var studentInfo = studentData[item.studentId];
             if (studentInfo) {
                 studentTags = studentInfo.tags;

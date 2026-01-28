@@ -24,6 +24,7 @@ It wraps a Contest and includes its position within the training program.
 import typing
 
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.types import DateTime, Integer, Interval, Unicode
@@ -150,7 +151,7 @@ class TrainingDay(Base):
     # - top_names: number of top students to show full names (others show rank only, or "all")
     # Eligibility to view is based on student_tags during the training (from ArchivedStudentRanking)
     scoreboard_sharing: dict | None = Column(
-        JSONB,
+        MutableDict.as_mutable(JSONB),
         nullable=True,
     )
 

@@ -820,53 +820,130 @@ function addSharingEntry(tag, topNames, topToShow) {
     var topToShowVal = topToShowIsAll ? tagStudentCount : topToShow;
     var topNamesVal = topNamesIsAll ? tagStudentCount : topNames;
 
-    // Build select options from available tags
+    // Build select element using DOM APIs to prevent HTML injection
     var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
         tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
-    var selectOptions = '<option value="">Select a tag</option>';
+
+    var tagSelect = document.createElement('select');
+    tagSelect.className = 'sharing-tag searchable-select';
+    tagSelect.setAttribute('data-sharing-tag-input', 'true');
+
     whitelist.forEach(function(t) {
-        var selected = (t === tag) ? ' selected' : '';
-        selectOptions += '<option value="' + t + '"' + selected + '>' + t + '</option>';
+        var option = document.createElement('option');
+        option.value = t;
+        option.textContent = t;
+        if (t === tag) {
+            option.selected = true;
+        }
+        tagSelect.appendChild(option);
     });
 
-    entryDiv.innerHTML =
-        '<div style="flex: 1; min-width: 120px;">' +
-            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
-            '<select class="sharing-tag" data-sharing-tag-input="true" style="width: 100%; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px; background: white;">' + selectOptions + '</select>' +
-        '</div>' +
-        '<div style="min-width: 140px;">' +
-            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>' +
-            '<div style="display: flex; align-items: center; gap: 6px;">' +
-                '<input type="number" class="sharing-top-to-show" value="' + topToShowVal + '" min="0" ' + (topToShowIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
-                '<input type="checkbox" class="sharing-top-to-show-all" ' + (topToShowIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
-                '<span style="font-size: 0.85rem;">All</span>' +
-            '</div>' +
-        '</div>' +
-        '<div style="min-width: 140px;">' +
-            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names</label>' +
-            '<div style="display: flex; align-items: center; gap: 6px;">' +
-                '<input type="number" class="sharing-top-names" value="' + topNamesVal + '" min="0" ' + (topNamesIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;"/>' +
-                '<input type="checkbox" class="sharing-top-names-all" ' + (topNamesIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
-                '<span style="font-size: 0.85rem;">All</span>' +
-            '</div>' +
-        '</div>' +
-        '<button type="button" class="sharing-remove-btn" style="margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">&times;</button>';
+    // Build tag container
+    var tagContainer = document.createElement('div');
+    tagContainer.style.cssText = 'flex: 1; min-width: 120px;';
+    var tagLabel = document.createElement('label');
+    tagLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
+    tagLabel.textContent = 'Tag';
+    tagContainer.appendChild(tagLabel);
+    tagContainer.appendChild(tagSelect);
+
+    // Build "Results to Show" container
+    var topToShowContainer = document.createElement('div');
+    topToShowContainer.style.cssText = 'min-width: 140px;';
+    var topToShowLabel = document.createElement('label');
+    topToShowLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
+    topToShowLabel.textContent = 'Results to Show';
+    topToShowContainer.appendChild(topToShowLabel);
+
+    var topToShowInputContainer = document.createElement('div');
+    topToShowInputContainer.style.cssText = 'display: flex; align-items: center; gap: 6px;';
+    var topToShowInput = document.createElement('input');
+    topToShowInput.type = 'number';
+    topToShowInput.className = 'sharing-top-to-show';
+    topToShowInput.value = topToShowVal;
+    topToShowInput.min = '0';
+    topToShowInput.disabled = topToShowIsAll;
+    topToShowInput.style.cssText = 'width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;';
+    var topToShowAllCheckbox = document.createElement('input');
+    topToShowAllCheckbox.type = 'checkbox';
+    topToShowAllCheckbox.className = 'sharing-top-to-show-all';
+    topToShowAllCheckbox.checked = topToShowIsAll;
+    topToShowAllCheckbox.style.cursor = 'pointer';
+    var topToShowAllSpan = document.createElement('span');
+    topToShowAllSpan.style.cssText = 'font-size: 0.85rem;';
+    topToShowAllSpan.textContent = 'All';
+    topToShowInputContainer.appendChild(topToShowInput);
+    topToShowInputContainer.appendChild(topToShowAllCheckbox);
+    topToShowInputContainer.appendChild(topToShowAllSpan);
+    topToShowContainer.appendChild(topToShowInputContainer);
+
+    // Build "Full Names" container
+    var topNamesContainer = document.createElement('div');
+    topNamesContainer.style.cssText = 'min-width: 140px;';
+    var topNamesLabel = document.createElement('label');
+    topNamesLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
+    topNamesLabel.textContent = 'Full Names';
+    topNamesContainer.appendChild(topNamesLabel);
+
+    var topNamesInputContainer = document.createElement('div');
+    topNamesInputContainer.style.cssText = 'display: flex; align-items: center; gap: 6px;';
+    var topNamesInput = document.createElement('input');
+    topNamesInput.type = 'number';
+    topNamesInput.className = 'sharing-top-names';
+    topNamesInput.value = topNamesVal;
+    topNamesInput.min = '0';
+    topNamesInput.disabled = topNamesIsAll;
+    topNamesInput.style.cssText = 'width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;';
+    var topNamesAllCheckbox = document.createElement('input');
+    topNamesAllCheckbox.type = 'checkbox';
+    topNamesAllCheckbox.className = 'sharing-top-names-all';
+    topNamesAllCheckbox.checked = topNamesIsAll;
+    topNamesAllCheckbox.style.cursor = 'pointer';
+    var topNamesAllSpan = document.createElement('span');
+    topNamesAllSpan.style.cssText = 'font-size: 0.85rem;';
+    topNamesAllSpan.textContent = 'All';
+    topNamesInputContainer.appendChild(topNamesInput);
+    topNamesInputContainer.appendChild(topNamesAllCheckbox);
+    topNamesInputContainer.appendChild(topNamesAllSpan);
+    topNamesContainer.appendChild(topNamesInputContainer);
+
+    // Build remove button
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'sharing-remove-btn';
+    removeBtn.style.cssText = 'margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;';
+    removeBtn.title = 'Remove';
+    removeBtn.textContent = '\u00D7';
+
+    // Append all elements to entryDiv
+    entryDiv.appendChild(tagContainer);
+    entryDiv.appendChild(topToShowContainer);
+    entryDiv.appendChild(topNamesContainer);
+    entryDiv.appendChild(removeBtn);
 
     entriesContainer.appendChild(entryDiv);
 
+    // Initialize TomSelect on the tag select for searchable dropdown
+    if (typeof TomSelect !== 'undefined') {
+        var tomSelectInstance = new TomSelect(tagSelect, {
+            allowEmptyOption: true,
+            create: false,
+            plugins: ['clear_button'],
+            onChange: function(value) {
+                entryDiv.dataset.tag = value;
+                normalizeTagEntry(entryDiv);
+            }
+        });
+        // Store reference for cleanup on remove
+        entryDiv._tomSelect = tomSelectInstance;
+    }
+
     // Set up event listeners for checkboxes and validation
-    var tagSelect = entryDiv.querySelector('.sharing-tag');
-    var topToShowInput = entryDiv.querySelector('.sharing-top-to-show');
-    var topToShowAllCheckbox = entryDiv.querySelector('.sharing-top-to-show-all');
-    var topNamesInput = entryDiv.querySelector('.sharing-top-names');
-    var topNamesAllCheckbox = entryDiv.querySelector('.sharing-top-names-all');
-    var removeBtn = entryDiv.querySelector('.sharing-remove-btn');
-
-    removeBtn.onclick = function() { entryDiv.remove(); };
-
-    tagSelect.onchange = function() {
-        entryDiv.dataset.tag = this.value;
-        normalizeTagEntry(entryDiv);
+    removeBtn.onclick = function() {
+        if (entryDiv._tomSelect) {
+            entryDiv._tomSelect.destroy();
+        }
+        entryDiv.remove();
     };
     if (tag) {
         entryDiv.dataset.tag = tag;
