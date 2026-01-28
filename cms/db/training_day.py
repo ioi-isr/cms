@@ -24,6 +24,7 @@ It wraps a Contest and includes its position within the training program.
 import typing
 
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.types import DateTime, Integer, Interval, Unicode
@@ -141,6 +142,17 @@ class TrainingDay(Base):
         ARRAY(Unicode),
         nullable=False,
         default=list,
+    )
+
+    # Scoreboard sharing settings for archived training days.
+    # Format: {"tag1": {"top_to_show": 10, "top_names": 5}, "__everyone__": {...}, ...}
+    # - Keys are student tags that the scoreboard is shared with, or "__everyone__" for all
+    # - top_to_show: number of top students to show in the scoreboard (or "all")
+    # - top_names: number of top students to show full names (others show rank only, or "all")
+    # Eligibility to view is based on student_tags during the training (from ArchivedStudentRanking)
+    scoreboard_sharing: dict | None = Column(
+        MutableDict.as_mutable(JSONB),
+        nullable=True,
     )
 
     training_program: "TrainingProgram" = relationship(

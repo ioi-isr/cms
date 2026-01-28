@@ -28,6 +28,8 @@ split into separate modules:
 """
 
 from datetime import datetime as dt
+import json
+import logging
 
 import tornado.web
 
@@ -43,6 +45,7 @@ from cms.db import (
     Announcement,
     Student,
     StudentTask,
+    DelayRequest,
 )
 from cms.server.util import (
     get_all_student_tags,
@@ -55,10 +58,49 @@ from .base import BaseHandler, SimpleHandler, require_permission
 from .contestranking import RankingCommonMixin
 
 
-class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
+def _shift_task_nums(
+    sql_session,
+    filter_attr,
+    filter_value,
+    num_attr,
+    threshold: int,
+    delta: int
+) -> None:
+    """Shift task numbers after insertion or removal.
+
+    This utility function handles the common pattern of incrementing or
+    decrementing task numbers when a task is added or removed from a
+    sequence (e.g., contest tasks or training day tasks).
+
+    sql_session: The SQLAlchemy session.
+    filter_attr: The attribute to filter by (e.g., Task.contest, Task.training_day).
+    filter_value: The value to filter for.
+    num_attr: The num attribute to shift (e.g., Task.num, Task.training_day_num).
+    threshold: The threshold value - tasks with num > threshold will be shifted.
+    delta: The amount to shift by (+1 for insertion, -1 for removal).
+    """
+    if delta > 0:
+        # For insertion, process in descending order to avoid conflicts
+        order = num_attr.desc()
+        condition = num_attr >= threshold
+    else:
+        # For removal, process in ascending order
+        order = num_attr
+        condition = num_attr > threshold
+
+    for t in sql_session.query(Task)\
+                 .filter(filter_attr == filter_value)\
+                 .filter(condition)\
+                 .order_by(order)\
+                 .all():
+        setattr(t, num_attr.key, getattr(t, num_attr.key) + delta)
+        sql_session.flush()
+
+
+class TrainingProgramListHandler(BaseHandler):
     """List all training programs.
 
-    GET returns the list of all training programs.
+    GET returns the list of all training programs with stats.
     POST handles operations on a specific training program (e.g., removing).
     """
     REMOVE = "Remove"
@@ -66,11 +108,57 @@ class TrainingProgramListHandler(SimpleHandler("training_programs.html")):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self):
         self.r_params = self.render_params()
-        self.r_params["training_programs"] = (
+        training_programs = (
             self.sql_session.query(TrainingProgram)
             .order_by(TrainingProgram.name)
             .all()
         )
+        self.r_params["training_programs"] = training_programs
+
+        # Calculate aggregate stats for the stats cards
+        total_students = 0
+        active_programs = 0
+        active_training_days = 0
+
+        # Calculate notifications for each training day (keyed by td.id)
+        training_day_notifications: dict[int, dict] = {}
+
+        for tp in training_programs:
+            total_students += len(tp.managing_contest.participations)
+            # Count active training days (those with a contest)
+            active_tds = [td for td in tp.training_days if td.contest is not None]
+            active_training_days += len(active_tds)
+            # A program is "active" if it has at least one active training day
+            if active_tds:
+                active_programs += 1
+
+            # Calculate notifications for each active training day
+            for td in active_tds:
+                td_unanswered = (
+                    self.sql_session.query(Question)
+                    .join(Participation)
+                    .filter(Participation.contest_id == td.contest_id)
+                    .filter(Question.reply_timestamp.is_(None))
+                    .filter(Question.ignored.is_(False))
+                    .count()
+                )
+                td_pending_delays = (
+                    self.sql_session.query(DelayRequest)
+                    .join(Participation)
+                    .filter(Participation.contest_id == td.contest_id)
+                    .filter(DelayRequest.status == "pending")
+                    .count()
+                )
+                training_day_notifications[td.id] = {
+                    "unanswered_questions": td_unanswered,
+                    "pending_delay_requests": td_pending_delays,
+                }
+
+        self.r_params["total_students"] = total_students
+        self.r_params["active_programs"] = active_programs
+        self.r_params["active_training_days"] = active_training_days
+        self.r_params["training_day_notifications"] = training_day_notifications
+
         self.render("training_programs.html", **self.r_params)
 
     @require_permission(BaseHandler.AUTHENTICATED)
@@ -402,11 +490,6 @@ class RemoveTrainingProgramHandler(BaseHandler):
         self.write("../../training_programs")
 class TrainingProgramTasksHandler(BaseHandler):
     """Manage tasks in a training program."""
-    REMOVE_FROM_PROGRAM = "Remove from training program"
-    MOVE_UP = "up by 1"
-    MOVE_DOWN = "down by 1"
-    MOVE_TOP = "to the top"
-    MOVE_BOTTOM = "to the bottom"
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
@@ -428,99 +511,134 @@ class TrainingProgramTasksHandler(BaseHandler):
         managing_contest = training_program.managing_contest
 
         try:
-            task_id: str = self.get_argument("task_id")
             operation: str = self.get_argument("operation")
-            assert operation in (
-                self.REMOVE_FROM_PROGRAM,
-                self.MOVE_UP,
-                self.MOVE_DOWN,
-                self.MOVE_TOP,
-                self.MOVE_BOTTOM
-            ), "Please select a valid operation"
+
+            # Handle detach operation for archived training day tasks
+            if operation.startswith("detach_"):
+                task_id = operation.split("_", 1)[1]
+                task = self.safe_get_item(Task, task_id)
+                # Validate task belongs to this training program
+                if task.contest != managing_contest:
+                    raise ValueError("Task does not belong to this training program")
+                self._detach_task_from_training_day(task)
+                if self.try_commit():
+                    self.service.proxy_service.reinitialize()
+                self.redirect(fallback_page)
+                return
+
+            # Handle reorder operation from drag-and-drop
+            if operation == "reorder":
+                reorder_data = self.get_argument("reorder_data", "")
+                if reorder_data:
+                    self._reorder_tasks(managing_contest, reorder_data)
+                    if self.try_commit():
+                        self.service.proxy_service.reinitialize()
+                self.redirect(fallback_page)
+                return
+
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback_page)
             return
 
-        task = self.safe_get_item(Task, task_id)
-        task2 = None
-
-        task_num = task.num
-
-        if operation == self.REMOVE_FROM_PROGRAM:
-            # If the task is in a training day, redirect to confirmation page
-            if task.training_day is not None:
-                asking_page = self.url(
-                    "training_program", training_program_id, "task", task_id, "remove"
-                )
-                self.redirect(asking_page)
-                return
-
-            task.contest = None
-            task.num = None
-
-            self.sql_session.flush()
-
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == managing_contest)\
-                         .filter(Task.num > task_num)\
-                         .order_by(Task.num)\
-                         .all():
-                t.num -= 1
-                self.sql_session.flush()
-
-        elif operation == self.MOVE_UP:
-            task2 = self.sql_session.query(Task)\
-                        .filter(Task.contest == managing_contest)\
-                        .filter(Task.num == task.num - 1)\
-                        .first()
-
-        elif operation == self.MOVE_DOWN:
-            task2 = self.sql_session.query(Task)\
-                        .filter(Task.contest == managing_contest)\
-                        .filter(Task.num == task.num + 1)\
-                        .first()
-
-        elif operation == self.MOVE_TOP:
-            task.num = None
-            self.sql_session.flush()
-
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == managing_contest)\
-                         .filter(Task.num < task_num)\
-                         .order_by(Task.num.desc())\
-                         .all():
-                t.num += 1
-                self.sql_session.flush()
-
-            task.num = 0
-
-        elif operation == self.MOVE_BOTTOM:
-            task.num = None
-            self.sql_session.flush()
-
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == managing_contest)\
-                         .filter(Task.num > task_num)\
-                         .order_by(Task.num)\
-                         .all():
-                t.num -= 1
-                self.sql_session.flush()
-
-            self.sql_session.flush()
-            task.num = len(managing_contest.tasks) - 1
-
-        if task2 is not None:
-            tmp_a, tmp_b = task.num, task2.num
-            task.num, task2.num = None, None
-            self.sql_session.flush()
-            task.num, task2.num = tmp_b, tmp_a
-
-        if self.try_commit():
-            self.service.proxy_service.reinitialize()
-
         self.redirect(fallback_page)
+
+    def _reorder_tasks(self, contest: Contest, reorder_data: str) -> None:
+        """Reorder tasks based on drag-and-drop data.
+
+        reorder_data: JSON string with list of {task_id, new_num} objects.
+        """
+        try:
+            order_list = json.loads(reorder_data)
+        except json.JSONDecodeError as e:
+            logging.warning(
+                "Failed to parse reorder data: %s. Payload: %s",
+                e.msg,
+                reorder_data[:500],
+            )
+            raise ValueError(f"Invalid JSON in reorder data: {e.msg}")
+
+        if not isinstance(order_list, list):
+            raise ValueError("Reorder data must be a list")
+
+        expected_ids = {t.id for t in contest.tasks}
+        received_ids = {int(item.get("task_id")) for item in order_list}
+        if received_ids != expected_ids:
+            raise ValueError("Reorder data must include each task exactly once")
+
+        # Validate new_num for each entry (0-based indices)
+        num_tasks = len(contest.tasks)
+        expected_nums = set(range(0, num_tasks))
+        received_nums = set()
+
+        for item in order_list:
+            if "new_num" not in item:
+                raise ValueError("Missing 'new_num' in reorder data entry")
+            raw_num = item["new_num"]
+            try:
+                new_num = int(raw_num)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Invalid 'new_num' value: {raw_num!r} is not an integer"
+                )
+            if new_num < 0 or new_num >= num_tasks:
+                raise ValueError(
+                    f"'new_num' {new_num} is out of range [0, {num_tasks - 1}]"
+                )
+            received_nums.add(new_num)
+
+        if received_nums != expected_nums:
+            raise ValueError(
+                "Reorder data must include each task number exactly once "
+                f"(expected {sorted(expected_nums)}, got {sorted(received_nums)})"
+            )
+
+        # First, set all task nums to None to avoid unique constraint issues
+        task_updates = []
+        for item in order_list:
+            task = self.safe_get_item(Task, item["task_id"])
+            new_num = int(item["new_num"])
+            if task.contest == contest:
+                task_updates.append((task, new_num))
+                task.num = None
+        self.sql_session.flush()
+
+        # Then set the new nums
+        for task, new_num in task_updates:
+            task.num = new_num
+        self.sql_session.flush()
+
+    def _detach_task_from_training_day(self, task: Task) -> None:
+        """Detach a task from its training day.
+
+        This removes the training_day association from the task, making it
+        available for assignment to new training days. The task remains in
+        the training program.
+
+        task: the task to detach.
+        """
+        if task.training_day is None:
+            return
+
+        training_day = task.training_day
+        training_day_num = task.training_day_num
+
+        task.training_day = None
+        task.training_day_num = None
+
+        self.sql_session.flush()
+
+        # Reorder remaining tasks in the training day (only if there was a valid position)
+        if training_day_num is not None:
+            _shift_task_nums(
+                self.sql_session,
+                Task.training_day,
+                training_day,
+                Task.training_day_num,
+                training_day_num,
+                -1,
+            )
 
 
 class AddTrainingProgramTaskHandler(BaseHandler):
@@ -554,23 +672,10 @@ class AddTrainingProgramTaskHandler(BaseHandler):
 
 
 class RemoveTrainingProgramTaskHandler(BaseHandler):
-    """Confirm and remove a task from a training program.
+    """Remove a task from a training program.
 
-    This handler is used when a task is assigned to a training day,
-    to warn the user that the task will also be removed from the training day.
+    The confirmation is now handled via a modal in the tasks page.
     """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, training_program_id: str, task_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-        task = self.safe_get_item(Task, task_id)
-
-        self.render_params_for_training_program(training_program)
-        self.r_params["task"] = task
-        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
-
-        self.render("training_program_task_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str, task_id: str):
@@ -589,13 +694,10 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
             self.sql_session.flush()
 
             # Reorder remaining tasks in the training day
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.training_day == training_day)\
-                         .filter(Task.training_day_num > training_day_num)\
-                         .order_by(Task.training_day_num)\
-                         .all():
-                t.training_day_num -= 1
-                self.sql_session.flush()
+            _shift_task_nums(
+                self.sql_session, Task.training_day, training_day,
+                Task.training_day_num, training_day_num, -1
+            )
 
         # Remove from training program
         task.contest = None
@@ -604,18 +706,16 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
         self.sql_session.flush()
 
         # Reorder remaining tasks in the training program
-        for t in self.sql_session.query(Task)\
-                     .filter(Task.contest == managing_contest)\
-                     .filter(Task.num > task_num)\
-                     .order_by(Task.num)\
-                     .all():
-            t.num -= 1
-            self.sql_session.flush()
+        _shift_task_nums(
+            self.sql_session, Task.contest, managing_contest,
+            Task.num, task_num, -1
+        )
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()
 
-        self.write("../../tasks")
+        # Return absolute path to tasks page
+        self.write(f"../../../training_program/{training_program_id}/tasks")
 
 
 class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
