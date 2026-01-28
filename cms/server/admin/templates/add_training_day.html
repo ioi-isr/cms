@@ -1,69 +1,97 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Add Training Day to <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
+<div class="content-constraint" style="max-width: 800px;">
+    <!-- Header -->
+    <div class="page-title">
+        <h1>Add Training Day</h1>
+        <div class="page-subtitle">Create a new training day for <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="tp-form-card">
+        <form action="{{ url("training_program", training_program.id, "training_days", "add") }}" method="POST" name="add_training_day">
+            {{ xsrf_form_html|safe }}
+
+            <div class="tp-form-section">
+                <h3 class="tp-form-section-title">Basic Information</h3>
+
+                <div class="tp-form-group">
+                    <label class="tp-form-label" for="name">
+                        Name (codename)
+                        <span class="tp-form-required">*</span>
+                    </label>
+                    <input type="text" id="name" name="name" class="tp-form-input" placeholder="e.g., day1" required />
+                    <div class="tp-form-hint">A unique identifier for the training day contest</div>
+                </div>
+
+                <div class="tp-form-group">
+                    <label class="tp-form-label" for="description">Description</label>
+                    <input type="text" id="description" name="description" class="tp-form-input" placeholder="e.g., Training Day 1 - Graphs" />
+                    <div class="tp-form-hint">Human-readable description (defaults to name if empty)</div>
+                </div>
+
+                <div class="tp-form-row">
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="start">
+                            Start Time ({{ timezone_name }})
+                            <span class="tp-form-info" title="When the training day starts. If not specified and groups have start times, defaults to the earliest group start time.">?</span>
+                        </label>
+                        <input type="datetime-local" id="start" name="start" class="tp-form-input" />
+                        <div class="tp-form-hint">Optional, defaults to earliest group time</div>
+                    </div>
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="duration">
+                            Duration
+                            <span class="tp-form-info" title="Duration of the training day. If not specified and groups have durations, defaults to cover all group times.">?</span>
+                        </label>
+                        <div class="tp-form-duration">
+                            <input type="number" id="duration_hours" name="duration_hours" min="0" class="tp-form-input tp-form-input-small" placeholder="0" />
+                            <span class="tp-form-duration-label">hours</span>
+                            <input type="number" id="duration_minutes" name="duration_minutes" min="0" max="59" class="tp-form-input tp-form-input-small" placeholder="0" />
+                            <span class="tp-form-duration-label">minutes</span>
+                        </div>
+                        <div class="tp-form-hint">Optional</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tp-form-section">
+                <h3 class="tp-form-section-title">Main Groups Configuration</h3>
+                <p class="tp-form-section-desc">Configure which student tags represent main groups for this training day. Students must have exactly one main group tag to participate. Leave empty if all students can participate.</p>
+
+                <div class="tp-groups-table-container">
+                    <table class="tp-groups-table" id="main-groups-table">
+                        <thead>
+                            <tr>
+                                <th>Tag Name</th>
+                                <th>Start Time ({{ timezone_name }})</th>
+                                <th>Duration</th>
+                                <th style="text-align: center;">Alphabetical Order</th>
+                                <th style="width: 80px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="groups-tbody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="button" id="add-group-btn" class="tp-btn-secondary tp-btn-add-group">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add Main Group
+                </button>
+            </div>
+
+            <div class="tp-form-actions">
+                <a href="{{ url("training_program", training_program.id, "training_days") }}" class="tp-btn-secondary">Cancel</a>
+                <button type="submit" class="tp-btn-primary">Create Training Day</button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<form action="{{ url("training_program", training_program.id, "training_days", "add") }}" method="POST" name="add_training_day">
-  {{ xsrf_form_html|safe }}
-  <table class="sub_table">
-    <tr>
-      <td>Name (codename)</td>
-      <td><input type="text" name="name" required/></td>
-      <td class="hint">A unique identifier for the training day contest</td>
-    </tr>
-    <tr>
-      <td>Description</td>
-      <td><input type="text" name="description"/></td>
-      <td class="hint">Human-readable description (defaults to name if empty)</td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="When the training day starts. If not specified and groups have start times, defaults to the earliest group start time."></span>
-        Start time ({{ timezone_name }})
-      </td>
-      <td><input type="datetime-local" name="start"/></td>
-      <td class="hint">When the training day starts (optional, defaults to earliest group time)</td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="Duration of the training day. If not specified and groups have durations, defaults to cover all group times."></span>
-        Duration
-      </td>
-      <td>
-        <input type="number" name="duration_hours" min="0" style="width: 60px;" placeholder="0"/> hours
-        <input type="number" name="duration_minutes" min="0" max="59" style="width: 60px;" placeholder="0"/> minutes
-      </td>
-      <td class="hint">Duration of the training day (optional)</td>
-    </tr>
-  </table>
-
-  <h2>Main Groups Configuration</h2>
-  <p class="hint">Configure which student tags represent main groups for this training day. Students must have exactly one main group tag to participate. Leave empty if all students can participate.</p>
-
-  <table class="sub_table" id="main-groups-table">
-    <thead>
-      <tr>
-        <th>Tag Name</th>
-        <th>Start Time ({{ timezone_name }})</th>
-        <th>Duration</th>
-        <th>Alphabetical Task Order</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="groups-tbody">
-    </tbody>
-  </table>
-
-  <button type="button" id="add-group-btn" class="btn btn-small">+ Add Main Group</button>
-
-  <br/><br/>
-  <input type="submit" value="Create"/>
-</form>
-
 <script>
-var allStudentTags = {{ all_student_tags | tojson }};
+var allStudentTags = {{ all_student_tags | default([]) | tojson }};
 var groupRowIndex = 0;
 
 function addGroupRow() {
@@ -88,29 +116,33 @@ function addGroupRow() {
     row.appendChild(startCell);
 
     var durationCell = document.createElement('td');
+    var durationDiv = document.createElement('div');
+    durationDiv.className = 'tp-group-duration';
     var hoursInput = document.createElement('input');
     hoursInput.type = 'number';
     hoursInput.name = 'group_duration_hours[]';
     hoursInput.min = '0';
-    hoursInput.style.width = '60px';
     hoursInput.placeholder = '0';
-    durationCell.appendChild(hoursInput);
-    durationCell.appendChild(document.createTextNode(' h '));
+    durationDiv.appendChild(hoursInput);
+    var hLabel = document.createElement('span');
+    hLabel.textContent = 'h';
+    durationDiv.appendChild(hLabel);
     var minutesInput = document.createElement('input');
     minutesInput.type = 'number';
     minutesInput.name = 'group_duration_minutes[]';
     minutesInput.min = '0';
     minutesInput.max = '59';
-    minutesInput.style.width = '60px';
     minutesInput.placeholder = '0';
-    durationCell.appendChild(minutesInput);
-    durationCell.appendChild(document.createTextNode(' m'));
+    durationDiv.appendChild(minutesInput);
+    var mLabel = document.createElement('span');
+    mLabel.textContent = 'm';
+    durationDiv.appendChild(mLabel);
+    durationCell.appendChild(durationDiv);
     row.appendChild(durationCell);
 
     var alphaCell = document.createElement('td');
     alphaCell.style.textAlign = 'center';
 
-    // Add hidden input for stable group ID
     var groupIdInput = document.createElement('input');
     groupIdInput.type = 'hidden';
     groupIdInput.name = 'group_id[]';
@@ -127,17 +159,16 @@ function addGroupRow() {
     var actionsCell = document.createElement('td');
     var removeBtn = document.createElement('button');
     removeBtn.type = 'button';
-    removeBtn.className = 'btn btn-danger btn-small';
+    removeBtn.className = 'tp-btn-remove';
     removeBtn.textContent = 'Remove';
-    removeBtn.onclick = function() { row.remove(); };
     actionsCell.appendChild(removeBtn);
     row.appendChild(actionsCell);
 
     tbody.appendChild(row);
 
-    // Initialize Tagify on the new input
+    var tagifyInstance = null;
     if (typeof Tagify !== 'undefined') {
-        var tagify = new Tagify(tagInput, {
+        tagifyInstance = new Tagify(tagInput, {
             mode: 'select',
             whitelist: allStudentTags,
             enforceWhitelist: true,
@@ -150,25 +181,31 @@ function addGroupRow() {
                 return valuesArr.length ? valuesArr[0].value : '';
             }
         });
-        tagify.DOM.scope.style.width = '160px';
+        tagifyInstance.DOM.scope.style.width = '160px';
     }
+
+    removeBtn.onclick = function() {
+        if (tagifyInstance) {
+            tagifyInstance.destroy();
+        }
+        row.remove();
+    };
 
     groupRowIndex++;
 }
 
 document.getElementById('add-group-btn').addEventListener('click', addGroupRow);
 
-// Re-index checkbox values before form submission to match visual order
 document.querySelector('form[name="add_training_day"]').addEventListener('submit', function() {
     var checkboxes = document.querySelectorAll('#groups-tbody input[name="group_alphabetical[]"]');
     checkboxes.forEach(function(checkbox, index) {
         checkbox.value = index;
     });
+    var groupIds = document.querySelectorAll('#groups-tbody input[name="group_id[]"]');
+    groupIds.forEach(function(input, index) {
+        input.value = index;
+    });
 });
-
 </script>
 
-<p>
-  <a href="{{ url("training_program", training_program.id, "training_days") }}">Back to training days</a>
-</p>
 {% endblock core %}
