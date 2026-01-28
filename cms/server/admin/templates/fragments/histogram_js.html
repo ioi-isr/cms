@@ -48,11 +48,13 @@ function openHistogramModal(scores, title, type, trainingDayId, maxPossibleScore
     document.getElementById('histogramTitle').textContent = title + ' - Score Distribution';
 
     // Update the whitelist to only show tags that existed in this training day
-    if (histogramTagify && trainingDayId && tagsPerTrainingDay[trainingDayId]) {
-        histogramTagify.settings.whitelist = tagsPerTrainingDay[trainingDayId];
+    // Guard optional globals before using them
+    var tagsPerTrainingDayData = (typeof tagsPerTrainingDay !== 'undefined') ? tagsPerTrainingDay : {};
+    if (histogramTagify && trainingDayId && tagsPerTrainingDayData[trainingDayId]) {
+        histogramTagify.settings.whitelist = tagsPerTrainingDayData[trainingDayId];
         histogramTagify.removeAllTags();
     } else if (histogramTagify) {
-        histogramTagify.settings.whitelist = allStudentTags;
+        histogramTagify.settings.whitelist = (typeof allStudentTags !== 'undefined') ? allStudentTags : [];
         histogramTagify.removeAllTags();
     }
 
@@ -113,11 +115,14 @@ function calculateFilteredMaxScore(filteredScores, trainingDayId, type) {
     }
 
     // For training day histograms, calculate max based on accessible tasks
-    if (type === 'training_day' && trainingDayId && trainingDayTasks[trainingDayId]) {
+    // Guard optional globals before using them
+    var trainingDayTasksData = (typeof trainingDayTasks !== 'undefined') ? trainingDayTasks : {};
+    var studentAccessibleTasksData = (typeof studentAccessibleTasks !== 'undefined') ? studentAccessibleTasks : {};
+    if (type === 'training_day' && trainingDayId && trainingDayTasksData[trainingDayId]) {
         // Get the union of all accessible tasks across filtered students
         var accessibleTasksSet = new Set();
         filteredScores.forEach(function(item) {
-            var studentTasks = studentAccessibleTasks[trainingDayId] && studentAccessibleTasks[trainingDayId][item.studentId];
+            var studentTasks = studentAccessibleTasksData[trainingDayId] && studentAccessibleTasksData[trainingDayId][item.studentId];
             if (studentTasks) {
                 studentTasks.forEach(function(taskId) {
                     accessibleTasksSet.add(taskId);

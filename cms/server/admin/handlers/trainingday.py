@@ -186,21 +186,61 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
 
                 order_list = json.loads(reorder_data)
 
+                if not isinstance(order_list, list):
+                    raise ValueError("Reorder data must be a list")
+
                 active_training_days = [
                     td for td in training_program.training_days
                     if td.contest is not None
                 ]
                 td_by_id = {str(td.id): td for td in active_training_days}
 
-                for td in training_program.training_days:
+                # Validate that order_list contains each active td id exactly once
+                expected_ids = set(td_by_id.keys())
+                received_ids = set()
+                for item in order_list:
+                    td_id = str(item.get("training_day_id", ""))
+                    if td_id in received_ids:
+                        raise ValueError(f"Duplicate training day id: {td_id}")
+                    received_ids.add(td_id)
+
+                if received_ids != expected_ids:
+                    missing = expected_ids - received_ids
+                    extra = received_ids - expected_ids
+                    raise ValueError(
+                        f"Reorder data mismatch. Missing: {missing}, Extra: {extra}"
+                    )
+
+                # Validate that new_position values form a complete 0-based permutation
+                num_active = len(active_training_days)
+                expected_positions = set(range(num_active))
+                received_positions = set()
+                for item in order_list:
+                    new_pos = int(item.get("new_position", -1))
+                    if new_pos < 0 or new_pos >= num_active:
+                        raise ValueError(
+                            f"Position {new_pos} out of range [0, {num_active - 1}]"
+                        )
+                    if new_pos in received_positions:
+                        raise ValueError(f"Duplicate position: {new_pos}")
+                    received_positions.add(new_pos)
+
+                if received_positions != expected_positions:
+                    raise ValueError(
+                        f"Positions must be 0 to {num_active - 1}, "
+                        f"got {sorted(received_positions)}"
+                    )
+
+                # Only clear positions for active training days
+                for td in active_training_days:
                     td.position = None
                 self.sql_session.flush()
 
+                # Apply the new positions
                 for item in order_list:
                     td_id = str(item["training_day_id"])
                     new_pos = int(item["new_position"])
-                    if td_id in td_by_id:
-                        td_by_id[td_id].position = new_pos
+                    td_by_id[td_id].position = new_pos
                 self.sql_session.flush()
 
             except Exception as error:

@@ -488,8 +488,32 @@ class ScoreboardDataHandler(ContestHandler):
             return
 
         settings = scoreboard_sharing[tag]
-        top_names = settings.get("top_names", 5)
-        top_to_show = settings.get("top_to_show", "all")
+        # Defensively parse top_names and top_to_show
+        # Handle None, non-numeric strings, and the string "all"
+        raw_top_names = settings.get("top_names", 5)
+        raw_top_to_show = settings.get("top_to_show", "all")
+
+        # Normalize top_names: "all" or a non-negative integer
+        if raw_top_names == "all":
+            top_names = "all"
+        else:
+            try:
+                top_names = int(raw_top_names) if raw_top_names is not None else 5
+                if top_names < 0:
+                    top_names = 0
+            except (TypeError, ValueError):
+                top_names = 5  # Default to 5 if malformed
+
+        # Normalize top_to_show: "all" or a non-negative integer
+        if raw_top_to_show == "all":
+            top_to_show = "all"
+        else:
+            try:
+                top_to_show = int(raw_top_to_show) if raw_top_to_show is not None else "all"
+                if top_to_show < 0:
+                    top_to_show = 0
+            except (TypeError, ValueError):
+                top_to_show = "all"  # Default to "all" if malformed
 
         # Get the current student
         student = (
@@ -616,7 +640,7 @@ class ScoreboardDataHandler(ContestHandler):
         if top_to_show == "all":
             entries_to_show = scoreboard_entries
         else:
-            top_to_show = int(top_to_show)
+            # top_to_show is already an integer from normalization above
             if top_to_show <= 0:
                 # Show only current student
                 entries_to_show = [e for e in scoreboard_entries if e["is_current_student"]]
@@ -641,10 +665,11 @@ class ScoreboardDataHandler(ContestHandler):
 
         # Apply anonymization: only top N students show full names
         # Current student always sees their own name
+        # top_names is already "all" or an integer from normalization above
         if top_names == "all":
             top_names_int = total_students
         else:
-            top_names_int = int(top_names)
+            top_names_int = top_names
 
         for entry in entries_to_show:
             # Anonymize if rank > top_names and not current student

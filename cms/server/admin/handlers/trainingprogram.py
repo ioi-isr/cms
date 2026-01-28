@@ -567,9 +567,9 @@ class TrainingProgramTasksHandler(BaseHandler):
         if received_ids != expected_ids:
             raise ValueError("Reorder data must include each task exactly once")
 
-        # Validate new_num for each entry
+        # Validate new_num for each entry (0-based indices)
         num_tasks = len(contest.tasks)
-        expected_nums = set(range(1, num_tasks + 1))
+        expected_nums = set(range(0, num_tasks))
         received_nums = set()
 
         for item in order_list:
@@ -582,9 +582,9 @@ class TrainingProgramTasksHandler(BaseHandler):
                 raise ValueError(
                     f"Invalid 'new_num' value: {raw_num!r} is not an integer"
                 )
-            if new_num < 1 or new_num > num_tasks:
+            if new_num < 0 or new_num >= num_tasks:
                 raise ValueError(
-                    f"'new_num' {new_num} is out of range [1, {num_tasks}]"
+                    f"'new_num' {new_num} is out of range [0, {num_tasks - 1}]"
                 )
             received_nums.add(new_num)
 

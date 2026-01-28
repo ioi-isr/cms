@@ -54,7 +54,7 @@
                     {% set is_archived = t.training_day is not none and t.training_day.contest is none %}
                     <tr data-task-id="{{ t.id }}"
                         data-name="{{ t.name }}"
-                        data-training-day="{{ t.training_day.name if t.training_day else '' }}"
+                        data-training-day="{{ t.training_day.contest.name if (t.training_day and t.training_day.contest) else (t.training_day.name if t.training_day else '') }}"
                         data-is-archived="{{ 'true' if is_archived else 'false' }}"
                         draggable="true">
                         <!-- Drag handle -->
@@ -319,11 +319,15 @@ document.getElementById('remove-task-modal').addEventListener('click', function(
         var reorderInput = document.getElementById('reorder-data');
         reorderInput.value = JSON.stringify(order);
 
-        var operationInput = document.createElement('input');
-        operationInput.type = 'hidden';
-        operationInput.name = 'operation';
+        // Check for existing operation input and reuse or create new
+        var operationInput = form.querySelector('input[name="operation"]');
+        if (!operationInput) {
+            operationInput = document.createElement('input');
+            operationInput.type = 'hidden';
+            operationInput.name = 'operation';
+            form.appendChild(operationInput);
+        }
         operationInput.value = 'reorder';
-        form.appendChild(operationInput);
 
         form.submit();
     }

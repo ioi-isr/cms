@@ -552,9 +552,9 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     }
 })();
 
-// Table sorting for active training days
-(function() {
-    var table = document.getElementById('training-days-table');
+// Shared table sorting utility
+function initTableSorting(tableId, rowSelector) {
+    var table = document.getElementById(tableId);
     if (!table) return;
 
     var headers = table.querySelectorAll('.sortable-header');
@@ -572,7 +572,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
 
             var tbody = table.querySelector('tbody');
-            var rows = Array.from(tbody.querySelectorAll('tr[data-training-day-id]'));
+            var rows = Array.from(tbody.querySelectorAll(rowSelector));
 
             rows.sort(function(a, b) {
                 var aVal, bVal;
@@ -595,52 +595,11 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             });
         });
     });
-})();
+}
 
-// Table sorting for archived training days
-(function() {
-    var table = document.getElementById('archived-training-days-table');
-    if (!table) return;
-
-    var headers = table.querySelectorAll('.sortable-header');
-    var sortState = {};
-
-    headers.forEach(function(header, index) {
-        header.addEventListener('click', function() {
-            var sortKey = header.getAttribute('data-sort-key') || '';
-            var sortType = header.getAttribute('data-sort') || 'string';
-            var ascending = !sortState[index];
-            sortState[index] = ascending;
-
-            // Update UI
-            headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
-            header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
-
-            var tbody = table.querySelector('tbody');
-            var rows = Array.from(tbody.querySelectorAll('tr'));
-
-            rows.sort(function(a, b) {
-                var aVal, bVal;
-
-                if (sortType === 'date') {
-                    aVal = parseFloat(a.getAttribute('data-' + sortKey)) || 0;
-                    bVal = parseFloat(b.getAttribute('data-' + sortKey)) || 0;
-                } else {
-                    aVal = (a.getAttribute('data-' + sortKey) || '').toLowerCase();
-                    bVal = (b.getAttribute('data-' + sortKey) || '').toLowerCase();
-                }
-
-                if (aVal < bVal) return ascending ? -1 : 1;
-                if (aVal > bVal) return ascending ? 1 : -1;
-                return 0;
-            });
-
-            rows.forEach(function(row) {
-                tbody.appendChild(row);
-            });
-        });
-    });
-})();
+// Initialize table sorting for both tables
+initTableSorting('training-days-table', 'tr[data-training-day-id]');
+initTableSorting('archived-training-days-table', 'tr');
 
 // Scoreboard Sharing Modal
 var currentSharingTrainingDayId = null;
@@ -1100,8 +1059,9 @@ function saveScoreboardSharing(){
     }
 
     // Handle tag entries
-    var entries = document.querySelectorAll('#scoreboardSharingEntries .sharing-entry');
-    entries.forEach(function(entry) {
+    var entries = Array.from(document.querySelectorAll('#scoreboardSharingEntries .sharing-entry'));
+    for (var i = 0; i < entries.length; i++) {
+        var entry = entries[i];
         normalizeTagEntry(entry);
         var tagInput = entry.querySelector('input[data-sharing-tag-input="true"]');
         var tag = '';
@@ -1137,7 +1097,7 @@ function saveScoreboardSharing(){
                 };
             }
         }
-    });
+    }
 
     if (hasDuplicate) {
         alert('Duplicate tags are not allowed.');
@@ -1146,7 +1106,12 @@ function saveScoreboardSharing(){
 
     // Send AJAX request
     var formData = new FormData();
-    formData.append('_xsrf', document.querySelector('input[name="_xsrf"]').value);
+    var xsrfEl = document.querySelector('input[name="_xsrf"]');
+    if (!xsrfEl) {
+        alert('Error: XSRF token not found. Please refresh the page.');
+        return;
+    }
+    formData.append('_xsrf', xsrfEl.value);
     var sharingPayload = Object.keys(sharingData).length > 0 ? JSON.stringify(sharingData) : '';
     formData.append('scoreboard_sharing', sharingPayload);
 
