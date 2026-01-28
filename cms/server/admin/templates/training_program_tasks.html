@@ -1,87 +1,391 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Tasks list of <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
+<div class="content-constraint" style="max-width: 900px;">
+    <!-- Header -->
+    <div class="page-title">
+        <h1>Tasks</h1>
+        <div class="page-subtitle">
+            Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+        </div>
+    </div>
+
+    {% include "fragments/overload_warning.html" %}
+
+    <!-- Add Task Card -->
+    <div class="tp-filter-card">
+        <label class="tp-filter-label" for="task_id">Add Task:</label>
+        <form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px; flex: 1;">
+            {{ xsrf_form_html|safe }}
+            <div style="flex-grow: 1;">
+                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;">
+                    <option value="" selected disabled hidden>Select a task...</option>
+                    {% for t in unassigned_tasks %}
+                    <option value="{{ t.id }}">{{ t.name }} - {{ t.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
+                Add Task
+            </button>
+        </form>
+    </div>
+
+    <!-- Tasks Table -->
+    <div class="tp-section-header">
+        <h2>All Tasks ({{ training_program.managing_contest.tasks|length }})</h2>
+    </div>
+
+    <form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST" id="tasks-form">
+        {{ xsrf_form_html|safe }}
+        <input type="hidden" name="reorder_data" id="reorder-data" value="" />
+        <div class="tp-table-container">
+            <table class="ranking-table tp-tasks-table" id="tasks-table">
+                <thead>
+                    <tr>
+                        <th class="grip-column"></th>
+                        <th class="sortable-header" data-sort="string" style="text-align: left;">Task</th>
+                        <th class="sortable-header" data-sort="string" style="text-align: left;">Training Day</th>
+                        <th class="text-center" style="width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tasks-tbody">
+                    {% for t in training_program.managing_contest.tasks %}
+                    {% set is_archived = t.training_day is not none and t.training_day.contest is none %}
+                    <tr data-task-id="{{ t.id }}"
+                        data-name="{{ t.name }}"
+                        data-training-day="{{ t.training_day.contest.name if (t.training_day and t.training_day.contest) else ('(archived)' if (t.training_day and is_archived) else (t.training_day.name if t.training_day else '')) }}"
+                        data-is-archived="{{ 'true' if is_archived else 'false' }}"
+                        draggable="true">
+                        <!-- Drag handle -->
+                        <td class="grip-cell">
+                            <div class="grip-handle" title="Drag to reorder">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="5" r="1.5"/>
+                                    <circle cx="15" cy="5" r="1.5"/>
+                                    <circle cx="9" cy="12" r="1.5"/>
+                                    <circle cx="15" cy="12" r="1.5"/>
+                                    <circle cx="9" cy="19" r="1.5"/>
+                                    <circle cx="15" cy="19" r="1.5"/>
+                                </svg>
+                            </div>
+                        </td>
+
+                        <!-- Task name and title -->
+                        <td>
+                            <div class="student-name-wrapper">
+                                <div class="student-info">
+                                    <a class="student-name-link" href="{{ url("task", t.id) }}" title="{{ t.title }}">
+                                        {{ t.name }}
+                                    </a>
+                                    <span class="student-username">{{ t.title }}</span>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Training Day -->
+                        <td>
+                            <div class="list-cell-wrapper">
+                                {% if t.training_day is not none and t.training_day.contest is not none %}
+                                <a href="{{ url("contest", t.training_day.contest.id) }}" class="source-badge badge-training">
+                                    {{ t.training_day.contest.name }}
+                                </a>
+                                {% elif t.training_day is not none %}
+                                <span class="source-badge badge-archived">
+                                    {{ t.training_day.name or "(archived)" }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted" style="font-size: 0.85rem;">Not assigned</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="text-center">
+                            <div class="list-cell-wrapper center-content" style="gap: 8px;">
+                                {% if is_archived %}
+                                <!-- Detach button for archived training day tasks -->
+                                <button type="submit" name="operation" value="detach_{{ t.id }}" class="btn-icon-only btn-detach"
+                                    {% if not admin.permission_all %}disabled{% endif %}
+                                    onclick="return confirm('Detach this task from the archived training day? It will become available for new training days.');"
+                                    title="Detach from archived training day">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                      <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                    </svg>
+                                </button>
+                                {% endif %}
+                                <!-- Remove button - opens modal -->
+                                <button type="button" class="btn-icon-only remove-task-btn"
+                                    data-task-id="{{ t.id }}"
+                                    data-task-name="{{ t.name | e }}"
+                                    data-has-training-day="{{ 'true' if t.training_day else 'false' }}"
+                                    data-training-day-name="{% if t.training_day and t.training_day.contest %}{{ (t.training_day.contest.description or t.training_day.contest.name) | e }}{% elif t.training_day %}{{ (t.training_day.description or t.training_day.name or 'Archived') | e }}{% else %}{% endif %}"
+                                    data-is-active="{{ 'true' if (t.training_day and t.training_day.contest) else 'false' }}"
+                                    {% if not admin.permission_all %}disabled{% endif %}
+                                    title="Remove from program">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% if not training_program.managing_contest.tasks %}
+    <div class="empty-state-box">
+        <h3>No tasks in this program yet</h3>
+        <p>Use the "Add Task" button above to add tasks.</p>
+    </div>
+    {% endif %}
 </div>
 
-<form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Add a new task:
-  <select name="task_id" class="searchable-select">
-    <option value="null" selected>Select a new task</option>
-    {% for t in unassigned_tasks %}
-    <option value="{{ t.id }}">
-      {{ t.name }}
-    </option>
-    {% endfor %}
-  </select>
-  <input type="submit"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="Add task" />
-</form>
+<!-- Remove Task Modal -->
+<div id="remove-task-modal" class="bulk-assign-modal" style="display: none;">
+    <div class="bulk-assign-modal-content" style="max-width: 500px;">
+        <div class="bulk-assign-modal-header">
+            <h2>Remove Task</h2>
+            <button type="button" class="bulk-assign-close-btn" onclick="closeRemoveModal()">&times;</button>
+        </div>
+        <p id="remove-modal-message" style="color: var(--tp-text-secondary); margin-bottom: 16px;"></p>
+        <div id="remove-modal-warning" style="display: none; background: var(--tp-warning-light); border: 1px solid #fde68a; border-radius: 6px; padding: 12px; margin-bottom: 16px; color: var(--tp-warning-dark);">
+            <strong>Warning:</strong> <span id="remove-modal-warning-text"></span>
+        </div>
+        <p style="color: var(--tp-text-muted); font-size: 0.9rem; margin-bottom: 20px;">This operation cannot be undone.</p>
+        <div class="tp-form-actions">
+            <button type="button" class="tp-btn-secondary" onclick="closeRemoveModal()">Cancel</button>
+            {% if admin.permission_all %}
+            <button type="button" class="tp-btn-primary" style="background: var(--tp-danger); border-color: var(--tp-danger);" onclick="confirmRemoveTask()">Yes, Remove</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
 
-<form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Remove selected task from the training program:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="Remove from training program" />
+<script>
+// Remove task modal
+var currentRemoveTaskId = null;
+var programName = {{ training_program.name | tojson }};
 
-  <br>
+function openRemoveModal(taskId, taskName, hasTrainingDay, trainingDayName, isActive) {
+    currentRemoveTaskId = taskId;
+    var modal = document.getElementById('remove-task-modal');
+    var message = document.getElementById('remove-modal-message');
+    var warning = document.getElementById('remove-modal-warning');
+    var warningText = document.getElementById('remove-modal-warning-text');
 
-  Move selected task:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="to the top" />
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="up by 1" />
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="down by 1" />
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="to the bottom" />
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Title</th>
-        <th>Training Day</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in training_program.managing_contest.tasks %}
-      <tr>
-        <td>
-          <input type="radio" name="task_id" value="{{ t.id }}"/>
-        </td>
-        <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
-        <td>{{ t.title }}</td>
-        <td>
-          {% if t.training_day is not none and t.training_day.contest is not none %}
-          <a href="{{ url("contest", t.training_day.contest.id) }}">{{ t.training_day.contest.name }}</a>
-          {% elif t.training_day is not none %}
-          {{ t.training_day.name or "(archived)" }}
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
+    message.textContent = 'Are you sure you want to remove task "' + taskName + '" from training program "' + programName + '"?';
+
+    if (hasTrainingDay && trainingDayName) {
+        warning.style.display = 'block';
+        if (isActive) {
+            warningText.textContent = 'This task is also assigned to training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+        } else {
+            warningText.textContent = 'This task is also assigned to archived training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+        }
+    } else {
+        warning.style.display = 'none';
+    }
+
+    modal.style.display = 'flex';
+}
+
+document.querySelectorAll('.remove-task-btn').forEach(function(button) {
+    button.addEventListener('click', function() {
+        openRemoveModal(
+            this.dataset.taskId,
+            this.dataset.taskName,
+            this.dataset.hasTrainingDay === 'true',
+            this.dataset.trainingDayName || null,
+            this.dataset.isActive === 'true'
+        );
+    });
+});
+
+function closeRemoveModal() {
+    var modal = document.getElementById('remove-task-modal');
+    modal.style.display = 'none';
+    currentRemoveTaskId = null;
+}
+
+function confirmRemoveTask() {
+    if (currentRemoveTaskId) {
+        CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id) }}/task/' + currentRemoveTaskId + '/remove');
+    }
+    closeRemoveModal();
+}
+
+// Close modal when clicking outside
+document.getElementById('remove-task-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRemoveModal();
+    }
+});
+
+// Drag and drop reordering
+(function() {
+    var tbody = document.getElementById('tasks-tbody');
+    if (!tbody) return;
+
+    var draggedRow = null;
+    var placeholder = null;
+    var originalOrder = null;
+
+    function createPlaceholder() {
+        var tr = document.createElement('tr');
+        tr.className = 'drag-placeholder';
+        tr.innerHTML = '<td colspan="4"></td>';
+        return tr;
+    }
+
+    tbody.addEventListener('dragstart', function(e) {
+        var targetRow = e.target.closest('tr');
+        if (!targetRow) return;
+        draggedRow = targetRow;
+        originalOrder = Array.from(tbody.querySelectorAll('tr'));
+        draggedRow.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+        placeholder = createPlaceholder();
+    });
+
+    tbody.addEventListener('dragend', function(e) {
+        if (draggedRow) {
+            draggedRow.classList.remove('dragging');
+            if (placeholder && placeholder.parentNode) {
+                placeholder.parentNode.removeChild(placeholder);
+            }
+            draggedRow = null;
+            placeholder = null;
+            saveNewOrder();
+        }
+    });
+
+    tbody.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        var targetRow = e.target.closest('tr');
+        if (!targetRow || targetRow === draggedRow || targetRow === placeholder) return;
+
+        var rect = targetRow.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+
+        if (e.clientY < midY) {
+            targetRow.parentNode.insertBefore(placeholder, targetRow);
+        } else {
+            targetRow.parentNode.insertBefore(placeholder, targetRow.nextSibling);
+        }
+    });
+
+    tbody.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (placeholder && placeholder.parentNode && draggedRow) {
+            placeholder.parentNode.insertBefore(draggedRow, placeholder);
+            placeholder.parentNode.removeChild(placeholder);
+        }
+    });
+
+    function restoreOriginalOrder() {
+        if (!originalOrder) return;
+        originalOrder.forEach(function(row) {
+            tbody.appendChild(row);
+        });
+        originalOrder = null;
+    }
+
+    function saveNewOrder() {
+        var rows = Array.from(tbody.querySelectorAll('tr[data-task-id]'));
+        // Skip confirmation if order hasn't changed
+        if (originalOrder &&
+            rows.length === originalOrder.length &&
+            rows.every(function(row, i) { return row === originalOrder[i]; })) {
+            originalOrder = null;
+            return;
+        }
+        if (!confirm('Save the new task order?')) {
+            restoreOriginalOrder();
+            return;
+        }
+        var order = [];
+        rows.forEach(function(row, index) {
+            order.push({
+                task_id: row.getAttribute('data-task-id'),
+                new_num: index
+            });
+        });
+
+        // Submit via form
+        var form = document.getElementById('tasks-form');
+        var reorderInput = document.getElementById('reorder-data');
+        reorderInput.value = JSON.stringify(order);
+
+        // Check for existing operation input and reuse or create new
+        var operationInput = form.querySelector('input[name="operation"]');
+        if (!operationInput) {
+            operationInput = document.createElement('input');
+            operationInput.type = 'hidden';
+            operationInput.name = 'operation';
+            form.appendChild(operationInput);
+        }
+        operationInput.value = 'reorder';
+
+        form.submit();
+    }
+})();
+
+// Table sorting
+(function() {
+    var table = document.getElementById('tasks-table');
+    if (!table) return;
+
+    var headers = table.querySelectorAll('.sortable-header');
+    var sortState = {};
+
+    headers.forEach(function(header, index) {
+        header.addEventListener('click', function() {
+            var columnIndex = header.cellIndex;
+            var ascending = !sortState[index];
+            sortState[index] = ascending;
+
+            // Update UI
+            headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+            header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+
+            var tbody = table.querySelector('tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort(function(a, b) {
+                var aVal, bVal;
+
+                if (columnIndex === 1) { // Task name
+                    aVal = a.getAttribute('data-name').toLowerCase();
+                    bVal = b.getAttribute('data-name').toLowerCase();
+                } else if (columnIndex === 2) { // Training Day
+                    aVal = a.getAttribute('data-training-day').toLowerCase();
+                    bVal = b.getAttribute('data-training-day').toLowerCase();
+                    // Put "Not assigned" at the end
+                    if (!aVal && bVal) return 1;
+                    if (aVal && !bVal) return -1;
+                }
+
+                if (aVal < bVal) return ascending ? -1 : 1;
+                if (aVal > bVal) return ascending ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(function(row) {
+                tbody.appendChild(row);
+            });
+        });
+    });
+})();
+</script>
 {% endblock core %}

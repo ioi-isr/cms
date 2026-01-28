@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'fragments/info_alert.html' as info_alert %}
 
 {% block js_init %}
 {% for td in training_program.training_days %}
@@ -15,130 +16,1146 @@ CMS.AWSUtils.initTagify({
     invalidMessage: 'Types cannot contain commas.'
 });
 {% endfor %}
+
+// Histogram modal data (shared with combined ranking)
+var allStudentTagsSet = new Set();
+var allStudentTags = [];
+var studentData = {};
+var historicalStudentTags = {};
+var tagsPerTrainingDay = {};
+var taskMaxScoresByTrainingDay = {};
+var trainingDayMaxScores = {};
+var trainingDayTasks = {};
+var studentAccessibleTasks = {};
+var archivedTaskScores = {};
+var participatedStudentsByTrainingDay = {};
+
+{% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
+{% for td in archived_training_days %}
+participatedStudentsByTrainingDay[{{ td.id }}] = new Set();
+{% for attendance in td.archived_attendances %}
+{% if attendance.status == 'participated' %}
+participatedStudentsByTrainingDay[{{ td.id }}].add({{ attendance.student_id }});
+{% endif %}
+{% endfor %}
+{% if td.archived_tasks_data %}
+taskMaxScoresByTrainingDay[{{ td.id }}] = {};
+trainingDayMaxScores[{{ td.id }}] = 0;
+trainingDayTasks[{{ td.id }}] = [];
+{% for task_id_str, task_info in td.archived_tasks_data.items() %}
+taskMaxScoresByTrainingDay[{{ td.id }}][{{ task_id_str }}] = {{ task_info.get('max_score', 100) }};
+trainingDayMaxScores[{{ td.id }}] += {{ task_info.get('max_score', 100) }};
+trainingDayTasks[{{ td.id }}].push({{ task_id_str }});
+archivedTaskScores['{{ td.id }}_{{ task_id_str }}'] = [];
+{% endfor %}
+{% endif %}
+{% for ranking in td.archived_student_rankings %}
+if (!historicalStudentTags[{{ td.id }}]) {
+    historicalStudentTags[{{ td.id }}] = {};
+    tagsPerTrainingDay[{{ td.id }}] = new Set();
+}
+historicalStudentTags[{{ td.id }}][{{ ranking.student_id }}] = {{ ranking.student_tags | tojson if ranking.student_tags else '[]' }};
+{% if ranking.student_tags %}
+{{ ranking.student_tags | tojson }}.forEach(function(tag) {
+    tagsPerTrainingDay[{{ td.id }}].add(tag);
+    allStudentTagsSet.add(tag);
+});
+{% endif %}
+
+studentData[{{ ranking.student_id }}] = {
+    tags: {{ ranking.student_tags | tojson if ranking.student_tags else '[]' }},
+    name: "(Archived)"
+};
+
+if (!studentAccessibleTasks[{{ td.id }}]) {
+    studentAccessibleTasks[{{ td.id }}] = {};
+}
+studentAccessibleTasks[{{ td.id }}][{{ ranking.student_id }}] = [];
+{% if ranking.task_scores %}
+var participated = participatedStudentsByTrainingDay[{{ td.id }}] && participatedStudentsByTrainingDay[{{ td.id }}].has({{ ranking.student_id }});
+{% for task_id_str, score in ranking.task_scores.items() %}
+if (participated) {
+    studentAccessibleTasks[{{ td.id }}][{{ ranking.student_id }}].push({{ task_id_str }});
+    if (archivedTaskScores['{{ td.id }}_{{ task_id_str }}']) {
+        archivedTaskScores['{{ td.id }}_{{ task_id_str }}'].push({
+            studentId: {{ ranking.student_id }},
+            score: {{ score if score is not none else 0 }}
+        });
+    }
+}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+Object.keys(tagsPerTrainingDay).forEach(function(tdId) {
+    tagsPerTrainingDay[tdId] = Array.from(tagsPerTrainingDay[tdId]).sort();
+});
+allStudentTags = Array.from(allStudentTagsSet).sort();
+window.tagsPerTrainingDay = tagsPerTrainingDay;
+window.allStudentTags = allStudentTags;
+window.historicalStudentTags = historicalStudentTags;
+
+{% include 'fragments/histogram_js.html' %}
+
+window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
+    var key = trainingDayId + '_' + taskId;
+    var scores = archivedTaskScores[key] || [];
+    var maxScore = 100;
+    if (taskMaxScoresByTrainingDay[trainingDayId] &&
+        taskMaxScoresByTrainingDay[trainingDayId][taskId] !== undefined) {
+        maxScore = taskMaxScoresByTrainingDay[trainingDayId][taskId];
+    }
+    openHistogramModal(scores, taskName, 'task', trainingDayId, maxScore);
+};
 {% endblock js_init %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Training Days of <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a></h1>
+<div class="content-constraint" style="max-width: 1100px;">
+    <!-- Header -->
+    <div class="page-title" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h1>Training Days</h1>
+            <div class="page-subtitle">
+                Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <a href="{{ url("training_program", training_program.id, "training_days", "add") }}"
+               class="btn-filled-primary"
+               style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Training Day
+            </a>
+        </div>
+    </div>
+
+    <!-- Active Training Days Section -->
+    <div class="tp-section-header">
+        <h2>Active Training Days ({{ training_program.training_days | selectattr("contest") | list | length }})</h2>
+    </div>
+
+    {{ info_alert.alert(
+        title="Active Training Days",
+        message="These training days have an associated contest and can accept student participation. Drag to reorder. Use the Archive action when a training day is complete.",
+        type="info"
+    ) }}
+
+    <form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST" id="training-days-form">
+        {{ xsrf_form_html|safe }}
+        <input type="hidden" name="reorder_data" id="reorder-data" value="" />
+        <div class="tp-table-container">
+            <table class="ranking-table tp-tasks-table" id="training-days-table">
+                <thead>
+                    <tr>
+                        <th class="grip-column"></th>
+                        <th class="sortable-header" data-sort="string" data-sort-key="name" style="text-align: left;">Name</th>
+                        <th style="text-align: left;">Description</th>
+                        <th style="text-align: left; min-width: 150px;">Types</th>
+                        <th class="sortable-header" data-sort="date" data-sort-key="start" style="text-align: left;">Start</th>
+                        <th style="text-align: left;">Tasks</th>
+                        <th class="text-center" style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="training-days-tbody">
+                    {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
+                    {% for td in active_training_days %}
+                    <tr data-training-day-id="{{ td.id }}"
+                        data-name="{{ td.contest.name }}"
+                        data-start="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 0 }}"
+                        {% if admin.permission_all %}draggable="true"{% endif %}>
+                        <!-- Drag handle -->
+                        <td class="grip-cell">
+                            <div class="grip-handle" title="Drag to reorder">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="5" r="1.5"/>
+                                    <circle cx="15" cy="5" r="1.5"/>
+                                    <circle cx="9" cy="12" r="1.5"/>
+                                    <circle cx="15" cy="12" r="1.5"/>
+                                    <circle cx="9" cy="19" r="1.5"/>
+                                    <circle cx="15" cy="19" r="1.5"/>
+                                </svg>
+                            </div>
+                        </td>
+
+                        <!-- Name -->
+                        <td>
+                            <div class="list-cell-wrapper" style="flex-direction: column; align-items: flex-start;">
+                                <a href="{{ url("contest", td.contest.id) }}" class="student-name-link" style="max-width: none;">{{ td.contest.name }}</a>
+                            </div>
+                        </td>
+
+                        <!-- Description -->
+                        <td>
+                            <div class="list-cell-wrapper">
+                                <span style="color: var(--tp-text-secondary);">{{ td.contest.description }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Types -->
+                        <td>
+                            <div class="list-cell-wrapper">
+                                <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
+                            </div>
+                        </td>
+
+                        <!-- Start Time -->
+                        <td>
+                            <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                                {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
+                                    <div>{{ td.contest.start.strftime('%Y-%m-%d') }}</div>
+                                    <div style="color: #94a3b8; font-size: 0.9em;">{{ td.contest.start.strftime('%H:%M') }}</div>
+                                {% else %}
+                                    <span class="badge-pill badge-slate" style="font-size: 0.85rem; font-weight: 600;">Unscheduled</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Tasks -->
+                        <td>
+                            <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
+                                {% set tasks = td.contest.get_tasks() %}
+                                {% if tasks %}
+                                    {% for task in tasks %}
+                                        <a href="{{ url("task", task.id) }}" class="source-badge badge-training" title="{{ task.title }}">{{ task.name }}</a>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="text-center">
+                            <div class="list-cell-wrapper center-content" style="gap: 4px;">
+                                <!-- Archive button -->
+                                <a href="{{ url("training_program", training_program.id, "training_day", td.id, "archive") }}"
+                                   class="btn-icon-only btn-archive"
+                                   {% if not admin.permission_all %}style="pointer-events: none; opacity: 0.5;"{% endif %}
+                                   title="Archive training day">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                      <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                                      <rect x="1" y="3" width="22" height="5"></rect>
+                                      <line x1="12" y1="12" x2="12" y2="17"></line>
+                                      <polyline points="9 14 12 17 15 14"></polyline>
+                                    </svg>
+                                </a>
+                                <!-- Remove button -->
+                                <a href="{{ url("training_program", training_program.id, "training_day", td.id, "remove") }}"
+                                   class="btn-icon-only"
+                                   {% if not admin.permission_all %}style="pointer-events: none; opacity: 0.5;"{% endif %}
+                                   title="Remove training day">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% if not (training_program.training_days | selectattr("contest") | list) %}
+    <div class="empty-state-box">
+        <h3>No active training days</h3>
+        <p>Use the "Add New Training Day" button above to create one.</p>
+    </div>
+    {% endif %}
+    <div></div>
+
+    <!-- Archived Training Days Section -->
+    <div class="tp-section-header" style="margin-top: 40px;">
+        <h2>Archived Training Days ({{ training_program.training_days | rejectattr("contest") | list | length }})</h2>
+    </div>
+
+    {{ info_alert.alert(
+        title="Archived Training Days",
+        message="These training days have been archived. Their contest data has been deleted, but attendance and ranking data is preserved. Click on task badges to view score histograms.",
+        type="info"
+    ) }}
+
+    <div class="tp-table-container">
+        <table class="ranking-table tp-tasks-table" id="archived-training-days-table">
+            <thead>
+                <tr>
+                    <th class="sortable-header" data-sort="string" data-sort-key="name" style="text-align: left;">Name</th>
+                    <th style="text-align: left;">Description</th>
+                    <th style="text-align: left; min-width: 150px;">Types</th>
+                    <th class="sortable-header" data-sort="date" data-sort-key="start" style="text-align: left;">Start</th>
+                    <th style="text-align: left;">Tasks</th>
+                    <th style="text-align: center; width: 100px;">Share</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
+                {% for td in archived_training_days %}
+                <tr data-name="{{ td.name or '' }}"
+                    data-start="{{ td.start_time.timestamp() if td.start_time else 0 }}">
+                    <!-- Name -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            <span style="font-weight: 600; color: var(--tp-text-primary);">{{ td.name or "(no name)" }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Description -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            <span style="color: var(--tp-text-secondary);">{{ td.description or "(no description)" }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Types -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
+                        </div>
+                    </td>
+
+                    <!-- Start Time -->
+                    <td>
+                        <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                            {% if td.start_time %}
+                                <div>{{ td.start_time.strftime('%Y-%m-%d') }}</div>
+                                <div style="color: #94a3b8; font-size: 0.9em;">{{ td.start_time.strftime('%H:%M') }}</div>
+                            {% else %}
+                                <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Tasks -->
+                    <td>
+                        <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
+                            {% if td.archived_tasks_data %}
+                                {% for task_id_str, task_info in td.archived_tasks_data.items() %}
+                                    <span class="source-badge badge-archived"
+                                          title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
+                                          onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
+                                          style="cursor: pointer;">
+                                        {{ task_info.get('name', 'Task ' ~ task_id_str) }}
+                                        <span class="histogram-icon">&#128202;</span>
+                                    </span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Share Scoreboard -->
+                    <td style="text-align: center;">
+                        <div class="list-cell-wrapper" style="justify-content: center;">
+                            <button type="button" class="btn-icon-only" title="Configure scoreboard sharing"
+                                    onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
+                                    {% if not admin.permission_all %}disabled{% endif %}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                                    <polyline points="16 6 12 2 8 6"/>
+                                    <line x1="12" y1="2" x2="12" y2="15"/>
+                                </svg>
+                            </button>
+                            {% if td.scoreboard_sharing %}
+                            <span class="source-badge badge-shared" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
+                                {{ td.scoreboard_sharing | length }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if not (training_program.training_days | rejectattr("contest") | list) %}
+    <div class="empty-state-box">
+        <h3>No archived training days</h3>
+        <p>Training days will appear here after being archived.</p>
+    </div>
+    {% endif %}
 </div>
 
-<p>
-  <a href="{{ url("training_program", training_program.id, "training_days", "add") }}">Add a new training day</a>
-</p>
+{% include 'fragments/histogram_modal.html' %}
 
-<h2>Active Training Days</h2>
+<!-- Scoreboard Sharing Modal -->
+<div id="scoreboardSharingModal" class="histogram-modal" style="display: none;">
+    <div class="histogram-modal-content" style="max-width: 700px;">
+        <div class="histogram-modal-header">
+            <h2 id="scoreboardSharingTitle">Scoreboard Sharing</h2>
+            <button class="histogram-close-btn" onclick="closeScoreboardSharingModal()">&times;</button>
+        </div>
+        <div class="scoreboard-sharing-body" style="padding: 20px;">
+            <p style="margin-bottom: 16px; color: var(--tp-text-secondary);">
+                Configure which student tags can view the scoreboard for this training day.
+                Students will only see results for their tag group.
+            </p>
 
-<form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Remove selected training day:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="Remove" />
+            <!-- Share with Everyone option -->
+            <div id="everyoneShareSection" style="margin-bottom: 20px; padding: 16px; background: var(--tp-bg-secondary); border-radius: 8px; border: 1px solid var(--tp-border);">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <input type="checkbox" id="shareWithEveryone" onchange="toggleEveryoneSettings()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="shareWithEveryone" style="font-weight: 600; cursor: pointer;">Share with Everyone</label>
+                    <span style="font-size: 0.85rem; color: var(--tp-text-secondary);">(All students can view, regardless of tags)</span>
+                </div>
+                <div id="everyoneSettings" style="display: none; margin-left: 30px;">
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" id="everyoneTopToShow" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
+                                <input type="checkbox" id="everyoneTopToShowAll" onchange="toggleEveryoneTopToShowAll()" style="cursor: pointer;">
+                                <label for="everyoneTopToShowAll" style="font-size: 0.85rem; cursor: pointer;">All</label>
+                            </div>
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names to Show</label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" id="everyoneTopNames" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
+                                <input type="checkbox" id="everyoneTopNamesAll" onchange="toggleEveryoneTopNamesAll()" style="cursor: pointer;">
+                                <label for="everyoneTopNamesAll" style="font-size: 0.85rem; cursor: pointer;">All</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-  <br>
+            <div style="margin-bottom: 12px; font-weight: 600;">Share by Tag</div>
 
-  Move selected training day:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="up by 1" />
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="down by 1" />
+            <div id="scoreboardSharingEntries" style="margin-bottom: 16px;">
+            </div>
 
-  <table class="bordered" id="training_days_table">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Description</th>
-        <th>Types</th>
-        <th>Start</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
-      {% for td in active_training_days %}
-      <tr>
-        <td>
-          <input type="radio" name="training_day_id" value="{{ td.id }}"/>
-        </td>
-        <td><a href="{{ url("contest", td.contest.id) }}">{{ td.contest.name }}</a></td>
-        <td>{{ td.contest.description }}</td>
-        <td style="min-width: 200px;">
-          <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
-        </td>
-        <td>
-          {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
-            {{ td.contest.start.strftime("%Y-%m-%d %H:%M") }}
-          {% else %}
-            -
-          {% endif %}
-        </td>
-        <td>
-          <a href="{{ url("training_program", training_program.id, "training_day", td.id, "archive") }}">Archive</a>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="6">(no active training days)</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+            <button type="button" class="tp-btn-secondary" onclick="addSharingEntry()" style="margin-bottom: 20px;">
+                + Add Tag
+            </button>
 
-  <script>
-    $(document).ready(function() {
-      CMS.AWSUtils.init_table_sort($("#training_days_table"), false, 3, false);
-    });
-  </script>
-</form>
-
-<h2>Archived Training Days</h2>
-
-<table class="bordered" id="archived_training_days_table">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Description</th>
-      <th>Types</th>
-      <th>Start</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
-    {% for td in archived_training_days %}
-    <tr>
-      <td>{{ td.name or "(no name)" }}</td>
-      <td>{{ td.description or "(no description)" }}</td>
-      <td style="min-width: 200px;">
-        <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
-      </td>
-      <td>
-        {% if td.start_time %}
-          {{ td.start_time.strftime("%Y-%m-%d %H:%M") }}
-        {% else %}
-          -
-        {% endif %}
-      </td>
-    </tr>
-    {% else %}
-    <tr>
-      <td colspan="4">(no archived training days)</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--tp-border); padding-top: 16px;">
+                <button type="button" class="tp-btn-secondary" onclick="closeScoreboardSharingModal()">Cancel</button>
+                <button type="button" class="tp-btn-primary" onclick="saveScoreboardSharing()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
-  $(document).ready(function() {
-    CMS.AWSUtils.init_table_sort($("#archived_training_days_table"), false, 2, false);
-  });
+// Drag and drop reordering for active training days
+(function() {
+    // Only enable drag-and-drop for users with permission_all
+    var canReorder = {{ 'true' if admin.permission_all else 'false' }};
+    if (!canReorder) return;
+
+    var tbody = document.getElementById('training-days-tbody');
+    if (!tbody) return;
+
+    var draggedRow = null;
+    var placeholder = null;
+    var originalOrder = null;
+
+    function createPlaceholder() {
+        var tr = document.createElement('tr');
+        tr.className = 'drag-placeholder';
+        tr.innerHTML = '<td colspan="7"></td>';
+        return tr;
+    }
+
+    tbody.addEventListener('dragstart', function(e) {
+        if (e.target.tagName !== 'TR') return;
+        draggedRow = e.target;
+        originalOrder = Array.from(tbody.querySelectorAll('tr[data-training-day-id]'));
+        draggedRow.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+        placeholder = createPlaceholder();
+    });
+
+    tbody.addEventListener('dragend', function(e) {
+        if (draggedRow) {
+            draggedRow.classList.remove('dragging');
+            if (placeholder && placeholder.parentNode) {
+                placeholder.parentNode.removeChild(placeholder);
+            }
+            draggedRow = null;
+            placeholder = null;
+            saveNewOrder();
+        }
+    });
+
+    tbody.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        var targetRow = e.target.closest('tr');
+        if (!targetRow || targetRow === draggedRow || targetRow === placeholder) return;
+
+        var rect = targetRow.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+
+        if (e.clientY < midY) {
+            targetRow.parentNode.insertBefore(placeholder, targetRow);
+        } else {
+            targetRow.parentNode.insertBefore(placeholder, targetRow.nextSibling);
+        }
+    });
+
+    tbody.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (placeholder && placeholder.parentNode && draggedRow) {
+            placeholder.parentNode.insertBefore(draggedRow, placeholder);
+            placeholder.parentNode.removeChild(placeholder);
+        }
+    });
+
+    function saveNewOrder() {
+        var rows = Array.from(tbody.querySelectorAll('tr[data-training-day-id]'));
+        if (originalOrder &&
+            rows.length === originalOrder.length &&
+            rows.every(function(row, i) { return row === originalOrder[i]; })) {
+            originalOrder = null;
+            return;
+        }
+        if (!confirm('Save the new training day order?')) {
+            restoreOriginalOrder();
+            return;
+        }
+        var order = [];
+        rows.forEach(function(row, index) {
+            order.push({
+                training_day_id: row.getAttribute('data-training-day-id'),
+                new_position: index
+            });
+        });
+
+        // Submit via form
+        var form = document.getElementById('training-days-form');
+        var reorderInput = document.getElementById('reorder-data');
+        reorderInput.value = JSON.stringify(order);
+
+        // Check for existing operation input and reuse or create new
+        var operationInput = form.querySelector('input[name="operation"]');
+        if (!operationInput) {
+            operationInput = document.createElement('input');
+            operationInput.type = 'hidden';
+            operationInput.name = 'operation';
+            form.appendChild(operationInput);
+        }
+        operationInput.value = 'reorder';
+
+        form.submit();
+    }
+
+    function restoreOriginalOrder() {
+        if (!originalOrder) return;
+        originalOrder.forEach(function(row) {
+            tbody.appendChild(row);
+        });
+        originalOrder = null;
+    }
+})();
+
+// Shared table sorting utility
+function initTableSorting(tableId, rowSelector) {
+    var table = document.getElementById(tableId);
+    if (!table) return;
+
+    var headers = table.querySelectorAll('.sortable-header');
+    var sortState = {};
+
+    headers.forEach(function(header, index) {
+        header.addEventListener('click', function() {
+            var sortKey = header.getAttribute('data-sort-key') || '';
+            var sortType = header.getAttribute('data-sort') || 'string';
+            var ascending = !sortState[index];
+            sortState[index] = ascending;
+
+            // Update UI
+            headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+            header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+
+            var tbody = table.querySelector('tbody');
+            var rows = Array.from(tbody.querySelectorAll(rowSelector));
+
+            rows.sort(function(a, b) {
+                var aVal, bVal;
+
+                if (sortType === 'date') {
+                    aVal = parseFloat(a.getAttribute('data-' + sortKey)) || 0;
+                    bVal = parseFloat(b.getAttribute('data-' + sortKey)) || 0;
+                } else {
+                    aVal = (a.getAttribute('data-' + sortKey) || '').toLowerCase();
+                    bVal = (b.getAttribute('data-' + sortKey) || '').toLowerCase();
+                }
+
+                if (aVal < bVal) return ascending ? -1 : 1;
+                if (aVal > bVal) return ascending ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(function(row) {
+                tbody.appendChild(row);
+            });
+        });
+    });
+}
+
+// Initialize table sorting for both tables
+initTableSorting('training-days-table', 'tr[data-training-day-id]');
+initTableSorting('archived-training-days-table', 'tr');
+
+// Scoreboard Sharing Modal
+var currentSharingTrainingDayId = null;
+var totalStudentsForTrainingDay = 0;
+
+function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayName) {
+    currentSharingTrainingDayId = trainingDayId;
+    document.getElementById('scoreboardSharingTitle').textContent = 'Scoreboard Sharing - ' + (trainingDayName || 'Training Day');
+
+    // Count total students for this training day (for "everyone" option)
+    totalStudentsForTrainingDay = 0;
+    if (window.historicalStudentTags && window.historicalStudentTags[trainingDayId]) {
+        totalStudentsForTrainingDay = Object.keys(window.historicalStudentTags[trainingDayId]).length;
+    }
+
+    var entriesContainer = document.getElementById('scoreboardSharingEntries');
+
+    // Destroy existing Tagify instances before clearing to prevent memory leaks
+    entriesContainer.querySelectorAll('.scoreboard-sharing-entry').forEach(function(entryDiv) {
+        if (entryDiv._tagify) {
+            entryDiv._tagify.destroy();
+        }
+    });
+    entriesContainer.innerHTML = '';
+
+    // Handle "__everyone__" option
+    var everyoneCheckbox = document.getElementById('shareWithEveryone');
+    var everyoneSettings = document.getElementById('everyoneSettings');
+    var everyoneTopToShowInput = document.getElementById('everyoneTopToShow');
+    var everyoneTopNamesInput = document.getElementById('everyoneTopNames');
+    var everyoneTopToShowAllCheckbox = document.getElementById('everyoneTopToShowAll');
+    var everyoneTopNamesAllCheckbox = document.getElementById('everyoneTopNamesAll');
+
+    if (currentSharing && currentSharing['__everyone__']) {
+        everyoneCheckbox.checked = true;
+        everyoneSettings.style.display = 'block';
+        var everyoneData = currentSharing['__everyone__'];
+
+        // Set top_to_show
+        var topToShow = everyoneData.top_to_show;
+        if (topToShow === 'all') {
+            everyoneTopToShowAllCheckbox.checked = true;
+            everyoneTopToShowInput.disabled = true;
+            everyoneTopToShowInput.value = totalStudentsForTrainingDay;
+        } else {
+            everyoneTopToShowAllCheckbox.checked = false;
+            everyoneTopToShowInput.disabled = false;
+            everyoneTopToShowInput.value = Number.isFinite(topToShow) ? topToShow : 0;
+        }
+
+        // Set top_names
+        var topNames = everyoneData.top_names;
+        if (topNames === 'all') {
+            everyoneTopNamesAllCheckbox.checked = true;
+            everyoneTopNamesInput.disabled = true;
+            everyoneTopNamesInput.value = totalStudentsForTrainingDay;
+        } else {
+            everyoneTopNamesAllCheckbox.checked = false;
+            everyoneTopNamesInput.disabled = false;
+            everyoneTopNamesInput.value = Number.isFinite(topNames) ? topNames : 0;
+        }
+
+        // Clamp values to valid ranges
+        validateEveryoneFields();
+    } else {
+        everyoneCheckbox.checked = false;
+        everyoneSettings.style.display = 'none';
+        document.getElementById('everyoneTopToShow').value = 0;
+        document.getElementById('everyoneTopNames').value = 0;
+        document.getElementById('everyoneTopToShowAll').checked = false;
+        document.getElementById('everyoneTopNamesAll').checked = false;
+        document.getElementById('everyoneTopToShow').disabled = false;
+        document.getElementById('everyoneTopNames').disabled = false;
+    }
+    document.getElementById('everyoneTopToShow').oninput = validateEveryoneFields;
+    document.getElementById('everyoneTopNames').oninput = validateEveryoneFields;
+
+    // Add existing tag entries (excluding __everyone__)
+    if (currentSharing && typeof currentSharing === 'object') {
+        Object.keys(currentSharing).forEach(function(tag) {
+            if (tag === '__everyone__') return;
+            var settings = currentSharing[tag];
+            addSharingEntry(tag, settings.top_names, settings.top_to_show);
+        });
+    }
+
+    // If no tag entries, add an empty one
+    if (entriesContainer.children.length === 0) {
+        addSharingEntry('', 0, 0);
+    }
+
+    document.getElementById('scoreboardSharingModal').style.display = 'flex';
+}
+
+function toggleEveryoneSettings() {
+    var checkbox = document.getElementById('shareWithEveryone');
+    var settings = document.getElementById('everyoneSettings');
+    settings.style.display = checkbox.checked ? 'block' : 'none';
+}
+
+function toggleEveryoneTopToShowAll() {
+    var checkbox = document.getElementById('everyoneTopToShowAll');
+    var input = document.getElementById('everyoneTopToShow');
+    input.disabled = checkbox.checked;
+    if (checkbox.checked) {
+        input.value = totalStudentsForTrainingDay;
+    }
+    validateEveryoneFields();
+}
+
+function toggleEveryoneTopNamesAll() {
+    var checkbox = document.getElementById('everyoneTopNamesAll');
+    var input = document.getElementById('everyoneTopNames');
+    input.disabled = checkbox.checked;
+    if (checkbox.checked) {
+        var topToShowAll = document.getElementById('everyoneTopToShowAll').checked;
+        var topToShowVal = topToShowAll ? totalStudentsForTrainingDay : parseIntOrZero(document.getElementById('everyoneTopToShow').value);
+        input.value = topToShowVal;
+    }
+}
+
+function clampNonNegativeInput(input) {
+    if (!input) return;
+    var value = parseInt(input.value, 10);
+    if (isNaN(value)) return;
+    if (value < 0) {
+        input.value = 0;
+    }
+}
+function parseIntOrZero(value) {
+    var parsed = parseInt(value, 10);
+    return isNaN(parsed) ? 0 : parsed;
+}
+
+function validateEveryoneFields() {
+    var topToShowAll = document.getElementById('everyoneTopToShowAll').checked;
+    var topNamesAll = document.getElementById('everyoneTopNamesAll').checked;
+    var topToShowInput = document.getElementById('everyoneTopToShow');
+    var topNamesInput = document.getElementById('everyoneTopNames');
+
+    // Cap top_to_show to total students
+    if (topToShowAll) {
+        topToShowInput.value = totalStudentsForTrainingDay;
+    } else {
+        clampNonNegativeInput(topToShowInput);
+        var topToShowVal = parseIntOrZero(topToShowInput.value);
+        if (topToShowVal > totalStudentsForTrainingDay) {
+            topToShowInput.value = totalStudentsForTrainingDay;
+        }
+    }
+
+    // Cap top_names to top_to_show
+    if (topNamesAll) {
+        var allNamesMax = topToShowAll ? totalStudentsForTrainingDay : parseIntOrZero(topToShowInput.value);
+        topNamesInput.value = allNamesMax;
+    } else {
+        var maxNames = topToShowAll ? totalStudentsForTrainingDay : parseIntOrZero(topToShowInput.value);
+        clampNonNegativeInput(topNamesInput);
+        var topNamesVal = parseIntOrZero(topNamesInput.value);
+        if (topNamesVal > maxNames) {
+            topNamesInput.value = maxNames;
+        }
+    }
+}
+
+function closeScoreboardSharingModal() {
+    document.getElementById('scoreboardSharingModal').style.display = 'none';
+    currentSharingTrainingDayId = null;
+}
+
+function addSharingEntry(tag, topNames, topToShow) {
+    tag = tag || '';
+    topNames = topNames === undefined ? 0 : topNames;
+    topToShow = topToShow === undefined ? 0 : topToShow;
+
+    var entriesContainer = document.getElementById('scoreboardSharingEntries');
+    var entryDiv = document.createElement('div');
+    entryDiv.className = 'sharing-entry';
+    entryDiv.style.cssText = 'display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px; flex-wrap: wrap;';
+
+    // Get student count for this tag
+    var tagStudentCount = 0;
+    if (tag && currentSharingTrainingDayId && window.historicalStudentTags && window.historicalStudentTags[currentSharingTrainingDayId]) {
+        Object.keys(window.historicalStudentTags[currentSharingTrainingDayId]).forEach(function(studentId) {
+            var studentTags = window.historicalStudentTags[currentSharingTrainingDayId][studentId];
+            if (studentTags && studentTags.indexOf(tag) !== -1) {
+                tagStudentCount++;
+            }
+        });
+    }
+
+    var topToShowIsAll = topToShow === 'all';
+    var topNamesIsAll = topNames === 'all';
+    var topToShowVal = topToShowIsAll ? tagStudentCount : topToShow;
+    var topNamesVal = topNamesIsAll ? tagStudentCount : topNames;
+
+    // Build text input for Tagify (matching add_training_day.html style)
+    var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
+        tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
+
+    var tagInput = document.createElement('input');
+    tagInput.type = 'text';
+    tagInput.className = 'sharing-tag';
+    tagInput.setAttribute('data-sharing-tag-input', 'true');
+    tagInput.placeholder = 'Select a tag';
+    tagInput.style.width = '160px';
+    if (tag) {
+        tagInput.value = tag;
+    }
+
+    // Build tag container
+    var tagContainer = document.createElement('div');
+    tagContainer.style.cssText = 'flex: 1; min-width: 120px;';
+    var tagLabel = document.createElement('label');
+    tagLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
+    tagLabel.textContent = 'Tag';
+    tagContainer.appendChild(tagLabel);
+    tagContainer.appendChild(tagInput);
+
+    // Build "Results to Show" container
+    var topToShowContainer = document.createElement('div');
+    topToShowContainer.style.cssText = 'min-width: 140px;';
+    var topToShowLabel = document.createElement('label');
+    topToShowLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
+    topToShowLabel.textContent = 'Results to Show';
+    topToShowContainer.appendChild(topToShowLabel);
+
+    var topToShowInputContainer = document.createElement('div');
+    topToShowInputContainer.style.cssText = 'display: flex; align-items: center; gap: 6px;';
+    var topToShowInput = document.createElement('input');
+    topToShowInput.type = 'number';
+    topToShowInput.className = 'sharing-top-to-show';
+    topToShowInput.value = topToShowVal;
+    topToShowInput.min = '0';
+    topToShowInput.disabled = topToShowIsAll;
+    topToShowInput.style.cssText = 'width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;';
+    var topToShowAllCheckbox = document.createElement('input');
+    topToShowAllCheckbox.type = 'checkbox';
+    topToShowAllCheckbox.className = 'sharing-top-to-show-all';
+    topToShowAllCheckbox.checked = topToShowIsAll;
+    topToShowAllCheckbox.style.cursor = 'pointer';
+    var topToShowAllSpan = document.createElement('span');
+    topToShowAllSpan.style.cssText = 'font-size: 0.85rem;';
+    topToShowAllSpan.textContent = 'All';
+    topToShowInputContainer.appendChild(topToShowInput);
+    topToShowInputContainer.appendChild(topToShowAllCheckbox);
+    topToShowInputContainer.appendChild(topToShowAllSpan);
+    topToShowContainer.appendChild(topToShowInputContainer);
+
+    // Build "Full Names" container
+    var topNamesContainer = document.createElement('div');
+    topNamesContainer.style.cssText = 'min-width: 140px;';
+    var topNamesLabel = document.createElement('label');
+    topNamesLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
+    topNamesLabel.textContent = 'Full Names';
+    topNamesContainer.appendChild(topNamesLabel);
+
+    var topNamesInputContainer = document.createElement('div');
+    topNamesInputContainer.style.cssText = 'display: flex; align-items: center; gap: 6px;';
+    var topNamesInput = document.createElement('input');
+    topNamesInput.type = 'number';
+    topNamesInput.className = 'sharing-top-names';
+    topNamesInput.value = topNamesVal;
+    topNamesInput.min = '0';
+    topNamesInput.disabled = topNamesIsAll;
+    topNamesInput.style.cssText = 'width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;';
+    var topNamesAllCheckbox = document.createElement('input');
+    topNamesAllCheckbox.type = 'checkbox';
+    topNamesAllCheckbox.className = 'sharing-top-names-all';
+    topNamesAllCheckbox.checked = topNamesIsAll;
+    topNamesAllCheckbox.style.cursor = 'pointer';
+    var topNamesAllSpan = document.createElement('span');
+    topNamesAllSpan.style.cssText = 'font-size: 0.85rem;';
+    topNamesAllSpan.textContent = 'All';
+    topNamesInputContainer.appendChild(topNamesInput);
+    topNamesInputContainer.appendChild(topNamesAllCheckbox);
+    topNamesInputContainer.appendChild(topNamesAllSpan);
+    topNamesContainer.appendChild(topNamesInputContainer);
+
+    // Build remove button
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'sharing-remove-btn';
+    removeBtn.style.cssText = 'margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;';
+    removeBtn.title = 'Remove';
+    removeBtn.textContent = '\u00D7';
+
+    // Append all elements to entryDiv
+    entryDiv.appendChild(tagContainer);
+    entryDiv.appendChild(topToShowContainer);
+    entryDiv.appendChild(topNamesContainer);
+    entryDiv.appendChild(removeBtn);
+
+    entriesContainer.appendChild(entryDiv);
+
+    // Initialize Tagify on the tag input (matching add_training_day.html style)
+    var tagifyInstance = null;
+    if (typeof Tagify !== 'undefined') {
+        tagifyInstance = new Tagify(tagInput, {
+            mode: 'select',
+            whitelist: whitelist,
+            enforceWhitelist: true,
+            dropdown: {
+                maxItems: 20,
+                enabled: 0,
+                closeOnSelect: true
+            },
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.length ? valuesArr[0].value : '';
+            }
+        });
+        tagifyInstance.DOM.scope.style.width = '160px';
+
+        tagifyInstance.on('change', function() {
+            entryDiv.dataset.tag = tagInput.value;
+            normalizeTagEntry(entryDiv);
+        });
+
+        // Store reference for cleanup on remove
+        entryDiv._tagify = tagifyInstance;
+    }
+
+    // Set up event listeners for checkboxes and validation
+    removeBtn.onclick = function() {
+        if (entryDiv._tagify) {
+            entryDiv._tagify.destroy();
+        }
+        entryDiv.remove();
+    };
+    if (tag) {
+        entryDiv.dataset.tag = tag;
+    }
+
+    topToShowAllCheckbox.onchange = function() {
+        topToShowInput.disabled = this.checked;
+        normalizeTagEntry(entryDiv);
+    };
+
+    topNamesAllCheckbox.onchange = function() {
+        topNamesInput.disabled = this.checked;
+        normalizeTagEntry(entryDiv);
+    };
+
+    topToShowInput.oninput = function() { normalizeTagEntry(entryDiv); };
+    topNamesInput.oninput = function() { normalizeTagEntry(entryDiv); };
+
+    normalizeTagEntry(entryDiv);
+}
+
+function getTagStudentCount(tag) {
+    if (!tag || !currentSharingTrainingDayId || !window.historicalStudentTags || !window.historicalStudentTags[currentSharingTrainingDayId]) {
+        return 0;
+    }
+    var trimmedTag = tag.trim();
+    if (!trimmedTag) {
+        return 0;
+    }
+    var count = 0;
+    Object.keys(window.historicalStudentTags[currentSharingTrainingDayId]).forEach(function(studentId) {
+        var studentTags = window.historicalStudentTags[currentSharingTrainingDayId][studentId];
+        if (studentTags && studentTags.indexOf(trimmedTag) !== -1) {
+            count++;
+        }
+    });
+    return count;
+}
+
+function getTagFromEntry(entryDiv) {
+    if (!entryDiv) return '';
+    if (entryDiv.dataset && entryDiv.dataset.tag) {
+        return entryDiv.dataset.tag;
+    }
+    var tagSelect = entryDiv.querySelector('.sharing-tag');
+    if (tagSelect && typeof tagSelect.value === 'string') {
+        return tagSelect.value.trim();
+    }
+    return '';
+}
+
+function normalizeTagEntry(entryDiv) {
+    var tag = getTagFromEntry(entryDiv);
+    if (!tag) {
+        return;
+    }
+    var studentCount = getTagStudentCount(tag);
+
+    var topToShowInput = entryDiv.querySelector('.sharing-top-to-show');
+    var topToShowAllCheckbox = entryDiv.querySelector('.sharing-top-to-show-all');
+    var topNamesInput = entryDiv.querySelector('.sharing-top-names');
+    var topNamesAllCheckbox = entryDiv.querySelector('.sharing-top-names-all');
+
+    // Cap top_to_show to student count
+    if (topToShowAllCheckbox.checked) {
+        topToShowInput.value = studentCount;
+    } else {
+        clampNonNegativeInput(topToShowInput);
+        var topToShowVal = parseInt(topToShowInput.value, 10);
+        if (isNaN(topToShowVal)) {
+            topToShowVal = 0;
+            topToShowInput.value = 0;
+        }
+        if (topToShowVal > studentCount) {
+            topToShowInput.value = studentCount;
+        }
+    }
+    topToShowInput.max = studentCount;
+
+    // Cap top_names to top_to_show
+    var parsedTopToShow = parseInt(topToShowInput.value, 10);
+    if (isNaN(parsedTopToShow)) {
+        parsedTopToShow = 0;
+    }
+    var maxNames = topToShowAllCheckbox.checked ? studentCount : parsedTopToShow;
+    if (topNamesAllCheckbox.checked) {
+        topNamesInput.value = maxNames;
+    } else {
+        clampNonNegativeInput(topNamesInput);
+        var topNamesVal = parseInt(topNamesInput.value, 10);
+        if (isNaN(topNamesVal)) {
+            topNamesVal = 0;
+            topNamesInput.value = 0;
+        }
+        if (topNamesVal > maxNames) {
+            topNamesInput.value = maxNames;
+        }
+    }
+    topNamesInput.max = maxNames;
+}
+
+function saveScoreboardSharing(){
+    if (!currentSharingTrainingDayId) return;
+
+    var sharingData = {};
+    var seenTags = {};
+    var hasDuplicate = false;
+
+    // Handle "everyone" option
+    var everyoneCheckbox = document.getElementById('shareWithEveryone');
+    if (everyoneCheckbox.checked) {
+        var topToShowAll = document.getElementById('everyoneTopToShowAll').checked;
+        var topNamesAll = document.getElementById('everyoneTopNamesAll').checked;
+        var topToShow = topToShowAll ? 'all' : parseInt(document.getElementById('everyoneTopToShow').value) || 0;
+        var topNames = topNamesAll ? 'all' : parseInt(document.getElementById('everyoneTopNames').value) || 0;
+        if (!topToShowAll && topToShow < 0) {
+            alert('Results to show cannot be negative.');
+            return;
+        }
+        if (!topNamesAll && topNames < 0) {
+            alert('Full names cannot be negative.');
+            return;
+        }
+
+        sharingData['__everyone__'] = {
+            top_to_show: topToShow,
+            top_names: topNames
+        };
+    }
+
+    // Handle tag entries
+    var entries = Array.from(document.querySelectorAll('#scoreboardSharingEntries .sharing-entry'));
+    for (var i = 0; i < entries.length; i++) {
+        var entry = entries[i];
+        normalizeTagEntry(entry);
+        var tagInput = entry.querySelector('input[data-sharing-tag-input="true"]');
+        var tag = '';
+        if (tagInput && typeof tagInput.value === 'string') {
+            tag = tagInput.value.trim();
+        }
+
+        var topToShowAllCheckbox = entry.querySelector('.sharing-top-to-show-all');
+        var topNamesAllCheckbox = entry.querySelector('.sharing-top-names-all');
+        var topToShowInput = entry.querySelector('.sharing-top-to-show');
+        var topNamesInput = entry.querySelector('.sharing-top-names');
+
+        var topToShow = topToShowAllCheckbox.checked ? 'all' : parseInt(topToShowInput.value, 10);
+        var topNames = topNamesAllCheckbox.checked ? 'all' : parseInt(topNamesInput.value, 10);
+        if (!topToShowAllCheckbox.checked && topToShow < 0) {
+            alert('Results to show cannot be negative.');
+            return;
+        }
+        if (!topNamesAllCheckbox.checked && topNames < 0) {
+            alert('Full names cannot be negative.');
+            return;
+        }
+
+        if (tag) {
+            var normalized = tag.toLowerCase();
+            if (seenTags[normalized]) {
+                hasDuplicate = true;
+            } else {
+                seenTags[normalized] = true;
+                sharingData[tag] = {
+                    top_to_show: isNaN(topToShow) ? 0 : topToShow,
+                    top_names: isNaN(topNames) ? 0 : topNames
+                };
+            }
+        }
+    }
+
+    if (hasDuplicate) {
+        alert('Duplicate tags are not allowed.');
+        return;
+    }
+
+    // Send AJAX request
+    var formData = new FormData();
+    var xsrfEl = document.querySelector('input[name="_xsrf"]');
+    if (!xsrfEl) {
+        alert('Error: XSRF token not found. Please refresh the page.');
+        return;
+    }
+    formData.append('_xsrf', xsrfEl.value);
+    var sharingPayload = Object.keys(sharingData).length > 0 ? JSON.stringify(sharingData) : '';
+    formData.append('scoreboard_sharing', sharingPayload);
+
+    fetch('{{ url("training_program", training_program.id) }}/training_day/' + currentSharingTrainingDayId + '/scoreboard_sharing', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            return response.text().then(function() {
+                throw new Error('Server error: ' + response.status);
+            });
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            closeScoreboardSharingModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(function(error) {
+        alert('Error saving: ' + error.message);
+    });
+}
+
+// Close modal when clicking outside
+document.getElementById('scoreboardSharingModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeScoreboardSharingModal();
+    }
+});
 </script>
+
 {% endblock core %}
+

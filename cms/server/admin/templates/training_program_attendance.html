@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'fragments/info_alert.html' as info_alert %}
 
 {% block js_init %}
 // Initialize read-only filter tagify for training day types (no AJAX save)
@@ -37,22 +38,28 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
   <h1>Attendance: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
 </div>
 
-<div class="notification notification_info" style="margin-bottom: 15px;">
-  <strong>Note:</strong> This page shows attendance data from archived training days.
-  For active training day attendance and delay requests, go to the appropriate training day's attendance page.
-  {% if training_days_with_pending_delays %}
-  <br><br>
-  <strong>Training days with pending delay requests:</strong>
-  <ul style="margin: 5px 0 0 20px;">
-    {% for td_info in training_days_with_pending_delays %}
-    <li>
-      <a href="{{ url("contest", td_info.contest_id, "delays_and_extra_times") }}">{{ td_info.name }}</a>
-      <span class="unread unread-delay" style="margin-left: 5px;">{{ td_info.pending_count }}</span>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-</div>
+{{ info_alert.alert(
+    title="Attendance Data",
+    message="This page shows attendance data from archived training days. For active training day attendance and delay requests, go to the appropriate training day's attendance page.",
+    type="info"
+) }}
+
+{% if training_days_with_pending_delays %}
+{% set pending_items = [] %}
+{% for td_info in training_days_with_pending_delays %}
+{% set _ = pending_items.append({
+    'url': url("contest", td_info.contest_id, "delays_and_extra_times"),
+    'label': td_info.name,
+    'count': td_info.pending_count
+}) %}
+{% endfor %}
+{{ info_alert.alert(
+    title="Pending Delay Requests",
+    message="The following training days have pending delay requests that need attention:",
+    items=pending_items,
+    type="warning"
+) }}
+{% endif %}
 
 <form action="{{ url('training_program', training_program.id, 'attendance') }}" method="GET" class="tp-filter-card">
   <div class="tp-filter-group">

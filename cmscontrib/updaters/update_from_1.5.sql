@@ -763,4 +763,13 @@ ALTER TABLE public.training_days ALTER COLUMN training_day_types DROP DEFAULT;
 -- Add GIN index on training_day_types for efficient querying
 CREATE INDEX ix_training_days_training_day_types_gin ON public.training_days USING gin (training_day_types);
 
+-- Add scoreboard_sharing column to training_days for configuring scoreboard sharing with students
+-- Format: {"tag": {"top_names": X, "top_to_show": Y}, "__everyone__": {"top_names": X, "top_to_show": Y}, ...}
+-- - Keys are student tags that the scoreboard is shared with
+-- - "__everyone__" is a special key that applies to all students regardless of their tags
+-- - top_names: number of top students to show full names (others show rank only)
+-- - top_to_show: number of top students to show in the scoreboard results
+-- Eligibility to view is based on student_tags during the training (from ArchivedStudentRanking)
+ALTER TABLE public.training_days ADD COLUMN scoreboard_sharing jsonb;
+
 COMMIT;
