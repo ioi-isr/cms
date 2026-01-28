@@ -91,7 +91,7 @@
 </div>
 
 <script>
-var allStudentTags = {{ all_student_tags | tojson }};
+var allStudentTags = {{ all_student_tags | default([]) | tojson }};
 var groupRowIndex = 0;
 
 function addGroupRow() {
@@ -161,14 +161,14 @@ function addGroupRow() {
     removeBtn.type = 'button';
     removeBtn.className = 'tp-btn-remove';
     removeBtn.textContent = 'Remove';
-    removeBtn.onclick = function() { row.remove(); };
     actionsCell.appendChild(removeBtn);
     row.appendChild(actionsCell);
 
     tbody.appendChild(row);
 
+    var tagifyInstance = null;
     if (typeof Tagify !== 'undefined') {
-        var tagify = new Tagify(tagInput, {
+        tagifyInstance = new Tagify(tagInput, {
             mode: 'select',
             whitelist: allStudentTags,
             enforceWhitelist: true,
@@ -181,8 +181,15 @@ function addGroupRow() {
                 return valuesArr.length ? valuesArr[0].value : '';
             }
         });
-        tagify.DOM.scope.style.width = '160px';
+        tagifyInstance.DOM.scope.style.width = '160px';
     }
+
+    removeBtn.onclick = function() {
+        if (tagifyInstance) {
+            tagifyInstance.destroy();
+        }
+        row.remove();
+    };
 
     groupRowIndex++;
 }

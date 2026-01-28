@@ -377,8 +377,8 @@
 }
 
 .btn-icon-only:hover {
-    color: var(--tp-danger);
-    background: var(--tp-danger-light);
+    color: var(--tp-danger)  !important;
+    background: var(--tp-danger-light) !important;
 }
 
 /* Disabled state for both buttons and anchors */
@@ -424,15 +424,6 @@
 .tp-form-group select {
     width: 100%;
     box-sizing: border-box;
-}
-
-.tp-form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--tp-border);
 }
 
 /* ==========================================================================
@@ -1163,6 +1154,7 @@
     line-height: 1;
     white-space: nowrap;
     width: fit-content;
+    text-decoration: none;
 }
 
 .badge-training {
@@ -1173,7 +1165,6 @@
 
 .badge-training:hover {
     background: #dcfce7;
-    text-decoration: none;
 }
 
 .badge-archived {
@@ -2169,12 +2160,6 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 1200px) {
-    .tp-stats-row {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
 @media (max-width: 900px) {
     .tp-stats-row {
         grid-template-columns: 1fr;
@@ -2235,14 +2220,6 @@
     border-radius: 12px;
     padding: 32px;
     box-shadow: var(--tp-shadow-sm);
-}
-
-.tp-form-group {
-    margin-bottom: 24px;
-}
-
-.tp-form-group:last-child {
-    margin-bottom: 0;
 }
 
 .tp-form-label {
@@ -2406,7 +2383,7 @@
 
 .tp-groups-table th {
     text-align: left;
-    padding: 10px 12px;
+    padding: 8px 8px;
     background: var(--tp-bg-light);
     border-bottom: 2px solid var(--tp-border);
     font-weight: 600;
@@ -2415,7 +2392,7 @@
 }
 
 .tp-groups-table td {
-    padding: 10px 12px;
+    padding: 8px 6px;
     border-bottom: 1px solid var(--tp-border);
     vertical-align: middle;
 }
@@ -2434,13 +2411,15 @@
 }
 
 .tp-groups-table input[type="number"] {
-    width: 50px;
+    width: 40px;
+    padding: 8px 6px;
 }
 
 .tp-groups-table .tp-group-duration {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
+    white-space: nowrap;
 }
 
 .tp-groups-table .tp-group-duration span {
@@ -2455,7 +2434,7 @@
 }
 
 .tp-btn-remove {
-    padding: 6px 12px;
+    padding: 4px 10px;
     background: var(--tp-danger-light);
     color: var(--tp-danger);
     border: none;

@@ -517,6 +517,9 @@ class TrainingProgramTasksHandler(BaseHandler):
             if operation.startswith("detach_"):
                 task_id = operation.split("_", 1)[1]
                 task = self.safe_get_item(Task, task_id)
+                # Validate task belongs to this training program
+                if task.contest != managing_contest:
+                    raise ValueError("Task does not belong to this training program")
                 self._detach_task_from_training_day(task)
                 if self.try_commit():
                     self.service.proxy_service.reinitialize()
@@ -564,16 +567,40 @@ class TrainingProgramTasksHandler(BaseHandler):
         if received_ids != expected_ids:
             raise ValueError("Reorder data must include each task exactly once")
 
-        new_nums = [item.get("new_num") for item in order_list]
-        if len(set(new_nums)) != len(new_nums):
-            raise ValueError("Duplicate task numbers in reorder data")
+        # Validate new_num for each entry
+        num_tasks = len(contest.tasks)
+        expected_nums = set(range(1, num_tasks + 1))
+        received_nums = set()
+
+        for item in order_list:
+            if "new_num" not in item:
+                raise ValueError("Missing 'new_num' in reorder data entry")
+            raw_num = item["new_num"]
+            try:
+                new_num = int(raw_num)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Invalid 'new_num' value: {raw_num!r} is not an integer"
+                )
+            if new_num < 1 or new_num > num_tasks:
+                raise ValueError(
+                    f"'new_num' {new_num} is out of range [1, {num_tasks}]"
+                )
+            received_nums.add(new_num)
+
+        if received_nums != expected_nums:
+            raise ValueError(
+                "Reorder data must include each task number exactly once "
+                f"(expected {sorted(expected_nums)}, got {sorted(received_nums)})"
+            )
 
         # First, set all task nums to None to avoid unique constraint issues
         task_updates = []
         for item in order_list:
             task = self.safe_get_item(Task, item["task_id"])
+            new_num = int(item["new_num"])
             if task.contest == contest:
-                task_updates.append((task, item["new_num"]))
+                task_updates.append((task, new_num))
                 task.num = None
         self.sql_session.flush()
 

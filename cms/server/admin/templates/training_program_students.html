@@ -105,8 +105,8 @@
     {% endif %}
 
     <!-- Students Table -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
-        <h2 style="font-size: 1.25rem; color: #1e293b; font-weight: 700; margin: 0;">All Students ({{ training_program.students|length }})</h2>
+    <div class="tp-section-header">
+        <h2>All Students ({{ training_program.students|length }})</h2>
     </div>
 
     <form action="{{ url("training_program", training_program.id, "students") }}" method="POST" id="students-form">

@@ -166,7 +166,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     <tr data-training-day-id="{{ td.id }}"
                         data-name="{{ td.contest.name }}"
                         data-start="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 0 }}"
-                        draggable="true">
+                        {% if admin.permission_all %}draggable="true"{% endif %}>
                         <!-- Drag handle -->
                         <td class="grip-cell">
                             <div class="grip-handle" title="Drag to reorder">
@@ -449,6 +449,10 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 <script>
 // Drag and drop reordering for active training days
 (function() {
+    // Only enable drag-and-drop for users with permission_all
+    var canReorder = {{ 'true' if admin.permission_all else 'false' }};
+    if (!canReorder) return;
+
     var tbody = document.getElementById('training-days-tbody');
     if (!tbody) return;
 
@@ -653,11 +657,23 @@ function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayNa
     }
 
     var entriesContainer = document.getElementById('scoreboardSharingEntries');
+
+    // Destroy existing Tagify instances before clearing to prevent memory leaks
+    entriesContainer.querySelectorAll('.scoreboard-sharing-entry').forEach(function(entryDiv) {
+        if (entryDiv._tagify) {
+            entryDiv._tagify.destroy();
+        }
+    });
     entriesContainer.innerHTML = '';
 
     // Handle "__everyone__" option
     var everyoneCheckbox = document.getElementById('shareWithEveryone');
     var everyoneSettings = document.getElementById('everyoneSettings');
+    var everyoneTopToShowInput = document.getElementById('everyoneTopToShow');
+    var everyoneTopNamesInput = document.getElementById('everyoneTopNames');
+    var everyoneTopToShowAllCheckbox = document.getElementById('everyoneTopToShowAll');
+    var everyoneTopNamesAllCheckbox = document.getElementById('everyoneTopNamesAll');
+
     if (currentSharing && currentSharing['__everyone__']) {
         everyoneCheckbox.checked = true;
         everyoneSettings.style.display = 'block';
@@ -666,28 +682,29 @@ function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayNa
         // Set top_to_show
         var topToShow = everyoneData.top_to_show;
         if (topToShow === 'all') {
-            document.getElementById('everyoneTopToShowAll').checked = true;
-            document.getElementById('everyoneTopToShow').disabled = true;
-            document.getElementById('everyoneTopToShow').value = totalStudentsForTrainingDay;
+            everyoneTopToShowAllCheckbox.checked = true;
+            everyoneTopToShowInput.disabled = true;
+            everyoneTopToShowInput.value = totalStudentsForTrainingDay;
         } else {
-            document.getElementById('everyoneTopToShowAll').checked = false;
-            document.getElementById('everyoneTopToShow').disabled = false;
-            var topToShowValue = Number.isFinite(topToShow) ? topToShow : 0;
-            document.getElementById('everyoneTopToShow').value = topToShowValue;
+            everyoneTopToShowAllCheckbox.checked = false;
+            everyoneTopToShowInput.disabled = false;
+            everyoneTopToShowInput.value = Number.isFinite(topToShow) ? topToShow : 0;
         }
 
         // Set top_names
         var topNames = everyoneData.top_names;
         if (topNames === 'all') {
-            document.getElementById('everyoneTopNamesAll').checked = true;
-            document.getElementById('everyoneTopNames').disabled = true;
-            document.getElementById('everyoneTopNames').value = totalStudentsForTrainingDay;
+            everyoneTopNamesAllCheckbox.checked = true;
+            everyoneTopNamesInput.disabled = true;
+            everyoneTopNamesInput.value = totalStudentsForTrainingDay;
         } else {
-            document.getElementById('everyoneTopNamesAll').checked = false;
-            document.getElementById('everyoneTopNames').disabled = false;
-            var topNamesValue = Number.isFinite(topNames) ? topNames : 0;
-            document.getElementById('everyoneTopNames').value = topNamesValue;
+            everyoneTopNamesAllCheckbox.checked = false;
+            everyoneTopNamesInput.disabled = false;
+            everyoneTopNamesInput.value = Number.isFinite(topNames) ? topNames : 0;
         }
+
+        // Clamp values to valid ranges
+        validateEveryoneFields();
     } else {
         everyoneCheckbox.checked = false;
         everyoneSettings.style.display = 'none';
@@ -820,23 +837,19 @@ function addSharingEntry(tag, topNames, topToShow) {
     var topToShowVal = topToShowIsAll ? tagStudentCount : topToShow;
     var topNamesVal = topNamesIsAll ? tagStudentCount : topNames;
 
-    // Build select element using DOM APIs to prevent HTML injection
+    // Build text input for Tagify (matching add_training_day.html style)
     var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
         tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
 
-    var tagSelect = document.createElement('select');
-    tagSelect.className = 'sharing-tag searchable-select';
-    tagSelect.setAttribute('data-sharing-tag-input', 'true');
-
-    whitelist.forEach(function(t) {
-        var option = document.createElement('option');
-        option.value = t;
-        option.textContent = t;
-        if (t === tag) {
-            option.selected = true;
-        }
-        tagSelect.appendChild(option);
-    });
+    var tagInput = document.createElement('input');
+    tagInput.type = 'text';
+    tagInput.className = 'sharing-tag';
+    tagInput.setAttribute('data-sharing-tag-input', 'true');
+    tagInput.placeholder = 'Select a tag';
+    tagInput.style.width = '160px';
+    if (tag) {
+        tagInput.value = tag;
+    }
 
     // Build tag container
     var tagContainer = document.createElement('div');
@@ -845,7 +858,7 @@ function addSharingEntry(tag, topNames, topToShow) {
     tagLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
     tagLabel.textContent = 'Tag';
     tagContainer.appendChild(tagLabel);
-    tagContainer.appendChild(tagSelect);
+    tagContainer.appendChild(tagInput);
 
     // Build "Results to Show" container
     var topToShowContainer = document.createElement('div');
@@ -923,25 +936,37 @@ function addSharingEntry(tag, topNames, topToShow) {
 
     entriesContainer.appendChild(entryDiv);
 
-    // Initialize TomSelect on the tag select for searchable dropdown
-    if (typeof TomSelect !== 'undefined') {
-        var tomSelectInstance = new TomSelect(tagSelect, {
-            allowEmptyOption: true,
-            create: false,
-            plugins: ['clear_button'],
-            onChange: function(value) {
-                entryDiv.dataset.tag = value;
-                normalizeTagEntry(entryDiv);
+    // Initialize Tagify on the tag input (matching add_training_day.html style)
+    var tagifyInstance = null;
+    if (typeof Tagify !== 'undefined') {
+        tagifyInstance = new Tagify(tagInput, {
+            mode: 'select',
+            whitelist: whitelist,
+            enforceWhitelist: true,
+            dropdown: {
+                maxItems: 20,
+                enabled: 0,
+                closeOnSelect: true
+            },
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.length ? valuesArr[0].value : '';
             }
         });
+        tagifyInstance.DOM.scope.style.width = '160px';
+
+        tagifyInstance.on('change', function() {
+            entryDiv.dataset.tag = tagInput.value;
+            normalizeTagEntry(entryDiv);
+        });
+
         // Store reference for cleanup on remove
-        entryDiv._tomSelect = tomSelectInstance;
+        entryDiv._tagify = tagifyInstance;
     }
 
     // Set up event listeners for checkboxes and validation
     removeBtn.onclick = function() {
-        if (entryDiv._tomSelect) {
-            entryDiv._tomSelect.destroy();
+        if (entryDiv._tagify) {
+            entryDiv._tagify.destroy();
         }
         entryDiv.remove();
     };
@@ -1078,10 +1103,10 @@ function saveScoreboardSharing(){
     var entries = document.querySelectorAll('#scoreboardSharingEntries .sharing-entry');
     entries.forEach(function(entry) {
         normalizeTagEntry(entry);
-        var tagSelect = entry.querySelector('select[data-sharing-tag-input="true"]');
+        var tagInput = entry.querySelector('input[data-sharing-tag-input="true"]');
         var tag = '';
-        if (tagSelect && typeof tagSelect.value === 'string') {
-            tag = tagSelect.value.trim();
+        if (tagInput && typeof tagInput.value === 'string') {
+            tag = tagInput.value.trim();
         }
 
         var topToShowAllCheckbox = entry.querySelector('.sharing-top-to-show-all');
