@@ -193,7 +193,8 @@ from .trainingday import \
     AddTrainingDayGroupHandler, \
     UpdateTrainingDayGroupsHandler, \
     RemoveTrainingDayGroupHandler, \
-    TrainingDayTypesHandler
+    TrainingDayTypesHandler, \
+    ScoreboardSharingHandler
 from .student import \
     TrainingProgramStudentsHandler, \
     AddTrainingProgramStudentHandler, \
@@ -399,6 +400,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/training_days/add", AddTrainingDayHandler),
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/remove", RemoveTrainingDayHandler),
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/types", TrainingDayTypesHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/scoreboard_sharing", ScoreboardSharingHandler),
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/archive", ArchiveTrainingDayHandler),
     (r"/training_program/([0-9]+)/attendance", TrainingProgramAttendanceHandler),
     (r"/training_program/([0-9]+)/combined_ranking", TrainingProgramCombinedRankingHandler),
