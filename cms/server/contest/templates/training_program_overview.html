@@ -107,7 +107,7 @@
     {% set clamped_percentage = [clamped_percentage, 100]|min %}
     <div class="stats-content">
         <div class="stats-percentage">
-            <div class="stats-percentage-value">{{ "%.1f"|format(percentage) }}%</div>
+            <div class="stats-percentage-value">{{ "%.1f"|format(clamped_percentage) }}%</div>
             <div class="stats-percentage-label">{% trans %}Overall Completion Rate{% endtrans %}</div>
         </div>
         <div class="stats-score-section">

@@ -54,7 +54,7 @@
                     {% set is_archived = t.training_day is not none and t.training_day.contest is none %}
                     <tr data-task-id="{{ t.id }}"
                         data-name="{{ t.name }}"
-                        data-training-day="{{ t.training_day.contest.name if (t.training_day and t.training_day.contest) else (t.training_day.name if t.training_day else '') }}"
+                        data-training-day="{{ t.training_day.contest.name if (t.training_day and t.training_day.contest) else ('(archived)' if (t.training_day and is_archived) else (t.training_day.name if t.training_day else '')) }}"
                         data-is-archived="{{ 'true' if is_archived else 'false' }}"
                         draggable="true">
                         <!-- Drag handle -->
@@ -120,7 +120,7 @@
                                     data-task-id="{{ t.id }}"
                                     data-task-name="{{ t.name | e }}"
                                     data-has-training-day="{{ 'true' if t.training_day else 'false' }}"
-                                    data-training-day-name="{% if t.training_day and t.training_day.contest %}{{ t.training_day.contest.description | e }}{% elif t.training_day %}{{ (t.training_day.description or t.training_day.name or 'Archived') | e }}{% else %}{% endif %}"
+                                    data-training-day-name="{% if t.training_day and t.training_day.contest %}{{ (t.training_day.contest.description or t.training_day.contest.name) | e }}{% elif t.training_day %}{{ (t.training_day.description or t.training_day.name or 'Archived') | e }}{% else %}{% endif %}"
                                     data-is-active="{{ 'true' if (t.training_day and t.training_day.contest) else 'false' }}"
                                     {% if not admin.permission_all %}disabled{% endif %}
                                     title="Remove from program">
