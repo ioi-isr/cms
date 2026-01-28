@@ -23,6 +23,7 @@ with custom timing configurations.
 """
 
 from datetime import datetime as dt, timedelta
+import json
 
 import tornado.web
 
@@ -156,9 +157,7 @@ def validate_group_times_within_contest(
 
 class TrainingProgramTrainingDaysHandler(BaseHandler):
     """List and manage training days in a training program."""
-    REMOVE = "Remove"
-    MOVE_UP = "up by 1"
-    MOVE_DOWN = "down by 1"
+    REORDER = "reorder"
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
@@ -176,59 +175,79 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
 
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
 
-        try:
-            training_day_id: str = self.get_argument("training_day_id")
-            operation: str = self.get_argument("operation")
-            assert operation in (
-                self.REMOVE,
-                self.MOVE_UP,
-                self.MOVE_DOWN,
-            ), "Please select a valid operation"
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
-            return
+        operation: str = self.get_argument("operation", "")
 
-        training_day = self.safe_get_item(TrainingDay, training_day_id)
+        if operation == self.REORDER:
+            try:
+                reorder_data = self.get_argument("reorder_data", "")
+                if not reorder_data:
+                    raise ValueError("No reorder data provided")
 
-        if training_day.training_program_id != training_program.id:
-            self.service.add_notification(
-                make_datetime(), "Invalid training day", "Training day does not belong to this program")
-            self.redirect(fallback_page)
-            return
+                order_list = json.loads(reorder_data)
 
-        if operation == self.REMOVE:
-            asking_page = self.url(
-                "training_program", training_program_id,
-                "training_day", training_day_id, "remove"
-            )
-            self.redirect(asking_page)
-            return
+                if not isinstance(order_list, list):
+                    raise ValueError("Reorder data must be a list")
 
-        elif operation == self.MOVE_UP:
-            training_day2 = self.sql_session.query(TrainingDay)\
-                .filter(TrainingDay.training_program == training_program)\
-                .filter(TrainingDay.position == training_day.position - 1)\
-                .first()
+                active_training_days = [
+                    td for td in training_program.training_days
+                    if td.contest is not None
+                ]
+                td_by_id = {str(td.id): td for td in active_training_days}
 
-            if training_day2 is not None:
-                tmp_a, tmp_b = training_day.position, training_day2.position
-                training_day.position, training_day2.position = None, None
+                # Validate that order_list contains each active td id exactly once
+                expected_ids = set(td_by_id.keys())
+                received_ids = set()
+                for item in order_list:
+                    td_id = str(item.get("training_day_id", ""))
+                    if td_id in received_ids:
+                        raise ValueError(f"Duplicate training day id: {td_id}")
+                    received_ids.add(td_id)
+
+                if received_ids != expected_ids:
+                    missing = expected_ids - received_ids
+                    extra = received_ids - expected_ids
+                    raise ValueError(
+                        f"Reorder data mismatch. Missing: {missing}, Extra: {extra}"
+                    )
+
+                # Validate that new_position values form a complete 0-based permutation
+                num_active = len(active_training_days)
+                expected_positions = set(range(num_active))
+                received_positions = set()
+                for item in order_list:
+                    new_pos = int(item.get("new_position", -1))
+                    if new_pos < 0 or new_pos >= num_active:
+                        raise ValueError(
+                            f"Position {new_pos} out of range [0, {num_active - 1}]"
+                        )
+                    if new_pos in received_positions:
+                        raise ValueError(f"Duplicate position: {new_pos}")
+                    received_positions.add(new_pos)
+
+                if received_positions != expected_positions:
+                    raise ValueError(
+                        f"Positions must be 0 to {num_active - 1}, "
+                        f"got {sorted(received_positions)}"
+                    )
+
+                # Only clear positions for active training days
+                for td in active_training_days:
+                    td.position = None
                 self.sql_session.flush()
-                training_day.position, training_day2.position = tmp_b, tmp_a
 
-        elif operation == self.MOVE_DOWN:
-            training_day2 = self.sql_session.query(TrainingDay)\
-                .filter(TrainingDay.training_program == training_program)\
-                .filter(TrainingDay.position == training_day.position + 1)\
-                .first()
-
-            if training_day2 is not None:
-                tmp_a, tmp_b = training_day.position, training_day2.position
-                training_day.position, training_day2.position = None, None
+                # Apply the new positions
+                for item in order_list:
+                    td_id = str(item["training_day_id"])
+                    new_pos = int(item["new_position"])
+                    td_by_id[td_id].position = new_pos
                 self.sql_session.flush()
-                training_day.position, training_day2.position = tmp_b, tmp_a
+
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(), "Reorder failed", repr(error)
+                )
+                self.redirect(fallback_page)
+                return
 
         self.try_commit()
         self.redirect(fallback_page)
@@ -685,6 +704,114 @@ class TrainingDayTypesHandler(BaseHandler):
                 self.set_status(500)
                 self.write({"error": "Failed to save"})
 
+        except Exception as error:
+            self.set_status(400)
+            self.write({"error": str(error)})
+
+
+class ScoreboardSharingHandler(BaseHandler):
+    """Handler for updating scoreboard sharing settings for archived training days.
+
+    The scoreboard_sharing format is:
+    {
+        "tag_name": {
+            "top_names": int or "all",  # How many top students show full names
+            "top_to_show": int or "all"  # How many students to show in total
+        },
+        ...
+        "__everyone__": {  # Special key for sharing with all students
+            "top_names": int or "all",
+            "top_to_show": int or "all"
+        }
+    }
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, training_day_id: str):
+        self.set_header("Content-Type", "application/json")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            self.set_status(404)
+            self.write({"error": "Training day does not belong to this program"})
+            return
+
+        # Only allow for archived training days
+        if training_day.contest is not None:
+            self.set_status(400)
+            self.write({"error": "Scoreboard sharing is only available for archived training days"})
+            return
+
+        try:
+            sharing_data_str = self.get_argument("scoreboard_sharing", "")
+
+            if not sharing_data_str or sharing_data_str.strip() == "":
+                # Clear sharing settings
+                training_day.scoreboard_sharing = None
+            else:
+                sharing_data = json.loads(sharing_data_str)
+
+                # Validate the format
+                if not isinstance(sharing_data, dict):
+                    raise ValueError("Invalid format: expected object")
+
+                seen_tags: set[str] = set()
+                for tag, settings in sharing_data.items():
+                    # Allow special "__everyone__" key
+                    if tag == "__everyone__":
+                        normalized_tag = tag
+                    else:
+                        normalized_tag = tag.strip()
+                        if not normalized_tag:
+                            raise ValueError("Tag cannot be empty")
+                        if normalized_tag != tag:
+                            raise ValueError(f"Invalid tag '{tag}': remove leading/trailing spaces")
+
+                    if normalized_tag in seen_tags:
+                        raise ValueError(f"Duplicate tag '{tag}'")
+                    seen_tags.add(normalized_tag)
+
+                    if not isinstance(settings, dict):
+                        raise ValueError(f"Invalid settings for tag '{tag}'")
+
+                    # Validate top_names (required)
+                    if "top_names" not in settings:
+                        raise ValueError(f"Missing 'top_names' for tag '{tag}'")
+                    top_names = settings["top_names"]
+                    if top_names != "all":
+                        if not isinstance(top_names, int) or top_names < 0:
+                            raise ValueError(f"Invalid 'top_names' for tag '{tag}': must be non-negative integer or 'all'")
+
+                    # Validate top_to_show (optional, defaults to "all")
+                    top_to_show = settings.get("top_to_show", "all")
+                    if top_to_show != "all":
+                        if not isinstance(top_to_show, int) or top_to_show < 0:
+                            raise ValueError(f"Invalid 'top_to_show' for tag '{tag}': must be non-negative integer or 'all'")
+
+                    # Validate top_names <= top_to_show when both are integers
+                    if top_names != "all" and top_to_show != "all":
+                        if top_names > top_to_show:
+                            raise ValueError(
+                                f"Invalid settings for tag '{tag}': top_names ({top_names}) "
+                                f"cannot exceed top_to_show ({top_to_show})"
+                            )
+
+                training_day.scoreboard_sharing = sharing_data
+
+            if self.try_commit():
+                self.write({
+                    "success": True,
+                    "scoreboard_sharing": training_day.scoreboard_sharing
+                })
+            else:
+                self.set_status(500)
+                self.write({"error": "Failed to save"})
+
+        except json.JSONDecodeError as error:
+            self.set_status(400)
+            self.write({"error": f"Invalid JSON: {str(error)}"})
         except Exception as error:
             self.set_status(400)
             self.write({"error": str(error)})

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
+{% import 'fragments/info_alert.html' as info_alert %}
 
 {% block js_init %}
 {% if training_program is defined or is_training_day %}
@@ -36,10 +37,11 @@ inputs.forEach(function(input) {
 </div>
 
 {% if training_program is defined %}
-<div class="notification notification_info" style="margin-bottom: 15px;">
-  <strong>Note:</strong> This page only handles announcements for the training program.
-  For training day announcements, go to the appropriate training day's announcements page.
-</div>
+{{ info_alert.alert(
+    title="Training Program Announcements",
+    message="This page only handles announcements for the training program. For training day announcements, go to the appropriate training day's announcements page.",
+    type="info"
+) }}
 {% endif %}
 
 <h2 id="title_announcements" class="toggling_on">Announcements</h2>
