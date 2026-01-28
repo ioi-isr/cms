@@ -467,10 +467,17 @@ class ScoreboardDataHandler(ContestHandler):
             self.write({"error": "Training program not found"})
             return
 
-        # Get the training day
+        # Get the training day - validate training_day_id safely
+        try:
+            training_day_id_int = int(training_day_id)
+        except (TypeError, ValueError):
+            self.set_status(404)
+            self.write({"error": "Invalid training day ID"})
+            return
+
         training_day = (
             self.sql_session.query(TrainingDay)
-            .filter(TrainingDay.id == int(training_day_id))
+            .filter(TrainingDay.id == training_day_id_int)
             .filter(TrainingDay.training_program_id == training_program.id)
             .first()
         )

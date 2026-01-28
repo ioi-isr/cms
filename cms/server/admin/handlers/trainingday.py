@@ -178,7 +178,6 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
         operation: str = self.get_argument("operation", "")
 
         if operation == self.REORDER:
-            import json
             try:
                 reorder_data = self.get_argument("reorder_data", "")
                 if not reorder_data:
@@ -790,6 +789,14 @@ class ScoreboardSharingHandler(BaseHandler):
                     if top_to_show != "all":
                         if not isinstance(top_to_show, int) or top_to_show < 0:
                             raise ValueError(f"Invalid 'top_to_show' for tag '{tag}': must be non-negative integer or 'all'")
+
+                    # Validate top_names <= top_to_show when both are integers
+                    if top_names != "all" and top_to_show != "all":
+                        if top_names > top_to_show:
+                            raise ValueError(
+                                f"Invalid settings for tag '{tag}': top_names ({top_names}) "
+                                f"cannot exceed top_to_show ({top_to_show})"
+                            )
 
                 training_day.scoreboard_sharing = sharing_data
 

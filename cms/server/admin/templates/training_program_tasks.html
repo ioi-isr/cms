@@ -301,11 +301,18 @@ document.getElementById('remove-task-modal').addEventListener('click', function(
     }
 
     function saveNewOrder() {
+        var rows = Array.from(tbody.querySelectorAll('tr[data-task-id]'));
+        // Skip confirmation if order hasn't changed
+        if (originalOrder &&
+            rows.length === originalOrder.length &&
+            rows.every(function(row, i) { return row === originalOrder[i]; })) {
+            originalOrder = null;
+            return;
+        }
         if (!confirm('Save the new task order?')) {
             restoreOriginalOrder();
             return;
         }
-        var rows = tbody.querySelectorAll('tr[data-task-id]');
         var order = [];
         rows.forEach(function(row, index) {
             order.push({

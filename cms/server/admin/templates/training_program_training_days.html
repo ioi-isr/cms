@@ -533,12 +533,15 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         var reorderInput = document.getElementById('reorder-data');
         reorderInput.value = JSON.stringify(order);
 
-        // Create a hidden operation input
-        var operationInput = document.createElement('input');
-        operationInput.type = 'hidden';
-        operationInput.name = 'operation';
+        // Check for existing operation input and reuse or create new
+        var operationInput = form.querySelector('input[name="operation"]');
+        if (!operationInput) {
+            operationInput = document.createElement('input');
+            operationInput.type = 'hidden';
+            operationInput.name = 'operation';
+            form.appendChild(operationInput);
+        }
         operationInput.value = 'reorder';
-        form.appendChild(operationInput);
 
         form.submit();
     }

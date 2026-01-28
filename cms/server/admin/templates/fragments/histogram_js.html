@@ -8,11 +8,13 @@ function initHistogramModal() {
     if (!histogramModal) return;
 
     // Initialize tagify for histogram filter
+    // Guard allStudentTags to prevent ReferenceError when undefined
     var histogramTagsInput = document.getElementById('histogramTagsFilter');
+    var allStudentTagsData = (typeof allStudentTags !== 'undefined') ? allStudentTags : [];
     if (histogramTagsInput && typeof Tagify !== 'undefined') {
         histogramTagify = new Tagify(histogramTagsInput, {
             delimiters: ",",
-            whitelist: allStudentTags,
+            whitelist: allStudentTagsData,
             enforceWhitelist: true,
             editTags: false,
             dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
