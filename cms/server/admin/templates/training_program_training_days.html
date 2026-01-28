@@ -515,11 +515,17 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     });
 
     function saveNewOrder() {
+        var rows = Array.from(tbody.querySelectorAll('tr[data-training-day-id]'));
+        if (originalOrder &&
+            rows.length === originalOrder.length &&
+            rows.every(function(row, i) { return row === originalOrder[i]; })) {
+            originalOrder = null;
+            return;
+        }
         if (!confirm('Save the new training day order?')) {
             restoreOriginalOrder();
             return;
         }
-        var rows = tbody.querySelectorAll('tr[data-training-day-id]');
         var order = [];
         rows.forEach(function(row, index) {
             order.push({
@@ -1152,5 +1158,4 @@ document.getElementById('scoreboardSharingModal').addEventListener('click', func
 </script>
 
 {% endblock core %}
-
 

@@ -618,7 +618,9 @@ class ScoreboardDataHandler(ContestHandler):
 
             student_name = "Unknown"
             if ranking.student and ranking.student.participation and ranking.student.participation.user:
-                student_name = ranking.student.participation.user.username
+                user = ranking.student.participation.user
+                full_name = " ".join(part for part in [user.first_name, user.last_name] if part)
+                student_name = full_name if full_name else user.username
 
             scoreboard_entries.append({
                 "student_id": ranking.student_id,

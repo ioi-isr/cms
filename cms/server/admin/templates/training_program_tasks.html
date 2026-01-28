@@ -246,8 +246,9 @@ document.getElementById('remove-task-modal').addEventListener('click', function(
     }
 
     tbody.addEventListener('dragstart', function(e) {
-        if (e.target.tagName !== 'TR') return;
-        draggedRow = e.target;
+        var targetRow = e.target.closest('tr');
+        if (!targetRow) return;
+        draggedRow = targetRow;
         originalOrder = Array.from(tbody.querySelectorAll('tr'));
         draggedRow.classList.add('dragging');
         e.dataTransfer.effectAllowed = 'move';
