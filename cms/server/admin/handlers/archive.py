@@ -21,11 +21,16 @@ These handlers manage the archiving of training days and display of
 attendance and combined ranking data across archived training days.
 """
 
+import io
 import json
+import re
 from datetime import datetime as dt, timedelta
 from urllib.parse import urlencode
 
 import tornado.web
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
 
 from cms.db import (
     Contest,
@@ -1188,3 +1193,191 @@ class UpdateAttendanceHandler(BaseHandler):
         else:
             self.set_status(500)
             self.write({"success": False, "error": "Failed to save changes"})
+
+
+class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
+    """Export attendance data to Excel format."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id: str):
+        """Export filtered attendance data to Excel."""
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+
+        (
+            start_date,
+            end_date,
+            training_day_types,
+            student_tags,
+            _,
+            archived_training_days,
+            current_tag_student_ids,
+        ) = self._get_filtered_context(training_program)
+
+        if not archived_training_days:
+            self.redirect(self.url(
+                "training_program", training_program_id, "attendance"
+            ))
+            return
+
+        attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
+        all_students: dict[int, Student] = {}
+
+        for td in archived_training_days:
+            for attendance in td.archived_attendances:
+                student_id = attendance.student_id
+                if student_tags and student_id not in current_tag_student_ids:
+                    continue
+                student = attendance.student
+                if student.participation and student.participation.hidden:
+                    continue
+                if student_id not in attendance_data:
+                    attendance_data[student_id] = {}
+                    all_students[student_id] = student
+                attendance_data[student_id][td.id] = attendance
+
+        sorted_students = sorted(
+            all_students.values(),
+            key=lambda s: s.participation.user.username if s.participation else ""
+        )
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Attendance"
+
+        header_font = Font(bold=True)
+        header_fill = PatternFill(
+            start_color="4472C4", end_color="4472C4", fill_type="solid"
+        )
+        header_font_white = Font(bold=True, color="FFFFFF")
+        subheader_fill = PatternFill(
+            start_color="D9E2F3", end_color="D9E2F3", fill_type="solid"
+        )
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+
+        subcolumns = ["Status", "Location", "Recorded", "Delay Reasons", "Comments"]
+        num_subcolumns = len(subcolumns)
+
+        ws.cell(row=1, column=1, value="Student")
+        ws.cell(row=1, column=1).font = header_font_white
+        ws.cell(row=1, column=1).fill = header_fill
+        ws.cell(row=1, column=1).border = thin_border
+        ws.cell(row=1, column=1).alignment = Alignment(
+            horizontal="center", vertical="center"
+        )
+        ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=1)
+
+        col = 2
+        for td in archived_training_days:
+            title = td.description or td.name or "Session"
+            if td.start_time:
+                title += f" ({td.start_time.strftime('%b %d')})"
+
+            ws.cell(row=1, column=col, value=title)
+            ws.cell(row=1, column=col).font = header_font_white
+            ws.cell(row=1, column=col).fill = header_fill
+            ws.cell(row=1, column=col).border = thin_border
+            ws.cell(row=1, column=col).alignment = Alignment(
+                horizontal="center", vertical="center"
+            )
+            ws.merge_cells(
+                start_row=1, start_column=col,
+                end_row=1, end_column=col + num_subcolumns - 1
+            )
+
+            for i, subcol_name in enumerate(subcolumns):
+                cell = ws.cell(row=2, column=col + i, value=subcol_name)
+                cell.font = header_font
+                cell.fill = subheader_fill
+                cell.border = thin_border
+                cell.alignment = Alignment(horizontal="center")
+
+            col += num_subcolumns
+
+        row = 3
+        for student in sorted_students:
+            if student.participation:
+                user = student.participation.user
+                student_name = f"{user.first_name} {user.last_name} ({user.username})"
+            else:
+                student_name = "(Unknown)"
+
+            ws.cell(row=row, column=1, value=student_name)
+            ws.cell(row=row, column=1).border = thin_border
+
+            col = 2
+            for td in archived_training_days:
+                att = attendance_data.get(student.id, {}).get(td.id)
+
+                if att:
+                    if att.status == "missed":
+                        if att.justified:
+                            status = "Justified Absent"
+                        else:
+                            status = "Missed"
+                    elif att.delay_time:
+                        delay_minutes = att.delay_time.total_seconds() / 60
+                        if delay_minutes < 60:
+                            status = f"Delayed ({delay_minutes:.0f}m)"
+                        else:
+                            status = f"Delayed ({delay_minutes / 60:.1f}h)"
+                    else:
+                        status = "On Time"
+
+                    location = ""
+                    if att.status != "missed" and att.location:
+                        location_map = {
+                            "class": "Class",
+                            "home": "Home",
+                            "both": "Both",
+                        }
+                        location = location_map.get(att.location, att.location)
+
+                    recorded = ""
+                    if att.status != "missed":
+                        recorded = "Yes" if att.recorded else "No"
+
+                    delay_reasons = att.delay_reasons or ""
+                    comment = att.comment or ""
+                else:
+                    status = ""
+                    location = ""
+                    recorded = ""
+                    delay_reasons = ""
+                    comment = ""
+
+                values = [status, location, recorded, delay_reasons, comment]
+                for i, value in enumerate(values):
+                    cell = ws.cell(row=row, column=col + i, value=value)
+                    cell.border = thin_border
+
+                col += num_subcolumns
+
+            row += 1
+
+        ws.column_dimensions["A"].width = 30
+        for col_idx in range(2, 2 + len(archived_training_days) * num_subcolumns):
+            col_letter = get_column_letter(col_idx)
+            ws.column_dimensions[col_letter].width = 15
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        program_slug = re.sub(r"[^A-Za-z0-9_-]+", "_", training_program.name)
+        filename = f"{program_slug}_attendance.xlsx"
+
+        self.set_header(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        self.set_header(
+            "Content-Disposition",
+            f'attachment; filename="{filename}"'
+        )
+        self.write(output.getvalue())
+        self.finish()
