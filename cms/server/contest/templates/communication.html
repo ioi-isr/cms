@@ -170,6 +170,8 @@
                 <span class="label label-warning">{% trans %}Pending{% endtrans %}</span>
             {% elif req.status == 'approved' %}
                 <span class="label label-success">{% trans %}Approved{% endtrans %}</span>
+            {% elif req.status == 'admin_configured' %}
+                <span class="label label-success">{% trans %}Admin Configured{% endtrans %}</span>
             {% elif req.status == 'rejected' %}
                 <span class="label label-important">{% trans %}Rejected{% endtrans %}</span>
                 {% if req.rejection_reason %}

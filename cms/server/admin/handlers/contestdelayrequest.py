@@ -37,7 +37,7 @@ import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation
 from cms.server.contest.phase_management import compute_actual_phase
-from cmscommon.datetime import make_datetime
+from cmscommon.datetime import make_datetime, local_to_utc, get_timezone
 from .base import BaseHandler, require_permission
 
 
@@ -414,9 +414,12 @@ class AdminConfiguredDelayHandler(BaseHandler):
 
         try:
             # Parse HTML5 datetime-local format: YYYY-MM-DDTHH:MM
-            requested_start_time = datetime.strptime(
+            # The time is entered in contest timezone, so convert to UTC
+            local_dt = datetime.strptime(
                 requested_start_time_str, "%Y-%m-%dT%H:%M"
             )
+            tz = get_timezone(None, self.contest)
+            requested_start_time = local_to_utc(local_dt, tz)
         except (ValueError, TypeError):
             self.service.add_notification(
                 make_datetime(),
@@ -426,6 +429,7 @@ class AdminConfiguredDelayHandler(BaseHandler):
             self.redirect(ref)
             return
 
+        # contest.start is already in UTC
         contest_start = self.contest.start
         delay_seconds = (requested_start_time - contest_start).total_seconds()
 
