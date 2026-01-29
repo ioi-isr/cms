@@ -1084,6 +1084,166 @@
     opacity: 0.7;
 }
 
+.justified-badge {
+    color: var(--tp-success);
+}
+
+.recorded-badge {
+    opacity: 0.8;
+}
+
+/* ==========================================================================
+   Attendance Modal Styles
+   ========================================================================== */
+
+.attendance-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.attendance-modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.attendance-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.attendance-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #374151;
+}
+
+.attendance-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    line-height: 1;
+}
+
+.attendance-modal-close:hover {
+    color: #374151;
+}
+
+.attendance-modal-body {
+    padding: 20px;
+}
+
+.attendance-modal-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+}
+
+.attendance-modal-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.attendance-modal-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.attendance-modal-row textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9em;
+    resize: none;
+    box-sizing: border-box;
+}
+
+.attendance-modal-row textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.attendance-modal-hint {
+    color: #6b7280;
+    font-size: 0.85em;
+    margin-top: 4px;
+}
+
+.attendance-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 20px;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 0 0 8px 8px;
+}
+
+.attendance-cell {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.attendance-cell:hover {
+    background-color: #f3f4f6 !important;
+}
+
+.attendance-badges {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.recorded-badge, .comment-indicator, .justified-badge {
+    font-size: 0.85em;
+    cursor: help;
+}
+
+.comment-indicator {
+    font-size: 1.1em !important;
+}
+
+.recorded-badge {
+    font-size: 1.1em !important;
+}
+
+.location-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.status-justified {
+    background-color: #fed7aa !important;
+    color: #92400e !important;
+}
+
 /* ==========================================================================
    Navigation & Header Components
    ========================================================================== */

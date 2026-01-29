@@ -212,7 +212,8 @@ from .archive import \
     TrainingProgramAttendanceHandler, \
     TrainingProgramCombinedRankingHandler, \
     TrainingProgramCombinedRankingHistoryHandler, \
-    TrainingProgramCombinedRankingDetailHandler
+    TrainingProgramCombinedRankingDetailHandler, \
+    UpdateAttendanceHandler
 
 
 HANDLERS = [
@@ -403,6 +404,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/scoreboard_sharing", ScoreboardSharingHandler),
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/archive", ArchiveTrainingDayHandler),
     (r"/training_program/([0-9]+)/attendance", TrainingProgramAttendanceHandler),
+    (r"/training_program/([0-9]+)/attendance/([0-9]+)", UpdateAttendanceHandler),
     (r"/training_program/([0-9]+)/combined_ranking", TrainingProgramCombinedRankingHandler),
     (r"/training_program/([0-9]+)/combined_ranking/history", TrainingProgramCombinedRankingHistoryHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/combined_ranking_detail", TrainingProgramCombinedRankingDetailHandler),
