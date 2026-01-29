@@ -55,6 +55,7 @@ from . import (
     UserTestExecutable,
     PrintJob,
     Session,
+    User,
 )
 
 
@@ -406,6 +407,10 @@ def enumerate_files(
         queries.append(contest_q.join(Contest.participations)
                        .join(Participation.printjobs)
                        .with_entities(PrintJob.digest))
+
+    if not skip_users:
+        queries.append(session.query(User.picture)
+                       .filter(User.picture.isnot(None)))
 
     # union(...).execute() would be executed outside of the session.
     digests = set(r[0] for r in session.execute(union(*queries)))
