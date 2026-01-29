@@ -1265,25 +1265,32 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
         subcolumns = ["Status", "Location", "Recorded", "Delay Reasons", "Comments"]
         num_subcolumns = len(subcolumns)
 
-        ws.cell(row=1, column=1, value="Student")
-        ws.cell(row=1, column=1).font = header_font_white
-        ws.cell(row=1, column=1).fill = PatternFill(
+        default_header_fill = PatternFill(
             start_color="4472C4", end_color="4472C4", fill_type="solid"
         )
+        default_subheader_fill = PatternFill(
+            start_color="D9E2F3", end_color="D9E2F3", fill_type="solid"
+        )
+
+        ws.cell(row=1, column=1, value="Student")
+        ws.cell(row=1, column=1).font = header_font_white
+        ws.cell(row=1, column=1).fill = default_header_fill
         ws.cell(row=1, column=1).border = thin_border
         ws.cell(row=1, column=1).alignment = Alignment(
             horizontal="center", vertical="center"
         )
+        ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=1)
 
-        ws.cell(row=2, column=1, value="Tags")
-        ws.cell(row=2, column=1).font = header_font
-        ws.cell(row=2, column=1).fill = PatternFill(
-            start_color="D9E2F3", end_color="D9E2F3", fill_type="solid"
+        ws.cell(row=1, column=2, value="Tags")
+        ws.cell(row=1, column=2).font = header_font_white
+        ws.cell(row=1, column=2).fill = default_header_fill
+        ws.cell(row=1, column=2).border = thin_border
+        ws.cell(row=1, column=2).alignment = Alignment(
+            horizontal="center", vertical="center"
         )
-        ws.cell(row=2, column=1).border = thin_border
-        ws.cell(row=2, column=1).alignment = Alignment(horizontal="center")
+        ws.merge_cells(start_row=1, start_column=2, end_row=2, end_column=2)
 
-        col = 2
+        col = 3
         for td_idx, td in enumerate(archived_training_days):
             title = td.description or td.name or "Session"
             if td.start_time:
@@ -1335,11 +1342,10 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
             tags_str = ""
             if student.student_tags:
                 tags_str = "; ".join(student.student_tags)
-            ws.cell(row=row + 1, column=1, value=tags_str)
-            ws.cell(row=row + 1, column=1).border = thin_border
-            ws.cell(row=row + 1, column=1).font = Font(italic=True, size=9)
+            ws.cell(row=row, column=2, value=tags_str)
+            ws.cell(row=row, column=2).border = thin_border
 
-            col = 2
+            col = 3
             for td in archived_training_days:
                 att = attendance_data.get(student.id, {}).get(td.id)
 
@@ -1384,17 +1390,14 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
                 for i, value in enumerate(values):
                     cell = ws.cell(row=row, column=col + i, value=value)
                     cell.border = thin_border
-                    ws.merge_cells(
-                        start_row=row, start_column=col + i,
-                        end_row=row + 1, end_column=col + i
-                    )
 
                 col += num_subcolumns
 
-            row += 2
+            row += 1
 
         ws.column_dimensions["A"].width = 30
-        for col_idx in range(2, 2 + len(archived_training_days) * num_subcolumns):
+        ws.column_dimensions["B"].width = 20
+        for col_idx in range(3, 3 + len(archived_training_days) * num_subcolumns):
             col_letter = get_column_letter(col_idx)
             ws.column_dimensions[col_letter].width = 15
 
