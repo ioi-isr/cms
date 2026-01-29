@@ -214,7 +214,8 @@ from .archive import \
     TrainingProgramCombinedRankingHistoryHandler, \
     TrainingProgramCombinedRankingDetailHandler, \
     UpdateAttendanceHandler, \
-    ExportAttendanceHandler
+    ExportAttendanceHandler, \
+    ExportCombinedRankingHandler
 
 
 HANDLERS = [
@@ -408,6 +409,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/attendance/export", ExportAttendanceHandler),
     (r"/training_program/([0-9]+)/attendance/([0-9]+)", UpdateAttendanceHandler),
     (r"/training_program/([0-9]+)/combined_ranking", TrainingProgramCombinedRankingHandler),
+    (r"/training_program/([0-9]+)/combined_ranking/export", ExportCombinedRankingHandler),
     (r"/training_program/([0-9]+)/combined_ranking/history", TrainingProgramCombinedRankingHistoryHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/combined_ranking_detail", TrainingProgramCombinedRankingDetailHandler),
     (r"/training_program/([0-9]+)/overview", TrainingProgramOverviewRedirectHandler),

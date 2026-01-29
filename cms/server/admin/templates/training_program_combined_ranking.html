@@ -235,6 +235,11 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
 </form>
 
 {% if archived_training_days %}
+<div style="margin-bottom: 15px; display: flex; justify-content: flex-end;">
+  <a href="{{ url('training_program', training_program.id, 'combined_ranking', 'export') }}{% if start_date or end_date or training_day_types or student_tags %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(', ') }}&{% endif %}{% if student_tags %}student_tags={{ student_tags | join(', ') }}&{% endif %}{% if student_tags_mode %}student_tags_mode={{ student_tags_mode }}{% endif %}{% endif %}" class="tp-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+    <span>&#128190;</span> Export to Excel
+  </a>
+</div>
 <div class="tp-table-container">
   <table class="ranking-table" id="ranking_table">
     <thead>
