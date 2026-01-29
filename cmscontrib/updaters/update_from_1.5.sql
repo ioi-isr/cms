@@ -663,7 +663,10 @@ CREATE TABLE public.archived_attendances (
     status character varying NOT NULL,
     location character varying,
     delay_time interval,
-    delay_reasons character varying
+    delay_reasons character varying,
+    justified boolean NOT NULL DEFAULT false,
+    comment character varying,
+    recorded boolean NOT NULL DEFAULT false
 );
 
 CREATE SEQUENCE public.archived_attendances_id_seq
