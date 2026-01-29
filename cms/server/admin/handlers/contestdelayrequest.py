@@ -24,7 +24,7 @@ import csv
 import io
 import logging
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import collections
 try:
@@ -37,7 +37,7 @@ import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation
 from cms.server.contest.phase_management import compute_actual_phase
-from cmscommon.datetime import make_datetime
+from cmscommon.datetime import make_datetime, local_to_utc, get_timezone
 from .base import BaseHandler, require_permission
 
 
@@ -379,4 +379,110 @@ class ResetAllIPAddressesHandler(BaseHandler):
                        self.current_user.name,
                        count)
         
+        self.redirect(ref)
+
+
+class AdminConfiguredDelayHandler(BaseHandler):
+    """Handler for admin to create and approve a delay request for a user.
+
+    This allows admins to set a delay for a student based on a configured
+    start time, creating a delay request with 'admin_configured' status.
+    """
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, contest_id):
+        ref = self.url("contest", contest_id, "delays_and_extra_times")
+
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        participation_id = self.get_argument("participation_id", "")
+        requested_start_time_str = self.get_argument("requested_start_time", "")
+        reason = self.get_argument("reason", "").strip()
+
+        if not participation_id or not requested_start_time_str or not reason:
+            self.service.add_notification(
+                make_datetime(),
+                "Missing fields",
+                "Please fill in all required fields: user, start time, and reason."
+            )
+            self.redirect(ref)
+            return
+
+        if len(reason) > DelayRequest.MAX_REASON_LENGTH:
+            self.service.add_notification(
+                make_datetime(),
+                "Reason too long",
+                f"The reason must be at most {DelayRequest.MAX_REASON_LENGTH} characters."
+            )
+            self.redirect(ref)
+            return
+
+        participation = self.safe_get_item(Participation, participation_id)
+
+        if participation.contest_id != self.contest.id:
+            raise tornado.web.HTTPError(404)
+
+        try:
+            # Parse HTML5 datetime-local format: YYYY-MM-DDTHH:MM
+            # The time is entered in contest timezone, so convert to UTC
+            local_dt = datetime.strptime(
+                requested_start_time_str, "%Y-%m-%dT%H:%M"
+            )
+            tz = get_timezone(None, self.contest)
+            requested_start_time = local_to_utc(local_dt, tz)
+        except Exception as e:
+            # Catch ValueError, TypeError, and pytz DST exceptions
+            # (AmbiguousTimeError, NonExistentTimeError)
+            logger.warning(
+                "Failed to parse admin-configured start time '%s' for "
+                "contest %s: %s",
+                requested_start_time_str, self.contest.name, e
+            )
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid date",
+                "The start time is invalid or falls during a DST transition."
+            )
+            self.redirect(ref)
+            return
+
+        # contest.start is already in UTC
+        contest_start = self.contest.start
+        delay_seconds = (requested_start_time - contest_start).total_seconds()
+
+        if delay_seconds < 0:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid start time",
+                "The requested start time cannot be before the contest start time."
+            )
+            self.redirect(ref)
+            return
+
+        now = make_datetime()
+
+        delay_request = DelayRequest(
+            request_timestamp=now,
+            requested_start_time=requested_start_time,
+            reason=reason,
+            status='admin_configured',
+            processed_timestamp=now,
+            participation=participation,
+            admin=self.current_user
+        )
+        self.sql_session.add(delay_request)
+
+        participation.delay_time = timedelta(seconds=delay_seconds)
+
+        if self.try_commit():
+            logger.info(
+                "Admin %s configured delay for user %s in contest %s: "
+                "start time %s, delay %d seconds, reason: %s",
+                self.current_user.name,
+                participation.user.username,
+                self.contest.name,
+                requested_start_time,
+                delay_seconds,
+                reason
+            )
+
         self.redirect(ref)
