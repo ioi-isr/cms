@@ -157,30 +157,28 @@ class ContestHandler(BaseHandler):
             raw_path = self.path_args[0]
             contest_name = raw_path.split('/')[-1]
 
-            # Select the correct contest or return an error
-            self.contest = self.sql_session.query(Contest)\
-                .filter(Contest.name == contest_name).first()
-            if self.contest is None:
-                # Try to find a training program with this name
-                training_program = self.sql_session.query(TrainingProgram)\
-                    .filter(TrainingProgram.name == contest_name).first()
-                if training_program is not None:
-                    self.contest = training_program.managing_contest
-                    self.training_program = training_program
-                else:
+            # Try to find a training program with this name first, since managing
+            # contests now share the same name as their training program
+            training_program = self.sql_session.query(TrainingProgram)\
+                .filter(TrainingProgram.name == contest_name).first()
+            if training_program is not None:
+                self.contest = training_program.managing_contest
+                self.training_program = training_program
+            else:
+                # No training program found, try to find a regular contest
+                self.contest = self.sql_session.query(Contest)\
+                    .filter(Contest.name == contest_name).first()
+                if self.contest is None:
+                    # No contest found either, return 404
                     self.contest = Contest(
                         name=contest_name, description=contest_name)
                     # render_params in this class assumes the contest is loaded,
                     # so we cannot call it without a fully defined contest. Luckily
                     # the one from the base class is enough to display a 404 page.
                     self._raise_404_for_internal_contest()
-            if self.contest.training_program is not None and self.training_program is None:
-                # Block direct access to managing contests, but allow access
-                # via training program name
-                self._raise_404_for_internal_contest()
-            if self.contest.name.startswith("__") and self.training_program is None:
-                # Block direct access to legacy internal contests
-                self._raise_404_for_internal_contest()
+                # Block direct access to legacy internal contests (__ prefix)
+                if self.contest.name.startswith("__"):
+                    self._raise_404_for_internal_contest()
         else:
             # Select the contest specified on the command line
             self.contest = Contest.get_from_id(

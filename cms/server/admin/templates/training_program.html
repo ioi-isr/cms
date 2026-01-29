@@ -33,7 +33,7 @@
   </table>
   <input type="submit" value="Update"{% if not admin.permission_all %} disabled{% endif %}/>
   <input type="reset" value="Reset">
-  <a href="{{ url("contest", training_program.managing_contest.id, "export") }}"> ⇩ Export all tasks </a>
+  <a href="{{ url("training_program", training_program.id, "export") }}"> ⇩ Export all tasks </a>
 </form>
 
 <form action="{{ url("training_programs") }}" method="POST" style="display:inline;">

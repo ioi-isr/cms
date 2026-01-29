@@ -170,7 +170,8 @@ from .folder import \
     RemoveFolderHandler
 from .export_handlers import \
     ExportTaskHandler, \
-    ExportContestHandler
+    ExportContestHandler, \
+    ExportTrainingProgramHandler
 from .trainingprogram import \
     TrainingProgramListHandler, \
     TrainingProgramHandler, \
@@ -372,6 +373,7 @@ HANDLERS = [
     (r"/training_programs/([0-9]+)/remove", RemoveTrainingProgramHandler),
     (r"/training_programs/add", AddTrainingProgramHandler),
     (r"/training_program/([0-9]+)", TrainingProgramHandler),
+    (r"/training_program/([0-9]+)/export", ExportTrainingProgramHandler),
 
     # Training Program tabs
     (r"/training_program/([0-9]+)/students", TrainingProgramStudentsHandler),

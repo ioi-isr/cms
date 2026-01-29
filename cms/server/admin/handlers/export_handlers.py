@@ -28,7 +28,7 @@ import zipfile
 
 import yaml
 
-from cms.db import Contest, Task
+from cms.db import Contest, Task, TrainingProgram
 from cms.grading.languagemanager import SOURCE_EXTS, get_language
 from cms.grading.tasktypes.util import get_allowed_manager_basenames
 from cmscommon.datetime import make_datetime
@@ -574,6 +574,59 @@ class ExportContestHandler(BaseHandler):
                 "Contest export failed",
                 str(error))
             self.redirect(self.url("contest", contest_id))
+
+        finally:
+            if temp_dir and os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+class ExportTrainingProgramHandler(BaseHandler):
+    """Handler for exporting a training program's managing contest to a zip file.
+
+    This exports all tasks from the training program's managing contest.
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        contest = training_program.managing_contest
+
+        temp_dir = None
+        try:
+            temp_dir = tempfile.mkdtemp(prefix="cms_export_training_program_")
+
+            contest_dir = os.path.join(temp_dir, training_program.name)
+            os.makedirs(contest_dir)
+
+            _export_contest_to_yaml_format(
+                contest,
+                self.service.file_cacher,
+                contest_dir
+            )
+
+            zip_path = os.path.join(temp_dir, f"{training_program.name}.zip")
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(contest_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, temp_dir)
+                        zipf.write(file_path, arcname)
+
+            self.set_header('Content-Type', 'application/zip')
+            self.set_header('Content-Disposition',
+                          f'attachment; filename="{training_program.name}.zip"')
+
+            with open(zip_path, 'rb') as f:
+                self.write(f.read())
+
+            self.finish()
+
+        except Exception as error:
+            logger.error("Training program export failed: %s", error, exc_info=True)
+            self.service.add_notification(
+                make_datetime(),
+                "Training program export failed",
+                str(error))
+            self.redirect(self.url("training_program", training_program_id))
 
         finally:
             if temp_dir and os.path.exists(temp_dir):
