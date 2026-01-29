@@ -28,7 +28,7 @@ import zipfile
 
 import yaml
 
-from cms.db import Contest, Task
+from cms.db import Contest, Task, TrainingProgram
 from cms.grading.languagemanager import SOURCE_EXTS, get_language
 from cms.grading.tasktypes.util import get_allowed_manager_basenames
 from cmscommon.datetime import make_datetime
@@ -61,6 +61,26 @@ def _expand_codename_with_language(filename: str, language_name: str | None) -> 
     if not extension:
         return filename
     return filename[:-3] + extension
+
+
+def _zip_directory(src_dir: str, zip_path: str, base_dir: str) -> None:
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, _dirs, files in os.walk(src_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, base_dir)
+                zipf.write(file_path, arcname)
+
+
+def _write_zip_response(handler: BaseHandler, zip_path: str, download_name: str) -> None:
+    handler.set_header('Content-Type', 'application/zip')
+    handler.set_header('Content-Disposition',
+                      f'attachment; filename="{download_name}"')
+
+    with open(zip_path, 'rb') as f:
+        handler.write(f.read())
+
+    handler.finish()
 
 
 def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
@@ -448,14 +468,16 @@ def _export_contest_to_yaml_format(contest, file_cacher, export_dir):
     if contest.analysis_stop is not None:
         contest_config['analysis_stop'] = contest.analysis_stop.timestamp()
 
-    if contest.tasks:
-        contest_config['tasks'] = [task.name for task in contest.tasks]
+    # Use get_tasks() to support training days which have tasks separate from contest.tasks
+    tasks = contest.get_tasks()
+    if tasks:
+        contest_config['tasks'] = [task.name for task in tasks]
 
     contest_yaml_path = os.path.join(export_dir, "contest.yaml")
     with open(contest_yaml_path, 'w', encoding='utf-8') as f:
         yaml.dump(contest_config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
-    for task in contest.tasks:
+    for task in tasks:
         task_dir = os.path.join(export_dir, task.name)
         os.makedirs(task_dir, exist_ok=True)
 
@@ -498,21 +520,8 @@ class ExportTaskHandler(BaseHandler):
             )
 
             zip_path = os.path.join(temp_dir, f"{task.name}.zip")
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(task_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, temp_dir)
-                        zipf.write(file_path, arcname)
-
-            self.set_header('Content-Type', 'application/zip')
-            self.set_header('Content-Disposition',
-                          f'attachment; filename="{task.name}.zip"')
-
-            with open(zip_path, 'rb') as f:
-                self.write(f.read())
-
-            self.finish()
+            _zip_directory(task_dir, zip_path, temp_dir)
+            _write_zip_response(self, zip_path, f"{task.name}.zip")
 
         except Exception as error:
             logger.error("Task export failed: %s", error, exc_info=True)
@@ -549,21 +558,8 @@ class ExportContestHandler(BaseHandler):
             )
 
             zip_path = os.path.join(temp_dir, f"{contest.name}.zip")
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(contest_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, temp_dir)
-                        zipf.write(file_path, arcname)
-
-            self.set_header('Content-Type', 'application/zip')
-            self.set_header('Content-Disposition',
-                          f'attachment; filename="{contest.name}.zip"')
-
-            with open(zip_path, 'rb') as f:
-                self.write(f.read())
-
-            self.finish()
+            _zip_directory(contest_dir, zip_path, temp_dir)
+            _write_zip_response(self, zip_path, f"{contest.name}.zip")
 
         except Exception as error:
             logger.error("Contest export failed: %s", error, exc_info=True)
@@ -572,6 +568,46 @@ class ExportContestHandler(BaseHandler):
                 "Contest export failed",
                 str(error))
             self.redirect(self.url("contest", contest_id))
+
+        finally:
+            if temp_dir and os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+class ExportTrainingProgramHandler(BaseHandler):
+    """Handler for exporting a training program's managing contest to a zip file.
+
+    This exports all tasks from the training program's managing contest.
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, training_program_id):
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        contest = training_program.managing_contest
+
+        temp_dir = None
+        try:
+            temp_dir = tempfile.mkdtemp(prefix="cms_export_training_program_")
+
+            contest_dir = os.path.join(temp_dir, training_program.name)
+            os.makedirs(contest_dir)
+
+            _export_contest_to_yaml_format(
+                contest,
+                self.service.file_cacher,
+                contest_dir
+            )
+
+            zip_path = os.path.join(temp_dir, f"{training_program.name}.zip")
+            _zip_directory(contest_dir, zip_path, temp_dir)
+            _write_zip_response(self, zip_path, f"{training_program.name}.zip")
+
+        except Exception as error:
+            logger.error("Training program export failed: %s", error, exc_info=True)
+            self.service.add_notification(
+                make_datetime(),
+                "Training program export failed",
+                str(error))
+            self.redirect(self.url("training_program", training_program_id))
 
         finally:
             if temp_dir and os.path.exists(temp_dir):
