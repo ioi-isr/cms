@@ -409,8 +409,10 @@ def enumerate_files(
                        .with_entities(PrintJob.digest))
 
     if not skip_users:
-        queries.append(session.query(User.picture)
-                       .filter(User.picture.isnot(None)))
+        queries.append(contest_q.join(Contest.participations)
+                       .join(Participation.user)
+                       .filter(User.picture.isnot(None))
+                       .with_entities(User.picture))
 
     # union(...).execute() would be executed outside of the session.
     digests = set(r[0] for r in session.execute(union(*queries)))
