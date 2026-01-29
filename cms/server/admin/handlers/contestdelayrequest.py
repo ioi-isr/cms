@@ -407,6 +407,15 @@ class AdminConfiguredDelayHandler(BaseHandler):
             self.redirect(ref)
             return
 
+        if len(reason) > DelayRequest.MAX_REASON_LENGTH:
+            self.service.add_notification(
+                make_datetime(),
+                "Reason too long",
+                f"The reason must be at most {DelayRequest.MAX_REASON_LENGTH} characters."
+            )
+            self.redirect(ref)
+            return
+
         participation = self.safe_get_item(Participation, participation_id)
 
         if participation.contest_id != self.contest.id:
@@ -420,11 +429,18 @@ class AdminConfiguredDelayHandler(BaseHandler):
             )
             tz = get_timezone(None, self.contest)
             requested_start_time = local_to_utc(local_dt, tz)
-        except (ValueError, TypeError):
+        except Exception as e:
+            # Catch ValueError, TypeError, and pytz DST exceptions
+            # (AmbiguousTimeError, NonExistentTimeError)
+            logger.warning(
+                "Failed to parse admin-configured start time '%s' for "
+                "contest %s: %s",
+                requested_start_time_str, self.contest.name, e
+            )
             self.service.add_notification(
                 make_datetime(),
                 "Invalid date",
-                "The start time format is invalid."
+                "The start time is invalid or falls during a DST transition."
             )
             self.redirect(ref)
             return
