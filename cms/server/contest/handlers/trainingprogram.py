@@ -31,7 +31,7 @@ from cms.db import Participation, Student, ArchivedStudentRanking, Submission, T
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server import multi_contest
 from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
-from cms.server.util import check_training_day_eligibility, calculate_task_archive_progress
+from cms.server.util import check_training_day_eligibility, calculate_task_archive_progress, get_student_for_user_in_program
 from .contest import ContestHandler
 
 
@@ -58,13 +58,8 @@ class TrainingProgramOverviewHandler(ContestHandler):
             raise tornado.web.HTTPError(404)
 
         # Find the student record for this user in the training program
-        student = (
-            self.sql_session.query(Student)
-            .join(Participation, Student.participation_id == Participation.id)
-            .filter(Participation.contest_id == contest.id)
-            .filter(Participation.user_id == participation.user_id)
-            .filter(Student.training_program_id == training_program.id)
-            .first()
+        student = get_student_for_user_in_program(
+            self.sql_session, training_program, participation.user_id
         )
 
         # Calculate task archive progress using shared utility
@@ -215,13 +210,8 @@ class TrainingDaysHandler(ContestHandler):
         if training_program is None:
             raise tornado.web.HTTPError(404)
 
-        student = (
-            self.sql_session.query(Student)
-            .join(Participation, Student.participation_id == Participation.id)
-            .filter(Participation.contest_id == contest.id)
-            .filter(Participation.user_id == participation.user_id)
-            .filter(Student.training_program_id == training_program.id)
-            .first()
+        student = get_student_for_user_in_program(
+            self.sql_session, training_program, participation.user_id
         )
 
         ongoing_upcoming_trainings = []
@@ -523,13 +513,8 @@ class ScoreboardDataHandler(ContestHandler):
                 top_to_show = "all"  # Default to "all" if malformed
 
         # Get the current student
-        student = (
-            self.sql_session.query(Student)
-            .join(Participation, Student.participation_id == Participation.id)
-            .filter(Participation.contest_id == self.contest.id)
-            .filter(Participation.user_id == participation.user_id)
-            .filter(Student.training_program_id == training_program.id)
-            .first()
+        student = get_student_for_user_in_program(
+            self.sql_session, training_program, participation.user_id
         )
 
         if student is None:

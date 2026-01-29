@@ -42,7 +42,7 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session, Contest, Student, Task, Participation, StudentTask
+from cms.db import Session, Contest, Student, Task, Participation, StudentTask, Question, DelayRequest
 from sqlalchemy.orm import joinedload
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server.file_middleware import FileServerMiddleware
@@ -360,6 +360,166 @@ def calculate_task_archive_progress(
         result["task_scores"] = task_scores
 
     return result
+
+
+def get_student_for_user_in_program(
+    sql_session: Session,
+    training_program: "TrainingProgram",
+    user_id: int
+) -> "Student | None":
+    """Get the student record for a user in a training program.
+
+    This is a common query pattern used across many handlers to find
+    the Student record for a given user in a training program.
+
+    sql_session: the database session.
+    training_program: the training program to search in.
+    user_id: the user ID to look up.
+
+    return: the Student record, or None if not found.
+
+    """
+    managing_contest = training_program.managing_contest
+    return sql_session.query(Student).join(
+        Participation, Student.participation_id == Participation.id
+    ).filter(
+        Participation.contest_id == managing_contest.id,
+        Participation.user_id == user_id,
+        Student.training_program_id == training_program.id
+    ).first()
+
+
+def get_student_tags_by_participation(
+    sql_session: Session,
+    training_program: "TrainingProgram",
+    participation_ids: list[int]
+) -> dict[int, list[str]]:
+    """Get student tags for multiple participations in a training program.
+
+    This is a batch query utility that efficiently fetches student tags
+    for multiple participations at once, avoiding N+1 query patterns.
+
+    sql_session: the database session.
+    training_program: the training program to search in.
+    participation_ids: list of participation IDs to look up.
+
+    return: dict mapping participation_id to list of student tags.
+
+    """
+    result = {pid: [] for pid in participation_ids}
+    if not participation_ids:
+        return result
+
+    rows = (
+        sql_session.query(Student.participation_id, Student.student_tags)
+        .filter(Student.training_program_id == training_program.id)
+        .filter(Student.participation_id.in_(participation_ids))
+        .all()
+    )
+    for participation_id, tags in rows:
+        result[participation_id] = tags or []
+
+    return result
+
+
+def count_unanswered_questions(sql_session: Session, contest_id: int) -> int:
+    """Count unanswered questions for a contest.
+
+    This counts questions that have not been replied to and are not ignored.
+
+    sql_session: the database session.
+    contest_id: the contest ID to count questions for.
+
+    return: count of unanswered questions.
+
+    """
+    return (
+        sql_session.query(Question)
+        .join(Participation)
+        .filter(Participation.contest_id == contest_id)
+        .filter(Question.reply_timestamp.is_(None))
+        .filter(Question.ignored.is_(False))
+        .count()
+    )
+
+
+def count_pending_delay_requests(sql_session: Session, contest_id: int) -> int:
+    """Count pending delay requests for a contest.
+
+    sql_session: the database session.
+    contest_id: the contest ID to count delay requests for.
+
+    return: count of pending delay requests.
+
+    """
+    return (
+        sql_session.query(DelayRequest)
+        .join(Participation)
+        .filter(Participation.contest_id == contest_id)
+        .filter(DelayRequest.status == "pending")
+        .count()
+    )
+
+
+def get_training_day_notifications(
+    sql_session: Session,
+    training_day: "TrainingDay"
+) -> dict:
+    """Get notification counts for a training day.
+
+    Returns a dict with unanswered_questions and pending_delay_requests counts.
+
+    sql_session: the database session.
+    training_day: the training day to get notifications for.
+
+    return: dict with notification counts, or empty dict if training day has no contest.
+
+    """
+    if training_day.contest is None:
+        return {}
+
+    return {
+        "unanswered_questions": count_unanswered_questions(
+            sql_session, training_day.contest_id
+        ),
+        "pending_delay_requests": count_pending_delay_requests(
+            sql_session, training_day.contest_id
+        ),
+    }
+
+
+def get_all_training_day_notifications(
+    sql_session: Session,
+    training_program: "TrainingProgram"
+) -> tuple[dict[int, dict], int, int]:
+    """Get notification counts for all training days in a program.
+
+    Returns notification counts for each active training day (those with a contest),
+    plus totals across all training days.
+
+    sql_session: the database session.
+    training_program: the training program to get notifications for.
+
+    return: tuple of (notifications_by_td_id, total_unanswered, total_pending)
+        - notifications_by_td_id: dict mapping training_day.id to notification dict
+        - total_unanswered: total unanswered questions across all training days
+        - total_pending: total pending delay requests across all training days
+
+    """
+    notifications: dict[int, dict] = {}
+    total_unanswered = 0
+    total_pending = 0
+
+    for td in training_program.training_days:
+        if td.contest is None:
+            continue
+
+        td_notifications = get_training_day_notifications(sql_session, td)
+        notifications[td.id] = td_notifications
+        total_unanswered += td_notifications.get("unanswered_questions", 0)
+        total_pending += td_notifications.get("pending_delay_requests", 0)
+
+    return notifications, total_unanswered, total_pending
 
 
 # TODO: multi_contest is only relevant for CWS

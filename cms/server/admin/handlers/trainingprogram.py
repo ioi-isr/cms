@@ -51,6 +51,8 @@ from cms.server.util import (
     get_all_student_tags,
     parse_tags,
     calculate_task_archive_progress,
+    get_training_day_notifications,
+    get_student_tags_by_participation,
 )
 from cmscommon.datetime import make_datetime
 
@@ -134,25 +136,9 @@ class TrainingProgramListHandler(BaseHandler):
 
             # Calculate notifications for each active training day
             for td in active_tds:
-                td_unanswered = (
-                    self.sql_session.query(Question)
-                    .join(Participation)
-                    .filter(Participation.contest_id == td.contest_id)
-                    .filter(Question.reply_timestamp.is_(None))
-                    .filter(Question.ignored.is_(False))
-                    .count()
+                training_day_notifications[td.id] = get_training_day_notifications(
+                    self.sql_session, td
                 )
-                td_pending_delays = (
-                    self.sql_session.query(DelayRequest)
-                    .join(Participation)
-                    .filter(Participation.contest_id == td.contest_id)
-                    .filter(DelayRequest.status == "pending")
-                    .count()
-                )
-                training_day_notifications[td.id] = {
-                    "unanswered_questions": td_unanswered,
-                    "pending_delay_requests": td_pending_delays,
-                }
 
         self.r_params["total_students"] = total_students
         self.r_params["active_programs"] = active_programs
@@ -759,20 +745,11 @@ class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
                 participation_data[p.id] = (p.task_statuses, p.total_score)
 
         # Build student tags lookup for each participation (batch query)
-        student_tags_by_participation = {p.id: [] for p in self.contest.participations}
-        if student_tags_by_participation:
-            rows = (
-                self.sql_session.query(Student.participation_id, Student.student_tags)
-                .filter(Student.training_program_id == training_program.id)
-                .filter(
-                    Student.participation_id.in_(
-                        list(student_tags_by_participation.keys())
-                    )
-                )
-                .all()
-            )
-            for participation_id, tags in rows:
-                student_tags_by_participation[participation_id] = tags or []
+        student_tags_by_participation = get_student_tags_by_participation(
+            self.sql_session,
+            training_program,
+            [p.id for p in self.contest.participations]
+        )
 
         # Calculate task archive progress for this training program
         task_archive_progress_by_participation = {}

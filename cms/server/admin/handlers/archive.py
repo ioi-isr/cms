@@ -55,6 +55,7 @@ from cms.server.util import (
     can_access_task,
     check_training_day_eligibility,
     parse_tags,
+    get_student_for_user_in_program,
 )
 from cmscommon.datetime import make_datetime
 
@@ -362,12 +363,8 @@ class ArchiveTrainingDayHandler(BaseHandler):
             # Find the student for this user in the training program
             # Note: Student.participation_id points to the managing contest participation,
             # not the training day participation, so we need to look up by user_id
-            student = (
-                self.sql_session.query(Student)
-                .join(Participation)
-                .filter(Participation.user_id == participation.user_id)
-                .filter(Student.training_program_id == training_program.id)
-                .first()
+            student = get_student_for_user_in_program(
+                self.sql_session, training_program, participation.user_id
             )
 
             if student is None:
@@ -494,12 +491,8 @@ class ArchiveTrainingDayHandler(BaseHandler):
             # Find the student for this user in the training program
             # Note: Student.participation_id points to the managing contest participation,
             # not the training day participation, so we need to look up by user_id
-            student = (
-                self.sql_session.query(Student)
-                .join(Participation)
-                .filter(Participation.user_id == participation.user_id)
-                .filter(Student.training_program_id == training_program.id)
-                .first()
+            student = get_student_for_user_in_program(
+                self.sql_session, training_program, participation.user_id
             )
 
             if student is None:
