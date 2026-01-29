@@ -644,7 +644,7 @@ CREATE INDEX ix_student_tasks_source_training_day_id ON public.student_tasks USI
 
 -- Archive training day feature: add name and description fields to training_days
 -- These are synced with contest while contest exists, preserved after archiving
-ALTER TABLE public.training_days ADD COLUMN name character varying;
+ALTER TABLE public.training_days ADD COLUMN name public.codename;
 ALTER TABLE public.training_days ADD COLUMN description character varying;
 
 -- Make contest_id nullable (will be NULL after archiving)

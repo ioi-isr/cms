@@ -29,7 +29,7 @@ from sqlalchemy.orm import relationship, Session
 from sqlalchemy.schema import Column, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.types import DateTime, Integer, Interval, Unicode
 
-from . import Base
+from . import Base, Codename
 
 if typing.TYPE_CHECKING:
     from datetime import datetime, timedelta
@@ -104,7 +104,7 @@ class TrainingDay(Base):
     # Name and description are synced with contest while contest exists.
     # After archiving (when contest is deleted), these fields preserve the values.
     name: str | None = Column(
-        Unicode,
+        Codename,
         nullable=True,
     )
 
