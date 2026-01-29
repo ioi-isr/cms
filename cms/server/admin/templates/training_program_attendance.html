@@ -90,7 +90,7 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
 
 {% if archived_training_days %}
 <div style="margin-bottom: 15px; display: flex; justify-content: flex-end;">
-  <a href="{{ url('training_program', training_program.id, 'attendance', 'export') }}{% if start_date or end_date or training_day_types or student_tags %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(', ') }}&{% endif %}{% if student_tags %}student_tags={{ student_tags | join(', ') }}{% endif %}{% endif %}" class="tp-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+  <a href="{{ url('training_program', training_program.id, 'attendance', 'export') }}{% if start_date or end_date or training_day_types or student_tags %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(',') | urlencode }}&{% endif %}{% if student_tags %}student_tags={{ student_tags | join(',') | urlencode }}{% endif %}{% endif %}" class="tp-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
     <span>&#128190;</span> Export to Excel
   </a>
 </div>
@@ -200,11 +200,11 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
                   </div>
                 {% endif %}
 
-                <div class="attendance-badges">
-                  {% if att.comment %}
-                    <span class="comment-indicator" title="{{ att.comment }}">&#x1F4AC;</span>
-                  {% endif %}
-                </div>
+                {% if att.comment %}
+                  <div class="comment-text" title="{{ att.comment }}">
+                    &#x1F4AC; {{ att.comment }}
+                  </div>
+                {% endif %}
               </div>
             </td>
           {% else %}
@@ -356,24 +356,22 @@ function updateAttendanceCell(attendanceId, justified, recorded, comment) {
         }
     }
 
-    // Update comment indicator
-    var badgesContainer = wrapper.querySelector('.attendance-badges');
-    if (badgesContainer) {
-        var commentIndicator = badgesContainer.querySelector('.comment-indicator');
-        if (comment && !commentIndicator) {
-            // Create comment indicator
-            var indicator = document.createElement('span');
-            indicator.className = 'comment-indicator';
-            indicator.title = comment;
-            indicator.innerHTML = '&#x1F4AC;';
-            badgesContainer.appendChild(indicator);
-        } else if (!comment && commentIndicator) {
-            // Remove comment indicator
-            commentIndicator.remove();
-        } else if (comment && commentIndicator) {
-            // Update existing comment indicator
-            commentIndicator.title = comment;
-        }
+    // Update comment text
+    var existingComment = wrapper.querySelector('.comment-text');
+    if (comment && !existingComment) {
+        // Create comment text
+        var commentDiv = document.createElement('div');
+        commentDiv.className = 'comment-text';
+        commentDiv.title = comment;
+        commentDiv.innerHTML = '&#x1F4AC; ' + comment;
+        wrapper.appendChild(commentDiv);
+    } else if (!comment && existingComment) {
+        // Remove comment text
+        existingComment.remove();
+    } else if (comment && existingComment) {
+        // Update existing comment text
+        existingComment.title = comment;
+        existingComment.innerHTML = '&#x1F4AC; ' + comment;
     }
 }
 

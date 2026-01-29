@@ -1092,7 +1092,7 @@
 
 .recorded-badge {
     opacity: 0.8;
-    font-size: 1.1em;
+    font-size: 1.1em !important;
 }
 
 /* ==========================================================================
@@ -1237,8 +1237,13 @@
     cursor: help;
 }
 
-.comment-indicator {
-    font-size: 1.1em !important;
+.comment-text {
+    font-size: 0.75rem;
+    color: var(--tp-text-muted);
+    margin-top: 4px;
+    line-height: 1.3;
+    word-break: break-word;
+    cursor: help;
 }
 
 
