@@ -34,6 +34,36 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
+from cms.db import (
+    Contest,
+    TrainingProgram,
+    Participation,
+    Submission,
+    Student,
+    StudentTask,
+    Task,
+    TrainingDay,
+    ArchivedAttendance,
+    ArchivedStudentRanking,
+    ScoreHistory,
+    DelayRequest,
+)
+from cms.db.training_day import get_managing_participation
+from cms.server.util import (
+    get_all_student_tags,
+    get_all_training_day_types,
+    can_access_task,
+    check_training_day_eligibility,
+    parse_tags,
+)
+from cmscommon.datetime import make_datetime
+
+from .base import BaseHandler, require_permission
+from .contestdelayrequest import (
+    compute_participation_status,
+    get_participation_main_group,
+)
+
 
 EXCEL_ZEBRA_COLORS = [
     ("4472C4", "D9E2F3"),
@@ -55,6 +85,12 @@ EXCEL_THIN_BORDER = Border(
 EXCEL_DEFAULT_HEADER_FILL = PatternFill(
     start_color="4472C4", end_color="4472C4", fill_type="solid"
 )
+
+
+def _excel_safe(value: str) -> str:
+    if value and value[0] in ("=", "+", "-", "@"):
+        return "'" + value
+    return value
 
 
 def excel_build_filename(
@@ -145,45 +181,14 @@ def excel_write_student_row(
     else:
         student_name = "(Unknown)"
 
-    ws.cell(row=row, column=1, value=student_name)
+    ws.cell(row=row, column=1, value=_excel_safe(student_name))
     ws.cell(row=row, column=1).border = EXCEL_THIN_BORDER
 
     tags_str = ""
     if student.student_tags:
         tags_str = "; ".join(student.student_tags)
-    ws.cell(row=row, column=2, value=tags_str)
+    ws.cell(row=row, column=2, value=_excel_safe(tags_str))
     ws.cell(row=row, column=2).border = EXCEL_THIN_BORDER
-
-from cms.db import (
-    Contest,
-    TrainingProgram,
-    Participation,
-    Submission,
-    Question,
-    Student,
-    StudentTask,
-    Task,
-    TrainingDay,
-    ArchivedAttendance,
-    ArchivedStudentRanking,
-    ScoreHistory,
-    DelayRequest,
-)
-from cms.db.training_day import get_managing_participation
-from cms.server.util import (
-    get_all_student_tags,
-    get_all_training_day_types,
-    can_access_task,
-    check_training_day_eligibility,
-    parse_tags,
-)
-from cmscommon.datetime import make_datetime
-
-from .base import BaseHandler, require_permission
-from .contestdelayrequest import (
-    compute_participation_status,
-    get_participation_main_group,
-)
 
 
 class ArchiveTrainingDayHandler(BaseHandler):
@@ -1444,7 +1449,7 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
 
                 values = [status, location, recorded, delay_reasons, comment]
                 for i, value in enumerate(values):
-                    cell = ws.cell(row=row, column=col + i, value=value)
+                    cell = ws.cell(row=row, column=col + i, value=_excel_safe(value))
                     cell.border = EXCEL_THIN_BORDER
 
                 col += num_subcolumns

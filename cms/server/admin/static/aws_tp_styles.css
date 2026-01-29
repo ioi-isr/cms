@@ -1086,10 +1086,6 @@
     opacity: 0.7;
 }
 
-.justified-badge {
-    color: var(--tp-success);
-}
-
 .recorded-badge {
     opacity: 0.8;
     font-size: 1.1em !important;
