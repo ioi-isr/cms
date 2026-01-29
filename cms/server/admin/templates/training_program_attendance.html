@@ -300,6 +300,75 @@ function closeAttendanceModal() {
     currentAttendanceData = {};
 }
 
+function updateAttendanceCell(attendanceId, justified, recorded, comment) {
+    // Find the cell by attendance ID
+    var cell = document.querySelector('[data-attendance-id="' + attendanceId + '"]');
+    if (!cell) return;
+
+    // Update the dataset attributes
+    cell.dataset.justified = justified ? 'true' : 'false';
+    cell.dataset.recorded = recorded ? 'true' : 'false';
+    cell.dataset.comment = comment || '';
+
+    // Update data-value for sorting (must match template logic)
+    if (cell.dataset.status === 'missed') {
+        cell.dataset.value = justified ? '2.5' : '3';
+    }
+
+    // Update the visual content
+    var wrapper = cell.querySelector('.cell-wrapper');
+    if (!wrapper) return;
+
+    // Update recorded badge - create or remove as needed
+    var locationRow = wrapper.querySelector('.location-row');
+    if (locationRow && cell.dataset.status !== 'missed') {
+        var recordedBadge = locationRow.querySelector('.recorded-badge');
+        if (recorded && !recordedBadge) {
+            // Create recorded badge
+            var badge = document.createElement('span');
+            badge.className = 'recorded-badge';
+            badge.title = 'Recorded';
+            badge.innerHTML = '&#127909;';
+            locationRow.appendChild(badge);
+        } else if (!recorded && recordedBadge) {
+            // Remove recorded badge
+            recordedBadge.remove();
+        }
+    }
+
+    // Update justified status for missed entries
+    var statusBadge = wrapper.querySelector('.status-badge');
+    if (statusBadge && cell.dataset.status === 'missed') {
+        if (justified) {
+            statusBadge.className = 'status-badge status-justified';
+            statusBadge.querySelector('span').innerHTML = '&#128221; Justified';
+        } else {
+            statusBadge.className = 'status-badge status-missed';
+            statusBadge.querySelector('span').innerHTML = '&#x26D4; Missed';
+        }
+    }
+
+    // Update comment indicator
+    var badgesContainer = wrapper.querySelector('.attendance-badges');
+    if (badgesContainer) {
+        var commentIndicator = badgesContainer.querySelector('.comment-indicator');
+        if (comment && !commentIndicator) {
+            // Create comment indicator
+            var indicator = document.createElement('span');
+            indicator.className = 'comment-indicator';
+            indicator.title = comment;
+            indicator.innerHTML = '&#x1F4AC;';
+            badgesContainer.appendChild(indicator);
+        } else if (!comment && commentIndicator) {
+            // Remove comment indicator
+            commentIndicator.remove();
+        } else if (comment && commentIndicator) {
+            // Update existing comment indicator
+            commentIndicator.title = comment;
+        }
+    }
+}
+
 function saveAttendance() {
     if (!currentAttendanceId) return;
 
@@ -327,23 +396,20 @@ function saveAttendance() {
     saveBtn.disabled = true;
     saveBtn.innerText = "Saving...";
 
-    // Get XSRF token from meta tag or form
-    var xsrfToken = document.querySelector('meta[name="_xsrf"]')?.getAttribute('content') ||
-                    document.querySelector('input[name="_xsrf"]')?.value;
-
     fetch('{{ url("training_program", training_program.id, "attendance") }}/' + currentAttendanceId, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-XSRFToken': xsrfToken
+            'X-XSRFToken': get_cookie("_xsrf")
         },
         body: JSON.stringify(data)
     })
     .then(function(response) { return response.json(); })
     .then(function(result) {
         if (result.success) {
-            // Success - reload the page to show updated UI
-            window.location.reload();
+            // Success - update the cell dynamically and close modal
+            updateAttendanceCell(currentAttendanceId, justified, recorded, comment);
+            closeAttendanceModal();
         } else {
             alert('Failed to save: ' + (result.error || 'Unknown error'));
         }

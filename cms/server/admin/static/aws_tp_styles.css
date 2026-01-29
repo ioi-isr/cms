@@ -693,7 +693,9 @@
 .location-row {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    margin-top: 4px;
+    flex-wrap: wrap;
     font-size: 0.75rem;
     color: var(--tp-text-light);
 }
@@ -1090,6 +1092,7 @@
 
 .recorded-badge {
     opacity: 0.8;
+    font-size: 1.1em;
 }
 
 /* ==========================================================================
@@ -1207,7 +1210,18 @@
 }
 
 .attendance-cell:hover {
-    background-color: #f3f4f6 !important;
+    background-color: var(--tp-border) !important;
+    box-shadow: 0 0 0 2px var(--tp-info);
+}
+
+.attendance-table tbody tr:hover {
+    background-color: var(--tp-bg-gray);
+    cursor: pointer;
+}
+
+.attendance-table tbody tr:hover th {
+    background-color: var(--tp-border);
+    font-weight: 600;
 }
 
 .attendance-badges {
@@ -1227,17 +1241,6 @@
     font-size: 1.1em !important;
 }
 
-.recorded-badge {
-    font-size: 1.1em !important;
-}
-
-.location-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 4px;
-    flex-wrap: wrap;
-}
 
 .status-justified {
     background-color: #fed7aa !important;

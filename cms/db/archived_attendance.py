@@ -27,6 +27,7 @@ from datetime import timedelta
 
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
+from sqlalchemy.sql import text
 from sqlalchemy.types import Boolean, Integer, Unicode, Interval
 
 from . import Base
@@ -92,7 +93,7 @@ class ArchivedAttendance(Base):
     justified: bool = Column(
         Boolean,
         nullable=False,
-        default=False,
+        server_default=text("false"),
     )
 
     # Admin comment for this attendance record
@@ -105,7 +106,7 @@ class ArchivedAttendance(Base):
     recorded: bool = Column(
         Boolean,
         nullable=False,
-        default=False,
+        server_default=text("false"),
     )
 
     training_day: "TrainingDay" = relationship(

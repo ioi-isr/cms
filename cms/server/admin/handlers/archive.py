@@ -1121,8 +1121,6 @@ class UpdateAttendanceHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str, attendance_id: str):
         """Update an attendance record's justified status, comment, and/or recorded."""
-        import json
-
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         attendance = self.safe_get_item(ArchivedAttendance, attendance_id)
 
@@ -1141,7 +1139,21 @@ class UpdateAttendanceHandler(BaseHandler):
 
         # Update justified status if provided
         if "justified" in data:
-            attendance.justified = bool(data["justified"])
+            justified = data["justified"]
+            if not isinstance(justified, bool):
+                self.set_status(400)
+                self.write({"success": False, "error": "Invalid justified flag"})
+                return
+            if justified and attendance.status != "missed":
+                self.set_status(400)
+                self.write(
+                    {
+                        "success": False,
+                        "error": "Only missed attendances can be justified",
+                    }
+                )
+                return
+            attendance.justified = justified
 
         # Update comment if provided
         if "comment" in data:
@@ -1154,7 +1166,21 @@ class UpdateAttendanceHandler(BaseHandler):
 
         # Update recorded status if provided
         if "recorded" in data:
-            attendance.recorded = bool(data["recorded"])
+            recorded = data["recorded"]
+            if not isinstance(recorded, bool):
+                self.set_status(400)
+                self.write({"success": False, "error": "Invalid recorded flag"})
+                return
+            if recorded and attendance.status == "missed":
+                self.set_status(400)
+                self.write(
+                    {
+                        "success": False,
+                        "error": "Only non-missed attendances can be marked as recorded",
+                    }
+                )
+                return
+            attendance.recorded = recorded
 
         if self.try_commit():
             # Return JSON success, let JavaScript handle page reload
