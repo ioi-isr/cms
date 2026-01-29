@@ -364,16 +364,26 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                   {% if participated %}
                     {% set global_total.value = global_total.value + cell_value %}
                   {% endif %}
-                  {% if attendance and attendance.status == 'missed' %}
+                  {% if attendance and attendance.status == 'missed' and attendance.justified %}
+                    <span class="attendance-badge justified-badge" title="Justified absence">&#10004;</span>
+                  {% elif attendance and attendance.status == 'missed' %}
                     <span class="attendance-badge missed-badge" title="Missed training">&#10060;</span>
                   {% elif attendance and attendance.location == 'home' %}
                     <span class="attendance-badge home-badge" title="Participated from home">&#127968;</span>
                   {% endif %}
+                  {% if attendance and attendance.proctored %}
+                    <span class="attendance-badge proctored-badge" title="Proctored">&#128247;</span>
+                  {% endif %}
                 {% else %}
-                  {% if attendance and attendance.status == 'missed' %}
+                  {% if attendance and attendance.status == 'missed' and attendance.justified %}
+                    <span class="attendance-badge justified-badge" title="Justified absence">&#10004;</span>
+                  {% elif attendance and attendance.status == 'missed' %}
                     <span class="attendance-badge missed-badge" title="Missed training">&#10060;</span>
                   {% else %}
                     <span class="empty-cell-content">-</span>
+                  {% endif %}
+                  {% if attendance and attendance.proctored %}
+                    <span class="attendance-badge proctored-badge" title="Proctored">&#128247;</span>
                   {% endif %}
                 {% endif %}
             </div>

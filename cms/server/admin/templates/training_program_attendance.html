@@ -31,6 +31,145 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
         }
     });
 }
+
+// Attendance edit modal functionality
+var currentAttendanceId = null;
+var currentAttendanceData = {};
+
+function openAttendanceModal(attendanceId, status, justified, proctored, comment) {
+    currentAttendanceId = attendanceId;
+    currentAttendanceData = { status: status, justified: justified, proctored: proctored, comment: comment };
+
+    document.getElementById('modal-justified').checked = justified;
+    document.getElementById('modal-proctored').checked = proctored;
+    document.getElementById('modal-comment').value = comment || '';
+
+    // Show/hide justified option based on status (only for missed entries)
+    var justifiedRow = document.getElementById('justified-row');
+    if (status === 'missed') {
+        justifiedRow.style.display = 'flex';
+    } else {
+        justifiedRow.style.display = 'none';
+    }
+
+    document.getElementById('attendance-modal').style.display = 'flex';
+}
+
+function closeAttendanceModal() {
+    document.getElementById('attendance-modal').style.display = 'none';
+    currentAttendanceId = null;
+    currentAttendanceData = {};
+}
+
+function saveAttendance() {
+    if (!currentAttendanceId) return;
+
+    var justified = document.getElementById('modal-justified').checked;
+    var proctored = document.getElementById('modal-proctored').checked;
+    var comment = document.getElementById('modal-comment').value.trim();
+
+    // Check if justified status changed (for missed entries) and confirm
+    if (currentAttendanceData.status === 'missed' && justified !== currentAttendanceData.justified) {
+        var action = justified ? 'mark this absence as justified' : 'remove the justified status';
+        if (!confirm('Are you sure you want to ' + action + '?')) {
+            return;
+        }
+    }
+
+    var data = {
+        justified: justified,
+        proctored: proctored,
+        comment: comment || null
+    };
+
+    fetch('{{ url("training_program", training_program.id, "attendance") }}/' + currentAttendanceId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+        if (result.success) {
+            // Update the cell display
+            var cell = document.querySelector('[data-attendance-id="' + currentAttendanceId + '"]');
+            if (cell) {
+                // Update justified badge
+                var justifiedBadge = cell.querySelector('.justified-badge');
+                if (result.justified && currentAttendanceData.status === 'missed') {
+                    if (!justifiedBadge) {
+                        var badge = document.createElement('span');
+                        badge.className = 'justified-badge';
+                        badge.title = 'Justified absence';
+                        badge.innerHTML = '&#x2714;';
+                        cell.querySelector('.cell-wrapper').appendChild(badge);
+                    }
+                    // Update status badge styling
+                    var statusBadge = cell.querySelector('.status-badge');
+                    if (statusBadge) {
+                        statusBadge.classList.remove('status-missed');
+                        statusBadge.classList.add('status-justified');
+                    }
+                } else if (justifiedBadge) {
+                    justifiedBadge.remove();
+                    var statusBadge = cell.querySelector('.status-badge');
+                    if (statusBadge && currentAttendanceData.status === 'missed') {
+                        statusBadge.classList.remove('status-justified');
+                        statusBadge.classList.add('status-missed');
+                    }
+                }
+
+                // Update proctored badge
+                var proctoredBadge = cell.querySelector('.proctored-badge');
+                if (result.proctored) {
+                    if (!proctoredBadge) {
+                        var badge = document.createElement('span');
+                        badge.className = 'proctored-badge';
+                        badge.title = 'Proctored';
+                        badge.innerHTML = '&#x1F4F7;';
+                        cell.querySelector('.cell-wrapper').appendChild(badge);
+                    }
+                } else if (proctoredBadge) {
+                    proctoredBadge.remove();
+                }
+
+                // Update comment indicator
+                var commentIndicator = cell.querySelector('.comment-indicator');
+                if (result.comment) {
+                    if (!commentIndicator) {
+                        var indicator = document.createElement('span');
+                        indicator.className = 'comment-indicator';
+                        indicator.title = result.comment;
+                        indicator.innerHTML = '&#x1F4AC;';
+                        cell.querySelector('.cell-wrapper').appendChild(indicator);
+                    } else {
+                        commentIndicator.title = result.comment;
+                    }
+                } else if (commentIndicator) {
+                    commentIndicator.remove();
+                }
+
+                // Update data attributes
+                cell.setAttribute('data-justified', result.justified);
+                cell.setAttribute('data-proctored', result.proctored);
+                cell.setAttribute('data-comment', result.comment || '');
+            }
+            closeAttendanceModal();
+        } else {
+            alert('Failed to save: ' + (result.error || 'Unknown error'));
+        }
+    })
+    .catch(function(error) {
+        alert('Error saving attendance: ' + error);
+    });
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(e) {
+    var modal = document.getElementById('attendance-modal');
+    if (e.target === modal) {
+        closeAttendanceModal();
+    }
+});
 {% endblock js_init %}
 
 {% block core %}
@@ -145,17 +284,19 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
         {% for td in archived_training_days %}
           {% set att = attendance_data.get(student.id, {}).get(td.id) %}
           {% if att %}
-            {% if att.status == "missed" %}
-              <td data-value="3">
+            {% if att.status == "missed" and not att.justified %}
+              <td data-value="3" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ att.justified }}" data-proctored="{{ att.proctored }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal({{ att.id }}, '{{ att.status }}', {{ 'true' if att.justified else 'false' }}, {{ 'true' if att.proctored else 'false' }}, '{{ (att.comment or '') | e }}')">
+              {% elif att.status == "missed" and att.justified %}
+              <td data-value="2.5" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ att.justified }}" data-proctored="{{ att.proctored }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal({{ att.id }}, '{{ att.status }}', {{ 'true' if att.justified else 'false' }}, {{ 'true' if att.proctored else 'false' }}, '{{ (att.comment or '') | e }}')">
               {% elif att.delay_time %}
-              <td data-value="2">
+              <td data-value="2" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ att.justified }}" data-proctored="{{ att.proctored }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal({{ att.id }}, '{{ att.status }}', {{ 'true' if att.justified else 'false' }}, {{ 'true' if att.proctored else 'false' }}, '{{ (att.comment or '') | e }}')">
               {% else %}
-              <td data-value="1">
+              <td data-value="1" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ att.justified }}" data-proctored="{{ att.proctored }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal({{ att.id }}, '{{ att.status }}', {{ 'true' if att.justified else 'false' }}, {{ 'true' if att.proctored else 'false' }}, '{{ (att.comment or '') | e }}')">
             {% endif %}
               <div class="cell-wrapper">
                 {% if att.status == "missed" %}
-                  <div class="status-badge status-missed">
-                    <span>&#x26D4; Missed</span>
+                  <div class="status-badge {% if att.justified %}status-justified{% else %}status-missed{% endif %}">
+                    <span>{% if att.justified %}&#x2714; Justified{% else %}&#x26D4; Missed{% endif %}</span>
                   </div>
                 {% elif att.delay_time %}
                   <div class="status-badge status-delayed">
@@ -188,6 +329,15 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
                     {{ att.delay_reasons }}
                   </div>
                 {% endif %}
+
+                <div class="attendance-badges">
+                  {% if att.proctored %}
+                    <span class="proctored-badge" title="Proctored">&#x1F4F7;</span>
+                  {% endif %}
+                  {% if att.comment %}
+                    <span class="comment-indicator" title="{{ att.comment }}">&#x1F4AC;</span>
+                  {% endif %}
+                </div>
               </div>
             </td>
           {% else %}
@@ -215,6 +365,154 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
     }
   });
 </script>
+
+<!-- Attendance Edit Modal -->
+<div id="attendance-modal" class="attendance-modal">
+  <div class="attendance-modal-content">
+    <div class="attendance-modal-header">
+      <h3>Edit Attendance</h3>
+      <button type="button" class="attendance-modal-close" onclick="closeAttendanceModal()">&times;</button>
+    </div>
+    <div class="attendance-modal-body">
+      <div class="attendance-modal-row" id="justified-row">
+        <label for="modal-justified">
+          <input type="checkbox" id="modal-justified" />
+          Mark as Justified
+        </label>
+        <small class="attendance-modal-hint">Check this if the absence was justified (e.g., sick leave)</small>
+      </div>
+      <div class="attendance-modal-row">
+        <label for="modal-proctored">
+          <input type="checkbox" id="modal-proctored" />
+          Proctored
+        </label>
+        <small class="attendance-modal-hint">Check this if the student was proctored (supervised in-person)</small>
+      </div>
+      <div class="attendance-modal-row">
+        <label for="modal-comment">Comment:</label>
+        <textarea id="modal-comment" rows="3" placeholder="Add a comment about this attendance..."></textarea>
+      </div>
+    </div>
+    <div class="attendance-modal-footer">
+      <button type="button" class="tp-btn-secondary" onclick="closeAttendanceModal()">Cancel</button>
+      <button type="button" class="tp-btn-primary" onclick="saveAttendance()">Save</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .attendance-cell {
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .attendance-cell:hover {
+    background-color: #f3f4f6 !important;
+  }
+  .attendance-badges {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    justify-content: center;
+  }
+  .proctored-badge, .comment-indicator, .justified-badge {
+    font-size: 0.85em;
+    cursor: help;
+  }
+  .status-justified {
+    background-color: #d1fae5 !important;
+    color: #065f46 !important;
+  }
+  .attendance-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+  .attendance-modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+  .attendance-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .attendance-modal-header h3 {
+    margin: 0;
+    font-size: 1.1em;
+    color: #1f2937;
+  }
+  .attendance-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    line-height: 1;
+  }
+  .attendance-modal-close:hover {
+    color: #1f2937;
+  }
+  .attendance-modal-body {
+    padding: 20px;
+  }
+  .attendance-modal-row {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .attendance-modal-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: #374151;
+  }
+  .attendance-modal-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+  }
+  .attendance-modal-row textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9em;
+    resize: vertical;
+  }
+  .attendance-modal-row textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+  .attendance-modal-hint {
+    color: #6b7280;
+    font-size: 0.85em;
+    margin-left: 24px;
+  }
+  .attendance-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 20px;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 0 0 8px 8px;
+  }
+</style>
 
 {% else %}
   <div style="text-align: center; padding: 40px; background: #f9fafb; border-radius: 8px; border: 1px dashed #d1d5db;">

@@ -1113,3 +1113,56 @@ class TrainingProgramCombinedRankingDetailHandler(
         self.r_params["student_tags"] = student_tags
         self.r_params["student_tags_mode"] = student_tags_mode
         self.render("training_program_combined_ranking_detail.html", **self.r_params)
+
+
+class UpdateAttendanceHandler(BaseHandler):
+    """Update attendance record (justified status, comment, and proctored)."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, attendance_id: str):
+        """Update an attendance record's justified status, comment, and/or proctored."""
+        import json
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        attendance = self.safe_get_item(ArchivedAttendance, attendance_id)
+
+        # Verify the attendance belongs to this training program
+        if attendance.training_day.training_program_id != training_program.id:
+            self.set_status(403)
+            self.write({"success": False, "error": "Attendance not in this program"})
+            return
+
+        try:
+            data = json.loads(self.request.body)
+        except json.JSONDecodeError:
+            self.set_status(400)
+            self.write({"success": False, "error": "Invalid JSON"})
+            return
+
+        # Update justified status if provided
+        if "justified" in data:
+            attendance.justified = bool(data["justified"])
+
+        # Update comment if provided
+        if "comment" in data:
+            comment = data["comment"]
+            if comment is not None:
+                comment = str(comment).strip()
+                if not comment:
+                    comment = None
+            attendance.comment = comment
+
+        # Update proctored status if provided
+        if "proctored" in data:
+            attendance.proctored = bool(data["proctored"])
+
+        if self.try_commit():
+            self.write({
+                "success": True,
+                "justified": attendance.justified,
+                "comment": attendance.comment,
+                "proctored": attendance.proctored,
+            })
+        else:
+            self.set_status(500)
+            self.write({"success": False, "error": "Failed to save changes"})
