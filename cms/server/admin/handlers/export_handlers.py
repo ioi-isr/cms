@@ -63,6 +63,26 @@ def _expand_codename_with_language(filename: str, language_name: str | None) -> 
     return filename[:-3] + extension
 
 
+def _zip_directory(src_dir: str, zip_path: str, base_dir: str) -> None:
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, _dirs, files in os.walk(src_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, base_dir)
+                zipf.write(file_path, arcname)
+
+
+def _write_zip_response(handler: BaseHandler, zip_path: str, download_name: str) -> None:
+    handler.set_header('Content-Type', 'application/zip')
+    handler.set_header('Content-Disposition',
+                      f'attachment; filename="{download_name}"')
+
+    with open(zip_path, 'rb') as f:
+        handler.write(f.read())
+
+    handler.finish()
+
+
 def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     """Export a task to YamlLoader (Italian YAML) format.
 
@@ -500,21 +520,8 @@ class ExportTaskHandler(BaseHandler):
             )
 
             zip_path = os.path.join(temp_dir, f"{task.name}.zip")
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(task_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, temp_dir)
-                        zipf.write(file_path, arcname)
-
-            self.set_header('Content-Type', 'application/zip')
-            self.set_header('Content-Disposition',
-                          f'attachment; filename="{task.name}.zip"')
-
-            with open(zip_path, 'rb') as f:
-                self.write(f.read())
-
-            self.finish()
+            _zip_directory(task_dir, zip_path, temp_dir)
+            _write_zip_response(self, zip_path, f"{task.name}.zip")
 
         except Exception as error:
             logger.error("Task export failed: %s", error, exc_info=True)
@@ -551,21 +558,8 @@ class ExportContestHandler(BaseHandler):
             )
 
             zip_path = os.path.join(temp_dir, f"{contest.name}.zip")
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(contest_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, temp_dir)
-                        zipf.write(file_path, arcname)
-
-            self.set_header('Content-Type', 'application/zip')
-            self.set_header('Content-Disposition',
-                          f'attachment; filename="{contest.name}.zip"')
-
-            with open(zip_path, 'rb') as f:
-                self.write(f.read())
-
-            self.finish()
+            _zip_directory(contest_dir, zip_path, temp_dir)
+            _write_zip_response(self, zip_path, f"{contest.name}.zip")
 
         except Exception as error:
             logger.error("Contest export failed: %s", error, exc_info=True)
@@ -604,21 +598,8 @@ class ExportTrainingProgramHandler(BaseHandler):
             )
 
             zip_path = os.path.join(temp_dir, f"{training_program.name}.zip")
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(contest_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, temp_dir)
-                        zipf.write(file_path, arcname)
-
-            self.set_header('Content-Type', 'application/zip')
-            self.set_header('Content-Disposition',
-                          f'attachment; filename="{training_program.name}.zip"')
-
-            with open(zip_path, 'rb') as f:
-                self.write(f.read())
-
-            self.finish()
+            _zip_directory(contest_dir, zip_path, temp_dir)
+            _write_zip_response(self, zip_path, f"{training_program.name}.zip")
 
         except Exception as error:
             logger.error("Training program export failed: %s", error, exc_info=True)

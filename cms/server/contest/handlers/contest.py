@@ -176,8 +176,11 @@ class ContestHandler(BaseHandler):
                     # so we cannot call it without a fully defined contest. Luckily
                     # the one from the base class is enough to display a 404 page.
                     self._raise_404_for_internal_contest()
+                # Check if this contest is a managing contest for a training program
+                if self.contest.training_program is not None:
+                    self.training_program = self.contest.training_program
                 # Block direct access to legacy internal contests (__ prefix)
-                if self.contest.name.startswith("__"):
+                elif self.contest.name.startswith("__"):
                     self._raise_404_for_internal_contest()
         else:
             # Select the contest specified on the command line
