@@ -376,12 +376,9 @@ class BaseHandler(CommonRequestHandler):
                     .filter(Contest.id == int(contest_id))
                     .first()
                 )
-                if contest and contest.name.startswith("__"):
-                    training_program = (
-                        self.sql_session.query(TrainingProgram)
-                        .filter(TrainingProgram.managing_contest_id == int(contest_id))
-                        .first()
-                    )
+                # Redirect managing contest URLs to training program URLs
+                if contest and contest.training_program is not None:
+                    training_program = contest.training_program
 
                     if training_program:
                         url_mappings = {
