@@ -363,7 +363,7 @@ function updateAttendanceCell(attendanceId, justified, recorded, comment) {
         var commentDiv = document.createElement('div');
         commentDiv.className = 'comment-text';
         commentDiv.title = comment;
-        commentDiv.innerHTML = '&#x1F4AC; ' + comment;
+        commentDiv.textContent = '💬 ' + comment;
         wrapper.appendChild(commentDiv);
     } else if (!comment && existingComment) {
         // Remove comment text
@@ -371,7 +371,7 @@ function updateAttendanceCell(attendanceId, justified, recorded, comment) {
     } else if (comment && existingComment) {
         // Update existing comment text
         existingComment.title = comment;
-        existingComment.innerHTML = '&#x1F4AC; ' + comment;
+        existingComment.textContent = '💬 ' + comment;
     }
 }
 
