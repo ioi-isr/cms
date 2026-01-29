@@ -1,4 +1,4 @@
-﻿# Hebrew translations for Contest Management System.
+# Hebrew translations for Contest Management System.
 # Copyright (C) 2025 CMS development group
 # This file is distributed under the same license as the Contest Management System project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
