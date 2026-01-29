@@ -55,13 +55,21 @@ logger = logging.getLogger(__name__)
 
 
 def exclude_internal_contests(query):
-    """Exclude contests with names starting with '__' (internal/system contests).
+    """Exclude internal/system contests from a query.
+
+    This excludes:
+    - Contests with names starting with '__' (legacy internal contests)
+    - Contests that are managing contests for training programs
 
     query: SQLAlchemy query object for Contest queries
 
     return: Query object with internal contests filtered out
     """
-    return query.filter(~Contest.name.like(r'\_\_%', escape='\\'))
+    return query.filter(
+        ~Contest.name.like(r'\_\_%', escape='\\')
+    ).filter(
+        ~Contest.training_program.has()
+    )
 
 
 def get_all_student_tags(training_program: "TrainingProgram") -> list[str]:

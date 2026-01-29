@@ -448,14 +448,16 @@ def _export_contest_to_yaml_format(contest, file_cacher, export_dir):
     if contest.analysis_stop is not None:
         contest_config['analysis_stop'] = contest.analysis_stop.timestamp()
 
-    if contest.tasks:
-        contest_config['tasks'] = [task.name for task in contest.tasks]
+    # Use get_tasks() to support training days which have tasks separate from contest.tasks
+    tasks = contest.get_tasks()
+    if tasks:
+        contest_config['tasks'] = [task.name for task in tasks]
 
     contest_yaml_path = os.path.join(export_dir, "contest.yaml")
     with open(contest_yaml_path, 'w', encoding='utf-8') as f:
         yaml.dump(contest_config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
-    for task in contest.tasks:
+    for task in tasks:
         task_dir = os.path.join(export_dir, task.name)
         os.makedirs(task_dir, exist_ok=True)
 
