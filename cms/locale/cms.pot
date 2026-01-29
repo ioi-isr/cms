@@ -1,4 +1,4 @@
-# Translations template for Contest Management System.
+﻿# Translations template for Contest Management System.
 # Copyright (C) 2025 CMS development group
 # This file is distributed under the same license as the Contest Management System project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
@@ -283,9 +283,6 @@ msgstr ""
 msgid "Your test has been received and is currently being executed."
 msgstr ""
 
-msgid "details"
-msgstr ""
-
 msgid "Executing..."
 msgstr ""
 
@@ -567,9 +564,6 @@ msgstr ""
 msgid "Score"
 msgstr ""
 
-msgid "Token"
-msgstr ""
-
 msgid "no submissions"
 msgstr ""
 
@@ -714,9 +708,6 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
-msgid "Tokens"
-msgstr ""
-
 msgid "Yes"
 msgstr ""
 
@@ -756,9 +747,6 @@ msgid "Time"
 msgstr ""
 
 msgid "File name"
-msgstr ""
-
-msgid "Status"
 msgstr ""
 
 msgid "Preparing..."
@@ -993,9 +981,6 @@ msgstr ""
 msgid "Previous tests"
 msgstr ""
 
-msgid "Input"
-msgstr ""
-
 msgid "Output"
 msgstr ""
 
@@ -1032,7 +1017,6 @@ msgstr ""
 msgid "Sent to printer"
 msgstr ""
 
-
 msgid "A password reset link has been sent to:"
 msgstr ""
 
@@ -1043,9 +1027,6 @@ msgid "Approved"
 msgstr ""
 
 msgid "Before you can view the tasks and participate in the contest, you must click the button below to register your participation."
-msgstr ""
-
-msgid "Confirm Password"
 msgstr ""
 
 msgid "Date of birth"
@@ -1260,3 +1241,149 @@ msgstr ""
 
 msgid "hours."
 msgstr ""
+msgid "All"
+msgstr ""
+
+msgid "Assigned"
+msgstr ""
+
+msgid "Attempted"
+msgstr ""
+
+msgid "Back to Training Program"
+msgstr ""
+
+msgid "Current start time:"
+msgstr ""
+
+msgid "Date"
+msgstr ""
+
+msgid "Delay request actions"
+msgstr ""
+
+msgid "Description"
+msgstr ""
+
+msgid "Duration:"
+msgstr ""
+
+msgid "ENDED"
+msgstr ""
+
+msgid "Enter Training"
+msgstr ""
+
+msgid "Filter:"
+msgstr ""
+
+msgid "Go to statement"
+msgstr ""
+
+msgid "Go to submissions"
+msgstr ""
+
+msgid "H:"
+msgstr ""
+
+msgid "Home Score"
+msgstr ""
+
+msgid "LIVE"
+msgstr ""
+
+msgid "Manual"
+msgstr ""
+
+msgid "No ongoing or upcoming trainings."
+msgstr ""
+
+msgid "No past trainings yet."
+msgstr ""
+
+msgid "No tasks"
+msgstr ""
+
+msgid "No tasks available yet."
+msgstr ""
+
+msgid "Not Attempted"
+msgstr ""
+
+msgid "Ongoing and Upcoming Trainings"
+msgstr ""
+
+msgid "Overall Completion Rate"
+msgstr ""
+
+msgid "Partial"
+msgstr ""
+
+msgid "Past Trainings"
+msgstr ""
+
+msgid "Request a Delay"
+msgstr ""
+
+msgid "Request a delay for this training day"
+msgstr ""
+
+msgid "Scoreboard"
+msgstr ""
+
+msgid "Solved"
+msgstr ""
+
+msgid "Source"
+msgstr ""
+
+msgid "Start:"
+msgstr ""
+
+msgid "Starts in:"
+msgstr ""
+
+msgid "Statistics"
+msgstr ""
+
+msgid "Submissions from task archive"
+msgstr ""
+
+#, python-format
+msgid "Submissions from training day: %(td_desc)s"
+msgstr ""
+
+msgid "T:"
+msgstr ""
+
+msgid "TOTAL POINTS"
+msgstr ""
+
+msgid "Task Archive"
+msgstr ""
+
+msgid "Tasks"
+msgstr ""
+
+msgid "Training Days"
+msgstr ""
+
+msgid "Training Score"
+msgstr ""
+
+msgid "Upcoming Training Days"
+msgstr ""
+
+#, python-format
+msgid "View %(count)s delay request(s)"
+msgstr ""
+
+msgid "View Requests"
+msgstr ""
+
+msgid "YOUR SCORE"
+msgstr ""
+
+msgid "Your Delay Requests"
+msgstr ""
+

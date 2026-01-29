@@ -1,4 +1,4 @@
-# Hebrew translations for Contest Management System.
+﻿# Hebrew translations for Contest Management System.
 # Copyright (C) 2025 CMS development group
 # This file is distributed under the same license as the Contest Management System project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
@@ -23,856 +23,844 @@ msgid "N/A"
 msgstr "N/A"
 
 msgid "Not correct"
-msgstr "שגוי"
+msgstr "×©×’×•×™"
 
 msgid "Correct"
-msgstr "נכון"
+msgstr "× ×›×•×Ÿ"
 
 msgid "Partially correct"
-msgstr "נכון חלקית"
+msgstr "× ×›×•×Ÿ ×—×œ×§×™×ª"
 
 msgid "#"
 msgstr "#"
 
 msgid "Outcome"
-msgstr "תוצאה"
+msgstr "×ª×•×¦××”"
 
 msgid "Details"
-msgstr "פרטים"
+msgstr "×¤×¨×˜×™×"
 
 msgid "Execution time"
-msgstr "זמן ריצה"
+msgstr "×–×ž×Ÿ ×¨×™×¦×”"
 
 msgid "Memory used"
-msgstr "זיכרון שהשתמשתם בו"
+msgstr "×–×™×›×¨×•×Ÿ ×©×”×©×ª×ž×©×ª× ×‘×•"
 
 msgid "Score details temporarily unavailable."
-msgstr "פרטי הניקוד אינם זמינים באופן זמני."
+msgstr "×¤×¨×˜×™ ×”× ×™×§×•×“ ××™× × ×–×ž×™× ×™× ×‘××•×¤×Ÿ ×–×ž× ×™."
 
 #, python-format
 msgid "Subtask %(index)s"
-msgstr "תת משימה %(index)s"
+msgstr "×ª×ª ×ž×©×™×ž×” %(index)s"
 
 msgid "Compilation succeeded"
-msgstr "הקומפילציה עברה בהצלחה"
+msgstr "×”×§×•×ž×¤×™×œ×¦×™×” ×¢×‘×¨×” ×‘×”×¦×œ×—×”"
 
 msgid "Your submission successfully compiled to an executable."
-msgstr "ההגשה שלכם התקמפלה בהצלחה לקובץ הרצה."
+msgstr "×”×”×’×©×” ×©×œ×›× ×”×ª×§×ž×¤×œ×” ×‘×”×¦×œ×—×” ×œ×§×•×‘×¥ ×”×¨×¦×”."
 
 msgid "Compilation failed"
-msgstr "הקומפילציה נכשלה"
+msgstr "×”×§×•×ž×¤×™×œ×¦×™×” × ×›×©×œ×”"
 
 msgid "Your submission did not compile correctly."
-msgstr "ההגשה שלכם לא התקמפלה בהצלחה."
+msgstr "×”×”×’×©×” ×©×œ×›× ×œ× ×”×ª×§×ž×¤×œ×” ×‘×”×¦×œ×—×”."
 
 msgid "Compilation timed out"
-msgstr "הקומפילציה חרגה מהזמן המוקצב"
+msgstr "×”×§×•×ž×¤×™×œ×¦×™×” ×—×¨×’×” ×ž×”×–×ž×Ÿ ×”×ž×•×§×¦×‘"
 
 msgid "Your submission exceeded the time limit while compiling. This might be caused by an excessive use of C++ templates, for example."
-msgstr "ההגשה שלכם חרגה ממגבלת הזמן בעת הקמפול. זה עלול להגרם על ידי שימוש יתר ב-templates של C++, למשל."
+msgstr "×”×”×’×©×” ×©×œ×›× ×—×¨×’×” ×ž×ž×’×‘×œ×ª ×”×–×ž×Ÿ ×‘×¢×ª ×”×§×ž×¤×•×œ. ×–×” ×¢×œ×•×œ ×œ×”×’×¨× ×¢×œ ×™×“×™ ×©×™×ž×•×© ×™×ª×¨ ×‘-templates ×©×œ C++, ×œ×ž×©×œ."
 
 #, python-format
 msgid "Compilation killed with signal %s (could be triggered by violating memory limits)"
-msgstr "הקמפול הופסק בעקבות האות %s (ייתכן שעקב חריגה ממגבלות הזכרון)"
+msgstr "×”×§×ž×¤×•×œ ×”×•×¤×¡×§ ×‘×¢×§×‘×•×ª ×”××•×ª %s (×™×™×ª×›×Ÿ ×©×¢×§×‘ ×—×¨×™×’×” ×ž×ž×’×‘×œ×•×ª ×”×–×›×¨×•×Ÿ)"
 
 msgid "Your submission was killed with the specified signal. Among other things, this might be caused by exceeding the memory limit for the compilation, and in turn by an excessive use of C++ templates, for example."
-msgstr "ההגשה שלך הופסקה בעקבות האות שצוין. בין היתר, ייתכן שזה נגרם עקב חריגה ממגבלת הזיכרון בזמן הקומפילציה, למשל עקב שימוש מופרז בתבניות ++C."
+msgstr "×”×”×’×©×” ×©×œ×š ×”×•×¤×¡×§×” ×‘×¢×§×‘×•×ª ×”××•×ª ×©×¦×•×™×Ÿ. ×‘×™×Ÿ ×”×™×ª×¨, ×™×™×ª×›×Ÿ ×©×–×” × ×’×¨× ×¢×§×‘ ×—×¨×™×’×” ×ž×ž×’×‘×œ×ª ×”×–×™×›×¨×•×Ÿ ×‘×–×ž×Ÿ ×”×§×•×ž×¤×™×œ×¦×™×”, ×œ×ž×©×œ ×¢×§×‘ ×©×™×ž×•×© ×ž×•×¤×¨×– ×‘×ª×‘× ×™×•×ª ++C."
 
 msgid "Output is correct"
-msgstr "הפלט נכון"
+msgstr "×”×¤×œ×˜ × ×›×•×Ÿ"
 
 msgid "Your submission ran and gave the correct answer"
-msgstr "ההגשה שלך הורצה וסיפקה את התשובה הנכונה"
+msgstr "×”×”×’×©×” ×©×œ×š ×”×•×¨×¦×” ×•×¡×™×¤×§×” ××ª ×”×ª×©×•×‘×” ×”× ×›×•× ×”"
 
 msgid "Output is partially correct"
-msgstr "הפלט נכון חלקית"
+msgstr "×”×¤×œ×˜ × ×›×•×Ÿ ×—×œ×§×™×ª"
 
 msgid "Your submission ran and gave the partially correct answer"
-msgstr "ההגשה שלך הורצה וסיפקה תשובה נכונה חלקית"
+msgstr "×”×”×’×©×” ×©×œ×š ×”×•×¨×¦×” ×•×¡×™×¤×§×” ×ª×©×•×‘×” × ×›×•× ×” ×—×œ×§×™×ª"
 
 msgid "Output isn't correct"
-msgstr "הפלט שגוי"
+msgstr "×”×¤×œ×˜ ×©×’×•×™"
 
 msgid "Your submission ran, but gave the wrong answer"
-msgstr "ההגשה שלך הורצה, אך סיפקה תשובה שגויה"
+msgstr "×”×”×’×©×” ×©×œ×š ×”×•×¨×¦×”, ××š ×¡×™×¤×§×” ×ª×©×•×‘×” ×©×’×•×™×”"
 
 #, python-format
 msgid "Evaluation didn't produce file %s"
-msgstr "ההרצה לא יצרה את הקובץ %s"
+msgstr "×”×”×¨×¦×” ×œ× ×™×¦×¨×” ××ª ×”×§×•×‘×¥ %s"
 
 msgid "Your submission ran, but did not write on the correct output file"
-msgstr "ההגשה שלך רצה, אך לא כתבה לקובץ הפלט הנכון"
+msgstr "×”×”×’×©×” ×©×œ×š ×¨×¦×”, ××š ×œ× ×›×ª×‘×” ×œ×§×•×‘×¥ ×”×¤×œ×˜ ×”× ×›×•×Ÿ"
 
 msgid "Execution timed out"
-msgstr "חריגה ממגבלת הזמן"
+msgstr "×—×¨×™×’×” ×ž×ž×’×‘×œ×ª ×”×–×ž×Ÿ"
 
 msgid "Your submission used too much CPU time."
-msgstr "ההגשה שלך השתמשה ביותר מידי זמן מעבד."
+msgstr "×”×”×’×©×” ×©×œ×š ×”×©×ª×ž×©×” ×‘×™×•×ª×¨ ×ž×™×“×™ ×–×ž×Ÿ ×ž×¢×‘×“."
 
 msgid "Execution timed out (wall clock limit exceeded)"
-msgstr "חריגה ממגבלת הזמן (שעון קיר)"
+msgstr "×—×¨×™×’×” ×ž×ž×’×‘×œ×ª ×”×–×ž×Ÿ (×©×¢×•×Ÿ ×§×™×¨)"
 
 msgid "Your submission used too much total time. This might be triggered by undefined code, or buffer overflow, for example. Note that in this case the CPU time visible in the submission details might be much smaller than the time limit."
-msgstr "ההגשה שלכם השתמשה ביותר מידי זמן כולל. זה יכול להגרם עקב קוד לא מוגדר, או גלישת זכרון, למשל. שימו לב שבמקרה זה זמן המעבד הנראה בפרטי ההגשה עלול להיות קטן ממגבלת זמן הריצה."
+msgstr "×”×”×’×©×” ×©×œ×›× ×”×©×ª×ž×©×” ×‘×™×•×ª×¨ ×ž×™×“×™ ×–×ž×Ÿ ×›×•×œ×œ. ×–×” ×™×›×•×œ ×œ×”×’×¨× ×¢×§×‘ ×§×•×“ ×œ× ×ž×•×’×“×¨, ××• ×’×œ×™×©×ª ×–×›×¨×•×Ÿ, ×œ×ž×©×œ. ×©×™×ž×• ×œ×‘ ×©×‘×ž×§×¨×” ×–×” ×–×ž×Ÿ ×”×ž×¢×‘×“ ×”× ×¨××” ×‘×¤×¨×˜×™ ×”×”×’×©×” ×¢×œ×•×œ ×œ×”×™×•×ª ×§×˜×Ÿ ×ž×ž×’×‘×œ×ª ×–×ž×Ÿ ×”×¨×™×¦×”."
 
 msgid "Memory limit exceeded"
-msgstr "חריגה ממגבלת הזכרון"
+msgstr "×—×¨×™×’×” ×ž×ž×’×‘×œ×ª ×”×–×›×¨×•×Ÿ"
 
 msgid "Your submission used too much memory."
-msgstr "ההגשה שלכם השתמשה ביותר מידי זכרון."
+msgstr "×”×”×’×©×” ×©×œ×›× ×”×©×ª×ž×©×” ×‘×™×•×ª×¨ ×ž×™×“×™ ×–×›×¨×•×Ÿ."
 
 msgid "Execution killed by signal"
-msgstr "הריצה הופסקה על ידי אות"
+msgstr "×”×¨×™×¦×” ×”×•×¤×¡×§×” ×¢×œ ×™×“×™ ××•×ª"
 
 msgid "The evaluation was killed by a signal."
-msgstr "ההרצה הופסקה על ידי אות."
+msgstr "×”×”×¨×¦×” ×”×•×¤×¡×§×” ×¢×œ ×™×“×™ ××•×ª."
 
 msgid "Execution failed because the return code was nonzero"
-msgstr "ההרצה נכשלה כי ערך החזרה היה שונה מאפס"
+msgstr "×”×”×¨×¦×” × ×›×©×œ×” ×›×™ ×¢×¨×š ×”×—×–×¨×” ×”×™×” ×©×•× ×” ×ž××¤×¡"
 
 msgid "Your submission failed because it exited with a return code different from 0."
-msgstr "ההגשה שלכם נכשלה כי היא יצאה עם ערך חזרה שונה מ-0."
+msgstr "×”×”×’×©×” ×©×œ×›× × ×›×©×œ×” ×›×™ ×”×™× ×™×¦××” ×¢× ×¢×¨×š ×—×–×¨×” ×©×•× ×” ×ž-0."
 
 msgid "Execution completed successfully"
-msgstr "הריצה הסתיימה בהצלחה"
+msgstr "×”×¨×™×¦×” ×”×¡×ª×™×™×ž×” ×‘×”×¦×œ×—×”"
 
 msgid "No compilation needed"
-msgstr "אין צורך בקומפילציה"
+msgstr "××™×Ÿ ×¦×•×¨×š ×‘×§×•×ž×¤×™×œ×¦×™×”"
 
 msgid "File not submitted"
-msgstr "הקובץ לא הוגש"
+msgstr "×”×§×•×‘×¥ ×œ× ×”×•×’×©"
 
 msgid "Question too long!"
-msgstr "השאלה ארוכה מידי!"
+msgstr "×”×©××œ×” ××¨×•×›×” ×ž×™×“×™!"
 
 #, python-format
 msgid "Subject must be at most %(max_subject_length)d characters, content at most %(max_text_length)d."
-msgstr "הנושא חייב להיות בעל לכל היותר %(max_subject_length)d תוים, והתוכן לכל היותר %(max_text_length)d."
+msgstr "×”× ×•×©× ×—×™×™×‘ ×œ×”×™×•×ª ×‘×¢×œ ×œ×›×œ ×”×™×•×ª×¨ %(max_subject_length)d ×ª×•×™×, ×•×”×ª×•×›×Ÿ ×œ×›×œ ×”×™×•×ª×¨ %(max_text_length)d."
 
 msgid "contest-token"
-msgstr "אסימון-תחרות"
+msgstr "××¡×™×ž×•×Ÿ-×ª×—×¨×•×ª"
 
 msgid "contest-tokens"
-msgstr "אסימוני-תחרות"
+msgstr "××¡×™×ž×•× ×™-×ª×—×¨×•×ª"
 
 msgid "task-token"
-msgstr "אסימון-משימה"
+msgstr "××¡×™×ž×•×Ÿ-×ž×©×™×ž×”"
 
 msgid "task-tokens"
-msgstr "אסימוני-משימה"
+msgstr "××¡×™×ž×•× ×™-×ž×©×™×ž×”"
 
 msgid "token"
-msgstr "אסימון"
+msgstr "××¡×™×ž×•×Ÿ"
 
 msgid "tokens"
-msgstr "אסימונים"
+msgstr "××¡×™×ž×•× ×™×"
 
 #, python-format
 msgid "You don't have %(type_pl)s available for this task."
-msgstr "אין לכם %(type_pl)s זמינים עבור משימה זו."
+msgstr "××™×Ÿ ×œ×›× %(type_pl)s ×–×ž×™× ×™× ×¢×‘×•×¨ ×ž×©×™×ž×” ×–×•."
 
 #, python-format
 msgid "You have an infinite number of %(type_pl)s for this task."
-msgstr "יש לכם מספר אינסופי של %(type_pl)s עבור משימה זו."
+msgstr "×™×© ×œ×›× ×ž×¡×¤×¨ ××™× ×¡×•×¤×™ ×©×œ %(type_pl)s ×¢×‘×•×¨ ×ž×©×™×ž×” ×–×•."
 
 #, python-format
 msgid "You start with no %(type_pl)s."
-msgstr "אתם מתחילים בלי %(type_pl)s."
+msgstr "××ª× ×ž×ª×—×™×œ×™× ×‘×œ×™ %(type_pl)s."
 
 #, python-format
 msgid "You start with one %(type_s)s."
 msgid_plural "You start with %(gen_initial)d %(type_pl)s."
-msgstr[0] "אתם מתחילים עם %(type_s)s יחיד."
-msgstr[1] "אתם מתחילים עם %(gen_initial)d %(type_pl)s."
+msgstr[0] "××ª× ×ž×ª×—×™×œ×™× ×¢× %(type_s)s ×™×—×™×“."
+msgstr[1] "××ª× ×ž×ª×—×™×œ×™× ×¢× %(gen_initial)d %(type_pl)s."
 
 #, python-format
 msgid "Every minute "
 msgid_plural "Every %(gen_interval)g minutes "
-msgstr[0] "כל דקה "
-msgstr[1] "כל %(gen_interval)g דקות "
+msgstr[0] "×›×œ ×“×§×” "
+msgstr[1] "×›×œ %(gen_interval)g ×“×§×•×ª "
 
 #, python-format
 msgid "you get another %(type_s)s, "
 msgid_plural "you get %(gen_number)d other %(type_pl)s, "
-msgstr[0] "אתם מקבלים %(type_s)s נוסף, "
-msgstr[1] "אתם מקבלים %(gen_number)d %(type_pl)s נוספים, "
+msgstr[0] "××ª× ×ž×§×‘×œ×™× %(type_s)s × ×•×¡×£, "
+msgstr[1] "××ª× ×ž×§×‘×œ×™× %(gen_number)d %(type_pl)s × ×•×¡×¤×™×, "
 
 #, python-format
 msgid "up to a maximum of one %(type_s)s."
 msgid_plural "up to a maximum of %(gen_max)d %(type_pl)s."
-msgstr[0] "עד למקסימום של %(type_s)s יחיד."
-msgstr[1] "עד למקסימום של %(gen_max)d %(type_pl)s."
+msgstr[0] "×¢×“ ×œ×ž×§×¡×™×ž×•× ×©×œ %(type_s)s ×™×—×™×“."
+msgstr[1] "×¢×“ ×œ×ž×§×¡×™×ž×•× ×©×œ %(gen_max)d %(type_pl)s."
 
 #, python-format
 msgid "you get another %(type_s)s."
 msgid_plural "you get %(gen_number)d other %(type_pl)s."
-msgstr[0] "תקבלו %(type_s)s נוסף."
-msgstr[1] "תקבלו %(gen_number)d %(type_pl)s נוספים."
+msgstr[0] "×ª×§×‘×œ×• %(type_s)s × ×•×¡×£."
+msgstr[1] "×ª×§×‘×œ×• %(gen_number)d %(type_pl)s × ×•×¡×¤×™×."
 
 #, python-format
 msgid "You don't get other %(type_pl)s."
-msgstr "לא תקבלו %(type_pl)s נוספים."
+msgstr "×œ× ×ª×§×‘×œ×• %(type_pl)s × ×•×¡×¤×™×."
 
 #, python-format
 msgid "You can use a %(type_s)s every second "
 msgid_plural "You can use a %(type_s)s every %(min_interval)g seconds "
-msgstr[0] "אתם יכולים להשתמש ב- %(type_s)s בכל שניה "
-msgstr[1] "אתם יכולים להשתמש ב- %(type_s)s בכל %(min_interval)g שניות "
+msgstr[0] "××ª× ×™×›×•×œ×™× ×œ×”×©×ª×ž×© ×‘- %(type_s)s ×‘×›×œ ×©× ×™×” "
+msgstr[1] "××ª× ×™×›×•×œ×™× ×œ×”×©×ª×ž×© ×‘- %(type_s)s ×‘×›×œ %(min_interval)g ×©× ×™×•×ª "
 
 #, python-format
 msgid "and no more than one %(type_s)s in total."
 msgid_plural "and no more than %(max_number)d %(type_pl)s in total."
-msgstr[0] "ובלא יותר מ-%(type_s)s בסך הכל."
-msgstr[1] "ובלא יותר מ- %(max_number)d %(type_pl)s בסך הכל."
+msgstr[0] "×•×‘×œ× ×™×•×ª×¨ ×ž-%(type_s)s ×‘×¡×š ×”×›×œ."
+msgstr[1] "×•×‘×œ× ×™×•×ª×¨ ×ž- %(max_number)d %(type_pl)s ×‘×¡×š ×”×›×œ."
 
 #, python-format
 msgid "You can use a %(type_s)s every second."
 msgid_plural "You can use a %(type_s)s every %(min_interval)g seconds."
-msgstr[0] "אתם יכולים להשתמש ב-%(type_s)s בכל שניה."
-msgstr[1] "אתם יכולים להשתמש ב-%(type_s)s בכל %(min_interval)g שניות."
+msgstr[0] "××ª× ×™×›×•×œ×™× ×œ×”×©×ª×ž×© ×‘-%(type_s)s ×‘×›×œ ×©× ×™×”."
+msgstr[1] "××ª× ×™×›×•×œ×™× ×œ×”×©×ª×ž×© ×‘-%(type_s)s ×‘×›×œ %(min_interval)g ×©× ×™×•×ª."
 
 #, python-format
 msgid "You can use no more than one %(type_s)s in total."
 msgid_plural "You can use no more than %(max_number)d %(type_pl)s in total."
-msgstr[0] "אתם יכולים להשתמש בלא יותר מ-%(type_s)s בסך הכל."
-msgstr[1] "אתם יכולים להשתמש בלא יותר מ- %(max_number)d %(type_pl)s בסך הכל."
+msgstr[0] "××ª× ×™×›×•×œ×™× ×œ×”×©×ª×ž×© ×‘×œ× ×™×•×ª×¨ ×ž-%(type_s)s ×‘×¡×š ×”×›×œ."
+msgstr[1] "××ª× ×™×›×•×œ×™× ×œ×”×©×ª×ž×© ×‘×œ× ×™×•×ª×¨ ×ž- %(max_number)d %(type_pl)s ×‘×¡×š ×”×›×œ."
 
 msgid "You have no limitations on how you use them."
-msgstr "אין לכם מגבלות באיך להשתמש בהם."
+msgstr "××™×Ÿ ×œ×›× ×ž×’×‘×œ×•×ª ×‘××™×š ×œ×”×©×ª×ž×© ×‘×”×."
 
 msgid "Question received"
-msgstr "השאלה התקבלה"
+msgstr "×”×©××œ×” ×”×ª×§×‘×œ×”"
 
 msgid "Your question has been received, you will be notified when it is answered."
-msgstr "השאלה שלכם התקבלה, תקבלו התראה כשהיא תענה."
+msgstr "×”×©××œ×” ×©×œ×›× ×”×ª×§×‘×œ×”, ×ª×§×‘×œ×• ×”×ª×¨××” ×›×©×”×™× ×ª×¢× ×”."
 
 msgid "Print job received"
-msgstr "עבודת ההדפסה התקבלה"
+msgstr "×¢×‘×•×“×ª ×”×”×“×¤×¡×” ×”×ª×§×‘×œ×”"
 
 msgid "Your print job has been received."
-msgstr "עבודת ההדפסה שלכם התקבלה."
+msgstr "×¢×‘×•×“×ª ×”×”×“×¤×¡×” ×©×œ×›× ×”×ª×§×‘×œ×”."
 
 msgid "Submission received"
-msgstr "ההגשה התקבלה"
+msgstr "×”×”×’×©×” ×”×ª×§×‘×œ×”"
 
 msgid "Your submission has been received and is currently being evaluated."
-msgstr "ההגשה שלכם התקבלה וכעת נבדקת."
+msgstr "×”×”×’×©×” ×©×œ×›× ×”×ª×§×‘×œ×” ×•×›×¢×ª × ×‘×“×§×ª."
 
 msgid "Compiling..."
-msgstr "מתקמפלת..."
+msgstr "×ž×ª×§×ž×¤×œ×ª..."
 
 msgid "Evaluating..."
-msgstr "נבדקת..."
+msgstr "× ×‘×“×§×ª..."
 
 msgid "Scoring..."
-msgstr "מנוקדת..."
+msgstr "×ž× ×•×§×“×ª..."
 
 msgid "Evaluated"
-msgstr "נבדקה"
+msgstr "× ×‘×“×§×”"
 
 msgid "status"
-msgstr "סטטוס"
+msgstr "×¡×˜×˜×•×¡"
 
 msgid "Token request received"
-msgstr "הבקשה לאסימונים התקבלה"
+msgstr "×”×‘×§×©×” ×œ××¡×™×ž×•× ×™× ×”×ª×§×‘×œ×”"
 
 msgid "Your request has been received and applied to the submission."
-msgstr "הבקשה שלכם התקבלה ומושמת להגשה."
+msgstr "×”×‘×§×©×” ×©×œ×›× ×”×ª×§×‘×œ×” ×•×ž×•×©×ž×ª ×œ×”×’×©×”."
 
 msgid "Test received"
-msgstr "הטסט התקבל"
+msgstr "×”×˜×¡×˜ ×”×ª×§×‘×œ"
 
 msgid "Your test has been received and is currently being executed."
-msgstr "הטסט שלכם התקבל וכרגע מורץ."
-
-msgid "details"
-msgstr "פרטים"
+msgstr "×”×˜×¡×˜ ×©×œ×›× ×”×ª×§×‘×œ ×•×›×¨×’×¢ ×ž×•×¨×¥."
 
 msgid "Executing..."
-msgstr "מורצת..."
+msgstr "×ž×•×¨×¦×ª..."
 
 msgid "Executed"
-msgstr "הורצה"
+msgstr "×”×•×¨×¦×”"
 
 msgid "Too many print jobs!"
-msgstr "יותר מידי עבודות הדפסה!"
+msgstr "×™×•×ª×¨ ×ž×™×“×™ ×¢×‘×•×“×•×ª ×”×“×¤×¡×”!"
 
 #, python-format
 msgid "You have reached the maximum limit of at most %d print jobs."
-msgstr "הגעתם למגבלה המירבית של לכל היותר %d עבודות הדפסה."
+msgstr "×”×’×¢×ª× ×œ×ž×’×‘×œ×” ×”×ž×™×¨×‘×™×ª ×©×œ ×œ×›×œ ×”×™×•×ª×¨ %d ×¢×‘×•×“×•×ª ×”×“×¤×¡×”."
 
 msgid "Invalid format!"
-msgstr "פורמט לא תקין!"
+msgstr "×¤×•×¨×ž×˜ ×œ× ×ª×§×™×Ÿ!"
 
 msgid "Please select the correct files."
-msgstr "אנא בחרו את הקבצים הנכונים."
+msgstr "×× × ×‘×—×¨×• ××ª ×”×§×‘×¦×™× ×”× ×›×•× ×™×."
 
 msgid "File too big!"
-msgstr "הקובץ גדול מידי!"
+msgstr "×”×§×•×‘×¥ ×’×“×•×œ ×ž×™×“×™!"
 
 #, python-format
 msgid "Each file must be at most %d bytes long."
-msgstr "על כל קובץ להיות באורך של לכל היותר %d בתים."
+msgstr "×¢×œ ×›×œ ×§×•×‘×¥ ×œ×”×™×•×ª ×‘××•×¨×š ×©×œ ×œ×›×œ ×”×™×•×ª×¨ %d ×‘×ª×™×."
 
 msgid "Print job storage failed!"
-msgstr "האכסון של עבודת ההדפסה נכשל!"
+msgstr "×”××›×¡×•×Ÿ ×©×œ ×¢×‘×•×“×ª ×”×”×“×¤×¡×” × ×›×©×œ!"
 
 msgid "Please try again."
-msgstr "אנא נסו שוב."
+msgstr "×× × × ×¡×• ×©×•×‘."
 
 msgid "Too many submissions!"
-msgstr "יותר מידי הגשות!"
+msgstr "×™×•×ª×¨ ×ž×™×“×™ ×”×’×©×•×ª!"
 
 #, python-format
 msgid "You have reached the maximum limit of at most %d submissions among all tasks."
-msgstr "הגעתם למגבלה המירבית של לכל היותר %d הגשות על פני כל המשימות."
+msgstr "×”×’×¢×ª× ×œ×ž×’×‘×œ×” ×”×ž×™×¨×‘×™×ª ×©×œ ×œ×›×œ ×”×™×•×ª×¨ %d ×”×’×©×•×ª ×¢×œ ×¤× ×™ ×›×œ ×”×ž×©×™×ž×•×ª."
 
 #, python-format
 msgid "You have reached the maximum limit of at most %d submissions on this task."
-msgstr "הגעתם למגבלה של לכל היותר %d הגשות במשימה זו."
+msgstr "×”×’×¢×ª× ×œ×ž×’×‘×œ×” ×©×œ ×œ×›×œ ×”×™×•×ª×¨ %d ×”×’×©×•×ª ×‘×ž×©×™×ž×” ×–×•."
 
 msgid "Submissions too frequent!"
-msgstr "ההגשות דכופות מידי!"
+msgstr "×”×”×’×©×•×ª ×“×›×•×¤×•×ª ×ž×™×“×™!"
 
 #, python-format
 msgid "Among all tasks, you can submit again after %d seconds from last submission."
-msgstr "על פני כל המשימות, אתם יכולים להגיש שוב לאחר %d שניות מההגשה האחרונה שלכם."
+msgstr "×¢×œ ×¤× ×™ ×›×œ ×”×ž×©×™×ž×•×ª, ××ª× ×™×›×•×œ×™× ×œ×”×’×™×© ×©×•×‘ ×œ××—×¨ %d ×©× ×™×•×ª ×ž×”×”×’×©×” ×”××—×¨×•× ×” ×©×œ×›×."
 
 #, python-format
 msgid "For this task, you can submit again after %d seconds from last submission."
-msgstr "עבור משימה זו, אתם יכולים להגיש שוב לאחר %d שניות מההגשה האחרונה שלכם."
+msgstr "×¢×‘×•×¨ ×ž×©×™×ž×” ×–×•, ××ª× ×™×›×•×œ×™× ×œ×”×’×™×© ×©×•×‘ ×œ××—×¨ %d ×©× ×™×•×ª ×ž×”×”×’×©×” ×”××—×¨×•× ×” ×©×œ×›×."
 
 msgid "Submission too big!"
-msgstr "ההגשה גדולה מידי!"
+msgstr "×”×”×’×©×” ×’×“×•×œ×” ×ž×™×“×™!"
 
 #, python-format
 msgid "Each source file must be at most %d bytes long."
-msgstr "על כל קובץ קוד להיות באורך של לכל היותר %d בתים."
+msgstr "×¢×œ ×›×œ ×§×•×‘×¥ ×§×•×“ ×œ×”×™×•×ª ×‘××•×¨×š ×©×œ ×œ×›×œ ×”×™×•×ª×¨ %d ×‘×ª×™×."
 
 #, python-format
 msgid "The submission should contain at most %d files."
-msgstr "על ההגשה להכיל לכל היותר %d קבצים."
+msgstr "×¢×œ ×”×”×’×©×” ×œ×”×›×™×œ ×œ×›×œ ×”×™×•×ª×¨ %d ×§×‘×¦×™×."
 
 msgid "Invalid archive format!"
-msgstr "פורמט ארכיון לא תקין!"
+msgstr "×¤×•×¨×ž×˜ ××¨×›×™×•×Ÿ ×œ× ×ª×§×™×Ÿ!"
 
 msgid "The submitted archive could not be opened."
-msgstr "הארכיון שהוגש לא יכל להפתח."
+msgstr "×”××¨×›×™×•×Ÿ ×©×”×•×’×© ×œ× ×™×›×œ ×œ×”×¤×ª×—."
 
 msgid "Invalid submission format!"
-msgstr "פורמט הגשה לא תקין!"
+msgstr "×¤×•×¨×ž×˜ ×”×’×©×” ×œ× ×ª×§×™×Ÿ!"
 
 msgid "Submission storage failed!"
-msgstr "אכסון ההגשה נכשל!"
+msgstr "××›×¡×•×Ÿ ×”×”×’×©×” × ×›×©×œ!"
 
 msgid "Too many tests!"
-msgstr "יותר מידי טסטים!"
+msgstr "×™×•×ª×¨ ×ž×™×“×™ ×˜×¡×˜×™×!"
 
 #, python-format
 msgid "You have reached the maximum limit of at most %d tests among all tasks."
-msgstr "הגעתם למגבלה של לכל היותר %d טסטים על פני כל המשימות."
+msgstr "×”×’×¢×ª× ×œ×ž×’×‘×œ×” ×©×œ ×œ×›×œ ×”×™×•×ª×¨ %d ×˜×¡×˜×™× ×¢×œ ×¤× ×™ ×›×œ ×”×ž×©×™×ž×•×ª."
 
 #, python-format
 msgid "You have reached the maximum limit of at most %d tests on this task."
-msgstr "הגעתם למגבלה של לכל היותר %d טסטים במשימה זו."
+msgstr "×”×’×¢×ª× ×œ×ž×’×‘×œ×” ×©×œ ×œ×›×œ ×”×™×•×ª×¨ %d ×˜×¡×˜×™× ×‘×ž×©×™×ž×” ×–×•."
 
 msgid "Tests too frequent!"
-msgstr "הטסטים תכופים מידי!"
+msgstr "×”×˜×¡×˜×™× ×ª×›×•×¤×™× ×ž×™×“×™!"
 
 #, python-format
 msgid "Among all tasks, you can test again after %d seconds from last test."
-msgstr "על פני כל המשימות, אתם יכולים להגיש טסט שוב כעבור %d שניות מאז הטסט האחרון."
+msgstr "×¢×œ ×¤× ×™ ×›×œ ×”×ž×©×™×ž×•×ª, ××ª× ×™×›×•×œ×™× ×œ×”×’×™×© ×˜×¡×˜ ×©×•×‘ ×›×¢×‘×•×¨ %d ×©× ×™×•×ª ×ž××– ×”×˜×¡×˜ ×”××—×¨×•×Ÿ."
 
 #, python-format
 msgid "For this task, you can test again after %d seconds from last test."
-msgstr "במשימה זו, אתם יכולים להגיש טסט שוב כעבור %d שניות מאז הטסט האחרון."
+msgstr "×‘×ž×©×™×ž×” ×–×•, ××ª× ×™×›×•×œ×™× ×œ×”×’×™×© ×˜×¡×˜ ×©×•×‘ ×›×¢×‘×•×¨ %d ×©× ×™×•×ª ×ž××– ×”×˜×¡×˜ ×”××—×¨×•×Ÿ."
 
 msgid "Invalid test format!"
-msgstr "פורמט טסט לא תקין!"
+msgstr "×¤×•×¨×ž×˜ ×˜×¡×˜ ×œ× ×ª×§×™×Ÿ!"
 
 msgid "Test too big!"
-msgstr "הטסט גדול מידי!"
+msgstr "×”×˜×¡×˜ ×’×“×•×œ ×ž×™×“×™!"
 
 msgid "Input too big!"
-msgstr "הקלט גדול מידי!"
+msgstr "×”×§×œ×˜ ×’×“×•×œ ×ž×™×“×™!"
 
 #, python-format
 msgid "The input file must be at most %d bytes long."
-msgstr "על קובץ הקלט להיות לכל היותר באורך %d בתים."
+msgstr "×¢×œ ×§×•×‘×¥ ×”×§×œ×˜ ×œ×”×™×•×ª ×œ×›×œ ×”×™×•×ª×¨ ×‘××•×¨×š %d ×‘×ª×™×."
 
 msgid "Test storage failed!"
-msgstr "אכסון הטסט נכשל!"
+msgstr "××›×¡×•×Ÿ ×”×˜×¡×˜ × ×›×©×œ!"
 
 msgid "Communication"
-msgstr "תקשורת"
+msgstr "×ª×§×©×•×¨×ª"
 
 msgid "Announcements"
-msgstr "הכרזות"
+msgstr "×”×›×¨×–×•×ª"
 
 msgid "(no subject)"
-msgstr "(ללא נושא)"
+msgstr "(×œ×œ× × ×•×©×)"
 
 msgid "Questions"
-msgstr "שאלות"
+msgstr "×©××œ×•×ª"
 
 msgid "Subject"
-msgstr "נושא"
+msgstr "× ×•×©×"
 
 msgid "Text"
-msgstr "טקסט"
+msgstr "×˜×§×¡×˜"
 
 msgid "Ask question"
-msgstr "שאלו שאלה"
+msgstr "×©××œ×• ×©××œ×”"
 
 msgid "Reset"
-msgstr "אתחול"
+msgstr "××ª×—×•×œ"
 
 msgid "no answer yet"
-msgstr "עדיין אין תשובה"
+msgstr "×¢×“×™×™×Ÿ ××™×Ÿ ×ª×©×•×‘×”"
 
 msgid "Messages"
-msgstr "הודעות"
+msgstr "×”×•×“×¢×•×ª"
 
 #, python-format
 msgid "Automatic (%(lang)s)"
-msgstr "אוטומטית (%(lang)s)"
+msgstr "××•×˜×•×ž×˜×™×ª (%(lang)s)"
 
 msgid "Logout"
-msgstr "התנתקות"
+msgstr "×”×ª× ×ª×§×•×ª"
 
 #, python-format
 msgid "Logged in as <strong>%(first_name)s %(last_name)s</strong> <em>(%(username)s)</em>"
-msgstr "מחובר כ-<strong>%(first_name)s %(last_name)s</strong> <em>(%(username)s)</em>"
+msgstr "×ž×—×•×‘×¨ ×›-<strong>%(first_name)s %(last_name)s</strong> <em>(%(username)s)</em>"
 
 msgid "Failed to log in."
-msgstr "ההתחברות נכשלה."
+msgstr "×”×”×ª×—×‘×¨×•×ª × ×›×©×œ×”."
 
 msgid "Welcome"
-msgstr "ברוכים הבאים"
+msgstr "×‘×¨×•×›×™× ×”×‘××™×"
 
 msgid "Please log in"
-msgstr "אנא התחברו"
+msgstr "×× × ×”×ª×—×‘×¨×•"
 
 msgid "Username"
-msgstr "שם משתמש"
+msgstr "×©× ×ž×©×ª×ž×©"
 
 msgid "Password"
-msgstr "ססמה"
+msgstr "×¡×¡×ž×”"
 
 msgid "Login"
-msgstr "התחברות"
+msgstr "×”×ª×—×‘×¨×•×ª"
 
 msgid "Don't have an account?"
-msgstr "אין לכם משתמש?"
+msgstr "××™×Ÿ ×œ×›× ×ž×©×ª×ž×©?"
 
 msgid "Register"
-msgstr "הרשמה"
+msgstr "×”×¨×©×ž×”"
 
 msgid "New message"
-msgstr "הודעה חדשה"
+msgstr "×”×•×“×¢×” ×—×“×©×”"
 
 msgid "New announcement"
-msgstr "הכרזה חדשה"
+msgstr "×”×›×¨×–×” ×—×“×©×”"
 
 msgid "New answer"
-msgstr "תשובה חדשה"
+msgstr "×ª×©×•×‘×” ×—×“×©×”"
 
 #, python-format
 msgid "%d unread"
-msgstr "%d לא נקראו"
+msgstr "%d ×œ× × ×§×¨××•"
 
 msgid "Until contest starts:"
-msgstr "עד תחילת התחרות:"
+msgstr "×¢×“ ×ª×—×™×œ×ª ×”×ª×—×¨×•×ª:"
 
 msgid "Until contest ends:"
-msgstr "עד סוף התחרות:"
+msgstr "×¢×“ ×¡×•×£ ×”×ª×—×¨×•×ª:"
 
 msgid "Until analysis starts:"
-msgstr "עד תחילת האנליסיס:"
+msgstr "×¢×“ ×ª×—×™×œ×ª ×”×× ×œ×™×¡×™×¡:"
 
 msgid "Until analysis ends:"
-msgstr "עד סוף האנליסיס:"
+msgstr "×¢×“ ×¡×•×£ ×”×× ×œ×™×¡×™×¡:"
 
 msgid "Time left:"
-msgstr "זמן שנשאר:"
+msgstr "×–×ž×Ÿ ×©× ×©××¨:"
 
 msgid "Server time:"
-msgstr "זמן השרת:"
+msgstr "×–×ž×Ÿ ×”×©×¨×ª:"
 
 msgid "Overview"
-msgstr "סקירה כללית"
+msgstr "×¡×§×™×¨×” ×›×œ×œ×™×ª"
 
 msgid "Statement"
-msgstr "סטייטמנט"
+msgstr "×¡×˜×™×™×˜×ž× ×˜"
 
 msgid "Submissions"
-msgstr "הגשות"
+msgstr "×”×’×©×•×ª"
 
 msgid "Documentation"
-msgstr "תיעוד"
+msgstr "×ª×™×¢×•×“"
 
 msgid "Testing"
-msgstr "בדיקה"
+msgstr "×‘×“×™×§×”"
 
 msgid "Printing"
-msgstr "הדפסה"
+msgstr "×”×“×¤×¡×”"
 
 msgid "Contest Management System"
-msgstr "מערכת ה-CMS"
+msgstr "×ž×¢×¨×›×ª ×”-CMS"
 
 msgid "is released under the"
-msgstr "משוחררת תחת ה-"
+msgstr "×ž×©×•×—×¨×¨×ª ×ª×—×ª ×”-"
 
 msgid "GNU Affero General Public License"
-msgstr "רישיון הציבור הכללי של GNU Affero"
+msgstr "×¨×™×©×™×•×Ÿ ×”×¦×™×‘×•×¨ ×”×›×œ×œ×™ ×©×œ GNU Affero"
 
 msgid "Choose a contest"
-msgstr "בחרו תחרות"
+msgstr "×‘×—×¨×• ×ª×—×¨×•×ª"
 
 msgid "Programming languages and libraries"
-msgstr "שפות תכנות וספריות"
+msgstr "×©×¤×•×ª ×ª×›× ×•×ª ×•×¡×¤×¨×™×•×ª"
 
 msgid "The main Java class of the solution should have exactly the same name as the task."
-msgstr "למחלקה הראשית ב-Java של הפתרון צריך להיות בדיוק אותו השם כמו שם המשימה."
+msgstr "×œ×ž×—×œ×§×” ×”×¨××©×™×ª ×‘-Java ×©×œ ×”×¤×ª×¨×•×Ÿ ×¦×¨×™×š ×œ×”×™×•×ª ×‘×“×™×•×§ ××•×ª×• ×”×©× ×›×ž×• ×©× ×”×ž×©×™×ž×”."
 
 msgid "Submission details for compilation"
-msgstr "פרטי ההגשה לקומפילציה"
+msgstr "×¤×¨×˜×™ ×”×”×’×©×” ×œ×§×•×ž×¤×™×œ×¦×™×”"
 
 msgid "Message"
-msgstr "הודעה"
+msgstr "×”×•×“×¢×”"
 
 msgid "Explanation"
-msgstr "הסבר"
+msgstr "×”×¡×‘×¨"
 
 msgid "Submission details for evaluation"
-msgstr "פרטי ההגשה לבדיקה"
+msgstr "×¤×¨×˜×™ ×”×”×’×©×” ×œ×‘×“×™×§×”"
 
 #, python-format
 msgid "Error %(status_code)s"
-msgstr "שגיאה %(status_code)s"
+msgstr "×©×’×™××” %(status_code)s"
 
 msgid "An error occured while the server was handling your request."
-msgstr "אירעה שגיאה בזמן שהשרת טיפל בבקשתכם."
+msgstr "××™×¨×¢×” ×©×’×™××” ×‘×–×ž×Ÿ ×©×”×©×¨×ª ×˜×™×¤×œ ×‘×‘×§×©×ª×›×."
 
 msgid "Note that attempts to tamper with Contest Management System (such as probing the server with customized URLs) may be considered cheating and may lead to disqualification."
-msgstr "שימו לב שניסיונות לחבל במערכת ניהול התחרויות (כגון בדיקת השרת עם כתובות URL מותאמות אישית) עלולים להיחשב כרמאות ולהוביל לפסילה."
+msgstr "×©×™×ž×• ×œ×‘ ×©× ×™×¡×™×•× ×•×ª ×œ×—×‘×œ ×‘×ž×¢×¨×›×ª × ×™×”×•×œ ×”×ª×—×¨×•×™×•×ª (×›×’×•×Ÿ ×‘×“×™×§×ª ×”×©×¨×ª ×¢× ×›×ª×•×‘×•×ª URL ×ž×•×ª××ž×•×ª ××™×©×™×ª) ×¢×œ×•×œ×™× ×œ×”×™×—×©×‘ ×›×¨×ž××•×ª ×•×œ×”×•×‘×™×œ ×œ×¤×¡×™×œ×”."
 
 msgid "If you encountered this error during normal usage, please notify the contest administrators."
-msgstr "אם נתקלתם בשגיאה זו במהלך שימוש רגיל, אנא הודיעו למנהלי התחרות."
+msgstr "×× × ×ª×§×œ×ª× ×‘×©×’×™××” ×–×• ×‘×ž×”×œ×š ×©×™×ž×•×© ×¨×’×™×œ, ×× × ×”×•×“×™×¢×• ×œ×ž× ×”×œ×™ ×”×ª×—×¨×•×ª."
 
 msgid "Public score"
-msgstr "ניקוד פומבי"
+msgstr "× ×™×§×•×“ ×¤×•×ž×‘×™"
 
 msgid "Total score"
-msgstr "ניקוד כולל"
+msgstr "× ×™×§×•×“ ×›×•×œ×œ"
 
 msgid "Score"
-msgstr "ניקוד"
-
-msgid "Token"
-msgstr "אסימון"
+msgstr "× ×™×§×•×“"
 
 msgid "no submissions"
-msgstr "אין הגשות"
+msgstr "××™×Ÿ ×”×’×©×•×ª"
 
 msgid "Played"
-msgstr "שוחק"
+msgstr "×©×•×—×§"
 
 msgid "Play!"
-msgstr "שחקו!"
+msgstr "×©×—×§×•!"
 
 msgid "No tokens"
-msgstr "אין אסימונים"
+msgstr "××™×Ÿ ××¡×™×ž×•× ×™×"
 
 msgid "General information"
-msgstr "מידע כללי"
+msgstr "×ž×™×“×¢ ×›×œ×œ×™"
 
 msgid "The contest hasn't started yet."
-msgstr "התחרות עדיין לא התחילה."
+msgstr "×”×ª×—×¨×•×ª ×¢×“×™×™×Ÿ ×œ× ×”×ª×—×™×œ×”."
 
 #, python-format
 msgid "The contest will start at %(start_time)s and will end at %(stop_time)s."
-msgstr "התחרות תתחיל ב-%(start_time)s ותסתיים ב-%(stop_time)s."
+msgstr "×”×ª×—×¨×•×ª ×ª×ª×—×™×œ ×‘-%(start_time)s ×•×ª×¡×ª×™×™× ×‘-%(stop_time)s."
 
 msgid "The contest is currently running."
-msgstr "התחרות רצה כעת."
+msgstr "×”×ª×—×¨×•×ª ×¨×¦×” ×›×¢×ª."
 
 #, python-format
 msgid "The contest started at %(start_time)s and will end at %(stop_time)s."
-msgstr "התחרות התחילה ב-%(start_time)s ותסתיים ב-%(stop_time)s."
+msgstr "×”×ª×—×¨×•×ª ×”×ª×—×™×œ×” ×‘-%(start_time)s ×•×ª×¡×ª×™×™× ×‘-%(stop_time)s."
 
 msgid "The contest has already ended."
-msgstr "התחרות כבר הסתיימה."
+msgstr "×”×ª×—×¨×•×ª ×›×‘×¨ ×”×¡×ª×™×™×ž×”."
 
 #, python-format
 msgid "The contest started at %(start_time)s and ended at %(stop_time)s."
-msgstr "התחרות התחילה ב-%(start_time)s והסתיימה ב-%(stop_time)s."
+msgstr "×”×ª×—×¨×•×ª ×”×ª×—×™×œ×” ×‘-%(start_time)s ×•×”×¡×ª×™×™×ž×” ×‘-%(stop_time)s."
 
 msgid "The analysis mode hasn't started yet."
-msgstr "מצב הניתוח עדיין לא התחיל."
+msgstr "×ž×¦×‘ ×”× ×™×ª×•×— ×¢×“×™×™×Ÿ ×œ× ×”×ª×—×™×œ."
 
 #, python-format
 msgid "The analysis mode will start at %(start_time)s and will end at %(stop_time)s."
-msgstr "מצב הניתוח יתחיל ב-%(start_time)s ויסתיים ב-%(stop_time)s."
+msgstr "×ž×¦×‘ ×”× ×™×ª×•×— ×™×ª×—×™×œ ×‘-%(start_time)s ×•×™×¡×ª×™×™× ×‘-%(stop_time)s."
 
 msgid "The analysis mode is currently running."
-msgstr "מצב הניתוח פועל כעת."
+msgstr "×ž×¦×‘ ×”× ×™×ª×•×— ×¤×•×¢×œ ×›×¢×ª."
 
 #, python-format
 msgid "The analysis mode started at %(start_time)s and will end at %(stop_time)s."
-msgstr "מצב הניתוח התחיל ב-%(start_time)s ויסתיים ב-%(stop_time)s."
+msgstr "×ž×¦×‘ ×”× ×™×ª×•×— ×”×ª×—×™×œ ×‘-%(start_time)s ×•×™×¡×ª×™×™× ×‘-%(stop_time)s."
 
 msgid "The analysis mode has already ended."
-msgstr "מצב הניתוח כבר הסתיים."
+msgstr "×ž×¦×‘ ×”× ×™×ª×•×— ×›×‘×¨ ×”×¡×ª×™×™×."
 
 #, python-format
 msgid "The analysis mode started at %(start_time)s and ended at %(stop_time)s."
-msgstr "מצב הניתוח התחיל ב-%(start_time)s והסתיים ב-%(stop_time)s."
+msgstr "×ž×¦×‘ ×”× ×™×ª×•×— ×”×ª×—×™×œ ×‘-%(start_time)s ×•×”×¡×ª×™×™× ×‘-%(stop_time)s."
 
 msgid "You have an infinite number of tokens."
-msgstr "יש לכם מספר אינסופי של אסימונים."
+msgstr "×™×© ×œ×›× ×ž×¡×¤×¨ ××™× ×¡×•×¤×™ ×©×œ ××¡×™×ž×•× ×™×."
 
 msgid "You can see the detailed result of a submission by using a token on it."
-msgstr "תוכלו לראות את התוצאה המפורטת של הגשה על ידי שימוש באסימון עליה."
+msgstr "×ª×•×›×œ×• ×œ×¨××•×ª ××ª ×”×ª×•×¦××” ×”×ž×¤×•×¨×˜×ª ×©×œ ×”×’×©×” ×¢×œ ×™×“×™ ×©×™×ž×•×© ×‘××¡×™×ž×•×Ÿ ×¢×œ×™×”."
 
 msgid "Your score for each task will be the maximum among the tokened submissions and the last one."
-msgstr "הניקוד שלכם עבור כל משימה יהיה המקסימום בין ההגשות עם אסימון לבין האחרונה."
+msgstr "×”× ×™×§×•×“ ×©×œ×›× ×¢×‘×•×¨ ×›×œ ×ž×©×™×ž×” ×™×”×™×” ×”×ž×§×¡×™×ž×•× ×‘×™×Ÿ ×”×”×’×©×•×ª ×¢× ××¡×™×ž×•×Ÿ ×œ×‘×™×Ÿ ×”××—×¨×•× ×”."
 
 msgid "You have a distinct set of tokens for each task."
-msgstr "יש לכם סט נפרד של אסימונים עבור כל משימה."
+msgstr "×™×© ×œ×›× ×¡×˜ × ×¤×¨×“ ×©×œ ××¡×™×ž×•× ×™× ×¢×‘×•×¨ ×›×œ ×ž×©×™×ž×”."
 
 #, python-format
 msgid "You can find the rules for the %(type_pl)s on each task's description page."
-msgstr "תוכלו למצוא את הכללים עבור %(type_pl)s בדף התיאור של כל משימה."
+msgstr "×ª×•×›×œ×• ×œ×ž×¦×•× ××ª ×”×›×œ×œ×™× ×¢×‘×•×¨ %(type_pl)s ×‘×“×£ ×”×ª×™××•×¨ ×©×œ ×›×œ ×ž×©×™×ž×”."
 
 msgid "You have a set of tokens shared among all tasks."
-msgstr "יש לכם סט אסימונים משותף לכל המשימות."
+msgstr "×™×© ×œ×›× ×¡×˜ ××¡×™×ž×•× ×™× ×ž×©×•×ª×£ ×œ×›×œ ×”×ž×©×™×ž×•×ª."
 
 msgid "You have two types of tokens: a set of <em>contest-tokens</em> shared among all tasks and a distinct set of <em>task-tokens</em> for each task."
-msgstr "יש לכם שני סוגי אסימונים: סט של <em>אסימוני-תחרות</em> משותף לכל המשימות וסט נפרד של <em>אסימוני-משימה</em> עבור כל משימה."
+msgstr "×™×© ×œ×›× ×©× ×™ ×¡×•×’×™ ××¡×™×ž×•× ×™×: ×¡×˜ ×©×œ <em>××¡×™×ž×•× ×™-×ª×—×¨×•×ª</em> ×ž×©×•×ª×£ ×œ×›×œ ×”×ž×©×™×ž×•×ª ×•×¡×˜ × ×¤×¨×“ ×©×œ <em>××¡×™×ž×•× ×™-×ž×©×™×ž×”</em> ×¢×‘×•×¨ ×›×œ ×ž×©×™×ž×”."
 
 msgid "You can see the detailed result of a submission by using two tokens on it, one of each type."
-msgstr "תוכלו לראות את התוצאה המפורטת של הגשה על ידי שימוש בשני אסימונים עליה, אחד מכל סוג."
+msgstr "×ª×•×›×œ×• ×œ×¨××•×ª ××ª ×”×ª×•×¦××” ×”×ž×¤×•×¨×˜×ª ×©×œ ×”×’×©×” ×¢×œ ×™×“×™ ×©×™×ž×•×© ×‘×©× ×™ ××¡×™×ž×•× ×™× ×¢×œ×™×”, ××—×“ ×ž×›×œ ×¡×•×’."
 
 #, python-format
 msgid "You can submit at most %(submissions)s solutions during this contest."
-msgstr "תוכלו להגיש לכל היותר %(submissions)s פתרונות במהלך תחרות זו."
+msgstr "×ª×•×›×œ×• ×œ×”×’×™×© ×œ×›×œ ×”×™×•×ª×¨ %(submissions)s ×¤×ª×¨×•× ×•×ª ×‘×ž×”×œ×š ×ª×—×¨×•×ª ×–×•."
 
 #, python-format
 msgid "You can submit at most %(user_tests)s user tests during this contest."
-msgstr "תוכלו להגיש לכל היותר %(user_tests)s טסטים במהלך תחרות זו."
+msgstr "×ª×•×›×œ×• ×œ×”×’×™×© ×œ×›×œ ×”×™×•×ª×¨ %(user_tests)s ×˜×¡×˜×™× ×‘×ž×”×œ×š ×ª×—×¨×•×ª ×–×•."
 
 #, python-format
 msgid "Every user is allowed to compete (i.e. submit solutions) for a uninterrupted time frame of %(per_user_time)s."
-msgstr "כל משתמש רשאי להתחרות (כלומר להגיש פתרונות) למשך מסגרת זמן רציפה של %(per_user_time)s."
+msgstr "×›×œ ×ž×©×ª×ž×© ×¨×©××™ ×œ×”×ª×—×¨×•×ª (×›×œ×•×ž×¨ ×œ×”×’×™×© ×¤×ª×¨×•× ×•×ª) ×œ×ž×©×š ×ž×¡×’×¨×ª ×–×ž×Ÿ ×¨×¦×™×¤×” ×©×œ %(per_user_time)s."
 
 msgid "As soon as the contest starts you can choose to start your time frame."
-msgstr "ברגע שהתחרות מתחילה תוכלו לבחור להתחיל את מסגרת הזמן שלכם."
+msgstr "×‘×¨×’×¢ ×©×”×ª×—×¨×•×ª ×ž×ª×—×™×œ×” ×ª×•×›×œ×• ×œ×‘×—×•×¨ ×œ×”×ª×—×™×œ ××ª ×ž×¡×’×¨×ª ×”×–×ž×Ÿ ×©×œ×›×."
 
 msgid "Once you start, you can submit solutions until the end of the time frame or until the end of the contest, whatever comes first."
-msgstr "ברגע שתתחילו, תוכלו להגיש פתרונות עד סוף מסגרת הזמן או עד סוף התחרות, המוקדם מביניהם."
+msgstr "×‘×¨×’×¢ ×©×ª×ª×—×™×œ×•, ×ª×•×›×œ×• ×œ×”×’×™×© ×¤×ª×¨×•× ×•×ª ×¢×“ ×¡×•×£ ×ž×¡×’×¨×ª ×”×–×ž×Ÿ ××• ×¢×“ ×¡×•×£ ×”×ª×—×¨×•×ª, ×”×ž×•×§×“× ×ž×‘×™× ×™×”×."
 
 msgid "By clicking on the button below you can start your time frame."
-msgstr "על ידי לחיצה על הכפתור למטה תוכלו להתחיל את מסגרת הזמן שלכם."
+msgstr "×¢×œ ×™×“×™ ×œ×—×™×¦×” ×¢×œ ×”×›×¤×ª×•×¨ ×œ×ž×˜×” ×ª×•×›×œ×• ×œ×”×ª×—×™×œ ××ª ×ž×¡×’×¨×ª ×”×–×ž×Ÿ ×©×œ×›×."
 
 #, python-format
 msgid "You started your time frame at %(start_time)s."
-msgstr "התחלתם את מסגרת הזמן שלכם ב-%(start_time)s."
+msgstr "×”×ª×—×œ×ª× ××ª ×ž×¡×’×¨×ª ×”×–×ž×Ÿ ×©×œ×›× ×‘-%(start_time)s."
 
 msgid "You can submit solutions until the end of the time frame or until the end of the contest, whatever comes first."
-msgstr "תוכלו להגיש פתרונות עד סוף מסגרת הזמן או עד סוף התחרות, המוקדם מביניהם."
+msgstr "×ª×•×›×œ×• ×œ×”×’×™×© ×¤×ª×¨×•× ×•×ª ×¢×“ ×¡×•×£ ×ž×¡×’×¨×ª ×”×–×ž×Ÿ ××• ×¢×“ ×¡×•×£ ×”×ª×—×¨×•×ª, ×”×ž×•×§×“× ×ž×‘×™× ×™×”×."
 
 #, python-format
 msgid "You started your time frame at %(start_time)s and you already finished it."
-msgstr "התחלתם את מסגרת הזמן שלכם ב-%(start_time)s וכבר סיימתם אותה."
+msgstr "×”×ª×—×œ×ª× ××ª ×ž×¡×’×¨×ª ×”×–×ž×Ÿ ×©×œ×›× ×‘-%(start_time)s ×•×›×‘×¨ ×¡×™×™×ž×ª× ××•×ª×”."
 
 msgid "There's nothing you can do now."
-msgstr "אין מה לעשות כעת."
+msgstr "××™×Ÿ ×ž×” ×œ×¢×©×•×ª ×›×¢×ª."
 
 msgid "You never started your time frame. Now it's too late."
-msgstr "מעולם לא התחלתם את מסגרת הזמן שלכם. עכשיו מאוחר מדי."
+msgstr "×ž×¢×•×œ× ×œ× ×”×ª×—×œ×ª× ××ª ×ž×¡×’×¨×ª ×”×–×ž×Ÿ ×©×œ×›×. ×¢×›×©×™×• ×ž××•×—×¨ ×ž×“×™."
 
 msgid "Start!"
-msgstr "התחל!"
+msgstr "×”×ª×—×œ!"
 
 msgid "Task overview"
-msgstr "סקירת משימות"
+msgstr "×¡×§×™×¨×ª ×ž×©×™×ž×•×ª"
 
 msgid "Task"
-msgstr "משימה"
+msgstr "×ž×©×™×ž×”"
 
 msgid "Name"
-msgstr "שם"
+msgstr "×©×"
 
 msgid "Time limit"
-msgstr "מגבלת זמן"
+msgstr "×ž×’×‘×œ×ª ×–×ž×Ÿ"
 
 msgid "Memory limit"
-msgstr "מגבלת זיכרון"
+msgstr "×ž×’×‘×œ×ª ×–×™×›×¨×•×Ÿ"
 
 msgid "Type"
-msgstr "סוג"
+msgstr "×¡×•×’"
 
 msgid "Files"
-msgstr "קבצים"
-
-msgid "Tokens"
-msgstr "אסימונים"
+msgstr "×§×‘×¦×™×"
 
 msgid "Yes"
-msgstr "כן"
+msgstr "×›×Ÿ"
 
 msgid "No"
-msgstr "לא"
+msgstr "×œ×"
 
 msgid "Print"
-msgstr "הדפסה"
+msgstr "×”×“×¤×¡×”"
 
 #, python-format
 msgid "You can print %(remaining_jobs)s more text or PDF files of up to %(max_pages)s pages each."
-msgstr "תוכלו להדפיס עוד %(remaining_jobs)s קבצי טקסט או PDF של עד %(max_pages)s עמודים כל אחד."
+msgstr "×ª×•×›×œ×• ×œ×”×“×¤×™×¡ ×¢×•×“ %(remaining_jobs)s ×§×‘×¦×™ ×˜×§×¡×˜ ××• PDF ×©×œ ×¢×“ %(max_pages)s ×¢×ž×•×“×™× ×›×œ ××—×“."
 
 #, python-format
 msgid "You can print %(remaining_jobs)s more text files of up to %(max_pages)s pages each."
-msgstr "תוכלו להדפיס עוד %(remaining_jobs)s קבצי טקסט של עד %(max_pages)s עמודים כל אחד."
+msgstr "×ª×•×›×œ×• ×œ×”×“×¤×™×¡ ×¢×•×“ %(remaining_jobs)s ×§×‘×¦×™ ×˜×§×¡×˜ ×©×œ ×¢×“ %(max_pages)s ×¢×ž×•×“×™× ×›×œ ××—×“."
 
 msgid "File (text or PDF)"
-msgstr "קובץ (טקסט או PDF)"
+msgstr "×§×•×‘×¥ (×˜×§×¡×˜ ××• PDF)"
 
 msgid "File (text)"
-msgstr "קובץ (טקסט)"
+msgstr "×§×•×‘×¥ (×˜×§×¡×˜)"
 
 msgid "Submit"
-msgstr "שליחה"
+msgstr "×©×œ×™×—×”"
 
 msgid "You cannot print anything any more as you have used up your printing quota."
-msgstr "אינכם יכולים להדפיס יותר כי ניצלתם את מכסת ההדפסה שלכם."
+msgstr "××™× ×›× ×™×›×•×œ×™× ×œ×”×“×¤×™×¡ ×™×•×ª×¨ ×›×™ × ×™×¦×œ×ª× ××ª ×ž×›×¡×ª ×”×”×“×¤×¡×” ×©×œ×›×."
 
 msgid "Previous print jobs"
-msgstr "עבודות הדפסה קודמות"
+msgstr "×¢×‘×•×“×•×ª ×”×“×¤×¡×” ×§×•×“×ž×•×ª"
 
 msgid "Date and time"
-msgstr "תאריך ושעה"
+msgstr "×ª××¨×™×š ×•×©×¢×”"
 
 msgid "Time"
-msgstr "זמן"
+msgstr "×–×ž×Ÿ"
 
 msgid "File name"
-msgstr "שם הקובץ"
-
-msgid "Status"
-msgstr "סטטוס"
+msgstr "×©× ×”×§×•×‘×¥"
 
 msgid "Preparing..."
-msgstr "מכין..."
+msgstr "×ž×›×™×Ÿ..."
 
 msgid "no print jobs yet"
-msgstr "אין עבודות הדפסה עדיין"
+msgstr "××™×Ÿ ×¢×‘×•×“×•×ª ×”×“×¤×¡×” ×¢×“×™×™×Ÿ"
 
 msgid "The passwords do not match!"
-msgstr "הסיסמאות אינן תואמות!"
+msgstr "×”×¡×™×¡×ž××•×ª ××™× ×Ÿ ×ª×•××ž×•×ª!"
 
 msgid "This username is already taken, please choose a different one."
-msgstr "שם המשתמש הזה כבר תפוס, אנא בחרו אחר."
+msgstr "×©× ×”×ž×©×ª×ž×© ×”×–×” ×›×‘×¨ ×ª×¤×•×¡, ×× × ×‘×—×¨×• ××—×¨."
 
 msgid "This user is already registered in the contest."
-msgstr "משתמש זה כבר רשום לתחרות."
+msgstr "×ž×©×ª×ž×© ×–×” ×›×‘×¨ ×¨×©×•× ×œ×ª×—×¨×•×ª."
 
 msgid "No such user."
-msgstr "אין משתמש כזה."
+msgstr "××™×Ÿ ×ž×©×ª×ž×© ×›×–×”."
 
 msgid "The password is not correct."
-msgstr "הסיסמה אינה נכונה."
+msgstr "×”×¡×™×¡×ž×” ××™× ×” × ×›×•× ×”."
 
 msgid "Registration"
-msgstr "הרשמה"
+msgstr "×”×¨×©×ž×”"
 
 msgid "Please fill in the fields to register"
-msgstr "אנא מלאו את השדות כדי להירשם"
+msgstr "×× × ×ž×œ××• ××ª ×”×©×“×•×ª ×›×“×™ ×œ×”×™×¨×©×"
 
 msgid "New user"
-msgstr "משתמש חדש"
+msgstr "×ž×©×ª×ž×© ×—×“×©"
 
 msgid "Join contest"
-msgstr "הצטרפות לתחרות"
+msgstr "×”×¦×˜×¨×¤×•×ª ×œ×ª×—×¨×•×ª"
 
 msgid "First name"
-msgstr "שם פרטי"
+msgstr "×©× ×¤×¨×˜×™"
 
 msgid "Last name"
-msgstr "שם משפחה"
+msgstr "×©× ×ž×©×¤×—×”"
 
 msgid "E-mail"
-msgstr "אימייל"
+msgstr "××™×ž×™×™×œ"
 
 msgid "Representing"
-msgstr "מייצג"
+msgstr "×ž×™×™×¦×’"
 
 #, python-format
 msgid "Must be one character or more."
 msgid_plural "Must be %(min_length)s characters or more."
-msgstr[0] "חייב להיות תו אחד או יותר."
-msgstr[1] "חייב להיות %(min_length)s תווים או יותר."
+msgstr[0] "×—×™×™×‘ ×œ×”×™×•×ª ×ª×• ××—×“ ××• ×™×•×ª×¨."
+msgstr[1] "×—×™×™×‘ ×œ×”×™×•×ª %(min_length)s ×ª×•×•×™× ××• ×™×•×ª×¨."
 
 msgid "Confirm password"
-msgstr "אימות סיסמה"
+msgstr "××™×ž×•×ª ×¡×™×¡×ž×”"
 
 msgid "Registered in the contest successfully!"
-msgstr "נרשמתם לתחרות בהצלחה!"
+msgstr "× ×¨×©×ž×ª× ×œ×ª×—×¨×•×ª ×‘×”×¦×œ×—×”!"
 
 msgid "Your username is:"
-msgstr "שם המשתמש שלכם:"
+msgstr "×©× ×”×ž×©×ª×ž×© ×©×œ×›×:"
 
 msgid "Your password is stored securely."
-msgstr "הסיסמה שלכם מאוחסנת בצורה מאובטחת."
+msgstr "×”×¡×™×¡×ž×” ×©×œ×›× ×ž××•×—×¡× ×ª ×‘×¦×•×¨×” ×ž××•×‘×˜×—×ª."
 
 msgid "Back to login"
-msgstr "חזרה להתחברות"
+msgstr "×—×–×¨×” ×œ×”×ª×—×‘×¨×•×ª"
 
 msgid "Compilation output"
-msgstr "פלט קומפילציה"
+msgstr "×¤×œ×˜ ×§×•×ž×¤×™×œ×¦×™×”"
 
 msgid "Compilation outcome:"
-msgstr "תוצאת קומפילציה:"
+msgstr "×ª×•×¦××ª ×§×•×ž×¤×™×œ×¦×™×”:"
 
 msgid "Compilation time:"
-msgstr "זמן קומפילציה:"
+msgstr "×–×ž×Ÿ ×§×•×ž×¤×™×œ×¦×™×”:"
 
 msgid "Memory used:"
-msgstr "זיכרון שנוצל:"
+msgstr "×–×™×›×¨×•×Ÿ ×©× ×•×¦×œ:"
 
 msgid "Standard output"
-msgstr "פלט סטנדרטי"
+msgstr "×¤×œ×˜ ×¡×˜× ×“×¨×˜×™"
 
 msgid "Standard error"
-msgstr "שגיאה סטנדרטית"
+msgstr "×©×’×™××” ×¡×˜× ×“×¨×˜×™×ª"
 
 #, python-format
 msgid "%(name)s (%(short_name)s) <small>description</small>"
-msgstr "%(name)s (%(short_name)s) <small>תיאור</small>"
+msgstr "%(name)s (%(short_name)s) <small>×ª×™××•×¨</small>"
 
 msgid "no statement available"
-msgstr "אין סטייטמנט זמין"
+msgstr "××™×Ÿ ×¡×˜×™×™×˜×ž× ×˜ ×–×ž×™×Ÿ"
 
 msgid "Download task statement"
-msgstr "הורדת הסטייטמנט"
+msgstr "×”×•×¨×“×ª ×”×¡×˜×™×™×˜×ž× ×˜"
 
 msgid "The statement for this task is available in multiple versions, in different languages."
-msgstr "הסטייטמנט זמין במספר גרסאות, בשפות שונות."
+msgstr "×”×¡×˜×™×™×˜×ž× ×˜ ×–×ž×™×Ÿ ×‘×ž×¡×¤×¨ ×’×¨×¡××•×ª, ×‘×©×¤×•×ª ×©×•× ×•×ª."
 
 msgid "You can see (and download) all of them using the list on the right."
-msgstr "תוכלו לראות (ולהוריד) את כולן באמצעות הרשימה מימין."
+msgstr "×ª×•×›×œ×• ×œ×¨××•×ª (×•×œ×”×•×¨×™×“) ××ª ×›×•×œ×Ÿ ×‘××ž×¦×¢×•×ª ×”×¨×©×™×ž×” ×ž×™×ž×™×Ÿ."
 
 msgid "Some suggested translations follow."
-msgstr "להלן כמה תרגומים מוצעים."
+msgstr "×œ×”×œ×Ÿ ×›×ž×” ×ª×¨×’×•×ž×™× ×ž×•×¦×¢×™×."
 
 #, python-format
 msgid "Statement in <b>%(lang)s</b>"
-msgstr "סטיימנט ב-<b>%(lang)s</b>"
+msgstr "×¡×˜×™×™×ž× ×˜ ×‘-<b>%(lang)s</b>"
 
 #, python-format
 msgid "Statement in %(lang)s"
-msgstr "סטיימנט ב-%(lang)s"
+msgstr "×¡×˜×™×™×ž× ×˜ ×‘-%(lang)s"
 
 #, python-format
 msgid "<b>%(lang)s</b>"
@@ -883,381 +871,521 @@ msgid "%(lang)s"
 msgstr "%(lang)s"
 
 msgid "Some details"
-msgstr "כמה פרטים"
+msgstr "×›×ž×” ×¤×¨×˜×™×"
 
 msgid "Compilation commands"
-msgstr "פקודות קומפילציה"
+msgstr "×¤×§×•×“×•×ª ×§×•×ž×¤×™×œ×¦×™×”"
 
 #, python-format
 msgid "You can find the rules for the %(type_pl)s on the <a href=\"%(contest_root)s\">contest overview page</a>."
-msgstr "תוכלו למצוא את הכללים עבור %(type_pl)s ב<a href=\"%(contest_root)s\">דף סקירת התחרות</a>."
+msgstr "×ª×•×›×œ×• ×œ×ž×¦×•× ××ª ×”×›×œ×œ×™× ×¢×‘×•×¨ %(type_pl)s ×‘<a href=\"%(contest_root)s\">×“×£ ×¡×§×™×¨×ª ×”×ª×—×¨×•×ª</a>."
 
 msgid "Remember that to see the detailed result of a submission you need to use both a contest-token and a task-token."
-msgstr "זכרו שכדי לראות את התוצאה המפורטת של הגשה עליכם להשתמש גם באסימון-תחרות וגם באסימון-משימה."
+msgstr "×–×›×¨×• ×©×›×“×™ ×œ×¨××•×ª ××ª ×”×ª×•×¦××” ×”×ž×¤×•×¨×˜×ª ×©×œ ×”×’×©×” ×¢×œ×™×›× ×œ×”×©×ª×ž×© ×’× ×‘××¡×™×ž×•×Ÿ-×ª×—×¨×•×ª ×•×’× ×‘××¡×™×ž×•×Ÿ-×ž×©×™×ž×”."
 
 msgid "Attachments"
-msgstr "קבצים מצורפים"
+msgstr "×§×‘×¦×™× ×ž×¦×•×¨×¤×™×"
 
 msgid "unknown"
-msgstr "לא ידוע"
+msgstr "×œ× ×™×“×•×¢"
 
 msgid "loading..."
-msgstr "טוען..."
+msgstr "×˜×•×¢×Ÿ..."
 
 #, python-format
 msgid "%(name)s (%(short_name)s) <small>submissions</small>"
-msgstr "%(name)s (%(short_name)s) <small>הגשות</small>"
+msgstr "%(name)s (%(short_name)s) <small>×”×’×©×•×ª</small>"
 
 msgid "Score:"
-msgstr "ניקוד:"
+msgstr "× ×™×§×•×“:"
 
 msgid "Public score:"
-msgstr "ניקוד פומבי:"
+msgstr "× ×™×§×•×“ ×¤×•×ž×‘×™:"
 
 msgid "Score of tokened submissions:"
-msgstr "ניקוד הגשות עם אסימון:"
+msgstr "× ×™×§×•×“ ×”×’×©×•×ª ×¢× ××¡×™×ž×•×Ÿ:"
 
 msgid "Total score:"
-msgstr "ניקוד כולל:"
+msgstr "× ×™×§×•×“ ×›×•×œ×œ:"
 
 msgid "Submit a solution"
-msgstr "הגשת פתרון"
+msgstr "×”×’×©×ª ×¤×ª×¨×•×Ÿ"
 
 msgid "You may submit any subset of outputs in a single submission."
-msgstr "תוכלו להגיש כל תת-קבוצה של פלטים בהגשה אחת."
+msgstr "×ª×•×›×œ×• ×œ×”×’×™×© ×›×œ ×ª×ª-×§×‘×•×¦×” ×©×œ ×¤×œ×˜×™× ×‘×”×’×©×” ××—×ª."
 
 #, python-format
 msgid "You can submit %(submissions_left)s more solution(s)."
-msgstr "תוכלו להגיש עוד %(submissions_left)s פתרונות."
+msgstr "×ª×•×›×œ×• ×œ×”×’×™×© ×¢×•×“ %(submissions_left)s ×¤×ª×¨×•× ×•×ª."
 
 msgid "submission.zip"
 msgstr "submission.zip"
 
 msgid "Previous submissions"
-msgstr "הגשות קודמות"
+msgstr "×”×’×©×•×ª ×§×•×“×ž×•×ª"
 
 msgid "Tokens are not allowed on this task."
-msgstr "אסימונים אינם מותרים במשימה זו."
+msgstr "××¡×™×ž×•× ×™× ××™× × ×ž×•×ª×¨×™× ×‘×ž×©×™×ž×” ×–×•."
 
 msgid "Right now, you have infinite tokens available on this task."
-msgstr "כרגע, יש לכם אסימונים אינסופיים זמינים במשימה זו."
+msgstr "×›×¨×’×¢, ×™×© ×œ×›× ××¡×™×ž×•× ×™× ××™× ×¡×•×¤×™×™× ×–×ž×™× ×™× ×‘×ž×©×™×ž×” ×–×•."
 
 msgid "Right now, you have one token available on this task."
-msgstr "כרגע, יש לכם אסימון אחד זמין במשימה זו."
+msgstr "×›×¨×’×¢, ×™×© ×œ×›× ××¡×™×ž×•×Ÿ ××—×“ ×–×ž×™×Ÿ ×‘×ž×©×™×ž×” ×–×•."
 
 #, python-format
 msgid "Right now, you have %(tokens)s tokens available on this task."
-msgstr "כרגע, יש לכם %(tokens)s אסימונים זמינים במשימה זו."
+msgstr "×›×¨×’×¢, ×™×© ×œ×›× %(tokens)s ××¡×™×ž×•× ×™× ×–×ž×™× ×™× ×‘×ž×©×™×ž×” ×–×•."
 
 #, python-format
 msgid "But you have to wait until %(expiration_time)s to use them."
-msgstr "אבל עליכם להמתין עד %(expiration_time)s כדי להשתמש בהם."
+msgstr "××‘×œ ×¢×œ×™×›× ×œ×”×ž×ª×™×Ÿ ×¢×“ %(expiration_time)s ×›×“×™ ×œ×”×©×ª×ž×© ×‘×”×."
 
 #, python-format
 msgid "You will receive a new token at %(gen_time)s."
-msgstr "תקבלו אסימון חדש ב-%(gen_time)s."
+msgstr "×ª×§×‘×œ×• ××¡×™×ž×•×Ÿ ×—×“×© ×‘-%(gen_time)s."
 
 msgid "In the current situation, no more tokens will be generated."
-msgstr "במצב הנוכחי, לא יופקו עוד אסימונים."
+msgstr "×‘×ž×¦×‘ ×”× ×•×›×—×™, ×œ× ×™×•×¤×§×• ×¢×•×“ ××¡×™×ž×•× ×™×."
 
 msgid "Right now, you do not have tokens available for this task."
-msgstr "כרגע, אין לכם אסימונים זמינים למשימה זו."
+msgstr "×›×¨×’×¢, ××™×Ÿ ×œ×›× ××¡×™×ž×•× ×™× ×–×ž×™× ×™× ×œ×ž×©×™×ž×” ×–×•."
 
 #, python-format
 msgid "But you will have to wait until %(expiration_time)s to use it."
-msgstr "אבל תצטרכו להמתין עד %(expiration_time)s כדי להשתמש בו."
+msgstr "××‘×œ ×ª×¦×˜×¨×›×• ×œ×”×ž×ª×™×Ÿ ×¢×“ %(expiration_time)s ×›×“×™ ×œ×”×©×ª×ž×© ×‘×•."
 
 msgid "Unofficial submissions"
-msgstr "הגשות לא רשמיות"
+msgstr "×”×’×©×•×ª ×œ× ×¨×©×ž×™×•×ª"
 
 msgid "Official submissions"
-msgstr "הגשות רשמיות"
+msgstr "×”×’×©×•×ª ×¨×©×ž×™×•×ª"
 
 msgid "Submission details"
-msgstr "פרטי הגשה"
+msgstr "×¤×¨×˜×™ ×”×’×©×”"
 
 msgid "Close"
-msgstr "סגירה"
+msgstr "×¡×’×™×¨×”"
 
 msgid "Download"
-msgstr "הורדה"
+msgstr "×”×•×¨×“×”"
 
 msgid "Submit a test"
-msgstr "הגשת טסט"
+msgstr "×”×’×©×ª ×˜×¡×˜"
 
 #, python-format
 msgid "You can submit %(user_tests_left)s more test(s)."
-msgstr "תוכלו להגיש עוד %(user_tests_left)s טסטים."
+msgstr "×ª×•×›×œ×• ×œ×”×’×™×© ×¢×•×“ %(user_tests_left)s ×˜×¡×˜×™×."
 
 msgid "input"
-msgstr "קלט"
+msgstr "×§×œ×˜"
 
 msgid "Previous tests"
-msgstr "הטסטים הקודמים"
-
-msgid "Input"
-msgstr "קלט"
+msgstr "×”×˜×¡×˜×™× ×”×§×•×“×ž×™×"
 
 msgid "Output"
-msgstr "פלט"
+msgstr "×¤×œ×˜"
 
 msgid "no tests yet"
-msgstr "אין טסטים עדיין"
+msgstr "××™×Ÿ ×˜×¡×˜×™× ×¢×“×™×™×Ÿ"
 
 msgid "Test details"
-msgstr "פרטי הטסט"
+msgstr "×¤×¨×˜×™ ×”×˜×¡×˜"
 
 msgid "Evaluation outcome"
-msgstr "תוצאת ההרצה"
+msgstr "×ª×•×¦××ª ×”×”×¨×¦×”"
 
 msgid "Wait..."
-msgstr "המתינו..."
+msgstr "×”×ž×ª×™× ×•..."
 
 msgid "None"
 msgstr "None"
 
 msgid "Token request discarded"
-msgstr "בקשת האסימון נדחתה"
+msgstr "×‘×§×©×ª ×”××¡×™×ž×•×Ÿ × ×“×—×ª×”"
 
 msgid "Your request has been discarded because you have no tokens available."
-msgstr "הבקשה שלכם נדחתה כי אין לכם אסימונים זמינים."
+msgstr "×”×‘×§×©×” ×©×œ×›× × ×“×—×ª×” ×›×™ ××™×Ÿ ×œ×›× ××¡×™×ž×•× ×™× ×–×ž×™× ×™×."
 
 msgid "Your request has been discarded because you already used a token on that submission."
-msgstr "הבקשה שלכם נדחתה כי כבר השתמשתם באסימון על ההגשה הזו."
+msgstr "×”×‘×§×©×” ×©×œ×›× × ×“×—×ª×” ×›×™ ×›×‘×¨ ×”×©×ª×ž×©×ª× ×‘××¡×™×ž×•×Ÿ ×¢×œ ×”×”×’×©×” ×”×–×•."
 
 msgid "Invalid file"
-msgstr "קובץ לא תקין"
+msgstr "×§×•×‘×¥ ×œ× ×ª×§×™×Ÿ"
 
 msgid "Print job has too many pages"
-msgstr "עבודת ההדפסה מכילה יותר מדי עמודים"
+msgstr "×¢×‘×•×“×ª ×”×”×“×¤×¡×” ×ž×›×™×œ×” ×™×•×ª×¨ ×ž×“×™ ×¢×ž×•×“×™×"
 
 msgid "Sent to printer"
-msgstr "נשלח למדפסת"
+msgstr "× ×©×œ×— ×œ×ž×“×¤×¡×ª"
 
 msgid "A password reset link has been sent to:"
-msgstr "קישור לאיפוס סיסמה נשלח אל:"
+msgstr "×§×™×©×•×¨ ×œ××™×¤×•×¡ ×¡×™×¡×ž×” × ×©×œ×— ××œ:"
 
 msgid "An administrator must approve your password reset before it takes effect. You will be able to log in with your new password once it has been approved."
-msgstr "מנהל מערכת צריך לאשר את איפוס הסיסמה שלכם לפני שייכנס לתוקף. תוכלו להתחבר עם הסיסמה החדשה שלכם לאחר שתאושר."
+msgstr "×ž× ×”×œ ×ž×¢×¨×›×ª ×¦×¨×™×š ×œ××©×¨ ××ª ××™×¤×•×¡ ×”×¡×™×¡×ž×” ×©×œ×›× ×œ×¤× ×™ ×©×™×™×›× ×¡ ×œ×ª×•×§×£. ×ª×•×›×œ×• ×œ×”×ª×—×‘×¨ ×¢× ×”×¡×™×¡×ž×” ×”×—×“×©×” ×©×œ×›× ×œ××—×¨ ×©×ª××•×©×¨."
 
 msgid "Approved"
-msgstr "מאושר"
+msgstr "×ž××•×©×¨"
 
 msgid "Before you can view the tasks and participate in the contest, you must click the button below to register your participation."
-msgstr "לפני שתוכלו לצפות במשימות ולהשתתף בתחרות, עליכם ללחוץ על הכפתור למטה כדי להתחיל את השתתפותכם."
-
-msgid "Confirm Password"
-msgstr "אימות סיסמה"
+msgstr "×œ×¤× ×™ ×©×ª×•×›×œ×• ×œ×¦×¤×•×ª ×‘×ž×©×™×ž×•×ª ×•×œ×”×©×ª×ª×£ ×‘×ª×—×¨×•×ª, ×¢×œ×™×›× ×œ×œ×—×•×¥ ×¢×œ ×”×›×¤×ª×•×¨ ×œ×ž×˜×” ×›×“×™ ×œ×”×ª×—×™×œ ××ª ×”×©×ª×ª×¤×•×ª×›×."
 
 msgid "Date of birth"
-msgstr "תאריך לידה"
+msgstr "×ª××¨×™×š ×œ×™×“×”"
 
 msgid "Delay Request"
-msgstr "בקשת דחייה"
+msgstr "×‘×§×©×ª ×“×—×™×™×”"
 
 msgid "Detect Language"
-msgstr "זיהוי שפה"
+msgstr "×–×™×”×•×™ ×©×¤×”"
 
 msgid "Email Sent!"
-msgstr "האימייל נשלח!"
+msgstr "×”××™×ž×™×™×œ × ×©×œ×—!"
 
 msgid "Email address is required."
-msgstr "נדרשת כתובת אימייל."
+msgstr "× ×“×¨×©×ª ×›×ª×•×‘×ª ××™×ž×™×™×œ."
 
 msgid "Enter Contest"
-msgstr "כניסה לתחרות"
+msgstr "×›× ×™×¡×” ×œ×ª×—×¨×•×ª"
 
 msgid "Enter a new password for user:"
-msgstr "הזינו סיסמה חדשה עבור המשתמש:"
+msgstr "×”×–×™× ×• ×¡×™×¡×ž×” ×—×“×©×” ×¢×‘×•×¨ ×”×ž×©×ª×ž×©:"
 
 msgid "Enter the text you want to translate"
-msgstr "הזינו את הטקסט שברצונכם לתרגם"
+msgstr "×”×–×™× ×• ××ª ×”×˜×§×¡×˜ ×©×‘×¨×¦×•× ×›× ×œ×ª×¨×’×"
 
 msgid "Enter your username or email address to request a password reset."
-msgstr "הזינו את שם המשתמש או את כתובת האימייל שלכם כדי לבקש איפוס סיסמה."
+msgstr "×”×–×™× ×• ××ª ×©× ×”×ž×©×ª×ž×© ××• ××ª ×›×ª×•×‘×ª ×”××™×ž×™×™×œ ×©×œ×›× ×›×“×™ ×œ×‘×§×© ××™×¤×•×¡ ×¡×™×¡×ž×”."
 
 msgid "Error"
-msgstr "שגיאה"
+msgstr "×©×’×™××”"
 
 msgid "Error loading details, please refresh the page."
-msgstr "שגיאה בטעינת הפרטים, אנא רעננו את הדף."
+msgstr "×©×’×™××” ×‘×˜×¢×™× ×ª ×”×¤×¨×˜×™×, ×× × ×¨×¢× × ×• ××ª ×”×“×£."
 
 msgid "Evaluation system error"
-msgstr "שגיאת במערכת הבדיקה"
+msgstr "×©×’×™××ª ×‘×ž×¢×¨×›×ª ×”×‘×“×™×§×”"
 
 msgid "Fair"
-msgstr "בינונית"
+msgstr "×‘×™× ×•× ×™×ª"
 
 msgid "Forgot password?"
-msgstr "שכחתם סיסמה?"
+msgstr "×©×›×—×ª× ×¡×™×¡×ž×”?"
 
 msgid "If you don't receive the email within a few minutes, please check your spam folder."
-msgstr "אם לא קיבלתם את האימייל תוך מספר דקות, אנא בדקו את תיקיית הספאם."
+msgstr "×× ×œ× ×§×™×‘×œ×ª× ××ª ×”××™×ž×™×™×œ ×ª×•×š ×ž×¡×¤×¨ ×“×§×•×ª, ×× × ×‘×“×§×• ××ª ×ª×™×§×™×™×ª ×”×¡×¤××."
 
 msgid "Image dimensions are too large. Maximum is 1280x1280 pixels."
-msgstr "מידות התמונה גדולות מדי. המקסימום הוא 1280x1280 פיקסלים."
+msgstr "×ž×™×“×•×ª ×”×ª×ž×•× ×” ×’×“×•×œ×•×ª ×ž×“×™. ×”×ž×§×¡×™×ž×•× ×”×•× 1280x1280 ×¤×™×§×¡×œ×™×."
 
 msgid "Image file is too large. Maximum size is 5MB."
-msgstr "קובץ התמונה גדול מדי. הגודל המקסימלי הוא 5MB."
+msgstr "×§×•×‘×¥ ×”×ª×ž×•× ×” ×’×“×•×œ ×ž×“×™. ×”×’×•×“×œ ×”×ž×§×¡×™×ž×œ×™ ×”×•× 5MB."
 
 msgid "Invalid image type. Allowed types: JPEG, PNG, GIF, WEBP."
-msgstr "סוג תמונה לא חוקי. סוגים מותרים: JPEG, PNG, GIF, WEBP."
+msgstr "×¡×•×’ ×ª×ž×•× ×” ×œ× ×—×•×§×™. ×¡×•×’×™× ×ž×•×ª×¨×™×: JPEG, PNG, GIF, WEBP."
 
 msgid "Invalid or Expired Link"
-msgstr "קישור לא חוקי או שפג תוקפו"
+msgstr "×§×™×©×•×¨ ×œ× ×—×•×§×™ ××• ×©×¤×’ ×ª×•×§×¤×•"
 
 msgid "New Password"
-msgstr "סיסמה חדשה"
+msgstr "×¡×™×¡×ž×” ×—×“×©×”"
 
 msgid "Once you start, you will be able to view tasks and submit solutions until the end of the contest."
-msgstr "לאחר שתתחילו, תוכלו לצפות במשימות ולהגיש פתרונות עד סוף התחרות."
+msgstr "×œ××—×¨ ×©×ª×ª×—×™×œ×•, ×ª×•×›×œ×• ×œ×¦×¤×•×ª ×‘×ž×©×™×ž×•×ª ×•×œ×”×’×™×© ×¤×ª×¨×•× ×•×ª ×¢×“ ×¡×•×£ ×”×ª×—×¨×•×ª."
 
 msgid "Password Reset"
-msgstr "איפוס סיסמה"
+msgstr "××™×¤×•×¡ ×¡×™×¡×ž×”"
 
 msgid "Password Reset Submitted!"
-msgstr "בקשת איפוס הסיסמה נשלחה!"
+msgstr "×‘×§×©×ª ××™×¤×•×¡ ×”×¡×™×¡×ž×” × ×©×œ×—×”!"
 
 msgid "Password strength:"
-msgstr "חוזק הסיסמה:"
+msgstr "×—×•×–×§ ×”×¡×™×¡×ž×”:"
 
 msgid "Pending"
-msgstr "ממתין"
+msgstr "×ž×ž×ª×™×Ÿ"
 
 msgid "Please check your email and click the link to reset your password. The link will expire in"
-msgstr "אנא בדקו את האימייל שלכם ולחצו על הקישור לאיפוס הסיסמה. הקישור יפוג בעוד"
+msgstr "×× × ×‘×“×§×• ××ª ×”××™×ž×™×™×œ ×©×œ×›× ×•×œ×—×¦×• ×¢×œ ×”×§×™×©×•×¨ ×œ××™×¤×•×¡ ×”×¡×™×¡×ž×”. ×”×§×™×©×•×¨ ×™×¤×•×’ ×‘×¢×•×“"
 
 msgid "Please contact an administrator if you need your password reset to be processed urgently."
-msgstr "אנא פנו למנהל מערכת אם אתם צריכים שאיפוס הסיסמה שלכם יטופל בדחיפות."
+msgstr "×× × ×¤× ×• ×œ×ž× ×”×œ ×ž×¢×¨×›×ª ×× ××ª× ×¦×¨×™×›×™× ×©××™×¤×•×¡ ×”×¡×™×¡×ž×” ×©×œ×›× ×™×˜×•×¤×œ ×‘×“×—×™×¤×•×ª."
 
 msgid "Please enter a valid date of birth."
-msgstr "אנא הזינו תאריך לידה תקין."
+msgstr "×× × ×”×–×™× ×• ×ª××¨×™×š ×œ×™×“×” ×ª×§×™×Ÿ."
 
 msgid "Please enter a valid email address."
-msgstr "אנא הזינו כתובת אימייל תקינה."
+msgstr "×× × ×”×–×™× ×• ×›×ª×•×‘×ª ××™×ž×™×™×œ ×ª×§×™× ×”."
 
 msgid "Please explain why you need a delay"
-msgstr "אנא הסבירו מדוע אתם צריכים דחייה"
+msgstr "×× × ×”×¡×‘×™×¨×• ×ž×“×•×¢ ××ª× ×¦×¨×™×›×™× ×“×—×™×™×”"
 
 msgid "Please request a new password reset link if you still need to reset your password."
-msgstr "אנא בקשו קישור חדש לאיפוס סיסמה אם אתם עדיין צריכים לאפס את הסיסמה."
+msgstr "×× × ×‘×§×©×• ×§×™×©×•×¨ ×—×“×© ×œ××™×¤×•×¡ ×¡×™×¡×ž×” ×× ××ª× ×¢×“×™×™×Ÿ ×¦×¨×™×›×™× ×œ××¤×¡ ××ª ×”×¡×™×¡×ž×”."
 
 msgid "Profile picture"
-msgstr "תמונת פרופיל"
+msgstr "×ª×ž×•× ×ª ×¤×¨×•×¤×™×œ"
 
 msgid "Reason"
-msgstr "סיבה"
+msgstr "×¡×™×‘×”"
 
 msgid "Reason:"
-msgstr "סיבה:"
+msgstr "×¡×™×‘×”:"
 
 msgid "Rejected"
-msgstr "נדחתה"
+msgstr "× ×“×—×ª×”"
 
 msgid "Rejection Reason:"
-msgstr "סיבת הדחייה:"
+msgstr "×¡×™×‘×ª ×”×“×—×™×™×”:"
 
 msgid "Request Contest Delay"
-msgstr "בקשת דחיית תחרות"
+msgstr "×‘×§×©×ª ×“×—×™×™×ª ×ª×—×¨×•×ª"
 
 msgid "Request New Reset Link"
-msgstr "בקשת קישור איפוס חדש"
+msgstr "×‘×§×©×ª ×§×™×©×•×¨ ××™×¤×•×¡ ×—×“×©"
 
 msgid "Request Reset"
-msgstr "בקשת איפוס"
+msgstr "×‘×§×©×ª ××™×¤×•×¡"
 
 msgid "Requested Start Time"
-msgstr "זמן התחלה מבוקש"
+msgstr "×–×ž×Ÿ ×”×ª×—×œ×” ×ž×‘×•×§×©"
 
 msgid "Requested Start Time:"
-msgstr "זמן התחלה מבוקש:"
+msgstr "×–×ž×Ÿ ×”×ª×—×œ×” ×ž×‘×•×§×©:"
 
 msgid "Reset Password"
-msgstr "איפוס סיסמה"
+msgstr "××™×¤×•×¡ ×¡×™×¡×ž×”"
 
 msgid "Select target language"
-msgstr "בחרו שפת יעד"
+msgstr "×‘×—×¨×• ×©×¤×ª ×™×¢×“"
 
 msgid "Select the date and time when you want to start the contest"
-msgstr "בחרו את התאריך והשעה שבהם תרצו להתחיל את התחרות"
+msgstr "×‘×—×¨×• ××ª ×”×ª××¨×™×š ×•×”×©×¢×” ×©×‘×”× ×ª×¨×¦×• ×œ×”×ª×—×™×œ ××ª ×”×ª×—×¨×•×ª"
 
 msgid "Some of the registration data is invalid. Please check all fields."
-msgstr "חלק מנתוני ההרשמה אינם תקינים. אנא בדקו את כל השדות."
+msgstr "×—×œ×§ ×ž× ×ª×•× ×™ ×”×”×¨×©×ž×” ××™× × ×ª×§×™× ×™×. ×× × ×‘×“×§×• ××ª ×›×œ ×”×©×“×•×ª."
 
 msgid "Source Language"
-msgstr "שפת מקור"
+msgstr "×©×¤×ª ×ž×§×•×¨"
 
 msgid "Status:"
-msgstr "סטטוס:"
+msgstr "×¡×˜×˜×•×¡:"
 
 msgid "Strong"
-msgstr "חזקה"
+msgstr "×—×–×§×”"
 
 msgid "Submit Delay Request"
-msgstr "שליחת בקשת דחייה"
+msgstr "×©×œ×™×—×ª ×‘×§×©×ª ×“×—×™×™×”"
 
 msgid "Supported Languages"
-msgstr "שפות נתמכות"
+msgstr "×©×¤×•×ª × ×ª×ž×›×•×ª"
 
 msgid "Target Language"
-msgstr "שפת יעד"
+msgstr "×©×¤×ª ×™×¢×“"
 
 msgid "Text to Translate"
-msgstr "טקסט לתרגום"
+msgstr "×˜×§×¡×˜ ×œ×ª×¨×’×•×"
 
 msgid "Thank you for your participation!"
-msgstr "תודה על השתתפותכם!"
+msgstr "×ª×•×“×” ×¢×œ ×”×©×ª×ª×¤×•×ª×›×!"
 
 msgid "The uploaded file is not a valid image."
-msgstr "הקובץ שהועלה אינו תמונה תקינה."
+msgstr "×”×§×•×‘×¥ ×©×”×•×¢×œ×” ××™× ×• ×ª×ž×•× ×” ×ª×§×™× ×”."
 
 msgid "This password reset link is invalid or has expired."
-msgstr "קישור איפוס הסיסמה אינו חוקי או שפג תוקפו."
+msgstr "×§×™×©×•×¨ ××™×¤×•×¡ ×”×¡×™×¡×ž×” ××™× ×• ×—×•×§×™ ××• ×©×¤×’ ×ª×•×§×¤×•."
 
 msgid "Translate"
-msgstr "תרגמו"
+msgstr "×ª×¨×’×ž×•"
 
 msgid "Translation"
-msgstr "תרגום"
+msgstr "×ª×¨×’×•×"
 
 msgid "Translation Result"
-msgstr "תוצאת התרגום"
+msgstr "×ª×•×¦××ª ×”×ª×¨×’×•×"
 
 msgid "Use this tool to translate text between different languages. This can help you understand problem statements and communicate more effectively."
-msgstr "השתמשו בכלי זה לתרגום טקסט בין שפות שונות. זה יכול לעזור לכם להבין הצהרות בעיות ולתקשר בצורה יעילה יותר."
+msgstr "×”×©×ª×ž×©×• ×‘×›×œ×™ ×–×” ×œ×ª×¨×’×•× ×˜×§×¡×˜ ×‘×™×Ÿ ×©×¤×•×ª ×©×•× ×•×ª. ×–×” ×™×›×•×œ ×œ×¢×–×•×¨ ×œ×›× ×œ×”×‘×™×Ÿ ×”×¦×”×¨×•×ª ×‘×¢×™×•×ª ×•×œ×ª×§×©×¨ ×‘×¦×•×¨×” ×™×¢×™×œ×” ×™×•×ª×¨."
 
 msgid "Username may not start with __."
-msgstr "שם המשתמש לא יכול להתחיל ב-__."
+msgstr "×©× ×”×ž×©×ª×ž×© ×œ× ×™×›×•×œ ×œ×”×ª×—×™×œ ×‘-__."
 
 msgid "Username may only contain letters, digits, underscores, and hyphens."
-msgstr "שם המשתמש יכול להכיל רק אותיות, ספרות, קווים תחתונים ומקפים."
+msgstr "×©× ×”×ž×©×ª×ž×© ×™×›×•×œ ×œ×”×›×™×œ ×¨×§ ××•×ª×™×•×ª, ×¡×¤×¨×•×ª, ×§×•×•×™× ×ª×—×ª×•× ×™× ×•×ž×§×¤×™×."
 
 msgid "Username or Email"
-msgstr "שם משתמש או אימייל"
+msgstr "×©× ×ž×©×ª×ž×© ××• ××™×ž×™×™×œ"
 
 msgid "Very strong"
-msgstr "חזקה מאוד"
+msgstr "×—×–×§×” ×ž××•×“"
 
 msgid "Very weak"
-msgstr "חלשה מאוד"
+msgstr "×—×œ×©×” ×ž××•×“"
 
 msgid "Weak"
-msgstr "חלשה"
+msgstr "×—×œ×©×”"
 
 msgid "You haven't started the contest yet."
-msgstr "עדיין לא התחלתם את התחרות."
+msgstr "×¢×“×™×™×Ÿ ×œ× ×”×ª×—×œ×ª× ××ª ×”×ª×—×¨×•×ª."
 
 msgid "You missed the contest window."
-msgstr "פספסתם את חלון התחרות."
+msgstr "×¤×¡×¤×¡×ª× ××ª ×—×œ×•×Ÿ ×”×ª×—×¨×•×ª."
 
 msgid "Your password is too weak. Try using a longer phrase with a mix of letters, numbers, and symbols."
-msgstr "הסיסמה שלכם חלשה מדי. נסו להשתמש בביטוי ארוך יותר עם שילוב של אותיות, מספרים וסמלים."
+msgstr "×”×¡×™×¡×ž×” ×©×œ×›× ×—×œ×©×” ×ž×“×™. × ×¡×• ×œ×”×©×ª×ž×© ×‘×‘×™×˜×•×™ ××¨×•×š ×™×•×ª×¨ ×¢× ×©×™×œ×•×‘ ×©×œ ××•×ª×™×•×ª, ×ž×¡×¤×¨×™× ×•×¡×ž×œ×™×."
 
 msgid "Your password reset request for user"
-msgstr "בקשת איפוס הסיסמה שלכם עבור המשתמש"
+msgstr "×‘×§×©×ª ××™×¤×•×¡ ×”×¡×™×¡×ž×” ×©×œ×›× ×¢×‘×•×¨ ×”×ž×©×ª×ž×©"
 
 msgid "has been submitted."
-msgstr "נשלחה."
+msgstr "× ×©×œ×—×”."
 
 msgid "hours."
-msgstr "שעות."
+msgstr "×©×¢×•×ª."
+
+msgid "All"
+msgstr "×”×›×œ"
+
+msgid "Assigned"
+msgstr "×”×•×§×¦×”"
+
+msgid "Attempted"
+msgstr "× ×•×¡×”"
+
+msgid "Back to Training Program"
+msgstr "×—×–×¨×” ×œ×ª×•×›× ×™×ª ×”××™×ž×•× ×™×"
+
+msgid "Current start time:"
+msgstr "×–×ž×Ÿ ×”×ª×—×œ×” × ×•×›×—×™:"
+
+msgid "Date"
+msgstr "×ª××¨×™×š"
+
+msgid "Delay request actions"
+msgstr "×¤×¢×•×œ×•×ª ×‘×§×©×ª ×“×—×™×™×”"
+
+msgid "Description"
+msgstr "×ª×™××•×¨"
+
+msgid "Duration:"
+msgstr "×ž×©×š:"
+
+msgid "ENDED"
+msgstr "×”×¡×ª×™×™×"
+
+msgid "Enter Training"
+msgstr "×›× ×™×¡×” ×œ××™×ž×•×Ÿ"
+
+msgid "Filter:"
+msgstr "×¡×™× ×•×Ÿ:"
+
+msgid "Go to statement"
+msgstr "×ž×¢×‘×¨ ×œ×¡×˜×™×™×˜×ž× ×˜"
+
+msgid "Go to submissions"
+msgstr "×ž×¢×‘×¨ ×œ×”×’×©×•×ª"
+
+msgid "H:"
+msgstr "×‘:"
+
+msgid "Home Score"
+msgstr "× ×™×§×•×“ ×‘×™×ª"
+
+msgid "LIVE"
+msgstr "×¤×¢×™×œ"
+
+msgid "Manual"
+msgstr "×™×“× ×™"
+
+msgid "No ongoing or upcoming trainings."
+msgstr "××™×Ÿ ××™×ž×•× ×™× ×¤×¢×™×œ×™× ××• ×§×¨×•×‘×™×."
+
+msgid "No past trainings yet."
+msgstr "××™×Ÿ ×¢×“×™×™×Ÿ ××™×ž×•× ×™× ×§×•×“×ž×™×."
+
+msgid "No tasks"
+msgstr "××™×Ÿ ×ž×©×™×ž×•×ª"
+
+msgid "No tasks available yet."
+msgstr "××™×Ÿ ×¢×“×™×™×Ÿ ×ž×©×™×ž×•×ª ×–×ž×™× ×•×ª."
+
+msgid "Not Attempted"
+msgstr "×œ× × ×•×¡×”"
+
+msgid "Ongoing and Upcoming Trainings"
+msgstr "××™×ž×•× ×™× ×¤×¢×™×œ×™× ×•×§×¨×•×‘×™×"
+
+msgid "Overall Completion Rate"
+msgstr "××—×•×– ×”×©×œ×ž×” ×›×•×œ×œ"
+
+msgid "Partial"
+msgstr "×—×œ×§×™"
+
+msgid "Past Trainings"
+msgstr "××™×ž×•× ×™× ×§×•×“×ž×™×"
+
+msgid "Request a Delay"
+msgstr "×‘×§×©×ª ×“×—×™×™×”"
+
+msgid "Request a delay for this training day"
+msgstr "×‘×§×©×ª ×“×—×™×™×” ×œ×™×•× ××™×ž×•×Ÿ ×–×”"
+
+msgid "Scoreboard"
+msgstr "×˜×‘×œ×ª × ×™×§×•×“"
+
+msgid "Solved"
+msgstr "× ×¤×ª×¨"
+
+msgid "Source"
+msgstr "×ž×§×•×¨"
+
+msgid "Start:"
+msgstr "×”×ª×—×œ×”:"
+
+msgid "Starts in:"
+msgstr "×ž×ª×—×™×œ ×‘×¢×•×“:"
+
+msgid "Statistics"
+msgstr "×¡×˜×˜×™×¡×˜×™×§×•×ª"
+
+msgid "Submissions from task archive"
+msgstr "×”×’×©×•×ª ×ž××¨×›×™×•×Ÿ ×”×ž×©×™×ž×•×ª"
+
+#, python-format
+msgid "Submissions from training day: %(td_desc)s"
+msgstr "×”×’×©×•×ª ×ž×™×•× ××™×ž×•×Ÿ: %(td_desc)s"
+
+msgid "T:"
+msgstr "×:"
+
+msgid "TOTAL POINTS"
+msgstr "×¡×”×´×› × ×§×•×“×•×ª"
+
+msgid "Task Archive"
+msgstr "××¨×›×™×•×Ÿ ×ž×©×™×ž×•×ª"
+
+msgid "Tasks"
+msgstr "×ž×©×™×ž×•×ª"
+
+msgid "Training Days"
+msgstr "×™×ž×™ ××™×ž×•×Ÿ"
+
+msgid "Training Score"
+msgstr "× ×™×§×•×“ ××™×ž×•×Ÿ"
+
+msgid "Upcoming Training Days"
+msgstr "×™×ž×™ ××™×ž×•×Ÿ ×§×¨×•×‘×™×"
+
+#, python-format
+msgid "View %(count)s delay request(s)"
+msgstr "×¦×¤×™×™×” ×‘-%(count)s ×‘×§×©×•×ª ×“×—×™×™×”"
+
+msgid "View Requests"
+msgstr "×¦×¤×™×™×” ×‘×‘×§×©×•×ª"
+
+msgid "YOUR SCORE"
+msgstr "×”× ×™×§×•×“ ×©×œ×š"
+
+msgid "Your Delay Requests"
+msgstr "×‘×§×©×•×ª ×”×“×—×™×™×” ×©×œ×š"
