@@ -1245,13 +1245,7 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
         ws.title = "Attendance"
 
         header_font = Font(bold=True)
-        header_fill = PatternFill(
-            start_color="4472C4", end_color="4472C4", fill_type="solid"
-        )
         header_font_white = Font(bold=True, color="FFFFFF")
-        subheader_fill = PatternFill(
-            start_color="D9E2F3", end_color="D9E2F3", fill_type="solid"
-        )
         thin_border = Border(
             left=Side(style="thin"),
             right=Side(style="thin"),
@@ -1259,23 +1253,52 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
             bottom=Side(style="thin"),
         )
 
+        zebra_colors = [
+            ("4472C4", "D9E2F3"),
+            ("70AD47", "E2EFDA"),
+            ("ED7D31", "FCE4D6"),
+            ("7030A0", "E4DFEC"),
+            ("00B0F0", "DAEEF3"),
+            ("FFC000", "FFF2CC"),
+        ]
+
         subcolumns = ["Status", "Location", "Recorded", "Delay Reasons", "Comments"]
         num_subcolumns = len(subcolumns)
 
         ws.cell(row=1, column=1, value="Student")
         ws.cell(row=1, column=1).font = header_font_white
-        ws.cell(row=1, column=1).fill = header_fill
+        ws.cell(row=1, column=1).fill = PatternFill(
+            start_color="4472C4", end_color="4472C4", fill_type="solid"
+        )
         ws.cell(row=1, column=1).border = thin_border
         ws.cell(row=1, column=1).alignment = Alignment(
             horizontal="center", vertical="center"
         )
-        ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=1)
+
+        ws.cell(row=2, column=1, value="Tags")
+        ws.cell(row=2, column=1).font = header_font
+        ws.cell(row=2, column=1).fill = PatternFill(
+            start_color="D9E2F3", end_color="D9E2F3", fill_type="solid"
+        )
+        ws.cell(row=2, column=1).border = thin_border
+        ws.cell(row=2, column=1).alignment = Alignment(horizontal="center")
 
         col = 2
-        for td in archived_training_days:
+        for td_idx, td in enumerate(archived_training_days):
             title = td.description or td.name or "Session"
             if td.start_time:
                 title += f" ({td.start_time.strftime('%b %d')})"
+            if td.training_day_types:
+                title += f" [{'; '.join(td.training_day_types)}]"
+
+            color_idx = td_idx % len(zebra_colors)
+            header_color, subheader_color = zebra_colors[color_idx]
+            header_fill = PatternFill(
+                start_color=header_color, end_color=header_color, fill_type="solid"
+            )
+            subheader_fill = PatternFill(
+                start_color=subheader_color, end_color=subheader_color, fill_type="solid"
+            )
 
             ws.cell(row=1, column=col, value=title)
             ws.cell(row=1, column=col).font = header_font_white
@@ -1308,6 +1331,13 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
 
             ws.cell(row=row, column=1, value=student_name)
             ws.cell(row=row, column=1).border = thin_border
+
+            tags_str = ""
+            if student.student_tags:
+                tags_str = "; ".join(student.student_tags)
+            ws.cell(row=row + 1, column=1, value=tags_str)
+            ws.cell(row=row + 1, column=1).border = thin_border
+            ws.cell(row=row + 1, column=1).font = Font(italic=True, size=9)
 
             col = 2
             for td in archived_training_days:
@@ -1354,10 +1384,14 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
                 for i, value in enumerate(values):
                     cell = ws.cell(row=row, column=col + i, value=value)
                     cell.border = thin_border
+                    ws.merge_cells(
+                        start_row=row, start_column=col + i,
+                        end_row=row + 1, end_column=col + i
+                    )
 
                 col += num_subcolumns
 
-            row += 1
+            row += 2
 
         ws.column_dimensions["A"].width = 30
         for col_idx in range(2, 2 + len(archived_training_days) * num_subcolumns):
@@ -1369,7 +1403,22 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
         output.seek(0)
 
         program_slug = re.sub(r"[^A-Za-z0-9_-]+", "_", training_program.name)
-        filename = f"{program_slug}_attendance.xlsx"
+        filename_parts = [program_slug, "attendance"]
+
+        if start_date:
+            filename_parts.append(f"from_{start_date.strftime('%Y%m%d')}")
+        if end_date:
+            filename_parts.append(f"to_{end_date.strftime('%Y%m%d')}")
+        if training_day_types:
+            types_slug = re.sub(
+                r"[^A-Za-z0-9_-]+", "_", "_".join(training_day_types)
+            )
+            filename_parts.append(f"types_{types_slug}")
+        if student_tags:
+            tags_slug = re.sub(r"[^A-Za-z0-9_-]+", "_", "_".join(student_tags))
+            filename_parts.append(f"tags_{tags_slug}")
+
+        filename = "_".join(filename_parts) + ".xlsx"
 
         self.set_header(
             "Content-Type",
