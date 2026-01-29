@@ -92,6 +92,7 @@ class ArchivedAttendance(Base):
     justified: bool = Column(
         Boolean,
         nullable=False,
+        default=False,
     )
 
     # Admin comment for this attendance record
@@ -104,6 +105,7 @@ class ArchivedAttendance(Base):
     recorded: bool = Column(
         Boolean,
         nullable=False,
+        default=False,
     )
 
     training_day: "TrainingDay" = relationship(
