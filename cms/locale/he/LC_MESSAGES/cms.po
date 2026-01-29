@@ -1,4 +1,4 @@
-# Hebrew translations for Contest Management System.
+﻿# Hebrew translations for Contest Management System.
 # Copyright (C) 2025 CMS development group
 # This file is distributed under the same license as the Contest Management System project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
@@ -1266,10 +1266,10 @@ msgid "All"
 msgstr "הכל"
 
 msgid "Assigned"
-msgstr "הוקצה"
+msgstr "הוקצתה"
 
 msgid "Attempted"
-msgstr "נוסה"
+msgstr "נוסתה"
 
 msgid "Back to Training Program"
 msgstr "חזרה לתוכנית האימונים"
@@ -1329,7 +1329,7 @@ msgid "No tasks available yet."
 msgstr "אין עדיין משימות זמינות."
 
 msgid "Not Attempted"
-msgstr "לא נוסה"
+msgstr "לא נוסתה"
 
 msgid "Ongoing and Upcoming Trainings"
 msgstr "אימונים פעילים ועתידיים"
@@ -1338,7 +1338,7 @@ msgid "Overall Completion Rate"
 msgstr "אחוז השלמה כולל"
 
 msgid "Partial"
-msgstr "חלקי"
+msgstr "חלקית"
 
 msgid "Past Trainings"
 msgstr "אימונים קודמים"
@@ -1403,7 +1403,7 @@ msgid "View Requests"
 msgstr "צפייה בבקשות"
 
 msgid "YOUR SCORE"
-msgstr "הניקוד שלך"
+msgstr "הניקוד שלכם"
 
 msgid "Your Delay Requests"
-msgstr "בקשות הדחייה שלך"
+msgstr "בקשות הדחייה שלכם"
