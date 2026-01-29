@@ -200,11 +200,11 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
                   </div>
                 {% endif %}
 
-                <div class="attendance-badges">
-                  {% if att.comment %}
-                    <span class="comment-indicator" title="{{ att.comment }}">&#x1F4AC;</span>
-                  {% endif %}
-                </div>
+                {% if att.comment %}
+                  <div class="comment-text" title="{{ att.comment }}">
+                    &#x1F4AC; {{ att.comment }}
+                  </div>
+                {% endif %}
               </div>
             </td>
           {% else %}
@@ -356,24 +356,22 @@ function updateAttendanceCell(attendanceId, justified, recorded, comment) {
         }
     }
 
-    // Update comment indicator
-    var badgesContainer = wrapper.querySelector('.attendance-badges');
-    if (badgesContainer) {
-        var commentIndicator = badgesContainer.querySelector('.comment-indicator');
-        if (comment && !commentIndicator) {
-            // Create comment indicator
-            var indicator = document.createElement('span');
-            indicator.className = 'comment-indicator';
-            indicator.title = comment;
-            indicator.innerHTML = '&#x1F4AC;';
-            badgesContainer.appendChild(indicator);
-        } else if (!comment && commentIndicator) {
-            // Remove comment indicator
-            commentIndicator.remove();
-        } else if (comment && commentIndicator) {
-            // Update existing comment indicator
-            commentIndicator.title = comment;
-        }
+    // Update comment text
+    var existingComment = wrapper.querySelector('.comment-text');
+    if (comment && !existingComment) {
+        // Create comment text
+        var commentDiv = document.createElement('div');
+        commentDiv.className = 'comment-text';
+        commentDiv.title = comment;
+        commentDiv.innerHTML = '&#x1F4AC; ' + comment;
+        wrapper.appendChild(commentDiv);
+    } else if (!comment && existingComment) {
+        // Remove comment text
+        existingComment.remove();
+    } else if (comment && existingComment) {
+        // Update existing comment text
+        existingComment.title = comment;
+        existingComment.innerHTML = '&#x1F4AC; ' + comment;
     }
 }
 
