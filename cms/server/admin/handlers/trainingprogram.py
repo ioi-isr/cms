@@ -317,7 +317,7 @@ class AddTrainingProgramHandler(
             stop_str = self.get_argument("stop", "")
 
             contest_kwargs: dict = {
-                "name": "__" + name,
+                "name": name,
                 "description": description,
                 "allow_delay_requests": False,
             }
@@ -403,12 +403,14 @@ class RemoveTrainingProgramHandler(BaseHandler):
         )
         self.r_params["task_count"] = len(managing_contest.tasks)
 
-        # Other contests available to move tasks into (excluding training day contests)
+        # Other contests available to move tasks into (excluding training day contests
+        # and managing contests for training programs)
         self.r_params["other_contests"] = (
             self.sql_session.query(Contest)
             .filter(Contest.id != managing_contest.id)
             .filter(~Contest.name.like(r'\_\_%', escape='\\'))
             .filter(~Contest.training_day.has())
+            .filter(~Contest.training_program.has())
             .order_by(Contest.name)
             .all()
         )
