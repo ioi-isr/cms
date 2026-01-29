@@ -7,7 +7,7 @@ var filterInput = document.querySelector('input[name="training_day_types"]');
 if (filterInput && typeof Tagify !== 'undefined') {
     new Tagify(filterInput, {
         delimiters: ",",
-        whitelist: {{ all_training_day_types | tojson }},
+        whitelist: {{ all_training_day_types | default([]) | tojson }},
         enforceWhitelist: true,
         editTags: false,
         dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
@@ -235,6 +235,11 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
 </form>
 
 {% if archived_training_days %}
+<div style="margin-bottom: 15px; display: flex; justify-content: flex-end;">
+  <a href="{{ url('training_program', training_program.id, 'combined_ranking', 'export') }}{% if start_date or end_date or training_day_types or student_tags %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(',') | urlencode }}&{% endif %}{% if student_tags %}student_tags={{ student_tags | join(',') | urlencode }}&{% endif %}{% if student_tags_mode %}student_tags_mode={{ student_tags_mode }}{% endif %}{% endif %}" class="tp-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+    <span>&#128190;</span> Export to Excel
+  </a>
+</div>
 <div class="tp-table-container">
   <table class="ranking-table" id="ranking_table">
     <thead>
@@ -364,16 +369,26 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                   {% if participated %}
                     {% set global_total.value = global_total.value + cell_value %}
                   {% endif %}
-                  {% if attendance and attendance.status == 'missed' %}
+                  {% if attendance and attendance.status == 'missed' and attendance.justified %}
+                    <span class="attendance-badge justified-badge" title="Justified absence">&#10060;&#128221;</span>
+                  {% elif attendance and attendance.status == 'missed' %}
                     <span class="attendance-badge missed-badge" title="Missed training">&#10060;</span>
                   {% elif attendance and attendance.location == 'home' %}
                     <span class="attendance-badge home-badge" title="Participated from home">&#127968;</span>
                   {% endif %}
+                  {% if attendance and attendance.recorded %}
+                    <span class="attendance-badge recorded-badge" title="Recorded">&#127909;</span>
+                  {% endif %}
                 {% else %}
-                  {% if attendance and attendance.status == 'missed' %}
+                  {% if attendance and attendance.status == 'missed' and attendance.justified %}
+                    <span class="attendance-badge justified-badge" title="Justified absence">&#10060;&#128221;</span>
+                  {% elif attendance and attendance.status == 'missed' %}
                     <span class="attendance-badge missed-badge" title="Missed training">&#10060;</span>
                   {% else %}
                     <span class="empty-cell-content">-</span>
+                  {% endif %}
+                  {% if attendance and attendance.recorded %}
+                    <span class="attendance-badge recorded-badge" title="Recorded">&#127909;</span>
                   {% endif %}
                 {% endif %}
             </div>
