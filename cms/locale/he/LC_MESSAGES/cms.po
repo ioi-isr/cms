@@ -1261,3 +1261,149 @@ msgstr "נשלחה."
 
 msgid "hours."
 msgstr "שעות."
+
+msgid "All"
+msgstr "הכל"
+
+msgid "Assigned"
+msgstr "הוקצה"
+
+msgid "Attempted"
+msgstr "נוסה"
+
+msgid "Back to Training Program"
+msgstr "חזרה לתוכנית האימונים"
+
+msgid "Current start time:"
+msgstr "זמן התחלה נוכחי:"
+
+msgid "Date"
+msgstr "תאריך"
+
+msgid "Delay request actions"
+msgstr "פעולות בקשת דחייה"
+
+msgid "Description"
+msgstr "תיאור"
+
+msgid "Duration:"
+msgstr "משך:"
+
+msgid "ENDED"
+msgstr "הסתיים"
+
+msgid "Enter Training"
+msgstr "כניסה לאימון"
+
+msgid "Filter:"
+msgstr "סינון:"
+
+msgid "Go to statement"
+msgstr "מעבר לסטייטמנט"
+
+msgid "Go to submissions"
+msgstr "מעבר להגשות"
+
+msgid "H:"
+msgstr "ב:"
+
+msgid "Home Score"
+msgstr "ניקוד בית"
+
+msgid "LIVE"
+msgstr "פעיל"
+
+msgid "Manual"
+msgstr "ידני"
+
+msgid "No ongoing or upcoming trainings."
+msgstr "אין אימונים פעילים או עתידיים."
+
+msgid "No past trainings yet."
+msgstr "אין עדיין אימונים קודמים."
+
+msgid "No tasks"
+msgstr "אין משימות"
+
+msgid "No tasks available yet."
+msgstr "אין עדיין משימות זמינות."
+
+msgid "Not Attempted"
+msgstr "לא נוסה"
+
+msgid "Ongoing and Upcoming Trainings"
+msgstr "אימונים פעילים ועתידיים"
+
+msgid "Overall Completion Rate"
+msgstr "אחוז השלמה כולל"
+
+msgid "Partial"
+msgstr "חלקי"
+
+msgid "Past Trainings"
+msgstr "אימונים קודמים"
+
+msgid "Request a Delay"
+msgstr "בקשת דחייה"
+
+msgid "Request a delay for this training day"
+msgstr "בקשת דחייה עבור יום אימון זה"
+
+msgid "Scoreboard"
+msgstr "טבלת ניקוד"
+
+msgid "Solved"
+msgstr "נפתר"
+
+msgid "Source"
+msgstr "מקור"
+
+msgid "Start:"
+msgstr "התחלה:"
+
+msgid "Starts in:"
+msgstr "מתחיל בעוד:"
+
+msgid "Statistics"
+msgstr "סטטיסטיקות"
+
+#, python-format
+msgid "Submissions from training day: %(td_desc)s"
+msgstr "הגשות מיום אימון: %(td_desc)s"
+
+msgid "Submissions from task archive"
+msgstr "הגשות מארכיון המשימות"
+
+msgid "T:"
+msgstr "א:"
+
+msgid "TOTAL POINTS"
+msgstr "סה״כ נקודות"
+
+msgid "Task Archive"
+msgstr "ארכיון משימות"
+
+msgid "Tasks"
+msgstr "משימות"
+
+msgid "Training Days"
+msgstr "ימי אימון"
+
+msgid "Training Score"
+msgstr "ניקוד אימון"
+
+msgid "Upcoming Training Days"
+msgstr "ימי אימון עתידיים"
+
+#, python-format
+msgid "View %(count)s delay request(s)"
+msgstr "צפייה ב-%(count)s בקשות דחייה"
+
+msgid "View Requests"
+msgstr "צפייה בבקשות"
+
+msgid "YOUR SCORE"
+msgstr "הניקוד שלך"
+
+msgid "Your Delay Requests"
+msgstr "בקשות הדחייה שלך"
