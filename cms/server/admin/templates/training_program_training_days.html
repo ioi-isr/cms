@@ -5,7 +5,7 @@
 {% for td in training_program.training_days %}
 CMS.AWSUtils.initTagify({
     inputSelector: 'input[name="training_day_types_{{ td.id }}"]',
-    whitelist: {{ all_training_day_types | tojson }},
+    whitelist: {{ all_training_day_types | default([]) | tojson }},
     getSaveUrl: function() {
         return '{{ url("training_program", training_program.id, "training_day", td.id, "types") }}';
     },

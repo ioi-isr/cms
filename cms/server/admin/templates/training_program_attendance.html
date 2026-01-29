@@ -7,7 +7,7 @@ var filterInput = document.querySelector('input[name="training_day_types"]');
 if (filterInput && typeof Tagify !== 'undefined') {
     new Tagify(filterInput, {
         delimiters: ",",
-        whitelist: {{ all_training_day_types | tojson }},
+        whitelist: {{ all_training_day_types | default([]) | tojson }},
         enforceWhitelist: true,
         editTags: false,
         dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
@@ -89,6 +89,14 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
 </form>
 
 {% if archived_training_days %}
+<div style="margin-bottom: 15px; display: flex; justify-content: flex-end;">
+  <a href="{{ url('training_program', training_program.id, 'attendance', 'export') }}{% if start_date or end_date or training_day_types or student_tags %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(',') | urlencode }}&{% endif %}{% if student_tags %}student_tags={{ student_tags | join(',') | urlencode }}{% endif %}{% endif %}" class="tp-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+    <span>&#128190;</span> Export to Excel
+  </a>
+</div>
+{% endif %}
+
+{% if archived_training_days %}
 <div class="tp-table-container">
   <table class="attendance-table" id="attendance_table">
     <thead>
@@ -145,21 +153,21 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
         {% for td in archived_training_days %}
           {% set att = attendance_data.get(student.id, {}).get(td.id) %}
           {% if att %}
-            {% if att.status == "missed" %}
-              <td data-value="3">
-              {% elif att.delay_time %}
-              <td data-value="2">
-              {% else %}
-              <td data-value="1">
-            {% endif %}
+            {% set data_value = 3 if att.status == 'missed' and not att.justified else (2.5 if att.status == 'missed' else (2 if att.delay_time else 1)) %}
+            <td data-value="{{ data_value }}" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ 'true' if att.justified else 'false' }}" data-recorded="{{ 'true' if att.recorded else 'false' }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal(this)">
               <div class="cell-wrapper">
                 {% if att.status == "missed" %}
-                  <div class="status-badge status-missed">
-                    <span>&#x26D4; Missed</span>
+                  <div class="status-badge {% if att.justified %}status-justified{% else %}status-missed{% endif %}">
+                    <span>{% if att.justified %}&#128221; Justified{% else %}&#x26D4; Missed{% endif %}</span>
                   </div>
                 {% elif att.delay_time %}
                   <div class="status-badge status-delayed">
-                    <span>&#x23F1; Delayed ({{ "%.1f"|format(att.delay_time.total_seconds() / 3600) }}h)</span>
+                    {% set delay_minutes = att.delay_time.total_seconds() / 60 %}
+                    {% if delay_minutes < 60 %}
+                      <span>&#x23F1; Delayed ({{ "%.0f"|format(delay_minutes) }}m)</span>
+                    {% else %}
+                      <span>&#x23F1; Delayed ({{ "%.1f"|format(delay_minutes / 60) }}h)</span>
+                    {% endif %}
                   </div>
                 {% else %}
                   <div class="status-badge status-on-time">
@@ -180,12 +188,21 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
                   {% else %}
                     <span class="location-icon">&#x2753;</span> Unknown
                   {% endif %}
+                  {% if att.recorded %}
+                    <span class="recorded-badge" title="Recorded">&#127909;</span>
+                  {% endif %}
                 </div>
                 {% endif %}
 
                 {% if att.delay_reasons %}
                   <div class="reason-text" title="{{ att.delay_reasons }}">
                     {{ att.delay_reasons }}
+                  </div>
+                {% endif %}
+
+                {% if att.comment %}
+                  <div class="comment-text" title="{{ att.comment }}">
+                    &#x1F4AC; {{ att.comment }}
                   </div>
                 {% endif %}
               </div>
@@ -216,10 +233,215 @@ if (studentTagsInput && typeof Tagify !== 'undefined') {
   });
 </script>
 
+<!-- Attendance Edit Modal -->
+<div id="attendance-modal" class="attendance-modal">
+  <div class="attendance-modal-content">
+    <div class="attendance-modal-header">
+      <h3>Edit Attendance</h3>
+      <button type="button" class="attendance-modal-close" onclick="closeAttendanceModal()">&times;</button>
+    </div>
+    <div class="attendance-modal-body">
+      <div class="attendance-modal-row" id="justified-row">
+        <label for="modal-justified">
+          <input type="checkbox" id="modal-justified" />
+          Mark as Justified
+        </label>
+        <small class="attendance-modal-hint">Check this if the absence was justified (e.g., sick leave)</small>
+      </div>
+      <div class="attendance-modal-row">
+        <label for="modal-recorded">
+          <input type="checkbox" id="modal-recorded" />
+          Recorded
+        </label>
+        <small class="attendance-modal-hint">Check this if the student was recorded (screen recording)</small>
+      </div>
+      <div class="attendance-modal-row">
+        <label for="modal-comment">Comment:</label>
+        <textarea id="modal-comment" rows="3" placeholder="Add a comment about this attendance..."></textarea>
+      </div>
+    </div>
+    <div class="attendance-modal-footer">
+      <button type="button" class="tp-btn-secondary" onclick="closeAttendanceModal()">Cancel</button>
+      <button type="button" class="tp-btn-primary" onclick="saveAttendance()">Save</button>
+    </div>
+  </div>
+</div>
+
 {% else %}
   <div style="text-align: center; padding: 40px; background: #f9fafb; border-radius: 8px; border: 1px dashed #d1d5db;">
     <h3 style="color: #4b5563; margin-bottom: 8px;">No Data Available</h3>
     <p style="color: #6b7280;">No archived training days found matching your filter.</p>
   </div>
 {% endif %}
+
+<!-- Global attendance modal functions for onclick handlers -->
+<script>
+// Attendance edit modal functionality
+var currentAttendanceId = null;
+var currentAttendanceData = {};
+
+function openAttendanceModal(el) {
+    var ds = el.dataset;
+    currentAttendanceId = ds.attendanceId;
+
+    currentAttendanceData = {
+        status: ds.status,
+        justified: ds.justified === 'true',
+        recorded: ds.recorded === 'true',
+        comment: ds.comment
+    };
+
+    document.getElementById('modal-justified').checked = currentAttendanceData.justified;
+    document.getElementById('modal-recorded').checked = currentAttendanceData.recorded;
+    document.getElementById('modal-comment').value = currentAttendanceData.comment;
+
+    var isMissed = currentAttendanceData.status === 'missed';
+    document.getElementById('justified-row').style.display = isMissed ? 'flex' : 'none';
+    document.getElementById('modal-recorded').closest('.attendance-modal-row').style.display = isMissed ? 'none' : 'flex';
+
+    document.getElementById('attendance-modal').style.display = 'flex';
+}
+
+function closeAttendanceModal() {
+    document.getElementById('attendance-modal').style.display = 'none';
+    currentAttendanceId = null;
+    currentAttendanceData = {};
+}
+
+function updateAttendanceCell(attendanceId, justified, recorded, comment) {
+    // Find the cell by attendance ID
+    var cell = document.querySelector('[data-attendance-id="' + attendanceId + '"]');
+    if (!cell) return;
+
+    // Update the dataset attributes
+    cell.dataset.justified = justified ? 'true' : 'false';
+    cell.dataset.recorded = recorded ? 'true' : 'false';
+    cell.dataset.comment = comment || '';
+
+    // Update data-value for sorting (must match template logic)
+    if (cell.dataset.status === 'missed') {
+        cell.dataset.value = justified ? '2.5' : '3';
+    }
+
+    // Update the visual content
+    var wrapper = cell.querySelector('.cell-wrapper');
+    if (!wrapper) return;
+
+    // Update recorded badge - create or remove as needed
+    var locationRow = wrapper.querySelector('.location-row');
+    if (locationRow && cell.dataset.status !== 'missed') {
+        var recordedBadge = locationRow.querySelector('.recorded-badge');
+        if (recorded && !recordedBadge) {
+            // Create recorded badge
+            var badge = document.createElement('span');
+            badge.className = 'recorded-badge';
+            badge.title = 'Recorded';
+            badge.innerHTML = '&#127909;';
+            locationRow.appendChild(badge);
+        } else if (!recorded && recordedBadge) {
+            // Remove recorded badge
+            recordedBadge.remove();
+        }
+    }
+
+    // Update justified status for missed entries
+    var statusBadge = wrapper.querySelector('.status-badge');
+    if (statusBadge && cell.dataset.status === 'missed') {
+        if (justified) {
+            statusBadge.className = 'status-badge status-justified';
+            statusBadge.querySelector('span').innerHTML = '&#128221; Justified';
+        } else {
+            statusBadge.className = 'status-badge status-missed';
+            statusBadge.querySelector('span').innerHTML = '&#x26D4; Missed';
+        }
+    }
+
+    // Update comment text
+    var existingComment = wrapper.querySelector('.comment-text');
+    if (comment && !existingComment) {
+        // Create comment text
+        var commentDiv = document.createElement('div');
+        commentDiv.className = 'comment-text';
+        commentDiv.title = comment;
+        commentDiv.textContent = '💬 ' + comment;
+        wrapper.appendChild(commentDiv);
+    } else if (!comment && existingComment) {
+        // Remove comment text
+        existingComment.remove();
+    } else if (comment && existingComment) {
+        // Update existing comment text
+        existingComment.title = comment;
+        existingComment.textContent = '💬 ' + comment;
+    }
+}
+
+function saveAttendance() {
+    if (!currentAttendanceId) return;
+
+    var justified = document.getElementById('modal-justified').checked;
+    var recorded = document.getElementById('modal-recorded').checked;
+    var comment = document.getElementById('modal-comment').value.trim();
+
+    // Check if justified status changed (for missed entries) and confirm
+    if (currentAttendanceData.status === 'missed' && justified !== currentAttendanceData.justified) {
+        var action = justified ? 'mark this absence as justified' : 'remove the justified status';
+        if (!confirm('Are you sure you want to ' + action + '?')) {
+            return;
+        }
+    }
+
+    var data = {
+        justified: justified,
+        recorded: recorded,
+        comment: comment || null
+    };
+
+    // Add visual feedback
+    var saveBtn = document.querySelector('.attendance-modal-footer .tp-btn-primary');
+    var originalText = saveBtn.innerText;
+    saveBtn.disabled = true;
+    saveBtn.innerText = "Saving...";
+
+    fetch('{{ url("training_program", training_program.id, "attendance") }}/' + currentAttendanceId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-XSRFToken': get_cookie("_xsrf")
+        },
+        body: JSON.stringify(data)
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            throw new Error('Server error: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(function(result) {
+        if (result.success) {
+            // Success - update the cell dynamically and close modal
+            updateAttendanceCell(currentAttendanceId, justified, recorded, comment);
+            closeAttendanceModal();
+        } else {
+            alert('Failed to save: ' + (result.error || 'Unknown error'));
+        }
+    })
+    .catch(function(error) {
+        alert('Error saving attendance: ' + error.message);
+    })
+    .finally(function() {
+        // Always restore button state
+        saveBtn.disabled = false;
+        saveBtn.innerText = originalText;
+    });
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(e) {
+    var modal = document.getElementById('attendance-modal');
+    if (e.target === modal) {
+        closeAttendanceModal();
+    }
+});
+</script>
+
 {% endblock core %}

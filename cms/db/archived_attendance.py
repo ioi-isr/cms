@@ -27,7 +27,8 @@ from datetime import timedelta
 
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
-from sqlalchemy.types import Integer, Unicode, Interval
+from sqlalchemy.sql import text
+from sqlalchemy.types import Boolean, Integer, Unicode, Interval
 
 from . import Base
 
@@ -86,6 +87,26 @@ class ArchivedAttendance(Base):
     delay_reasons: str | None = Column(
         Unicode,
         nullable=True,
+    )
+
+    # Whether the absence was justified (e.g., sick leave)
+    justified: bool = Column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+
+    # Admin comment for this attendance record
+    comment: str | None = Column(
+        Unicode,
+        nullable=True,
+    )
+
+    # Whether this students room and / or screen was recorded during this training
+    recorded: bool = Column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
     )
 
     training_day: "TrainingDay" = relationship(
