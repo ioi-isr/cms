@@ -30,8 +30,7 @@ from sqlalchemy.orm import joinedload
 from cms.db import Participation, Student, ArchivedStudentRanking, Submission, Task, TrainingDay
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server import multi_contest
-from cms.server.contest.phase_management import compute_actual_phase, compute_effective_times
-from cms.server.util import check_training_day_eligibility, calculate_task_archive_progress, get_student_for_user_in_program
+from cms.server.util import calculate_task_archive_progress, get_student_for_user_in_program, get_training_day_timing_info
 from .contest import ContestHandler
 
 
@@ -78,7 +77,7 @@ class TrainingProgramOverviewHandler(ContestHandler):
                     .group_by(Submission.task_id)
                     .all()
                 )
-                submission_counts = {task_id: count for task_id, count in counts}
+                submission_counts = dict(counts)
 
             progress = calculate_task_archive_progress(
                 student,
@@ -110,57 +109,21 @@ class TrainingProgramOverviewHandler(ContestHandler):
             if td_contest is None:
                 continue
 
-            # Get user's participation in this training day's contest
-            td_participation = (
-                self.sql_session.query(Participation)
-                .filter(Participation.contest == td_contest)
-                .filter(Participation.user == participation.user)
-                .first()
+            timing_info = get_training_day_timing_info(
+                self.sql_session, td_contest, participation.user,
+                training_day, self.timestamp
             )
-
-            if td_participation is None:
+            if timing_info is None:
                 continue
 
-            # Check eligibility - skip training days the student is ineligible for
-            is_eligible, main_group, _ = check_training_day_eligibility(
-                self.sql_session, td_participation, training_day
-            )
-            if not is_eligible:
-                continue
-
-            # Determine effective start/end times (per-group timing)
-            main_group_start = main_group.start_time if main_group else None
-            main_group_end = main_group.end_time if main_group else None
-            contest_start, contest_stop = compute_effective_times(
-                td_contest.start, td_contest.stop,
-                td_participation.delay_time,
-                main_group_start, main_group_end)
-
-            # Compute actual phase for this training day
-            actual_phase, _, _, _, _ = compute_actual_phase(
-                self.timestamp,
-                contest_start,
-                contest_stop,
-                td_contest.analysis_start if td_contest.analysis_enabled else None,
-                td_contest.analysis_stop if td_contest.analysis_enabled else None,
-                td_contest.per_user_time,
-                td_participation.starting_time,
-                td_participation.delay_time,
-                td_participation.extra_time,
-            )
+            actual_phase = timing_info["actual_phase"]
 
             # Only show training days with actual_phase < 1 (not yet completed)
             # actual_phase < 0 means not started yet, actual_phase == 0 means active
             if actual_phase >= 1:
                 continue
 
-            # Calculate user-specific start time (group start + delay)
-            user_start_time = contest_start + td_participation.delay_time
-
-            # Calculate duration
-            duration = td_contest.per_user_time \
-                if td_contest.per_user_time is not None else \
-                contest_stop - contest_start
+            user_start_time = timing_info["user_start_time"]
 
             # Check if training starts within 6 hours (21600 seconds)
             six_hours_from_now = self.timestamp + timedelta(hours=6)
@@ -170,10 +133,10 @@ class TrainingProgramOverviewHandler(ContestHandler):
             upcoming_training_days.append({
                 "training_day": training_day,
                 "contest": td_contest,
-                "participation": td_participation,
+                "participation": timing_info["participation"],
                 "has_started": has_started,
                 "user_start_time": user_start_time,
-                "duration": duration,
+                "duration": timing_info["duration"],
                 "can_enter_soon": can_enter_soon,
             })
 
@@ -247,46 +210,15 @@ class TrainingDaysHandler(ContestHandler):
                 ))
                 continue
 
-            td_participation = (
-                self.sql_session.query(Participation)
-                .filter(Participation.contest == td_contest)
-                .filter(Participation.user == participation.user)
-                .first()
+            timing_info = get_training_day_timing_info(
+                self.sql_session, td_contest, participation.user,
+                training_day, self.timestamp
             )
-
-            if td_participation is None:
+            if timing_info is None:
                 continue
 
-            is_eligible, main_group, _ = check_training_day_eligibility(
-                self.sql_session, td_participation, training_day
-            )
-            if not is_eligible:
-                continue
-
-            main_group_start = main_group.start_time if main_group else None
-            main_group_end = main_group.end_time if main_group else None
-            contest_start, contest_stop = compute_effective_times(
-                td_contest.start, td_contest.stop,
-                td_participation.delay_time,
-                main_group_start, main_group_end)
-
-            actual_phase, _, _, _, _ = compute_actual_phase(
-                self.timestamp,
-                contest_start,
-                contest_stop,
-                td_contest.analysis_start if td_contest.analysis_enabled else None,
-                td_contest.analysis_stop if td_contest.analysis_enabled else None,
-                td_contest.per_user_time,
-                td_participation.starting_time,
-                td_participation.delay_time,
-                td_participation.extra_time,
-            )
-
-            user_start_time = contest_start + td_participation.delay_time
-
-            duration = td_contest.per_user_time \
-                if td_contest.per_user_time is not None else \
-                contest_stop - contest_start
+            actual_phase = timing_info["actual_phase"]
+            user_start_time = timing_info["user_start_time"]
 
             six_hours_from_now = self.timestamp + timedelta(hours=6)
             has_started = actual_phase >= -1
@@ -295,11 +227,11 @@ class TrainingDaysHandler(ContestHandler):
             ongoing_upcoming_trainings.append({
                 "training_day": training_day,
                 "contest": td_contest,
-                "participation": td_participation,
+                "participation": timing_info["participation"],
                 "has_started": has_started,
                 "has_ended": actual_phase >= 1,
                 "user_start_time": user_start_time,
-                "duration": duration,
+                "duration": timing_info["duration"],
                 "can_enter_soon": can_enter_soon,
             })
 
@@ -644,18 +576,12 @@ class ScoreboardDataHandler(ContestHandler):
                 if top_to_show <= total_students:
                     cutoff_score = scoreboard_entries[top_to_show - 1]["total_score"]
 
-                entries_to_show = []
-
-                for entry in scoreboard_entries:
-                    # Include if within top_to_show or tied at cutoff
-                    if entry["rank"] <= top_to_show:
-                        entries_to_show.append(entry)
-                    elif cutoff_score is not None and entry["total_score"] == cutoff_score:
-                        # Include tied students at cutoff
-                        entries_to_show.append(entry)
-                    elif entry["is_current_student"]:
-                        # Always include current student
-                        entries_to_show.append(entry)
+                entries_to_show = [
+                    entry for entry in scoreboard_entries
+                    if entry["rank"] <= top_to_show
+                    or (cutoff_score is not None and entry["total_score"] == cutoff_score)
+                    or entry["is_current_student"]
+                ]
 
         # Apply anonymization: only top N students show full names
         # Current student always sees their own name

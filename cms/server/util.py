@@ -209,6 +209,91 @@ def check_training_day_eligibility(
     return False, None, matching_tags
 
 
+def get_training_day_timing_info(
+    sql_session: Session,
+    td_contest: "Contest",
+    user: "User",
+    training_day: "TrainingDay",
+    timestamp: datetime
+) -> dict | None:
+    """Get participation and timing info for a user in a training day contest.
+
+    This is a common pattern used to check if a user can access a training day
+    and compute the effective timing information.
+
+    sql_session: the database session.
+    td_contest: the training day's contest.
+    user: the user to check.
+    training_day: the training day.
+    timestamp: current timestamp for computing actual phase.
+
+    return: dict with timing info, or None if user is not eligible.
+        - participation: the user's Participation in the training day contest
+        - main_group: the TrainingDayGroup if applicable
+        - contest_start: effective contest start time
+        - contest_stop: effective contest stop time
+        - actual_phase: the computed actual phase
+        - user_start_time: user-specific start time (contest_start + delay)
+        - duration: contest duration
+
+    """
+    from cms.server.contest.phase_management import (
+        compute_actual_phase, compute_effective_times
+    )
+
+    td_participation = (
+        sql_session.query(Participation)
+        .filter(Participation.contest == td_contest)
+        .filter(Participation.user == user)
+        .first()
+    )
+
+    if td_participation is None:
+        return None
+
+    is_eligible, main_group, _ = check_training_day_eligibility(
+        sql_session, td_participation, training_day
+    )
+    if not is_eligible:
+        return None
+
+    main_group_start = main_group.start_time if main_group else None
+    main_group_end = main_group.end_time if main_group else None
+    contest_start, contest_stop = compute_effective_times(
+        td_contest.start, td_contest.stop,
+        td_participation.delay_time,
+        main_group_start, main_group_end
+    )
+
+    actual_phase, _, _, _, _ = compute_actual_phase(
+        timestamp,
+        contest_start,
+        contest_stop,
+        td_contest.analysis_start if td_contest.analysis_enabled else None,
+        td_contest.analysis_stop if td_contest.analysis_enabled else None,
+        td_contest.per_user_time,
+        td_participation.starting_time,
+        td_participation.delay_time,
+        td_participation.extra_time,
+    )
+
+    user_start_time = contest_start + td_participation.delay_time
+
+    duration = td_contest.per_user_time \
+        if td_contest.per_user_time is not None else \
+        contest_stop - contest_start
+
+    return {
+        "participation": td_participation,
+        "main_group": main_group,
+        "contest_start": contest_start,
+        "contest_stop": contest_stop,
+        "actual_phase": actual_phase,
+        "user_start_time": user_start_time,
+        "duration": duration,
+    }
+
+
 def can_access_task(sql_session: Session, task: "Task", participation: "Participation",
                     training_day: "TrainingDay | None") -> bool:
     """Check if a participation can access the given task.
