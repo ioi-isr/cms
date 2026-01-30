@@ -1,0 +1,103 @@
+{# This macro should be imported "with context". #}
+
+{% macro training_day_card(td_info, loop_index, training_program, delay_request_form_macro, delay_request_list_macro, url, xsrf_form_html, timezone, now, next_url_suffix="training_days", show_ended_status=False) %}
+{#
+Render a training day card with status, countdown, and action buttons.
+
+td_info: object with contest, user_start_time, duration, has_started, has_ended, can_enter_soon, participation
+loop_index: the loop index for unique IDs
+training_program: the training program object
+delay_request_form_macro: the delay_request_form macro
+delay_request_list_macro: the delay_request_list macro
+url: the url function
+xsrf_form_html: the XSRF token HTML
+timezone: the user's timezone object
+now: the current datetime
+next_url_suffix: suffix for the next URL after delay request (default: "training_days")
+show_ended_status: if True, shows ENDED status for ended trainings (default: False)
+#}
+    <div class="training-day-card {% if show_ended_status and td_info.has_ended %}ended{% elif td_info.has_started %}started{% else %}upcoming{% endif %}">
+        <div class="training-day-meta">
+            <h3 class="training-day-title">{{ td_info.contest.description }}</h3>
+            <div class="training-day-detail">
+                <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span class="detail-label">{% trans %}Start:{% endtrans %}</span> {{ td_info.user_start_time|format_datetime_smart }}
+            </div>
+            <div class="training-day-detail">
+                <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v6h.01L6 8l4 4-4 4 .01.01H6V22"></path><path d="M18 2v6h-.01L18 8l-4 4 4 4-.01.01H18V22"></path><line x1="6" y1="2" x2="18" y2="2"></line><line x1="6" y1="22" x2="18" y2="22"></line></svg>
+                <span class="detail-label">{% trans %}Duration:{% endtrans %}</span> {{ (td_info.duration.total_seconds() // 3600)|int }}h{% if (td_info.duration.total_seconds() % 3600) // 60 > 0 %} {{ ((td_info.duration.total_seconds() % 3600) // 60)|int }}m{% endif %}
+            </div>
+        </div>
+
+        {% if show_ended_status and td_info.has_ended %}
+        <div class="training-day-status">
+            <div class="countdown-display ended-pill">
+                <span class="countdown-running">{% trans %}ENDED{% endtrans %}</span>
+            </div>
+        </div>
+        {% elif td_info.has_started %}
+        <div class="training-day-status">
+            <div class="countdown-display live-pill">
+                <span class="live-dot"></span>
+                <span class="countdown-running">{% trans %}LIVE{% endtrans %}</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="training-day-status">
+            <div class="training-day-countdown-label">{% trans %}Starts in:{% endtrans %}</div>
+            <div class="countdown training-day-countdown" data-start-time="{{ td_info.user_start_time.timestamp() * 1000 }}">
+                <span class="countdown-text training-day-countdown-text">
+                    <span class="countdown-days">--</span>d
+                    <span class="countdown-hours">--</span>h
+                    <span class="countdown-minutes">--</span>m
+                    <span class="countdown-seconds">--</span>s
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="training-day-actions">
+            {% if td_info.has_started or td_info.can_enter_soon %}
+            <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn training-day-enter-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
+            {% endif %}
+            {% if td_info.contest.allow_delay_requests %}
+            <div class="btn-group training-day-delay-group{% if td_info.participation.delay_requests|length == 0 %} single{% endif %}" role="group" aria-label="{% trans %}Delay request actions{% endtrans %}">
+                <button type="button" class="btn btn-warning training-day-btn training-day-delay-btn" data-toggle="modal" data-target="#delay-modal-{{ loop_index }}" aria-label="{% trans %}Request a delay for this training day{% endtrans %}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
+                {% if td_info.participation.delay_requests|length > 0 %}
+                  <button type="button" class="btn btn-info training-day-btn training-day-requests-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans count=td_info.participation.delay_requests|length %}View {{ count }} delay request(s){% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop_index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if td_info.contest.allow_delay_requests %}
+    <div id="delay-modal-{{ loop_index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-modal-label-{{ loop_index }}" aria-hidden="true">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
+            <h3 id="delay-modal-label-{{ loop_index }}">{% trans %}Request a Delay{% endtrans %} - {{ td_info.contest.description }}</h3>
+        </div>
+        <div class="modal-body">
+            <p class="text-info" style="margin-bottom: 15px;">
+                {% trans %}Current start time:{% endtrans %} <strong>{{ td_info.user_start_time|format_datetime_smart }}</strong>
+            </p>
+            {{ delay_request_form_macro(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop_index, inline=True, next_url="/" ~ training_program.name ~ "/" ~ next_url_suffix) }}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if td_info.participation.delay_requests|length > 0 %}
+    <div id="delay-requests-modal-{{ loop_index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-requests-modal-label-{{ loop_index }}" aria-hidden="true">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
+            <h3 id="delay-requests-modal-label-{{ loop_index }}">{% trans %}Your Delay Requests{% endtrans %} - {{ td_info.contest.description }}</h3>
+        </div>
+        <div class="modal-body">
+            {{ delay_request_list_macro(td_info.participation.delay_requests) }}
+        </div>
+        <div class="modal-footer">
+            <button class="btn" data-dismiss="modal" aria-hidden="true">{% trans %}Close{% endtrans %}</button>
+        </div>
+    </div>
+    {% endif %}
+{% endmacro %}

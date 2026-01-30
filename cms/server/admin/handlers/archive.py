@@ -192,6 +192,184 @@ def excel_write_student_row(
     ws.cell(row=row, column=2).border = EXCEL_THIN_BORDER
 
 
+def excel_write_training_day_header(
+    ws: Worksheet,
+    col: int,
+    td: Any,
+    td_idx: int,
+    num_columns: int,
+) -> None:
+    """Write a training day header row with zebra coloring and merge cells.
+
+    ws: the worksheet to write to.
+    col: the starting column for this training day header.
+    td: the training day object.
+    td_idx: the index of the training day (for zebra coloring).
+    num_columns: the number of columns to merge for this training day.
+    """
+    title = excel_build_training_day_title(td)
+    header_fill, _ = excel_get_zebra_fills(td_idx)
+
+    ws.cell(row=1, column=col, value=title)
+    ws.cell(row=1, column=col).font = EXCEL_HEADER_FONT_WHITE
+    ws.cell(row=1, column=col).fill = header_fill
+    ws.cell(row=1, column=col).border = EXCEL_THIN_BORDER
+    ws.cell(row=1, column=col).alignment = Alignment(
+        horizontal="center", vertical="center"
+    )
+    ws.merge_cells(
+        start_row=1, start_column=col,
+        end_row=1, end_column=col + num_columns - 1
+    )
+
+
+def build_attendance_data(
+    archived_training_days: list[Any],
+    student_tags: list[str],
+    current_tag_student_ids: set[int],
+) -> tuple[dict[int, dict[int, ArchivedAttendance]], dict[int, Student], list[Student]]:
+    """Build attendance data structure from archived training days.
+
+    archived_training_days: list of archived TrainingDay objects.
+    student_tags: list of student tags to filter by (empty = no filter).
+    current_tag_student_ids: set of student IDs that have the filter tags.
+
+    return: tuple of (attendance_data, all_students, sorted_students) where:
+        - attendance_data: {student_id: {training_day_id: ArchivedAttendance}}
+        - all_students: {student_id: Student}
+        - sorted_students: list of Student objects sorted by username
+    """
+    attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
+    all_students: dict[int, Student] = {}
+
+    for td in archived_training_days:
+        for attendance in td.archived_attendances:
+            student_id = attendance.student_id
+            if student_tags and student_id not in current_tag_student_ids:
+                continue
+            student = attendance.student
+            if student.participation and student.participation.hidden:
+                continue
+            if student_id not in attendance_data:
+                attendance_data[student_id] = {}
+                all_students[student_id] = student
+            attendance_data[student_id][td.id] = attendance
+
+    sorted_students = sorted(
+        all_students.values(),
+        key=lambda s: s.participation.user.username if s.participation else ""
+    )
+
+    return attendance_data, all_students, sorted_students
+
+
+def build_ranking_data(
+    sql_session: Any,
+    archived_training_days: list[Any],
+    student_tags: list[str],
+    student_tags_mode: str,
+    current_tag_student_ids: set[int],
+    tags_match_fn: Any,
+) -> tuple[
+    dict[int, dict[int, ArchivedStudentRanking]],
+    dict[int, Student],
+    dict[int, list[dict]],
+    list[Any],
+    dict[int, set[int]],
+]:
+    """Build ranking data structure from archived training days.
+
+    sql_session: the database session.
+    archived_training_days: list of archived TrainingDay objects.
+    student_tags: list of student tags to filter by (empty = no filter).
+    student_tags_mode: "current" or "historical" for tag filtering.
+    current_tag_student_ids: set of student IDs that have the filter tags.
+    tags_match_fn: function to check if item_tags contains all filter_tags.
+
+    return: tuple of (ranking_data, all_students, training_day_tasks,
+                      filtered_training_days, active_students_per_td) where:
+        - ranking_data: {student_id: {training_day_id: ArchivedStudentRanking}}
+        - all_students: {student_id: Student}
+        - training_day_tasks: {training_day_id: [task_info_dict, ...]}
+        - filtered_training_days: list of TrainingDay objects with data
+        - active_students_per_td: {training_day_id: set of active student IDs}
+    """
+    ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
+    all_students: dict[int, Student] = {}
+    training_day_tasks: dict[int, list[dict]] = {}
+    filtered_training_days: list[Any] = []
+    active_students_per_td: dict[int, set[int]] = {}
+
+    for td in archived_training_days:
+        active_students_per_td[td.id] = set()
+        visible_tasks_by_id: dict[int, dict] = {}
+
+        for ranking in td.archived_student_rankings:
+            student_id = ranking.student_id
+            student = ranking.student
+
+            if student.participation and student.participation.hidden:
+                continue
+
+            if student_tags:
+                if student_tags_mode == "current":
+                    if student_id not in current_tag_student_ids:
+                        continue
+                else:
+                    if not tags_match_fn(ranking.student_tags, student_tags):
+                        continue
+
+            active_students_per_td[td.id].add(student_id)
+
+            if student_id not in ranking_data:
+                ranking_data[student_id] = {}
+                all_students[student_id] = student
+            ranking_data[student_id][td.id] = ranking
+
+            if ranking.task_scores:
+                for task_id_str in ranking.task_scores.keys():
+                    task_id = int(task_id_str)
+                    if task_id not in visible_tasks_by_id:
+                        if (td.archived_tasks_data and
+                                task_id_str in td.archived_tasks_data):
+                            task_info = td.archived_tasks_data[task_id_str]
+                            visible_tasks_by_id[task_id] = {
+                                "id": task_id,
+                                "name": task_info.get("short_name", ""),
+                                "title": task_info.get("name", ""),
+                                "training_day_num": task_info.get(
+                                    "training_day_num"
+                                ),
+                            }
+                        else:
+                            task = sql_session.query(Task).get(task_id)
+                            if task:
+                                visible_tasks_by_id[task_id] = {
+                                    "id": task_id,
+                                    "name": task.name,
+                                    "title": task.title,
+                                    "training_day_num": task.training_day_num,
+                                }
+
+        if not active_students_per_td[td.id]:
+            continue
+
+        filtered_training_days.append(td)
+        sorted_tasks = sorted(
+            visible_tasks_by_id.values(),
+            key=lambda t: (t.get("training_day_num") or 0, t["id"])
+        )
+        training_day_tasks[td.id] = sorted_tasks
+
+    return (
+        ranking_data,
+        all_students,
+        training_day_tasks,
+        filtered_training_days,
+        active_students_per_td,
+    )
+
+
 class ArchiveTrainingDayHandler(BaseHandler):
     """Archive a training day, extracting attendance and ranking data."""
 
@@ -774,30 +952,8 @@ class TrainingProgramAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
             current_tag_student_ids,
         ) = self._get_filtered_context(training_program)
 
-        # Build attendance data structure
-        # {student_id: {training_day_id: attendance_record}}
-        attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
-        all_students: dict[int, Student] = {}
-
-        for td in archived_training_days:
-            for attendance in td.archived_attendances:
-                student_id = attendance.student_id
-                # Apply student tag filter (current tags only)
-                if student_tags and student_id not in current_tag_student_ids:
-                    continue
-                # Skip hidden users
-                student = attendance.student
-                if student.participation and student.participation.hidden:
-                    continue
-                if student_id not in attendance_data:
-                    attendance_data[student_id] = {}
-                    all_students[student_id] = student
-                attendance_data[student_id][td.id] = attendance
-
-        # Sort students by username
-        sorted_students = sorted(
-            all_students.values(),
-            key=lambda s: s.participation.user.username if s.participation else ""
+        attendance_data, _, sorted_students = build_attendance_data(
+            archived_training_days, student_tags, current_tag_student_ids
         )
 
         self.render_params_for_training_program(training_program)
@@ -851,96 +1007,29 @@ class TrainingProgramCombinedRankingHandler(
             current_tag_student_ids,
         ) = self._get_filtered_context(training_program)
 
-        ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
-        all_students: dict[int, Student] = {}
-        training_day_tasks: dict[int, list[dict]] = {}
-        # Attendance data: {student_id: {training_day_id: ArchivedAttendance}}
+        (
+            ranking_data,
+            all_students,
+            training_day_tasks,
+            filtered_training_days,
+            active_students_per_td,
+        ) = build_ranking_data(
+            self.sql_session,
+            archived_training_days,
+            student_tags,
+            student_tags_mode,
+            current_tag_student_ids,
+            self._tags_match,
+        )
+
+        # Build attendance lookup for all training days
         attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
-        # Track which students are "active" (have matching tags) for each training day
-        # For historical mode: student had matching tags during that training
-        # For current mode: student has matching tags now AND participated in that training
-        active_students_per_td: dict[int, set[int]] = {}
-
-        filtered_training_days: list[TrainingDay] = []
-
         for td in archived_training_days:
-            active_students_per_td[td.id] = set()
-
-            # Build attendance lookup for this training day
             for attendance in td.archived_attendances:
                 student_id = attendance.student_id
                 if student_id not in attendance_data:
                     attendance_data[student_id] = {}
                 attendance_data[student_id][td.id] = attendance
-
-            # Collect all tasks that were visible to at least one filtered student
-            # Use archived_tasks_data from training day (preserves original scoring scheme)
-            visible_tasks_by_id: dict[int, dict] = {}
-            for ranking in td.archived_student_rankings:
-                student_id = ranking.student_id
-
-                # Skip hidden users
-                student = ranking.student
-                if student.participation and student.participation.hidden:
-                    continue
-
-                # Apply student tag filter
-                if student_tags:
-                    if student_tags_mode == "current":
-                        # Filter by current tags: student must have matching tags now
-                        if student_id not in current_tag_student_ids:
-                            continue
-                    else:  # historical mode
-                        # Filter by historical tags: student must have had matching tags
-                        # during this specific training day
-                        if not self._tags_match(ranking.student_tags, student_tags):
-                            continue
-
-                # Student passes the filter for this training day
-                active_students_per_td[td.id].add(student_id)
-
-                if student_id not in ranking_data:
-                    ranking_data[student_id] = {}
-                    all_students[student_id] = student
-                ranking_data[student_id][td.id] = ranking
-
-                # Collect all visible tasks from this student's task_scores keys
-                if ranking.task_scores:
-                    for task_id_str in ranking.task_scores.keys():
-                        task_id = int(task_id_str)
-                        if task_id not in visible_tasks_by_id:
-                            # Get task info from archived_tasks_data on training day
-                            if td.archived_tasks_data and task_id_str in td.archived_tasks_data:
-                                task_info = td.archived_tasks_data[task_id_str]
-                                visible_tasks_by_id[task_id] = {
-                                    "id": task_id,
-                                    "name": task_info.get("short_name", ""),
-                                    "title": task_info.get("name", ""),
-                                    "training_day_num": task_info.get("training_day_num"),
-                                }
-                            else:
-                                # Fallback to live task data
-                                task = self.sql_session.query(Task).get(task_id)
-                                if task:
-                                    visible_tasks_by_id[task_id] = {
-                                        "id": task_id,
-                                        "name": task.name,
-                                        "title": task.title,
-                                        "training_day_num": task.training_day_num,
-                                    }
-
-            # Omit training days where no filtered students were eligible
-            if not active_students_per_td[td.id]:
-                continue
-
-            filtered_training_days.append(td)
-
-            # Sort tasks by training_day_num for stable ordering
-            sorted_tasks = sorted(
-                visible_tasks_by_id.values(),
-                key=lambda t: (t.get("training_day_num") or 0, t["id"])
-            )
-            training_day_tasks[td.id] = sorted_tasks
 
         sorted_students = sorted(
             all_students.values(),
@@ -1339,25 +1428,8 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
             ))
             return
 
-        attendance_data: dict[int, dict[int, ArchivedAttendance]] = {}
-        all_students: dict[int, Student] = {}
-
-        for td in archived_training_days:
-            for attendance in td.archived_attendances:
-                student_id = attendance.student_id
-                if student_tags and student_id not in current_tag_student_ids:
-                    continue
-                student = attendance.student
-                if student.participation and student.participation.hidden:
-                    continue
-                if student_id not in attendance_data:
-                    attendance_data[student_id] = {}
-                    all_students[student_id] = student
-                attendance_data[student_id][td.id] = attendance
-
-        sorted_students = sorted(
-            all_students.values(),
-            key=lambda s: s.participation.user.username if s.participation else ""
+        attendance_data, _, sorted_students = build_attendance_data(
+            archived_training_days, student_tags, current_tag_student_ids
         )
 
         wb = Workbook()
@@ -1371,20 +1443,8 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
 
         col = 3
         for td_idx, td in enumerate(archived_training_days):
-            title = excel_build_training_day_title(td)
-            header_fill, subheader_fill = excel_get_zebra_fills(td_idx)
-
-            ws.cell(row=1, column=col, value=title)
-            ws.cell(row=1, column=col).font = EXCEL_HEADER_FONT_WHITE
-            ws.cell(row=1, column=col).fill = header_fill
-            ws.cell(row=1, column=col).border = EXCEL_THIN_BORDER
-            ws.cell(row=1, column=col).alignment = Alignment(
-                horizontal="center", vertical="center"
-            )
-            ws.merge_cells(
-                start_row=1, start_column=col,
-                end_row=1, end_column=col + num_subcolumns - 1
-            )
+            excel_write_training_day_header(ws, col, td, td_idx, num_subcolumns)
+            _, subheader_fill = excel_get_zebra_fills(td_idx)
 
             for i, subcol_name in enumerate(subcolumns):
                 cell = ws.cell(row=2, column=col + i, value=subcol_name)
@@ -1500,68 +1560,20 @@ class ExportCombinedRankingHandler(TrainingProgramFilterMixin, BaseHandler):
             ))
             return
 
-        ranking_data: dict[int, dict[int, ArchivedStudentRanking]] = {}
-        all_students: dict[int, Student] = {}
-        training_day_tasks: dict[int, list[dict]] = {}
-        filtered_training_days: list = []
-
-        for td in archived_training_days:
-            visible_tasks_by_id: dict[int, dict] = {}
-
-            for ranking in td.archived_student_rankings:
-                student_id = ranking.student_id
-                student = ranking.student
-
-                if student.participation and student.participation.hidden:
-                    continue
-
-                if student_tags:
-                    if student_tags_mode == "current":
-                        if student_id not in current_tag_student_ids:
-                            continue
-                    else:
-                        if not self._tags_match(ranking.student_tags, student_tags):
-                            continue
-
-                if student_id not in ranking_data:
-                    ranking_data[student_id] = {}
-                    all_students[student_id] = student
-                ranking_data[student_id][td.id] = ranking
-
-                if ranking.task_scores:
-                    for task_id_str in ranking.task_scores.keys():
-                        task_id = int(task_id_str)
-                        if task_id not in visible_tasks_by_id:
-                            if (td.archived_tasks_data and
-                                    task_id_str in td.archived_tasks_data):
-                                task_info = td.archived_tasks_data[task_id_str]
-                                visible_tasks_by_id[task_id] = {
-                                    "id": task_id,
-                                    "name": task_info.get("short_name", ""),
-                                    "title": task_info.get("name", ""),
-                                    "training_day_num": task_info.get(
-                                        "training_day_num"
-                                    ),
-                                }
-                            else:
-                                task = self.sql_session.query(Task).get(task_id)
-                                if task:
-                                    visible_tasks_by_id[task_id] = {
-                                        "id": task_id,
-                                        "name": task.name,
-                                        "title": task.title,
-                                        "training_day_num": task.training_day_num,
-                                    }
-
-            if not visible_tasks_by_id:
-                continue
-
-            filtered_training_days.append(td)
-            sorted_tasks = sorted(
-                visible_tasks_by_id.values(),
-                key=lambda t: (t.get("training_day_num") or 0, t["id"])
-            )
-            training_day_tasks[td.id] = sorted_tasks
+        (
+            ranking_data,
+            all_students,
+            training_day_tasks,
+            filtered_training_days,
+            _,
+        ) = build_ranking_data(
+            self.sql_session,
+            archived_training_days,
+            student_tags,
+            student_tags_mode,
+            current_tag_student_ids,
+            self._tags_match,
+        )
 
         if not filtered_training_days:
             self.redirect(self.url(
@@ -1585,20 +1597,8 @@ class ExportCombinedRankingHandler(TrainingProgramFilterMixin, BaseHandler):
             tasks = training_day_tasks.get(td.id, [])
             num_task_cols = len(tasks) + 1
 
-            title = excel_build_training_day_title(td)
-            header_fill, subheader_fill = excel_get_zebra_fills(td_idx)
-
-            ws.cell(row=1, column=col, value=title)
-            ws.cell(row=1, column=col).font = EXCEL_HEADER_FONT_WHITE
-            ws.cell(row=1, column=col).fill = header_fill
-            ws.cell(row=1, column=col).border = EXCEL_THIN_BORDER
-            ws.cell(row=1, column=col).alignment = Alignment(
-                horizontal="center", vertical="center"
-            )
-            ws.merge_cells(
-                start_row=1, start_column=col,
-                end_row=1, end_column=col + num_task_cols - 1
-            )
+            excel_write_training_day_header(ws, col, td, td_idx, num_task_cols)
+            _, subheader_fill = excel_get_zebra_fills(td_idx)
 
             for i, task in enumerate(tasks):
                 cell = ws.cell(row=2, column=col + i, value=task["name"])

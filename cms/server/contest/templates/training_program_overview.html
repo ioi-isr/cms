@@ -1,5 +1,6 @@
 {% extends "contest.html" %}
 {% from "macro/delay_request.html" import delay_request_form, delay_request_list with context %}
+{% from "macro/training_day_card.html" import training_day_card with context %}
 
 {% set page = "training_overview" %}
 
@@ -18,84 +19,7 @@
 
 <div class="training-day-list">
 {% for td_info in upcoming_training_days %}
-    <div class="training-day-card {% if td_info.has_started %}started{% else %}upcoming{% endif %}">
-        <div class="training-day-meta">
-            <h3 class="training-day-title">{{ td_info.contest.description }}</h3>
-            <div class="training-day-detail">
-                <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                <span class="detail-label">{% trans %}Start:{% endtrans %}</span> {{ td_info.user_start_time|format_datetime_smart }}
-            </div>
-            <div class="training-day-detail">
-                <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v6h.01L6 8l4 4-4 4 .01.01H6V22"></path><path d="M18 2v6h-.01L18 8l-4 4 4 4-.01.01H18V22"></path><line x1="6" y1="2" x2="18" y2="2"></line><line x1="6" y1="22" x2="18" y2="22"></line></svg>
-                <span class="detail-label">{% trans %}Duration:{% endtrans %}</span> {{ (td_info.duration.total_seconds() // 3600)|int }}h{% if (td_info.duration.total_seconds() % 3600) // 60 > 0 %} {{ ((td_info.duration.total_seconds() % 3600) // 60)|int }}m{% endif %}
-            </div>
-        </div>
-
-        {% if td_info.has_started %}
-        <div class="training-day-status">
-            <div class="countdown-display live-pill">
-                <span class="live-dot"></span>
-                <span class="countdown-running">{% trans %}LIVE{% endtrans %}</span>
-            </div>
-        </div>
-        {% else %}
-        <div class="training-day-status">
-            <div class="training-day-countdown-label">{% trans %}Starts in:{% endtrans %}</div>
-            <div class="countdown training-day-countdown" data-start-time="{{ td_info.user_start_time.timestamp() * 1000 }}">
-                <span class="countdown-text training-day-countdown-text">
-                    <span class="countdown-days">--</span>d
-                    <span class="countdown-hours">--</span>h
-                    <span class="countdown-minutes">--</span>m
-                    <span class="countdown-seconds">--</span>s
-                </span>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="training-day-actions">
-            {% if td_info.has_started or td_info.can_enter_soon %}
-            <a href="{{ url[td_info.contest.name]() }}" class="btn {% if td_info.has_started %}btn-success{% else %}btn-primary{% endif %} training-day-btn training-day-enter-btn">{% trans %}Enter Training{% endtrans %} <i class="icon-chevron-right icon-white"></i></a>
-            {% endif %}
-            {% if td_info.contest.allow_delay_requests %}
-            <div class="btn-group training-day-delay-group{% if td_info.participation.delay_requests|length == 0 %} single{% endif %}" role="group" aria-label="{% trans %}Delay request actions{% endtrans %}">
-                <button type="button" class="btn btn-warning training-day-btn training-day-delay-btn" data-toggle="modal" data-target="#delay-modal-{{ loop.index }}" aria-label="{% trans %}Request a delay for this training day{% endtrans %}">{% trans %}Request a Delay{% endtrans %} <i class="icon-time icon-white"></i></button>
-                {% if td_info.participation.delay_requests|length > 0 %}
-                  <button type="button" class="btn btn-info training-day-btn training-day-requests-btn" title="{% trans %}View Requests{% endtrans %}" aria-label="{% trans count=td_info.participation.delay_requests|length %}View {{ count }} delay request(s){% endtrans %}" data-toggle="modal" data-target="#delay-requests-modal-{{ loop.index }}">({{ td_info.participation.delay_requests|length }}) <i class="icon-list icon-white"></i></button>
-                {% endif %}
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    {% if td_info.contest.allow_delay_requests %}
-    <div id="delay-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-modal-label-{{ loop.index }}" aria-hidden="true">
-        <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
-            <h3 id="delay-modal-label-{{ loop.index }}">{% trans %}Request a Delay{% endtrans %} - {{ td_info.contest.description }}</h3>
-        </div>
-        <div class="modal-body">
-            <p class="text-info" style="margin-bottom: 15px;">
-                {% trans %}Current start time:{% endtrans %} <strong>{{ td_info.user_start_time|format_datetime_smart }}</strong>
-            </p>
-            {{ delay_request_form(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop.index, inline=True, next_url="/" ~ training_program.name ~ "/training_overview") }}
-        </div>
-    </div>
-    {% endif %}
-
-    {% if td_info.participation.delay_requests|length > 0 %}
-    <div id="delay-requests-modal-{{ loop.index }}" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="delay-requests-modal-label-{{ loop.index }}" aria-hidden="true">
-        <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
-            <h3 id="delay-requests-modal-label-{{ loop.index }}">{% trans %}Your Delay Requests{% endtrans %} - {{ td_info.contest.description }}</h3>
-        </div>
-        <div class="modal-body">
-            {{ delay_request_list(td_info.participation.delay_requests) }}
-        </div>
-        <div class="modal-footer">
-            <button class="btn" data-dismiss="modal" aria-hidden="true">{% trans %}Close{% endtrans %}</button>
-        </div>
-    </div>
-    {% endif %}
+    {{ training_day_card(td_info, loop.index, training_program, delay_request_form, delay_request_list, url, xsrf_form_html, timezone, now, next_url_suffix="training_overview", show_ended_status=False) }}
 {% endfor %}
 </div>
 {% endif %}
@@ -324,7 +248,9 @@
 }
 </style>
 
+<script src="{{ url("static", "training_countdown.js") }}"></script>
 <script>
+// Count task statuses for statistics display
 (function() {
     var solvedCount = 0, partialCount = 0, attemptedCount = 0, notAttemptedCount = 0;
     var rows = document.querySelectorAll('#task-table tbody tr');
@@ -345,73 +271,10 @@
     if (notAttemptedEl) notAttemptedEl.textContent = notAttemptedCount;
 })();
 
-// Server timestamp for timezone-correct countdown
-var serverTimestamp = {{ server_timestamp.timestamp() * 1000 }};
-var clientLoadTime = new Date().getTime();
-var reloadScheduled = false;
-var reloadBackoffMs = 1000;
+// Initialize countdowns using shared library
+TrainingCountdown.initCountdowns({{ server_timestamp.timestamp() * 1000 }}, Date.now());
 
-async function checkAndMaybeReload(startTimeMs) {
-    try {
-        const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
-        const dateHeader = res.headers.get('Date');
-        const serverNow = dateHeader ? Date.parse(dateHeader) : NaN;
-        if (!Number.isNaN(serverNow) && serverNow < startTimeMs) {
-            reloadBackoffMs = Math.min(reloadBackoffMs * 2, 30000);
-            setTimeout(function() { checkAndMaybeReload(startTimeMs); }, reloadBackoffMs);
-            return;
-        }
-    } catch (e) {
-        // fall through to reload
-    }
-    window.location.reload();
-}
-
-function updateCountdowns() {
-    var countdowns = document.querySelectorAll('.countdown');
-    var elapsed = new Date().getTime() - clientLoadTime;
-    var serverNow = serverTimestamp + elapsed;
-
-    countdowns.forEach(function(el) {
-        var startTimeAttr = el.getAttribute('data-start-time');
-        if (!startTimeAttr) return;
-        var startTime = parseFloat(startTimeAttr);
-        if (isNaN(startTime)) return;
-
-        var diff = startTime - serverNow;
-
-        var daysEl = el.querySelector('.countdown-days');
-        var hoursEl = el.querySelector('.countdown-hours');
-        var minutesEl = el.querySelector('.countdown-minutes');
-        var secondsEl = el.querySelector('.countdown-seconds');
-
-        if (diff <= 0) {
-            if (daysEl) daysEl.textContent = '0';
-            if (hoursEl) hoursEl.textContent = '0';
-            if (minutesEl) minutesEl.textContent = '0';
-            if (secondsEl) secondsEl.textContent = '0';
-            if (!reloadScheduled) {
-                reloadScheduled = true;
-                checkAndMaybeReload(startTime);
-            }
-            return;
-        }
-
-        var days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        var minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        var seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        if (daysEl) daysEl.textContent = days;
-        if (hoursEl) hoursEl.textContent = hours;
-        if (minutesEl) minutesEl.textContent = minutes;
-        if (secondsEl) secondsEl.textContent = seconds;
-    });
-}
-
-updateCountdowns();
-setInterval(updateCountdowns, 1000);
-
+// Task filtering
 function filterTasks(filter) {
     var rows = document.querySelectorAll('#task-table tbody tr');
     rows.forEach(function(row) {
@@ -431,46 +294,19 @@ function filterTasks(filter) {
     });
 }
 
+// Task table sorting using shared library
 var sortDirection = {};
 function sortTable(columnIndex) {
-    var table = document.getElementById('task-table');
-    var tbody = table.querySelector('tbody');
-    var rows = Array.from(tbody.querySelectorAll('tr'));
-    var headers = table.querySelectorAll('th');
-
-    sortDirection[columnIndex] = !sortDirection[columnIndex];
-    var ascending = sortDirection[columnIndex];
-
-    headers.forEach(function(h, i) {
-        h.classList.remove('sort-asc', 'sort-desc');
-        if (i === columnIndex) {
-            h.classList.add(ascending ? 'sort-asc' : 'sort-desc');
-        }
-    });
-
-    rows.sort(function(a, b) {
-        var aVal, bVal;
-        if (columnIndex === 2) {
-            aVal = parseFloat(a.getAttribute('data-score')) || 0;
-            bVal = parseFloat(b.getAttribute('data-score')) || 0;
-        } else if (columnIndex === 4) {
-            aVal = parseFloat(a.getAttribute('data-assigned')) || 0;
-            bVal = parseFloat(b.getAttribute('data-assigned')) || 0;
-        } else if (columnIndex === 5) {
-            aVal = a.getAttribute('data-source').toLowerCase();
-            bVal = b.getAttribute('data-source').toLowerCase();
+    TrainingCountdown.sortTable('task-table', columnIndex, sortDirection, function(row, colIdx) {
+        if (colIdx === 2) {
+            return parseFloat(row.getAttribute('data-score')) || 0;
+        } else if (colIdx === 4) {
+            return parseFloat(row.getAttribute('data-assigned')) || 0;
+        } else if (colIdx === 5) {
+            return row.getAttribute('data-source').toLowerCase();
         } else {
-            aVal = a.cells[columnIndex].textContent.trim().toLowerCase();
-            bVal = b.cells[columnIndex].textContent.trim().toLowerCase();
+            return row.cells[colIdx].textContent.trim().toLowerCase();
         }
-
-        if (aVal < bVal) return ascending ? -1 : 1;
-        if (aVal > bVal) return ascending ? 1 : -1;
-        return 0;
-    });
-
-    rows.forEach(function(row) {
-        tbody.appendChild(row);
     });
 }
 </script>
