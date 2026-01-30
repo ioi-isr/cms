@@ -75,25 +75,20 @@
         <table class="ranking-table" id="student-tasks-table" style="width: 100%;">
             <thead>
                 <tr>
-                    <th class="sortable-header" data-sort="string" style="width: 30%;">Task</th>
-                    <th class="sortable-header" data-sort="string" style="width: 15%;">Source</th>
-                    <th class="sortable-header" data-sort="date" style="width: 15%;">Assigned At</th>
-                    <th class="sortable-header text-center" data-sort="number" style="width: 10%;">Training</th>
-                    <th class="sortable-header text-center" data-sort="number" style="width: 10%;">Home</th>
-                    <th class="sortable-header text-center" data-sort="number" style="width: 10%;">Submissions</th>
-                    <th class="text-center" style="width: 10%;">Actions</th>
+                    <th style="width: 30%;">Task</th>
+                    <th class="no-sort" style="width: 15%;">Source</th>
+                    <th data-sort-settings="numeric" style="width: 15%;">Assigned At</th>
+                    <th data-sort-settings="numeric reversed" class="text-center" style="width: 10%;">Training</th>
+                    <th data-sort-settings="numeric reversed" class="text-center" style="width: 10%;">Home</th>
+                    <th data-sort-settings="numeric reversed" class="text-center" style="width: 10%;">Submissions</th>
+                    <th class="text-center no-sort" style="width: 10%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for st in student_tasks %}
-                <tr data-task="{{ st.task.name }}"
-                    data-assigned="{{ st.assigned_at.timestamp() if st.assigned_at else 0 }}"
-                    data-training-score="{{ training_scores.get(st.task.id, -1) }}"
-                    data-home-score="{{ home_scores.get(st.task.id, -1) }}"
-                    data-submissions="{{ submission_counts.get(st.task.id, 0) }}">
-
+                <tr>
                     <!-- Task -->
-                    <td>
+                    <td data-value="{{ st.task.name }}">
                         <div class="list-cell-wrapper" style="flex-direction: column; align-items: flex-start;">
                             <div style="font-weight: 600; font-size: 0.95rem;">
                                 <a href="{{ url("task", st.task.id) }}" class="student-name-link">{{ st.task.name }}</a>
@@ -122,7 +117,7 @@
                     </td>
 
                     <!-- Date -->
-                    <td>
+                    <td data-value="{{ st.assigned_at.timestamp() if st.assigned_at else 0 }}">
                         <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
                             <div>{{ st.assigned_at.strftime('%Y-%m-%d') if st.assigned_at else '-' }}</div>
                             <div style="color: #94a3b8; font-size: 0.9em;">{{ st.assigned_at.strftime('%H:%M') if st.assigned_at else '' }}</div>
@@ -130,7 +125,7 @@
                     </td>
 
                     <!-- Training Score -->
-                    <td class="text-center">
+                    <td class="text-center" data-value="{{ training_scores.get(st.task.id, -1) }}">
                         <div class="list-cell-wrapper center-content">
                             {% if st.task.id in training_scores %}
                                 {% set score = training_scores[st.task.id] %}
@@ -144,7 +139,7 @@
                     </td>
 
                     <!-- Home Score -->
-                    <td class="text-center">
+                    <td class="text-center" data-value="{{ home_scores.get(st.task.id, -1) }}">
                         <div class="list-cell-wrapper center-content">
                             {% if st.task.id in home_scores %}
                                 {% set score = home_scores[st.task.id] %}
@@ -158,7 +153,7 @@
                     </td>
 
                     <!-- Submissions -->
-                    <td class="text-center">
+                    <td class="text-center" data-value="{{ submission_counts.get(st.task.id, 0) }}">
                         <div class="list-cell-wrapper center-content">
                             {% set sub_count = submission_counts.get(st.task.id, 0) %}
                             {% if sub_count > 0 %}
@@ -202,64 +197,9 @@
 </div>
 
 <script>
-(function() {
-    var table = document.getElementById('student-tasks-table');
-    if (!table) return;
-
-    var headers = table.querySelectorAll('th.sortable-header');
-    var sortState = {};
-
-    headers.forEach(function(header, index) {
-        header.addEventListener('click', function() {
-            var columnIndex = header.cellIndex;
-            var ascending = !sortState[index];
-            sortState[index] = ascending;
-
-            // Update UI
-            headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
-            header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
-
-            var tbody = table.querySelector('tbody');
-            var rows = Array.from(tbody.querySelectorAll('tr'));
-
-            rows.sort(function(a, b) {
-                var aVal, bVal;
-
-                // Extract data based on column index
-                if (columnIndex === 0) { // Task Name
-                    aVal = a.getAttribute('data-task').toLowerCase();
-                    bVal = b.getAttribute('data-task').toLowerCase();
-                } else if (columnIndex === 1) { // Source
-                    aVal = a.cells[columnIndex].textContent.trim().toLowerCase();
-                    bVal = b.cells[columnIndex].textContent.trim().toLowerCase();
-                } else if (columnIndex === 2) { // Assigned At
-                    aVal = parseFloat(a.getAttribute('data-assigned')) || 0;
-                    bVal = parseFloat(b.getAttribute('data-assigned')) || 0;
-                } else if (columnIndex === 3) { // Training Score
-                    aVal = parseFloat(a.getAttribute('data-training-score'));
-                    bVal = parseFloat(b.getAttribute('data-training-score'));
-                    if (aVal < 0) aVal = ascending ? Infinity : -Infinity;
-                    if (bVal < 0) bVal = ascending ? Infinity : -Infinity;
-                } else if (columnIndex === 4) { // Home Score
-                    aVal = parseFloat(a.getAttribute('data-home-score'));
-                    bVal = parseFloat(b.getAttribute('data-home-score'));
-                    if (aVal < 0) aVal = ascending ? Infinity : -Infinity;
-                    if (bVal < 0) bVal = ascending ? Infinity : -Infinity;
-                } else if (columnIndex === 5) { // Submissions
-                    aVal = parseInt(a.getAttribute('data-submissions')) || 0;
-                    bVal = parseInt(b.getAttribute('data-submissions')) || 0;
-                }
-
-                if (aVal < bVal) return ascending ? -1 : 1;
-                if (aVal > bVal) return ascending ? 1 : -1;
-                return 0;
-            });
-
-            rows.forEach(function(row) {
-                tbody.appendChild(row);
-            });
-        });
-    });
-})();
+// Table sorting using CMS.AWSUtils
+$(document).ready(function() {
+    CMS.AWSUtils.init_table_sort($("#student-tasks-table"), false, 0);
+});
 </script>
 {% endblock core %}
