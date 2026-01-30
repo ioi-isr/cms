@@ -264,7 +264,7 @@ class UserTestFileHandler(FileHandler):
     @actual_phase_required(0)
     @multi_contest
     def get(self, task_name, user_test_num, filename):
-        task, user_test = self.get_validated_user_test(task_name, user_test_num)
+        _, user_test = self.get_validated_user_test(task_name, user_test_num)
 
         # filename is the name used by the browser, hence is something
         # like 'foo.c' (and the extension is CMS's preferred extension

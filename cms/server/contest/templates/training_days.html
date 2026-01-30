@@ -213,12 +213,12 @@ function openScoreboardModal(trainingDayId, tag) {
     var modal = document.getElementById('scoreboard-modal');
     var title = document.getElementById('scoreboard-modal-title');
     var body = document.getElementById('scoreboard-modal-body');
-    
+
     title.textContent = 'Loading...';
     body.innerHTML = '<div class="text-center"><em>Loading scoreboard...</em></div>';
-    
+
     $(modal).modal('show');
-    
+
     fetch('{{ contest_url("training_days") }}/scoreboard/' + trainingDayId + '/' + encodeURIComponent(tag))
         .then(function(response) {
             return response.json();
@@ -229,28 +229,28 @@ function openScoreboardModal(trainingDayId, tag) {
                 body.innerHTML = '<div class="alert alert-error">' + escapeHtml(data.error) + '</div>';
                 return;
             }
-            
+
             title.textContent = data.training_day_name + ' - ' + data.tag + ' Scoreboard';
-            
+
             var html = '<table class="table table-bordered table-striped scoreboard-table">';
             html += '<thead><tr>';
             html += '<th class="rank-col">#</th>';
             html += '<th class="name-col">Name</th>';
-            
+
             data.tasks.forEach(function(task) {
                 var safeTaskName = escapeHtml(task.name);
                 html += '<th class="task-col" title="' + safeTaskName + '">' + safeTaskName + '</th>';
             });
-            
+
             html += '<th class="total-col">Total</th>';
             html += '</tr></thead><tbody>';
-            
+
             data.scoreboard.forEach(function(entry) {
                 var rowClass = entry.is_current_student ? 'highlight-row' : '';
                 html += '<tr class="' + rowClass + '">';
                 html += '<td class="rank-col">' + entry.rank + '</td>';
                 html += '<td class="name-col">' + escapeHtml(entry.student_name) + '</td>';
-                
+
                 entry.task_scores.forEach(function(ts) {
                     var scoreClass = '';
                     if (ts.score >= ts.max_score) {
@@ -262,17 +262,17 @@ function openScoreboardModal(trainingDayId, tag) {
                     }
                     html += '<td class="task-col ' + scoreClass + '">' + Math.round(ts.score) + '</td>';
                 });
-                
+
                 html += '<td class="total-col"><strong>' + Math.round(entry.total_score) + '</strong></td>';
                 html += '</tr>';
             });
-            
+
             html += '</tbody></table>';
-            
+
             if (data.top_names > 0) {
                 html += '<p class="scoreboard-note"><em>Top ' + data.top_names + ' students shown with full names. Others are anonymized.</em></p>';
             }
-            
+
             body.innerHTML = html;
         })
         .catch(function(error) {
@@ -294,7 +294,7 @@ var escapeHtml = TrainingCountdown.escapeHtml;
     <div class="modal-body" id="scoreboard-modal-body" style="max-height: 500px; overflow-y: auto;">
     </div>
     <div class="modal-footer">
-        <button class="btn" data-dismiss="modal" aria-hidden="true">{% trans %}Close{% endtrans %}</button>
+        <button class="btn" data-dismiss="modal">{% trans %}Close{% endtrans %}</button>
     </div>
 </div>
 
