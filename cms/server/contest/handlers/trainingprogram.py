@@ -24,13 +24,12 @@ including the overview page and training days page.
 from datetime import timedelta
 
 import tornado.web
-from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
-from cms.db import Participation, Student, ArchivedStudentRanking, Submission, Task, TrainingDay
+from cms.db import Participation, Student, ArchivedStudentRanking, Task, TrainingDay
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server import multi_contest
-from cms.server.util import calculate_task_archive_progress, get_student_for_user_in_program, get_training_day_timing_info
+from cms.server.util import calculate_task_archive_progress, get_student_for_user_in_program, get_training_day_timing_info, get_submission_counts_by_task
 from .contest import ContestHandler
 
 
@@ -65,19 +64,9 @@ class TrainingProgramOverviewHandler(ContestHandler):
         if student is not None:
             # Get submission counts for each task (batch query for efficiency)
             student_task_ids = [st.task_id for st in student.student_tasks]
-            submission_counts = {}
-            if student_task_ids:
-                counts = (
-                    self.sql_session.query(
-                        Submission.task_id,
-                        func.count(Submission.id)
-                    )
-                    .filter(Submission.participation_id == participation.id)
-                    .filter(Submission.task_id.in_(student_task_ids))
-                    .group_by(Submission.task_id)
-                    .all()
-                )
-                submission_counts = dict(counts)
+            submission_counts = get_submission_counts_by_task(
+                self.sql_session, participation.id, student_task_ids
+            )
 
             progress = calculate_task_archive_progress(
                 student,

@@ -23,8 +23,6 @@ like student tags and task assignments.
 
 import tornado.web
 
-from sqlalchemy import func
-
 from cms.db import (
     TrainingProgram,
     Participation,
@@ -41,6 +39,7 @@ from cms.server.util import (
     get_all_student_tags,
     calculate_task_archive_progress,
     get_student_archive_scores,
+    get_submission_counts_by_task,
     parse_tags,
     parse_usernames_from_file,
 )
@@ -665,19 +664,9 @@ class StudentTasksHandler(BaseHandler):
                     training_scores[st.task_id] = archived_ranking.task_scores[task_id_str]
 
         # Get submission counts for each task (batch query for efficiency)
-        submission_counts = {}
-        if assigned_task_ids:
-            counts = (
-                self.sql_session.query(
-                    Submission.task_id,
-                    func.count(Submission.id)
-                )
-                .filter(Submission.participation_id == participation.id)
-                .filter(Submission.task_id.in_(assigned_task_ids))
-                .group_by(Submission.task_id)
-                .all()
-            )
-            submission_counts = {task_id: count for task_id, count in counts}
+        submission_counts = get_submission_counts_by_task(
+            self.sql_session, participation.id, assigned_task_ids
+        )
 
         self.render_params_for_training_program(training_program)
         self.r_params["participation"] = participation

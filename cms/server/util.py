@@ -27,7 +27,7 @@
 """
 
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from functools import wraps
 from urllib.parse import quote, urlencode
 
@@ -42,7 +42,8 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session, Contest, Student, Task, Participation, StudentTask, Question, DelayRequest
+from cms.db import Session, Contest, Student, Task, Participation, StudentTask, Question, DelayRequest, Submission
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server.file_middleware import FileServerMiddleware
@@ -505,6 +506,39 @@ def get_student_tags_by_participation(
         result[participation_id] = tags or []
 
     return result
+
+
+def get_submission_counts_by_task(
+    sql_session: Session,
+    participation_id: int,
+    task_ids: set[int] | list[int]
+) -> dict[int, int]:
+    """Get submission counts for tasks by a participation.
+
+    This is a batch query utility that efficiently counts submissions
+    for multiple tasks at once, avoiding N+1 query patterns.
+
+    sql_session: the database session.
+    participation_id: the participation ID to count submissions for.
+    task_ids: set or list of task IDs to count submissions for.
+
+    return: dict mapping task_id to submission count.
+
+    """
+    if not task_ids:
+        return {}
+
+    counts = (
+        sql_session.query(
+            Submission.task_id,
+            func.count(Submission.id)
+        )
+        .filter(Submission.participation_id == participation_id)
+        .filter(Submission.task_id.in_(task_ids))
+        .group_by(Submission.task_id)
+        .all()
+    )
+    return dict(counts)
 
 
 def count_unanswered_questions(sql_session: Session, contest_id: int) -> int:
