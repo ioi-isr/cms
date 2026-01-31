@@ -69,7 +69,11 @@ import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
 from cms.server import CommonRequestHandler, FileHandlerMixin
-from cms.server.util import exclude_internal_contests
+from cms.server.util import (
+    exclude_internal_contests,
+    count_unanswered_questions,
+    get_all_training_day_notifications,
+)
 from cmscommon.crypto import hash_password, parse_authentication
 from cmscommon.datetime import make_datetime, get_timezone, local_to_utc, format_datetime_for_input, get_timezone_name
 if typing.TYPE_CHECKING:
@@ -530,49 +534,16 @@ class BaseHandler(CommonRequestHandler):
         self.r_params["contest"] = managing_contest
 
         # Count unanswered questions for the managing contest (used in sidebar)
-        self.r_params["unanswered"] = (
-            self.sql_session.query(Question)
-            .join(Participation)
-            .filter(Participation.contest_id == managing_contest.id)
-            .filter(Question.reply_timestamp.is_(None))
-            .filter(Question.ignored.is_(False))
-            .count()
+        self.r_params["unanswered"] = count_unanswered_questions(
+            self.sql_session, managing_contest.id
         )
 
         # Add notification counts for training days
-        training_day_notifications: dict[int, dict] = {}
-        total_td_unanswered_questions = 0
-        total_td_pending_delay_requests = 0
-
-        for td in training_program.training_days:
-            if td.contest is None:
-                continue
-
-            # Count unanswered questions for this training day
-            td_unanswered = (
-                self.sql_session.query(Question)
-                .join(Participation)
-                .filter(Participation.contest_id == td.contest_id)
-                .filter(Question.reply_timestamp.is_(None))
-                .filter(Question.ignored.is_(False))
-                .count()
-            )
-
-            # Count pending delay requests for this training day
-            td_pending_delays = (
-                self.sql_session.query(DelayRequest)
-                .join(Participation)
-                .filter(Participation.contest_id == td.contest_id)
-                .filter(DelayRequest.status == "pending")
-                .count()
-            )
-
-            training_day_notifications[td.id] = {
-                "unanswered_questions": td_unanswered,
-                "pending_delay_requests": td_pending_delays,
-            }
-            total_td_unanswered_questions += td_unanswered
-            total_td_pending_delay_requests += td_pending_delays
+        (
+            training_day_notifications,
+            total_td_unanswered_questions,
+            total_td_pending_delay_requests,
+        ) = get_all_training_day_notifications(self.sql_session, training_program)
 
         self.r_params["training_day_notifications"] = training_day_notifications
         self.r_params["total_td_unanswered_questions"] = \

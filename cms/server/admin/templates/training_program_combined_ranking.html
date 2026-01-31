@@ -2,35 +2,13 @@
 {% import 'fragments/info_alert.html' as info_alert %}
 
 {% block js_init %}
-// Initialize read-only filter tagify for training day types (no AJAX save)
-var filterInput = document.querySelector('input[name="training_day_types"]');
-if (filterInput && typeof Tagify !== 'undefined') {
-    new Tagify(filterInput, {
-        delimiters: ",",
-        whitelist: {{ all_training_day_types | default([]) | tojson }},
-        enforceWhitelist: true,
-        editTags: false,
-        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
-        originalInputValueFormat: function(valuesArr) {
-            return valuesArr.map(function(item) { return item.value; }).join(', ');
-        }
-    });
-}
-
-// Initialize read-only filter tagify for student tags (no AJAX save)
-var studentTagsInput = document.querySelector('input[name="student_tags"]');
-if (studentTagsInput && typeof Tagify !== 'undefined') {
-    new Tagify(studentTagsInput, {
-        delimiters: ",",
-        whitelist: {{ all_student_tags | default([]) | tojson }},
-        enforceWhitelist: true,
-        editTags: false,
-        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
-        originalInputValueFormat: function(valuesArr) {
-            return valuesArr.map(function(item) { return item.value; }).join(', ');
-        }
-    });
-}
+// Initialize filter tagify inputs using shared utility
+AdminTableUtils.initFilterTagify({
+    trainingDayTypesSelector: 'input[name="training_day_types"]',
+    trainingDayTypesWhitelist: {{ all_training_day_types | default([]) | tojson }},
+    studentTagsSelector: 'input[name="student_tags"]',
+    studentTagsWhitelist: {{ all_student_tags | default([]) | tojson }}
+});
 
 // Histogram modal data (shared with training days)
 var allStudentTags = {{ all_student_tags | default([]) | tojson }};
