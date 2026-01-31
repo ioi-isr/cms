@@ -8,7 +8,8 @@
 
 "use strict";
 
-var CMS = CMS || {};
+window.CMS = window.CMS || {};
+var CMS = window.CMS;
 CMS.AWSFormUtils = CMS.AWSFormUtils || {};
 
 
@@ -79,7 +80,7 @@ CMS.AWSFormUtils.initDateTimeValidation = function(formSelector, startSelector, 
         // Use valueAsNumber for reliable datetime-local comparison
         var startValue = startInput.valueAsNumber;
         var stopValue = stopInput.valueAsNumber;
-        if (startValue && stopValue && stopValue <= startValue) {
+        if (!isNaN(startValue) && !isNaN(stopValue) && stopValue <= startValue) {
             alert('End time must be after start time');
             e.preventDefault();
         }
@@ -106,18 +107,15 @@ CMS.AWSFormUtils.initRemovePage = function(config) {
         if (!targetSelectEl || !moveRadioEl) return;
 
         // Enable/disable the target dropdown based on the selected action
+        function syncTargetState() {
+            targetSelectEl.disabled = !moveRadioEl.checked;
+        }
         document.querySelectorAll('input[name="action"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                if (moveRadioEl.checked) {
-                    targetSelectEl.disabled = false;
-                } else {
-                    targetSelectEl.disabled = true;
-                }
-            });
+            radio.addEventListener('change', syncTargetState);
         });
 
-        // Initialize the dropdown state
-        targetSelectEl.disabled = true;
+        // Initialize the dropdown state based on current selection
+        syncTargetState();
     }
 
     // Attach the remove function to CMS.AWSFormUtils namespace

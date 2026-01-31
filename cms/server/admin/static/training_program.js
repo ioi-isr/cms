@@ -367,7 +367,7 @@ CMS.TrainingProgram._renderHistogram = function(scores, title, type) {
         var count = buckets[bucketKey] || 0;
         var percentage = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
         var barHeight = maxCount > 0 ? (count / maxCount) * 100 : 0;
-        var hue = (index / (bucketOrder.length - 1)) * 120;
+        var hue = bucketOrder.length > 1 ? (index / (bucketOrder.length - 1)) * 120 : 60;
 
         barsHtml += '<div class="histogram-bar-container">' +
             '<div class="histogram-bar-wrapper">' +
