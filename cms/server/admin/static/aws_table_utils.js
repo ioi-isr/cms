@@ -8,7 +8,7 @@
 
 "use strict";
 
-var CMS = CMS || {};
+window.CMS = window.CMS || {};
 CMS.AWSTableUtils = CMS.AWSTableUtils || {};
 
 

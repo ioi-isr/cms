@@ -381,6 +381,8 @@ CMS.AWSFormUtils.initTagify = function(config) {
         }
 
         // Arm the confirmations after a short delay to skip initial load events
+        // The 100ms delay allows Tagify to finish processing pre-existing tags
+        // before we start showing confirmation dialogs for user-initiated changes
         setTimeout(function() {
             armed = true;
         }, 100);
