@@ -56,7 +56,9 @@ class ContestAnnouncementsHandler(BaseHandler):
         training_day = self.contest.training_day
         if training_day is not None:
             training_program = training_day.training_program
-            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+            self.r_params["all_student_tags"] = get_all_student_tags(
+                self.sql_session, training_program
+            )
             self.r_params["is_training_day"] = True
         else:
             self.r_params["all_student_tags"] = []

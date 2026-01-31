@@ -399,7 +399,9 @@ class RankingHandler(RankingCommonMixin, BaseHandler):
                 )
 
             # Get all student tags for display
-            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+            self.r_params["all_student_tags"] = get_all_student_tags(
+                self.sql_session, training_program
+            )
 
         self.r_params["main_groups_data"] = main_groups_data
         self.r_params["student_tags_by_participation"] = student_tags_by_participation

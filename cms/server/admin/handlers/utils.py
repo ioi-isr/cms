@@ -19,30 +19,57 @@
 
 import typing
 
-from cms.db import Session, Student, Participation, Question, DelayRequest
+from sqlalchemy import func, union
+
+from cms.db import (
+    Session,
+    Student,
+    Participation,
+    Question,
+    DelayRequest,
+    ArchivedStudentRanking,
+    TrainingDay,
+)
 
 if typing.TYPE_CHECKING:
-    from cms.db import TrainingDay, TrainingProgram
+    from cms.db import TrainingProgram
 
 
 def get_all_student_tags(
+    sql_session: Session,
     training_program: "TrainingProgram",
     include_historical: bool = False,
 ) -> list[str]:
     """Get all unique student tags from a training program's students.
 
-    If include_historical is True, also include tags from archived rankings.
+    Uses GIN index on student_tags for efficient querying.
+
+    sql_session: The database session.
+    training_program: The training program to get tags from.
+    include_historical: If True, also include tags from archived rankings.
+
+    return: Sorted list of unique tags.
     """
-    all_tags_set: set[str] = set()
-    for student in training_program.students:
-        if student.student_tags:
-            all_tags_set.update(student.student_tags)
+    current_tags_query = (
+        sql_session.query(func.unnest(Student.student_tags).label("tag"))
+        .filter(Student.training_program_id == training_program.id)
+    )
+
     if include_historical:
-        for training_day in training_program.training_days:
-            for ranking in training_day.archived_student_rankings:
-                if ranking.student_tags:
-                    all_tags_set.update(ranking.student_tags)
-    return sorted(all_tags_set)
+        training_day_ids = [td.id for td in training_program.training_days]
+        if training_day_ids:
+            historical_tags_query = (
+                sql_session.query(
+                    func.unnest(ArchivedStudentRanking.student_tags).label("tag")
+                )
+                .filter(ArchivedStudentRanking.training_day_id.in_(training_day_ids))
+            )
+            combined_query = union(current_tags_query, historical_tags_query)
+            rows = sql_session.execute(combined_query).fetchall()
+            return sorted({row[0] for row in rows if row[0]})
+
+    rows = current_tags_query.distinct().all()
+    return sorted([row.tag for row in rows if row.tag])
 
 
 def get_all_training_day_types(training_program: "TrainingProgram") -> list[str]:

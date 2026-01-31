@@ -212,7 +212,9 @@ class DelaysAndExtraTimesHandler(BaseHandler):
             self.r_params["ineligible_training_program"] = training_program
 
             # Collect all unique student tags for autocomplete (using shared utility)
-            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+            self.r_params["all_student_tags"] = get_all_student_tags(
+                self.sql_session, training_program
+            )
 
             # Find students with 0 or >1 main group tags
             ineligible = []

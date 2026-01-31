@@ -158,7 +158,7 @@ class ContestHandler(SimpleContestHandler("contest.html")):
         training_day = self.contest.training_day
         if training_day is not None:
             training_program = training_day.training_program
-            all_student_tags = get_all_student_tags(training_program)
+            all_student_tags = get_all_student_tags(self.sql_session, training_program)
         self.r_params["all_student_tags"] = all_student_tags
 
         self.render("contest.html", **self.r_params)

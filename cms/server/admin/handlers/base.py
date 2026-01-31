@@ -598,7 +598,9 @@ class BaseHandler(CommonRequestHandler):
 
         # For bulk assign task modal
         self.r_params["all_tasks"] = managing_contest.get_tasks()
-        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+        self.r_params["all_student_tags"] = get_all_student_tags(
+            self.sql_session, training_program
+        )
 
         return self.r_params
 
