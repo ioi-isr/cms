@@ -9,6 +9,7 @@
 "use strict";
 
 window.CMS = window.CMS || {};
+var CMS = window.CMS;
 CMS.AWSTableUtils = CMS.AWSTableUtils || {};
 
 
