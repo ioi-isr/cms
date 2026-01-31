@@ -50,7 +50,7 @@ from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
 if typing.TYPE_CHECKING:
-    from cms.db import TrainingDay, TrainingDayGroup, TrainingProgram
+    from cms.db import TrainingDay, TrainingDayGroup, TrainingProgram, User
 
 logger = logging.getLogger(__name__)
 

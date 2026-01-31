@@ -32,7 +32,7 @@
 
     /**
      * Initialize and run countdown timers.
-     * 
+     *
      * @param {number} serverTimestamp - Server timestamp in milliseconds
      * @param {number} clientLoadTime - Client load time in milliseconds (Date.now())
      */
@@ -80,12 +80,19 @@
         }
 
         updateCountdowns();
-        setInterval(updateCountdowns, 1000);
+        var intervalId = setInterval(updateCountdowns, 1000);
+
+        // Clear interval on page unload to prevent memory leaks
+        window.addEventListener('beforeunload', function () {
+            clearInterval(intervalId);
+        });
+
+        return intervalId;
     }
 
     /**
      * Generic table sorting function.
-     * 
+     *
      * @param {string} tableId - The ID of the table to sort
      * @param {number} columnIndex - The column index to sort by
      * @param {Object} sortDirection - Object to track sort direction per column
@@ -94,8 +101,9 @@
     function sortTable(tableId, columnIndex, sortDirection, getValueFn) {
         var table = document.getElementById(tableId);
         if (!table) return;
-        
+
         var tbody = table.querySelector('tbody');
+        if (!tbody) return;
         var rows = Array.from(tbody.querySelectorAll('tr'));
         var headers = table.querySelectorAll('th');
 
