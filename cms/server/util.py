@@ -42,14 +42,15 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session, Contest, Student, Task, Participation, StudentTask
+from cms.db import Session, Contest, Student, Task, Participation, StudentTask, Submission
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
 if typing.TYPE_CHECKING:
-    from cms.db import TrainingDay, TrainingDayGroup, TrainingProgram
+    from cms.db import TrainingDay, TrainingDayGroup, TrainingProgram, User
 
 logger = logging.getLogger(__name__)
 
@@ -70,68 +71,6 @@ def exclude_internal_contests(query):
     ).filter(
         ~Contest.training_program.has()
     )
-
-
-def get_all_student_tags(training_program: "TrainingProgram") -> list[str]:
-    """Get all unique student tags from a training program's students.
-
-    This is a shared utility to avoid duplicating tag collection logic
-    across multiple handlers.
-
-    training_program: the training program to get tags from.
-
-    return: sorted list of unique student tags.
-
-    """
-    all_tags_set: set[str] = set()
-    for student in training_program.students:
-        if student.student_tags:
-            all_tags_set.update(student.student_tags)
-    return sorted(all_tags_set)
-
-
-def get_all_student_tags_with_historical(
-    training_program: "TrainingProgram"
-) -> list[str]:
-    """Get all unique student tags including historical tags from archived rankings.
-
-    This includes both current student tags and tags that students had during
-    past training days (stored in ArchivedStudentRanking.student_tags).
-
-    training_program: the training program to get tags from.
-
-    return: sorted list of unique student tags (current + historical).
-
-    """
-    all_tags_set: set[str] = set()
-    # Collect current tags
-    for student in training_program.students:
-        if student.student_tags:
-            all_tags_set.update(student.student_tags)
-    # Collect historical tags from archived rankings
-    for training_day in training_program.training_days:
-        for ranking in training_day.archived_student_rankings:
-            if ranking.student_tags:
-                all_tags_set.update(ranking.student_tags)
-    return sorted(all_tags_set)
-
-
-def get_all_training_day_types(training_program: "TrainingProgram") -> list[str]:
-    """Get all unique training day types from a training program's training days.
-
-    This is a shared utility to avoid duplicating tag collection logic
-    across multiple handlers.
-
-    training_program: the training program to get types from.
-
-    return: sorted list of unique training day types.
-
-    """
-    all_types_set: set[str] = set()
-    for training_day in training_program.training_days:
-        if training_day.training_day_types:
-            all_types_set.update(training_day.training_day_types)
-    return sorted(all_types_set)
 
 
 def get_student_for_training_day(
@@ -362,6 +301,66 @@ def calculate_task_archive_progress(
     return result
 
 
+def get_student_for_user_in_program(
+    sql_session: Session,
+    training_program: "TrainingProgram",
+    user_id: int
+) -> "Student | None":
+    """Get the student record for a user in a training program.
+
+    This is a common query pattern used across many handlers to find
+    the Student record for a given user in a training program.
+
+    sql_session: the database session.
+    training_program: the training program to search in.
+    user_id: the user ID to look up.
+
+    return: the Student record, or None if not found.
+
+    """
+    managing_contest = training_program.managing_contest
+    return sql_session.query(Student).join(
+        Participation, Student.participation_id == Participation.id
+    ).filter(
+        Participation.contest_id == managing_contest.id,
+        Participation.user_id == user_id,
+        Student.training_program_id == training_program.id
+    ).first()
+
+
+def get_submission_counts_by_task(
+    sql_session: Session,
+    participation_id: int,
+    task_ids: set[int] | list[int]
+) -> dict[int, int]:
+    """Get submission counts for tasks by a participation.
+
+    This is a batch query utility that efficiently counts submissions
+    for multiple tasks at once, avoiding N+1 query patterns.
+
+    sql_session: the database session.
+    participation_id: the participation ID to count submissions for.
+    task_ids: set or list of task IDs to count submissions for.
+
+    return: dict mapping task_id to submission count.
+
+    """
+    if not task_ids:
+        return {}
+
+    counts = (
+        sql_session.query(
+            Submission.task_id,
+            func.count(Submission.id)
+        )
+        .filter(Submission.participation_id == participation_id)
+        .filter(Submission.task_id.in_(task_ids))
+        .group_by(Submission.task_id)
+        .all()
+    )
+    return dict(counts)
+
+
 # TODO: multi_contest is only relevant for CWS
 def multi_contest(f):
     """Return decorator swallowing the contest name if in multi contest mode.
@@ -564,66 +563,3 @@ class CommonRequestHandler(RequestHandler):
     @property
     def service(self):
         return self.application.service
-
-
-def deduplicate_preserving_order(items: list[str]) -> list[str]:
-    """Remove duplicates from a list while preserving order.
-
-    Args:
-        items: List of strings that may contain duplicates
-
-    Returns:
-        List of strings with duplicates removed, preserving original order
-    """
-    seen: set[str] = set()
-    unique: list[str] = []
-    for item in items:
-        if item not in seen:
-            seen.add(item)
-            unique.append(item)
-    return unique
-
-
-def parse_tags(tags_str: str) -> list[str]:
-    """Parse a comma-separated string of tags into a list of normalized tags.
-
-    This utility handles:
-    - Splitting by comma
-    - Stripping whitespace
-    - converting to lowercase
-    - Removing empty tags
-    - Deduplicating while preserving order
-
-    Args:
-        tags_str: Comma-separated string of tags
-
-    Returns:
-        List of unique, normalized tags
-    """
-    if not tags_str:
-        return []
-
-    tags = [tag.strip().lower() for tag in tags_str.split(",") if tag.strip()]
-    return deduplicate_preserving_order(tags)
-
-
-def parse_usernames_from_file(file_content: str) -> list[str]:
-    """Parse whitespace-separated usernames from file content.
-
-    This utility handles:
-    - Splitting by whitespace (spaces, newlines, tabs)
-    - Stripping whitespace from each username
-    - Removing empty entries
-    - Deduplicating while preserving order
-
-    Args:
-        file_content: String content of the uploaded file
-
-    Returns:
-        List of unique usernames in order of first appearance
-    """
-    if not file_content:
-        return []
-
-    usernames = [u.strip() for u in file_content.split() if u.strip()]
-    return deduplicate_preserving_order(usernames)

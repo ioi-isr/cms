@@ -24,7 +24,7 @@ import csv
 import io
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import collections
 try:
@@ -37,8 +37,9 @@ import tornado.web
 
 from cms.db import Contest, DelayRequest, Participation
 from cms.server.contest.phase_management import compute_actual_phase
-from cmscommon.datetime import make_datetime, local_to_utc, get_timezone
-from cms.server.util import check_training_day_eligibility, get_all_student_tags
+from cmscommon.datetime import make_datetime
+from cms.server.util import check_training_day_eligibility
+from cms.server.admin.handlers.utils import get_all_student_tags
 from .base import BaseHandler, require_permission
 
 
@@ -211,7 +212,9 @@ class DelaysAndExtraTimesHandler(BaseHandler):
             self.r_params["ineligible_training_program"] = training_program
 
             # Collect all unique student tags for autocomplete (using shared utility)
-            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+            self.r_params["all_student_tags"] = get_all_student_tags(
+                self.sql_session, training_program
+            )
 
             # Find students with 0 or >1 main group tags
             ineligible = []
@@ -506,10 +509,14 @@ class AdminConfiguredDelayHandler(BaseHandler):
         self.contest = self.safe_get_item(Contest, contest_id)
 
         participation_id = self.get_argument("participation_id", "")
-        requested_start_time_str = self.get_argument("requested_start_time", "")
         reason = self.get_argument("reason", "").strip()
 
-        if not participation_id or not requested_start_time_str or not reason:
+        # Parse datetime using the built-in handler method
+        datetime_args = {}
+        self.get_datetime_with_timezone(datetime_args, "requested_start_time")
+        requested_start_time = datetime_args.get("requested_start_time")
+
+        if not participation_id or not requested_start_time or not reason:
             self.service.add_notification(
                 make_datetime(),
                 "Missing fields",
@@ -531,30 +538,6 @@ class AdminConfiguredDelayHandler(BaseHandler):
 
         if participation.contest_id != self.contest.id:
             raise tornado.web.HTTPError(404)
-
-        try:
-            # Parse HTML5 datetime-local format: YYYY-MM-DDTHH:MM
-            # The time is entered in contest timezone, so convert to UTC
-            local_dt = datetime.strptime(
-                requested_start_time_str, "%Y-%m-%dT%H:%M"
-            )
-            tz = get_timezone(None, self.contest)
-            requested_start_time = local_to_utc(local_dt, tz)
-        except Exception as e:
-            # Catch ValueError, TypeError, and pytz DST exceptions
-            # (AmbiguousTimeError, NonExistentTimeError)
-            logger.warning(
-                "Failed to parse admin-configured start time '%s' for "
-                "contest %s: %s",
-                requested_start_time_str, self.contest.name, e
-            )
-            self.service.add_notification(
-                make_datetime(),
-                "Invalid date",
-                "The start time is invalid or falls during a DST transition."
-            )
-            self.redirect(ref)
-            return
 
         # contest.start is already in UTC
         contest_start = self.contest.start

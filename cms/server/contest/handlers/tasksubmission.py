@@ -356,23 +356,7 @@ class SubmissionStatusHandler(ContestHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name, opaque_id):
-        participation = self.current_user
-
-        if not participation.unrestricted:
-            if self.training_program is None and participation.starting_time is None:
-                raise tornado.web.HTTPError(403)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        # Check task visibility for training day contests
-        if not self.can_access_task(task):
-            raise tornado.web.HTTPError(404)
-
-        submission = self.get_submission(task, opaque_id)
-        if submission is None:
-            raise tornado.web.HTTPError(404)
+        task, submission = self.get_validated_submission(task_name, opaque_id)
 
         sr = submission.get_result(task.active_dataset)
 
@@ -426,23 +410,7 @@ class SubmissionDetailsHandler(ContestHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name, opaque_id):
-        participation = self.current_user
-
-        if not participation.unrestricted:
-            if self.training_program is None and participation.starting_time is None:
-                raise tornado.web.HTTPError(403)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        # Check task visibility for training day contests
-        if not self.can_access_task(task):
-            raise tornado.web.HTTPError(404)
-
-        submission = self.get_submission(task, opaque_id)
-        if submission is None:
-            raise tornado.web.HTTPError(404)
+        task, submission = self.get_validated_submission(task_name, opaque_id)
 
         sr = submission.get_result(task.active_dataset)
         score_type = task.active_dataset.score_type_object
@@ -533,23 +501,7 @@ class UseTokenHandler(ContestHandler):
     @actual_phase_required(0)
     @multi_contest
     def post(self, task_name, opaque_id):
-        participation = self.current_user
-
-        if not participation.unrestricted:
-            if self.training_program is None and participation.starting_time is None:
-                raise tornado.web.HTTPError(403)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        # Check task visibility for training day contests
-        if not self.can_access_task(task):
-            raise tornado.web.HTTPError(404)
-
-        submission = self.get_submission(task, opaque_id)
-        if submission is None:
-            raise tornado.web.HTTPError(404)
+        task, submission = self.get_validated_submission(task_name, opaque_id)
 
         try:
             accept_token(self.sql_session, submission, self.timestamp)

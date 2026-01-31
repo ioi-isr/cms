@@ -177,20 +177,7 @@ class UserTestStatusHandler(ContestHandler):
     @actual_phase_required(0)
     @multi_contest
     def get(self, task_name, user_test_num):
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        # Check task visibility for training day contests
-        if not self.can_access_task(task):
-            raise tornado.web.HTTPError(404)
-
-        user_test = self.get_user_test(task, user_test_num)
-        if user_test is None:
-            raise tornado.web.HTTPError(404)
+        task, user_test = self.get_validated_user_test(task_name, user_test_num)
 
         ur = user_test.get_result(task.active_dataset)
         data = dict()
@@ -236,20 +223,7 @@ class UserTestDetailsHandler(ContestHandler):
     @actual_phase_required(0)
     @multi_contest
     def get(self, task_name, user_test_num):
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        # Check task visibility for training day contests
-        if not self.can_access_task(task):
-            raise tornado.web.HTTPError(404)
-
-        user_test = self.get_user_test(task, user_test_num)
-        if user_test is None:
-            raise tornado.web.HTTPError(404)
+        task, user_test = self.get_validated_user_test(task_name, user_test_num)
 
         tr = user_test.get_result(task.active_dataset)
 
@@ -265,20 +239,7 @@ class UserTestIOHandler(FileHandler):
     @actual_phase_required(0)
     @multi_contest
     def get(self, task_name, user_test_num, io):
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        # Check task visibility for training day contests
-        if not self.can_access_task(task):
-            raise tornado.web.HTTPError(404)
-
-        user_test = self.get_user_test(task, user_test_num)
-        if user_test is None:
-            raise tornado.web.HTTPError(404)
+        task, user_test = self.get_validated_user_test(task_name, user_test_num)
 
         if io == "input":
             digest = user_test.input
@@ -303,20 +264,7 @@ class UserTestFileHandler(FileHandler):
     @actual_phase_required(0)
     @multi_contest
     def get(self, task_name, user_test_num, filename):
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        # Check task visibility for training day contests
-        if not self.can_access_task(task):
-            raise tornado.web.HTTPError(404)
-
-        user_test = self.get_user_test(task, user_test_num)
-        if user_test is None:
-            raise tornado.web.HTTPError(404)
+        _, user_test = self.get_validated_user_test(task_name, user_test_num)
 
         # filename is the name used by the browser, hence is something
         # like 'foo.c' (and the extension is CMS's preferred extension
