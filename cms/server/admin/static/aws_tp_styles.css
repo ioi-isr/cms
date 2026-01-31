@@ -188,7 +188,105 @@
 }
 
 /* ==========================================================================
-   Add Student Dropdown/Modal
+   Native Dialog Element Styles
+   ========================================================================== */
+
+.tp-dialog {
+    border: none;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: var(--tp-shadow-lg);
+    max-width: 400px;
+    width: 90%;
+}
+
+.tp-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.tp-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+.tp-dialog-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+}
+
+.tp-dialog-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--tp-text-secondary);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.tp-dialog-close:hover {
+    color: var(--tp-text-primary);
+}
+
+.tp-dialog-body {
+    padding: 20px;
+}
+
+.tp-dialog-body label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    margin-bottom: 8px;
+}
+
+.tp-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--tp-border);
+    background: var(--tp-bg-light);
+    border-radius: 0 0 12px 12px;
+}
+
+/* ==========================================================================
+   Progress Link and Modern Progress Bar
+   ========================================================================== */
+
+.progress-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.progress-link.no-tasks {
+    color: #9ca3af;
+    font-size: 0.85rem;
+}
+
+.progress-percentage {
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 45px;
+    /* Color based on percentage using CSS custom property */
+    color: hsl(calc(var(--pct, 0) * 1.2), 70%, 35%);
+}
+
+.progress-score {
+    font-size: 0.8rem;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Legacy Add Student Dropdown (kept for backwards compatibility)
    ========================================================================== */
 
 .add-student-dropdown {
@@ -737,6 +835,40 @@
     width: calc(100% - 8px);
     color: var(--tp-text-primary); /* Dark Slate, not black */
     background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3));
+}
+
+/* Score cell coloring using CSS custom properties
+   Uses --score (0-100) to calculate hue: 0 (Red) -> 60 (Yellow) -> 120 (Green)
+   The hue is clamped between 0 and 120 using min/max */
+.cell-content.score-cell {
+    --hue: calc(var(--score, 0) * 1.2);
+    background-color: hsl(min(120, max(0, var(--hue))), 75%, 90%);
+    color: hsl(min(120, max(0, var(--hue))), 90%, 20%);
+    background-image: none;
+}
+
+/* Modern progress bar using CSS custom properties
+   Uses --pct (0-100) to set width and color automatically */
+.progress-bar-modern {
+    height: 6px;
+    background: var(--tp-border);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    width: 120px;
+}
+
+.progress-bar-modern::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: calc(var(--pct, 0) * 1%);
+    /* HSL color transitions from red (0) to green (120) based on percentage */
+    background: hsl(calc(var(--pct, 0) * 1.2), 70%, 45%);
+    border-radius: 3px;
+    transition: width 0.3s ease;
 }
 
 /* Hover effects */
