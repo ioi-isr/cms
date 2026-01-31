@@ -55,6 +55,8 @@
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_tp_styles.css") }}">
     <script src="{{ url("static", "web_rpc.js") }}"></script>
     <script src="{{ url("static", "aws_utils.js") }}"></script>
+    <script src="{{ url("static", "aws_table_utils.js") }}"></script>
+    <script src="{{ url("static", "aws_form_utils.js") }}"></script>
     <script src="{{ url("static", "jq", "jquery-3.6.0.min.js") }}"></script>
     <script src="{{ url("static", "js", "zxcvbn.js") }}"></script>
     <script src="{{ url("static", "jq", "jquery.jqplot.min.js") }}"></script>
@@ -548,10 +550,6 @@ $(document).ready(initSidebarEvents);
               </div>
               {% endif %}
             </div>
-          </div>
-          <div class="footer">
-            <span id="remaining_text"></span>
-            <span id="remaining_value"></span>
           </div>
         {% else %}
           <ul class="menu">
