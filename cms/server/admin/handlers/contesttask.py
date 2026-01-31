@@ -26,7 +26,7 @@
 """
 
 from cms.db import Contest, Task
-from cms.server.util import get_all_student_tags, deduplicate_preserving_order
+from cms.server.admin.handlers.utils import get_all_student_tags, deduplicate_preserving_order
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -76,7 +76,9 @@ class ContestTasksHandler(BaseHandler):
             self.r_params["program_task_ids"] = [t.id for t in program_tasks]
 
             # Get all student tags for autocomplete (for task visibility tags)
-            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+            self.r_params["all_student_tags"] = get_all_student_tags(
+                self.sql_session, training_program
+            )
         else:
             # For regular contests, show all unassigned tasks
             self.r_params["unassigned_tasks"] = \
@@ -354,7 +356,9 @@ class TaskVisibilityHandler(BaseHandler):
 
             # Get allowed tags from training program
             training_program = training_day.training_program
-            allowed_tags = set(get_all_student_tags(training_program))
+            allowed_tags = set(get_all_student_tags(
+                self.sql_session, training_program
+            ))
 
             # Validate and filter tags against allowed set
             invalid_tags = [tag for tag in incoming_tags if tag not in allowed_tags]

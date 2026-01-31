@@ -38,7 +38,8 @@ import tornado.web
 from cms.db import Contest, DelayRequest, Participation
 from cms.server.contest.phase_management import compute_actual_phase
 from cmscommon.datetime import make_datetime
-from cms.server.util import check_training_day_eligibility, get_all_student_tags
+from cms.server.util import check_training_day_eligibility
+from cms.server.admin.handlers.utils import get_all_student_tags
 from .base import BaseHandler, require_permission
 
 
@@ -211,7 +212,9 @@ class DelaysAndExtraTimesHandler(BaseHandler):
             self.r_params["ineligible_training_program"] = training_program
 
             # Collect all unique student tags for autocomplete (using shared utility)
-            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+            self.r_params["all_student_tags"] = get_all_student_tags(
+                self.sql_session, training_program
+            )
 
             # Find students with 0 or >1 main group tags
             ineligible = []

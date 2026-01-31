@@ -55,6 +55,7 @@ from cms.db import (
     DelayRequest,
     Participation,
     Question,
+    Student,
     Submission,
     SubmissionResult,
     Task,
@@ -69,9 +70,10 @@ import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
 from cms.server import CommonRequestHandler, FileHandlerMixin
-from cms.server.util import (
-    exclude_internal_contests,
+from cms.server.util import exclude_internal_contests, calculate_task_archive_progress
+from cms.server.admin.handlers.utils import (
     count_unanswered_questions,
+    get_all_student_tags,
     get_all_training_day_notifications,
 )
 from cmscommon.crypto import hash_password, parse_authentication
@@ -553,6 +555,55 @@ class BaseHandler(CommonRequestHandler):
 
         return self.r_params
 
+    def render_params_for_students_page(
+        self, training_program: "TrainingProgram"
+    ) -> dict:
+        """Prepare render params for the training program students page.
+
+        This is a convenience method that sets up all the params needed
+        for the students page, including unassigned users, student progress,
+        and task/tag lists for the bulk assign modal.
+
+        Must be called after render_params_for_training_program().
+
+        Args:
+            training_program: The training program being viewed.
+
+        Returns:
+            The updated r_params dict.
+        """
+        managing_contest = training_program.managing_contest
+
+        assigned_user_ids_q = self.sql_session.query(Participation.user_id).filter(
+            Participation.contest == managing_contest
+        )
+
+        self.r_params["unassigned_users"] = (
+            self.sql_session.query(User)
+            .filter(~User.id.in_(assigned_user_ids_q))
+            .filter(~User.username.like(r"\_\_%", escape="\\"))
+            .all()
+        )
+
+        # Calculate task archive progress for each student using shared utility
+        student_progress = {}
+        for student in training_program.students:
+            student_progress[student.id] = calculate_task_archive_progress(
+                student, student.participation, managing_contest, self.sql_session
+            )
+        # Commit to release any advisory locks taken by get_cached_score_entry
+        self.sql_session.commit()
+
+        self.r_params["student_progress"] = student_progress
+
+        # For bulk assign task modal
+        self.r_params["all_tasks"] = managing_contest.get_tasks()
+        self.r_params["all_student_tags"] = get_all_student_tags(
+            self.sql_session, training_program
+        )
+
+        return self.r_params
+
     def write_error(self, status_code, **kwargs):
         if "exc_info" in kwargs and kwargs["exc_info"][0] != tornado.web.HTTPError:
             exc_info = kwargs["exc_info"]
@@ -902,6 +953,74 @@ class BaseHandler(CommonRequestHandler):
     def get_login_url(self) -> str:
         """Return the URL unauthenticated users are redirected to."""
         return self.url("login")
+
+
+class StudentBaseHandler(BaseHandler):
+    """Base handler for student-related pages in a training program.
+
+    This handler provides common functionality for looking up a student's
+    context (training_program, managing_contest, participation, student)
+    and raises 404 if the student is not found.
+
+    Subclasses should call setup_student_context() at the start of their
+    get/post methods to populate self.training_program, self.managing_contest,
+    self.participation, and self.student.
+    """
+
+    training_program: TrainingProgram
+    managing_contest: Contest
+    participation: Participation
+    student: Student
+
+    def setup_student_context(
+        self, training_program_id: str, user_id: str
+    ) -> None:
+        """Look up and set the student context for this request.
+
+        This method looks up the training program, managing contest,
+        participation, and student for the given IDs. It raises a 404
+        error if the participation or student is not found.
+
+        Args:
+            training_program_id: The training program ID from the URL.
+            user_id: The user ID from the URL.
+
+        Raises:
+            tornado.web.HTTPError(404): If participation or student not found.
+        """
+        try:
+            user_id_int = int(user_id)
+        except ValueError:
+            raise tornado.web.HTTPError(404)
+
+        self.training_program = self.safe_get_item(
+            TrainingProgram, training_program_id
+        )
+        self.managing_contest = self.training_program.managing_contest
+        self.contest = self.managing_contest
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == self.managing_contest.id)
+            .filter(Participation.user_id == user_id_int)
+            .first()
+        )
+
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        student: Student | None = (
+            self.sql_session.query(Student)
+            .filter(Student.participation == participation)
+            .filter(Student.training_program == self.training_program)
+            .first()
+        )
+
+        if student is None:
+            raise tornado.web.HTTPError(404)
+
+        self.participation = participation
+        self.student = student
 
 
 class FileHandler(BaseHandler, FileHandlerMixin):
