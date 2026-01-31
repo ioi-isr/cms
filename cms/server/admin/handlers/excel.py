@@ -46,6 +46,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from cms.db import TrainingProgram
 
 from .base import BaseHandler, require_permission
+from .training_analytics import TrainingProgramFilterMixin, build_attendance_data, build_ranking_data
 
 
 EXCEL_ZEBRA_COLORS = [
@@ -206,22 +207,13 @@ def excel_write_training_day_header(
     )
 
 
-class ExportAttendanceHandler(BaseHandler):
+class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
     """Export attendance data to Excel format."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         """Export filtered attendance data to Excel."""
-        from .training_analytics import (
-            TrainingProgramFilterMixin,
-            build_attendance_data,
-        )
-
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
-
-        filter_mixin = TrainingProgramFilterMixin()
-        filter_mixin.sql_session = self.sql_session
-        filter_mixin.get_argument = self.get_argument
 
         (
             start_date,
@@ -231,7 +223,7 @@ class ExportAttendanceHandler(BaseHandler):
             _,
             archived_training_days,
             current_tag_student_ids,
-        ) = filter_mixin._get_filtered_context(training_program)
+        ) = self._get_filtered_context(training_program)
 
         if not archived_training_days:
             self.redirect(self.url(
@@ -347,22 +339,13 @@ class ExportAttendanceHandler(BaseHandler):
         self.finish()
 
 
-class ExportCombinedRankingHandler(BaseHandler):
+class ExportCombinedRankingHandler(TrainingProgramFilterMixin, BaseHandler):
     """Export combined ranking data to Excel format."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         """Export filtered combined ranking data to Excel."""
-        from .training_analytics import (
-            TrainingProgramFilterMixin,
-            build_ranking_data,
-        )
-
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
-
-        filter_mixin = TrainingProgramFilterMixin()
-        filter_mixin.sql_session = self.sql_session
-        filter_mixin.get_argument = self.get_argument
 
         (
             start_date,
@@ -372,7 +355,7 @@ class ExportCombinedRankingHandler(BaseHandler):
             student_tags_mode,
             archived_training_days,
             current_tag_student_ids,
-        ) = filter_mixin._get_filtered_context(training_program)
+        ) = self._get_filtered_context(training_program)
 
         if not archived_training_days:
             self.redirect(self.url(
@@ -392,7 +375,7 @@ class ExportCombinedRankingHandler(BaseHandler):
             student_tags,
             student_tags_mode,
             current_tag_student_ids,
-            filter_mixin._tags_match,
+            self._tags_match,
         )
 
         if not filtered_training_days:

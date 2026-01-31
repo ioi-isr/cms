@@ -106,7 +106,11 @@ class TrainingProgramListHandler(BaseHandler):
         training_day_notifications: dict[int, dict] = {}
 
         for tp in training_programs:
-            total_students += len(tp.managing_contest.participations)
+            total_students += (
+                self.sql_session.query(func.count(Participation.id))
+                .filter(Participation.contest_id == tp.managing_contest_id)
+                .scalar()
+            )
             # Count active training days (those with a contest)
             active_tds = [td for td in tp.training_days if td.contest is not None]
             active_training_days += len(active_tds)
