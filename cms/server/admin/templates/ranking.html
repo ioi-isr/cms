@@ -61,7 +61,7 @@
 
 {% if main_groups_data %}
 {# Training day with main groups - show separate tables per group #}
-<label style="margin-bottom: 15px; display: block;"><input type="checkbox" id="show-indicators" checked> Show indicators</label>
+<label style="margin-bottom: 15px; display: block;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label>
 
 {# Build task index lookup once for all groups #}
 {% set all_tasks = contest.get_tasks() | list %}
@@ -154,7 +154,7 @@
     CMS.AWSUtils.init_table_sort($("#ranking-table-{{ loop.index }}"), true, -1);
     {% endfor %}
 
-    $("#show-indicators").on("change", function() {
+    $(".show-indicators-toggle").on("change", function() {
       if (this.checked) {
         $(".td-ranking-table").removeClass("hide-indicators");
       } else {
@@ -167,7 +167,7 @@
 {% else %}
 {# Regular contest or training day without groups - show single table #}
 Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>, <a href="{{ url("contest", contest.id, "ranking", "txt") }}">text</a>.
-<label style="margin-left: 20px;"><input type="checkbox" id="show-indicators" checked> Show indicators</label>
+<label style="margin-left: 20px;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label>
 <table id="ranking-table" class="bordered td-ranking-table">
   <thead>
     <tr>
@@ -240,7 +240,7 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
   $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#ranking-table"), true, -1);
 
-    $("#show-indicators").on("change", function() {
+    $(".show-indicators-toggle").on("change", function() {
       if (this.checked) {
         $("#ranking-table").removeClass("hide-indicators");
       } else {
