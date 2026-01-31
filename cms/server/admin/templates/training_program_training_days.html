@@ -96,7 +96,17 @@ window.tagsPerTrainingDay = tagsPerTrainingDay;
 window.allStudentTags = allStudentTags;
 window.historicalStudentTags = historicalStudentTags;
 
-{% include 'fragments/histogram_js.html' %}
+// Initialize training program module with histogram data
+CMS.TrainingProgram.init({
+    allStudentTags: allStudentTags,
+    tagsPerTrainingDay: tagsPerTrainingDay,
+    historicalStudentTags: historicalStudentTags,
+    studentData: studentData,
+    trainingDayTasks: trainingDayTasks,
+    studentAccessibleTasks: studentAccessibleTasks,
+    taskMaxScores: {},
+    taskMaxScoresByTrainingDay: taskMaxScoresByTrainingDay
+});
 
 window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     var key = trainingDayId + '_' + taskId;

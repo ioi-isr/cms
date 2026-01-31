@@ -54,49 +54,11 @@ function removeMainGroup(url) {
 }
 </script>
 
-{% if contest.training_day.groups|length > 0 %}
+{% set has_groups = contest.training_day.groups|length > 0 %}
+{% if has_groups %}
 <form action="{{ url("contest", contest.id, "training_day_groups", "update") }}" method="POST" id="update-groups-form">
   {{ xsrf_form_html|safe }}
-  <table class="sub_table" id="main-groups-table">
-    <thead>
-      <tr>
-        <th>Tag Name</th>
-        <th>Start Time ({{ timezone_name }})</th>
-        <th>Duration</th>
-        <th>Alphabetical Task Order</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for group in contest.training_day.groups %}
-      <tr>
-        <td>
-          {{ group.tag_name }}
-          <input type="hidden" name="group_id[]" value="{{ group.id }}"/>
-        </td>
-        <td>
-          <input type="datetime-local" name="start_time[]" value="{{ group.start_time|format_datetime_input(timezone) if group.start_time else '' }}"/>
-        </td>
-        <td>
-          {% set duration_seconds = (group.end_time - group.start_time).total_seconds() if group.start_time and group.end_time else 0 %}
-          {% set duration_hours = (duration_seconds // 3600)|int %}
-          {% set duration_minutes = ((duration_seconds % 3600) // 60)|int %}
-          <input type="number" name="duration_hours[]" min="0" style="width: 60px;" value="{{ duration_hours if duration_seconds > 0 else '' }}" placeholder="0"/> h
-          <input type="number" name="duration_minutes[]" min="0" max="59" style="width: 60px;" value="{{ duration_minutes if duration_seconds > 0 else '' }}" placeholder="0"/> m
-        </td>
-        <td style="text-align: center;">
-          <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }}/>
-        </td>
-        <td>
-          <button type="button" class="btn btn-danger btn-small" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}');"{% if not admin.permission_all %} disabled{% endif %}>Remove</button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <input type="submit" value="Save Group Changes"{% if not admin.permission_all %} disabled{% endif %}/>
-</form>
-{% else %}
+{% endif %}
 <table class="sub_table" id="main-groups-table">
   <thead>
     <tr>
@@ -108,11 +70,41 @@ function removeMainGroup(url) {
     </tr>
   </thead>
   <tbody>
+    {% if has_groups %}
+    {% for group in contest.training_day.groups %}
+    <tr>
+      <td>
+        {{ group.tag_name }}
+        <input type="hidden" name="group_id[]" value="{{ group.id }}"/>
+      </td>
+      <td>
+        <input type="datetime-local" name="start_time[]" value="{{ group.start_time|format_datetime_input(timezone) if group.start_time else '' }}"/>
+      </td>
+      <td>
+        {% set duration_seconds = (group.end_time - group.start_time).total_seconds() if group.start_time and group.end_time else 0 %}
+        {% set duration_hours = (duration_seconds // 3600)|int %}
+        {% set duration_minutes = ((duration_seconds % 3600) // 60)|int %}
+        <input type="number" name="duration_hours[]" min="0" style="width: 60px;" value="{{ duration_hours if duration_seconds > 0 else '' }}" placeholder="0"/> h
+        <input type="number" name="duration_minutes[]" min="0" max="59" style="width: 60px;" value="{{ duration_minutes if duration_seconds > 0 else '' }}" placeholder="0"/> m
+      </td>
+      <td style="text-align: center;">
+        <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }}/>
+      </td>
+      <td>
+        <button type="button" class="btn btn-danger btn-small" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}');"{% if not admin.permission_all %} disabled{% endif %}>Remove</button>
+      </td>
+    </tr>
+    {% endfor %}
+    {% else %}
     <tr>
       <td colspan="5" style="text-align: center; color: #666;">No main groups configured. All students can participate.</td>
     </tr>
+    {% endif %}
   </tbody>
 </table>
+{% if has_groups %}
+<input type="submit" value="Save Group Changes"{% if not admin.permission_all %} disabled{% endif %}/>
+</form>
 {% endif %}
 
 <h3>Add Main Group</h3>

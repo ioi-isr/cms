@@ -39,32 +39,43 @@
             Bulk Assign Task
         </button>
 
-        <!-- Add Student Button with Dropdown -->
-        <div class="add-student-dropdown">
-            <button type="button" class="btn-filled-primary" onclick="toggleAddStudentForm()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                Add Student
-            </button>
-            <div id="add-student-form" class="add-student-form">
-                <form action="{{ url("training_program", training_program.id, "students", "add") }}" method="POST">
-                    {{ xsrf_form_html|safe }}
-                    <label for="user_id">Select a user to add:</label>
-                    <select name="user_id" id="user_id" class="searchable-select">
-                        <option value="" selected disabled hidden>Search for a user...</option>
-                        {% for u in unassigned_users %}
-                        <option value="{{ u.id }}">{{ u.username }} - {{ u.first_name }} {{ u.last_name }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%;">
-                        Add to Program
-                    </button>
-                </form>
-            </div>
-        </div>
+        <!-- Add Student Button -->
+        <button type="button" class="btn-filled-primary" onclick="document.getElementById('add-student-dialog').showModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Student
+        </button>
     </div>
+
+    <!-- Add Student Dialog (native HTML dialog element) -->
+    <dialog id="add-student-dialog" class="tp-dialog">
+        <div class="tp-dialog-header">
+            <h3>Add Student</h3>
+            <form method="dialog">
+                <button type="submit" class="tp-dialog-close">&times;</button>
+            </form>
+        </div>
+        <form action="{{ url("training_program", training_program.id, "students", "add") }}" method="POST">
+            {{ xsrf_form_html|safe }}
+            <div class="tp-dialog-body">
+                <label for="user_id">Select a user to add:</label>
+                <select name="user_id" id="user_id" class="searchable-select" style="width: 100%;">
+                    <option value="" selected disabled hidden>Search for a user...</option>
+                    {% for u in unassigned_users %}
+                    <option value="{{ u.id }}">{{ u.username }} - {{ u.first_name }} {{ u.last_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="tp-dialog-footer">
+                <button type="button" class="btn-outline" onclick="document.getElementById('add-student-dialog').close()">Cancel</button>
+                <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
+                    Add to Program
+                </button>
+            </div>
+        </form>
+    </dialog>
 
     <!-- Bulk Add Results (if any) -->
     {% if bulk_add_results %}
@@ -147,27 +158,21 @@
                             </div>
                         </td>
 
-                        <!-- Task Archive Progress (with small bar and score) -->
+                        <!-- Task Archive Progress (with CSS-based progress bar) -->
                         <td data-value="{{ progress.percentage|default(-1) if progress.task_count > 0 else -1 }}">
                             <div class="list-cell-wrapper">
                                 {% if progress.task_count > 0 %}
-                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none;">
-                                    <div class="progress-bar-inline">
-                                        {% set pct_color = '#059669' if progress.percentage >= 80 else '#d97706' if progress.percentage >= 50 else '#dc2626' %}
-                                        {% set bar_color = 'color-green' if progress.percentage >= 80 else 'color-orange' if progress.percentage >= 50 else 'color-red' %}
-                                        <span class="percentage" style="color: {{ pct_color }};">
-                                            {{ "%.0f"|format(progress.percentage) }}%
-                                        </span>
-                                        <div class="bar-container">
-                                            <div class="bar-fill {{ bar_color }}" style="width: {{ [progress.percentage, 5]|max if progress.percentage > 0 else 0 }}%;"></div>
-                                        </div>
-                                        <span style="font-size: 0.8rem; color: #6b7280; white-space: nowrap;">
-                                            {{ "%.0f"|format(progress.total_score) }}/{{ "%.0f"|format(progress.max_score) }}
-                                        </span>
-                                    </div>
+                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" class="progress-link">
+                                    <span class="progress-percentage" style="--pct: {{ progress.percentage }}">
+                                        {{ "%.0f"|format(progress.percentage) }}%
+                                    </span>
+                                    <div class="progress-bar-modern" style="--pct: {{ progress.percentage }}"></div>
+                                    <span class="progress-score">
+                                        {{ "%.0f"|format(progress.total_score) }}/{{ "%.0f"|format(progress.max_score) }}
+                                    </span>
                                 </a>
                                 {% else %}
-                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" style="text-decoration: none; color: #9ca3af; font-size: 0.85rem;">
+                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" class="progress-link no-tasks">
                                     No tasks
                                 </a>
                                 {% endif %}
@@ -207,32 +212,18 @@
 </div>
 
 <script>
-function toggleAddStudentForm() {
-    var form = document.getElementById('add-student-form');
-    form.classList.toggle('show');
-}
-
-// Close dropdown when clicking outside
-document.addEventListener('click', function(event) {
-    var dropdown = document.querySelector('.add-student-dropdown');
-    var form = document.getElementById('add-student-form');
-    if (dropdown && !dropdown.contains(event.target)) {
-        form.classList.remove('show');
-    }
-});
-
 // Table sorting using CMS.AWSUtils
 $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#students-table"), false, 0);
 });
 
-// Bulk Assign Task Modal
-var bulkAssignModal = null;
+// Bulk Assign Task Modal using native dialog element
+var bulkAssignDialog = null;
 var bulkAssignTagify = null;
 
-function initBulkAssignModal() {
-    bulkAssignModal = document.getElementById('bulkAssignModal');
-    if (!bulkAssignModal) return;
+function initBulkAssignDialog() {
+    bulkAssignDialog = document.getElementById('bulkAssignDialog');
+    if (!bulkAssignDialog) return;
 
     // Initialize tagify for tag selection
     var tagInput = document.getElementById('bulkAssignTagInput');
@@ -253,61 +244,49 @@ function initBulkAssignModal() {
             }
         });
     }
-
-    // Close modal on backdrop click
-    bulkAssignModal.addEventListener('click', function(e) {
-        if (e.target === bulkAssignModal) {
-            closeBulkAssignModal();
-        }
-    });
-
-    // Close modal on Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && bulkAssignModal.style.display === 'flex') {
-            closeBulkAssignModal();
-        }
-    });
 }
 
 function openBulkAssignModal() {
-    if (!bulkAssignModal) {
-        initBulkAssignModal();
+    if (!bulkAssignDialog) {
+        initBulkAssignDialog();
     }
-    if (bulkAssignModal) {
-        bulkAssignModal.style.display = 'flex';
+    if (bulkAssignDialog) {
         // Reset form
         var taskSelect = document.getElementById('bulkAssignTaskSelect');
         if (taskSelect) taskSelect.selectedIndex = 0;
         if (bulkAssignTagify) bulkAssignTagify.removeAllTags();
+        bulkAssignDialog.showModal();
     }
 }
 
 function closeBulkAssignModal() {
-    if (bulkAssignModal) {
-        bulkAssignModal.style.display = 'none';
+    if (bulkAssignDialog) {
+        bulkAssignDialog.close();
     }
 }
 
-// Initialize modal on page load
+// Initialize dialog on page load
 document.addEventListener('DOMContentLoaded', function() {
-    initBulkAssignModal();
+    initBulkAssignDialog();
 });
 </script>
 
-<!-- Bulk Assign Task Modal -->
-<div id="bulkAssignModal" class="bulk-assign-modal" style="display: none;">
-    <div class="bulk-assign-modal-content">
-        <div class="bulk-assign-modal-header">
-            <h2>Bulk Assign Task</h2>
-            <button type="button" class="bulk-assign-close-btn" onclick="closeBulkAssignModal()">&times;</button>
-        </div>
-        <p class="bulk-assign-description">
-            Assign a task to all students who have the specified tag.
-            Students who already have the task assigned will be skipped.
-        </p>
-        <form action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
-            {{ xsrf_form_html|safe }}
-            <div class="bulk-assign-form-group">
+<!-- Bulk Assign Task Dialog (native HTML dialog element) -->
+<dialog id="bulkAssignDialog" class="tp-dialog" style="max-width: 500px;">
+    <div class="tp-dialog-header">
+        <h3>Bulk Assign Task</h3>
+        <form method="dialog">
+            <button type="submit" class="tp-dialog-close">&times;</button>
+        </form>
+    </div>
+    <form action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
+        {{ xsrf_form_html|safe }}
+        <div class="tp-dialog-body">
+            <p style="margin: 0 0 16px 0; color: var(--tp-text-secondary); font-size: 0.9rem;">
+                Assign a task to all students who have the specified tag.
+                Students who already have the task assigned will be skipped.
+            </p>
+            <div style="margin-bottom: 16px;">
                 <label for="bulkAssignTaskSelect">Task</label>
                 <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
                     <option value="" selected disabled hidden>Select a task...</option>
@@ -316,17 +295,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     {% endfor %}
                 </select>
             </div>
-            <div class="bulk-assign-form-group">
+            <div>
                 <label for="bulkAssignTagInput">Student Tag</label>
                 <input type="text" name="tag" id="bulkAssignTagInput" placeholder="Select a student tag..." />
             </div>
-            <div class="bulk-assign-form-actions">
-                <button type="button" class="btn-outline" onclick="closeBulkAssignModal()">Cancel</button>
-                <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
-                    Assign Task to Group
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+        </div>
+        <div class="tp-dialog-footer">
+            <button type="button" class="btn-outline" onclick="closeBulkAssignModal()">Cancel</button>
+            <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
+                Assign Task to Group
+            </button>
+        </div>
+    </form>
+</dialog>
 {% endblock core %}
