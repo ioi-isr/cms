@@ -192,9 +192,10 @@ def excel_write_training_day_header(
     num_columns: the number of columns to merge for this training day.
     """
     title = excel_build_training_day_title(td)
+    safe_title = excel_safe(title)
     header_fill, _ = excel_get_zebra_fills(td_idx)
 
-    ws.cell(row=1, column=col, value=title)
+    ws.cell(row=1, column=col, value=safe_title)
     ws.cell(row=1, column=col).font = EXCEL_HEADER_FONT_WHITE
     ws.cell(row=1, column=col).fill = header_fill
     ws.cell(row=1, column=col).border = EXCEL_THIN_BORDER
@@ -404,7 +405,7 @@ class ExportCombinedRankingHandler(TrainingProgramFilterMixin, BaseHandler):
             _, subheader_fill = excel_get_zebra_fills(td_idx)
 
             for i, task in enumerate(tasks):
-                cell = ws.cell(row=2, column=col + i, value=task["name"])
+                cell = ws.cell(row=2, column=col + i, value=excel_safe(task["name"]))
                 cell.font = EXCEL_HEADER_FONT
                 cell.fill = subheader_fill
                 cell.border = EXCEL_THIN_BORDER

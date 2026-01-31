@@ -52,17 +52,17 @@ from .studenttask import (
 )
 
 __all__ = [
-    "TrainingProgramStudentsHandler",
+    "AddStudentTaskHandler",
     "AddTrainingProgramStudentHandler",
     "BulkAddTrainingProgramStudentsHandler",
+    "BulkAssignTaskHandler",
+    "RemoveStudentTaskHandler",
     "RemoveTrainingProgramStudentHandler",
     "StudentHandler",
     "StudentTagsHandler",
-    "StudentTasksHandler",
     "StudentTaskSubmissionsHandler",
-    "AddStudentTaskHandler",
-    "RemoveStudentTaskHandler",
-    "BulkAssignTaskHandler",
+    "StudentTasksHandler",
+    "TrainingProgramStudentsHandler",
 ]
 
 
@@ -120,7 +120,8 @@ class AddTrainingProgramStudentHandler(BaseHandler):
 
         try:
             user_id: str = self.get_argument("user_id")
-            assert user_id != "", "Please select a valid user"
+            if not user_id or user_id.strip() == "":
+                raise ValueError("Please select a valid user")
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -487,7 +488,7 @@ class StudentTagsHandler(StudentBaseHandler):
                 self.write({"success": True, "tags": self.student.student_tags})
             else:
                 self.set_status(500)
-                self.write({"error": "Failed to save"})
+                return
 
         except Exception as error:
             self.set_status(400)

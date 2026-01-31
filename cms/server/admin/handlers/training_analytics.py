@@ -522,13 +522,6 @@ class TrainingProgramCombinedRankingDetailHandler(
             for td in archived_training_days:
                 active_students_per_td[td.id] = set()
                 for ranking in td.archived_student_rankings:
-                    student_obj = ranking.student
-                    if (
-                        student_obj
-                        and student_obj.participation
-                        and student_obj.participation.hidden
-                    ):
-                        continue
                     if self._tags_match(ranking.student_tags, student_tags):
                         active_students_per_td[td.id].add(ranking.student_id)
 
@@ -575,13 +568,6 @@ class TrainingProgramCombinedRankingDetailHandler(
 
             # Collect all visible task IDs from filtered students' task_scores keys
             for ranking in td.archived_student_rankings:
-                student_obj = ranking.student
-                if (
-                    student_obj
-                    and student_obj.participation
-                    and student_obj.participation.hidden
-                ):
-                    continue
                 # Apply student tag filter
                 if student_tags:
                     if student_tags_mode == "current":
@@ -742,60 +728,57 @@ class UpdateAttendanceHandler(BaseHandler):
             self.write({"success": False, "error": "Invalid JSON"})
             return
 
-        try:
-            if "justified" in data:
-                justified = data["justified"]
-                if not isinstance(justified, bool):
-                    self.set_status(400)
-                    self.write({"success": False, "error": "Invalid justified flag"})
-                    return
-                if justified and attendance.status != "missed":
-                    self.set_status(400)
-                    self.write(
-                        {
-                            "success": False,
-                            "error": "Only missed attendances can be justified",
-                        }
-                    )
-                    return
-                attendance.justified = justified
+        if "justified" in data:
+            justified = data["justified"]
+            if not isinstance(justified, bool):
+                self.set_status(400)
+                self.write({"success": False, "error": "Invalid justified flag"})
+                return
+            if justified and attendance.status != "missed":
+                self.set_status(400)
+                self.write(
+                    {
+                        "success": False,
+                        "error": "Only missed attendances can be justified",
+                    }
+                )
+                return
+            attendance.justified = justified
 
-            if "comment" in data:
-                comment = data["comment"]
-                if comment is not None:
-                    comment = str(comment).strip()
-                    if not comment:
-                        comment = None
-                attendance.comment = comment
+        if "comment" in data:
+            comment = data["comment"]
+            if comment is not None:
+                comment = str(comment).strip()
+                if not comment:
+                    comment = None
+            attendance.comment = comment
 
-            if "recorded" in data:
-                recorded = data["recorded"]
-                if not isinstance(recorded, bool):
-                    self.set_status(400)
-                    self.write({"success": False, "error": "Invalid recorded flag"})
-                    return
-                if recorded and attendance.status == "missed":
-                    self.set_status(400)
-                    self.write(
-                        {
-                            "success": False,
-                            "error": "Only non-missed attendances can be marked as recorded",
-                        }
-                    )
-                    return
-                attendance.recorded = recorded
+        if "recorded" in data:
+            recorded = data["recorded"]
+            if not isinstance(recorded, bool):
+                self.set_status(400)
+                self.write({"success": False, "error": "Invalid recorded flag"})
+                return
+            if recorded and attendance.status == "missed":
+                self.set_status(400)
+                self.write(
+                    {
+                        "success": False,
+                        "error": "Only non-missed attendances can be marked as recorded",
+                    }
+                )
+                return
+            attendance.recorded = recorded
 
-            if self.try_commit():
-                self.write({
+        if self.try_commit():
+            self.write(
+                {
                     "success": True,
                     "justified": attendance.justified,
                     "comment": attendance.comment,
                     "recorded": attendance.recorded,
-                })
-            else:
-                self.set_status(500)
-                self.write({"success": False, "error": "Failed to save changes"})
-
-        except Exception as error:
-            self.set_status(400)
-            self.write({"error": str(error)})
+                }
+            )
+        else:
+            self.set_status(500)
+            self.write({"success": False, "error": "Failed to save changes"})

@@ -259,6 +259,16 @@ class AddTrainingProgramTaskHandler(BaseHandler):
 
         task = self.safe_get_item(Task, task_id)
 
+        # Verify task is either unassigned or already belongs to this contest
+        if task.contest is not None and task.contest != managing_contest:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid field(s)",
+                "Task already assigned to another contest",
+            )
+            self.redirect(fallback_page)
+            return
+
         task.num = len(managing_contest.tasks)
         task.contest = managing_contest
 
@@ -291,10 +301,15 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
             self.sql_session.flush()
 
             # Reorder remaining tasks in the training day
-            _shift_task_nums(
-                self.sql_session, Task.training_day, training_day,
-                Task.training_day_num, training_day_num, -1
-            )
+            if training_day_num is not None:
+                _shift_task_nums(
+                    self.sql_session,
+                    Task.training_day,
+                    training_day,
+                    Task.training_day_num,
+                    training_day_num,
+                    -1,
+                )
 
         # Remove from training program
         task.contest = None
