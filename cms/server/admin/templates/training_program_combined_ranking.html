@@ -81,7 +81,17 @@ studentAccessibleTasks[{{ td_id }}][{{ student_id }}].push({{ task_id_str }});
 {% endfor %}
 {% endfor %}
 
-{% include 'fragments/histogram_js.html' %}
+// Initialize training program module with histogram data
+CMS.TrainingProgram.init({
+    allStudentTags: allStudentTags,
+    tagsPerTrainingDay: tagsPerTrainingDay,
+    historicalStudentTags: historicalStudentTags,
+    studentData: studentData,
+    trainingDayTasks: trainingDayTasks,
+    studentAccessibleTasks: studentAccessibleTasks,
+    taskMaxScores: {},
+    taskMaxScoresByTrainingDay: taskMaxScoresByTrainingDay
+});
 
 window.showTaskHistogram = function(taskId, taskName, trainingDayId) {
     var scores = [];
@@ -152,18 +162,9 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
 {% block core %}
 
 {% macro render_score_cell(score) %}
-    {#
-       Logic:
-       Red (Hue 0) -> Yellow (Hue 60) -> Green (Hue 120)
-       Cap at 120 for scores > 100
-    #}
     {% set safe_score = score if score else 0 %}
-    {% set hue = (safe_score * 1.2) | int %}
-    {% if hue > 120 %}{% set hue = 120 %}{% endif %}
-    {% if hue < 0 %}{% set hue = 0 %}{% endif %}
-
-    <div class="cell-content"
-         style="background-color: hsl({{ hue }}, 75%, 90%); color: hsl({{ hue }}, 90%, 20%);"
+    <div class="cell-content score-cell"
+         style="--score: {{ safe_score }}"
          title="Score: {{ score }}"
          data-value="{{ score }}">
         {{ "%.1f"|format(score) | replace('.0', '') }}
