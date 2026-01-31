@@ -220,12 +220,21 @@ class RemoveStudentTaskHandler(StudentBaseHandler):
             "training_program", training_program_id, "student", user_id, "tasks"
         )
 
+        # Validate and convert task_id to integer
+        try:
+            task_id_int = int(task_id)
+        except (ValueError, TypeError):
+            raise tornado.web.HTTPError(404)
+
+        # Verify the task exists
+        task = self.safe_get_item(Task, task_id_int)
+
         self.setup_student_context(training_program_id, user_id)
 
         student_task: StudentTask | None = (
             self.sql_session.query(StudentTask)
             .filter(StudentTask.student_id == self.student.id)
-            .filter(StudentTask.task_id == task_id)
+            .filter(StudentTask.task_id == task_id_int)
             .first()
         )
 

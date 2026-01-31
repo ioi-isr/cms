@@ -153,7 +153,7 @@ class TrainingProgramTasksHandler(BaseHandler):
                 e.msg,
                 reorder_data[:500],
             )
-            raise ValueError(f"Invalid JSON in reorder data: {e.msg}")
+            raise ValueError(f"Invalid JSON in reorder data: {e.msg}") from e
 
         if not isinstance(order_list, list):
             raise ValueError("Reorder data must be a list")
@@ -249,7 +249,8 @@ class AddTrainingProgramTaskHandler(BaseHandler):
 
         try:
             task_id: str = self.get_argument("task_id")
-            assert task_id != "null", "Please select a valid task"
+            if task_id is None or task_id == "null" or task_id.strip() == "":
+                raise ValueError("Please select a valid task")
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
@@ -302,10 +303,10 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
         self.sql_session.flush()
 
         # Reorder remaining tasks in the training program
-        _shift_task_nums(
-            self.sql_session, Task.contest, managing_contest,
-            Task.num, task_num, -1
-        )
+        if task_num is not None:
+            _shift_task_nums(
+                self.sql_session, Task.contest, managing_contest, Task.num, task_num, -1
+            )
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()
@@ -380,10 +381,9 @@ class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
         self.sql_session.commit()
 
         # Re-assign task_statuses after commit (SQLAlchemy expired them)
-        if "participation_data" in locals():
-            for p in self.contest.participations:
-                if p.id in participation_data:
-                    p.task_statuses, p.total_score = participation_data[p.id]
+        for p in self.contest.participations:
+            if p.id in participation_data:
+                p.task_statuses, p.total_score = participation_data[p.id]
 
         self.render_params_for_training_program(training_program)
         self.r_params["show_teams"] = show_teams

@@ -30,9 +30,9 @@ from cms.db import (
     TrainingProgram,
     Participation,
     User,
-    Question,
     Student,
     Team,
+    Submission,
 )
 from cms.server.admin.handlers.utils import (
     get_all_student_tags,

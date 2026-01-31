@@ -42,11 +42,11 @@ from cms.db import (
     Task,
     Question,
     Announcement,
-    DelayRequest,
 )
 from cms.server.admin.handlers.utils import (
     get_all_student_tags,
     parse_tags,
+    get_training_day_notifications,
 )
 from cmscommon.datetime import make_datetime
 
@@ -61,20 +61,20 @@ from .trainingprogramtask import (
 )
 
 __all__ = [
-    "TrainingProgramListHandler",
-    "TrainingProgramHandler",
     "AddTrainingProgramHandler",
-    "RemoveTrainingProgramHandler",
-    "TrainingProgramTasksHandler",
     "AddTrainingProgramTaskHandler",
+    "RemoveTrainingProgramHandler",
     "RemoveTrainingProgramTaskHandler",
-    "TrainingProgramRankingHandler",
-    "TrainingProgramSubmissionsHandler",
-    "TrainingProgramAnnouncementsHandler",
     "TrainingProgramAnnouncementHandler",
-    "TrainingProgramQuestionsHandler",
+    "TrainingProgramAnnouncementsHandler",
+    "TrainingProgramHandler",
+    "TrainingProgramListHandler",
     "TrainingProgramOverviewRedirectHandler",
+    "TrainingProgramQuestionsHandler",
+    "TrainingProgramRankingHandler",
     "TrainingProgramResourcesListRedirectHandler",
+    "TrainingProgramSubmissionsHandler",
+    "TrainingProgramTasksHandler",
     "_shift_task_nums",
 ]
 
