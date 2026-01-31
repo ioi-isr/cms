@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% macro task_html(status) -%}
-    {%- if not status.has_submissions -%}
+    {%- if not status.can_access -%}
+        <span class="indicator">🚫</span><span class="score-only">{{ status.score }}{% if status.partial %}*{% endif %}</span>
+    {%- elif not status.has_submissions -%}
         {%- if not status.has_opened -%}
             <span class="indicator">🙈</span><span class="score-only">{{ status.score }}{% if status.partial %}*{% endif %}</span>
         {%- else -%}
@@ -15,27 +17,177 @@
 
 {% block core %}
 <style>
-  #ranking-table .score-only { display: none; }
-  #ranking-table.hide-indicators .indicator { display: none; }
-  #ranking-table.hide-indicators .score-only { display: inline; }
+  .td-ranking-table .score-only { display: none; }
+  .td-ranking-table.hide-indicators .indicator { display: none; }
+  .td-ranking-table.hide-indicators .score-only { display: inline; }
+  .main-group-section { margin-bottom: 30px; }
+  .main-group-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .main-group-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111827;
+  }
+  .export-links { display: flex; gap: 6px; }
+  .export-links a {
+    padding: 2px 6px;
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    text-decoration: none;
+    font-size: 0.75rem;
+  }
+  .export-links a:hover { background: #e5e7eb; }
+  .student-tags { font-size: 0.85em; }
+  .student-tags .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    margin: 1px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border-radius: 3px;
+    font-size: 0.75em;
+  }
 </style>
 <div class="core_title">
   <h1>Ranking</h1>
 </div>
+
+{% if main_groups_data %}
+{# Training day with main groups - show separate tables per group #}
+<label style="margin-bottom: 15px; display: block;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label>
+
+{# Build task index lookup once for all groups #}
+{% set all_tasks = contest.get_tasks() | list %}
+{% set task_index = {} %}
+{% for task in all_tasks %}
+  {% set _ = task_index.update({task.id: loop.index0}) %}
+{% endfor %}
+
+{% for group_data in main_groups_data %}
+{% set group_name = group_data.name %}
+{% set group_participations = group_data.participations %}
+{% set group_tasks = group_data.tasks %}
+
+<div class="main-group-section">
+  <div class="main-group-header">
+    <h2>{{ group_name }}</h2>
+    <div class="export-links">
+      <a href="{{ url("contest", contest.id, "ranking", "csv") }}?main_group={{ group_name | urlencode }}">CSV</a>
+      <a href="{{ url("contest", contest.id, "ranking", "txt") }}?main_group={{ group_name | urlencode }}">TXT</a>
+    </div>
+  </div>
+
+  <table class="bordered td-ranking-table" id="ranking-table-{{ loop.index }}">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>User</th>
+        <th>Tags</th>
+        {% if task_archive_progress_by_participation %}
+        <th data-sort-settings="numeric reversed">Task Archive Progress</th>
+        {% endif %}
+        {% if show_teams %}
+        <th>Team</th>
+        {% endif %}
+        {% for task in group_tasks %}
+        <th data-sort-settings="numeric reversed"><a href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
+        {% endfor %}
+        {% if not task_archive_progress_by_participation %}
+        <th data-sort-settings="numeric reversed">Global</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in group_participations %}
+      <tr>
+        <td><a href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}">{{ p.user.username }}</a> <a href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">[history]</a></td>
+        <td>{{ "%s %s"|format(p.user.first_name, p.user.last_name) }}</td>
+        <td class="student-tags">
+          {% for tag in student_tags_by_participation.get(p.id, []) %}
+            <span class="badge">{{ tag }}</span>
+          {% endfor %}
+        </td>
+        {% if task_archive_progress_by_participation %}
+        {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}
+        <td data-value="{{ progress.get('percentage', 0) }}">{{ "%.1f"|format(progress.get('percentage', 0)) }}% ({{ "%.1f"|format(progress.get('total_score', 0)) }}/{{ "%.1f"|format(progress.get('max_score', 0)) }})</td>
+        {% endif %}
+        {% if show_teams %}
+          {% if p.team %}
+          <td><a href="{{ url("team", p.team_id) }}">{{ p.team.name }}</a></td>
+          {% else %}
+          <td></td>
+          {% endif %}
+        {% endif %}
+        {% set total_score = namespace(value=0.0) %}
+        {% set partial = namespace(value=false) %}
+        {% for task in group_tasks %}
+          {% set idx = task_index[task.id] %}
+          {% set status = p.task_statuses[idx] %}
+          <td data-value="{{ status.score }}">{{ task_html(status) }}</td>
+          {% set total_score.value = total_score.value + status.score %}
+          {% if status.partial %}{% set partial.value = true %}{% endif %}
+        {% endfor %}
+        {% if not task_archive_progress_by_participation %}
+        <td {%- if partial.value %} class="partial" {%- endif -%}>{{ ("%%.%df"|format(contest.score_precision))|format(total_score.value) }}</td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="100%" style="text-align: center; padding: 20px; color: #6b7280;">No students in this group.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+<script>
+  $(document).ready(function() {
+    {% for group_data in main_groups_data %}
+    CMS.AWSUtils.init_table_sort($("#ranking-table-{{ loop.index }}"), true, -1);
+    {% endfor %}
+
+    $(".show-indicators-toggle").on("change", function() {
+      if (this.checked) {
+        $(".td-ranking-table").removeClass("hide-indicators");
+      } else {
+        $(".td-ranking-table").addClass("hide-indicators");
+      }
+    });
+  })
+</script>
+
+{% else %}
+{# Regular contest or training day without groups - show single table #}
 Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>, <a href="{{ url("contest", contest.id, "ranking", "txt") }}">text</a>.
-<label style="margin-left: 20px;"><input type="checkbox" id="show-indicators" checked> Show indicators</label>
-<table id="ranking-table" class="bordered">
+<label style="margin-left: 20px;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label>
+<table id="ranking-table" class="bordered td-ranking-table">
   <thead>
     <tr>
       <th>Username</th>
       <th>User</th>
+      {% if student_tags_by_participation %}
+      <th>Tags</th>
+      {% endif %}
+      {% if task_archive_progress_by_participation %}
+      <th data-sort-settings="numeric reversed">Task Archive Progress</th>
+      {% endif %}
       {% if show_teams %}
       <th>Team</th>
       {% endif %}
-      {% for task in contest.tasks %}
+      {% for task in contest.get_tasks() %}
       <th data-sort-settings="numeric reversed"><a href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
       {% endfor %}
+      {% if not task_archive_progress_by_participation %}
       <th data-sort-settings="numeric reversed">Global</th>
+      {% endif %}
     </tr>
   </thead>
   <tbody>
@@ -47,6 +199,24 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
     <tr>
       <td><a href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}">{{ p.user.username }}</a> <a href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">[history]</a></td>
       <td>{{ "%s %s"|format(p.user.first_name, p.user.last_name) }}</td>
+      {% if student_tags_by_participation %}
+      <td class="student-tags">
+        {% for tag in student_tags_by_participation.get(p.id, []) %}
+          <span class="badge">{{ tag }}</span>
+        {% endfor %}
+      </td>
+      {% endif %}
+      {% if task_archive_progress_by_participation %}
+      {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}
+      {% set details_url = url("training_program", training_program.id, "student", p.user.id, "tasks") %}
+      <td data-value="{{ progress.get('percentage', 0) }}">
+        {% if progress.get('task_count', 0) > 0 %}
+        {{ "%.1f"|format(progress.get('percentage', 0)) }}% ({{ "%.1f"|format(progress.get('total_score', 0)) }}/{{ "%.1f"|format(progress.get('max_score', 0)) }}) [<a href="{{ details_url }}">details</a>]
+        {% else %}
+        No tasks [<a href="{{ details_url }}">details</a>]
+        {% endif %}
+      </td>
+      {% endif %}
       {% if show_teams %}
         {% if p.team %}
         <td><a href="{{ url("team", p.team_id) }}">{{ p.team.name }}</a></td>
@@ -55,10 +225,12 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
         {% endif %}
       {% endif %}
       {% for status in p.task_statuses %}
-      <td>{{ task_html(status) }}</td>
+      <td data-value="{{ status.score }}">{{ task_html(status) }}</td>
       {% endfor %}
+      {% if not task_archive_progress_by_participation %}
       {% set total_score, partial = p.total_score %}
       <td {%- if partial %} class="partial" {%- endif -%}>{{ total_score }}</td>
+      {% endif %}
     </tr>
       {% endif %}
     {% endfor %}
@@ -67,8 +239,8 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
 <script>
   $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#ranking-table"), true, -1);
-    
-    $("#show-indicators").on("change", function() {
+
+    $(".show-indicators-toggle").on("change", function() {
       if (this.checked) {
         $("#ranking-table").removeClass("hide-indicators");
       } else {
@@ -77,4 +249,5 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
     });
   })
 </script>
+{% endif %}
 {% endblock core %}

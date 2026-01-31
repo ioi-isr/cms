@@ -42,6 +42,7 @@ import tornado.web
 
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cms.grading.scoretypes import ScoreTypeGroup
+from cms.server.admin.handlers.utils import parse_tags
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
 from cms.grading.subtask_validation import get_running_validator_ids
@@ -113,7 +114,12 @@ class TaskHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, task_id):
         task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
+        # If the task is assigned to an active training day (not archived),
+        # show the training day's contest sidebar instead of the training program sidebar
+        if task.training_day is not None and task.training_day.contest is not None:
+            self.contest = task.training_day.contest
+        else:
+            self.contest = task.contest
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
@@ -229,6 +235,13 @@ class TaskHandler(BaseHandler):
             self.get_int(attrs, "score_precision")
 
             self.get_string(attrs, "score_mode")
+
+            # Process visible_to_tags for training day tasks
+            # Only update if the parameter is explicitly present in the request
+            # (to avoid clobbering when editing from the general task page)
+            visible_to_tags_str = self.get_argument("visible_to_tags", None)
+            if visible_to_tags_str is not None:
+                attrs["visible_to_tags"] = parse_tags(visible_to_tags_str)
 
             # Update the task.
             task.set_attrs(attrs)
@@ -707,9 +720,18 @@ class DefaultSubmissionFormatHandler(BaseHandler):
 
         try:
             task.set_default_output_only_submission_format()
-        except Exception as e:
-            raise RuntimeError(
-                f"Couldn't create default submission format for task {task.id}") from e
+        except Exception:
+            logger.error(
+                "Couldn't create default submission format for task %s "
+                "(dataset %s, type %s)",
+                task.id,
+                task.active_dataset.id,
+                task.active_dataset.task_type,
+                exc_info=True
+            )
+            raise tornado.web.HTTPError(
+                500, f"Couldn't create default submission format for task {task.id}"
+            )
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()

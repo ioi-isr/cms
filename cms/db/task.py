@@ -47,9 +47,10 @@ import typing
 if typing.TYPE_CHECKING:
     from cms.grading.scoretypes import ScoreType
     from cms.grading.tasktypes import TaskType
-    from . import Submission, UserTest
+    from . import Submission, UserTest, TrainingDay
     from .scorecache import ParticipationTaskScore
     from .modelsolution import ModelSolutionMeta
+    from .student_task import StudentTask
 
 
 class Task(Base):
@@ -60,6 +61,7 @@ class Task(Base):
     __table_args__ = (
         UniqueConstraint('contest_id', 'num'),
         UniqueConstraint('contest_id', 'name'),
+        UniqueConstraint('training_day_id', 'training_day_num'),
         ForeignKeyConstraint(
             ("id", "active_dataset_id"),
             ("datasets.task_id", "datasets.id"),
@@ -96,6 +98,35 @@ class Task(Base):
     contest: Contest | None = relationship(
         Contest,
         back_populates="tasks")
+
+    # Training day (id and object) that this task is assigned to.
+    # Tasks belong to a Contest (via contest_id) which is the training program's
+    # managing contest. They can also be assigned to a TrainingDay (via
+    # training_day_id) to appear in that training day's contest.
+    # A task can be assigned to at most one training day at a time.
+    training_day_id: int | None = Column(
+        Integer,
+        ForeignKey("training_days.id",
+                   onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        index=True)
+    training_day: "TrainingDay | None" = relationship(
+        "TrainingDay",
+        back_populates="tasks")
+
+    # Number of the task within the training day for sorting.
+    # This is separate from 'num' which is used for contest ordering.
+    training_day_num: int | None = Column(
+        Integer,
+        nullable=True)
+
+    # Tags that control which students can see this task.
+    # If empty, the task is visible to all students.
+    # If set, only students with at least one matching tag can see the task.
+    visible_to_tags: list[str] = Column(
+        ARRAY(Unicode),
+        nullable=False,
+        default=[])
 
     # Short name and long human readable title of the task.
     name: str = Column(
@@ -290,6 +321,12 @@ class Task(Base):
 
     participation_scores: list["ParticipationTaskScore"] = relationship(
         "ParticipationTaskScore",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="task")
+
+    student_tasks: list["StudentTask"] = relationship(
+        "StudentTask",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="task")

@@ -37,6 +37,7 @@ from .contest import \
 from .contestannouncement import \
     AddAnnouncementHandler, \
     AnnouncementHandler, \
+    ContestAnnouncementsHandler, \
     EditAnnouncementHandler
 from .contestquestion import \
     QuestionsHandler, \
@@ -62,7 +63,8 @@ from .contestsubmission import \
     ContestUserTestsHandler
 from .contesttask import \
     ContestTasksHandler, \
-    AddContestTaskHandler
+    AddContestTaskHandler, \
+    TaskVisibilityHandler
 from .contestuser import \
     ContestUsersHandler, \
     RemoveParticipationHandler, \
@@ -115,7 +117,9 @@ from .submission import \
 from .submissiondownload import \
     DownloadTaskSubmissionsHandler, \
     DownloadUserContestSubmissionsHandler, \
-    DownloadContestSubmissionsHandler
+    DownloadContestSubmissionsHandler, \
+    DownloadTrainingProgramSubmissionsHandler, \
+    DownloadTrainingProgramStudentSubmissionsHandler
 from .task import (
     AddTaskHandler,
     TaskHandler,
@@ -166,7 +170,53 @@ from .folder import \
     RemoveFolderHandler
 from .export_handlers import \
     ExportTaskHandler, \
-    ExportContestHandler
+    ExportContestHandler, \
+    ExportTrainingProgramHandler
+from .trainingprogram import \
+    TrainingProgramListHandler, \
+    TrainingProgramHandler, \
+    AddTrainingProgramHandler, \
+    RemoveTrainingProgramHandler, \
+    TrainingProgramTasksHandler, \
+    AddTrainingProgramTaskHandler, \
+    RemoveTrainingProgramTaskHandler, \
+    TrainingProgramRankingHandler, \
+    TrainingProgramSubmissionsHandler, \
+    TrainingProgramAnnouncementsHandler, \
+    TrainingProgramAnnouncementHandler, \
+    TrainingProgramQuestionsHandler, \
+    TrainingProgramOverviewRedirectHandler, \
+    TrainingProgramResourcesListRedirectHandler
+from .trainingday import \
+    TrainingProgramTrainingDaysHandler, \
+    AddTrainingDayHandler, \
+    RemoveTrainingDayHandler, \
+    AddTrainingDayGroupHandler, \
+    UpdateTrainingDayGroupsHandler, \
+    RemoveTrainingDayGroupHandler, \
+    TrainingDayTypesHandler, \
+    ScoreboardSharingHandler
+from .student import \
+    TrainingProgramStudentsHandler, \
+    AddTrainingProgramStudentHandler, \
+    BulkAddTrainingProgramStudentsHandler, \
+    RemoveTrainingProgramStudentHandler, \
+    StudentHandler, \
+    StudentTagsHandler, \
+    StudentTasksHandler, \
+    StudentTaskSubmissionsHandler, \
+    AddStudentTaskHandler, \
+    RemoveStudentTaskHandler, \
+    BulkAssignTaskHandler
+from .archive import \
+    ArchiveTrainingDayHandler, \
+    TrainingProgramAttendanceHandler, \
+    TrainingProgramCombinedRankingHandler, \
+    TrainingProgramCombinedRankingHistoryHandler, \
+    TrainingProgramCombinedRankingDetailHandler, \
+    UpdateAttendanceHandler, \
+    ExportAttendanceHandler, \
+    ExportCombinedRankingHandler
 
 
 HANDLERS = [
@@ -207,6 +257,7 @@ HANDLERS = [
 
     (r"/contest/([0-9]+)/tasks", ContestTasksHandler),
     (r"/contest/([0-9]+)/tasks/add", AddContestTaskHandler),
+    (r"/contest/([0-9]+)/task_visibility/([0-9]+)", TaskVisibilityHandler),
 
     # Contest's submissions / user tests
 
@@ -217,7 +268,7 @@ HANDLERS = [
 
     # Contest's announcements
 
-    (r"/contest/([0-9]+)/announcements", SimpleContestHandler("announcements.html")),
+    (r"/contest/([0-9]+)/announcements", ContestAnnouncementsHandler),
     (r"/contest/([0-9]+)/announcements/add", AddAnnouncementHandler),
     (r"/contest/([0-9]+)/announcements/edit/([0-9]+)", EditAnnouncementHandler),
     (r"/contest/([0-9]+)/announcement/([0-9]+)", AnnouncementHandler),
@@ -319,6 +370,57 @@ HANDLERS = [
     (r"/folders/([0-9]+)/remove", RemoveFolderHandler),
     (r"/folders/add", AddFolderHandler),
     (r"/folder/([0-9]+)", FolderHandler),
+
+    # Training Programs
+    (r"/training_programs", TrainingProgramListHandler),
+    (r"/training_programs/([0-9]+)/remove", RemoveTrainingProgramHandler),
+    (r"/training_programs/add", AddTrainingProgramHandler),
+    (r"/training_program/([0-9]+)", TrainingProgramHandler),
+    (r"/training_program/([0-9]+)/export", ExportTrainingProgramHandler),
+
+    # Training Program tabs
+    (r"/training_program/([0-9]+)/students", TrainingProgramStudentsHandler),
+    (r"/training_program/([0-9]+)/students/add", AddTrainingProgramStudentHandler),
+    (r"/training_program/([0-9]+)/students/bulk_add", BulkAddTrainingProgramStudentsHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/remove", RemoveTrainingProgramStudentHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/edit", StudentHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/tags", StudentTagsHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/tasks", StudentTasksHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/tasks/add", AddStudentTaskHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/task/([0-9]+)/remove", RemoveStudentTaskHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/task/([0-9]+)/submissions", StudentTaskSubmissionsHandler),
+    (r"/training_program/([0-9]+)/bulk_assign_task", BulkAssignTaskHandler),
+    (r"/training_program/([0-9]+)/tasks", TrainingProgramTasksHandler),
+    (r"/training_program/([0-9]+)/tasks/add", AddTrainingProgramTaskHandler),
+    (r"/training_program/([0-9]+)/task/([0-9]+)/remove", RemoveTrainingProgramTaskHandler),
+    (r"/training_program/([0-9]+)/ranking", TrainingProgramRankingHandler),
+    (r"/training_program/([0-9]+)/ranking/([a-z]+)", TrainingProgramRankingHandler),
+    (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
+    (r"/training_program/([0-9]+)/submissions/download", DownloadTrainingProgramSubmissionsHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/submissions/download", DownloadTrainingProgramStudentSubmissionsHandler),
+    (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
+    (r"/training_program/([0-9]+)/announcement/([0-9]+)", TrainingProgramAnnouncementHandler),
+    (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
+    (r"/training_program/([0-9]+)/training_days", TrainingProgramTrainingDaysHandler),
+    (r"/training_program/([0-9]+)/training_days/add", AddTrainingDayHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/remove", RemoveTrainingDayHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/types", TrainingDayTypesHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/scoreboard_sharing", ScoreboardSharingHandler),
+    (r"/training_program/([0-9]+)/training_day/([0-9]+)/archive", ArchiveTrainingDayHandler),
+    (r"/training_program/([0-9]+)/attendance", TrainingProgramAttendanceHandler),
+    (r"/training_program/([0-9]+)/attendance/export", ExportAttendanceHandler),
+    (r"/training_program/([0-9]+)/attendance/([0-9]+)", UpdateAttendanceHandler),
+    (r"/training_program/([0-9]+)/combined_ranking", TrainingProgramCombinedRankingHandler),
+    (r"/training_program/([0-9]+)/combined_ranking/export", ExportCombinedRankingHandler),
+    (r"/training_program/([0-9]+)/combined_ranking/history", TrainingProgramCombinedRankingHistoryHandler),
+    (r"/training_program/([0-9]+)/student/([0-9]+)/combined_ranking_detail", TrainingProgramCombinedRankingDetailHandler),
+    (r"/training_program/([0-9]+)/overview", TrainingProgramOverviewRedirectHandler),
+    (r"/training_program/([0-9]+)/resourceslist", TrainingProgramResourcesListRedirectHandler),
+
+    # Training day groups (main groups configuration on contest page)
+    (r"/contest/([0-9]+)/training_day_group/add", AddTrainingDayGroupHandler),
+    (r"/contest/([0-9]+)/training_day_groups/update", UpdateTrainingDayGroupsHandler),
+    (r"/contest/([0-9]+)/training_day_group/([0-9]+)/remove", RemoveTrainingDayGroupHandler),
 
     # Admins
 

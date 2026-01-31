@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="content-constraint" style="max-width: 600px;">
+    <!-- Header -->
+    <div class="page-title">
+        <h1>Create Training Program</h1>
+        <div class="page-subtitle">Set up a new training season with students and tasks</div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="tp-form-card">
+        <form action="{{ url("training_programs", "add") }}" method="POST" name="add_training_program">
+            {{ xsrf_form_html|safe }}
+
+            <div class="tp-form-group">
+                <label class="tp-form-label" for="name">
+                    Program Name
+                    <span class="tp-form-required">*</span>
+                </label>
+                <input type="text" id="name" name="name" class="tp-form-input" placeholder="e.g., training2025" required />
+                <div class="tp-form-hint">A codename for the training program. A managing contest named "__name" will be created automatically.</div>
+            </div>
+
+            <div class="tp-form-group">
+                <label class="tp-form-label" for="description">Description</label>
+                <input type="text" id="description" name="description" class="tp-form-input" placeholder="e.g., Training Season 2025" />
+                <div class="tp-form-hint">Human-readable description (defaults to name if empty)</div>
+            </div>
+
+            <div class="tp-form-row">
+                <div class="tp-form-group">
+                    <label class="tp-form-label" for="start">Start Date</label>
+                    <input type="datetime-local" id="start" name="start" class="tp-form-input" />
+                    <div class="tp-form-hint">When the program starts</div>
+                </div>
+                <div class="tp-form-group">
+                    <label class="tp-form-label" for="stop">End Date</label>
+                    <input type="datetime-local" id="stop" name="stop" class="tp-form-input" />
+                    <div class="tp-form-hint">When the program ends</div>
+                </div>
+            </div>
+
+            <div class="tp-form-actions">
+                <a href="{{ url("training_programs") }}" class="tp-btn-secondary">Cancel</a>
+                <div class="tp-form-submit-group">
+                    <button type="submit" name="operation" value="Create and add another" class="tp-btn-secondary">
+                        Create & Add Another
+                    </button>
+                    <button type="submit" name="operation" value="Create" class="tp-btn-primary">
+                        Create Program
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+CMS.AWSUtils.initDateTimeValidation(
+  'form[name="add_training_program"]',
+  'input[name="start"]',
+  'input[name="stop"]'
+);
+</script>
+
+{% endblock core %}

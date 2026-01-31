@@ -29,11 +29,11 @@
 
 """
 
-import json
 import logging
 import traceback
 
 import collections
+from sqlalchemy import not_
 
 from cms.db.user import Participation
 
@@ -47,11 +47,11 @@ import tornado.web
 from werkzeug.datastructures import LanguageAccept
 from werkzeug.http import parse_accept_header
 
-from cms.db import Contest
-from cms.server.util import exclude_internal_contests
+from cms.db import Contest, TrainingProgram
 from cms.db.contest_folder import ContestFolder
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
 from cms.server import CommonRequestHandler
+from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import utc as utc_tzinfo
 import typing
 
@@ -64,32 +64,32 @@ logger = logging.getLogger(__name__)
 
 def parse_ip_list(ip_string):
     """Parse a comma-separated string of IP addresses into a list.
-    
+
     Args:
         ip_string (str|None): Comma-separated IP addresses
-    
+
     Returns:
         list[str]: List of IP addresses, with whitespace stripped
     """
     if not ip_string:
         return []
-    return [ip.strip() for ip in ip_string.split(',') if ip.strip()]
+    return [ip.strip() for ip in ip_string.split(",") if ip.strip()]
 
 
 def add_ip_to_list(ip_string, new_ip):
     """Add an IP address to a comma-separated list if not already present.
-    
+
     Args:
         ip_string (str|None): Existing comma-separated IP addresses
         new_ip (str): New IP address to add
-    
+
     Returns:
         str: Updated comma-separated IP addresses
     """
     ips = parse_ip_list(ip_string)
     if new_ip not in ips:
         ips.append(new_ip)
-    return ', '.join(ips)
+    return ", ".join(ips)
 
 
 class BaseHandler(CommonRequestHandler):
@@ -98,6 +98,7 @@ class BaseHandler(CommonRequestHandler):
     This will also handle the contest list on the homepage.
 
     """
+
     current_user: Participation | None
     service: "ContestWebServer"
     api_request: bool
@@ -125,9 +126,7 @@ class BaseHandler(CommonRequestHandler):
             self.write(chunk)
 
     def prepare(self):
-        """This method is executed at the beginning of each request.
-
-        """
+        """This method is executed at the beginning of each request."""
         super().prepare()
         self.setup_locale()
 
@@ -135,21 +134,20 @@ class BaseHandler(CommonRequestHandler):
         lang_codes = list(self.available_translations.keys())
 
         browser_langs = parse_accept_header(
-            self.request.headers.get("Accept-Language", ""),
-            LanguageAccept).values()
+            self.request.headers.get("Accept-Language", ""), LanguageAccept
+        ).values()
         automatic_lang = choose_language_code(browser_langs, lang_codes)
         if automatic_lang is None:
             automatic_lang = lang_codes[0]
-        self.automatic_translation = \
-            self.available_translations[automatic_lang]
+        self.automatic_translation = self.available_translations[automatic_lang]
 
         cookie_lang = self.get_cookie("language", None)
         if cookie_lang is not None:
-            chosen_lang = \
-                choose_language_code([cookie_lang, automatic_lang], lang_codes)
+            chosen_lang = choose_language_code(
+                [cookie_lang, automatic_lang], lang_codes
+            )
             if chosen_lang == cookie_lang:
-                self.cookie_translation = \
-                    self.available_translations[cookie_lang]
+                self.cookie_translation = self.available_translations[cookie_lang]
         else:
             chosen_lang = automatic_lang
         self.translation = self.available_translations[chosen_lang]
@@ -188,19 +186,32 @@ class BaseHandler(CommonRequestHandler):
         return ret
 
     def write_error(self, status_code, **kwargs):
-        if "exc_info" in kwargs and \
-                kwargs["exc_info"][0] != tornado.web.HTTPError:
+        error_message = None
+        if "exc_info" in kwargs:
             exc_info = kwargs["exc_info"]
-            logger.error(
-                "Uncaught exception (%r) while processing a request: %s",
-                exc_info[1], ''.join(traceback.format_exception(*exc_info)))
+            if exc_info[0] == tornado.web.HTTPError:
+                # Extract the reason/log_message from HTTPError
+                http_error = exc_info[1]
+                if http_error.log_message:
+                    error_message = http_error.log_message
+            else:
+                logger.error(
+                    "Uncaught exception (%r) while processing a request: %s",
+                    exc_info[1],
+                    "".join(traceback.format_exception(*exc_info)),
+                )
 
         # We assume that if r_params is defined then we have at least
         # the data we need to display a basic template with the error
         # information. If r_params is not defined (i.e. something went
         # *really* bad) we simply return a basic textual error notice.
         if self.r_params is not None:
-            self.render("error.html", status_code=status_code, **self.r_params)
+            self.render(
+                "error.html",
+                status_code=status_code,
+                error_message=error_message,
+                **self.r_params,
+            )
         else:
             self.write("A critical error has occurred :-(")
             self.finish()
@@ -220,9 +231,9 @@ class BaseHandler(CommonRequestHandler):
         if arg == "":
             return default
 
-        if arg == '0':
+        if arg == "0":
             return False
-        elif arg == '1':
+        elif arg == "1":
             return True
         else:
             raise ValueError(f"Cannot parse boolean argument {name}")
@@ -240,16 +251,24 @@ class ContestFolderBrowseHandler(BaseHandler):
     Renders a listing of subfolders and contests under a given folder path.
     If no path is provided, lists root folders and contests without folder.
     """
-    
+
     def _build_folder_tree(self) -> dict:
         """Build complete folder tree with contests for client-side navigation.
-        
+
         Excludes hidden folders and their descendants from the tree.
+        Also excludes training day contests (contests that belong to a training day).
         """
-        all_folders = self.sql_session.query(ContestFolder).filter(ContestFolder.hidden == False).all()
-        all_contests = exclude_internal_contests(
-            self.sql_session.query(Contest)
-        ).order_by(Contest.name).all()
+        all_folders = (
+            self.sql_session.query(ContestFolder)
+            .filter(not_(ContestFolder.hidden))
+            .all()
+        )
+        all_contests = (
+            exclude_internal_contests(self.sql_session.query(Contest))
+            .filter(~Contest.training_day.has())
+            .order_by(Contest.name)
+            .all()
+        )
 
         folder_map = {}
         for folder in all_folders:
@@ -259,31 +278,31 @@ class ContestFolderBrowseHandler(BaseHandler):
                 "description": folder.description,
                 "parent_id": folder.parent_id,
                 "children": [],
-                "contests": []
+                "contests": [],
             }
-        
+
         for contest in all_contests:
             contest_data = {
                 "name": contest.name,
                 "description": contest.description,
-                "stop": contest.stop.isoformat() if contest.stop else None
+                "stop": contest.stop.isoformat() if contest.stop else None,
             }
             if contest.folder_id and contest.folder_id in folder_map:
                 folder_map[contest.folder_id]["contests"].append(contest_data)
             elif not contest.folder_id:
                 folder_map.setdefault(None, {"children": [], "contests": []})
                 folder_map[None]["contests"].append(contest_data)
-        
+
         for folder in all_folders:
             if folder.parent_id and folder.parent_id in folder_map:
                 folder_map[folder.parent_id]["children"].append(folder_map[folder.id])
             elif not folder.parent_id:
                 folder_map.setdefault(None, {"children": [], "contests": []})
                 folder_map[None]["children"].append(folder_map[folder.id])
-        
+
         root = folder_map.get(None, {"children": [], "contests": []})
         return root
-    
+
     def get(self, path: str | None = None):
         self.r_params = self.render_params()
 
@@ -298,7 +317,7 @@ class ContestFolderBrowseHandler(BaseHandler):
                     self.sql_session.query(ContestFolder)
                     .filter(ContestFolder.name == seg)
                     .filter(ContestFolder.parent == parent)
-                    .filter(ContestFolder.hidden == False)
+                    .filter(not_(ContestFolder.hidden))
                     .first()
                 )
                 if cur_folder is None:
@@ -309,30 +328,47 @@ class ContestFolderBrowseHandler(BaseHandler):
             cur_folder = None
 
         # Subfolders (exclude hidden folders)
+        # Contests exclude managing contests (starting with __) and training day contests
         if cur_folder is None:
             subfolders = (
                 self.sql_session.query(ContestFolder)
                 .filter(ContestFolder.parent_id.is_(None))
-                .filter(ContestFolder.hidden == False)
+                .filter(not_(ContestFolder.hidden))
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = exclude_internal_contests(
-                self.sql_session.query(Contest)
-                .filter(Contest.folder_id.is_(None))
-            ).all()
+            contests = (
+                exclude_internal_contests(
+                    self.sql_session.query(Contest).filter(Contest.folder_id.is_(None))
+                )
+                .filter(~Contest.training_day.has())
+                .all()
+            )
         else:
             subfolders = (
                 self.sql_session.query(ContestFolder)
                 .filter(ContestFolder.parent == cur_folder)
-                .filter(ContestFolder.hidden == False)
+                .filter(not_(ContestFolder.hidden))
                 .order_by(ContestFolder.name)
                 .all()
             )
-            contests = exclude_internal_contests(
-                self.sql_session.query(Contest)
-                .filter(Contest.folder == cur_folder)
-            ).all()
+            contests = (
+                exclude_internal_contests(
+                    self.sql_session.query(Contest).filter(Contest.folder == cur_folder)
+                )
+                .filter(~Contest.training_day.has())
+                .all()
+            )
+
+        # Query training programs (only at root level, not in folders)
+        if cur_folder is None:
+            training_programs = (
+                self.sql_session.query(TrainingProgram)
+                .order_by(TrainingProgram.name)
+                .all()
+            )
+        else:
+            training_programs = []
 
         # Build url helper for folder/contest entries
         def folder_href(f: ContestFolder) -> str:
@@ -343,6 +379,10 @@ class ContestFolderBrowseHandler(BaseHandler):
             # nested paths by capturing full path but resolve by last segment.
             return self.url(*[bf.name for bf in breadcrumbs], c.name)
 
+        def training_program_href(tp: TrainingProgram) -> str:
+            # Training programs are accessed by their name directly
+            return self.url(tp.name)
+
         folder_tree = self._build_folder_tree()
 
         self.render(
@@ -350,8 +390,10 @@ class ContestFolderBrowseHandler(BaseHandler):
             breadcrumbs=breadcrumbs,
             subfolders=subfolders,
             contests=contests,
+            training_programs=training_programs,
             folder_href=folder_href,
             contest_href=contest_href,
+            training_program_href=training_program_href,
             folder_tree=folder_tree,
             current_path=path or "",
             **self.r_params,

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import 'macro/question.html' as macro_question with context %}
+{% import 'fragments/info_alert.html' as info_alert %}
 
 {% block js_init %}
 
@@ -11,6 +12,31 @@ utils.show_page("questions", 1);
 <div class="core_title">
   <h1>Questions</h1>
 </div>
+
+{% if training_program is defined %}
+{{ info_alert.alert(
+    title="Training Program Questions",
+    message="This page only handles questions for the training program. For training day questions, go to the appropriate training day's questions page.",
+    type="info"
+) }}
+
+{% if training_days_with_unanswered_questions %}
+{% set unanswered_items = [] %}
+{% for td_info in training_days_with_unanswered_questions %}
+{% set _ = unanswered_items.append({
+    'url': url("contest", td_info.contest_id, "questions"),
+    'label': td_info.name,
+    'count': td_info.unanswered_count
+}) %}
+{% endfor %}
+{{ info_alert.alert(
+    title="Unanswered Questions",
+    message="The following training days have unanswered questions:",
+    items=unanswered_items,
+    type="warning"
+) }}
+{% endif %}
+{% endif %}
 
 {% if questions != [] %}
 <div id="questions" class="notifications">

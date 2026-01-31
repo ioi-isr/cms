@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Archive Training Day: {{ contest.name }}</h1>
+</div>
+
+<p>
+  <a href="{{ url("training_program", training_program.id, "training_days") }}">&larr; Back to training days</a>
+</p>
+
+<div class="notification notification_warning">
+  <strong>Warning:</strong> Archiving a training day will:
+  <ul>
+    <li>Extract and save attendance data (participation status, location, delay time, delay reasons)</li>
+    <li>Extract and save ranking data (scores, score history)</li>
+    <li>Save the training day name and description</li>
+    <li><strong>Delete the contest and all participations permanently</strong></li>
+  </ul>
+  This action cannot be undone.
+</div>
+
+<form action="{{ url("training_program", training_program.id, "training_day", training_day.id, "archive") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+
+  <h2>Select Class IPs</h2>
+  <p>
+    Select the IP addresses that correspond to the classroom. Students who participated from these IPs
+    will be marked as "class", others as "home". If a student used both class and non-class IPs,
+    they will be marked as "both".
+  </p>
+
+  {% if shared_ips %}
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Select</th>
+        <th>IP Address</th>
+        <th>Student Count</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ip, count in shared_ips.items() | sort(attribute='1', reverse=true) %}
+      <tr>
+        <td>
+          <input type="checkbox" name="class_ips" value="{{ ip }}" />
+        </td>
+        <td>{{ ip }}</td>
+        <td>{{ count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p><em>No shared IP addresses found (no IP with more than one student).</em></p>
+  {% endif %}
+
+  <h2>Confirm Archive</h2>
+
+  {% if users_not_finished %}
+  <div class="notification notification_warning" style="margin-bottom: 15px;">
+    <p><strong>Warning: Some students can still start or are currently in the training!</strong></p>
+    <p>The following {{ users_not_finished|length }} student(s) have not finished or missed the training yet:</p>
+    <ul style="margin-top: 8px; margin-bottom: 8px;">
+      {% for item in users_not_finished %}
+      <li>
+        <strong>{{ item.participation.user.first_name }} {{ item.participation.user.last_name }}</strong>
+        ({{ item.participation.user.username }}) - {{ item.status_label }}
+      </li>
+      {% endfor %}
+    </ul>
+    <p>Archiving now will mark these students as "missed" and they will not be able to participate.</p>
+  </div>
+  {% endif %}
+
+  <p>
+    <label>
+      <input type="checkbox" name="confirm_archive" required />
+      I understand this action is irreversible and will permanently delete the contest
+    </label>
+  </p>
+  <p>
+    <input type="submit" value="Archive Training Day"
+{% if not admin.permission_all %}
+           disabled
+{% endif %}
+    />
+  </p>
+</form>
+{% endblock core %}

@@ -62,10 +62,14 @@ $(document).ready(function () {
                     </p>
 {% endif %}
 {% if participation is defined %}
+    {% if contest.training_day is not none %}
+                    <a href="/{{ contest.training_day.training_program.name }}/training_overview" class="btn btn-warning navbar-btn pull-right" style="margin-left: 10px;">{% trans %}Back to Training Program{% endtrans %}</a>
+    {% else %}
                     <form action="{{ contest_url("logout") }}" method="POST" class="navbar-form pull-right">
                         {{ xsrf_form_html|safe }}
                         <button type="submit" class="btn btn-warning">{% trans %}Logout{% endtrans %}</button>
                     </form>
+    {% endif %}
                     <p class="navbar-text pull-right">
                         {% trans first_name=user.first_name,
                                  last_name=user.last_name,
@@ -180,8 +184,13 @@ $(document).ready(function () {
                                     <span id="unread_count" class="label label-warning no_unread"></span>
                                 </a>
                             </li>
-    {% if (actual_phase >= 0 and participation.starting_time is not none) or participation.unrestricted %}
-        {% for t_iter in contest.tasks %}
+    {% if training_program is not none %}
+                            <li{% if page == "training_days" %} class="active"{% endif %}>
+                                <a href="{{ contest_url("training_days") }}">{% trans %}Training Days{% endtrans %}</a>
+                            </li>
+    {% endif %}
+    {% if training_program is none and ((actual_phase >= 0 and participation.starting_time is not none) or participation.unrestricted) %}
+        {% for t_iter in visible_tasks %}
                             <li class="nav-header">
                                 {{ t_iter.name }}
                             </li>

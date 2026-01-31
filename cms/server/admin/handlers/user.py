@@ -34,11 +34,12 @@ import re
 from datetime import date
 
 from sqlalchemy import and_, exists
-from cms.db import Contest, Participation, Submission, Team, User
+from cms.db import Contest, Participation, Submission, Team, User, TrainingDay, TrainingProgram
 from cms.server.picture_utils import (
     process_picture_upload, PictureValidationError
 )
 from cms.server.util import exclude_internal_contests, validate_date_of_birth
+from cms.server.util import exclude_internal_contests
 from cmscommon.crypto import (parse_authentication,
                               hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime
@@ -193,11 +194,35 @@ class UserHandler(BaseHandler, UserValidationMixin):
 
         self.r_params = self.render_params()
         self.r_params["user"] = user
-        self.r_params["participations"] = (
-            self.sql_session.query(Participation)
-            .filter(Participation.user == user)
+
+        # Get all participations and separate them into categories
+        all_participations = self.sql_session.query(Participation)\
+            .filter(Participation.user == user)\
             .all()
-        )
+
+        # Separate participations into:
+        # 1. Training program participations (managing contest)
+        # 2. Training day participations (hidden from list)
+        # 3. Regular contest participations
+        training_program_participations = []
+        regular_participations = []
+
+        for p in all_participations:
+            # Check if this is a training program's managing contest
+            if p.contest.training_program is not None:
+                training_program_participations.append(p)
+            # Check if this is a training day contest (hide from list)
+            elif p.contest.training_day is not None:
+                # Skip training day participations - they're managed via training program
+                pass
+            else:
+                regular_participations.append(p)
+
+        self.r_params["participations"] = regular_participations
+        self.r_params["training_program_participations"] = training_program_participations
+
+        # Filter out training day contests and managing contests from unassigned list
+        # (users should be added to training programs via the training program UI)
         self.r_params["unassigned_contests"] = exclude_internal_contests(
             self.sql_session.query(Contest).filter(
                 ~exists().where(
@@ -206,6 +231,12 @@ class UserHandler(BaseHandler, UserValidationMixin):
                         Participation.user == user,
                     )
                 )
+            ).filter(
+                # Exclude training day contests
+                ~exists().where(TrainingDay.contest_id == Contest.id)
+            ).filter(
+                # Exclude managing contests (training program contests)
+                ~exists().where(TrainingProgram.managing_contest_id == Contest.id)
             )
         ).all()
         self.render("user.html", **self.r_params)

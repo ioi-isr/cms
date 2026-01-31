@@ -1,22 +1,61 @@
 {% extends "base.html" %}
 
+{% block js_init %}
+{% if is_training_day %}
+CMS.AWSUtils.initTagify({
+    inputSelector: '.task-visibility-tags',
+    whitelist: {{ all_student_tags | tojson }},
+    getSaveUrl: function(input) {
+        return '{{ url("contest", contest.id, "task_visibility") }}/' + input.dataset.taskId;
+    },
+    saveParamName: 'visible_to_tags',
+    placeholder: 'All students',
+    enforceWhitelist: true
+});
+
+// Confirmation for adding tasks not in the training program
+var programTaskIds = {{ program_task_ids | default([]) | tojson }};
+var addTaskForm = document.getElementById('add-task-form');
+if (addTaskForm) {
+    addTaskForm.addEventListener('submit', function(e) {
+        var select = this.querySelector('select[name="task_id"]');
+        var selectedTaskId = parseInt(select.value, 10);
+        if (selectedTaskId && !programTaskIds.includes(selectedTaskId)) {
+            var confirmed = confirm(
+                'This task is not in the training program. ' +
+                'Adding it to this training day will also add it to the training program. ' +
+                'Do you want to continue?'
+            );
+            if (!confirmed) {
+                e.preventDefault();
+            }
+        }
+    });
+}
+{% endif %}
+{% endblock js_init %}
+
 {% block core %}
 <div class="core_title">
   <h1>Tasks list of <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a></h1>
 </div>
 
+{% if is_training_day %}
+<p><em>This contest is a training day. Tasks are managed through the training day, not the contest directly.</em></p>
+{% endif %}
+
 {% if contest.start <= timestamp %}
 <span style="color: red;">Warning: the contest is visible to contestants, tasks added can be seen</span>
 {% endif %}
 
-<form action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
+<form id="add-task-form" action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
   {{ xsrf_form_html|safe }}
   Add a new task:
   <select name="task_id" class="searchable-select">
     <option value="" selected disabled hidden>Select a new task...</option>
     {% for t in unassigned_tasks %}
-    <option value="{{ t.id }}">
-      {{ t.name }}
+    <option value="{{ t.id }}"{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} data-not-in-program="true"{% endif %}>
+      {{ t.name }}{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} (not in training program){% endif %}
     </option>
     {% endfor %}
   </select>
@@ -29,12 +68,12 @@
 
 <form action="{{ url("contest", contest.id, "tasks") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  Remove selected task from the contest:
+  Remove selected task from the {% if is_training_day %}training day{% else %}contest{% endif %}:
   <input type="submit" name="operation"
 {% if not admin.permission_all %}
          disabled
 {% endif %}
-         value="Remove from contest" />
+         value="{% if is_training_day %}Remove from training day{% else %}Remove from contest{% endif %}" />
 
   <br>
 
@@ -65,16 +104,24 @@
         <th></th>
         <th>Name</th>
         <th>Title</th>
+{% if is_training_day %}
+        <th>Visible to</th>
+{% endif %}
       </tr>
     </thead>
     <tbody>
-      {% for t in contest.tasks %}
+      {% for t in contest.get_tasks() %}
       <tr>
         <td>
           <input type="radio" name="task_id" value="{{ t.id }}"/>
         </td>
         <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
         <td>{{ t.title }}</td>
+{% if is_training_day %}
+        <td style="min-width: 200px;">
+          <input type="text" class="task-visibility-tags" data-task-id="{{ t.id }}" value="{{ t.visible_to_tags|join(', ') }}"/>
+        </td>
+{% endif %}
       </tr>
       {% endfor %}
     </tbody>

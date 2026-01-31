@@ -57,6 +57,10 @@ from .communication import \
     QuestionHandler
 from .delayrequest import \
     DelayRequestHandler
+from .trainingprogram import \
+    TrainingProgramOverviewHandler, \
+    TrainingDaysHandler, \
+    ScoreboardDataHandler
 from .api import \
     ApiLoginHandler, \
     ApiSubmissionListHandler, \
@@ -110,6 +114,12 @@ HANDLERS = [
     (r"/communication", CommunicationHandler),
     (r"/question", QuestionHandler),
     (r"/delay_request", DelayRequestHandler),
+
+    # Training Programs
+
+    (r"/training_overview", TrainingProgramOverviewHandler),
+    (r"/training_days", TrainingDaysHandler),
+    (r"/training_days/scoreboard/([0-9]+)/([^/]+)", ScoreboardDataHandler),
 
     # API
     (r"/api/login", ApiLoginHandler),

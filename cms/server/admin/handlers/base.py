@@ -23,9 +23,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Base class for all handlers in AWS, and some utility functions.
-
-"""
+"""Base class for all handlers in AWS, and some utility functions."""
 
 from collections.abc import Callable
 import ipaddress
@@ -38,7 +36,6 @@ from functools import wraps
 import collections
 import typing
 
-from cms.db.session import Session
 
 try:
     collections.MutableMapping
@@ -48,16 +45,37 @@ except:
 
 import tornado.web
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Query, subqueryload
+from sqlalchemy.orm import Query, selectinload, subqueryload
 
 from cms import __version__, config
-from cms.db import Session, Contest, ContestFolder, DelayRequest, Participation, \
-    Question, Submission, SubmissionResult, Task, Team, User, UserTest, Admin
+from cms.db import (
+    Session,
+    Contest,
+    ContestFolder,
+    DelayRequest,
+    Participation,
+    Question,
+    Student,
+    Submission,
+    SubmissionResult,
+    Task,
+    Team,
+    TrainingDay,
+    TrainingProgram,
+    User,
+    UserTest,
+    Admin,
+)
 import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
 from cms.server import CommonRequestHandler, FileHandlerMixin
-from cms.server.util import exclude_internal_contests
+from cms.server.util import exclude_internal_contests, calculate_task_archive_progress
+from cms.server.admin.handlers.utils import (
+    count_unanswered_questions,
+    get_all_student_tags,
+    get_all_training_day_notifications,
+)
 from cmscommon.crypto import hash_password, parse_authentication
 from cmscommon.datetime import make_datetime, get_timezone, local_to_utc, format_datetime_for_input, get_timezone_name
 if typing.TYPE_CHECKING:
@@ -131,7 +149,7 @@ def parse_timedelta_min(value: str) -> timedelta:
 
 def parse_datetime(value: str) -> datetime:
     """Parse and validate a datetime (in pseudo-ISO8601)."""
-    if '.' not in value:
+    if "." not in value:
         value += ".0"
     try:
         return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
@@ -142,11 +160,20 @@ def parse_datetime(value: str) -> datetime:
 def parse_datetime_with_timezone(value: str, tz) -> datetime:
     """Parse a datetime in the given timezone and convert to UTC.
 
-    value: a datetime string in "YYYY-MM-DD HH:MM:SS" format.
+    value: a datetime string in "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM" format.
     tz: the timezone the datetime is in.
 
     return: a naive datetime in UTC.
     """
+    # Try HTML5 datetime-local format first (YYYY-MM-DDTHH:MM)
+    if 'T' in value and '.' not in value and len(value) == 16:
+        try:
+            local_dt = datetime.strptime(value, "%Y-%m-%dT%H:%M")
+            return local_to_utc(local_dt, tz)
+        except (ValueError, OverflowError):
+            pass  # Fall through to try other formats
+
+    # Standard format with optional microseconds
     if '.' not in value:
         value += ".0"
     try:
@@ -193,9 +220,11 @@ def require_permission(permission: str = "authenticated", self_allowed: bool = F
        permission.
 
     """
-    if permission not in [BaseHandler.PERMISSION_ALL,
-                          BaseHandler.PERMISSION_MESSAGING,
-                          BaseHandler.AUTHENTICATED]:
+    if permission not in [
+        BaseHandler.PERMISSION_ALL,
+        BaseHandler.PERMISSION_MESSAGING,
+        BaseHandler.AUTHENTICATED,
+    ]:
         raise ValueError("Invalid permission level %s." % permission)
 
     _P = typing.ParamSpec("_P")
@@ -205,15 +234,12 @@ def require_permission(permission: str = "authenticated", self_allowed: bool = F
     def decorator(
         func: Callable[typing.Concatenate[_T, _P], _R],
     ) -> Callable[typing.Concatenate[_T, _P], _R]:
-        """Decorator for requiring a permission level
+        """Decorator for requiring a permission level"""
 
-        """
         @wraps(func)
         @tornado.web.authenticated
         def newfunc(self: _T, *args: _P.args, **kwargs: _P.kwargs):
-            """Check if the permission is present before calling the function.
-
-            """
+            """Check if the permission is present before calling the function."""
             if permission == BaseHandler.AUTHENTICATED:
                 return func(self, *args, **kwargs)
 
@@ -242,6 +268,7 @@ class BaseHandler(CommonRequestHandler):
     child of this class.
 
     """
+
     PERMISSION_ALL = "all"
     PERMISSION_MESSAGING = "messaging"
     AUTHENTICATED = "authenticated"
@@ -260,13 +287,11 @@ class BaseHandler(CommonRequestHandler):
             self.sql_session.commit()
         except IntegrityError as error:
             self.service.add_notification(
-                make_datetime(),
-                "Operation failed.", "%s" % error)
+                make_datetime(), "Operation failed.", "%s" % error
+            )
             return False
         else:
-            self.service.add_notification(
-                make_datetime(),
-                "Operation successful.", "")
+            self.service.add_notification(make_datetime(), "Operation successful.", "")
             return True
 
     def get_current_user(self) -> Admin | None:
@@ -281,10 +306,12 @@ class BaseHandler(CommonRequestHandler):
             return None
 
         # Load admin.
-        admin = self.sql_session.query(Admin)\
-            .filter(Admin.id == admin_id)\
-            .filter(Admin.enabled.is_(True))\
+        admin = (
+            self.sql_session.query(Admin)
+            .filter(Admin.id == admin_id)
+            .filter(Admin.enabled.is_(True))
             .first()
+        )
         if admin is None:
             self.service.auth_handler.clear()
             return None
@@ -321,11 +348,70 @@ class BaseHandler(CommonRequestHandler):
         return entity
 
     def prepare(self):
-        """This method is executed at the beginning of each request.
-
-        """
+        """This method is executed at the beginning of each request."""
         super().prepare()
         self.contest = None
+
+        import re
+
+        path = self.request.path
+        match = re.match(r"^/contest/(\d+)(/.*)?$", path)
+        if match:
+            contest_id = match.group(1)
+            remaining_path = match.group(2) or ""
+
+            # Don't redirect certain actions - they should use the contest handlers
+            # directly since questions/announcements belong to the managing contest,
+            # messages use the contest user, and overview/resourceslist are contest-
+            # specific pages that training programs redirect to
+            if (
+                remaining_path.startswith("/question/")
+                or remaining_path.startswith("/announcement/")
+                or remaining_path.endswith("/message")
+                or remaining_path.endswith("/detail")
+                or remaining_path.endswith("/submissions")
+                or remaining_path.endswith("/ranking/history")
+                or remaining_path == "/overview"
+                or remaining_path == "/resourceslist"
+            ):
+                return
+
+            try:
+                contest = (
+                    self.sql_session.query(Contest)
+                    .filter(Contest.id == int(contest_id))
+                    .first()
+                )
+                # Redirect managing contest URLs to training program URLs
+                if contest and contest.training_program is not None:
+                    training_program = contest.training_program
+
+                    if training_program:
+                        url_mappings = {
+                            "/users": "/students",
+                            "/user/": "/student/",
+                        }
+
+                        new_path = remaining_path
+                        for contest_suffix, tp_suffix in url_mappings.items():
+                            if remaining_path.startswith(
+                                contest_suffix
+                            ) and not remaining_path.endswith("/detail"):
+                                new_path = remaining_path.replace(
+                                    contest_suffix, tp_suffix, 1
+                                )
+                                if "/edit" not in new_path and tp_suffix == "/student/":
+                                    new_path = new_path.rstrip("/") + "/edit"
+                                break
+
+                        tp_url = (
+                            self.url("training_program", training_program.id) + new_path
+                        )
+                        self.redirect(tp_url)
+                        self._finished = True
+                        return
+            except Exception:
+                pass
 
     def render(self, template_name: str, **params):
         t = self.service.jinja2_environment.get_template(template_name)
@@ -339,10 +425,15 @@ class BaseHandler(CommonRequestHandler):
 
         """
         params = {}
-        params["rtd_version"] = "latest" if "dev" in __version__ \
-                                else "v" + __version__[:3]
+        params["rtd_version"] = (
+            "latest" if "dev" in __version__ else "v" + __version__[:3]
+        )
         params["timestamp"] = make_datetime()
         params["contest"] = self.contest
+        # If the contest is a managing contest for a training program,
+        # set training_program so the sidebar shows training program menu
+        if self.contest is not None and self.contest.training_program is not None:
+            params["training_program"] = self.contest.training_program
         params["url"] = self.url
         params["xsrf_form_html"] = self.xsrf_form_html()
         # FIXME These objects provide too broad an access: their usage
@@ -352,54 +443,175 @@ class BaseHandler(CommonRequestHandler):
         if self.current_user is not None:
             params["admin"] = self.current_user
         if self.contest is not None:
-            params["unanswered"] = self.sql_session.query(Question)\
-                .join(Participation)\
-                .filter(Participation.contest_id == self.contest.id)\
-                .filter(Question.reply_timestamp.is_(None))\
-                .filter(Question.ignored.is_(False))\
+            params["unanswered"] = (
+                self.sql_session.query(Question)
+                .join(Participation)
+                .filter(Participation.contest_id == self.contest.id)
+                .filter(Question.reply_timestamp.is_(None))
+                .filter(Question.ignored.is_(False))
                 .count()
-            params["unanswered_delay_requests"] = self.sql_session.query(DelayRequest)\
-                .join(Participation)\
-                .filter(Participation.contest_id == self.contest.id)\
-                .filter(DelayRequest.status == 'pending')\
+            )
+            params["unanswered_delay_requests"] = (
+                self.sql_session.query(DelayRequest)
+                .join(Participation)
+                .filter(Participation.contest_id == self.contest.id)
+                .filter(DelayRequest.status == "pending")
                 .count()
+            )
         # TODO: not all pages require all these data.
         # TODO: use a better sorting method.
-        params["contest_list"] = exclude_internal_contests(
-            self.sql_session.query(Contest)
-        ).order_by(Contest.name).all()
-        params["task_list"] = self.sql_session.query(Task)\
-            .order_by(Task.name).all()
-        params["user_list"] = self.sql_session.query(User)\
-            .filter(~User.username.like(r'\_\_%', escape='\\'))\
-            .order_by(User.username).all()
-        params["team_list"] = self.sql_session.query(Team)\
-            .order_by(Team.name).all()
-        params["folder_list"] = self.sql_session.query(ContestFolder)\
-            .options(subqueryload(ContestFolder.contests))\
-            .options(subqueryload(ContestFolder.children).subqueryload(ContestFolder.contests))\
-            .order_by(ContestFolder.name).all()
-        params["root_contests"] = exclude_internal_contests(
-            self.sql_session.query(Contest).filter(
-                Contest.folder_id.is_(None)
+        params["contest_list"] = (
+            exclude_internal_contests(self.sql_session.query(Contest))
+            .filter(~Contest.training_day.has())
+            .order_by(Contest.name)
+            .all()
+        )
+        params["task_list"] = self.sql_session.query(Task).order_by(Task.name).all()
+        params["user_list"] = (
+            self.sql_session.query(User)
+            .filter(~User.username.like(r"\_\_%", escape="\\"))
+            .order_by(User.username)
+            .all()
+        )
+        params["team_list"] = self.sql_session.query(Team).order_by(Team.name).all()
+        params["folder_list"] = (
+            self.sql_session.query(ContestFolder)
+            .options(subqueryload(ContestFolder.contests))
+            .options(
+                subqueryload(ContestFolder.children).subqueryload(
+                    ContestFolder.contests
+                )
             )
-        ).order_by(Contest.name).all()
-        params["pending_password_resets"] = self.sql_session.query(User)\
-            .filter(User.password_reset_pending.is_(True))\
+            .order_by(ContestFolder.name)
+            .all()
+        )
+        params["root_contests"] = (
+            exclude_internal_contests(
+                self.sql_session.query(Contest).filter(Contest.folder_id.is_(None))
+            )
+            .filter(~Contest.training_day.has())
+            .order_by(Contest.name)
+            .all()
+        )
+        params["pending_password_resets"] = (
+            self.sql_session.query(User)
+            .filter(User.password_reset_pending.is_(True))
             .count()
+        )
         # Add timezone for datetime formatting (contest-specific if available)
         tz = get_timezone(None, self.contest)
         params["timezone"] = tz
         params["timezone_name"] = get_timezone_name(tz)
+        params["training_program_list"] = (
+            self.sql_session.query(TrainingProgram)
+            .options(
+                selectinload(TrainingProgram.training_days).selectinload(
+                    TrainingDay.contest
+                )
+            )
+            .order_by(TrainingProgram.name)
+            .all()
+        )
+
         return params
 
+    def render_params_for_training_program(
+        self, training_program: "TrainingProgram"
+    ) -> dict:
+        """Initialize render params for a training program page.
+
+        This is a convenience method that combines render_params(),
+        setting training_program, contest, unanswered questions count,
+        and notification counts for training days in the sidebar.
+
+        Args:
+            training_program: The training program being viewed.
+
+        Returns:
+            The initialized r_params dict.
+        """
+        managing_contest = training_program.managing_contest
+        self.r_params = self.render_params()
+        self.r_params["training_program"] = training_program
+        self.r_params["contest"] = managing_contest
+
+        # Count unanswered questions for the managing contest (used in sidebar)
+        self.r_params["unanswered"] = count_unanswered_questions(
+            self.sql_session, managing_contest.id
+        )
+
+        # Add notification counts for training days
+        (
+            training_day_notifications,
+            total_td_unanswered_questions,
+            total_td_pending_delay_requests,
+        ) = get_all_training_day_notifications(self.sql_session, training_program)
+
+        self.r_params["training_day_notifications"] = training_day_notifications
+        self.r_params["total_td_unanswered_questions"] = \
+            total_td_unanswered_questions
+        self.r_params["total_td_pending_delay_requests"] = \
+            total_td_pending_delay_requests
+
+        return self.r_params
+
+    def render_params_for_students_page(
+        self, training_program: "TrainingProgram"
+    ) -> dict:
+        """Prepare render params for the training program students page.
+
+        This is a convenience method that sets up all the params needed
+        for the students page, including unassigned users, student progress,
+        and task/tag lists for the bulk assign modal.
+
+        Must be called after render_params_for_training_program().
+
+        Args:
+            training_program: The training program being viewed.
+
+        Returns:
+            The updated r_params dict.
+        """
+        managing_contest = training_program.managing_contest
+
+        assigned_user_ids_q = self.sql_session.query(Participation.user_id).filter(
+            Participation.contest == managing_contest
+        )
+
+        self.r_params["unassigned_users"] = (
+            self.sql_session.query(User)
+            .filter(~User.id.in_(assigned_user_ids_q))
+            .filter(~User.username.like(r"\_\_%", escape="\\"))
+            .all()
+        )
+
+        # Calculate task archive progress for each student using shared utility
+        student_progress = {}
+        for student in training_program.students:
+            student_progress[student.id] = calculate_task_archive_progress(
+                student, student.participation, managing_contest, self.sql_session
+            )
+        # Commit to release any advisory locks taken by get_cached_score_entry
+        self.sql_session.commit()
+
+        self.r_params["student_progress"] = student_progress
+
+        # For bulk assign task modal
+        self.r_params["all_tasks"] = managing_contest.get_tasks()
+        self.r_params["all_student_tags"] = get_all_student_tags(
+            self.sql_session, training_program
+        )
+
+        return self.r_params
+
     def write_error(self, status_code, **kwargs):
-        if "exc_info" in kwargs and \
-                kwargs["exc_info"][0] != tornado.web.HTTPError:
+        if "exc_info" in kwargs and kwargs["exc_info"][0] != tornado.web.HTTPError:
             exc_info = kwargs["exc_info"]
             logger.error(
                 "Uncaught exception (%r) while processing a request: %s",
-                exc_info[1], ''.join(traceback.format_exception(*exc_info)))
+                exc_info[1],
+                "".join(traceback.format_exception(*exc_info)),
+            )
 
         # Most of the handlers raise a 404 HTTP error before r_params
         # is defined. If r_params is not defined we try to define it
@@ -635,8 +847,11 @@ class BaseHandler(CommonRequestHandler):
         # If the password was set and was hashed, and the admin kept
         # the method unchanged and didn't specify anything, they must
         # have meant to keep the old password unchanged.
-        elif old_method is not None and old_method != "plaintext" \
-                and method == old_method:
+        elif (
+            old_method is not None
+            and old_method != "plaintext"
+            and method == old_method
+        ):
             # Since the content of dest overwrites the current values
             # of the participation, by not adding anything to dest we
             # cause the current values to be kept.
@@ -661,14 +876,18 @@ class BaseHandler(CommonRequestHandler):
         page_size: the number of submissions per page.
 
         """
-        query = query\
-            .options(subqueryload(Submission.task))\
-            .options(subqueryload(Submission.participation))\
-            .options(subqueryload(Submission.files))\
-            .options(subqueryload(Submission.token))\
-            .options(subqueryload(Submission.results)
-                     .subqueryload(SubmissionResult.evaluations))\
+        query = (
+            query.options(subqueryload(Submission.task))
+            .options(subqueryload(Submission.participation))
+            .options(subqueryload(Submission.files))
+            .options(subqueryload(Submission.token))
+            .options(
+                subqueryload(Submission.results).subqueryload(
+                    SubmissionResult.evaluations
+                )
+            )
             .order_by(Submission.timestamp.desc())
+        )
 
         offset = page * page_size
         count = query.count()
@@ -686,11 +905,9 @@ class BaseHandler(CommonRequestHandler):
         # display in this page, index of the current page, total
         # number of pages.
         self.r_params["submission_count"] = count
-        self.r_params["submissions"] = \
-            query.slice(offset, offset + page_size).all()
+        self.r_params["submissions"] = query.slice(offset, offset + page_size).all()
         self.r_params["submission_page"] = page
-        self.r_params["submission_pages"] = \
-            (count + page_size - 1) // page_size
+        self.r_params["submission_pages"] = (count + page_size - 1) // page_size
 
     def render_params_for_user_tests(
         self, query: Query, page: int, page_size: int = 50
@@ -702,12 +919,13 @@ class BaseHandler(CommonRequestHandler):
         page_size: the number of submissions per page.
 
         """
-        query = query\
-            .options(subqueryload(UserTest.task))\
-            .options(subqueryload(UserTest.participation))\
-            .options(subqueryload(UserTest.files))\
-            .options(subqueryload(UserTest.results))\
+        query = (
+            query.options(subqueryload(UserTest.task))
+            .options(subqueryload(UserTest.participation))
+            .options(subqueryload(UserTest.files))
+            .options(subqueryload(UserTest.results))
             .order_by(UserTest.timestamp.desc())
+        )
 
         offset = page * page_size
         count = query.count()
@@ -721,11 +939,9 @@ class BaseHandler(CommonRequestHandler):
             self.r_params["timezone_name"] = get_timezone_name(tz)
 
         self.r_params["user_test_count"] = count
-        self.r_params["user_tests"] = \
-            query.slice(offset, offset + page_size).all()
+        self.r_params["user_tests"] = query.slice(offset, offset + page_size).all()
         self.r_params["user_test_page"] = page
-        self.r_params["user_test_pages"] = \
-            (count + page_size - 1) // page_size
+        self.r_params["user_test_pages"] = (count + page_size - 1) // page_size
 
     def render_params_for_remove_confirmation(self, query):
         count = query.count()
@@ -735,10 +951,76 @@ class BaseHandler(CommonRequestHandler):
         self.r_params["submission_count"] = count
 
     def get_login_url(self) -> str:
-        """Return the URL unauthenticated users are redirected to.
-
-        """
+        """Return the URL unauthenticated users are redirected to."""
         return self.url("login")
+
+
+class StudentBaseHandler(BaseHandler):
+    """Base handler for student-related pages in a training program.
+
+    This handler provides common functionality for looking up a student's
+    context (training_program, managing_contest, participation, student)
+    and raises 404 if the student is not found.
+
+    Subclasses should call setup_student_context() at the start of their
+    get/post methods to populate self.training_program, self.managing_contest,
+    self.participation, and self.student.
+    """
+
+    training_program: TrainingProgram
+    managing_contest: Contest
+    participation: Participation
+    student: Student
+
+    def setup_student_context(
+        self, training_program_id: str, user_id: str
+    ) -> None:
+        """Look up and set the student context for this request.
+
+        This method looks up the training program, managing contest,
+        participation, and student for the given IDs. It raises a 404
+        error if the participation or student is not found.
+
+        Args:
+            training_program_id: The training program ID from the URL.
+            user_id: The user ID from the URL.
+
+        Raises:
+            tornado.web.HTTPError(404): If participation or student not found.
+        """
+        try:
+            user_id_int = int(user_id)
+        except ValueError:
+            raise tornado.web.HTTPError(404)
+
+        self.training_program = self.safe_get_item(
+            TrainingProgram, training_program_id
+        )
+        self.managing_contest = self.training_program.managing_contest
+        self.contest = self.managing_contest
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == self.managing_contest.id)
+            .filter(Participation.user_id == user_id_int)
+            .first()
+        )
+
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        student: Student | None = (
+            self.sql_session.query(Student)
+            .filter(Student.participation == participation)
+            .filter(Student.training_program == self.training_program)
+            .first()
+        )
+
+        if student is None:
+            raise tornado.web.HTTPError(404)
+
+        self.participation = participation
+        self.student = student
 
 
 class FileHandler(BaseHandler, FileHandlerMixin):
@@ -747,6 +1029,7 @@ class FileHandler(BaseHandler, FileHandlerMixin):
 
 class FileFromDigestHandler(FileHandler):
     """Return the file, using the given name, and as plain text."""
+
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, digest, filename):
         # TODO: Accept a MIME type
@@ -756,22 +1039,26 @@ class FileFromDigestHandler(FileHandler):
 
 def SimpleHandler(page, authenticated=True, permission_all=False) -> type[BaseHandler]:
     if permission_all:
+
         class Cls(BaseHandler):
             @require_permission(BaseHandler.PERMISSION_ALL)
             def get(self):
                 self.r_params = self.render_params()
                 self.render(page, **self.r_params)
     elif authenticated:
+
         class Cls(BaseHandler):
             @require_permission(BaseHandler.AUTHENTICATED)
             def get(self):
                 self.r_params = self.render_params()
                 self.render(page, **self.r_params)
     else:
+
         class Cls(BaseHandler):
             def get(self):
                 self.r_params = self.render_params()
                 self.render(page, **self.r_params)
+
     return Cls
 
 

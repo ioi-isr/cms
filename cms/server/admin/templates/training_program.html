@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="core_title">
+  <h1>Training Program</h1>
+</div>
+
+<!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
+<form enctype="multipart/form-data" action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program" style="display:inline;">
+  {{ xsrf_form_html|safe }}
+  <table class="sub_table">
+    <tr><td colspan=2><h2>Training Program Information</h2></td></tr>
+    <tr>
+      <td>
+        <span class="info" title="A short name for the training program, preferably using only letters, numbers and underscores."></span>
+        Name
+      </td>
+      <td><input type="text" name="name" value="{{ training_program.name }}"/></td>
+    </tr>
+    <tr>
+      <td>
+        <span class="info" title="The name of the training program as seen by users."></span>
+        Description
+      </td>
+      <td><textarea name="description">{{ training_program.description }}</textarea></td>
+    </tr>
+
+    {# Include contest configuration fields for the managing contest #}
+    {% set contest = training_program.managing_contest %}
+    {% with show_folder=false, show_name=false, show_description=false, show_login_section=true, show_analysis_section=false %}
+      {% include "fragments/contest_config_fields.html" %}
+    {% endwith %}
+  </table>
+  <input type="submit" value="Update"{% if not admin.permission_all %} disabled{% endif %}/>
+  <input type="reset" value="Reset">
+  <a href="{{ url("training_program", training_program.id, "export") }}"> ⇩ Export all tasks </a>
+</form>
+
+<form action="{{ url("training_programs") }}" method="POST" style="display:inline;">
+  {{ xsrf_form_html|safe }}
+  <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
+  <input type="submit" name="operation" value="Remove" style="float: right;"/>
+</form>
+
+{% endblock core %}

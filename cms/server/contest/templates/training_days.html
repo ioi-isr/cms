@@ -1,0 +1,302 @@
+﻿{% extends "contest.html" %}
+{% from "macro/delay_request.html" import delay_request_form, delay_request_list with context %}
+{% from "macro/training_day_card.html" import training_day_card with context %}
+
+{% set page = "training_days" %}
+
+{% block core %}
+
+<div class="span9">
+
+<link rel="stylesheet" href="{{ url("static", "training_day_cards.css") }}">
+
+<div class="page-header">
+    <h1>{% trans %}Training Days{% endtrans %}</h1>
+</div>
+
+{% if ongoing_upcoming_trainings|length > 0 %}
+<h2 class="tp-section-heading">{% trans %}Ongoing and Upcoming Trainings{% endtrans %}</h2>
+
+<div class="training-day-list">
+{% for td_info in ongoing_upcoming_trainings %}
+    {{ training_day_card(td_info, loop.index, training_program, delay_request_form, delay_request_list, url, xsrf_form_html, timezone, now, next_url_suffix="training_days", show_ended_status=True) }}
+{% endfor %}
+</div>
+{% else %}
+<p>{% trans %}No ongoing or upcoming trainings.{% endtrans %}</p>
+{% endif %}
+
+<h2 class="tp-section-heading" style="margin-top: 30px;">{% trans %}Past Trainings{% endtrans %}</h2>
+
+{% if past_trainings|length > 0 %}
+<table class="table table-bordered table-striped" id="past-trainings-table">
+    <thead>
+        <tr>
+            <th style="cursor: pointer;" onclick="sortPastTrainings(0)">{% trans %}Date{% endtrans %} <span class="sort-icon"></span></th>
+            <th>{% trans %}Description{% endtrans %}</th>
+            <th>{% trans %}Tasks{% endtrans %}</th>
+            <th style="cursor: pointer;" onclick="sortPastTrainings(3)">{% trans %}Training Score{% endtrans %} <span class="sort-icon"></span></th>
+            <th style="cursor: pointer;" onclick="sortPastTrainings(4)">{% trans %}Home Score{% endtrans %} <span class="sort-icon"></span></th>
+            <th>{% trans %}Scoreboard{% endtrans %}</th>
+        </tr>
+    </thead>
+    <tbody>
+{% for pt in past_trainings %}
+        <tr data-training-score="{{ pt.training_score }}" data-home-score="{{ pt.home_score }}" data-date="{{ pt.start_time.timestamp() if pt.start_time else 0 }}">
+            <td>
+                {% if pt.start_time %}
+                    {{ pt.start_time.strftime("%Y-%m-%d") }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>{{ pt.description or pt.name or "Training" }}</td>
+            <td>
+                {% for task in pt.tasks %}
+                <div class="past-training-task">
+                    <a href="{{ contest_url("tasks", task.name, "description") }}" class="task-link">{{ task.name }}</a>
+                    <span class="task-scores">
+                        ({% trans %}T:{% endtrans %} {{ "%.0f"|format(task.training_score) }} / {% trans %}H:{% endtrans %} {{ "%.0f"|format(task.home_score) }})
+                    </span>
+                </div>
+                {% else %}
+                <em>{% trans %}No tasks{% endtrans %}</em>
+                {% endfor %}
+            </td>
+            <td>
+                <span class="score-value">{{ "%.0f"|format(pt.training_score) }}</span>
+                <span class="score-max">/ {{ "%.0f"|format(pt.max_score) }}</span>
+            </td>
+            <td>
+                <span class="score-value">{{ "%.0f"|format(pt.home_score) }}</span>
+                <span class="score-max">/ {{ "%.0f"|format(pt.max_score) }}</span>
+            </td>
+            <td>
+                {% if pt.eligible_scoreboards %}
+                    {% for sb in pt.eligible_scoreboards %}
+                    <button type="button" class="btn btn-mini btn-info scoreboard-badge"
+                            onclick='openScoreboardModal({{ pt.training_day.id }}, {{ sb.tag | tojson }})'>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 2px;"><line x1="6" y1="20" x2="6" y2="16"></line><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line></svg>{% if sb.tag == "__everyone__" %}everyone{% else %}{{ sb.tag }}{% endif %}
+                    </button>
+                    {% endfor %}
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+            </td>
+        </tr>
+{% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>{% trans %}No past trainings yet.{% endtrans %}</p>
+{% endif %}
+
+</div>
+
+<style>
+#past-trainings-table th[onclick]:hover {
+    background-color: #e9ecef;
+}
+.sort-icon::after {
+    content: '\2195';
+    margin-left: 5px;
+    opacity: 0.5;
+}
+.sort-asc .sort-icon::after {
+    content: '\2191';
+    opacity: 1;
+}
+.sort-desc .sort-icon::after {
+    content: '\2193';
+    opacity: 1;
+}
+.past-training-task {
+    margin-bottom: 4px;
+}
+.past-training-task:last-child {
+    margin-bottom: 0;
+}
+.task-link {
+    font-weight: bold;
+}
+.task-scores {
+    font-size: 12px;
+    color: #666;
+}
+.score-value {
+    font-weight: bold;
+}
+.score-max {
+    color: #999;
+    font-size: 12px;
+}
+.score-total {
+    color: #28a745;
+}
+@keyframes pulse-green {
+    0%, 100% { box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3); }
+    50% { box-shadow: 0 2px 16px rgba(40, 167, 69, 0.6); }
+}
+.scoreboard-badge {
+    margin: 2px;
+    font-size: 11px;
+    padding: 2px 8px;
+}
+.scoreboard-table {
+    font-size: 13px;
+}
+.scoreboard-table .rank-col {
+    width: 40px;
+    text-align: center;
+}
+.scoreboard-table .name-col {
+    min-width: 120px;
+}
+.scoreboard-table .task-col {
+    width: 60px;
+    text-align: center;
+}
+.scoreboard-table .total-col {
+    width: 70px;
+    text-align: center;
+}
+.scoreboard-table td.score-full {
+    background-color: #d4edda !important;
+    color: #155724;
+}
+.scoreboard-table td.score-partial {
+    background-color: #fff3cd !important;
+    color: #856404;
+}
+.scoreboard-table .score-zero {
+    color: #999;
+}
+.scoreboard-table .highlight-row {
+    background-color: #cce5ff !important;
+    font-weight: bold;
+}
+.scoreboard-table .highlight-row td {
+    background-color: #cce5ff !important;
+}
+.scoreboard-note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #666;
+}
+#scoreboard-modal .modal-body {
+    min-height: 200px;
+}
+</style>
+
+<script src="{{ url("static", "training_countdown.js") }}"></script>
+<script>
+// Initialize countdowns using shared library
+TrainingCountdown.initCountdowns({{ server_timestamp.timestamp() * 1000 }}, Date.now());
+
+// Past trainings table sorting
+var pastSortDirection = {};
+function sortPastTrainings(columnIndex) {
+    TrainingCountdown.sortTable('past-trainings-table', columnIndex, pastSortDirection, function(row, colIdx) {
+        if (colIdx === 0) {
+            return parseFloat(row.getAttribute('data-date')) || 0;
+        } else if (colIdx === 3) {
+            return parseFloat(row.getAttribute('data-training-score')) || 0;
+        } else if (colIdx === 4) {
+            return parseFloat(row.getAttribute('data-home-score')) || 0;
+        } else {
+            return row.cells[colIdx].textContent.trim().toLowerCase();
+        }
+    });
+}
+
+function openScoreboardModal(trainingDayId, tag) {
+    var modal = document.getElementById('scoreboard-modal');
+    var title = document.getElementById('scoreboard-modal-title');
+    var body = document.getElementById('scoreboard-modal-body');
+
+    title.textContent = 'Loading...';
+    body.innerHTML = '<div class="text-center"><em>Loading scoreboard...</em></div>';
+
+    $(modal).modal('show');
+
+    fetch('{{ contest_url("training_days") }}/scoreboard/' + trainingDayId + '/' + encodeURIComponent(tag))
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.error) {
+                title.textContent = 'Error';
+                body.innerHTML = '<div class="alert alert-error">' + escapeHtml(data.error) + '</div>';
+                return;
+            }
+
+            title.textContent = data.training_day_name + ' - ' + data.tag + ' Scoreboard';
+
+            var html = '<table class="table table-bordered table-striped scoreboard-table">';
+            html += '<thead><tr>';
+            html += '<th class="rank-col">#</th>';
+            html += '<th class="name-col">Name</th>';
+
+            data.tasks.forEach(function(task) {
+                var safeTaskName = escapeHtml(task.name);
+                html += '<th class="task-col" title="' + safeTaskName + '">' + safeTaskName + '</th>';
+            });
+
+            html += '<th class="total-col">Total</th>';
+            html += '</tr></thead><tbody>';
+
+            data.scoreboard.forEach(function(entry) {
+                var rowClass = entry.is_current_student ? 'highlight-row' : '';
+                html += '<tr class="' + rowClass + '">';
+                html += '<td class="rank-col">' + entry.rank + '</td>';
+                html += '<td class="name-col">' + escapeHtml(entry.student_name) + '</td>';
+
+                entry.task_scores.forEach(function(ts) {
+                    var scoreClass = '';
+                    if (ts.score >= ts.max_score) {
+                        scoreClass = 'score-full';
+                    } else if (ts.score > 0) {
+                        scoreClass = 'score-partial';
+                    } else {
+                        scoreClass = 'score-zero';
+                    }
+                    html += '<td class="task-col ' + scoreClass + '">' + Math.round(ts.score) + '</td>';
+                });
+
+                html += '<td class="total-col"><strong>' + Math.round(entry.total_score) + '</strong></td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+
+            if (data.top_names > 0) {
+                html += '<p class="scoreboard-note"><em>Top ' + data.top_names + ' students shown with full names. Others are anonymized.</em></p>';
+            }
+
+            body.innerHTML = html;
+        })
+        .catch(function(error) {
+            title.textContent = 'Error';
+            body.innerHTML = '<div class="alert alert-error">Failed to load scoreboard: ' + escapeHtml(error.message) + '</div>';
+        });
+}
+
+// Use shared escapeHtml from TrainingCountdown
+var escapeHtml = TrainingCountdown.escapeHtml;
+</script>
+
+<!-- Scoreboard Modal -->
+<div id="scoreboard-modal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="scoreboard-modal-label" aria-hidden="true">
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="{% trans %}Close{% endtrans %}"><span aria-hidden="true">&times;</span></button>
+        <h3 id="scoreboard-modal-title">{% trans %}Scoreboard{% endtrans %}</h3>
+    </div>
+    <div class="modal-body" id="scoreboard-modal-body" style="max-height: 500px; overflow-y: auto;">
+    </div>
+    <div class="modal-footer">
+        <button class="btn" data-dismiss="modal">{% trans %}Close{% endtrans %}</button>
+    </div>
+</div>
+
+{% endblock core %}
+

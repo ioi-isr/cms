@@ -1,5 +1,9 @@
-html {
+﻿html {
     font-size: 100%;
+}
+
+:root {
+    --ranking-header-top: 60px;
 }
 
 .searchable-select {
@@ -73,10 +77,6 @@ em {
     color: #F31313;
 }
 
-#global {
-    margin: 0;
-}
-
 a, a:visited {
     color: #426DC9;
 }
@@ -95,10 +95,6 @@ hr {
     clear: both;
 }
 
-.displayed {
-    display: block;
-}
-
 input, textarea {
     border: 1px solid #53637D;
     border-radius: 4px;
@@ -111,12 +107,6 @@ table input[type=text], table textarea {
 
 input:focus, textarea:focus {
     border: 1px solid #FFD69C;
-}
-
-ul.normal_list {
-    list-style: disc;
-    list-style-position: inside;
-    padding-left: 0.5em;
 }
 
 .inline {
@@ -223,7 +213,7 @@ ul.normal_list {
     padding-top: 6px;
     border-top: 1px solid rgba(148, 163, 184, 0.08);
 }
-    
+
 .sidebar-section:first-child {
     border-top: none;
     padding-top: 0;
@@ -254,7 +244,7 @@ ul.normal_list {
 .sidebar-section-title a:hover {
     color: var(--sidebar-text-bright);
 }
-    
+
 .sidebar-section-title:hover,
 .sidebar-section-title:focus {
     border-color: var(--sidebar-hover-border);
@@ -393,6 +383,13 @@ ul.normal_list {
 .sidebar-contest, .sidebar-item {
     padding: 0;
     margin: 2px 0;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+}
+
+.sidebar-contest .unread {
+    flex-shrink: 0;
 }
 
 .sidebar-contest a, .sidebar-item a {
@@ -403,6 +400,8 @@ ul.normal_list {
     padding: 6px 10px;
     border-radius: 6px;
     transition: background-color 0.2s, color 0.2s;
+    flex: 1;
+    min-width: 0;
 }
 
 body.admin .sidebar-contest a, body.admin .sidebar-item a {
@@ -491,7 +490,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     line-height: 1.35;
     color: #dce3ec;
 }
-    
+
 .menu {
     list-style: none;
     margin: 0;
@@ -541,6 +540,10 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     width: 2em;
     background-color: #F31313;
     text-shadow: none;
+}
+
+.unread.unread-delay {
+    background-color: #FF8C00;
 }
 
 .secret_notice {
@@ -1381,4 +1384,96 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .table-search input[type="text"] {
     padding: 0.4em 0.6em;
     min-width: 250px;
+}
+
+.core_title h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: #111827;
+}
+
+.sidebar-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px; /* consistent width for single digits */
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 10px; /* Pill shape */
+    font-size: 0.7em;
+    font-weight: 700;
+    line-height: 1;
+    color: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    white-space: nowrap;
+    transition: transform 0.2s;
+}
+
+/* 2. Color Variants */
+/* Urgent / Errors (Questions) */
+.sidebar-badge.is-red {
+    background-color: #EF4444; /* Modern Tailwind Red-500 */
+    border: 1px solid #DC2626;
+}
+
+/* Warnings / Pending (Delay Requests) */
+.sidebar-badge.is-amber {
+    background-color: #F59E0B; /* Modern Tailwind Amber-500 */
+    border: 1px solid #D97706;
+}
+
+/* 3. Layout Containers */
+
+/* Container to group text on the left (caret + link) */
+.sidebar-link-group {
+    display: flex;
+    align-items: center;
+    flex: 1; /* Takes up remaining space */
+    min-width: 0; /* Allows text truncation */
+    gap: 10px;
+}
+
+/* Container to group badges on the right */
+.sidebar-badge-container {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* Space between multiple badges */
+    margin-left: 8px; /* Space between text and badges */
+    flex-shrink: 0; /* Prevent squishing */
+}
+
+/* 4. Sidebar Element overrides for Flexbox alignment */
+
+/* Menu Entries (Overview, Questions, etc.) */
+.menu_entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Text left, badge right */
+    padding-right: 10px; /* Right padding for the badge */
+}
+
+.menu_link {
+    flex-grow: 1;
+    display: block;
+}
+
+/* Section Titles (Training Days, Contests) */
+.sidebar-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 10px;
+}
+
+/* Sub-items (Active Training Days inside folder) */
+.sidebar-contest, .sidebar-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 10px;
+}
+
+/* Override existing link widths to work with flex */
+.sidebar-contest a, .sidebar-item a {
+    flex: 1;
 }

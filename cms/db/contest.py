@@ -32,7 +32,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import relationship
-from sqlalchemy.schema import Column, ForeignKey, CheckConstraint
+from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, Index
 from sqlalchemy.types import Integer, Unicode, DateTime, Interval, Enum, \
     Boolean, String
 
@@ -41,7 +41,7 @@ from . import Codename, Base, Admin
 from .contest_folder import ContestFolder
 import typing
 if typing.TYPE_CHECKING:
-    from . import Task, Participation
+    from . import Task, Participation, TrainingProgram, TrainingDay
 
 
 class Contest(Base):
@@ -130,6 +130,12 @@ class Contest(Base):
         Boolean,
         nullable=False,
         default=False)
+
+    # Whether contestants can submit delay requests.
+    allow_delay_requests: bool = Column(
+        Boolean,
+        nullable=False,
+        default=True)
 
     # Whether to enforce that the IP address of the request matches
     # the IP address or subnet specified for the participation (if
@@ -310,6 +316,50 @@ class Contest(Base):
     )
     folder: ContestFolder | None = relationship(ContestFolder, back_populates="contests")
 
+    # Optional training program that this contest manages.
+    # If set, this contest is the "managing contest" for a training program.
+    training_program: "TrainingProgram | None" = relationship(
+        "TrainingProgram",
+        back_populates="managing_contest",
+        uselist=False,
+    )
+
+    # Optional training day that this contest represents.
+    # If set, this contest is a training day within a training program.
+    training_day: "TrainingDay | None" = relationship(
+        "TrainingDay",
+        back_populates="contest",
+        uselist=False,
+    )
+
+    def get_tasks(self) -> list["Task"]:
+        """Return the tasks for this contest.
+
+        If this contest is a training day, return the training day's tasks.
+        Otherwise, return the contest's own tasks.
+
+        This allows training days to have their own task list separate from
+        the contest's task list, while still allowing contestants to see
+        the tasks when they enter the training day's contest.
+        """
+        if self.training_day is not None:
+            return self.training_day.tasks
+        return self.tasks
+
+    def task_belongs_here(self, task: "Task") -> bool:
+        """Check if a task belongs to this contest.
+
+        For regular contests, the task must have contest_id == self.id.
+        For training day contests, the task must have training_day_id == self.training_day.id.
+
+        This is used to validate that a task is accessible from this contest,
+        which is important for training days where tasks have contest_id pointing
+        to the managing contest but are served through the training day's contest.
+        """
+        if self.training_day is not None:
+            return task.training_day_id == self.training_day.id
+        return task.contest_id == self.id
+
     def phase(self, timestamp: datetime) -> int:
         """Return: -1 if contest isn't started yet at time timestamp,
                     0 if the contest is active at time timestamp,
@@ -340,6 +390,10 @@ class Announcement(Base):
 
     """
     __tablename__ = 'announcements'
+    __table_args__ = (
+        Index("ix_announcements_visible_to_tags_gin", "visible_to_tags",
+              postgresql_using="gin"),
+    )
 
     # Auto increment primary key.
     id: int = Column(
@@ -379,3 +433,11 @@ class Announcement(Base):
         nullable=True,
         index=True)
     admin: Admin | None = relationship(Admin)
+
+    # Tags that control which students can see this announcement.
+    # If empty, the announcement is visible to all students.
+    # If set, only students with at least one matching tag can see the announcement.
+    visible_to_tags: list[str] = Column(
+        ARRAY(Unicode),
+        nullable=False,
+        default=[])

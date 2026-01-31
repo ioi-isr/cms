@@ -1,0 +1,44 @@
+{#
+  Modern info/warning alert component.
+  
+  Parameters:
+  - title: The alert title (e.g., "Pending Delay Requests")
+  - message: The descriptive message text
+  - items: Optional list of items to display as badges (each item should have 'url', 'label', and optionally 'count')
+  - type: 'warning' (amber) or 'info' (blue), defaults to 'warning'
+#}
+{% macro alert(title, message, items=none, type='warning') %}
+<div class="tp-info-alert tp-info-alert-{{ type }}">
+    <div class="tp-info-alert-icon">
+        {% if type == 'warning' %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        {% else %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        {% endif %}
+    </div>
+    <div class="tp-info-alert-content">
+        <div class="tp-info-alert-title">{{ title }}</div>
+        <div class="tp-info-alert-message">{{ message }}</div>
+        {% if items %}
+        <div class="tp-info-alert-items">
+            {% for item in items %}
+            <a href="{{ item.url }}" class="tp-info-alert-badge">
+                {{ item.label }}
+                {% if item.count is defined and item.count %}
+                <span class="tp-info-alert-count">{{ item.count }}</span>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}

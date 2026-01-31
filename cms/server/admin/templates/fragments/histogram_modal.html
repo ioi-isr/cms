@@ -1,0 +1,24 @@
+<div id="histogramModal" class="histogram-modal" style="display: none;"
+     role="dialog" aria-modal="true" aria-labelledby="histogramTitle" tabindex="-1">
+  <div class="histogram-modal-content">
+    <div class="histogram-modal-header">
+      <h2 id="histogramTitle">Score Distribution</h2>
+      <button type="button" class="histogram-close-btn" onclick="closeHistogramModal()" aria-label="Close histogram">&times;</button>
+    </div>
+    <div class="histogram-filter-row">
+      <label for="histogramTagsFilter">Filter by student tags:</label>
+      <input type="text" id="histogramTagsFilter" style="min-width: 300px;" placeholder="Select tags to filter..." />
+    </div>
+    <div class="histogram-chart-container">
+      <div id="histogramBars" class="histogram-bars"></div>
+    </div>
+    <div id="histogramStats" class="histogram-stats"></div>
+    <div class="histogram-text-section">
+      <div class="histogram-text-header">
+        <span>Text Data (for copying)</span>
+        <button type="button" class="copy-btn" onclick="copyHistogramData()">Copy to Clipboard</button>
+      </div>
+      <textarea id="histogramTextData" readonly rows="10"></textarea>
+    </div>
+  </div>
+</div>

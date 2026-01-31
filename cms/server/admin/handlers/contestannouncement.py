@@ -36,8 +36,35 @@ except:
 import tornado.web
 
 from cms.db import Contest, Announcement
+from cms.server.admin.handlers.utils import get_all_student_tags, parse_tags
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
+
+
+class ContestAnnouncementsHandler(BaseHandler):
+    """Display announcements for a contest.
+
+    For training day contests, also passes all_student_tags for the tagify box.
+    """
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, contest_id: str):
+        self.contest = self.safe_get_item(Contest, contest_id)
+
+        self.r_params = self.render_params()
+
+        # For training day contests, pass all_student_tags for the tagify box
+        training_day = self.contest.training_day
+        if training_day is not None:
+            training_program = training_day.training_program
+            self.r_params["all_student_tags"] = get_all_student_tags(
+                self.sql_session, training_program
+            )
+            self.r_params["is_training_day"] = True
+        else:
+            self.r_params["all_student_tags"] = []
+            self.r_params["is_training_day"] = False
+
+        self.render("announcements.html", **self.r_params)
 
 
 class AddAnnouncementHandler(BaseHandler):
@@ -50,15 +77,27 @@ class AddAnnouncementHandler(BaseHandler):
 
         subject: str = self.get_argument("subject", "")
         text: str = self.get_argument("text", "")
+
+        # Parse visible_to_tags from comma-separated string
+        visible_to_tags_str = self.get_argument("visible_to_tags", "")
+        visible_to_tags = parse_tags(visible_to_tags_str)
+
         if len(subject) > 0:
-            ann = Announcement(make_datetime(), subject, text,
-                               contest=self.contest, admin=self.current_user)
+            ann = Announcement(
+                make_datetime(),
+                subject,
+                text,
+                contest=self.contest,
+                admin=self.current_user,
+                visible_to_tags=visible_to_tags,
+            )
             self.sql_session.add(ann)
             self.try_commit()
         else:
             self.service.add_notification(
                 make_datetime(), "Subject is mandatory.", "")
         self.redirect(self.url("contest", contest_id, "announcements"))
+
 
 class EditAnnouncementHandler(BaseHandler):
     """Called to edit an announcement"""
@@ -74,9 +113,15 @@ class EditAnnouncementHandler(BaseHandler):
 
         subject: str = self.get_argument("subject", "")
         text: str = self.get_argument("text", "")
+
+        # Parse visible_to_tags from comma-separated string
+        visible_to_tags_str = self.get_argument("visible_to_tags", "")
+        visible_to_tags = parse_tags(visible_to_tags_str)
+
         if len(subject) > 0:
             original_ann.subject = subject
             original_ann.text = text
+            original_ann.visible_to_tags = visible_to_tags
             self.try_commit()
         else:
             self.service.add_notification(make_datetime(), "Subject is mandatory.", "")

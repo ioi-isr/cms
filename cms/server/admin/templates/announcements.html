@@ -1,10 +1,48 @@
 {% extends "base.html" %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
+{% import 'fragments/info_alert.html' as info_alert %}
+
+{% block js_init %}
+{% if training_program is defined or is_training_day %}
+// Initialize Tagify for announcement visibility tags (no auto-save, form submission only)
+var whitelist = {{ all_student_tags | tojson }};
+var inputs = document.querySelectorAll('.announcement-visibility-tags');
+inputs.forEach(function(input) {
+    new Tagify(input, {
+        delimiters: ",",
+        maxTags: 20,
+        placeholder: "All students",
+        whitelist: whitelist,
+        enforceWhitelist: true,
+        editTags: false,
+        dropdown: {
+            maxItems: 20,
+            classname: "tags-look",
+            enabled: 0,
+            closeOnSelect: true
+        },
+        originalInputValueFormat: function(valuesArr) {
+            return valuesArr.map(function(item) {
+                return item.value;
+            }).join(', ');
+        }
+    });
+});
+{% endif %}
+{% endblock js_init %}
 
 {% block core %}
 <div class="core_title">
   <h1>Announcements</h1>
 </div>
+
+{% if training_program is defined %}
+{{ info_alert.alert(
+    title="Training Program Announcements",
+    message="This page only handles announcements for the training program. For training day announcements, go to the appropriate training day's announcements page.",
+    type="info"
+) }}
+{% endif %}
 
 <h2 id="title_announcements" class="toggling_on">Announcements</h2>
 <div id="announcements">
@@ -12,13 +50,13 @@
 {% if admin.permission_all or admin.permission_messaging %}
     <div class="notification communication">
       <div class="notification_msg">
-        <form method="post" action="{{ url("contest", contest.id, "announcements", "add") }}">
+        <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "add") }}{% endif %}">
           {{ xsrf_form_html|safe }}
           <div class="notification_subject">
             <label for="new_subject">Subject</label>
             <input type="text" name="subject" id="new_subject" style="width: 100%" list="task_names_list" autocomplete="off">
             <datalist id="task_names_list">
-              {% for task in contest.tasks %}
+              {% for task in contest.get_tasks() %}
               <option value="{{ task.name }}">
               {% endfor %}
             </datalist>
@@ -27,6 +65,12 @@
             <label for="text">Text</label>
             {{ macro_markdown.markdown_input("text") }}
           </div>
+          {% if training_program is defined or is_training_day %}
+          <div class="notification_visible_to_tags">
+            <label for="visible_to_tags">Visible to tags (leave empty for all students)</label>
+            <input type="text" id="visible_to_tags" name="visible_to_tags" class="announcement-visibility-tags" style="width: 100%">
+          </div>
+          {% endif %}
           <input type="submit"
                  value="Add announcement" />
           {{ macro_markdown.markdown_preview() }}
@@ -39,26 +83,39 @@
       <div class="notification communication">
         <div class="notification_msg">
           <div class="announcement_remove">
+            {% if training_program is defined %}
+            <a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}'); ">Remove</a>
+            {% else %}
             <a onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}'); ">Remove</a>
+            {% endif %}
           </div>
           <div class="notification_timestamp">{{ msg.timestamp|format_datetime }}</div>
           <div class="notification_subject">{{ msg.subject }}</div>
           <div class="notification_text">{{ msg.text | markdown }}</div>
+          {% if (training_program is defined or is_training_day) and msg.visible_to_tags %}
+          <div class="notification_visible_to_tags_display">
+            <strong>Visible to:</strong> {{ msg.visible_to_tags|join(', ') }}
+          </div>
+          {% endif %}
           <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
           <textarea class="announcement_raw_text" style="display:none;">{{ msg.text|e }}</textarea>
+          <input type="hidden" class="announcement_raw_visible_to_tags" value="{{ msg.visible_to_tags|join(', ')|e }}">
           <hr>
           <div class="notification_admin_owner">
             By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
           </div>
           <a href="javascript:void(0);" onclick="utils.announcement_edit_toggle(event, this);">Edit</a>
           <div class="reply_question">
-            <form method="post" action="{{ url("contest", contest.id, "announcements", "edit", msg.id) }}" >
+            <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "edit", msg.id) }}{% endif %}" >
               {{ xsrf_form_html|safe }}
+              {% if training_program is defined %}
+              <input type="hidden" name="announcement_id" value="{{ msg.id }}">
+              {% endif %}
               <div class="notification_subject">
                 <label for="new_subject">Edit Announcement</label>
                 <input type="text" name="subject" id="new_subject" style="width: 100%" list="task_names_list" autocomplete="off">
                 <datalist id="task_names_list">
-                  {% for task in contest.tasks %}
+                  {% for task in contest.get_tasks() %}
                   <option value="{{ task.name }}">
                   {% endfor %}
                 </datalist>
@@ -67,6 +124,12 @@
                 <label for="text">Text</label>
                 {{ macro_markdown.markdown_input("text") }}
               </div>
+              {% if training_program is defined or is_training_day %}
+              <div class="notification_visible_to_tags">
+                <label for="edit_visible_to_tags_{{ msg.id }}">Visible to tags (leave empty for all students)</label>
+                <input type="text" id="edit_visible_to_tags_{{ msg.id }}" name="visible_to_tags" class="announcement-visibility-tags" style="width: 100%">
+              </div>
+              {% endif %}
               <input type="submit"
                      value="Edit announcement" />
               {{ macro_markdown.markdown_preview() }}

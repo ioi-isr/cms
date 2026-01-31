@@ -3,7 +3,39 @@
 {% block core %}
 <h1>{{ user.first_name }} {{ user.last_name }} ({{ user.username }})</h1>
 
-<h2 id="title_participations" class="toggling_on">Participations</h2>
+<h2 id="title_training_programs" class="toggling_on">Training Program Participations</h2>
+<div id="training_programs">
+  {% if training_program_participations|length == 0 %}
+  <p>No training program participations found.</p>
+  {% else %}
+  <p><em>Training program participations are managed via the training program interface. Use "Remove from training program" to remove a student.</em></p>
+  <table class="bordered">
+    <thead>
+      <tr>
+        <th>Participation</th>
+        <th>Training Program</th>
+        <th>Description</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in training_program_participations %}
+      <tr>
+        <td><a href="{{ url("training_program", p.contest.training_program.id, "student", p.user.id, "edit") }}">{{ p.user.username }}</a></td>
+        <td><a href="{{ url("training_program", p.contest.training_program.id) }}">{{ p.contest.training_program.name }}</a></td>
+        <td>{{ p.contest.training_program.description }}</td>
+        <td>
+          <a href="{{ url("training_program", p.contest.training_program.id, "student", p.user.id, "remove") }}" onclick="return confirm('Remove {{ p.user.username }} from training program {{ p.contest.training_program.name }}? This will also remove all training day participations.');">Remove from training program</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <div class="hr"></div>
+</div>
+
+<h2 id="title_participations" class="toggling_on">Contest Participations</h2>
 <div id="participations">
 
   <form action="{{ url("user", user.id, "add_participation") }}" method="POST">
@@ -22,10 +54,10 @@
     <input type="submit" value="Add participation" />
   </form>
 
-  {% if participations == [] %}
-  <p>No participations found.</p>
+  {% if participations|length == 0 %}
+  <p>No contest participations found.</p>
   {% else %}
-  <form action="{{ url("user", user.id, "edit_participation") }}" method="POST">
+  <form action="{{ url("user", user.id, "edit_participation") }}" method="POST" onsubmit="return confirm('Are you sure you want to remove this participation?');">
     {{ xsrf_form_html|safe }}
     Edit selected participation:
     <input type="submit" name="operation" value="Remove" />

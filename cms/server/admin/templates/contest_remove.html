@@ -9,11 +9,12 @@
 <p>
   Are you sure you want to remove contest {{ contest.name }} from CMS?
   <br>
-  <strong>Warning:</strong> This will remove {{ contest.participations|length }} participation(s) and {{ submission_count }} submission(s), regardless of the option you choose below.
+  <strong>Warning:</strong> This will remove {{ contest.participations|length }} participation(s) and {{ submission_count }} submission(s){% if task_count > 0 %}, regardless of the option you choose below{% endif %}.
   <br>
   This operation cannot be undone.
 </p>
 
+{% if task_count > 0 %}
 <p>
   The contest has {{ task_count }} task(s). Please choose what to do with them:
 </p>
@@ -29,72 +30,31 @@
       {% endfor %}
     </select>
   </label>
-  
+
   <label style="display: block; margin-bottom: 10px;">
     <input type="radio" name="action" value="detach">
     Remove tasks from contest but keep them in the system (tasks will not belong to any contest)
   </label>
-  
+
   <label style="display: block; margin-bottom: 10px; color: red; font-weight: bold;">
     <input type="radio" name="action" value="delete_all">
     Delete all tasks from the system
   </label>
 </div>
+{% endif %}
 
 <br>
-<a onclick="removeContest();" class="button-link">Yes, remove contest</a>
+<a onclick="cmsDoRemove();" class="button-link">Yes, remove contest</a>
 <a href="{{ url("contests") }}" class="button-link">No, cancel</a>
 
 <script>
-  // Enable/disable the target contest dropdown based on the selected action
-  document.querySelectorAll('input[name="action"]').forEach(function(radio) {
-    radio.addEventListener('change', function() {
-      var targetSelect = document.getElementById('target_contest_select');
-      if (document.getElementById('action_move').checked) {
-        targetSelect.disabled = false;
-      } else {
-        targetSelect.disabled = true;
-      }
-    });
-  });
-  
-  // Initialize the dropdown state
-  document.getElementById('target_contest_select').disabled = true;
-  
-  // Function to handle contest removal with AJAX DELETE
-  function removeContest() {
-    // Get the selected action
-    var actionRadios = document.querySelectorAll('input[name="action"]');
-    var selectedAction = null;
-    for (var i = 0; i < actionRadios.length; i++) {
-      if (actionRadios[i].checked) {
-        selectedAction = actionRadios[i].value;
-        break;
-      }
-    }
-    
-    if (!selectedAction) {
-      alert('Please select an option for handling tasks.');
-      return;
-    }
-    
-    // Build the URL with query parameters
-    var url = '{{ url("contests", contest.id, "remove") }}';
-    url += '?action=' + encodeURIComponent(selectedAction);
-    
-    // If action is 'move', include the target contest ID
-    if (selectedAction === 'move') {
-      var targetContestId = document.getElementById('target_contest_select').value;
-      if (!targetContestId) {
-        alert('Please select a target contest.');
-        return;
-      }
-      url += '&target_contest_id=' + encodeURIComponent(targetContestId);
-    }
-    
-    // Use CMS.AWSUtils.ajax_delete to make the DELETE request
-    CMS.AWSUtils.ajax_delete(url);
-  }
+CMS.AWSUtils.initRemovePage({
+  removeUrl: '{{ url("contests", contest.id, "remove") }}',
+  hasTaskOptions: {{ 'true' if task_count > 0 else 'false' }},
+  targetSelectId: 'target_contest_select',
+  targetParamName: 'target_contest_id',
+  targetLabel: 'contest'
+});
 </script>
 
 {% else %}

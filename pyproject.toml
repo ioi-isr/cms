@@ -60,6 +60,9 @@ dependencies = [
 
     # Only for user profile pictures
     "Pillow>=10.0,<13.0",          # https://pillow.readthedocs.io/en/stable/releasenotes/
+
+    # Only for Excel exports
+    "openpyxl>=3.1,<4.0",          # https://openpyxl.readthedocs.io/
 ]
 
 [project.urls]

@@ -42,22 +42,323 @@ import typing
 
 from tornado.web import RequestHandler
 
-from cms.db import Session, Contest
+from cms.db import Session, Contest, Student, Task, Participation, StudentTask, Submission
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+from cms.grading.scorecache import get_cached_score_entry
 from cms.server.file_middleware import FileServerMiddleware
 from cmscommon.datetime import make_datetime
 
+if typing.TYPE_CHECKING:
+    from cms.db import TrainingDay, TrainingDayGroup, TrainingProgram, User
 
 logger = logging.getLogger(__name__)
 
 
 def exclude_internal_contests(query):
-    """Exclude contests with names starting with '__' (internal/system contests).
+    """Exclude internal/system contests from a query.
+
+    This excludes:
+    - Contests with names starting with '__' (legacy internal contests)
+    - Contests that are managing contests for training programs
 
     query: SQLAlchemy query object for Contest queries
 
     return: Query object with internal contests filtered out
     """
-    return query.filter(~Contest.name.like(r'\_\_%', escape='\\'))
+    return query.filter(
+        ~Contest.name.like(r'\_\_%', escape='\\')
+    ).filter(
+        ~Contest.training_program.has()
+    )
+
+
+def get_student_for_training_day(
+    sql_session: Session,
+    participation: "Participation",
+    training_day: "TrainingDay"
+) -> "Student | None":
+    """Get the student record for a participation in a training day.
+
+    sql_session: the database session.
+    participation: the participation to look up.
+    training_day: the training day.
+
+    return: the Student record, or None if not found.
+
+    """
+    # Single query with join instead of two separate queries
+    managing_contest = training_day.training_program.managing_contest
+    return sql_session.query(Student).join(
+        Participation, Student.participation_id == Participation.id
+    ).filter(
+        Participation.contest_id == managing_contest.id,
+        Participation.user_id == participation.user_id,
+        Student.training_program_id == training_day.training_program_id
+    ).first()
+
+
+def check_training_day_eligibility(
+    sql_session: Session,
+    participation: "Participation",
+    training_day: "TrainingDay | None"
+) -> tuple[bool, "TrainingDayGroup | None", list[str]]:
+    """Check if a participation is eligible for a training day.
+
+    A student is eligible if:
+    - The training day has no main groups configured (all students eligible), OR
+    - The student has exactly one main group tag
+
+    sql_session: the database session.
+    participation: the participation to check.
+    training_day: the training day to check, or None for non-training-day contests.
+
+    return: tuple of (is_eligible, main_group, matching_tags)
+        - is_eligible: True if the student can participate
+        - main_group: the TrainingDayGroup if exactly one match, else None
+        - matching_tags: list of main group tags the student has
+
+    """
+    if training_day is None:
+        return True, None, []
+
+    # If no main groups configured, all students are eligible
+    if not training_day.groups:
+        return True, None, []
+
+    # Find the student record
+    student = get_student_for_training_day(sql_session, participation, training_day)
+
+    if student is None:
+        # No student record means they're not in the training program
+        return False, None, []
+
+    # Build dict for O(1) lookup of groups by tag name
+    groups_by_tag = {g.tag_name.lower(): g for g in training_day.groups}
+
+    # Find which main group tags the student has
+    student_tags = {tag.lower() for tag in (student.student_tags or [])}
+    matching_tags = sorted(student_tags & groups_by_tag.keys())
+
+    # Eligible only if exactly one main group tag
+    if len(matching_tags) == 1:
+        # O(1) lookup instead of O(n) scan
+        return True, groups_by_tag[matching_tags[0]], matching_tags
+
+    return False, None, matching_tags
+
+
+def can_access_task(sql_session: Session, task: "Task", participation: "Participation",
+                    training_day: "TrainingDay | None") -> bool:
+    """Check if a participation can access the given task.
+
+    For training day contests, tasks may have visibility restrictions
+    based on student tags. A task is accessible if:
+    - The task has no visible_to_tags (empty list = visible to all)
+    - The student has at least one tag matching the task's visible_to_tags
+
+    For non-training-day contests, all tasks are accessible.
+
+    sql_session: the database session.
+    task: the task to check access for.
+    participation: the participation to check access for.
+    training_day: the training day if this is a training day contest, else None.
+
+    return: True if the participation can access the task.
+
+    """
+    # Only apply visibility filtering for training day contests
+    if training_day is None:
+        return True
+
+    # If task has no visibility restrictions, it's visible to all
+    if not task.visible_to_tags:
+        return True
+
+    # Find the student record for this participation
+    student = get_student_for_training_day(sql_session, participation, training_day)
+
+    if student is None:
+        return False
+
+    # Check if student has any matching tag
+    student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
+    task_tags_set = {tag.lower() for tag in task.visible_to_tags}
+    return bool(student_tags_set & task_tags_set)
+
+
+def get_student_archive_scores(
+    sql_session: Session,
+    student: "Student",
+    participation: "Participation",
+    contest: "Contest",
+) -> dict[int, float]:
+    """Get fresh task scores for all tasks in a student's archive.
+    This utility uses get_cached_score_entry to ensure scores are fresh
+    and not stale. It returns a mapping of task_id -> score for all tasks
+    that are both in the student's archive AND currently exist in the contest.
+    IMPORTANT: This function may trigger cache rebuilds which acquire advisory
+    locks. The caller MUST commit the session after calling this function to
+    release the locks and persist any cache updates.
+    sql_session: the database session.
+    student: the Student object (with student_tasks relationship).
+    participation: the Participation object for the managing contest.
+    contest: the Contest object (managing contest for the training program).
+    return: dict mapping task_id -> score for tasks in the student's archive.
+    """
+
+    student_task_ids = {st.task_id for st in student.student_tasks}
+    scores = {}
+
+    for task in contest.get_tasks():
+        if task.id not in student_task_ids:
+            continue
+        cache_entry = get_cached_score_entry(sql_session, participation, task)
+        scores[task.id] = cache_entry.score
+
+    return scores
+
+
+def calculate_task_archive_progress(
+    student: "Student",
+    participation: "Participation",
+    contest: "Contest",
+    sql_session: Session,
+    include_task_details: bool = False,
+    submission_counts: dict[int, int] | None = None,
+) -> dict:
+    """Calculate task archive progress for a student.
+
+    This is a shared utility used by both the admin students page and
+    the contest training program overview page.
+
+    student: the Student object (with student_tasks relationship).
+    participation: the Participation object.
+    contest: the Contest object (managing contest for the training program).
+    sql_session: SQLAlchemy session for using get_cached_score_entry.
+    include_task_details: if True, include per-task breakdown in task_scores list.
+    submission_counts: optional dict mapping task_id to submission count.
+        If provided and include_task_details is True, each task will include
+        a submission_count field.
+
+    return: dict with total_score, max_score, percentage, task_count.
+            If include_task_details is True, also includes task_scores list.
+
+    """
+    # Get the tasks in the student's archive
+    student_tasks = (
+        sql_session.query(StudentTask)
+        .options(joinedload(StudentTask.task))
+        .filter(StudentTask.student_id == student.id)
+        .all()
+    )
+    cached_scores = get_student_archive_scores(
+        sql_session, student, participation, contest
+    )
+
+    total_score = 0.0
+    max_score = 0.0
+    task_count = 0
+    task_scores = [] if include_task_details else None
+
+    contest_tasks = contest.get_tasks()
+    # Iterate only over tasks in the student's archive (StudentTask entries)
+    for student_task in student_tasks:
+        task = student_task.task
+        if task is None or task not in contest_tasks:
+            continue
+        task_count += 1
+        max_task_score = task.active_dataset.score_type_object.max_score \
+            if task.active_dataset else 100.0
+        max_score += max_task_score
+        best_score = cached_scores[task.id]
+        total_score += best_score
+
+        if include_task_details:
+            task_info = {
+                "task": task,
+                "score": best_score,
+                "max_score": max_task_score,
+                "source_training_day": student_task.source_training_day,
+                "assigned_at": student_task.assigned_at,
+            }
+            if submission_counts is not None:
+                task_info["submission_count"] = submission_counts.get(task.id, 0)
+            task_scores.append(task_info)
+
+    percentage = (total_score / max_score * 100) if max_score > 0 else 0.0
+
+    result = {
+        "total_score": total_score,
+        "max_score": max_score,
+        "percentage": percentage,
+        "task_count": task_count,
+    }
+
+    if include_task_details:
+        result["task_scores"] = task_scores
+
+    return result
+
+
+def get_student_for_user_in_program(
+    sql_session: Session,
+    training_program: "TrainingProgram",
+    user_id: int
+) -> "Student | None":
+    """Get the student record for a user in a training program.
+
+    This is a common query pattern used across many handlers to find
+    the Student record for a given user in a training program.
+
+    sql_session: the database session.
+    training_program: the training program to search in.
+    user_id: the user ID to look up.
+
+    return: the Student record, or None if not found.
+
+    """
+    managing_contest = training_program.managing_contest
+    return sql_session.query(Student).join(
+        Participation, Student.participation_id == Participation.id
+    ).filter(
+        Participation.contest_id == managing_contest.id,
+        Participation.user_id == user_id,
+        Student.training_program_id == training_program.id
+    ).first()
+
+
+def get_submission_counts_by_task(
+    sql_session: Session,
+    participation_id: int,
+    task_ids: set[int] | list[int]
+) -> dict[int, int]:
+    """Get submission counts for tasks by a participation.
+
+    This is a batch query utility that efficiently counts submissions
+    for multiple tasks at once, avoiding N+1 query patterns.
+
+    sql_session: the database session.
+    participation_id: the participation ID to count submissions for.
+    task_ids: set or list of task IDs to count submissions for.
+
+    return: dict mapping task_id to submission count.
+
+    """
+    if not task_ids:
+        return {}
+
+    counts = (
+        sql_session.query(
+            Submission.task_id,
+            func.count(Submission.id)
+        )
+        .filter(Submission.participation_id == participation_id)
+        .filter(Submission.task_id.in_(task_ids))
+        .group_by(Submission.task_id)
+        .all()
+    )
+    return dict(counts)
 
 
 # TODO: multi_contest is only relevant for CWS
