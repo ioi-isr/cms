@@ -987,6 +987,11 @@ class StudentBaseHandler(BaseHandler):
         Raises:
             tornado.web.HTTPError(404): If participation or student not found.
         """
+        try:
+            user_id_int = int(user_id)
+        except ValueError:
+            raise tornado.web.HTTPError(404)
+
         self.training_program = self.safe_get_item(
             TrainingProgram, training_program_id
         )
@@ -996,7 +1001,7 @@ class StudentBaseHandler(BaseHandler):
         participation: Participation | None = (
             self.sql_session.query(Participation)
             .filter(Participation.contest_id == self.managing_contest.id)
-            .filter(Participation.user_id == user_id)
+            .filter(Participation.user_id == user_id_int)
             .first()
         )
 
