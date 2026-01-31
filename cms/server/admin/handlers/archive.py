@@ -55,7 +55,7 @@ from cms.server.util import (
     can_access_task,
     check_training_day_eligibility,
     parse_tags,
-    get_student_for_user_in_program,
+    build_user_to_student_map,
 )
 from cmscommon.datetime import make_datetime
 
@@ -537,13 +537,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
         """Extract and store attendance data for all students."""
         training_program = training_day.training_program
 
+        # Build user_id -> Student map for O(1) lookups instead of repeated queries
+        user_to_student = build_user_to_student_map(training_program)
+
         for participation in contest.participations:
             # Find the student for this user in the training program
             # Note: Student.participation_id points to the managing contest participation,
             # not the training day participation, so we need to look up by user_id
-            student = get_student_for_user_in_program(
-                self.sql_session, training_program, participation.user_id
-            )
+            student = user_to_student.get(participation.user_id)
 
             if student is None:
                 continue
@@ -665,13 +666,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
             }
         training_day.archived_tasks_data = archived_tasks_data
 
+        # Build user_id -> Student map for O(1) lookups instead of repeated queries
+        user_to_student = build_user_to_student_map(training_program)
+
         for participation in contest.participations:
             # Find the student for this user in the training program
             # Note: Student.participation_id points to the managing contest participation,
             # not the training day participation, so we need to look up by user_id
-            student = get_student_for_user_in_program(
-                self.sql_session, training_program, participation.user_id
-            )
+            student = user_to_student.get(participation.user_id)
 
             if student is None:
                 continue

@@ -475,6 +475,73 @@ def get_student_for_user_in_program(
     ).first()
 
 
+def build_user_to_student_map(training_program: "TrainingProgram") -> dict[int, "Student"]:
+    """Build a mapping of user_id -> Student for efficient lookups.
+
+    This utility builds a dict from training_program.students in O(n) time,
+    allowing O(1) lookups by user_id instead of repeated database queries.
+
+    Useful when iterating over participations and needing to find the
+    corresponding Student record for each one.
+
+    training_program: the training program to build the map from.
+
+    return: dict mapping user_id to Student.
+
+    """
+    user_to_student: dict[int, "Student"] = {}
+    for student in training_program.students:
+        user_to_student[student.participation.user_id] = student
+    return user_to_student
+
+
+def get_student_context(
+    sql_session: Session,
+    training_program: "TrainingProgram",
+    user_id: int | str,
+) -> tuple["TrainingProgram", "Contest", Participation, Student]:
+    """Get training program, managing contest, participation, and student.
+
+    This utility function consolidates the common pattern of looking up
+    a student's context in a training program, which is repeated across
+    many student-related handlers.
+
+    sql_session: the database session.
+    training_program: the training program to search in.
+    user_id: the user ID to look up.
+
+    return: tuple of (training_program, managing_contest, participation, student).
+
+    raise: tornado.web.HTTPError(404) if participation or student not found.
+
+    """
+    import tornado.web
+
+    managing_contest = training_program.managing_contest
+
+    participation: Participation | None = (
+        sql_session.query(Participation)
+        .filter(Participation.contest_id == managing_contest.id)
+        .filter(Participation.user_id == user_id)
+        .first()
+    )
+
+    if participation is None:
+        raise tornado.web.HTTPError(404)
+
+    student: Student | None = (
+        sql_session.query(Student)
+        .filter(Student.participation == participation)
+        .filter(Student.training_program == training_program)
+        .first()
+    )
+
+    if student is None:
+        raise tornado.web.HTTPError(404)
+
+    return training_program, managing_contest, participation, student
+
+
 def get_student_tags_by_participation(
     sql_session: Session,
     training_program: "TrainingProgram",

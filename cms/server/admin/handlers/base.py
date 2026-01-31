@@ -73,6 +73,8 @@ from cms.server.util import (
     exclude_internal_contests,
     count_unanswered_questions,
     get_all_training_day_notifications,
+    get_all_student_tags,
+    calculate_task_archive_progress,
 )
 from cmscommon.crypto import hash_password, parse_authentication
 from cmscommon.datetime import make_datetime, get_timezone, local_to_utc, format_datetime_for_input, get_timezone_name
@@ -550,6 +552,53 @@ class BaseHandler(CommonRequestHandler):
             total_td_unanswered_questions
         self.r_params["total_td_pending_delay_requests"] = \
             total_td_pending_delay_requests
+
+        return self.r_params
+
+    def render_params_for_students_page(
+        self, training_program: "TrainingProgram"
+    ) -> dict:
+        """Prepare render params for the training program students page.
+
+        This is a convenience method that sets up all the params needed
+        for the students page, including unassigned users, student progress,
+        and task/tag lists for the bulk assign modal.
+
+        Must be called after render_params_for_training_program().
+
+        Args:
+            training_program: The training program being viewed.
+
+        Returns:
+            The updated r_params dict.
+        """
+        managing_contest = training_program.managing_contest
+
+        assigned_user_ids_q = self.sql_session.query(Participation.user_id).filter(
+            Participation.contest == managing_contest
+        )
+
+        self.r_params["unassigned_users"] = (
+            self.sql_session.query(User)
+            .filter(~User.id.in_(assigned_user_ids_q))
+            .filter(~User.username.like(r"\_\_%", escape="\\"))
+            .all()
+        )
+
+        # Calculate task archive progress for each student using shared utility
+        student_progress = {}
+        for student in training_program.students:
+            student_progress[student.id] = calculate_task_archive_progress(
+                student, student.participation, managing_contest, self.sql_session
+            )
+        # Commit to release any advisory locks taken by get_cached_score_entry
+        self.sql_session.commit()
+
+        self.r_params["student_progress"] = student_progress
+
+        # For bulk assign task modal
+        self.r_params["all_tasks"] = managing_contest.get_tasks()
+        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
 
         return self.r_params
 
