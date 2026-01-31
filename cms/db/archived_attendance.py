@@ -93,6 +93,7 @@ class ArchivedAttendance(Base):
     justified: bool = Column(
         Boolean,
         nullable=False,
+        default=False,
         server_default=text("false"),
     )
 
@@ -106,6 +107,7 @@ class ArchivedAttendance(Base):
     recorded: bool = Column(
         Boolean,
         nullable=False,
+        default=False,
         server_default=text("false"),
     )
 

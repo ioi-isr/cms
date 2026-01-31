@@ -40,7 +40,8 @@ from cms.db import Contest, Participation, ScoreHistory, Student, \
     Submission, SubmissionResult, Task
 
 from cms.grading.scorecache import get_cached_score_entry, ensure_valid_history
-from cms.server.util import can_access_task, get_all_student_tags
+from cms.server.util import can_access_task, get_student_for_user_in_program
+from cms.server.admin.handlers.utils import get_all_student_tags
 from .base import BaseHandler, require_permission
 
 logger = logging.getLogger(__name__)
@@ -398,7 +399,9 @@ class RankingHandler(RankingCommonMixin, BaseHandler):
                 )
 
             # Get all student tags for display
-            self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+            self.r_params["all_student_tags"] = get_all_student_tags(
+                self.sql_session, training_program
+            )
 
         self.r_params["main_groups_data"] = main_groups_data
         self.r_params["student_tags_by_participation"] = student_tags_by_participation
@@ -580,12 +583,8 @@ class ParticipationDetailHandler(BaseHandler):
             training_program = training_day.training_program
             main_group_tags = {g.tag_name for g in training_day.groups}
 
-            user_student = (
-                self.sql_session.query(Student)
-                .join(Participation, Student.participation_id == Participation.id)
-                .filter(Student.training_program_id == training_program.id)
-                .filter(Participation.user_id == user_id)
-                .first()
+            user_student = get_student_for_user_in_program(
+                self.sql_session, training_program, user_id
             )
             if user_student:
                 user_tags = set(user_student.student_tags or [])
