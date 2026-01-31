@@ -151,13 +151,13 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             <table class="ranking-table tp-tasks-table" id="training-days-table">
                 <thead>
                     <tr>
-                        <th class="grip-column"></th>
-                        <th class="sortable-header" data-sort="string" data-sort-key="name" style="text-align: left;">Name</th>
-                        <th style="text-align: left;">Description</th>
-                        <th style="text-align: left; min-width: 150px;">Types</th>
-                        <th class="sortable-header" data-sort="date" data-sort-key="start" style="text-align: left;">Start</th>
-                        <th style="text-align: left;">Tasks</th>
-                        <th class="text-center" style="width: 100px;">Actions</th>
+                        <th class="grip-column no-sort"></th>
+                        <th style="text-align: left;">Name</th>
+                        <th class="no-sort" style="text-align: left;">Description</th>
+                        <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
+                        <th data-sort-settings="numeric" style="text-align: left;">Start</th>
+                        <th class="no-sort" style="text-align: left;">Tasks</th>
+                        <th class="text-center no-sort" style="width: 100px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="training-days-tbody">
@@ -182,7 +182,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         </td>
 
                         <!-- Name -->
-                        <td>
+                        <td data-value="{{ td.contest.name }}">
                             <div class="list-cell-wrapper" style="flex-direction: column; align-items: flex-start;">
                                 <a href="{{ url("contest", td.contest.id) }}" class="student-name-link" style="max-width: none;">{{ td.contest.name }}</a>
                             </div>
@@ -203,7 +203,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         </td>
 
                         <!-- Start Time -->
-                        <td>
+                        <td data-value="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 9999999999 }}">
                             <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
                                 {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
                                     <div>{{ td.contest.start.strftime('%Y-%m-%d') }}</div>
@@ -287,21 +287,20 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         <table class="ranking-table tp-tasks-table" id="archived-training-days-table">
             <thead>
                 <tr>
-                    <th class="sortable-header" data-sort="string" data-sort-key="name" style="text-align: left;">Name</th>
-                    <th style="text-align: left;">Description</th>
-                    <th style="text-align: left; min-width: 150px;">Types</th>
-                    <th class="sortable-header" data-sort="date" data-sort-key="start" style="text-align: left;">Start</th>
-                    <th style="text-align: left;">Tasks</th>
-                    <th style="text-align: center; width: 100px;">Share</th>
+                    <th style="text-align: left;">Name</th>
+                    <th class="no-sort" style="text-align: left;">Description</th>
+                    <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
+                    <th data-sort-settings="numeric" style="text-align: left;">Start</th>
+                    <th class="no-sort" style="text-align: left;">Tasks</th>
+                    <th class="no-sort" style="text-align: center; width: 100px;">Share</th>
                 </tr>
             </thead>
             <tbody>
                 {% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
                 {% for td in archived_training_days %}
-                <tr data-name="{{ td.name or '' }}"
-                    data-start="{{ td.start_time.timestamp() if td.start_time else 0 }}">
+                <tr>
                     <!-- Name -->
-                    <td>
+                    <td data-value="{{ td.name or '' }}">
                         <div class="list-cell-wrapper">
                             <span style="font-weight: 600; color: var(--tp-text-primary);">{{ td.name or "(no name)" }}</span>
                         </div>
@@ -322,7 +321,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     </td>
 
                     <!-- Start Time -->
-                    <td>
+                    <td data-value="{{ td.start_time.timestamp() if td.start_time else 9999999999 }}">
                         <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
                             {% if td.start_time %}
                                 <div>{{ td.start_time.strftime('%Y-%m-%d') }}</div>
@@ -447,99 +446,22 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 </div>
 
 <script>
-// Drag and drop reordering for active training days
-(function() {
-    // Only enable drag-and-drop for users with permission_all
-    var canReorder = {{ 'true' if admin.permission_all else 'false' }};
-    if (!canReorder) return;
-
-    var tbody = document.getElementById('training-days-tbody');
-    if (!tbody) return;
-
-    var draggedRow = null;
-    var placeholder = null;
-    var originalOrder = null;
-
-    function createPlaceholder() {
-        var tr = document.createElement('tr');
-        tr.className = 'drag-placeholder';
-        tr.innerHTML = '<td colspan="7"></td>';
-        return tr;
-    }
-
-    tbody.addEventListener('dragstart', function(e) {
-        if (e.target.tagName !== 'TR') return;
-        draggedRow = e.target;
-        originalOrder = Array.from(tbody.querySelectorAll('tr[data-training-day-id]'));
-        draggedRow.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', '');
-        placeholder = createPlaceholder();
-    });
-
-    tbody.addEventListener('dragend', function(e) {
-        if (draggedRow) {
-            draggedRow.classList.remove('dragging');
-            if (placeholder && placeholder.parentNode) {
-                placeholder.parentNode.removeChild(placeholder);
-            }
-            draggedRow = null;
-            placeholder = null;
-            saveNewOrder();
-        }
-    });
-
-    tbody.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-
-        var targetRow = e.target.closest('tr');
-        if (!targetRow || targetRow === draggedRow || targetRow === placeholder) return;
-
-        var rect = targetRow.getBoundingClientRect();
-        var midY = rect.top + rect.height / 2;
-
-        if (e.clientY < midY) {
-            targetRow.parentNode.insertBefore(placeholder, targetRow);
-        } else {
-            targetRow.parentNode.insertBefore(placeholder, targetRow.nextSibling);
-        }
-    });
-
-    tbody.addEventListener('drop', function(e) {
-        e.preventDefault();
-        if (placeholder && placeholder.parentNode && draggedRow) {
-            placeholder.parentNode.insertBefore(draggedRow, placeholder);
-            placeholder.parentNode.removeChild(placeholder);
-        }
-    });
-
-    function saveNewOrder() {
-        var rows = Array.from(tbody.querySelectorAll('tr[data-training-day-id]'));
-        if (originalOrder &&
-            rows.length === originalOrder.length &&
-            rows.every(function(row, i) { return row === originalOrder[i]; })) {
-            originalOrder = null;
-            return;
-        }
-        if (!confirm('Save the new training day order?')) {
-            restoreOriginalOrder();
-            return;
-        }
-        var order = [];
-        rows.forEach(function(row, index) {
-            order.push({
-                training_day_id: row.getAttribute('data-training-day-id'),
-                new_position: index
-            });
+// Drag and drop reordering using shared utility
+AdminTableUtils.initDragDropReorder({
+    tbodyId: 'training-days-tbody',
+    rowSelector: 'tr',
+    rowIdAttr: 'training-day-id',
+    colSpan: 7,
+    confirmMessage: 'Save the new training day order?',
+    enabled: {{ 'true' if admin.permission_all else 'false' }},
+    onSave: function(orderedIds) {
+        var order = orderedIds.map(function(item) {
+            return { training_day_id: item.id, new_position: item.position };
         });
-
-        // Submit via form
         var form = document.getElementById('training-days-form');
         var reorderInput = document.getElementById('reorder-data');
         reorderInput.value = JSON.stringify(order);
 
-        // Check for existing operation input and reuse or create new
         var operationInput = form.querySelector('input[name="operation"]');
         if (!operationInput) {
             operationInput = document.createElement('input');
@@ -548,67 +470,15 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             form.appendChild(operationInput);
         }
         operationInput.value = 'reorder';
-
         form.submit();
     }
+});
 
-    function restoreOriginalOrder() {
-        if (!originalOrder) return;
-        originalOrder.forEach(function(row) {
-            tbody.appendChild(row);
-        });
-        originalOrder = null;
-    }
-})();
-
-// Shared table sorting utility
-function initTableSorting(tableId, rowSelector) {
-    var table = document.getElementById(tableId);
-    if (!table) return;
-
-    var headers = table.querySelectorAll('.sortable-header');
-    var sortState = {};
-
-    headers.forEach(function(header, index) {
-        header.addEventListener('click', function() {
-            var sortKey = header.getAttribute('data-sort-key') || '';
-            var sortType = header.getAttribute('data-sort') || 'string';
-            var ascending = !sortState[index];
-            sortState[index] = ascending;
-
-            // Update UI
-            headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
-            header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
-
-            var tbody = table.querySelector('tbody');
-            var rows = Array.from(tbody.querySelectorAll(rowSelector));
-
-            rows.sort(function(a, b) {
-                var aVal, bVal;
-
-                if (sortType === 'date') {
-                    aVal = parseFloat(a.getAttribute('data-' + sortKey)) || 0;
-                    bVal = parseFloat(b.getAttribute('data-' + sortKey)) || 0;
-                } else {
-                    aVal = (a.getAttribute('data-' + sortKey) || '').toLowerCase();
-                    bVal = (b.getAttribute('data-' + sortKey) || '').toLowerCase();
-                }
-
-                if (aVal < bVal) return ascending ? -1 : 1;
-                if (aVal > bVal) return ascending ? 1 : -1;
-                return 0;
-            });
-
-            rows.forEach(function(row) {
-                tbody.appendChild(row);
-            });
-        });
-    });
-}
-
-// Initialize table sorting for both tables
-initTableSorting('training-days-table', 'tr[data-training-day-id]');
-initTableSorting('archived-training-days-table', 'tr');
+// Initialize table sorting for both tables using CMS.AWSUtils
+$(document).ready(function() {
+    CMS.AWSUtils.init_table_sort($("#training-days-table"), false, 1);
+    CMS.AWSUtils.init_table_sort($("#archived-training-days-table"), false, 0);
+});
 
 // Scoreboard Sharing Modal
 var currentSharingTrainingDayId = null;

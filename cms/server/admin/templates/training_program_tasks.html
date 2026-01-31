@@ -43,10 +43,10 @@
             <table class="ranking-table tp-tasks-table" id="tasks-table">
                 <thead>
                     <tr>
-                        <th class="grip-column"></th>
-                        <th class="sortable-header" data-sort="string" style="text-align: left;">Task</th>
-                        <th class="sortable-header" data-sort="string" style="text-align: left;">Training Day</th>
-                        <th class="text-center" style="width: 120px;">Actions</th>
+                        <th class="grip-column no-sort"></th>
+                        <th style="text-align: left;">Task</th>
+                        <th style="text-align: left;">Training Day</th>
+                        <th class="text-center no-sort" style="width: 120px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="tasks-tbody">
@@ -72,7 +72,7 @@
                         </td>
 
                         <!-- Task name and title -->
-                        <td>
+                        <td data-value="{{ t.name }}">
                             <div class="student-name-wrapper">
                                 <div class="student-info">
                                     <a class="student-name-link" href="{{ url("task", t.id) }}" title="{{ t.title }}">
@@ -84,7 +84,7 @@
                         </td>
 
                         <!-- Training Day -->
-                        <td>
+                        <td data-value="{{ t.training_day.contest.name if (t.training_day and t.training_day.contest) else ('zzz_archived_' + (t.training_day.name or '') if (t.training_day and is_archived) else ('zzz_none' if not t.training_day else t.training_day.name)) }}">
                             <div class="list-cell-wrapper">
                                 {% if t.training_day is not none and t.training_day.contest is not none %}
                                 <a href="{{ url("contest", t.training_day.contest.id) }}" class="source-badge badge-training">
@@ -229,105 +229,21 @@ document.getElementById('remove-task-modal').addEventListener('click', function(
     }
 });
 
-// Drag and drop reordering
-(function() {
-    var tbody = document.getElementById('tasks-tbody');
-    if (!tbody) return;
-
-    var draggedRow = null;
-    var placeholder = null;
-    var originalOrder = null;
-
-    function createPlaceholder() {
-        var tr = document.createElement('tr');
-        tr.className = 'drag-placeholder';
-        tr.innerHTML = '<td colspan="4"></td>';
-        return tr;
-    }
-
-    tbody.addEventListener('dragstart', function(e) {
-        var targetRow = e.target.closest('tr');
-        if (!targetRow) return;
-        draggedRow = targetRow;
-        originalOrder = Array.from(tbody.querySelectorAll('tr'));
-        draggedRow.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', '');
-        placeholder = createPlaceholder();
-    });
-
-    tbody.addEventListener('dragend', function(e) {
-        if (draggedRow) {
-            draggedRow.classList.remove('dragging');
-            if (placeholder && placeholder.parentNode) {
-                placeholder.parentNode.removeChild(placeholder);
-            }
-            draggedRow = null;
-            placeholder = null;
-            saveNewOrder();
-        }
-    });
-
-    tbody.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-
-        var targetRow = e.target.closest('tr');
-        if (!targetRow || targetRow === draggedRow || targetRow === placeholder) return;
-
-        var rect = targetRow.getBoundingClientRect();
-        var midY = rect.top + rect.height / 2;
-
-        if (e.clientY < midY) {
-            targetRow.parentNode.insertBefore(placeholder, targetRow);
-        } else {
-            targetRow.parentNode.insertBefore(placeholder, targetRow.nextSibling);
-        }
-    });
-
-    tbody.addEventListener('drop', function(e) {
-        e.preventDefault();
-        if (placeholder && placeholder.parentNode && draggedRow) {
-            placeholder.parentNode.insertBefore(draggedRow, placeholder);
-            placeholder.parentNode.removeChild(placeholder);
-        }
-    });
-
-    function restoreOriginalOrder() {
-        if (!originalOrder) return;
-        originalOrder.forEach(function(row) {
-            tbody.appendChild(row);
+// Drag and drop reordering using shared utility
+AdminTableUtils.initDragDropReorder({
+    tbodyId: 'tasks-tbody',
+    rowSelector: 'tr',
+    rowIdAttr: 'task-id',
+    colSpan: 4,
+    confirmMessage: 'Save the new task order?',
+    onSave: function(orderedIds) {
+        var order = orderedIds.map(function(item) {
+            return { task_id: item.id, new_num: item.position };
         });
-        originalOrder = null;
-    }
-
-    function saveNewOrder() {
-        var rows = Array.from(tbody.querySelectorAll('tr[data-task-id]'));
-        // Skip confirmation if order hasn't changed
-        if (originalOrder &&
-            rows.length === originalOrder.length &&
-            rows.every(function(row, i) { return row === originalOrder[i]; })) {
-            originalOrder = null;
-            return;
-        }
-        if (!confirm('Save the new task order?')) {
-            restoreOriginalOrder();
-            return;
-        }
-        var order = [];
-        rows.forEach(function(row, index) {
-            order.push({
-                task_id: row.getAttribute('data-task-id'),
-                new_num: index
-            });
-        });
-
-        // Submit via form
         var form = document.getElementById('tasks-form');
         var reorderInput = document.getElementById('reorder-data');
         reorderInput.value = JSON.stringify(order);
 
-        // Check for existing operation input and reuse or create new
         var operationInput = form.querySelector('input[name="operation"]');
         if (!operationInput) {
             operationInput = document.createElement('input');
@@ -336,56 +252,13 @@ document.getElementById('remove-task-modal').addEventListener('click', function(
             form.appendChild(operationInput);
         }
         operationInput.value = 'reorder';
-
         form.submit();
     }
-})();
+});
 
-// Table sorting
-(function() {
-    var table = document.getElementById('tasks-table');
-    if (!table) return;
-
-    var headers = table.querySelectorAll('.sortable-header');
-    var sortState = {};
-
-    headers.forEach(function(header, index) {
-        header.addEventListener('click', function() {
-            var columnIndex = header.cellIndex;
-            var ascending = !sortState[index];
-            sortState[index] = ascending;
-
-            // Update UI
-            headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
-            header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
-
-            var tbody = table.querySelector('tbody');
-            var rows = Array.from(tbody.querySelectorAll('tr'));
-
-            rows.sort(function(a, b) {
-                var aVal, bVal;
-
-                if (columnIndex === 1) { // Task name
-                    aVal = a.getAttribute('data-name').toLowerCase();
-                    bVal = b.getAttribute('data-name').toLowerCase();
-                } else if (columnIndex === 2) { // Training Day
-                    aVal = a.getAttribute('data-training-day').toLowerCase();
-                    bVal = b.getAttribute('data-training-day').toLowerCase();
-                    // Put "Not assigned" at the end
-                    if (!aVal && bVal) return 1;
-                    if (aVal && !bVal) return -1;
-                }
-
-                if (aVal < bVal) return ascending ? -1 : 1;
-                if (aVal > bVal) return ascending ? 1 : -1;
-                return 0;
-            });
-
-            rows.forEach(function(row) {
-                tbody.appendChild(row);
-            });
-        });
-    });
-})();
+// Table sorting using CMS.AWSUtils
+$(document).ready(function() {
+    CMS.AWSUtils.init_table_sort($("#tasks-table"), false, 1);
+});
 </script>
 {% endblock core %}

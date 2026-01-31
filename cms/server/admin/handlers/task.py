@@ -42,7 +42,7 @@ import tornado.web
 
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cms.grading.scoretypes import ScoreTypeGroup
-from cms.server.util import parse_tags
+from cms.server.admin.handlers.utils import parse_tags
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
 from cms.grading.subtask_validation import get_running_validator_ids

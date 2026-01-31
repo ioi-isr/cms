@@ -560,6 +560,85 @@ class ContestHandler(BaseHandler):
             .offset(int(user_test_num) - 1) \
             .first()
 
+    def get_validated_user_test(
+        self, task_name: str, user_test_num: str
+    ) -> tuple[Task, UserTest]:
+        """Validate and return task and user_test for user test handlers.
+
+        This is a common validation pattern used by UserTestStatusHandler,
+        UserTestDetailsHandler, UserTestIOHandler, and UserTestFileHandler.
+
+        Checks:
+        - Testing is enabled
+        - Task exists
+        - Task is accessible (for training day contests)
+        - User test exists
+
+        task_name: the name of the task.
+        user_test_num: the user test number (1-indexed).
+
+        return: tuple of (task, user_test).
+
+        raise: tornado.web.HTTPError(404) if any validation fails.
+
+        """
+        if not self.r_params["testing_enabled"]:
+            raise tornado.web.HTTPError(404)
+
+        task = self.get_task(task_name)
+        if task is None:
+            raise tornado.web.HTTPError(404)
+
+        if not self.can_access_task(task):
+            raise tornado.web.HTTPError(404)
+
+        user_test = self.get_user_test(task, user_test_num)
+        if user_test is None:
+            raise tornado.web.HTTPError(404)
+
+        return task, user_test
+
+    def get_validated_submission(
+        self, task_name: str, opaque_id: str
+    ) -> tuple[Task, Submission]:
+        """Validate and return task and submission for submission handlers.
+
+        This is a common validation pattern used by SubmissionStatusHandler,
+        SubmissionDetailsHandler, and UseTokenHandler.
+
+        Checks:
+        - Participation has started (unless unrestricted or training program)
+        - Task exists
+        - Task is accessible (for training day contests)
+        - Submission exists
+
+        task_name: the name of the task.
+        opaque_id: the submission's opaque ID.
+
+        return: tuple of (task, submission).
+
+        raise: tornado.web.HTTPError(403) if participation hasn't started.
+        raise: tornado.web.HTTPError(404) if task or submission not found.
+
+        """
+        participation = self.current_user
+        if not participation.unrestricted:
+            if self.training_program is None and participation.starting_time is None:
+                raise tornado.web.HTTPError(403)
+
+        task = self.get_task(task_name)
+        if task is None:
+            raise tornado.web.HTTPError(404)
+
+        if not self.can_access_task(task):
+            raise tornado.web.HTTPError(404)
+
+        submission = self.get_submission(task, opaque_id)
+        if submission is None:
+            raise tornado.web.HTTPError(404)
+
+        return task, submission
+
     def add_notification(
         self, subject: str, text: str, level: str, text_params: object | None = None
     ):

@@ -40,10 +40,7 @@ from cms.db import (
     TrainingDay,
     TrainingDayGroup,
 )
-from cms.server.util import (
-    get_all_training_day_types,
-    parse_tags,
-)
+from cms.server.admin.handlers.utils import get_all_training_day_types, parse_tags
 from cmscommon.datetime import make_datetime, get_timezone, get_timezone_name
 
 from .base import BaseHandler, require_permission, parse_datetime_with_timezone
