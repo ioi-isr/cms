@@ -38,14 +38,13 @@ from cms.db import (
 from cms.server.util import (
     get_all_student_tags,
     get_student_archive_scores,
-    get_student_context,
     get_submission_counts_by_task,
     parse_tags,
     parse_usernames_from_file,
 )
 from cmscommon.datetime import make_datetime
 
-from .base import BaseHandler, require_permission
+from .base import BaseHandler, StudentBaseHandler, require_permission
 
 
 class TrainingProgramStudentsHandler(BaseHandler):
@@ -351,7 +350,7 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
         self.write("../../students")
 
 
-class StudentHandler(BaseHandler):
+class StudentHandler(StudentBaseHandler):
     """Shows and edits details of a single student in a training program.
 
     Similar to ParticipationHandler but includes student tags.
@@ -359,27 +358,23 @@ class StudentHandler(BaseHandler):
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str, user_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        training_program, managing_contest, participation, student = get_student_context(
-            self.sql_session, training_program, user_id
-        )
-        self.contest = managing_contest
+        self.setup_student_context(training_program_id, user_id)
 
         submission_query = self.sql_session.query(Submission).filter(
-            Submission.participation == participation
+            Submission.participation == self.participation
         )
         page = int(self.get_query_argument("page", "0"))
 
         # render_params_for_training_program sets training_program, contest, unanswered
-        self.render_params_for_training_program(training_program)
+        self.render_params_for_training_program(self.training_program)
 
         self.render_params_for_submissions(submission_query, page)
 
-        self.r_params["participation"] = participation
-        self.r_params["student"] = student
-        self.r_params["selected_user"] = participation.user
+        self.r_params["participation"] = self.participation
+        self.r_params["student"] = self.student
+        self.r_params["selected_user"] = self.participation.user
         self.r_params["teams"] = self.sql_session.query(Team).all()
-        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+        self.r_params["all_student_tags"] = get_all_student_tags(self.training_program)
         self.render("student.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -388,38 +383,11 @@ class StudentHandler(BaseHandler):
             "training_program", training_program_id, "student", user_id, "edit"
         )
 
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-        self.contest = managing_contest
-
-        participation: Participation | None = (
-            self.sql_session.query(Participation)
-            .filter(Participation.contest_id == managing_contest.id)
-            .filter(Participation.user_id == user_id)
-            .first()
-        )
-
-        if participation is None:
-            raise tornado.web.HTTPError(404)
-
-        student: Student | None = (
-            self.sql_session.query(Student)
-            .filter(Student.participation == participation)
-            .filter(Student.training_program == training_program)
-            .first()
-        )
-
-        if student is None:
-            student = Student(
-                training_program=training_program,
-                participation=participation,
-                student_tags=[],
-            )
-            self.sql_session.add(student)
+        self.setup_student_context(training_program_id, user_id)
 
         try:
-            attrs = participation.get_attrs()
-            self.get_password(attrs, participation.password, True)
+            attrs = self.participation.get_attrs()
+            self.get_password(attrs, self.participation.password, True)
             self.get_ip_networks(attrs, "ip")
             self.get_datetime(attrs, "starting_time")
             self.get_timedelta_sec(attrs, "delay_time")
@@ -430,15 +398,15 @@ class StudentHandler(BaseHandler):
             # Get the new hidden status before applying
             new_hidden = attrs.get("hidden", False)
 
-            participation.set_attrs(attrs)
+            self.participation.set_attrs(attrs)
 
             # Check if admin wants to apply hidden status to existing training days
             apply_to_existing = self.get_argument("apply_hidden_to_existing", None) is not None
 
             if apply_to_existing:
                 # Update hidden status in all existing training day participations
-                user = participation.user
-                for training_day in training_program.training_days:
+                user = self.participation.user
+                for training_day in self.training_program.training_days:
                     if training_day.contest is None:
                         continue
                     td_participation = self.sql_session.query(Participation)\
@@ -456,12 +424,12 @@ class StudentHandler(BaseHandler):
                 )
                 if team is None:
                     raise ValueError(f"Team with code '{team_code}' does not exist")
-                participation.team = team
+                self.participation.team = team
             else:
-                participation.team = None
+                self.participation.team = None
 
             tags_str = self.get_argument("student_tags", "")
-            student.student_tags = parse_tags(tags_str)
+            self.student.student_tags = parse_tags(tags_str)
 
         except Exception as error:
             self.service.add_notification(
@@ -475,7 +443,7 @@ class StudentHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
-class StudentTagsHandler(BaseHandler):
+class StudentTagsHandler(StudentBaseHandler):
     """Handler for updating student tags via AJAX."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -483,42 +451,19 @@ class StudentTagsHandler(BaseHandler):
         # Set JSON content type for all responses
         self.set_header("Content-Type", "application/json")
 
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-
-        participation: Participation | None = (
-            self.sql_session.query(Participation)
-            .filter(Participation.contest_id == managing_contest.id)
-            .filter(Participation.user_id == user_id)
-            .first()
-        )
-
-        if participation is None:
+        try:
+            self.setup_student_context(training_program_id, user_id)
+        except tornado.web.HTTPError:
             self.set_status(404)
-            self.write({"error": "Participation not found"})
+            self.write({"error": "Student not found"})
             return
-
-        student: Student | None = (
-            self.sql_session.query(Student)
-            .filter(Student.participation == participation)
-            .filter(Student.training_program == training_program)
-            .first()
-        )
-
-        if student is None:
-            student = Student(
-                training_program=training_program,
-                participation=participation,
-                student_tags=[]
-            )
-            self.sql_session.add(student)
 
         try:
             tags_str = self.get_argument("student_tags", "")
-            student.student_tags = parse_tags(tags_str)
+            self.student.student_tags = parse_tags(tags_str)
 
             if self.try_commit():
-                self.write({"success": True, "tags": student.student_tags})
+                self.write({"success": True, "tags": self.student.student_tags})
             else:
                 self.set_status(500)
                 self.write({"error": "Failed to save"})
@@ -528,25 +473,22 @@ class StudentTagsHandler(BaseHandler):
             self.write({"error": str(error)})
 
 
-class StudentTasksHandler(BaseHandler):
+class StudentTasksHandler(StudentBaseHandler):
     """View and manage tasks assigned to a student in a training program."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str, user_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        training_program, managing_contest, participation, student = get_student_context(
-            self.sql_session, training_program, user_id
-        )
+        self.setup_student_context(training_program_id, user_id)
 
         # Get all tasks in the training program for the "add task" dropdown
-        all_tasks = managing_contest.get_tasks()
-        assigned_task_ids = {st.task_id for st in student.student_tasks}
+        all_tasks = self.managing_contest.get_tasks()
+        assigned_task_ids = {st.task_id for st in self.student.student_tasks}
         available_tasks = [t for t in all_tasks if t.id not in assigned_task_ids]
 
         # Build home scores using get_student_archive_scores for fresh cache values
         # This avoids stale entries in participation.task_scores
         home_scores = get_student_archive_scores(
-            self.sql_session, student, participation, managing_contest
+            self.sql_session, self.student, self.participation, self.managing_contest
         )
         # Commit to release advisory locks from cache rebuilds
         self.sql_session.commit()
@@ -555,7 +497,7 @@ class StudentTasksHandler(BaseHandler):
         training_scores = {}
         source_training_day_ids = {
             st.source_training_day_id
-            for st in student.student_tasks
+            for st in self.student.student_tasks
             if st.source_training_day_id is not None
         }
         archived_rankings = {}
@@ -565,12 +507,12 @@ class StudentTasksHandler(BaseHandler):
                 for r in (
                     self.sql_session.query(ArchivedStudentRanking)
                     .filter(ArchivedStudentRanking.training_day_id.in_(source_training_day_ids))
-                    .filter(ArchivedStudentRanking.student_id == student.id)
+                    .filter(ArchivedStudentRanking.student_id == self.student.id)
                     .all()
                 )
             }
 
-        for st in student.student_tasks:
+        for st in self.student.student_tasks:
             if st.source_training_day_id is None:
                 continue
             archived_ranking = archived_rankings.get(st.source_training_day_id)
@@ -581,15 +523,15 @@ class StudentTasksHandler(BaseHandler):
 
         # Get submission counts for each task (batch query for efficiency)
         submission_counts = get_submission_counts_by_task(
-            self.sql_session, participation.id, assigned_task_ids
+            self.sql_session, self.participation.id, assigned_task_ids
         )
 
-        self.render_params_for_training_program(training_program)
-        self.r_params["participation"] = participation
-        self.r_params["student"] = student
-        self.r_params["selected_user"] = participation.user
+        self.render_params_for_training_program(self.training_program)
+        self.r_params["participation"] = self.participation
+        self.r_params["student"] = self.student
+        self.r_params["selected_user"] = self.participation.user
         self.r_params["student_tasks"] = sorted(
-            student.student_tasks, key=lambda st: st.assigned_at, reverse=True
+            self.student.student_tasks, key=lambda st: st.assigned_at, reverse=True
         )
         self.r_params["available_tasks"] = available_tasks
         self.r_params["home_scores"] = home_scores
@@ -598,25 +540,22 @@ class StudentTasksHandler(BaseHandler):
         self.render("student_tasks.html", **self.r_params)
 
 
-class StudentTaskSubmissionsHandler(BaseHandler):
+class StudentTaskSubmissionsHandler(StudentBaseHandler):
     """View submissions for a specific task in a student's archive."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str, user_id: str, task_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
         task = self.safe_get_item(Task, task_id)
-        training_program, managing_contest, participation, student = get_student_context(
-            self.sql_session, training_program, user_id
-        )
+        self.setup_student_context(training_program_id, user_id)
 
         # Validate task belongs to the training program
-        if task.contest_id != managing_contest.id:
+        if task.contest_id != self.managing_contest.id:
             raise tornado.web.HTTPError(404)
 
         # Verify student is assigned this specific task
         student_task = (
             self.sql_session.query(StudentTask)
-            .filter(StudentTask.student == student)
+            .filter(StudentTask.student == self.student)
             .filter(StudentTask.task == task)
             .first()
         )
@@ -625,25 +564,24 @@ class StudentTaskSubmissionsHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         # Filter submissions by task
-        self.contest = managing_contest
         submission_query = (
             self.sql_session.query(Submission)
-            .filter(Submission.participation == participation)
+            .filter(Submission.participation == self.participation)
             .filter(Submission.task_id == task.id)
         )
         page = int(self.get_query_argument("page", "0"))
 
-        self.render_params_for_training_program(training_program)
+        self.render_params_for_training_program(self.training_program)
         self.render_params_for_submissions(submission_query, page)
 
-        self.r_params["participation"] = participation
-        self.r_params["student"] = student
-        self.r_params["selected_user"] = participation.user
+        self.r_params["participation"] = self.participation
+        self.r_params["student"] = self.student
+        self.r_params["selected_user"] = self.participation.user
         self.r_params["task"] = task
         self.render("student_task_submissions.html", **self.r_params)
 
 
-class AddStudentTaskHandler(BaseHandler):
+class AddStudentTaskHandler(StudentBaseHandler):
     """Add a task to a student's task archive."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -652,10 +590,7 @@ class AddStudentTaskHandler(BaseHandler):
             "training_program", training_program_id, "student", user_id, "tasks"
         )
 
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        training_program, managing_contest, participation, student = get_student_context(
-            self.sql_session, training_program, user_id
-        )
+        self.setup_student_context(training_program_id, user_id)
 
         try:
             task_id = self.get_argument("task_id")
@@ -665,13 +600,13 @@ class AddStudentTaskHandler(BaseHandler):
             task = self.safe_get_item(Task, task_id)
 
             # Validate task belongs to the student's training program
-            if task.contest_id != training_program.managing_contest_id:
+            if task.contest_id != self.training_program.managing_contest_id:
                 raise ValueError("Task does not belong to the student's contest")
 
             # Check if task is already assigned
             existing = (
                 self.sql_session.query(StudentTask)
-                .filter(StudentTask.student_id == student.id)
+                .filter(StudentTask.student_id == self.student.id)
                 .filter(StudentTask.task_id == task.id)
                 .first()
             )
@@ -682,7 +617,7 @@ class AddStudentTaskHandler(BaseHandler):
             # Note: CMS Base.__init__ skips foreign key columns, so we must
             # set them as attributes after creating the object
             student_task = StudentTask(assigned_at=make_datetime())
-            student_task.student_id = student.id
+            student_task.student_id = self.student.id
             student_task.task_id = task.id
             student_task.source_training_day_id = None
             self.sql_session.add(student_task)
@@ -698,13 +633,13 @@ class AddStudentTaskHandler(BaseHandler):
             self.service.add_notification(
                 make_datetime(),
                 "Task assigned",
-                f"Task '{task.name}' has been assigned to {participation.user.username}"
+                f"Task '{task.name}' has been assigned to {self.participation.user.username}"
             )
 
         self.redirect(fallback_page)
 
 
-class RemoveStudentTaskHandler(BaseHandler):
+class RemoveStudentTaskHandler(StudentBaseHandler):
     """Remove a task from a student's task archive."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -713,14 +648,11 @@ class RemoveStudentTaskHandler(BaseHandler):
             "training_program", training_program_id, "student", user_id, "tasks"
         )
 
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        training_program, managing_contest, participation, student = get_student_context(
-            self.sql_session, training_program, user_id
-        )
+        self.setup_student_context(training_program_id, user_id)
 
         student_task: StudentTask | None = (
             self.sql_session.query(StudentTask)
-            .filter(StudentTask.student_id == student.id)
+            .filter(StudentTask.student_id == self.student.id)
             .filter(StudentTask.task_id == task_id)
             .first()
         )
@@ -735,7 +667,7 @@ class RemoveStudentTaskHandler(BaseHandler):
             self.service.add_notification(
                 make_datetime(),
                 "Task removed",
-                f"Task '{task.name}' has been removed from {participation.user.username}'s archive"
+                f"Task '{task.name}' has been removed from {self.participation.user.username}'s archive"
             )
 
         self.redirect(fallback_page)

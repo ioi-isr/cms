@@ -495,53 +495,6 @@ def build_user_to_student_map(training_program: "TrainingProgram") -> dict[int, 
     return user_to_student
 
 
-def get_student_context(
-    sql_session: Session,
-    training_program: "TrainingProgram",
-    user_id: int | str,
-) -> tuple["TrainingProgram", "Contest", Participation, Student]:
-    """Get training program, managing contest, participation, and student.
-
-    This utility function consolidates the common pattern of looking up
-    a student's context in a training program, which is repeated across
-    many student-related handlers.
-
-    sql_session: the database session.
-    training_program: the training program to search in.
-    user_id: the user ID to look up.
-
-    return: tuple of (training_program, managing_contest, participation, student).
-
-    raise: tornado.web.HTTPError(404) if participation or student not found.
-
-    """
-    import tornado.web
-
-    managing_contest = training_program.managing_contest
-
-    participation: Participation | None = (
-        sql_session.query(Participation)
-        .filter(Participation.contest_id == managing_contest.id)
-        .filter(Participation.user_id == user_id)
-        .first()
-    )
-
-    if participation is None:
-        raise tornado.web.HTTPError(404)
-
-    student: Student | None = (
-        sql_session.query(Student)
-        .filter(Student.participation == participation)
-        .filter(Student.training_program == training_program)
-        .first()
-    )
-
-    if student is None:
-        raise tornado.web.HTTPError(404)
-
-    return training_program, managing_contest, participation, student
-
-
 def get_student_tags_by_participation(
     sql_session: Session,
     training_program: "TrainingProgram",

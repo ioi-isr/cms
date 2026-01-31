@@ -55,6 +55,7 @@ from cms.db import (
     DelayRequest,
     Participation,
     Question,
+    Student,
     Submission,
     SubmissionResult,
     Task,
@@ -951,6 +952,69 @@ class BaseHandler(CommonRequestHandler):
     def get_login_url(self) -> str:
         """Return the URL unauthenticated users are redirected to."""
         return self.url("login")
+
+
+class StudentBaseHandler(BaseHandler):
+    """Base handler for student-related pages in a training program.
+
+    This handler provides common functionality for looking up a student's
+    context (training_program, managing_contest, participation, student)
+    and raises 404 if the student is not found.
+
+    Subclasses should call setup_student_context() at the start of their
+    get/post methods to populate self.training_program, self.managing_contest,
+    self.participation, and self.student.
+    """
+
+    training_program: TrainingProgram
+    managing_contest: Contest
+    participation: Participation
+    student: Student
+
+    def setup_student_context(
+        self, training_program_id: str, user_id: str
+    ) -> None:
+        """Look up and set the student context for this request.
+
+        This method looks up the training program, managing contest,
+        participation, and student for the given IDs. It raises a 404
+        error if the participation or student is not found.
+
+        Args:
+            training_program_id: The training program ID from the URL.
+            user_id: The user ID from the URL.
+
+        Raises:
+            tornado.web.HTTPError(404): If participation or student not found.
+        """
+        self.training_program = self.safe_get_item(
+            TrainingProgram, training_program_id
+        )
+        self.managing_contest = self.training_program.managing_contest
+        self.contest = self.managing_contest
+
+        participation: Participation | None = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id == self.managing_contest.id)
+            .filter(Participation.user_id == user_id)
+            .first()
+        )
+
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
+        student: Student | None = (
+            self.sql_session.query(Student)
+            .filter(Student.participation == participation)
+            .filter(Student.training_program == self.training_program)
+            .first()
+        )
+
+        if student is None:
+            raise tornado.web.HTTPError(404)
+
+        self.participation = participation
+        self.student = student
 
 
 class FileHandler(BaseHandler, FileHandlerMixin):
