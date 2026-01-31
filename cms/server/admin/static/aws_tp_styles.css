@@ -201,11 +201,6 @@
     overflow: visible;
 }
 
-/* Ensure dialog body can accommodate dropdown */
-.tp-dialog .tp-dialog-body {
-    min-height: 200px;
-}
-
 .tp-dialog::backdrop {
     background: rgba(0, 0, 0, 0.5);
 }
@@ -289,47 +284,6 @@
     font-size: 0.8rem;
     color: #6b7280;
     white-space: nowrap;
-}
-
-/* ==========================================================================
-   Legacy Add Student Dropdown (kept for backwards compatibility)
-   ========================================================================== */
-
-.add-student-dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.add-student-form {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 8px;
-    background: var(--tp-bg-white);
-    border: 1px solid var(--tp-border);
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: var(--tp-shadow-lg);
-    z-index: 100;
-    min-width: 300px;
-}
-
-.add-student-form.show {
-    display: block;
-}
-
-.add-student-form label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--tp-text-secondary);
-    margin-bottom: 6px;
-}
-
-.add-student-form .searchable-select {
-    width: 100%;
-    margin-bottom: 12px;
 }
 
 /* ==========================================================================
@@ -419,51 +373,6 @@
 .student-tag-inline {
     font-weight: normal;
     font-size: 0.7em;
-}
-
-/* ==========================================================================
-   Progress Bar (inline style)
-   ========================================================================== */
-
-.progress-bar-inline {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.progress-bar-inline .percentage {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #374151;
-    min-width: 40px;
-    text-align: right;
-}
-
-.progress-bar-inline .bar-container {
-    flex: 1;
-    height: 6px;
-    background: var(--tp-border);
-    border-radius: 3px;
-    overflow: hidden;
-    width: 120px;
-}
-
-.progress-bar-inline .bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.3s ease;
-}
-
-.progress-bar-inline .bar-fill.color-green {
-    background: var(--tp-success);
-}
-
-.progress-bar-inline .bar-fill.color-orange {
-    background: var(--tp-warning);
-}
-
-.progress-bar-inline .bar-fill.color-red {
-    background: var(--tp-danger);
 }
 
 /* ==========================================================================
@@ -1105,7 +1014,7 @@
 .training-day-header {
     background-color: var(--tp-bg-light) !important;
     text-align: center;
-    border-bottom: 1px solid var(--tp-border-dark) !important;
+    border-bottom: none !important;
     pointer-events: none;
 }
 
@@ -2370,45 +2279,6 @@
 
 .tp-training-day-more:hover {
     text-decoration: underline;
-}
-
-/* Year Progress */
-.tp-card-progress {
-    margin-top: auto;
-    padding-top: 16px;
-    border-top: 1px solid var(--tp-border);
-}
-
-.tp-progress-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.tp-progress-label {
-    font-size: 0.85rem;
-    color: var(--tp-text-muted);
-}
-
-.tp-progress-value {
-    font-size: 0.85rem;
-    color: var(--tp-text-secondary);
-    font-weight: 500;
-}
-
-.tp-progress-bar {
-    height: 6px;
-    background: var(--tp-border);
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.tp-progress-fill {
-    height: 100%;
-    background: var(--tp-primary);
-    border-radius: 3px;
-    transition: width 0.3s ease;
 }
 
 /* Create New Program Card */

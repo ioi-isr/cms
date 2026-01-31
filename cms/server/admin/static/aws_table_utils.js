@@ -212,7 +212,7 @@ CMS.AWSTableUtils.filterTable = function(table_id, search_text) {
 
 // Backward compatibility aliases on CMS.AWSUtils
 // These will be set up after aws_utils.js loads
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function () {
     if (typeof CMS.AWSUtils !== 'undefined') {
         // Alias the new functions to the old names for backward compatibility
         CMS.AWSUtils.sort_table = CMS.AWSTableUtils.sortTable;
