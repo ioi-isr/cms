@@ -36,7 +36,7 @@ except:
 import tornado.web
 
 from cms.db import Contest, Announcement
-from cms.server.util import get_all_student_tags, parse_tags
+from cms.server.admin.handlers.utils import get_all_student_tags, parse_tags
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 

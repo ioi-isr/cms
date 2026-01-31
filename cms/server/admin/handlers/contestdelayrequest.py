@@ -38,7 +38,8 @@ import tornado.web
 from cms.db import Contest, DelayRequest, Participation
 from cms.server.contest.phase_management import compute_actual_phase
 from cmscommon.datetime import make_datetime
-from cms.server.util import check_training_day_eligibility, get_all_student_tags
+from cms.server.util import check_training_day_eligibility
+from cms.server.admin.handlers.utils import get_all_student_tags
 from .base import BaseHandler, require_permission
 
 

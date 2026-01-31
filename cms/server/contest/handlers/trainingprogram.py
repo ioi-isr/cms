@@ -21,7 +21,7 @@ This module provides handlers for training programs in the contest web server,
 including the overview page and training days page.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import tornado.web
 from sqlalchemy.orm import joinedload
@@ -29,8 +29,83 @@ from sqlalchemy.orm import joinedload
 from cms.db import Participation, Student, ArchivedStudentRanking, Task, TrainingDay
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server import multi_contest
-from cms.server.util import calculate_task_archive_progress, get_student_for_user_in_program, get_training_day_timing_info, get_submission_counts_by_task
+from cms.server.util import (
+    calculate_task_archive_progress,
+    check_training_day_eligibility,
+    get_student_for_user_in_program,
+    get_submission_counts_by_task,
+)
 from .contest import ContestHandler
+
+
+def get_training_day_timing_info(
+    sql_session,
+    td_contest,
+    user,
+    training_day,
+    timestamp: datetime,
+) -> dict | None:
+    """Get participation and timing info for a user in a training day contest."""
+    from cms.server.contest.phase_management import (
+        compute_actual_phase,
+        compute_effective_times,
+    )
+
+    td_participation = (
+        sql_session.query(Participation)
+        .filter(Participation.contest == td_contest)
+        .filter(Participation.user == user)
+        .first()
+    )
+
+    if td_participation is None:
+        return None
+
+    is_eligible, main_group, _ = check_training_day_eligibility(
+        sql_session, td_participation, training_day
+    )
+    if not is_eligible:
+        return None
+
+    main_group_start = main_group.start_time if main_group else None
+    main_group_end = main_group.end_time if main_group else None
+    contest_start, contest_stop = compute_effective_times(
+        td_contest.start,
+        td_contest.stop,
+        td_participation.delay_time,
+        main_group_start,
+        main_group_end,
+    )
+
+    actual_phase, _, _, _, _ = compute_actual_phase(
+        timestamp,
+        contest_start,
+        contest_stop,
+        td_contest.analysis_start if td_contest.analysis_enabled else None,
+        td_contest.analysis_stop if td_contest.analysis_enabled else None,
+        td_contest.per_user_time,
+        td_participation.starting_time,
+        td_participation.delay_time,
+        td_participation.extra_time,
+    )
+
+    user_start_time = contest_start + td_participation.delay_time
+
+    duration = (
+        td_contest.per_user_time
+        if td_contest.per_user_time is not None
+        else contest_stop - contest_start
+    )
+
+    return {
+        "participation": td_participation,
+        "main_group": main_group,
+        "contest_start": contest_start,
+        "contest_stop": contest_stop,
+        "actual_phase": actual_phase,
+        "user_start_time": user_start_time,
+        "duration": duration,
+    }
 
 
 class TrainingProgramOverviewHandler(ContestHandler):

@@ -47,12 +47,12 @@ from cms.db import (
     StudentTask,
     DelayRequest,
 )
-from cms.server.util import (
+from cms.server.util import calculate_task_archive_progress
+from cms.server.admin.handlers.utils import (
     get_all_student_tags,
-    parse_tags,
-    calculate_task_archive_progress,
-    get_training_day_notifications,
     get_student_tags_by_participation,
+    get_training_day_notifications,
+    parse_tags,
 )
 from cmscommon.datetime import make_datetime
 

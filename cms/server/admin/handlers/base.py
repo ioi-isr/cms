@@ -70,12 +70,11 @@ import cms.db
 from cms.grading.scoretypes import get_score_type_class
 from cms.grading.tasktypes import get_task_type_class
 from cms.server import CommonRequestHandler, FileHandlerMixin
-from cms.server.util import (
-    exclude_internal_contests,
+from cms.server.util import exclude_internal_contests, calculate_task_archive_progress
+from cms.server.admin.handlers.utils import (
     count_unanswered_questions,
-    get_all_training_day_notifications,
     get_all_student_tags,
-    calculate_task_archive_progress,
+    get_all_training_day_notifications,
 )
 from cmscommon.crypto import hash_password, parse_authentication
 from cmscommon.datetime import make_datetime, get_timezone, local_to_utc, format_datetime_for_input, get_timezone_name

@@ -49,13 +49,12 @@ from cms.db import (
     DelayRequest,
 )
 from cms.db.training_day import get_managing_participation
-from cms.server.util import (
+from cms.server.util import can_access_task, check_training_day_eligibility
+from cms.server.admin.handlers.utils import (
+    build_user_to_student_map,
     get_all_student_tags,
     get_all_training_day_types,
-    can_access_task,
-    check_training_day_eligibility,
     parse_tags,
-    build_user_to_student_map,
 )
 from cmscommon.datetime import make_datetime
 
@@ -1052,7 +1051,9 @@ class TrainingProgramCombinedRankingHandler(
         self.r_params["student_tags_mode"] = student_tags_mode
         self.r_params["all_training_day_types"] = get_all_training_day_types(
             training_program)
-        self.r_params["all_student_tags"] = get_all_student_tags(training_program)
+        self.r_params["all_student_tags"] = get_all_student_tags(
+            training_program, include_historical=True
+        )
         self.render("training_program_combined_ranking.html", **self.r_params)
 
 

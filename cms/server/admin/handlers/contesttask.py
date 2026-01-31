@@ -26,7 +26,7 @@
 """
 
 from cms.db import Contest, Task
-from cms.server.util import get_all_student_tags, deduplicate_preserving_order
+from cms.server.admin.handlers.utils import get_all_student_tags, deduplicate_preserving_order
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission

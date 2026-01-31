@@ -35,10 +35,9 @@ from cms.db import (
     Team,
     ArchivedStudentRanking,
 )
-from cms.server.util import (
+from cms.server.util import get_student_archive_scores, get_submission_counts_by_task
+from cms.server.admin.handlers.utils import (
     get_all_student_tags,
-    get_student_archive_scores,
-    get_submission_counts_by_task,
     parse_tags,
     parse_usernames_from_file,
 )

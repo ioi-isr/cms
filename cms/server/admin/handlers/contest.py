@@ -38,7 +38,7 @@ from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from cms.server.util import get_all_student_tags
+from cms.server.admin.handlers.utils import get_all_student_tags
 
 from .base import BaseHandler, SimpleContestHandler, SimpleHandler, \
     require_permission

@@ -44,7 +44,7 @@ from sqlalchemy import and_, exists
 
 from cms.db import Contest, Message, Participation, Submission, User, Team, TrainingDay
 from cms.db.training_day import get_managing_participation
-from cms.server.util import parse_usernames_from_file
+from cms.server.admin.handlers.utils import parse_usernames_from_file
 from cmscommon.crypto import validate_password_strength
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
