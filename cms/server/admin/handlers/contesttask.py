@@ -114,159 +114,108 @@ class ContestTasksHandler(BaseHandler):
             return
 
         task = self.safe_get_item(Task, task_id)
+        num_key = "training_day_num" if training_day is not None else "num"
+        rel_key = "training_day" if training_day is not None else "contest"
+        scope_filter = (
+            Task.training_day == training_day
+            if training_day is not None
+            else Task.contest == self.contest
+        )
+        scope_name = "training day" if training_day is not None else "contest"
+        scope_id = training_day.id if training_day is not None else self.contest.id
+        task_scope_id = (
+            task.training_day_id if training_day is not None else task.contest_id
+        )
+        if task_scope_id != scope_id:
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid task",
+                f"Task does not belong to this {scope_name}",
+            )
+            self.redirect(fallback_page)
+            return
+
+        task_num = getattr(task, num_key)
+        num_field = getattr(Task, num_key)
         task2 = None
 
-        if training_day is not None:
-            # For training days, use training_day_num for ordering
-            # (task.num is used for contest ordering and should not be modified)
-            task_num = task.training_day_num
+        if operation in (self.REMOVE_FROM_CONTEST, self.REMOVE_FROM_TRAINING_DAY):
+            setattr(task, rel_key, None)
+            setattr(task, num_key, None)
+            self.sql_session.flush()
 
-            if operation in (self.REMOVE_FROM_CONTEST, self.REMOVE_FROM_TRAINING_DAY):
-                # Unassign the task from the training day.
-                task.training_day = None
-                task.training_day_num = None
-
+            for t in (
+                self.sql_session.query(Task)
+                .filter(scope_filter)
+                .filter(num_field > task_num)
+                .order_by(num_field)
+                .all()
+            ):
+                setattr(t, num_key, getattr(t, num_key) - 1)
                 self.sql_session.flush()
 
-                # Decrease by 1 the training_day_num of every subsequent task.
-                for t in self.sql_session.query(Task)\
-                             .filter(Task.training_day == training_day)\
-                             .filter(Task.training_day_num > task_num)\
-                             .order_by(Task.training_day_num)\
-                             .all():
-                    t.training_day_num -= 1
-                    self.sql_session.flush()
+        elif operation == self.MOVE_UP:
+            task2 = (
+                self.sql_session.query(Task)
+                .filter(scope_filter)
+                .filter(num_field == task_num - 1)
+                .first()
+            )
 
-            elif operation == self.MOVE_UP:
-                task2 = self.sql_session.query(Task)\
-                            .filter(Task.training_day == training_day)\
-                            .filter(Task.training_day_num == task.training_day_num - 1)\
-                            .first()
+        elif operation == self.MOVE_DOWN:
+            task2 = (
+                self.sql_session.query(Task)
+                .filter(scope_filter)
+                .filter(num_field == task_num + 1)
+                .first()
+            )
 
-            elif operation == self.MOVE_DOWN:
-                task2 = self.sql_session.query(Task)\
-                            .filter(Task.training_day == training_day)\
-                            .filter(Task.training_day_num == task.training_day_num + 1)\
-                            .first()
+        elif operation == self.MOVE_TOP:
+            setattr(task, num_key, None)
+            self.sql_session.flush()
 
-            elif operation == self.MOVE_TOP:
-                task.training_day_num = None
+            for t in (
+                self.sql_session.query(Task)
+                .filter(scope_filter)
+                .filter(num_field < task_num)
+                .order_by(num_field.desc())
+                .all()
+            ):
+                setattr(t, num_key, getattr(t, num_key) + 1)
                 self.sql_session.flush()
 
-                # Increase by 1 the training_day_num of every previous task.
-                for t in self.sql_session.query(Task)\
-                             .filter(Task.training_day == training_day)\
-                             .filter(Task.training_day_num < task_num)\
-                             .order_by(Task.training_day_num.desc())\
-                             .all():
-                    t.training_day_num += 1
-                    self.sql_session.flush()
+            setattr(task, num_key, 0)
 
-                task.training_day_num = 0
+        elif operation == self.MOVE_BOTTOM:
+            new_index = (
+                self.sql_session.query(Task)
+                .filter(scope_filter)
+                .filter(Task.id != task.id)
+                .count()
+            )
 
-            elif operation == self.MOVE_BOTTOM:
-                # Compute target index BEFORE modifying the DB to avoid race condition.
-                # Count tasks in training day excluding the current task.
-                new_index = self.sql_session.query(Task)\
-                    .filter(Task.training_day == training_day)\
-                    .filter(Task.id != task.id)\
-                    .count()
+            setattr(task, num_key, None)
+            self.sql_session.flush()
 
-                task.training_day_num = None
+            for t in (
+                self.sql_session.query(Task)
+                .filter(scope_filter)
+                .filter(num_field > task_num)
+                .order_by(num_field)
+                .all()
+            ):
+                setattr(t, num_key, getattr(t, num_key) - 1)
                 self.sql_session.flush()
 
-                # Decrease by 1 the training_day_num of every subsequent task.
-                for t in self.sql_session.query(Task)\
-                             .filter(Task.training_day == training_day)\
-                             .filter(Task.training_day_num > task_num)\
-                             .order_by(Task.training_day_num)\
-                             .all():
-                    t.training_day_num -= 1
-                    self.sql_session.flush()
+            setattr(task, num_key, new_index)
 
-                task.training_day_num = new_index
-
-            # Swap training_day_num values, if needed
-            if task2 is not None:
-                tmp_a, tmp_b = task.training_day_num, task2.training_day_num
-                task.training_day_num, task2.training_day_num = None, None
-                self.sql_session.flush()
-                task.training_day_num, task2.training_day_num = tmp_b, tmp_a
-        else:
-            # For regular contests, use task.num for ordering
-            task_num = task.num
-
-            if operation in (self.REMOVE_FROM_CONTEST, self.REMOVE_FROM_TRAINING_DAY):
-                # Unassign the task from the contest.
-                task.contest = None
-                task.num = None
-
-                self.sql_session.flush()
-
-                # Decrease by 1 the num of every subsequent task.
-                for t in self.sql_session.query(Task)\
-                             .filter(Task.contest == self.contest)\
-                             .filter(Task.num > task_num)\
-                             .order_by(Task.num)\
-                             .all():
-                    t.num -= 1
-                    self.sql_session.flush()
-
-            elif operation == self.MOVE_UP:
-                task2 = self.sql_session.query(Task)\
-                            .filter(Task.contest == self.contest)\
-                            .filter(Task.num == task.num - 1)\
-                            .first()
-
-            elif operation == self.MOVE_DOWN:
-                task2 = self.sql_session.query(Task)\
-                            .filter(Task.contest == self.contest)\
-                            .filter(Task.num == task.num + 1)\
-                            .first()
-
-            elif operation == self.MOVE_TOP:
-                task.num = None
-                self.sql_session.flush()
-
-                # Increase by 1 the num of every previous task.
-                for t in self.sql_session.query(Task)\
-                             .filter(Task.contest == self.contest)\
-                             .filter(Task.num < task_num)\
-                             .order_by(Task.num.desc())\
-                             .all():
-                    t.num += 1
-                    self.sql_session.flush()
-
-                task.num = 0
-
-            elif operation == self.MOVE_BOTTOM:
-                # Compute target index BEFORE modifying the DB to avoid race condition.
-                # Count tasks in contest excluding the current task.
-                new_index = self.sql_session.query(Task)\
-                    .filter(Task.contest == self.contest)\
-                    .filter(Task.id != task.id)\
-                    .count()
-
-                task.num = None
-                self.sql_session.flush()
-
-                # Decrease by 1 the num of every subsequent task.
-                for t in self.sql_session.query(Task)\
-                             .filter(Task.contest == self.contest)\
-                             .filter(Task.num > task_num)\
-                             .order_by(Task.num)\
-                             .all():
-                    t.num -= 1
-                    self.sql_session.flush()
-
-                task.num = new_index
-
-            # Swap task.num values, if needed
-            if task2 is not None:
-                tmp_a, tmp_b = task.num, task2.num
-                task.num, task2.num = None, None
-                self.sql_session.flush()
-                task.num, task2.num = tmp_b, tmp_a
+        if task2 is not None:
+            tmp_a, tmp_b = getattr(task, num_key), getattr(task2, num_key)
+            setattr(task, num_key, None)
+            setattr(task2, num_key, None)
+            self.sql_session.flush()
+            setattr(task, num_key, tmp_b)
+            setattr(task2, num_key, tmp_a)
 
         if self.try_commit():
             # Create the user on RWS.

@@ -440,7 +440,6 @@ class RemoveTrainingDayHandler(BaseHandler):
     def get(self, training_program_id: str, training_day_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         training_day = self.safe_get_item(TrainingDay, training_day_id)
-        managing_contest = training_program.managing_contest
 
         if training_day.training_program_id != training_program.id:
             raise tornado.web.HTTPError(404)

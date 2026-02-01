@@ -39,7 +39,6 @@ from cms.server.picture_utils import (
     process_picture_upload, PictureValidationError
 )
 from cms.server.util import exclude_internal_contests, validate_date_of_birth
-from cms.server.util import exclude_internal_contests
 from cmscommon.crypto import (parse_authentication,
                               hash_password, validate_password_strength)
 from cmscommon.datetime import make_datetime

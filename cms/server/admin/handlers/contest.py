@@ -166,7 +166,9 @@ class ContestHandler(SimpleContestHandler("contest.html")):
         training_day = self.contest.training_day
         if training_day is not None:
             training_program = training_day.training_program
-            all_student_tags = get_all_student_tags(self.sql_session, training_program)
+            all_student_tags = get_all_student_tags(
+                self.sql_session, training_program
+            )
         self.r_params["all_student_tags"] = all_student_tags
 
         self.render("contest.html", **self.r_params)
@@ -293,30 +295,18 @@ class OverviewHandler(BaseHandler):
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, entity_type: str | None = None, entity_id: str | None = None):
-        if entity_type == "contest":
-            self.contest = self.safe_get_item(Contest, entity_id)
-            self.r_params = self.render_params()
-        elif entity_type == "training_program":
-            training_program = self.safe_get_item(TrainingProgram, entity_id)
-            self.contest = training_program.managing_contest
-            self.r_params = self.render_params_for_training_program(training_program)
-        else:
-            self.r_params = self.render_params()
+        self.setup_contest_or_training_program(
+            entity_type, entity_id, allow_none=True
+        )
         self.render("overview.html", **self.r_params)
 
 
 class ResourcesListHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, entity_type: str | None = None, entity_id: str | None = None):
-        if entity_type == "contest":
-            self.contest = self.safe_get_item(Contest, entity_id)
-            self.r_params = self.render_params()
-        elif entity_type == "training_program":
-            training_program = self.safe_get_item(TrainingProgram, entity_id)
-            self.contest = training_program.managing_contest
-            self.r_params = self.render_params_for_training_program(training_program)
-        else:
-            self.r_params = self.render_params()
+        self.setup_contest_or_training_program(
+            entity_type, entity_id, allow_none=True
+        )
         self.r_params["resource_addresses"] = {}
         services = get_service_shards("ResourceService")
         for i in range(services):
