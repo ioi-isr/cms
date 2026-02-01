@@ -371,8 +371,6 @@ class BaseHandler(CommonRequestHandler):
                 or remaining_path.endswith("/detail")
                 or remaining_path.endswith("/submissions")
                 or remaining_path.endswith("/ranking/history")
-                or remaining_path == "/overview"
-                or remaining_path == "/resourceslist"
             ):
                 return
 
