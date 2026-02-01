@@ -25,22 +25,27 @@
 
 """
 
-from cms.db import Contest, Submission, UserTest, Task
+from cms.db import Submission, UserTest, Task
 
 from .base import BaseHandler, require_permission
 
 
 class ContestSubmissionsHandler(BaseHandler):
-    """Shows all submissions for this contest.
+    """Shows all submissions for this contest or training program.
 
+    Supports both contest and training_program entity types via URL pattern:
+    - /contest/{id}/submissions
+    - /training_program/{id}/submissions
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id):
-        contest = self.safe_get_item(Contest, contest_id)
-        self.contest = contest
+    def get(self, entity_type: str, entity_id: str):
+        training_program = self.setup_contest_or_training_program(
+            entity_type, entity_id
+        )
+        contest = self.contest
 
         # Determine if this is a training program managing contest
-        is_training_program = contest.training_program is not None
+        is_training_program = training_program is not None
 
         # For training day contests, only show submissions made via that training day
         # (submissions now have training_day_id set when submitted via a training day)
@@ -58,7 +63,7 @@ class ContestSubmissionsHandler(BaseHandler):
         # Pass flag and training_program to template for training programs
         self.r_params["is_training_program"] = is_training_program
         if is_training_program:
-            self.r_params["training_program"] = contest.training_program
+            self.r_params["training_program"] = training_program
 
         self.render("contest_submissions.html", **self.r_params)
 

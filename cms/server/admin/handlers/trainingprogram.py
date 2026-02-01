@@ -40,14 +40,8 @@ from cms.db import (
     Participation,
     Submission,
     Task,
-    Question,
-    Announcement,
 )
-from cms.server.admin.handlers.utils import (
-    get_all_student_tags,
-    parse_tags,
-    get_training_day_notifications,
-)
+from cms.server.admin.handlers.utils import get_training_day_notifications
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -65,12 +59,9 @@ __all__ = [
     "AddTrainingProgramTaskHandler",
     "RemoveTrainingProgramHandler",
     "RemoveTrainingProgramTaskHandler",
-    "TrainingProgramAnnouncementsHandler",
     "TrainingProgramHandler",
     "TrainingProgramListHandler",
-    "TrainingProgramQuestionsHandler",
     "TrainingProgramRankingHandler",
-    "TrainingProgramSubmissionsHandler",
     "TrainingProgramTasksHandler",
     "_shift_task_nums",
 ]
@@ -457,115 +448,3 @@ class RemoveTrainingProgramHandler(BaseHandler):
 
         self.try_commit()
         self.write("../../training_programs")
-
-
-class TrainingProgramSubmissionsHandler(BaseHandler):
-    """Show submissions for a training program."""
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-
-        self.contest = managing_contest
-        self.render_params_for_training_program(training_program)
-
-        query = self.sql_session.query(Submission).join(Task)\
-            .filter(Task.contest == managing_contest)
-        page = int(self.get_query_argument("page", "0"))
-        self.render_params_for_submissions(query, page)
-
-        # Show training day column for training program submissions
-        self.r_params["is_training_program"] = True
-
-        self.render("contest_submissions.html", **self.r_params)
-
-
-class TrainingProgramAnnouncementsHandler(BaseHandler):
-    """Manage announcements for a training program."""
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-
-        self.contest = training_program.managing_contest
-        self.render_params_for_training_program(training_program)
-        self.r_params["all_student_tags"] = get_all_student_tags(
-            self.sql_session, training_program
-        )
-
-        self.render("announcements.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_MESSAGING)
-    def post(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-
-        subject = self.get_argument("subject", "")
-        text = self.get_argument("text", "")
-        announcement_id = self.get_argument("announcement_id", None)
-
-        # Parse visible_to_tags from comma-separated string
-        visible_to_tags_str = self.get_argument("visible_to_tags", "")
-        visible_to_tags = parse_tags(visible_to_tags_str)
-
-        if subject and text:
-            if announcement_id is not None:
-                # Edit existing announcement
-                announcement = self.safe_get_item(Announcement, announcement_id)
-                if announcement.contest_id != managing_contest.id:
-                    raise tornado.web.HTTPError(404)
-                announcement.subject = subject
-                announcement.text = text
-                announcement.visible_to_tags = visible_to_tags
-            else:
-                # Add new announcement
-                announcement = Announcement(
-                    timestamp=make_datetime(),
-                    subject=subject,
-                    text=text,
-                    contest=managing_contest,
-                    admin=self.current_user,
-                    visible_to_tags=visible_to_tags,
-                )
-                self.sql_session.add(announcement)
-            self.try_commit()
-
-        self.redirect(self.url("training_program", training_program_id, "announcements"))
-
-
-class TrainingProgramQuestionsHandler(BaseHandler):
-    """Manage questions for a training program."""
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-
-        self.contest = managing_contest
-        self.render_params_for_training_program(training_program)
-
-        self.r_params["questions"] = self.sql_session.query(Question)\
-            .join(Participation)\
-            .filter(Participation.contest_id == managing_contest.id)\
-            .order_by(Question.question_timestamp.desc())\
-            .order_by(Question.id).all()
-
-        # Build training days with unanswered questions from notification data
-        training_days_with_unanswered: list[dict] = []
-        td_notifications = self.r_params.get("training_day_notifications", {})
-        for td in training_program.training_days:
-            if td.contest is None:
-                continue
-            td_notif = td_notifications.get(td.id, {})
-            unanswered_count = td_notif.get("unanswered_questions", 0)
-            if unanswered_count > 0:
-                training_days_with_unanswered.append({
-                    "contest_id": td.contest_id,
-                    "name": td.contest.name,
-                    "unanswered_count": unanswered_count,
-                })
-        self.r_params["training_days_with_unanswered_questions"] = \
-            training_days_with_unanswered
-
-        self.render("questions.html", **self.r_params)

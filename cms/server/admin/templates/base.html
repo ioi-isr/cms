@@ -236,12 +236,10 @@ $(document).ready(initSidebarEvents);
   <body class="admin">
     <div id="global">
       <div id="sidebar">
+        <div id="sidebar_header">
 {% if admin is undefined %}
-        <div id="sidebar_header">
           <h1 class="sidebar-title">Administration</h1>
-        </div>
 {% else %}
-        <div id="sidebar_header">
           <div class="login_notice">
             Hello, <a href="{{ url("admins") }}">{{ admin.name }}</a>.
               <form class="inline" action="{{ url("logout") }}" method="POST">{{ xsrf_form_html|safe }}<input type="submit" value="Logout"></form>
@@ -490,25 +488,6 @@ $(document).ready(initSidebarEvents);
           </div>
         </div>
         {% elif training_program is defined %}
-          <ul class="menu">
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id) }}">General</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "ranking") }}">Home Task Scores</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "combined_ranking") }}">Combined Ranking</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a></li>
-            <li class="menu_entry">
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "questions") }}">Questions</a>
-              <div class="sidebar-badge-container">
-                  <span id="unanswered_questions_tp" class="sidebar-badge is-red" {% if unanswered == 0 %} style="display: none;" {% endif %}>
-                    {{ unanswered }}
-                  </span>
-              </div>
-            </li>
-          </ul>
-          <div class="hr"></div>
           <div class="sidebar-section" data-section-key="training-days">
             <h2 class="sidebar-section-title">
               <div class="sidebar-link-group">
@@ -516,10 +495,10 @@ $(document).ready(initSidebarEvents);
                   <a href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a>
               </div>
               <div class="sidebar-badge-container">
-                  <span class="sidebar-badge is-red" style="{% if total_td_unanswered_questions is not defined or total_td_unanswered_questions == 0 %} display: none;{% endif %}">
+                  <span class="sidebar-badge is-red" style="{% if total_td_unanswered_questions|default(0) == 0 %} display: none;{% endif %}">
                     {{ total_td_unanswered_questions|default(0) }}
                   </span>
-                  <span class="sidebar-badge is-amber" style="{% if total_td_pending_delay_requests is not defined or total_td_pending_delay_requests == 0 %} display: none;{% endif %}">
+                  <span class="sidebar-badge is-amber" style="{% if total_td_pending_delay_requests|default(0) == 0 %} display: none;{% endif %}">
                     {{ total_td_pending_delay_requests|default(0) }}
                   </span>
               </div>
@@ -551,6 +530,25 @@ $(document).ready(initSidebarEvents);
               {% endif %}
             </div>
           </div>
+          <div class="hr"></div>
+          <ul class="menu">
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id) }}">General</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "ranking") }}">Home Task Scores</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "combined_ranking") }}">Combined Ranking</a></li>
+            <li class="menu_entry"><a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a></li>
+            <li class="menu_entry">
+              <a class="menu_link" href="{{ url("training_program", training_program.id, "questions") }}">Questions</a>
+              <div class="sidebar-badge-container">
+                  <span id="unanswered_questions_tp" class="sidebar-badge is-red" {% if unanswered == 0 %} style="display: none;" {% endif %}>
+                    {{ unanswered }}
+                  </span>
+              </div>
+            </li>
+          </ul>
         {% else %}
           <ul class="menu">
             <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id) }}">General</a></li>

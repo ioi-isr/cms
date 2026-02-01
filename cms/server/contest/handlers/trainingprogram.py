@@ -231,7 +231,6 @@ class TrainingDaysHandler(ContestHandler):
     @multi_contest
     def get(self):
         participation: Participation = self.current_user
-        contest = self.contest
 
         training_program = self.training_program
         if training_program is None:

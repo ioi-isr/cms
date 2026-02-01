@@ -38,7 +38,10 @@ from cms.db import (
     StudentTask,
 )
 from cms.server.util import calculate_task_archive_progress
-from cms.server.admin.handlers.utils import get_student_tags_by_participation
+from cms.server.admin.handlers.utils import (
+    get_student_tags_by_participation,
+    build_user_to_student_map,
+)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -377,15 +380,10 @@ class TrainingProgramRankingHandler(RankingCommonMixin, BaseHandler):
 
         # Calculate task archive progress for this training program
         task_archive_progress_by_participation = {}
-        students_query = (
-            self.sql_session.query(Student)
-            .filter(Student.training_program_id == training_program.id)
-            .all()
-        )
-        student_by_participation_id = {s.participation_id: s for s in students_query}
+        user_to_student = build_user_to_student_map(training_program)
 
         for p in self.contest.participations:
-            student = student_by_participation_id.get(p.id)
+            student = user_to_student.get(p.user_id)
             if student:
                 progress = calculate_task_archive_progress(
                     student, p, self.contest, self.sql_session

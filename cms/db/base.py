@@ -275,7 +275,12 @@ class Base:
                 # want to use the object before storing it in the DB.
                 if col.default is not None:
                     if col.default.is_callable:
-                        setattr(self, prp.key, col.default.arg(None))
+                        try:
+                            # Try passing None (simulating a missing ExecutionContext)
+                            setattr(self, prp.key, col.default.arg(None))
+                        except TypeError:
+                            # Fallback for zero-argument callables (like simple lambdas)
+                            setattr(self, prp.key, col.default.arg())
                     else:
                         setattr(self, prp.key, col.default.arg)
             elif prp.key in attrs:

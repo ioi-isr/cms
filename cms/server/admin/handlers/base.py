@@ -39,7 +39,7 @@ import typing
 
 try:
     collections.MutableMapping
-except:
+except AttributeError:
     # Monkey-patch: Tornado 4.5.3 does not work on Python 3.11 by default
     collections.MutableMapping = collections.abc.MutableMapping
 
@@ -120,14 +120,14 @@ def argument_reader(func: Callable[[str], typing.Any], empty: object = None):
 
 def parse_string_list(value: str) -> list[str]:
     """Parse a comma-separated list of strings."""
-    return list(x.strip() for x in value.split(",") if x.strip())
+    return [x.strip() for x in value.split(",") if x.strip()]
 
 
 def parse_int(value: str) -> int:
     """Parse and validate an integer."""
     try:
         return int(value)
-    except:
+    except (ValueError, TypeError):
         raise ValueError("Can't cast %s to int." % value)
 
 
@@ -135,7 +135,7 @@ def parse_timedelta_sec(value: str) -> timedelta:
     """Parse and validate a timedelta (as number of seconds)."""
     try:
         return timedelta(seconds=float(value))
-    except:
+    except (ValueError, TypeError):
         raise ValueError("Can't cast %s to timedelta." % value)
 
 
@@ -143,7 +143,7 @@ def parse_timedelta_min(value: str) -> timedelta:
     """Parse and validate a timedelta (as number of minutes)."""
     try:
         return timedelta(minutes=float(value))
-    except:
+    except (ValueError, TypeError):
         raise ValueError("Can't cast %s to timedelta." % value)
 
 
@@ -153,7 +153,7 @@ def parse_datetime(value: str) -> datetime:
         value += ".0"
     try:
         return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
-    except:
+    except (ValueError, TypeError):
         raise ValueError("Can't cast %s to datetime." % value)
 
 
@@ -553,6 +553,57 @@ class BaseHandler(CommonRequestHandler):
 
         return self.r_params
 
+    def setup_contest_or_training_program(
+        self,
+        entity_type: str | None,
+        entity_id: str | None,
+        allow_none: bool = False,
+        set_r_params: bool = True,
+    ) -> "TrainingProgram | None":
+        """Set up the context for handlers that support both Contests and TPs.
+
+        This handles fetching the entity, setting self.contest, and
+        populating self.r_params with the correct sidebar data.
+
+        Args:
+            entity_type: Either "contest" or "training_program".
+            entity_id: The ID of the entity.
+            allow_none: If True, allow entity_type to be None and fall back to
+                render_params() without setting self.contest.
+            set_r_params: If False, skip building r_params for callers that
+                don't render templates.
+
+        Returns:
+            The TrainingProgram if entity_type is "training_program" or if
+            the contest is a managing contest for a training program,
+            otherwise None.
+
+        Raises:
+            HTTPError 404: If entity_type is unknown.
+        """
+        if entity_type is None:
+            if allow_none:
+                if set_r_params:
+                    self.r_params = self.render_params()
+                return None
+            raise tornado.web.HTTPError(404, "Unknown entity type")
+
+        if entity_type == "contest":
+            self.contest = self.safe_get_item(Contest, entity_id)
+            if set_r_params:
+                self.r_params = self.render_params()
+            return self.contest.training_program
+        elif entity_type == "training_program":
+            training_program = self.safe_get_item(TrainingProgram, entity_id)
+            self.contest = training_program.managing_contest
+            if set_r_params:
+                self.r_params = self.render_params_for_training_program(
+                    training_program
+                )
+            return training_program
+        else:
+            raise tornado.web.HTTPError(404, "Unknown entity type")
+
     def render_params_for_students_page(
         self, training_program: "TrainingProgram"
     ) -> dict:
@@ -617,7 +668,7 @@ class BaseHandler(CommonRequestHandler):
         if self.r_params is None:
             try:
                 self.r_params = self.render_params()
-            except:
+            except Exception:
                 self.write("A critical error has occurred :-(")
                 self.finish()
                 return
@@ -639,7 +690,7 @@ class BaseHandler(CommonRequestHandler):
         value = self.get_argument(name, False)
         try:
             dest[name] = bool(value)
-        except:
+        except (ValueError, TypeError):
             raise ValueError("Can't cast %s to bool." % value)
 
     get_int = argument_reader(parse_int)
@@ -709,8 +760,8 @@ class BaseHandler(CommonRequestHandler):
         else:
             try:
                 value = float(value)
-            except:
-                raise ValueError("Can't cast %s to float." % value)
+            except ValueError as e:
+                raise ValueError("Can't cast %s to float: %s" % (value, e))
             if not 0 <= value < float("+inf"):
                 raise ValueError("Time limit out of range.")
             dest["time_limit"] = value
@@ -733,8 +784,8 @@ class BaseHandler(CommonRequestHandler):
         else:
             try:
                 value = int(value)
-            except:
-                raise ValueError("Can't cast %s to int." % value)
+            except ValueError as e:
+                raise ValueError("Can't cast %s to int: %s" % (value, e))
             if not 0 < value:
                 raise ValueError("Invalid memory limit.")
             # AWS displays the value as MiB, but it is stored as bytes.

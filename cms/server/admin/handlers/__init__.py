@@ -171,8 +171,7 @@ from .folder import \
     RemoveFolderHandler
 from .export_handlers import \
     ExportTaskHandler, \
-    ExportContestHandler, \
-    ExportTrainingProgramHandler
+    ExportContestHandler
 from .trainingprogram import \
     TrainingProgramListHandler, \
     TrainingProgramHandler, \
@@ -181,10 +180,7 @@ from .trainingprogram import \
     TrainingProgramTasksHandler, \
     AddTrainingProgramTaskHandler, \
     RemoveTrainingProgramTaskHandler, \
-    TrainingProgramRankingHandler, \
-    TrainingProgramSubmissionsHandler, \
-    TrainingProgramAnnouncementsHandler, \
-    TrainingProgramQuestionsHandler
+    TrainingProgramRankingHandler
 from .trainingday import \
     TrainingProgramTrainingDaysHandler, \
     AddTrainingDayHandler, \
@@ -236,7 +232,7 @@ HANDLERS = [
     (r"/contests/add", AddContestHandler),
     (r"/contests/import", ImportContestHandler),
     (r"/contest/([0-9]+)", ContestHandler),
-    (r"/contest/([0-9]+)/export", ExportContestHandler),
+    (r"/(contest|training_program)/([0-9]+)/export", ExportContestHandler),
     (r"/(contest|training_program)/([0-9]+)/overview", OverviewHandler),
     (r"/(contest|training_program)/([0-9]+)/resourceslist", ResourcesListHandler),
 
@@ -259,21 +255,21 @@ HANDLERS = [
 
     # Contest's submissions / user tests
 
-    (r"/contest/([0-9]+)/submissions", ContestSubmissionsHandler),
+    (r"/(contest|training_program)/([0-9]+)/submissions", ContestSubmissionsHandler),
     (r"/contest/([0-9]+)/submissions/download", DownloadContestSubmissionsHandler),
     (r"/contest/([0-9]+)/user/([0-9]+)/submissions/download", DownloadUserContestSubmissionsHandler),
     (r"/contest/([0-9]+)/user_tests", ContestUserTestsHandler),
 
     # Contest's announcements
 
-    (r"/contest/([0-9]+)/announcements", ContestAnnouncementsHandler),
+    (r"/(contest|training_program)/([0-9]+)/announcements", ContestAnnouncementsHandler),
     (r"/contest/([0-9]+)/announcements/add", AddAnnouncementHandler),
     (r"/contest/([0-9]+)/announcements/edit/([0-9]+)", EditAnnouncementHandler),
     (r"/(contest|training_program)/([0-9]+)/announcement/([0-9]+)", AnnouncementHandler),
 
     # Contest's questions
 
-    (r"/contest/([0-9]+)/questions", QuestionsHandler),
+    (r"/(contest|training_program)/([0-9]+)/questions", QuestionsHandler),
     (r"/contest/([0-9]+)/question/([0-9]+)/reply", QuestionReplyHandler),
     (r"/contest/([0-9]+)/question/([0-9]+)/ignore", QuestionIgnoreHandler),
     (r"/contest/([0-9]+)/question/([0-9]+)/claim", QuestionClaimHandler),
@@ -375,7 +371,6 @@ HANDLERS = [
     (r"/training_programs/([0-9]+)/remove", RemoveTrainingProgramHandler),
     (r"/training_programs/add", AddTrainingProgramHandler),
     (r"/training_program/([0-9]+)", TrainingProgramHandler),
-    (r"/training_program/([0-9]+)/export", ExportTrainingProgramHandler),
 
     # Training Program tabs
     (r"/training_program/([0-9]+)/students", TrainingProgramStudentsHandler),
@@ -394,11 +389,8 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/task/([0-9]+)/remove", RemoveTrainingProgramTaskHandler),
     (r"/training_program/([0-9]+)/ranking", TrainingProgramRankingHandler),
     (r"/training_program/([0-9]+)/ranking/([a-z]+)", TrainingProgramRankingHandler),
-    (r"/training_program/([0-9]+)/submissions", TrainingProgramSubmissionsHandler),
     (r"/training_program/([0-9]+)/submissions/download", DownloadTrainingProgramSubmissionsHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/submissions/download", DownloadTrainingProgramStudentSubmissionsHandler),
-    (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
-    (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
     (r"/training_program/([0-9]+)/training_days", TrainingProgramTrainingDaysHandler),
     (r"/training_program/([0-9]+)/training_days/add", AddTrainingDayHandler),
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/remove", RemoveTrainingDayHandler),
