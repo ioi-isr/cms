@@ -65,14 +65,11 @@ __all__ = [
     "AddTrainingProgramTaskHandler",
     "RemoveTrainingProgramHandler",
     "RemoveTrainingProgramTaskHandler",
-    "TrainingProgramAnnouncementHandler",
     "TrainingProgramAnnouncementsHandler",
     "TrainingProgramHandler",
     "TrainingProgramListHandler",
-    "TrainingProgramOverviewRedirectHandler",
     "TrainingProgramQuestionsHandler",
     "TrainingProgramRankingHandler",
-    "TrainingProgramResourcesListRedirectHandler",
     "TrainingProgramSubmissionsHandler",
     "TrainingProgramTasksHandler",
     "_shift_task_nums",
@@ -537,27 +534,6 @@ class TrainingProgramAnnouncementsHandler(BaseHandler):
         self.redirect(self.url("training_program", training_program_id, "announcements"))
 
 
-class TrainingProgramAnnouncementHandler(BaseHandler):
-    """Delete an announcement from a training program."""
-
-    @require_permission(BaseHandler.PERMISSION_MESSAGING)
-    def delete(self, training_program_id: str, ann_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-
-        announcement = self.safe_get_item(Announcement, ann_id)
-        if announcement.contest_id != managing_contest.id:
-            raise tornado.web.HTTPError(404)
-
-        self.sql_session.delete(announcement)
-        self.try_commit()
-
-        # Return relative path for ajax_delete
-        # Note: This is resolved relative to the current page URL (announcements list),
-        # not the delete URL, so we just need "announcements" not "../announcements"
-        self.write("announcements")
-
-
 class TrainingProgramQuestionsHandler(BaseHandler):
     """Manage questions for a training program."""
 
@@ -593,25 +569,3 @@ class TrainingProgramQuestionsHandler(BaseHandler):
             training_days_with_unanswered
 
         self.render("questions.html", **self.r_params)
-
-
-class TrainingProgramOverviewRedirectHandler(BaseHandler):
-    """Redirect /training_program/{id}/overview to the managing contest's overview page."""
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        self.redirect(
-            self.url("contest", training_program.managing_contest.id, "overview")
-        )
-
-
-class TrainingProgramResourcesListRedirectHandler(BaseHandler):
-    """Redirect /training_program/{id}/resourceslist to the managing contest's resourceslist page."""
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        self.redirect(
-            self.url("contest", training_program.managing_contest.id, "resourceslist")
-        )

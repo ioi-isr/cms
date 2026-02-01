@@ -33,7 +33,15 @@ from datetime import timedelta
 import tornado.web
 
 from cms import ServiceCoord, get_service_shards, get_service_address
-from cms.db import Contest, Participation, Submission, Task, ContestFolder, TrainingDay
+from cms.db import (
+    Contest,
+    Participation,
+    Submission,
+    Task,
+    ContestFolder,
+    TrainingDay,
+    TrainingProgram,
+)
 from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 from sqlalchemy.orm import joinedload
@@ -284,14 +292,14 @@ class OverviewHandler(BaseHandler):
     """Home page handler, with queue and workers statuses."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id: str | None = None):
-        if contest_id is not None:
-            self.contest = self.safe_get_item(Contest, contest_id)
-
-        # If this contest is a managing contest for a training program,
-        # use render_params_for_training_program to show training day notifications
-        if self.contest is not None and self.contest.training_program is not None:
-            self.render_params_for_training_program(self.contest.training_program)
+    def get(self, entity_type: str | None = None, entity_id: str | None = None):
+        if entity_type == "contest":
+            self.contest = self.safe_get_item(Contest, entity_id)
+            self.r_params = self.render_params()
+        elif entity_type == "training_program":
+            training_program = self.safe_get_item(TrainingProgram, entity_id)
+            self.contest = training_program.managing_contest
+            self.r_params = self.render_params_for_training_program(training_program)
         else:
             self.r_params = self.render_params()
         self.render("overview.html", **self.r_params)
@@ -299,14 +307,14 @@ class OverviewHandler(BaseHandler):
 
 class ResourcesListHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id: str | None = None):
-        if contest_id is not None:
-            self.contest = self.safe_get_item(Contest, contest_id)
-
-        # If this contest is a managing contest for a training program,
-        # use render_params_for_training_program to show training day notifications
-        if self.contest is not None and self.contest.training_program is not None:
-            self.render_params_for_training_program(self.contest.training_program)
+    def get(self, entity_type: str | None = None, entity_id: str | None = None):
+        if entity_type == "contest":
+            self.contest = self.safe_get_item(Contest, entity_id)
+            self.r_params = self.render_params()
+        elif entity_type == "training_program":
+            training_program = self.safe_get_item(TrainingProgram, entity_id)
+            self.contest = training_program.managing_contest
+            self.r_params = self.render_params_for_training_program(training_program)
         else:
             self.r_params = self.render_params()
         self.r_params["resource_addresses"] = {}

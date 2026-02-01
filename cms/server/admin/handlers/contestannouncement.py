@@ -35,7 +35,7 @@ except:
 
 import tornado.web
 
-from cms.db import Contest, Announcement
+from cms.db import Contest, Announcement, TrainingProgram
 from cms.server.admin.handlers.utils import get_all_student_tags, parse_tags
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
@@ -135,9 +135,13 @@ class AnnouncementHandler(BaseHandler):
     # No page to show a single attachment.
 
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
-    def delete(self, contest_id: str, ann_id: str):
+    def delete(self, entity_type: str, entity_id: str, ann_id: str):
         ann = self.safe_get_item(Announcement, ann_id)
-        self.contest = self.safe_get_item(Contest, contest_id)
+        if entity_type == "contest":
+            self.contest = self.safe_get_item(Contest, entity_id)
+        elif entity_type == "training_program":
+            training_program = self.safe_get_item(TrainingProgram, entity_id)
+            self.contest = training_program.managing_contest
 
         # Protect against URLs providing incompatible parameters.
         if self.contest is not ann.contest:

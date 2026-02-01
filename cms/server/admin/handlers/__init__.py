@@ -184,10 +184,7 @@ from .trainingprogram import \
     TrainingProgramRankingHandler, \
     TrainingProgramSubmissionsHandler, \
     TrainingProgramAnnouncementsHandler, \
-    TrainingProgramAnnouncementHandler, \
-    TrainingProgramQuestionsHandler, \
-    TrainingProgramOverviewRedirectHandler, \
-    TrainingProgramResourcesListRedirectHandler
+    TrainingProgramQuestionsHandler
 from .trainingday import \
     TrainingProgramTrainingDaysHandler, \
     AddTrainingDayHandler, \
@@ -240,8 +237,8 @@ HANDLERS = [
     (r"/contests/import", ImportContestHandler),
     (r"/contest/([0-9]+)", ContestHandler),
     (r"/contest/([0-9]+)/export", ExportContestHandler),
-    (r"/contest/([0-9]+)/overview", OverviewHandler),
-    (r"/contest/([0-9]+)/resourceslist", ResourcesListHandler),
+    (r"/(contest|training_program)/([0-9]+)/overview", OverviewHandler),
+    (r"/(contest|training_program)/([0-9]+)/resourceslist", ResourcesListHandler),
 
     # Contest's users
 
@@ -272,7 +269,7 @@ HANDLERS = [
     (r"/contest/([0-9]+)/announcements", ContestAnnouncementsHandler),
     (r"/contest/([0-9]+)/announcements/add", AddAnnouncementHandler),
     (r"/contest/([0-9]+)/announcements/edit/([0-9]+)", EditAnnouncementHandler),
-    (r"/contest/([0-9]+)/announcement/([0-9]+)", AnnouncementHandler),
+    (r"/(contest|training_program)/([0-9]+)/announcement/([0-9]+)", AnnouncementHandler),
 
     # Contest's questions
 
@@ -401,7 +398,6 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/submissions/download", DownloadTrainingProgramSubmissionsHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/submissions/download", DownloadTrainingProgramStudentSubmissionsHandler),
     (r"/training_program/([0-9]+)/announcements", TrainingProgramAnnouncementsHandler),
-    (r"/training_program/([0-9]+)/announcement/([0-9]+)", TrainingProgramAnnouncementHandler),
     (r"/training_program/([0-9]+)/questions", TrainingProgramQuestionsHandler),
     (r"/training_program/([0-9]+)/training_days", TrainingProgramTrainingDaysHandler),
     (r"/training_program/([0-9]+)/training_days/add", AddTrainingDayHandler),
@@ -416,8 +412,6 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/combined_ranking/export", ExportCombinedRankingHandler),
     (r"/training_program/([0-9]+)/combined_ranking/history", TrainingProgramCombinedRankingHistoryHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/combined_ranking_detail", TrainingProgramCombinedRankingDetailHandler),
-    (r"/training_program/([0-9]+)/overview", TrainingProgramOverviewRedirectHandler),
-    (r"/training_program/([0-9]+)/resourceslist", TrainingProgramResourcesListRedirectHandler),
 
     # Training day groups (main groups configuration on contest page)
     (r"/contest/([0-9]+)/training_day_group/add", AddTrainingDayGroupHandler),
