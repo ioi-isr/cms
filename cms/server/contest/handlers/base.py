@@ -39,7 +39,7 @@ from cms.db.user import Participation
 
 try:
     collections.MutableMapping
-except:
+except AttributeError:
     # Monkey-patch: Tornado 4.5.3 does not work on Python 3.11 by default
     collections.MutableMapping = collections.abc.MutableMapping
 

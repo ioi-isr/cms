@@ -690,13 +690,7 @@ def _update_cache_entry_incremental(
         cache_entry.last_submission_score = score
         cache_entry.last_submission_timestamp = submission.timestamp
 
-    # Update score based on score mode
-    if task.score_mode == SCORE_MODE_MAX:
-        # Simple max - just compare with current score
-        new_score = max(cache_entry.score or 0.0, score)
-        cache_entry.score = round(new_score, task.score_precision)
-
-    elif task.score_mode == SCORE_MODE_MAX_SUBTASK:
+    if task.score_mode == SCORE_MODE_MAX_SUBTASK:
         # Update per-subtask max scores
         # Normalize keys to strings since JSONB stores keys as strings
         subtask_max_scores = {
@@ -712,19 +706,18 @@ def _update_cache_entry_incremental(
 
         cache_entry.subtask_max_scores = subtask_max_scores if subtask_max_scores else None
         new_score = sum(subtask_max_scores.values()) if subtask_max_scores else 0.0
-        cache_entry.score = round(new_score, task.score_precision)
 
     elif task.score_mode == SCORE_MODE_MAX_TOKENED_LAST:
         # Score is max of last submission score and max tokened score
         last_score = cache_entry.last_submission_score or 0.0
         tokened_score = cache_entry.max_tokened_score or 0.0
         new_score = max(last_score, tokened_score)
-        cache_entry.score = round(new_score, task.score_precision)
 
     else:
         # Default to max mode
         new_score = max(cache_entry.score or 0.0, score)
-        cache_entry.score = round(new_score, task.score_precision)
+
+    cache_entry.score = round(new_score, task.score_precision)
 
 
 def _get_sorted_official_submissions(

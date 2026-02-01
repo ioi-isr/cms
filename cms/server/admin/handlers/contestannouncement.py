@@ -29,7 +29,7 @@
 import collections
 try:
     collections.MutableMapping
-except:
+except AttributeError:
     # Monkey-patch: Tornado 4.5.3 does not work on Python 3.11 by default
     collections.MutableMapping = collections.abc.MutableMapping
 
@@ -42,29 +42,83 @@ from .base import BaseHandler, require_permission
 
 
 class ContestAnnouncementsHandler(BaseHandler):
-    """Display announcements for a contest.
+    """Display announcements for a contest or training program.
 
-    For training day contests, also passes all_student_tags for the tagify box.
+    Supports both contest and training_program entity types via URL pattern:
+    - /contest/{id}/announcements
+    - /training_program/{id}/announcements
+
+    For training day contests and training programs, also passes all_student_tags
+    for the tagify box.
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id: str):
-        self.contest = self.safe_get_item(Contest, contest_id)
+    def get(self, entity_type: str, entity_id: str):
+        training_program = self.setup_contest_or_training_program(
+            entity_type, entity_id
+        )
 
-        self.r_params = self.render_params()
-
-        # For training day contests, pass all_student_tags for the tagify box
+        # For training day contests, get training_program from the training day
         training_day = self.contest.training_day
-        if training_day is not None:
+        if training_day is not None and training_program is None:
             training_program = training_day.training_program
+
+        if training_program is not None:
             self.r_params["all_student_tags"] = get_all_student_tags(
                 self.sql_session, training_program
             )
-            self.r_params["is_training_day"] = True
         else:
             self.r_params["all_student_tags"] = []
-            self.r_params["is_training_day"] = False
+
+        self.r_params["is_training_day"] = training_day is not None
 
         self.render("announcements.html", **self.r_params)
+
+    @require_permission(BaseHandler.PERMISSION_MESSAGING)
+    def post(self, entity_type: str, entity_id: str):
+        """Handle adding/editing announcements for training programs.
+
+        For contests, use AddAnnouncementHandler and EditAnnouncementHandler instead.
+        This POST method is only used for training programs which have a combined
+        add/edit form.
+        """
+        if entity_type != "training_program":
+            # Contests use separate add/edit handlers
+            raise tornado.web.HTTPError(405)
+
+        training_program = self.safe_get_item(TrainingProgram, entity_id)
+        managing_contest = training_program.managing_contest
+
+        subject = self.get_argument("subject", "")
+        text = self.get_argument("text", "")
+        announcement_id = self.get_argument("announcement_id", None)
+
+        # Parse visible_to_tags from comma-separated string
+        visible_to_tags_str = self.get_argument("visible_to_tags", "")
+        visible_to_tags = parse_tags(visible_to_tags_str)
+
+        if subject and text:
+            if announcement_id is not None:
+                # Edit existing announcement
+                announcement = self.safe_get_item(Announcement, announcement_id)
+                if announcement.contest_id != managing_contest.id:
+                    raise tornado.web.HTTPError(404)
+                announcement.subject = subject
+                announcement.text = text
+                announcement.visible_to_tags = visible_to_tags
+            else:
+                # Add new announcement
+                announcement = Announcement(
+                    timestamp=make_datetime(),
+                    subject=subject,
+                    text=text,
+                    contest=managing_contest,
+                    admin=self.current_user,
+                    visible_to_tags=visible_to_tags,
+                )
+                self.sql_session.add(announcement)
+            self.try_commit()
+
+        self.redirect(self.url("training_program", entity_id, "announcements"))
 
 
 class AddAnnouncementHandler(BaseHandler):
@@ -137,11 +191,9 @@ class AnnouncementHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def delete(self, entity_type: str, entity_id: str, ann_id: str):
         ann = self.safe_get_item(Announcement, ann_id)
-        if entity_type == "contest":
-            self.contest = self.safe_get_item(Contest, entity_id)
-        elif entity_type == "training_program":
-            training_program = self.safe_get_item(TrainingProgram, entity_id)
-            self.contest = training_program.managing_contest
+        self.setup_contest_or_training_program(
+            entity_type, entity_id, set_r_params=False
+        )
 
         # Protect against URLs providing incompatible parameters.
         if self.contest is not ann.contest:

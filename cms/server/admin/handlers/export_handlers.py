@@ -537,18 +537,34 @@ class ExportTaskHandler(BaseHandler):
 
 
 class ExportContestHandler(BaseHandler):
-    """Handler for exporting a contest to a zip file in YamlLoader format.
+    """Handler for exporting a contest or training program to a zip file.
 
+    Supports both contest and training_program entity types via URL pattern:
+    - /contest/{id}/export
+    - /training_program/{id}/export
+
+    For training programs, exports all tasks from the managing contest.
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id):
-        contest = self.safe_get_item(Contest, contest_id)
+    def get(self, entity_type: str, entity_id: str):
+        # Determine the contest and export name based on entity type
+        if entity_type == "training_program":
+            training_program = self.safe_get_item(TrainingProgram, entity_id)
+            contest = training_program.managing_contest
+            export_name = training_program.name
+            fallback_url = self.url("training_program", entity_id)
+            error_prefix = "Training program"
+        else:
+            contest = self.safe_get_item(Contest, entity_id)
+            export_name = contest.name
+            fallback_url = self.url("contest", entity_id)
+            error_prefix = "Contest"
 
         temp_dir = None
         try:
-            temp_dir = tempfile.mkdtemp(prefix="cms_export_contest_")
+            temp_dir = tempfile.mkdtemp(prefix="cms_export_")
 
-            contest_dir = os.path.join(temp_dir, contest.name)
+            contest_dir = os.path.join(temp_dir, export_name)
             os.makedirs(contest_dir)
 
             _export_contest_to_yaml_format(
@@ -557,57 +573,17 @@ class ExportContestHandler(BaseHandler):
                 contest_dir
             )
 
-            zip_path = os.path.join(temp_dir, f"{contest.name}.zip")
+            zip_path = os.path.join(temp_dir, f"{export_name}.zip")
             _zip_directory(contest_dir, zip_path, temp_dir)
-            _write_zip_response(self, zip_path, f"{contest.name}.zip")
+            _write_zip_response(self, zip_path, f"{export_name}.zip")
 
         except Exception as error:
-            logger.error("Contest export failed: %s", error, exc_info=True)
+            logger.error("%s export failed: %s", error_prefix, error, exc_info=True)
             self.service.add_notification(
                 make_datetime(),
-                "Contest export failed",
+                f"{error_prefix} export failed",
                 str(error))
-            self.redirect(self.url("contest", contest_id))
-
-        finally:
-            if temp_dir and os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-class ExportTrainingProgramHandler(BaseHandler):
-    """Handler for exporting a training program's managing contest to a zip file.
-
-    This exports all tasks from the training program's managing contest.
-    """
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, training_program_id):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        contest = training_program.managing_contest
-
-        temp_dir = None
-        try:
-            temp_dir = tempfile.mkdtemp(prefix="cms_export_training_program_")
-
-            contest_dir = os.path.join(temp_dir, training_program.name)
-            os.makedirs(contest_dir)
-
-            _export_contest_to_yaml_format(
-                contest,
-                self.service.file_cacher,
-                contest_dir
-            )
-
-            zip_path = os.path.join(temp_dir, f"{training_program.name}.zip")
-            _zip_directory(contest_dir, zip_path, temp_dir)
-            _write_zip_response(self, zip_path, f"{training_program.name}.zip")
-
-        except Exception as error:
-            logger.error("Training program export failed: %s", error, exc_info=True)
-            self.service.add_notification(
-                make_datetime(),
-                "Training program export failed",
-                str(error))
-            self.redirect(self.url("training_program", training_program_id))
+            self.redirect(fallback_url)
 
         finally:
             if temp_dir and os.path.exists(temp_dir):
