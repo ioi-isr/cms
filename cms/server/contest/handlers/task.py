@@ -43,6 +43,7 @@ from sqlalchemy.exc import IntegrityError
 
 from cms.server import multi_contest
 from cms.db import StatementView
+from cms.db.training_day import get_managing_participation
 from cmscommon.datetime import make_datetime
 from cmscommon.mimetypes import get_type_for_file_name
 from .contest import ContestHandler, FileHandler
@@ -118,6 +119,33 @@ class TaskStatementViewHandler(FileHandler):
                 self.sql_session.commit()
             except IntegrityError:
                 self.sql_session.rollback()
+
+        # For training day contests, also record the statement view for the
+        # training program's managing contest participation. This ensures all
+        # statements read within a training program (either directly from task
+        # archive or via training days) are tracked at the training program level.
+        training_day = self.contest.training_day
+        if training_day is not None:
+            managing_participation = get_managing_participation(
+                self.sql_session, training_day, participation.user
+            )
+            if managing_participation is not None:
+                existing_managing_view = self.sql_session.query(StatementView)\
+                    .filter(StatementView.participation_id == managing_participation.id)\
+                    .filter(StatementView.task_id == task.id)\
+                    .first()
+                
+                if existing_managing_view is None:
+                    try:
+                        managing_statement_view = StatementView(
+                            participation=managing_participation,
+                            task=task,
+                            timestamp=make_datetime()
+                        )
+                        self.sql_session.add(managing_statement_view)
+                        self.sql_session.commit()
+                    except IntegrityError:
+                        self.sql_session.rollback()
 
         statement = task.statements[lang_code].digest
         self.sql_session.close()
