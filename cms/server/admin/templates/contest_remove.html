@@ -48,7 +48,7 @@
 <a href="{{ url("contests") }}" class="button-link">No, cancel</a>
 
 <script>
-CMS.AWSUtils.initRemovePage({
+CMS.AWSFormUtils.initRemovePage({
   removeUrl: '{{ url("contests", contest.id, "remove") }}',
   hasTaskOptions: {{ 'true' if task_count > 0 else 'false' }},
   targetSelectId: 'target_contest_select',

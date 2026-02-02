@@ -101,7 +101,8 @@ def get_student_for_training_day(
 def check_training_day_eligibility(
     sql_session: Session,
     participation: "Participation",
-    training_day: "TrainingDay | None"
+    training_day: "TrainingDay | None",
+    student: "Student | None" = None,
 ) -> tuple[bool, "TrainingDayGroup | None", list[str]]:
     """Check if a participation is eligible for a training day.
 
@@ -112,6 +113,7 @@ def check_training_day_eligibility(
     sql_session: the database session.
     participation: the participation to check.
     training_day: the training day to check, or None for non-training-day contests.
+    student: the Student object if already available (optimization).
 
     return: tuple of (is_eligible, main_group, matching_tags)
         - is_eligible: True if the student can participate
@@ -126,8 +128,9 @@ def check_training_day_eligibility(
     if not training_day.groups:
         return True, None, []
 
-    # Find the student record
-    student = get_student_for_training_day(sql_session, participation, training_day)
+    # Find the student record if not provided
+    if student is None:
+        student = get_student_for_training_day(sql_session, participation, training_day)
 
     if student is None:
         # No student record means they're not in the training program

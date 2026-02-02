@@ -3,7 +3,7 @@
 
 {% block js_init %}
 {% for td in training_program.training_days %}
-CMS.AWSUtils.initTagify({
+CMS.AWSFormUtils.initTagify({
     inputSelector: 'input[name="training_day_types_{{ td.id }}"]',
     whitelist: {{ all_training_day_types | default([]) | tojson }},
     getSaveUrl: function() {
