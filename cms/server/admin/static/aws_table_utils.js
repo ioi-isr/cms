@@ -35,12 +35,12 @@ CMS.AWSTableUtils.getRowComparator = function(column_idx, numeric, ascending) {
 
         var result;
         if (numeric) {
-            var numA = parseFloat(valA);
-            var numB = parseFloat(valB);
+            var numA = Number.parseFloat(valA);
+            var numB = Number.parseFloat(valB);
 
             // Treat non-numeric/empty values so they always sink to bottom regardless of sort direction
-            if (isNaN(numA)) numA = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
-            if (isNaN(numB)) numB = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+            if (Number.isNaN(numA)) numA = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+            if (Number.isNaN(numB)) numB = ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
 
             result = numA - numB;
             return ascending ? result : -result;

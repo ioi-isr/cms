@@ -22,6 +22,8 @@ Analytics handlers (attendance, ranking) are in training_analytics.py.
 Excel export handlers are in excel.py.
 """
 
+import logging
+import typing
 from datetime import timedelta
 
 import tornado.web
@@ -34,21 +36,21 @@ from cms.db import (
     StudentTask,
     Task,
     TrainingDay,
+    TrainingDayGroup,
+    Participation,
     ArchivedAttendance,
     ArchivedStudentRanking,
     ScoreHistory,
     DelayRequest,
 )
 from cms.db.training_day import get_managing_participation
+from cms.grading.scorecache import get_cached_score_entry
 from cms.server.util import can_access_task, check_training_day_eligibility
 from cms.server.admin.handlers.utils import build_user_to_student_map
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
-from .contestdelayrequest import (
-    compute_participation_status,
-    get_participation_main_group,
-)
+from .contestdelayrequest import compute_participation_status
 
 from .training_analytics import (
     build_attendance_data,
@@ -70,6 +72,8 @@ from .excel import (
     excel_write_student_row,
     excel_write_training_day_header,
 )
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "ArchiveTrainingDayHandler",
@@ -95,6 +99,13 @@ __all__ = [
 class ArchiveTrainingDayHandler(BaseHandler):
     """Archive a training day, extracting attendance and ranking data."""
 
+    @staticmethod
+    def _parse_ip_addresses(ip_string: str | None) -> list[str]:
+        """Parse a comma-separated string of IP addresses."""
+        if not ip_string:
+            return []
+        return [ip.strip() for ip in ip_string.split(",") if ip.strip()]
+
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str, training_day_id: str):
         """Show the archive confirmation page with IP selection."""
@@ -113,11 +124,9 @@ class ArchiveTrainingDayHandler(BaseHandler):
         # Count students per IP (only IPs with more than one student)
         ip_counts: dict[str, int] = {}
         for participation in contest.participations:
-            if participation.starting_ip_addresses:
-                # Parse comma-separated IP addresses
-                ips = [ip.strip() for ip in participation.starting_ip_addresses.split(",") if ip.strip()]
-                for ip in ips:
-                    ip_counts[ip] = ip_counts.get(ip, 0) + 1
+            ips = self._parse_ip_addresses(participation.starting_ip_addresses)
+            for ip in ips:
+                ip_counts[ip] = ip_counts.get(ip, 0) + 1
 
         # Filter to only IPs with more than one student
         shared_ips = {ip: count for ip, count in ip_counts.items() if count > 1}
@@ -125,15 +134,9 @@ class ArchiveTrainingDayHandler(BaseHandler):
         # Check if any participants can still start or are currently in contest
         # This is used to show a warning on the archive confirmation page
         users_not_finished = []
-        for participation in contest.participations:
-            if participation.hidden:
-                continue
-            is_eligible, _, _ = check_training_day_eligibility(
-                self.sql_session, participation, training_day
-            )
-            if not is_eligible:
-                continue
-            main_group = get_participation_main_group(contest, participation)
+        for _, participation, main_group in self._iterate_eligible_students(
+            training_day, contest
+        ):
             main_group_start = main_group.start_time if main_group else None
             main_group_end = main_group.end_time if main_group else None
             status_class, status_label = compute_participation_status(
@@ -233,84 +236,86 @@ class ArchiveTrainingDayHandler(BaseHandler):
         """
         # Check if there are main groups with custom timing
         main_groups = training_day.groups
-        if main_groups:
-            # Calculate max duration among main groups
-            max_duration: timedelta | None = None
-            for group in main_groups:
-                if group.start_time is not None and group.end_time is not None:
-                    group_duration = group.end_time - group.start_time
-                    if max_duration is None or group_duration > max_duration:
-                        max_duration = group_duration
-            if max_duration is not None:
-                return max_duration
+        # Calculate max duration among main groups
+        max_duration: timedelta | None = None
+        for group in main_groups:
+            if group.start_time is not None and group.end_time is not None:
+                group_duration = group.end_time - group.start_time
+                if max_duration is None or group_duration > max_duration:
+                    max_duration = group_duration
+        if max_duration is not None:
+            return max_duration
 
         # Fall back to training day (contest) duration
-        if contest.start is not None and contest.stop is not None:
-            return contest.stop - contest.start
+        return contest.stop - contest.start
 
-        return None
+    def _iterate_eligible_students(
+        self, training_day: TrainingDay, contest: Contest
+    ) -> typing.Iterator[tuple[Student, Participation, TrainingDayGroup | None]]:
+        """Iterate over all non-hidden students eligible for the training day.
 
-    def _archive_attendance_data(
-        self,
-        training_day: TrainingDay,
-        contest: Contest,
-        class_ips: set[str]
-    ) -> None:
-        """Extract and store attendance data for all students."""
+        Yields (student, participation, main_group) tuples for all students who:
+        1. Have a user associated with a participation in the contest
+        2. Are not hidden
+        3. Are eligible for the training day (check_training_day_eligibility)
+        """
         training_program = training_day.training_program
-
-        # Build user_id -> Student map for O(1) lookups instead of repeated queries
         user_to_student = build_user_to_student_map(training_program)
 
         for participation in contest.participations:
+            if participation.hidden:
+                continue
+
             # Find the student for this user in the training program
             # Note: Student.participation_id points to the managing contest participation,
             # not the training day participation, so we need to look up by user_id
             student = user_to_student.get(participation.user_id)
 
             if student is None:
+                logger.warning(
+                    "Participation %s (user %s) has no corresponding student record "
+                    "in training program %s",
+                    participation.id,
+                    participation.user_id,
+                    training_program.id,
+                )
                 continue
 
             # Skip ineligible students (not in any main group)
             # These students were never supposed to participate in this training day
-            is_eligible, _, _ = check_training_day_eligibility(
-                self.sql_session, participation, training_day
+            is_eligible, main_group, _ = check_training_day_eligibility(
+                self.sql_session, participation, training_day, student=student
             )
             if not is_eligible:
                 continue
 
+            yield student, participation, main_group
+
+    def _archive_attendance_data(
+        self, training_day: TrainingDay, contest: Contest, class_ips: set[str]
+    ) -> None:
+        """Extract and store attendance data for all students."""
+        for student, participation, _ in self._iterate_eligible_students(
+            training_day, contest
+        ):
             # Determine status
             if participation.starting_time is None:
                 status = "missed"
+                location = None
             else:
                 status = "participated"
-
-            # Determine location based on starting IPs
-            # If no class IPs were selected, everyone who participated is considered "home"
-            location = None
-            if status == "participated":
-                if not class_ips:
-                    # No class IPs selected means everyone is at home
-                    location = "home"
-                elif participation.starting_ip_addresses:
-                    # Parse comma-separated IP addresses
-                    ips = [ip.strip() for ip in participation.starting_ip_addresses.split(",") if ip.strip()]
-                    if ips:
-                        has_class_ip = any(ip in class_ips for ip in ips)
-                        has_home_ip = any(ip not in class_ips for ip in ips)
-
-                        if has_class_ip and has_home_ip:
-                            location = "both"
-                        elif has_class_ip:
-                            location = "class"
-                        elif has_home_ip:
-                            location = "home"
-                    else:
-                        # Participated but no IP recorded - assume home
-                        location = "home"
-                else:
-                    # Participated but no IP recorded - assume home
-                    location = "home"
+                # Determine location based on starting IPs
+                # If no class IPs were selected, everyone who participated is considered "home"
+                # Also if there are no IPs recorded, assume "home"
+                location = "home"
+                ips = self._parse_ip_addresses(participation.starting_ip_addresses)
+                if class_ips and ips:
+                    has_class_ip = any(ip in class_ips for ip in ips)
+                    has_home_ip = any(ip not in class_ips for ip in ips)
+                    if has_class_ip and has_home_ip:
+                        location = "both"
+                    elif has_class_ip:
+                        location = "class"
 
             # Get delay time
             delay_time = participation.delay_time
@@ -339,32 +344,10 @@ class ArchiveTrainingDayHandler(BaseHandler):
             archived_attendance.student_id = student.id
             self.sql_session.add(archived_attendance)
 
-    def _archive_ranking_data(
-        self,
-        training_day: TrainingDay,
-        contest: Contest
-    ) -> None:
-        """Extract and store ranking data for all students.
-
-        Stores on TrainingDay:
-        - archived_tasks_data: task metadata including extra_headers for submission table
-
-        Stores on ArchivedStudentRanking (per student):
-        - task_scores: scores for ALL visible tasks (including 0 scores)
-          The presence of a task_id key indicates the task was visible.
-        - submissions: submission data for each task in RWS format
-        - history: score history in RWS format
-        """
-        from cms.grading.scorecache import get_cached_score_entry
-
-        training_program = training_day.training_program
-
-        # Get the tasks assigned to this training day
-        training_day_tasks = training_day.tasks
-        training_day_task_ids = {task.id for task in training_day_tasks}
-
-        # Build and store tasks_data on the training day (same for all students)
-        # This preserves the scoring scheme as it was during the training day
+    def _build_archived_tasks_data(
+        self, training_day_tasks: list[Task]
+    ) -> dict[str, dict]:
+        """Build the tasks data dictionary for the training day."""
         archived_tasks_data: dict[str, dict] = {}
         for task in training_day_tasks:
             max_score = 100.0
@@ -386,169 +369,233 @@ class ArchiveTrainingDayHandler(BaseHandler):
                 "extra_headers": extra_headers,
                 "training_day_num": task.training_day_num,
             }
-        training_day.archived_tasks_data = archived_tasks_data
+        return archived_tasks_data
 
-        # Build user_id -> Student map for O(1) lookups instead of repeated queries
-        user_to_student = build_user_to_student_map(training_program)
+    def _get_visible_tasks(
+        self,
+        training_day: TrainingDay,
+        participation: Participation,
+        training_day_tasks: list[Task],
+    ) -> list[Task]:
+        """Determine which tasks should be visible to this student."""
+        visible_tasks: list[Task] = []
+        for task in training_day_tasks:
+            if can_access_task(self.sql_session, task, participation, training_day):
+                visible_tasks.append(task)
+        return visible_tasks
 
-        for participation in contest.participations:
-            # Find the student for this user in the training program
-            # Note: Student.participation_id points to the managing contest participation,
-            # not the training day participation, so we need to look up by user_id
-            student = user_to_student.get(participation.user_id)
+    def _ensure_student_tasks(
+        self,
+        student: Student,
+        visible_tasks: list[Task],
+        training_day: TrainingDay,
+    ) -> None:
+        """Add visible tasks to student's StudentTask records if not already present."""
+        existing_task_ids = {st.task_id for st in student.student_tasks}
+        for task in visible_tasks:
+            if task.id not in existing_task_ids:
+                student_task = StudentTask(assigned_at=make_datetime())
+                student_task.student_id = student.id
+                student_task.task_id = task.id
+                student_task.source_training_day_id = training_day.id
+                self.sql_session.add(student_task)
 
-            if student is None:
-                continue
+    def _collect_task_scores_and_submissions(
+        self,
+        training_day: TrainingDay,
+        participation: Participation,
+        managing_participation: Participation,
+        visible_tasks: list[Task],
+        student_missed: bool,
+    ) -> tuple[dict[str, float], dict[str, list[dict]]]:
+        """Collect scores and submissions for visible tasks."""
+        task_scores: dict[str, float] = {}
+        submissions: dict[str, list[dict]] = {}
 
-            # Skip ineligible students (not in any main group)
-            # These students were never supposed to participate in this training day
-            is_eligible, _, _ = check_training_day_eligibility(
-                self.sql_session, participation, training_day
+        for task in visible_tasks:
+            task_id = task.id
+
+            if student_missed:
+                # Student missed the training - set score to 0
+                task_scores[str(task_id)] = 0.0
+            else:
+                # Get score from the training day participation (for cache lookup)
+                cache_entry = get_cached_score_entry(
+                    self.sql_session, participation, task
+                )
+                task_scores[str(task_id)] = cache_entry.score
+
+            # Get official submissions for this task from the managing participation
+            task_submissions = (
+                self.sql_session.query(Submission)
+                .filter(Submission.participation_id == managing_participation.id)
+                .filter(Submission.task_id == task_id)
+                .filter(Submission.training_day_id == training_day.id)
+                .filter(Submission.official.is_(True))
+                .order_by(Submission.timestamp)
+                .all()
             )
-            if not is_eligible:
-                continue
 
-            # Get all student tags (as list for array storage)
-            student_tags = list(student.student_tags) if student.student_tags else []
-
-            # Determine which tasks should be visible to this student based on their tags
-            # This uses the same logic as _add_training_day_tasks_to_student in StartHandler
-            # A task is visible if:
-            # - The task has no visible_to_tags (empty list = visible to all)
-            # - The student has at least one tag matching the task's visible_to_tags
-            visible_tasks: list[Task] = []
-            for task in training_day_tasks:
-                if can_access_task(self.sql_session, task, participation, training_day):
-                    visible_tasks.append(task)
-
-            # Add visible tasks to student's StudentTask records if not already present
-            # This allows students who missed the training to still submit from home
-            existing_task_ids = {st.task_id for st in student.student_tasks}
-            for task in visible_tasks:
-                if task.id not in existing_task_ids:
-                    student_task = StudentTask(assigned_at=make_datetime())
-                    student_task.student_id = student.id
-                    student_task.task_id = task.id
-                    student_task.source_training_day_id = training_day.id
-                    self.sql_session.add(student_task)
-
-            # Get the managing participation for this user
-            # Submissions are stored with the managing contest participation, not the
-            # training day participation
-            managing_participation = get_managing_participation(
-                self.sql_session, training_day, participation.user
-            )
-            if managing_participation is None:
+            # If student missed but has submissions, this is an error
+            if student_missed and task_submissions:
                 raise ValueError(
                     f"User {participation.user.username} (id={participation.user_id}) "
-                    f"does not have a participation in the managing contest "
-                    f"'{training_day.training_program.managing_contest.name}' "
-                    f"for training day '{training_day.name}'"
+                    f"has no starting_time but has {len(task_submissions)} submission(s) "
+                    f"for task '{task.name}' in training day '{training_day.name}'"
                 )
 
-            # Check if student missed the training (no starting_time)
-            student_missed = participation.starting_time is None
+            submissions[str(task_id)] = []
+            for sub in task_submissions:
+                result = sub.get_result()
+                if result is None or not result.scored():
+                    continue
 
-            # Get task scores for ALL visible tasks (including 0 scores)
-            # The presence of a task_id key indicates the task was visible
-            task_scores: dict[str, float] = {}
-            submissions: dict[str, list[dict]] = {}
-
-            for task in visible_tasks:
-                task_id = task.id
-
-                if student_missed:
-                    # Student missed the training - set score to 0
-                    task_scores[str(task_id)] = 0.0
+                if sub.timestamp is not None:
+                    time_offset = int(
+                        (sub.timestamp - participation.starting_time).total_seconds()
+                    )
                 else:
-                    # Get score from the training day participation (for cache lookup)
-                    cache_entry = get_cached_score_entry(
-                        self.sql_session, participation, task
-                    )
-                    task_scores[str(task_id)] = cache_entry.score
+                    time_offset = 0
 
-                # Get official submissions for this task from the managing participation
-                task_submissions = (
-                    self.sql_session.query(Submission)
-                    .filter(Submission.participation_id == managing_participation.id)
-                    .filter(Submission.task_id == task_id)
-                    .filter(Submission.training_day_id == training_day.id)
-                    .filter(Submission.official.is_(True))
-                    .order_by(Submission.timestamp)
-                    .all()
-                )
-
-                # If student missed but has submissions, this is an error
-                if student_missed and task_submissions:
-                    raise ValueError(
-                        f"User {participation.user.username} (id={participation.user_id}) "
-                        f"has no starting_time but has {len(task_submissions)} submission(s) "
-                        f"for task '{task.name}' in training day '{training_day.name}'"
-                    )
-
-                submissions[str(task_id)] = []
-                for sub in task_submissions:
-                    result = sub.get_result()
-                    if result is None or not result.scored():
-                        continue
-
-                    if sub.timestamp is not None:
-                        time_offset = int(
-                            (
-                                sub.timestamp - participation.starting_time
-                            ).total_seconds()
-                        )
-                    else:
-                        time_offset = 0
-
-                    submissions[str(task_id)].append({
+                submissions[str(task_id)].append(
+                    {
                         "task": str(task_id),
                         "time": time_offset,
                         "score": result.score,
                         "token": sub.tokened(),
                         "extra": result.ranking_score_details or [],
-                    })
-
-            # Get score history in RWS format: [[user_id, task_id, time, score], ...]
-            # Score history is stored on the training day participation
-            history: list[list] = []
-            score_histories = (
-                self.sql_session.query(ScoreHistory)
-                .filter(ScoreHistory.participation_id == participation.id)
-                .filter(ScoreHistory.task_id.in_(training_day_task_ids))
-                .order_by(ScoreHistory.timestamp)
-                .all()
-            )
-
-            # If student missed but has score history, this is an error
-            if student_missed and score_histories:
-                raise ValueError(
-                    f"User {participation.user.username} (id={participation.user_id}) "
-                    f"has no starting_time but has {len(score_histories)} score history "
-                    f"record(s) in training day '{training_day.name}'"
+                    }
                 )
+        return task_scores, submissions
 
-            for sh in score_histories:
-                if sh.timestamp is not None:
-                    time_offset = (
-                        sh.timestamp - participation.starting_time
-                    ).total_seconds()
-                else:
-                    time_offset = 0
-                history.append([
-                    participation.user_id,
-                    sh.task_id,
-                    time_offset,
-                    sh.score
-                ])
+    def _collect_score_history(
+        self,
+        training_day: TrainingDay,
+        participation: Participation,
+        training_day_task_ids: set[int],
+        student_missed: bool,
+    ) -> list[list]:
+        """Collect score history for the student."""
+        history: list[list] = []
+        score_histories = (
+            self.sql_session.query(ScoreHistory)
+            .filter(ScoreHistory.participation_id == participation.id)
+            .filter(ScoreHistory.task_id.in_(training_day_task_ids))
+            .order_by(ScoreHistory.timestamp)
+            .all()
+        )
 
-            # Create archived ranking record
-            archived_ranking = ArchivedStudentRanking(
-                student_tags=student_tags,
-                task_scores=task_scores if task_scores else None,
-                submissions=submissions if submissions else None,
-                history=history if history else None,
+        # If student missed but has score history, this is an error
+        if student_missed and score_histories:
+            raise ValueError(
+                f"User {participation.user.username} (id={participation.user_id}) "
+                f"has no starting_time but has {len(score_histories)} score history "
+                f"record(s) in training day '{training_day.name}'"
             )
-            archived_ranking.training_day_id = training_day.id
-            archived_ranking.student_id = student.id
-            self.sql_session.add(archived_ranking)
+
+        for sh in score_histories:
+            if sh.timestamp is not None:
+                time_offset = (
+                    sh.timestamp - participation.starting_time
+                ).total_seconds()
+            else:
+                time_offset = 0
+            history.append([participation.user_id, sh.task_id, time_offset, sh.score])
+        return history
+
+    def _process_student_ranking(
+        self,
+        training_day: TrainingDay,
+        student: Student,
+        participation: Participation,
+        training_day_tasks: list[Task],
+        training_day_task_ids: set[int],
+    ) -> None:
+        """Process and store ranking data for a single student."""
+        # Get all student tags (as list for array storage)
+        student_tags = list(student.student_tags) if student.student_tags else []
+
+        # Determine which tasks should be visible to this student based on their tags
+        visible_tasks = self._get_visible_tasks(
+            training_day, participation, training_day_tasks
+        )
+
+        # Add visible tasks to student's StudentTask records if not already present
+        self._ensure_student_tasks(student, visible_tasks, training_day)
+
+        # Get the managing participation for this user
+        managing_participation = get_managing_participation(
+            self.sql_session, training_day, participation.user
+        )
+        if managing_participation is None:
+            raise ValueError(
+                f"User {participation.user.username} (id={participation.user_id}) "
+                f"does not have a participation in the managing contest "
+                f"'{training_day.training_program.managing_contest.name}' "
+                f"for training day '{training_day.name}'"
+            )
+
+        # Check if student missed the training (no starting_time)
+        student_missed = participation.starting_time is None
+
+        # Get task scores for ALL visible tasks
+        task_scores, submissions = self._collect_task_scores_and_submissions(
+            training_day,
+            participation,
+            managing_participation,
+            visible_tasks,
+            student_missed,
+        )
+
+        # Get score history
+        history = self._collect_score_history(
+            training_day,
+            participation,
+            training_day_task_ids,
+            student_missed,
+        )
+
+        # Create archived ranking record
+        archived_ranking = ArchivedStudentRanking(
+            student_tags=student_tags,
+            task_scores=task_scores if task_scores else None,
+            submissions=submissions if submissions else None,
+            history=history if history else None,
+        )
+        archived_ranking.training_day_id = training_day.id
+        archived_ranking.student_id = student.id
+        self.sql_session.add(archived_ranking)
+
+    def _archive_ranking_data(
+        self, training_day: TrainingDay, contest: Contest
+    ) -> None:
+        """Extract and store ranking data for all students.
+
+        Stores on TrainingDay:
+        - archived_tasks_data: task metadata including extra_headers for submission table
+
+        Stores on ArchivedStudentRanking (per student):
+        - task_scores: scores for ALL visible tasks (including 0 scores)
+          The presence of a task_id key indicates the task was visible.
+        - submissions: submission data for each task in RWS format
+        - history: score history in RWS format
+        """
+        # Get the tasks assigned to this training day
+        training_day_tasks = training_day.tasks
+        training_day_task_ids = {task.id for task in training_day_tasks}
+
+        # Build and store tasks_data on the training day
+        training_day.archived_tasks_data = self._build_archived_tasks_data(
+            training_day_tasks
+        )
+
+        for student, participation, _ in self._iterate_eligible_students(
+            training_day, contest
+        ):
+            self._process_student_ranking(
+                training_day,
+                student,
+                participation,
+                training_day_tasks,
+                training_day_task_ids,
+            )

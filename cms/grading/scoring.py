@@ -249,7 +249,7 @@ def _task_score_max_subtask(
         if score is None:
             continue
 
-        if details == [] and score == 0.0:
+        if details == [] and abs(score) < 1e-9:
             # Submission did not compile, ignore it.
             continue
 

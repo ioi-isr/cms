@@ -7,9 +7,9 @@ utils.show_page("pending_delay_requests", 1);
 utils.show_page("all_delay_requests", 1);
 
 {% if ineligible_students is defined and ineligible_students|length > 0 and all_student_tags is defined %}
-CMS.AWSUtils.initReadOnlyTagify('.main-group-tags-display');
+CMS.AWSFormUtils.initReadOnlyTagify('.main-group-tags-display');
 
-CMS.AWSUtils.initTagify({
+CMS.AWSFormUtils.initTagify({
     inputSelector: '.student-tags-editable',
     whitelist: {{ all_student_tags | tojson }},
     getSaveUrl: function(input) {

@@ -40,33 +40,6 @@ from .scoringoperations import ScoringOperation, get_operations
 logger = logging.getLogger(__name__)
 
 
-def _get_training_day_participation(
-    session,
-    training_day_contest_id: int,
-    user_id: int,
-) -> Participation | None:
-    """Get the training day participation for a user.
-
-    This is a helper function to look up the participation for a user
-    in a training day's contest. Used when updating score caches for
-    training day submissions.
-
-    session: the database session
-    training_day_contest_id: the contest_id of the training day
-    user_id: the user_id to look up
-
-    return: the Participation object, or None if not found
-    """
-    return (
-        session.query(Participation)
-        .filter(
-            Participation.contest_id == training_day_contest_id,
-            Participation.user_id == user_id,
-        )
-        .one_or_none()
-    )
-
-
 class ScoringExecutor(Executor[ScoringOperation]):
     def __init__(self, proxy_service):
         super().__init__()
@@ -136,23 +109,6 @@ class ScoringExecutor(Executor[ScoringOperation]):
             # Update score cache for AWS ranking.
             if dataset is submission.task.active_dataset:
                 update_score_cache(session, submission)
-
-                # For training day submissions, also invalidate the training day
-                # participation's cache so it gets rebuilt with only training day
-                # submissions. This ensures training day rankings reflect only
-                # submissions made via that specific training day.
-                if submission.training_day_id is not None:
-                    training_day_participation = _get_training_day_participation(
-                        session,
-                        submission.training_day.contest_id,
-                        submission.participation.user_id,
-                    )
-                    if training_day_participation is not None:
-                        invalidate_score_cache(
-                            session,
-                            participation_id=training_day_participation.id,
-                            task_id=submission.task_id,
-                        )
 
             # Store it.
             session.commit()
@@ -290,9 +246,14 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
                         cache_key = (training_day.contest_id,
                                      sr.submission.participation.user_id)
                         if cache_key not in training_day_participation_cache:
-                            training_day_participation_cache[cache_key] = \
-                                _get_training_day_participation(
-                                    session, cache_key[0], cache_key[1])
+                            training_day_participation_cache[cache_key] = (
+                                session.query(Participation)
+                                .filter(
+                                    Participation.contest_id == cache_key[0],
+                                    Participation.user_id == cache_key[1],
+                                )
+                                .one_or_none()
+                            )
                         training_day_participation = training_day_participation_cache[cache_key]
                         if training_day_participation is not None:
                             affected_pairs.add(
