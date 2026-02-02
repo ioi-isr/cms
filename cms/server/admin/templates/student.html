@@ -6,7 +6,7 @@
 {% import 'macro/markdown_input.html' as macro_markdown %}
 
 {% block js_init %}
-CMS.AWSUtils.initTagify({
+CMS.AWSFormUtils.initTagify({
     inputSelector: 'input[name="student_tags"]',
     whitelist: {{ all_student_tags | tojson }},
     getSaveUrl: function() {

@@ -420,7 +420,7 @@ CMS.TrainingProgram._renderHistogram = function(scores, title, type) {
         scoreGroups[roundedScore] = (scoreGroups[roundedScore] || 0) + 1;
     });
 
-    var sortedScoreKeys = Object.keys(scoreGroups).sort(function(a, b) { return parseFloat(b) - parseFloat(a); });
+    var sortedScoreKeys = Object.keys(scoreGroups).sort(function (a, b) { return Number.parseFloat(b) - Number.parseFloat(a); });
     sortedScoreKeys.forEach(function(score) {
         var count = scoreGroups[score];
         var pct = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;

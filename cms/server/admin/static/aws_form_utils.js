@@ -80,7 +80,7 @@ CMS.AWSFormUtils.initDateTimeValidation = function(formSelector, startSelector, 
         // Use valueAsNumber for reliable datetime-local comparison
         var startValue = startInput.valueAsNumber;
         var stopValue = stopInput.valueAsNumber;
-        if (!isNaN(startValue) && !isNaN(stopValue) && stopValue <= startValue) {
+        if (!Number.isNaN(startValue) && !Number.isNaN(stopValue) && stopValue <= startValue) {
             alert('End time must be after start time');
             e.preventDefault();
         }
@@ -297,7 +297,7 @@ CMS.AWSFormUtils.initTagify = function(config) {
                         pendingSave = true;
                         resolve();
                     } else {
-                        reject();
+                        reject(new Error('User cancelled tag removal'));
                     }
                 });
             }
@@ -387,16 +387,3 @@ CMS.AWSFormUtils.initTagify = function(config) {
     });
 };
 
-
-// Backward compatibility aliases on CMS.AWSUtils
-// These will be set up after aws_utils.js loads
-document.addEventListener('DOMContentLoaded', function () {
-    if (typeof CMS.AWSUtils !== 'undefined') {
-        // Alias the new functions to the old names for backward compatibility
-        CMS.AWSUtils.initPasswordStrength = CMS.AWSFormUtils.initPasswordStrength;
-        CMS.AWSUtils.initDateTimeValidation = CMS.AWSFormUtils.initDateTimeValidation;
-        CMS.AWSUtils.initRemovePage = CMS.AWSFormUtils.initRemovePage;
-        CMS.AWSUtils.initReadOnlyTagify = CMS.AWSFormUtils.initReadOnlyTagify;
-        CMS.AWSUtils.initTagify = CMS.AWSFormUtils.initTagify;
-    }
-});
