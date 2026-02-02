@@ -51,7 +51,8 @@ from .contestdelayrequest import \
     ExportDelaysAndExtraTimesHandler, \
     RemoveAllDelaysAndExtraTimesHandler, \
     EraseAllStartTimesHandler, \
-    ResetAllIPAddressesHandler
+    ResetAllIPAddressesHandler, \
+    AdminConfiguredDelayHandler
 from .contestranking import \
     RankingHandler, \
     ScoreHistoryHandler, \
@@ -236,6 +237,7 @@ HANDLERS = [
     (r"/contest/([0-9]+)/delays_and_extra_times/remove_all", RemoveAllDelaysAndExtraTimesHandler),
     (r"/contest/([0-9]+)/delays_and_extra_times/erase_start_times", EraseAllStartTimesHandler),
     (r"/contest/([0-9]+)/delays_and_extra_times/reset_ip_addresses", ResetAllIPAddressesHandler),
+    (r"/contest/([0-9]+)/delays_and_extra_times/admin_configure", AdminConfiguredDelayHandler),
     (r"/contest/([0-9]+)/delay_request/([0-9]+)/approve", DelayRequestApproveHandler),
     (r"/contest/([0-9]+)/delay_request/([0-9]+)/reject", DelayRequestRejectHandler),
     (r"/contest/([0-9]+)/participation/([0-9]+)/remove_delay_and_extra_time", RemoveDelayAndExtraTimeHandler),
