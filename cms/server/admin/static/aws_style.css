@@ -308,9 +308,9 @@ input:focus, textarea:focus {
 .folder-header {
     display: flex;
     align-items: center;
-    padding: 4px 8px;
+    padding: 8px 12px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 6px;
     transition: background-color 0.2s;
 }
 
@@ -322,7 +322,7 @@ input:focus, textarea:focus {
     outline: none;
     box-shadow: inset 0 0 0 1px var(--sidebar-focus-glow);
     background-color: var(--sidebar-hover-bg);
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
 .folder-header a:focus {
@@ -357,13 +357,15 @@ input:focus, textarea:focus {
 }
 
 .folder-header a {
-    color: #E5E7EB;
+    color: var(--sidebar-text);
     font-weight: 500;
     text-decoration: none;
+    margin-left: 12px;
 }
 
-.folder-header a:hover {
+.folder-header:hover a {
     color: var(--sidebar-text-bright);
+    background-color: transparent;
 }
 
 .folder-contents {
@@ -506,8 +508,15 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 .menu_entry {
     display: flex;
     align-items: center;
-    gap: 8px;
     margin: 2px 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+
+.menu_entry:hover {
+    background-color: var(--sidebar-hover-bg);
 }
 
 .menu_entry .unread {
@@ -520,16 +529,25 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 .menu_link {
     display: block;
     flex: 1 1 auto;
-    padding: 6px 10px;
-    border-radius: 6px;
-    transition: background-color 0.2s;
+    padding: 0;
+    border-radius: 0;
+    transition: color 0.2s ease;
     font-weight: 500;
     letter-spacing: 0.01em;
+    color: var(--sidebar-text);
+}
+
+.menu_entry:hover .menu_link {
+    color: var(--sidebar-text-bright);
+    background-color: transparent;
 }
 
 #sidebar a:hover, #sidebar a:focus {
-    background-color: var(--sidebar-hover-bg);
     outline: 0;
+}
+
+#sidebar .menu_link:hover {
+    background-color: transparent;
 }
 
 .footer {
@@ -1453,20 +1471,24 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
-    margin-right: 8px;
-    opacity: 0.8;
-    transition: opacity 0.2s;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    color: var(--sidebar-slate);
+    transition: color 0.2s ease;
 }
 
 .menu-icon svg {
-    color: currentColor; /* Inherits text color */
-    transition: transform 0.2s ease;
+    width: 18px;
+    height: 18px;
 }
 
-.menu_entry:hover .menu-icon svg {
-    transform: scale(1.1);
+.menu-icon + .menu_link {
+    margin-left: 12px;
+}
+
+.menu_entry:hover .menu-icon {
+    color: var(--sidebar-accent-light);
 }
 
 /* SVG icon base styles for sprite usage */
@@ -1482,39 +1504,19 @@ svg.icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
-    margin-right: 6px;
+    width: 24px;
+    height: 24px;
+    margin-right: 0;
     flex-shrink: 0;
     color: var(--sidebar-slate);
     transition: color 0.2s;
 }
 
 .folder-header:hover .folder-icon-svg {
-    color: var(--sidebar-text);
+    color: var(--sidebar-accent-light);
 }
 
-.menu_link {
-    transition: transform 0.2s ease;
-}
-
-.menu_link:hover {
-    transform: translateX(4px); /* Subtle slide right on hover */
-}
 /* 4. Sidebar Element overrides for Flexbox alignment */
-
-/* Menu Entries (Overview, Questions, etc.) */
-.menu_entry {
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* Text left, badge right */
-    padding-right: 10px; /* Right padding for the badge */
-}
-
-.menu_link {
-    flex-grow: 1;
-    display: block;
-}
 
 /* Section Titles (Training Days, Contests) */
 .sidebar-section-title {

@@ -25,7 +25,7 @@
 
 """
 
-from cms.db import Submission, UserTest, Task
+from cms.db import Contest, Submission, UserTest, Task
 
 from .base import BaseHandler, require_permission
 

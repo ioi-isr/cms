@@ -327,13 +327,14 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
                             {% if td.archived_tasks_data %}
                                 {% for task_id_str, task_info in td.archived_tasks_data.items() %}
-                                    <span class="source-badge badge-archived"
-                                          title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
-                                          onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
-                                          style="cursor: pointer;">
+                                    <button class="source-badge badge-archived"
+                                            type="button"
+                                            title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
+                                            onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
+                                            aria-label="Show histogram for {{ task_info.get('name', 'Task ' ~ task_id_str) }}">
                                         {{ task_info.get('name', 'Task ' ~ task_id_str) }}
-                                        <span class="histogram-icon">&#128202;</span>
-                                    </span>
+                                        <span class="histogram-icon" aria-hidden="true">&#128202;</span>
+                                    </button>
                                 {% endfor %}
                             {% else %}
                                 <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
@@ -395,7 +396,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                 <div id="everyoneSettings" style="display: none; margin-left: 30px;">
                     <div style="display: flex; gap: 16px; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 150px;">
-                            <label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>
+                            <label for="everyoneTopToShow" style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <input type="number" id="everyoneTopToShow" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
                                 <input type="checkbox" id="everyoneTopToShowAll" onchange="toggleEveryoneTopToShowAll()" style="cursor: pointer;">
@@ -403,7 +404,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                             </div>
                         </div>
                         <div style="flex: 1; min-width: 150px;">
-                            <label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names to Show</label>
+                            <label for="everyoneTopNames" style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names to Show</label>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <input type="number" id="everyoneTopNames" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
                                 <input type="checkbox" id="everyoneTopNamesAll" onchange="toggleEveryoneTopNamesAll()" style="cursor: pointer;">

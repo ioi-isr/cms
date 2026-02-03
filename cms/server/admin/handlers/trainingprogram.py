@@ -434,10 +434,12 @@ class RemoveTrainingProgramHandler(BaseHandler):
             raise tornado.web.HTTPError(400, "Invalid action")
 
         # Delete all training days (and their contests/participations).
-        for training_day in list(training_program.training_days):
+        for training_day in training_program.training_days:
             td_contest = training_day.contest
             self.sql_session.delete(training_day)
-            self.sql_session.delete(td_contest)
+            # Only delete td_contest if it exists (archived days have None)
+            if td_contest is not None:
+                self.sql_session.delete(td_contest)
 
         # Delete the training program (tasks already handled above)
         self.sql_session.delete(training_program)

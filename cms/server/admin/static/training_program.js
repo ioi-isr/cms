@@ -7,7 +7,7 @@
 
 "use strict";
 
-var CMS = CMS || {};
+var CMS = window.CMS || {};
 
 /**
  * Training Program utilities namespace.

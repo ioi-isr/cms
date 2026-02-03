@@ -198,7 +198,7 @@ show_training_day (bool): if true, show a column indicating which training day
 
     {% endif %}
   </td>
-  <td id="latency"">
+  <td id="latency">
     {% if sr is not none and sr.scored_at is not none %}
       {{ (sr.scored_at - s.timestamp).total_seconds()|format_duration }}
     {% endif %}

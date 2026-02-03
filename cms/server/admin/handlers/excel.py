@@ -80,7 +80,7 @@ ALIGN_CENTER = Alignment(horizontal="center", vertical="center")
 
 def excel_safe(value: Any) -> Any:
     """Escape potentially dangerous Excel values."""
-    if isinstance(value, str) and value and value[0] in ("=", "+", "-", "@"):
+    if isinstance(value, str) and value and re.match(r"^\s*[=+\-@]", value):
         return "'" + value
     return value
 

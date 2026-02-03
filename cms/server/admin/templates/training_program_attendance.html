@@ -79,9 +79,9 @@ AdminTableUtils.initFilterTagify({
   <table class="attendance-table" id="attendance_table">
     <thead>
       <tr>
-        <th class="no-sort">Student</th>
+        <th class="no-sort" scope="col">Student</th>
         {% for td in archived_training_days %}
-        <th data-sort-settings="numeric" data-sort-column="{{ loop.index - 1 }}">
+        <th data-sort-settings="numeric" data-sort-column="{{ loop.index - 1 }}" scope="col">
           <div class="date-header-main">{{ td.description or td.name or "Session" }}</div>
           {% if td.start_time %}
           <div class="date-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
@@ -100,7 +100,7 @@ AdminTableUtils.initFilterTagify({
     <tbody>
       {% for student in sorted_students %}
       <tr>
-        <th class="no-sort">
+        <th class="no-sort" scope="row">
           <div class="student-name-wrapper">
             {% if student.participation %}
                 <div style="flex: 1; min-width: 0;">
@@ -132,7 +132,7 @@ AdminTableUtils.initFilterTagify({
           {% set att = attendance_data.get(student.id, {}).get(td.id) %}
           {% if att %}
             {% set data_value = 3 if att.status == 'missed' and not att.justified else (2.5 if att.status == 'missed' else (2 if att.delay_time else 1)) %}
-            <td data-value="{{ data_value }}" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ 'true' if att.justified else 'false' }}" data-recorded="{{ 'true' if att.recorded else 'false' }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal(this)">
+            <td data-value="{{ data_value }}" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ 'true' if att.justified else 'false' }}" data-recorded="{{ 'true' if att.recorded else 'false' }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal(this)" onKeyDown="openAttendanceModal(this)">
               <div class="cell-wrapper">
                 {% if att.status == "missed" %}
                   <div class="status-badge {% if att.justified %}status-justified{% else %}status-missed{% endif %}">

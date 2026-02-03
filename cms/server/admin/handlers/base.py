@@ -460,7 +460,8 @@ class BaseHandler(CommonRequestHandler):
         # TODO: use a better sorting method.
         params["contest_list"] = (
             exclude_internal_contests(self.sql_session.query(Contest))
-            .filter(~Contest.training_day.has())
+            .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
+            .filter(TrainingDay.id.is_(None))
             .order_by(Contest.name)
             .all()
         )
@@ -487,7 +488,8 @@ class BaseHandler(CommonRequestHandler):
             exclude_internal_contests(
                 self.sql_session.query(Contest).filter(Contest.folder_id.is_(None))
             )
-            .filter(~Contest.training_day.has())
+            .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
+            .filter(TrainingDay.id.is_(None))
             .order_by(Contest.name)
             .all()
         )
