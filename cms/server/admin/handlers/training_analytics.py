@@ -63,7 +63,9 @@ class FilterContext:
     # IDs of students who currently possess the tags (used in 'current' mode)
     current_tag_student_ids: set[int]
 
-    def is_visible(self, student_id: int, historical_tags: list[str] = None) -> bool:
+    def is_visible(
+        self, student_id: int, historical_tags: list[str] | None = None
+    ) -> bool:
         """Determine if a student/record is visible based on filter mode."""
         if not self.student_tags:
             return True
@@ -141,6 +143,12 @@ def get_ranking_view_data(ctx: FilterContext):
                 archived_tasks = td.archived_tasks_data or {}
                 for task_id_str in rank.task_scores.keys():
                     if task_id_str not in archived_tasks:
+                        logger.warning(
+                            "Missing archived task data: training_day_id=%s, task_id_str=%s, student_id=%s",
+                            td.id,
+                            task_id_str,
+                            rank.student_id,
+                        )
                         continue
 
                     task_id = int(task_id_str)
@@ -385,6 +393,7 @@ class TrainingProgramFilterMixin:
         training_program: TrainingProgram,
         ctx: FilterContext,
         include_historical_tags: bool = False,
+        training_days_override: list[TrainingDay] | None = None,
     ):
         """Set standard render parameters from context."""
         self.render_params_for_training_program(training_program)
@@ -397,7 +406,8 @@ class TrainingProgramFilterMixin:
                 "training_day_types": ctx.training_day_types,
                 "student_tags": ctx.student_tags,
                 "student_tags_mode": ctx.student_tags_mode,
-                "archived_training_days": ctx.archived_training_days,
+                "archived_training_days": training_days_override
+                or ctx.archived_training_days,
                 # Helper lists for dropdowns
                 "all_training_day_types": get_all_training_day_types(training_program),
                 "all_student_tags": get_all_student_tags(
@@ -455,7 +465,12 @@ class TrainingProgramCombinedRankingHandler(TrainingProgramFilterMixin, BaseHand
         ranking_view = get_ranking_view_data(ctx)
         attendance_view = get_attendance_view_data(ctx)
 
-        self.set_common_params(tp, ctx, include_historical_tags=True)
+        self.set_common_params(
+            tp,
+            ctx,
+            include_historical_tags=True,
+            training_days_override=ranking_view["filtered_training_days"],
+        )
         self.r_params.update(ranking_view)
         # Merge attendance data (overwrite sorted_students with the one from ranking if desired,
         # but usually they should be similar. Ranking view prioritizes ranking students).

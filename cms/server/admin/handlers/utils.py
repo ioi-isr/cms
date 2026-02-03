@@ -236,7 +236,11 @@ def get_task_score_info(task: Task) -> TaskScoreInfo:
             max_score = score_type.max_score
             extra_headers = score_type.ranking_headers
         except (KeyError, TypeError, AttributeError):
-            pass
+            logger.debug(
+                "Could not extract score type info for task %s (id=%s)",
+                task.name,
+                task.id,
+            )
 
     return TaskScoreInfo(max_score, extra_headers, score_precision)
 
