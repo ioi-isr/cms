@@ -505,8 +505,10 @@ class ScoreHistoryHandler(BaseHandler):
                 main_group_user_ids = set(
                     int(uid) for uid in main_group_user_ids_param.split(",") if uid
                 )
-            except ValueError:
-                raise tornado.web.HTTPError(400, "Invalid main_group_user_ids parameter")
+            except ValueError as err:
+                raise tornado.web.HTTPError(
+                    400, "Invalid main_group_user_ids parameter"
+                ) from err
 
         # Ensure all score history for the contest is valid before querying
         if ensure_valid_history(self.sql_session, int(contest_id)):

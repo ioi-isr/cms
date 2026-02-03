@@ -258,7 +258,8 @@ AdminTableUtils.initDragDropReorder({
 
 // Table sorting using CMS.AWSUtils
 $(document).ready(function() {
-    CMS.AWSUtils.init_table_sort($("#tasks-table"), false, 1);
+    // Enable sorting for tasks table but don't sort by default (use -1 to prevent initial sorting)
+    CMS.AWSUtils.init_table_sort($("#tasks-table"), false, -1);
 });
 </script>
 {% endblock core %}

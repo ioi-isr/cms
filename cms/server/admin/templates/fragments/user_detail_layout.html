@@ -26,7 +26,7 @@
         <div style="font-size: 0.6em; color: #666;">
           {{ username }}
         </div>
-        {% if picture_url %}<img id="UserDetail_face" src="{{ picture_url }}" alt="Profile picture of {{ first_name }} {{ last_name }}"/>{% endif %}
+        {% if picture_url %}<img id="UserDetail_face" src="{{ picture_url }}" alt="Profile of {{ first_name }} {{ last_name }}"/>{% endif %}
         <div id="UserDetail_spacer"></div>
         <div id="UserDetail_team">{{ team_name or '' }}</div>
         <img id="UserDetail_flag" src="data:," alt="Flag" style="display: none;"/>

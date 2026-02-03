@@ -152,11 +152,20 @@ class AddTrainingProgramStudentHandler(BaseHandler):
             # Skip training days that don't have a contest yet
             if training_day.contest is None:
                 continue
-            td_participation = Participation(
-                contest=training_day.contest,
-                user=user
+
+            # Check if participation already exists for this contest and user
+            existing_participation = (
+                self.sql_session.query(Participation)
+                .filter(Participation.contest == training_day.contest)
+                .filter(Participation.user == user)
+                .first()
             )
-            self.sql_session.add(td_participation)
+
+            if existing_participation is None:
+                td_participation = Participation(
+                    contest=training_day.contest, user=user
+                )
+                self.sql_session.add(td_participation)
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()
@@ -230,11 +239,20 @@ class BulkAddTrainingProgramStudentsHandler(BaseHandler):
                         for training_day in training_program.training_days:
                             if training_day.contest is None:
                                 continue
-                            td_participation = Participation(
-                                contest=training_day.contest,
-                                user=user
+
+                            # Check if participation already exists for this contest and user
+                            existing_participation = (
+                                self.sql_session.query(Participation)
+                                .filter(Participation.contest == training_day.contest)
+                                .filter(Participation.user == user)
+                                .first()
                             )
-                            self.sql_session.add(td_participation)
+
+                            if existing_participation is None:
+                                td_participation = Participation(
+                                    contest=training_day.contest, user=user
+                                )
+                                self.sql_session.add(td_participation)
 
                         results.append({
                             "username": username,
