@@ -89,6 +89,10 @@ function initUserDetail(options) {
     }
   };
 
+  function escapeHtml(value) {
+    return $("<div/>").text(value == null ? "" : String(value)).html();
+  }
+
   UserDetail.do_show = function() {
     if (UserDetail.data_fetched == 2) {
       var s = "<tr class=\"global\"> \
@@ -105,7 +109,7 @@ function initUserDetail(options) {
 
         if (showContestRows) {
           s += "<tr class=\"contest\" data-contest=\"" + c_id +"\"> \
-                   <td class=\"name\">" + contest['name'] + "</td> \
+                   <td class=\"name\">" + escapeHtml(contest['name']) + "</td> \
                    <td class=\"score\">" + (UserDetail.contest_s[c_id] && UserDetail.contest_s[c_id].length > 0 ? round_to_str(UserDetail.contest_s[c_id][UserDetail.contest_s[c_id].length-1][1], contest["score_precision"]) : 0) + "</td> \
                    <td class=\"rank\">" + (UserDetail.contest_r[c_id] && UserDetail.contest_r[c_id].length > 0 ? UserDetail.contest_r[c_id][UserDetail.contest_r[c_id].length-1][1] : 1) + "</td> \
                    <td class=\"btn\"><a>Show</a></td> \
@@ -118,7 +122,7 @@ function initUserDetail(options) {
           var t_id = task["key"];
 
           s += "<tr class=\"task\" data-task=\"" + t_id +"\"> \
-                   <td class=\"name\">" + task['name'] + "</td> \
+                   <td class=\"name\">" + escapeHtml(task['name']) + "</td> \
                    <td class=\"score\">" + (UserDetail.task_s[t_id] && UserDetail.task_s[t_id].length > 0 ? round_to_str(UserDetail.task_s[t_id][UserDetail.task_s[t_id].length-1][1], task["score_precision"]) : 0) + "</td> \
                    <td class=\"rank\">" + (UserDetail.task_r[t_id] && UserDetail.task_r[t_id].length > 0 ? UserDetail.task_r[t_id][UserDetail.task_r[t_id].length-1][1] : 1) + "</td> \
                    <td class=\"btn\"><a>Show</a></td> \

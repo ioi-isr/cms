@@ -30,6 +30,8 @@ Handlers:
 import json
 import logging
 
+import tornado.web
+
 from cms.db import (
     Contest,
     TrainingProgram,
@@ -292,6 +294,13 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
         managing_contest = training_program.managing_contest
         task = self.safe_get_item(Task, task_id)
+
+        # Validate task ownership - ensure task belongs to this training program's managing contest
+        if task.contest != managing_contest:
+            raise tornado.web.HTTPError(
+                403, "Task does not belong to this training program"
+            )
+
         task_num = task.num
 
         # Remove from training day if assigned

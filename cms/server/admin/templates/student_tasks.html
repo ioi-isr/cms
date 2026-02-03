@@ -129,7 +129,7 @@
                         <div class="list-cell-wrapper center-content">
                             {% if st.task.id in training_scores %}
                                 {% set score = training_scores[st.task.id] %}
-                                <span style="font-weight: 700; font-family: monospace; font-size: 1rem; color: {{ '#059669' if score >= 100 else '#d97706' if score > 0 else '#cbd5e1' }};">
+                                <span style="font-weight: 700; font-family: monospace; font-size: 1rem; color: {{ '#059669' if score >= st.task.max_score else '#d97706' if score > 0 else '#cbd5e1' }};">
                                     {{ "%.0f"|format(score) }}
                                 </span>
                             {% else %}
@@ -143,7 +143,7 @@
                         <div class="list-cell-wrapper center-content">
                             {% if st.task.id in home_scores %}
                                 {% set score = home_scores[st.task.id] %}
-                                <span style="font-weight: 700; font-family: monospace; font-size: 1rem; color: {{ '#059669' if score >= 100 else '#d97706' if score > 0 else '#cbd5e1' }};">
+                                <span style="font-weight: 700; font-family: monospace; font-size: 1rem; color: {{ '#059669' if score >= st.task.max_score else '#d97706' if score > 0 else '#cbd5e1' }};">
                                     {{ "%.0f"|format(score) }}
                                 </span>
                             {% else %}

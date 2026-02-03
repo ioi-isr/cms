@@ -199,6 +199,7 @@ class ArchiveTrainingDayHandler(BaseHandler):
             self.sql_session.delete(contest)
 
         except Exception as error:
+            self.sql_session.rollback()
             self.service.add_notification(
                 make_datetime(), "Archive failed", repr(error)
             )
