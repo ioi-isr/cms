@@ -17,6 +17,7 @@
 
 """Admin-only utilities for training programs and related handlers."""
 
+import logging
 import typing
 
 from sqlalchemy import func, union
@@ -29,10 +30,13 @@ from cms.db import (
     DelayRequest,
     ArchivedStudentRanking,
     TrainingDay,
+    Task,
 )
 
 if typing.TYPE_CHECKING:
     from cms.db import TrainingProgram
+
+logger = logging.getLogger(__name__)
 
 
 def get_all_student_tags(
@@ -202,3 +206,87 @@ def parse_usernames_from_file(file_content: str) -> list[str]:
 
     usernames = [u.strip() for u in file_content.split() if u.strip()]
     return deduplicate_preserving_order(usernames)
+
+
+class TaskScoreInfo(typing.NamedTuple):
+    """Score-related information extracted from a task's active dataset."""
+    max_score: float
+    extra_headers: list[str]
+    score_precision: int
+
+
+def get_task_score_info(task: Task) -> TaskScoreInfo:
+    """Extract score-related information from a task.
+
+    This extracts max_score, extra_headers (ranking_headers), and score_precision
+    from a task's active dataset. If the task has no active dataset or the score
+    type cannot be determined, returns default values.
+
+    task: The task to extract score info from.
+
+    return: TaskScoreInfo with max_score, extra_headers, and score_precision.
+    """
+    max_score = 100.0
+    extra_headers: list[str] = []
+    score_precision = task.score_precision
+
+    if task.active_dataset:
+        try:
+            score_type = task.active_dataset.score_type_object
+            max_score = score_type.max_score
+            extra_headers = score_type.ranking_headers
+        except (KeyError, TypeError, AttributeError):
+            logger.debug(
+                "Could not extract score type info for task %s (id=%s)",
+                task.name,
+                task.id,
+            )
+
+    return TaskScoreInfo(max_score, extra_headers, score_precision)
+
+
+def build_task_data_for_archive(task: Task) -> dict:
+    """Build task data dictionary for archiving.
+
+    This creates the task data structure stored in archived_tasks_data
+    when archiving a training day.
+
+    task: The task to build data for.
+
+    return: Dictionary with task metadata for archiving.
+    """
+    score_info = get_task_score_info(task)
+    return {
+        "name": task.title,
+        "short_name": task.name,
+        "max_score": score_info.max_score,
+        "score_precision": score_info.score_precision,
+        "extra_headers": score_info.extra_headers,
+        "training_day_num": task.training_day_num,
+    }
+
+
+def build_task_data_for_detail_view(
+    task: Task,
+    contest_key: str,
+) -> dict:
+    """Build task data dictionary for detail view pages.
+
+    This creates the task data structure used by ParticipationDetailHandler
+    and similar detail views that show task information with contest context.
+
+    task: The task to build data for.
+    contest_key: The contest identifier string.
+
+    return: Dictionary with task metadata for detail views.
+    """
+    score_info = get_task_score_info(task)
+    return {
+        "key": str(task.id),
+        "name": task.title,
+        "short_name": task.name,
+        "contest": contest_key,
+        "max_score": score_info.max_score,
+        "score_precision": score_info.score_precision,
+        "extra_headers": score_info.extra_headers,
+    }
