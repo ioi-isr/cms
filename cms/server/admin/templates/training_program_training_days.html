@@ -134,10 +134,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             <a href="{{ url("training_program", training_program.id, "training_days", "add") }}"
                class="btn-filled-primary"
                style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-plus"/></svg>
                 Add Training Day
             </a>
         </div>
@@ -180,14 +177,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <!-- Drag handle -->
                         <td class="grip-cell">
                             <div class="grip-handle" title="Drag to reorder">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="9" cy="5" r="1.5"/>
-                                    <circle cx="15" cy="5" r="1.5"/>
-                                    <circle cx="9" cy="12" r="1.5"/>
-                                    <circle cx="15" cy="12" r="1.5"/>
-                                    <circle cx="9" cy="19" r="1.5"/>
-                                    <circle cx="15" cy="19" r="1.5"/>
-                                </svg>
+                                <svg class="icon" width="16" height="16" style="fill: currentColor; stroke: none;"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
 
@@ -246,24 +236,14 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                    class="btn-icon-only btn-archive"
                                    {% if not admin.permission_all %}style="pointer-events: none; opacity: 0.5;"{% endif %}
                                    title="Archive training day">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                      <polyline points="21 8 21 21 3 21 3 8"></polyline>
-                                      <rect x="1" y="3" width="22" height="5"></rect>
-                                      <line x1="12" y1="12" x2="12" y2="17"></line>
-                                      <polyline points="9 14 12 17 15 14"></polyline>
-                                    </svg>
+                                    <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
                                 </a>
                                 <!-- Remove button -->
                                 <a href="{{ url("training_program", training_program.id, "training_day", td.id, "remove") }}"
                                    class="btn-icon-only"
                                    {% if not admin.permission_all %}style="pointer-events: none; opacity: 0.5;"{% endif %}
                                    title="Remove training day">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                                    </svg>
+                                    <svg class="icon" width="18" height="18"><use href="#icon-trash"/></svg>
                                 </a>
                             </div>
                         </td>
@@ -367,11 +347,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                             <button type="button" class="btn-icon-only" title="Configure scoreboard sharing"
                                     onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
                                     {% if not admin.permission_all %}disabled{% endif %}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                                    <polyline points="16 6 12 2 8 6"/>
-                                    <line x1="12" y1="2" x2="12" y2="15"/>
-                                </svg>
+                                <svg class="icon" width="16" height="16"><use href="#icon-external-link"/></svg>
                             </button>
                             {% if td.scoreboard_sharing %}
                             <span class="source-badge badge-shared" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
