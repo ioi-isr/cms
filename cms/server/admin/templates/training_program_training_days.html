@@ -168,7 +168,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     </tr>
                 </thead>
                 <tbody id="training-days-tbody">
-                    {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
+                    {% set active_training_days = training_program.training_days | selectattr("contest") %}
                     {% for td in active_training_days %}
                     <tr data-training-day-id="{{ td.id }}"
                         data-name="{{ td.contest.name }}"
@@ -286,7 +286,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                 </tr>
             </thead>
             <tbody>
-                {% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
+                {% set archived_training_days = training_program.training_days | rejectattr("contest") %}
                 {% for td in archived_training_days %}
                 <tr>
                     <!-- Name -->
@@ -463,7 +463,7 @@ AdminTableUtils.initDragDropReorder({
 
 // Initialize table sorting for both tables using CMS.AWSUtils
 $(document).ready(function() {
-    CMS.AWSUtils.init_table_sort($("#training-days-table"), false, 1);
+    CMS.AWSUtils.init_table_sort($("#training-days-table"), false, -1);
     CMS.AWSUtils.init_table_sort($("#archived-training-days-table"), false, 0);
 });
 

@@ -1,4 +1,4 @@
-{% extends "contest.html" %}
+﻿{% extends "contest.html" %}
 {% from "macro/delay_request.html" import delay_request_form, delay_request_list with context %}
 {% from "macro/training_day_card.html" import training_day_card with context %}
 
@@ -89,12 +89,12 @@
 <table class="table table-bordered table-striped" id="task-table">
     <thead>
         <tr>
-            <th style="cursor: pointer;" onclick="sortTable(0)">{% trans %}Task{% endtrans %} <span class="sort-icon"></span></th>
+            <th style="cursor: pointer;" onclick="sortTable(0)" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); sortTable(0); }" tabindex="0">{% trans %}Task{% endtrans %} <span class="sort-icon"></span></th>
             <th>{% trans %}Name{% endtrans %}</th>
-            <th style="cursor: pointer;" onclick="sortTable(2)">{% trans %}Score{% endtrans %} <span class="sort-icon"></span></th>
+            <th style="cursor: pointer;" onclick="sortTable(2)" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); sortTable(2); }" tabindex="0">{% trans %}Score{% endtrans %} <span class="sort-icon"></span></th>
             <th>{% trans %}Status{% endtrans %}</th>
-            <th style="cursor: pointer;" onclick="sortTable(4)">{% trans %}Assigned{% endtrans %} <span class="sort-icon"></span></th>
-            <th style="cursor: pointer;" onclick="sortTable(5)">{% trans %}Source{% endtrans %} <span class="sort-icon"></span></th>
+            <th style="cursor: pointer;" onclick="sortTable(4)" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); sortTable(4); }" tabindex="0">{% trans %}Assigned{% endtrans %} <span class="sort-icon"></span></th>
+            <th style="cursor: pointer;" onclick="sortTable(5)" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); sortTable(5); }" tabindex="0">{% trans %}Source{% endtrans %} <span class="sort-icon"></span></th>
             <th>{% trans %}Submit{% endtrans %}</th>
         </tr>
     </thead>

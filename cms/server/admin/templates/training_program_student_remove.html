@@ -18,7 +18,7 @@
   This operation cannot be undone.
 </p>
 <br>
-<a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "student", user.id, "remove") }}');" class="button-link">Yes, remove</a>
+<button onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "student", user.id, "remove") }}');" class="button-link">Yes, remove</button>
 <a href="{{ url("training_program", training_program.id, "students") }}" class="button-link">No</a>
 
 {% else %}

@@ -151,8 +151,7 @@ function addGroupRow() {
 
     var alphaInput = document.createElement('input');
     alphaInput.type = 'checkbox';
-    alphaInput.name = 'group_alphabetical[]';
-    alphaInput.value = groupRowIndex;
+    alphaInput.name = 'alphabetical_' + groupRowIndex;
     alphaCell.appendChild(alphaInput);
     row.appendChild(alphaCell);
 
@@ -197,10 +196,6 @@ function addGroupRow() {
 document.getElementById('add-group-btn').addEventListener('click', addGroupRow);
 
 document.querySelector('form[name="add_training_day"]').addEventListener('submit', function() {
-    var checkboxes = document.querySelectorAll('#groups-tbody input[name="group_alphabetical[]"]');
-    checkboxes.forEach(function(checkbox, index) {
-        checkbox.value = index;
-    });
     var groupIds = document.querySelectorAll('#groups-tbody input[name="group_id[]"]');
     groupIds.forEach(function(input, index) {
         input.value = index;

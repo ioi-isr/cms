@@ -1318,6 +1318,41 @@ a.button-link-danger:hover {
     background-color: #FBEAEA;
 }
 
+button.button-link {
+    text-decoration: none;
+    margin-right: 25px;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #0F766E;
+    background-color: white;
+    color: #0F766E;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+button.button-link:hover {
+    background-color: #F0FDFA;
+}
+
+button.button-link-secondary {
+    border-color: #888;
+    color: #444;
+}
+
+button.button-link-secondary:hover {
+    background-color: #F5F5F5;
+}
+
+button.button-link-danger {
+    border-color: #C75252;
+    color: #C75252;
+}
+
+button.button-link-danger:hover {
+    background-color: #FBEAEA;
+}
+
 th.diff-only, td.diff-only {
     display: none;
 }

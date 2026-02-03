@@ -32,11 +32,11 @@
 <table class="table table-bordered table-striped" id="past-trainings-table">
     <thead>
         <tr>
-            <th style="cursor: pointer;" onclick="sortPastTrainings(0)">{% trans %}Date{% endtrans %} <span class="sort-icon"></span></th>
+            <th style="cursor: pointer;" onclick="sortPastTrainings(0)" onkeydown="if(event.key==='Enter'||event.key===' ')sortPastTrainings(0)">{% trans %}Date{% endtrans %} <span class="sort-icon"></span></th>
             <th>{% trans %}Description{% endtrans %}</th>
             <th>{% trans %}Tasks{% endtrans %}</th>
-            <th style="cursor: pointer;" onclick="sortPastTrainings(3)">{% trans %}Training Score{% endtrans %} <span class="sort-icon"></span></th>
-            <th style="cursor: pointer;" onclick="sortPastTrainings(4)">{% trans %}Home Score{% endtrans %} <span class="sort-icon"></span></th>
+            <th style="cursor: pointer;" onclick="sortPastTrainings(3)" onkeydown="if(event.key==='Enter'||event.key===' ')sortPastTrainings(3)">{% trans %}Training Score{% endtrans %} <span class="sort-icon"></span></th>
+            <th style="cursor: pointer;" onclick="sortPastTrainings(4)" onkeydown="if(event.key==='Enter'||event.key===' ')sortPastTrainings(4)">{% trans %}Home Score{% endtrans %} <span class="sort-icon"></span></th>
             <th>{% trans %}Scoreboard{% endtrans %}</th>
         </tr>
     </thead>
