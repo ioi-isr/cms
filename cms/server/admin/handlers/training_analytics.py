@@ -588,8 +588,6 @@ class UpdateAttendanceHandler(BaseHandler):
                     "recorded": att.recorded,
                 }
             )
-        else:
-            self.write_error_json(500, "Failed to save changes")
 
     def write_error_json(self, status_code: int, message: str):
         self.set_status(status_code)

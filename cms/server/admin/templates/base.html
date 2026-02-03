@@ -503,7 +503,7 @@ $(document).ready(initSidebarEvents);
             <li class="sidebar-folder" data-folder-key="training-days-section">
               <div class="folder-header">
                 <span class="folder-icon-svg">
-                  <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
+                  <svg class="icon" width="18" height="18"><use href="#icon-calendar"/></svg>
                 </span>
                 <a href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a>
                 <div class="sidebar-badge-container">
@@ -536,9 +536,9 @@ $(document).ready(initSidebarEvents);
                   </li>
                 {% endif %}
                 {% if admin.permission_all %}
-                  <li class="sidebar-action">
-                    <a href="{{ url("training_program", training_program.id, "training_days", "add") }}">Add a training day</a>
-                  </li>
+                  <div class="sidebar-actions">
+                    <a class="sidebar-action-link" href="{{ url("training_program", training_program.id, "training_days", "add") }}">Add a training day</a>
+                  </div>
                 {% endif %}
               </ul>
             </li>
@@ -577,7 +577,7 @@ $(document).ready(initSidebarEvents);
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-award"/></svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-trophy"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "combined_ranking") }}">Ranking</a>
             </li>
@@ -609,7 +609,7 @@ $(document).ready(initSidebarEvents);
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-award"/></svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-trophy"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "ranking") }}">Ranking</a>
             </li>

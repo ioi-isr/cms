@@ -46,10 +46,11 @@ from .base import BaseHandler, require_permission
 logger = logging.getLogger(__name__)
 
 
-def get_participation_main_group(contest, participation):
+def get_participation_main_group(sql_session, contest, participation):
     """Get the main group for a participation in a training day contest.
 
     Args:
+        sql_session: The database session
         contest: The Contest object
         participation: The Participation object (in the training day contest)
 
@@ -57,23 +58,16 @@ def get_participation_main_group(contest, participation):
         TrainingDayGroup or None: The main group if found, None otherwise
     """
     training_day = contest.training_day
-    if training_day is None or len(training_day.groups) == 0:
+    if training_day is None:
         return None
 
-    main_group_tags = {g.tag_name: g for g in training_day.groups}
-    training_program = training_day.training_program
+    # Use the shared eligibility utility for consistent, case-insensitive matching
+    is_eligible, main_group, _ = check_training_day_eligibility(
+        sql_session, participation, training_day
+    )
 
-    # Student.participation_id refers to the managing contest participation,
-    # not the training day contest participation. Match by user_id instead.
-    for student in training_program.students:
-        if student.participation.user_id == participation.user_id:
-            student_tags = set(student.student_tags or [])
-            matching_tags = student_tags & set(main_group_tags.keys())
-            if len(matching_tags) == 1:
-                return main_group_tags[next(iter(matching_tags))]
-            break
-
-    return None
+    # Return the main group if exactly one match was found (eligible)
+    return main_group if is_eligible else None
 
 
 def compute_participation_status(contest, participation, timestamp,
@@ -150,7 +144,9 @@ class DelaysAndExtraTimesHandler(BaseHandler):
                 if not is_eligible:
                     continue  # Skip ineligible students
 
-            main_group = get_participation_main_group(self.contest, participation)
+            main_group = get_participation_main_group(
+                self.sql_session, self.contest, participation
+            )
             main_group_start = main_group.start_time if main_group else None
             main_group_end = main_group.end_time if main_group else None
 
@@ -186,7 +182,9 @@ class DelaysAndExtraTimesHandler(BaseHandler):
         delay_request_warnings = {}
         for req in delay_requests:
             if req.status == 'pending':
-                main_group = get_participation_main_group(self.contest, req.participation)
+                main_group = get_participation_main_group(
+                    self.sql_session, self.contest, req.participation
+                )
                 if main_group and main_group.start_time:
                     if req.requested_start_time < main_group.start_time:
                         delay_request_warnings[req.id] = {
@@ -365,7 +363,9 @@ class ExportDelaysAndExtraTimesHandler(BaseHandler):
             starting_time = participation.starting_time.strftime('%Y-%m-%d %H:%M:%S') if participation.starting_time else '-'
             delay_seconds = int(participation.delay_time.total_seconds())
 
-            main_group = get_participation_main_group(self.contest, participation)
+            main_group = get_participation_main_group(
+                self.sql_session, self.contest, participation
+            )
             main_group_start = main_group.start_time if main_group else None
             main_group_end = main_group.end_time if main_group else None
 

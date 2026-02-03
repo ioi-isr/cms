@@ -142,14 +142,10 @@ def validate_group_times_within_contest(
     Raises:
         ValueError: If group times are outside contest bounds
     """
-    if group_start and contest_start:
-        if group_start < contest_start:
-            raise ValueError(
-                f"{context} start time cannot be before training day start"
-            )
-    if group_end and contest_stop:
-        if group_end > contest_stop:
-            raise ValueError(f"{context} end time cannot be after training day end")
+    if group_start and contest_start and group_start < contest_start:
+        raise ValueError(f"{context} start time cannot be before training day start")
+    if group_end and contest_stop and group_end > contest_stop:
+        raise ValueError(f"{context} end time cannot be after training day end")
 
 
 class TrainingProgramTrainingDaysHandler(BaseHandler):
@@ -328,12 +324,10 @@ class AddTrainingDayHandler(BaseHandler):
                     start_s, hours_s, mins_s, tz, context=f"Group '{tag}'"
                 )
 
-                if group_start:
-                    if (
-                        earliest_group_start is None
-                        or group_start < earliest_group_start
-                    ):
-                        earliest_group_start = group_start
+                if group_start and (
+                    earliest_group_start is None or group_start < earliest_group_start
+                ):
+                    earliest_group_start = group_start
                 if group_end:
                     if latest_group_end is None or group_end > latest_group_end:
                         latest_group_end = group_end
@@ -759,7 +753,7 @@ class ScoreboardSharingHandler(BaseHandler):
                     if tag == "__everyone__":
                         normalized_tag = tag
                     else:
-                        normalized_tag = tag.strip()
+                        normalized_tag = tag.strip().lower()
                         if not normalized_tag:
                             raise ValueError("Tag cannot be empty")
                         if normalized_tag != tag:

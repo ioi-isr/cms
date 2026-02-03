@@ -6,7 +6,7 @@ Minimal CRUD and parent assignment. Contests can be assigned to a folder from
 the contest page (dropdown).
 """
 
-from cms.db import ContestFolder, Contest
+from cms.db import ContestFolder, Contest, TrainingDay
 from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 
@@ -24,9 +24,10 @@ class FolderListHandler(SimpleHandler("folders.html")):
         )
         self.r_params["root_contests"] = (
             exclude_internal_contests(
-                self.sql_session.query(Contest)
-                .filter(Contest.folder_id.is_(None))
+                self.sql_session.query(Contest).filter(Contest.folder_id.is_(None))
             )
+            .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
+            .filter(TrainingDay.id.is_(None))
             .order_by(Contest.name)
             .all()
         )
