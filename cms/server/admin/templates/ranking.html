@@ -242,9 +242,9 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
 
     $(".show-indicators-toggle").on("change", function() {
       if (this.checked) {
-        $("#ranking-table").removeClass("hide-indicators");
+        $(".td-ranking-table").removeClass("hide-indicators");
       } else {
-        $("#ranking-table").addClass("hide-indicators");
+        $(".td-ranking-table").addClass("hide-indicators");
       }
     });
   })

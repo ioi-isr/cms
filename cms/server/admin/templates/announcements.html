@@ -84,9 +84,9 @@ inputs.forEach(function(input) {
         <div class="notification_msg">
           <div class="announcement_remove">
             {% if training_program is defined %}
-            <a onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}'); ">Remove</a>
+            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}'); " style="background:none;border:none;color:#0066cc;text-decoration:underline;cursor:pointer;padding:0;">Remove</button>
             {% else %}
-            <a onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}'); ">Remove</a>
+            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}'); " style="background:none;border:none;color:#0066cc;text-decoration:underline;cursor:pointer;padding:0;">Remove</button>
             {% endif %}
           </div>
           <div class="notification_timestamp">{{ msg.timestamp|format_datetime }}</div>
@@ -104,7 +104,7 @@ inputs.forEach(function(input) {
           <div class="notification_admin_owner">
             By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
           </div>
-          <a href="javascript:void(0);" onclick="utils.announcement_edit_toggle(event, this);">Edit</a>
+          <button type="button" onclick="utils.announcement_edit_toggle(event, this);" style="background:none;border:none;color:#0066cc;text-decoration:underline;cursor:pointer;padding:0;">Edit</button>
           <div class="reply_question">
             <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "edit", msg.id) }}{% endif %}" >
               {{ xsrf_form_html|safe }}

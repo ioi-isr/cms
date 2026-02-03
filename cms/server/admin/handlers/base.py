@@ -127,24 +127,24 @@ def parse_int(value: str) -> int:
     """Parse and validate an integer."""
     try:
         return int(value)
-    except (ValueError, TypeError):
-        raise ValueError("Can't cast %s to int." % value)
+    except (ValueError, TypeError) as err:
+        raise ValueError("Can't cast %s to int." % value) from err
 
 
 def parse_timedelta_sec(value: str) -> timedelta:
     """Parse and validate a timedelta (as number of seconds)."""
     try:
         return timedelta(seconds=float(value))
-    except (ValueError, TypeError):
-        raise ValueError("Can't cast %s to timedelta." % value)
+    except (ValueError, TypeError) as err:
+        raise ValueError("Can't cast %s to timedelta." % value) from err
 
 
 def parse_timedelta_min(value: str) -> timedelta:
     """Parse and validate a timedelta (as number of minutes)."""
     try:
         return timedelta(minutes=float(value))
-    except (ValueError, TypeError):
-        raise ValueError("Can't cast %s to timedelta." % value)
+    except (ValueError, TypeError) as err:
+        raise ValueError("Can't cast %s to timedelta." % value) from err
 
 
 def parse_datetime(value: str) -> datetime:
@@ -153,8 +153,8 @@ def parse_datetime(value: str) -> datetime:
         value += ".0"
     try:
         return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
-    except (ValueError, TypeError):
-        raise ValueError("Can't cast %s to datetime." % value)
+    except (ValueError, TypeError) as err:
+        raise ValueError("Can't cast %s to datetime." % value) from err
 
 
 def parse_datetime_with_timezone(value: str, tz) -> datetime:
@@ -408,8 +408,13 @@ class BaseHandler(CommonRequestHandler):
                         self.redirect(tp_url)
                         self._finished = True
                         return
-            except Exception:
-                pass
+            except Exception as e:
+                logger.exception(
+                    "Error in prepare() while processing contest URL redirect for path %s: %s",
+                    path,
+                    str(e),
+                )
+                # Continue with normal request processing after logging the error
 
     def render(self, template_name: str, **params):
         t = self.service.jinja2_environment.get_template(template_name)
@@ -762,8 +767,8 @@ class BaseHandler(CommonRequestHandler):
         else:
             try:
                 value = float(value)
-            except ValueError as e:
-                raise ValueError("Can't cast %s to float: %s" % (value, e))
+            except ValueError as err:
+                raise ValueError("Can't cast %s to float: %s" % (value, err)) from err
             if not 0 <= value < float("+inf"):
                 raise ValueError("Time limit out of range.")
             dest["time_limit"] = value
@@ -786,8 +791,8 @@ class BaseHandler(CommonRequestHandler):
         else:
             try:
                 value = int(value)
-            except ValueError as e:
-                raise ValueError("Can't cast %s to int: %s" % (value, e))
+            except ValueError as err:
+                raise ValueError("Can't cast %s to int: %s" % (value, err)) from err
             if not 0 < value:
                 raise ValueError("Invalid memory limit.")
             # AWS displays the value as MiB, but it is stored as bytes.

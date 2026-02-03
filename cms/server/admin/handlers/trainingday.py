@@ -300,7 +300,6 @@ class AddTrainingDayHandler(BaseHandler):
             group_starts = self.get_arguments("group_start_time[]")
             group_duration_hours = self.get_arguments("group_duration_hours[]")
             group_duration_minutes = self.get_arguments("group_duration_minutes[]")
-            group_alphabeticals = self.get_arguments("group_alphabetical[]")
 
             # Collect valid groups and their times for defaulting
             groups_to_create = []
@@ -332,7 +331,7 @@ class AddTrainingDayHandler(BaseHandler):
                     if latest_group_end is None or group_end > latest_group_end:
                         latest_group_end = group_end
 
-                alphabetical = str(i) in group_alphabeticals
+                alphabetical = self.get_argument(f"alphabetical_{i}", None) is not None
 
                 groups_to_create.append({
                     "tag_name": tag,

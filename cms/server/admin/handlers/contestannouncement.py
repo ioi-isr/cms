@@ -88,6 +88,8 @@ class ContestAnnouncementsHandler(BaseHandler):
         training_program = self.safe_get_item(TrainingProgram, entity_id)
         managing_contest = training_program.managing_contest
 
+        fallback_page = self.url("training_program", entity_id, "announcements")
+
         subject = self.get_argument("subject", "")
         text = self.get_argument("text", "")
         announcement_id = self.get_argument("announcement_id", None)
@@ -96,29 +98,35 @@ class ContestAnnouncementsHandler(BaseHandler):
         visible_to_tags_str = self.get_argument("visible_to_tags", "")
         visible_to_tags = parse_tags(visible_to_tags_str)
 
-        if subject and text:
-            if announcement_id is not None:
-                # Edit existing announcement
-                announcement = self.safe_get_item(Announcement, announcement_id)
-                if announcement.contest_id != managing_contest.id:
-                    raise tornado.web.HTTPError(404)
-                announcement.subject = subject
-                announcement.text = text
-                announcement.visible_to_tags = visible_to_tags
-            else:
-                # Add new announcement
-                announcement = Announcement(
-                    timestamp=make_datetime(),
-                    subject=subject,
-                    text=text,
-                    contest=managing_contest,
-                    admin=self.current_user,
-                    visible_to_tags=visible_to_tags,
-                )
-                self.sql_session.add(announcement)
-            self.try_commit()
+        if not subject:
+            self.application.service.add_notification("error", "Subject is required")
+            self.redirect(fallback_page)
+            return
 
-        self.redirect(self.url("training_program", entity_id, "announcements"))
+        if announcement_id is not None:
+            # Edit existing announcement
+            announcement = self.safe_get_item(Announcement, announcement_id)
+            if announcement.contest_id != managing_contest.id:
+                raise tornado.web.HTTPError(404)
+            announcement.subject = subject
+            announcement.visible_to_tags = visible_to_tags
+            # Only update text when non-empty (leave existing text otherwise)
+            if text:
+                announcement.text = text
+        else:
+            # Add new announcement
+            announcement = Announcement(
+                timestamp=make_datetime(),
+                subject=subject,
+                text=text,
+                contest=managing_contest,
+                admin=self.current_user,
+                visible_to_tags=visible_to_tags,
+            )
+            self.sql_session.add(announcement)
+        self.try_commit()
+
+        self.redirect(fallback_page)
 
 
 class AddAnnouncementHandler(BaseHandler):

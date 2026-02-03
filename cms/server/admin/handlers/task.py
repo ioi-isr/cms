@@ -720,18 +720,18 @@ class DefaultSubmissionFormatHandler(BaseHandler):
 
         try:
             task.set_default_output_only_submission_format()
-        except Exception:
+        except Exception as e:
             logger.error(
                 "Couldn't create default submission format for task %s "
                 "(dataset %s, type %s)",
                 task.id,
                 task.active_dataset.id,
                 task.active_dataset.task_type,
-                exc_info=True
+                exc_info=True,
             )
             raise tornado.web.HTTPError(
                 500, f"Couldn't create default submission format for task {task.id}"
-            )
+            ) from e
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()
