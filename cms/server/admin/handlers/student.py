@@ -265,24 +265,15 @@ class BulkAddTrainingProgramStudentsHandler(BaseHandler):
             self.redirect(self.url("training_program", training_program_id, "students"))
 
 
-class RemoveTrainingProgramStudentHandler(BaseHandler):
+class RemoveTrainingProgramStudentHandler(StudentBaseHandler):
     """Confirm and remove a student from a training program."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str, user_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-        user = self.safe_get_item(User, user_id)
-
-        participation: Participation | None = (
-            self.sql_session.query(Participation)
-            .filter(Participation.contest == managing_contest)
-            .filter(Participation.user == user)
-            .first()
-        )
-
-        if participation is None:
-            raise tornado.web.HTTPError(404)
+        self.setup_student_context(training_program_id, user_id)
+        training_program = self.training_program
+        participation = self.participation
+        user = participation.user
 
         # Use the helper to set up training program params first
         # (this initializes r_params, so it must come before render_params_for_remove_confirmation)
@@ -291,8 +282,10 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
         self.r_params["user"] = user
 
         # Now add submission count (this adds to existing r_params)
-        submission_query = self.sql_session.query(Submission)\
+        submission_query = (
+            self.sql_session.query(Submission)
             .filter(Submission.participation == participation)
+        )
         self.render_params_for_remove_confirmation(submission_query)
 
         # Count submissions and participations from training days
@@ -325,28 +318,13 @@ class RemoveTrainingProgramStudentHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str, user_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-        user = self.safe_get_item(User, user_id)
-
-        participation: Participation | None = (
-            self.sql_session.query(Participation)
-            .filter(Participation.user == user)
-            .filter(Participation.contest == managing_contest)
-            .first()
-        )
-
-        if participation is None:
-            raise tornado.web.HTTPError(404)
+        self.setup_student_context(training_program_id, user_id)
+        training_program = self.training_program
+        participation = self.participation
+        user = participation.user
 
         # Delete the Student record first (it has a NOT NULL FK to participation)
-        student: Student | None = (
-            self.sql_session.query(Student)
-            .filter(Student.participation == participation)
-            .first()
-        )
-        if student is not None:
-            self.sql_session.delete(student)
+        self.sql_session.delete(self.student)
 
         self.sql_session.delete(participation)
 
