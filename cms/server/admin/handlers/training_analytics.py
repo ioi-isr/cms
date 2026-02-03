@@ -34,6 +34,7 @@ Classes:
 """
 
 import json
+import logging
 from datetime import datetime as dt, timedelta
 from typing import Any
 from urllib.parse import urlencode
@@ -53,6 +54,8 @@ from cms.server.admin.handlers.utils import (
     get_all_training_day_types,
     parse_tags,
 )
+
+logger = logging.getLogger(__name__)
 
 from .base import BaseHandler, require_permission
 
@@ -161,29 +164,27 @@ def build_ranking_data(
             ranking_data[student_id][td.id] = ranking
 
             if ranking.task_scores:
+                archived_tasks_data = td.archived_tasks_data or {}
                 for task_id_str in ranking.task_scores.keys():
                     task_id = int(task_id_str)
                     if task_id not in visible_tasks_by_id:
-                        if (td.archived_tasks_data and
-                                task_id_str in td.archived_tasks_data):
-                            task_info = td.archived_tasks_data[task_id_str]
-                            visible_tasks_by_id[task_id] = {
-                                "id": task_id,
-                                "name": task_info.get("short_name", ""),
-                                "title": task_info.get("name", ""),
-                                "training_day_num": task_info.get(
-                                    "training_day_num"
-                                ),
-                            }
-                        else:
-                            task = sql_session.query(Task).get(task_id)
-                            if task:
-                                visible_tasks_by_id[task_id] = {
-                                    "id": task_id,
-                                    "name": task.name,
-                                    "title": task.title,
-                                    "training_day_num": task.training_day_num,
-                                }
+                        # All task data should be in archived_tasks_data for archived training days
+                        if task_id_str not in archived_tasks_data:
+                            logger.warning(
+                                "Task %s not found in archived_tasks_data for training day %s. "
+                                "This may indicate incomplete archive data.",
+                                task_id, td.id
+                            )
+                            continue
+                        task_info = archived_tasks_data[task_id_str]
+                        visible_tasks_by_id[task_id] = {
+                            "id": task_id,
+                            "name": task_info.get("short_name", ""),
+                            "title": task_info.get("name", ""),
+                            "training_day_num": task_info.get(
+                                "training_day_num"
+                            ),
+                        }
 
         if not active_students_per_td[td.id]:
             continue
@@ -601,43 +602,27 @@ class TrainingProgramCombinedRankingDetailHandler(
             for task_id in sorted_task_ids:
                 task_key = str(task_id)
 
-                # Use archived_tasks_data if available (preserves original scoring scheme)
-                if task_key in archived_tasks_data:
-                    task_info = archived_tasks_data[task_key]
-                    max_score = task_info.get("max_score", 100.0)
-                    extra_headers = task_info.get("extra_headers", [])
-                    score_precision = task_info.get("score_precision", 2)
-                    task_name = task_info.get("name", "")
-                    task_short_name = task_info.get("short_name", "")
-                else:
-                    # Fallback to live task data
-                    task = self.sql_session.query(Task).get(task_id)
-                    if not task:
-                        continue
-                    max_score = 100.0
-                    extra_headers = []
-                    score_precision = task.score_precision
-                    task_name = task.title
-                    task_short_name = task.name
-                    if task.active_dataset:
-                        try:
-                            score_type = task.active_dataset.score_type_object
-                            max_score = score_type.max_score
-                            extra_headers = score_type.ranking_headers
-                        except (KeyError, TypeError, AttributeError):
-                            pass
+                # All task data should be in archived_tasks_data for archived training days
+                if task_key not in archived_tasks_data:
+                    logger.warning(
+                        "Task %s not found in archived_tasks_data for training day %s. "
+                        "This may indicate incomplete archive data.",
+                        task_id, td.id
+                    )
+                    continue
 
+                task_info = archived_tasks_data[task_key]
                 tasks_data[task_key] = {
                     "key": task_key,
-                    "name": task_name,
-                    "short_name": task_short_name,
+                    "name": task_info.get("name", ""),
+                    "short_name": task_info.get("short_name", ""),
                     "contest": contest_key,
-                    "max_score": max_score,
-                    "score_precision": score_precision,
-                    "extra_headers": extra_headers,
+                    "max_score": task_info.get("max_score", 100.0),
+                    "score_precision": task_info.get("score_precision", 2),
+                    "extra_headers": task_info.get("extra_headers", []),
                 }
                 contest_tasks.append(tasks_data[task_key])
-                contest_max_score += max_score
+                contest_max_score += tasks_data[task_key]["max_score"]
 
                 # Get submissions for this task from the student's ranking
                 student_ranking = student_rankings.get(td.id)

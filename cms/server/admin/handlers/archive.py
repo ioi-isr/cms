@@ -46,7 +46,10 @@ from cms.db import (
 from cms.db.training_day import get_managing_participation
 from cms.grading.scorecache import get_cached_score_entry
 from cms.server.util import can_access_task, check_training_day_eligibility
-from cms.server.admin.handlers.utils import build_user_to_student_map
+from cms.server.admin.handlers.utils import (
+    build_task_data_for_archive,
+    build_user_to_student_map,
+)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -344,33 +347,6 @@ class ArchiveTrainingDayHandler(BaseHandler):
             archived_attendance.student_id = student.id
             self.sql_session.add(archived_attendance)
 
-    def _build_archived_tasks_data(
-        self, training_day_tasks: list[Task]
-    ) -> dict[str, dict]:
-        """Build the tasks data dictionary for the training day."""
-        archived_tasks_data: dict[str, dict] = {}
-        for task in training_day_tasks:
-            max_score = 100.0
-            extra_headers: list[str] = []
-            score_precision = task.score_precision
-            if task.active_dataset:
-                try:
-                    score_type = task.active_dataset.score_type_object
-                    max_score = score_type.max_score
-                    extra_headers = score_type.ranking_headers
-                except (KeyError, TypeError, AttributeError):
-                    pass
-
-            archived_tasks_data[str(task.id)] = {
-                "name": task.title,
-                "short_name": task.name,
-                "max_score": max_score,
-                "score_precision": score_precision,
-                "extra_headers": extra_headers,
-                "training_day_num": task.training_day_num,
-            }
-        return archived_tasks_data
-
     def _get_visible_tasks(
         self,
         training_day: TrainingDay,
@@ -585,9 +561,10 @@ class ArchiveTrainingDayHandler(BaseHandler):
         training_day_task_ids = {task.id for task in training_day_tasks}
 
         # Build and store tasks_data on the training day
-        training_day.archived_tasks_data = self._build_archived_tasks_data(
-            training_day_tasks
-        )
+        training_day.archived_tasks_data = {
+            str(task.id): build_task_data_for_archive(task)
+            for task in training_day_tasks
+        }
 
         for student, participation, _ in self._iterate_eligible_students(
             training_day, contest

@@ -41,7 +41,10 @@ from cms.db import Contest, Participation, ScoreHistory, Student, \
 
 from cms.grading.scorecache import get_cached_score_entry, ensure_valid_history
 from cms.server.util import can_access_task, get_student_for_user_in_program
-from cms.server.admin.handlers.utils import get_all_student_tags
+from cms.server.admin.handlers.utils import (
+    get_all_student_tags,
+    build_task_data_for_detail_view,
+)
 from .base import BaseHandler, require_permission
 
 logger = logging.getLogger(__name__)
@@ -626,28 +629,11 @@ class ParticipationDetailHandler(BaseHandler):
 
         tasks_data = {}
         total_max_score = 0.0
+        contest_key = str(self.contest.id)
         for task in self.contest.get_tasks():
-            max_score = 100.0
-            extra_headers = []
-            if task.active_dataset:
-                try:
-                    score_type = task.active_dataset.score_type_object
-                    max_score = score_type.max_score
-                    extra_headers = score_type.ranking_headers
-                except (KeyError, TypeError, AttributeError) as e:
-                    logger.warning(
-                        "Failed to get score type for task %s: %s", task.id, e
-                    )
-            tasks_data[str(task.id)] = {
-                "key": str(task.id),
-                "name": task.title,
-                "short_name": task.name,
-                "contest": str(self.contest.id),
-                "max_score": max_score,
-                "score_precision": task.score_precision,
-                "extra_headers": extra_headers,
-            }
-            total_max_score += max_score
+            task_data = build_task_data_for_detail_view(task, contest_key)
+            tasks_data[str(task.id)] = task_data
+            total_max_score += task_data["max_score"]
 
         contest_data = {
             "key": str(self.contest.id),
