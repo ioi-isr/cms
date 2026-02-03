@@ -958,8 +958,8 @@ function saveScoreboardSharing(){
             } else {
                 seenTags[normalized] = true;
                 sharingData[tag] = {
-                    top_to_show: isNaN(topToShow) ? 0 : topToShow,
-                    top_names: isNaN(topNames) ? 0 : topNames
+                    top_to_show: (topToShow === 'all') ? 'all' : (isNaN(topToShow) ? 0 : topToShow),
+                    top_names: (topNames === 'all') ? 'all' : (isNaN(topNames) ? 0 : topNames)
                 };
             }
         }
