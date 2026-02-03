@@ -56,9 +56,10 @@ from .base import BaseHandler, require_permission
 from .contestdelayrequest import compute_participation_status
 
 from .training_analytics import (
-    build_attendance_data,
-    build_ranking_data,
     TrainingProgramFilterMixin,
+    get_attendance_view_data,
+    get_ranking_view_data,
+    FilterContext,
     TrainingProgramAttendanceHandler,
     TrainingProgramCombinedRankingHandler,
     TrainingProgramCombinedRankingHistoryHandler,
@@ -68,12 +69,7 @@ from .training_analytics import (
 from .excel import (
     ExportAttendanceHandler,
     ExportCombinedRankingHandler,
-    excel_build_filename,
-    excel_setup_student_tags_headers,
-    excel_build_training_day_title,
-    excel_get_zebra_fills,
-    excel_write_student_row,
-    excel_write_training_day_header,
+    build_filename,
 )
 
 logger = logging.getLogger(__name__)
@@ -88,14 +84,10 @@ __all__ = [
     "TrainingProgramCombinedRankingHistoryHandler",
     "TrainingProgramFilterMixin",
     "UpdateAttendanceHandler",
-    "build_attendance_data",
-    "build_ranking_data",
-    "excel_build_filename",
-    "excel_build_training_day_title",
-    "excel_get_zebra_fills",
-    "excel_setup_student_tags_headers",
-    "excel_write_student_row",
-    "excel_write_training_day_header",
+    "get_attendance_view_data",
+    "get_ranking_view_data",
+    "FilterContext",
+    "build_filename",
 ]
 
 
