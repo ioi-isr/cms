@@ -109,9 +109,17 @@ class RankingCommonMixin:
         # has_submissions is retrieved from the cache instead.
         # We join with Participation and filter by contest_id instead of using
         # an IN clause with participation IDs for better query plan efficiency.
+        # For training days, participations are in the managing contest, not the
+        # training day's contest, so we filter by managing_contest_id.
+        training_day = contest.training_day
+        if training_day is not None:
+            participation_contest_id = training_day.training_program.managing_contest_id
+        else:
+            participation_contest_id = contest.id
+
         partial_flags_query = (
             self.sql_session.query(
-                Submission.participation_id,
+                Participation.user_id,
                 Submission.task_id,
                 func.bool_or(
                     and_(
@@ -136,15 +144,15 @@ class RankingCommonMixin:
                     SubmissionResult.dataset_id == Task.active_dataset_id,
                 ),
             )
-            .filter(Participation.contest_id == contest.id)
+            .filter(Participation.contest_id == participation_contest_id)
             .filter(Submission.official.is_(True))
-            .group_by(Submission.participation_id, Submission.task_id)
+            .group_by(Participation.user_id, Submission.task_id)
         )
 
-        # Build lookup dict: (participation_id, task_id) -> t_partial
-        partial_by_pt = {}
+        # Build lookup dict: (user_id, task_id) -> t_partial
+        partial_by_user_task = {}
         for row in partial_flags_query.all():
-            partial_by_pt[(row.participation_id, row.task_id)] = row.t_partial or False
+            partial_by_user_task[(row.user_id, row.task_id)] = row.t_partial or False
 
         statement_views_set = set()
         for p in contest.participations:
@@ -174,7 +182,7 @@ class RankingCommonMixin:
                 t_score = round(cache_entry.score, task.score_precision)
                 has_submissions = cache_entry.has_submissions
                 # Get t_partial from SQL aggregation (not from cache)
-                t_partial = partial_by_pt.get((p.id, task.id), False)
+                t_partial = partial_by_user_task.get((p.user_id, task.id), False)
 
                 has_opened = (p.id, task.id) in statement_views_set
                 can_access = can_access_by_pt.get((p.id, task.id), True)
