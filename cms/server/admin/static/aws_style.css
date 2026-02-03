@@ -1469,6 +1469,31 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     transform: scale(1.1);
 }
 
+/* SVG icon base styles for sprite usage */
+svg.icon {
+    display: inline-block;
+    vertical-align: middle;
+    fill: none;
+    stroke: currentColor;
+}
+
+/* Folder icon with SVG (for Training Days section) */
+.folder-icon-svg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    flex-shrink: 0;
+    color: var(--sidebar-slate);
+    transition: color 0.2s;
+}
+
+.folder-header:hover .folder-icon-svg {
+    color: var(--sidebar-text);
+}
+
 .menu_link {
     transition: transform 0.2s ease;
 }
