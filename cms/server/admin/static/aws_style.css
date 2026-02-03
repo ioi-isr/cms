@@ -170,6 +170,12 @@ input:focus, textarea:focus {
     background-color: rgba(148, 163, 184, 0.55);
 }
 
+/* Firefox scrollbar support */
+#sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent; /* Thumb Track */
+}
+
 #sidebar_header {
     margin-bottom: 15px;
 }
@@ -1442,6 +1448,34 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     flex-shrink: 0; /* Prevent squishing */
 }
 
+/* Menu icons styling */
+.menu-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.menu-icon svg {
+    color: currentColor; /* Inherits text color */
+    transition: transform 0.2s ease;
+}
+
+.menu_entry:hover .menu-icon svg {
+    transform: scale(1.1);
+}
+
+.menu_link {
+    transition: transform 0.2s ease;
+}
+
+.menu_link:hover {
+    transform: translateX(4px); /* Subtle slide right on hover */
+}
 /* 4. Sidebar Element overrides for Flexbox alignment */
 
 /* Menu Entries (Overview, Questions, etc.) */
