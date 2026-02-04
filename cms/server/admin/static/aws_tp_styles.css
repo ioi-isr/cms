@@ -2709,3 +2709,67 @@
 .tp-checkbox-group .tp-form-hint {
     margin-left: 42px;
 }
+
+/* ==========================================================================
+   Top Action Buttons Row (for config pages)
+   ========================================================================== */
+
+.tp-actions-top {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 0;
+    margin-bottom: 24px;
+}
+
+.tp-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--tp-danger);
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-danger-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    font-family: inherit;
+    line-height: 1.5;
+    box-sizing: border-box;
+    vertical-align: middle;
+}
+
+.tp-btn-danger:hover {
+    background: var(--tp-danger-light);
+    border-color: var(--tp-danger);
+    color: var(--tp-danger-dark);
+}
+
+/* Card title styling - more prominent */
+.tp-card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--tp-text-primary);
+    margin: 0 0 20px 0;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+/* Two-column field row inside cards */
+.tp-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 600px) {
+    .tp-field-row {
+        grid-template-columns: 1fr;
+    }
+}

@@ -5,13 +5,21 @@
   <h1>Training Program</h1>
 </div>
 
+<!-- Action buttons at top -->
+<div class="tp-actions-top">
+  <input type="reset" form="edit_training_program" value="Reset" class="tp-btn-secondary" />
+  <a href="{{ url("training_program", training_program.id, "export") }}" class="tp-btn-secondary">Export all tasks</a>
+  <input type="submit" form="edit_training_program" value="Update" class="tp-btn-primary"{% if not admin.permission_all %} disabled{% endif %} />
+  <input type="submit" form="remove_training_program" name="operation" value="Remove" class="tp-btn-danger"{% if not admin.permission_all %} disabled{% endif %} />
+</div>
+
 <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
-<form enctype="multipart/form-data" action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program">
+<form enctype="multipart/form-data" action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program" id="edit_training_program">
   {{ xsrf_form_html|safe }}
 
   <!-- Training Program Information Card (separate from contest config) -->
   <div class="tp-form-card" style="margin-bottom: 24px;">
-    <h2 class="tp-form-section-title">Training Program Information</h2>
+    <h2 class="tp-card-title">Training Program Information</h2>
 
     <div class="tp-form-group">
       <label class="tp-form-label">Name</label>
@@ -31,20 +39,11 @@
   {% with show_folder=false, show_name=false, show_description=false, show_login_section=true, show_analysis_section=false %}
     {% include "fragments/contest_config_fields.html" %}
   {% endwith %}
-
-  <div class="tp-form-actions">
-    <div>
-      <input type="submit" value="Update" class="tp-btn-primary"{% if not admin.permission_all %} disabled{% endif %} />
-      <input type="reset" value="Reset" class="tp-btn-secondary" />
-      <a href="{{ url("training_program", training_program.id, "export") }}" class="tp-btn-secondary">Export all tasks</a>
-    </div>
-  </div>
 </form>
 
-<form action="{{ url("training_programs") }}" method="POST" style="display:inline;">
+<form action="{{ url("training_programs") }}" method="POST" id="remove_training_program" style="display:none;">
   {{ xsrf_form_html|safe }}
   <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
-  <input type="submit" name="operation" value="Remove" class="tp-btn-secondary" style="color: var(--tp-danger);"{% if not admin.permission_all %} disabled{% endif %} />
 </form>
 
 {% endblock core %}

@@ -7,34 +7,28 @@
 
 {% include "fragments/overload_warning.html" %}
 
+<!-- Action buttons at top -->
+<div class="tp-actions-top">
+  <input type="reset" form="edit_contest" value="Reset" class="tp-btn-secondary" />
+  <a href="{{ url("contest", contest.id, "export") }}" class="tp-btn-secondary">Export</a>
+  <input type="submit" form="edit_contest" value="Update" class="tp-btn-primary"{% if not admin.permission_all %} disabled{% endif %} />
+  <input type="submit" form="remove_contest" name="operation" value="Remove" class="tp-btn-danger"{% if not admin.permission_all %} disabled{% endif %} />
+</div>
+
 <!-- Training day groups configuration (shown at top for training day contests) -->
 {% include "fragments/training_day_groups.html" %}
 
 <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
-<form enctype="multipart/form-data" action="{{ url("contest", contest.id) }}" method="POST" name="edit_contest">
+<form enctype="multipart/form-data" action="{{ url("contest", contest.id) }}" method="POST" name="edit_contest" id="edit_contest">
   {{ xsrf_form_html|safe }}
   {% with show_folder=true, show_name=true, show_description=true, show_login_section=true, show_analysis_section=true %}
     {% include "fragments/contest_config_fields.html" %}
   {% endwith %}
-  <div class="tp-form-actions">
-    <div>
-      <input type="submit" value="Update" class="tp-btn-primary"{% if not admin.permission_all %} disabled{% endif %} />
-      <input type="reset" value="Reset" class="tp-btn-secondary" />
-      <a href="{{ url("contest", contest.id, "export") }}" class="tp-btn-secondary">Export</a>
-    </div>
-  </div>
 </form>
 
-<form action="{{ url("contests") }}" method="POST" style="display:inline;">
-    {{ xsrf_form_html|safe }}
-    <input type="hidden" name="contest_id" value="{{ contest.id }}"/>
-    <input type="submit"
-         name="operation"
-         value="Remove" style="float: right;"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
+<form action="{{ url("contests") }}" method="POST" id="remove_contest" style="display:none;">
+  {{ xsrf_form_html|safe }}
+  <input type="hidden" name="contest_id" value="{{ contest.id }}"/>
 </form>
 
 {% endblock core %}

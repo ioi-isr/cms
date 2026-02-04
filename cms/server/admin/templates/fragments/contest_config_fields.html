@@ -31,7 +31,7 @@
   <div class="tp-config-column">
     <!-- Contest Information Card -->
     <div class="tp-form-card">
-      <h2 class="tp-form-section-title">Contest Information</h2>
+      <h2 class="tp-card-title">Contest Information</h2>
 
       {% if show_name %}
       <div class="tp-form-group">
@@ -129,7 +129,7 @@
     {% if show_login_section %}
     <!-- Logging In Card -->
     <div class="tp-form-card">
-      <h2 class="tp-form-section-title">Logging in</h2>
+      <h2 class="tp-card-title">Logging in</h2>
 
       <div class="tp-checkbox-group">
         <label class="tp-checkbox-label-block">
@@ -175,7 +175,7 @@
 
     <!-- Limits Card -->
     <div class="tp-form-card">
-      <h2 class="tp-form-section-title">Limits</h2>
+      <h2 class="tp-card-title">Limits</h2>
 
       <div class="tp-form-group">
         <label class="tp-form-label">Maximum number of submissions</label>
@@ -213,7 +213,7 @@
   <div class="tp-config-column">
     <!-- Times Card -->
     <div class="tp-form-card">
-      <h2 class="tp-form-section-title">Times</h2>
+      <h2 class="tp-card-title">Times</h2>
 
       <div class="tp-form-group">
         <label class="tp-form-label">Start time (in {{ timezone_name|default('UTC') }})</label>
@@ -243,7 +243,7 @@
     {% if show_analysis_section %}
     <!-- Analysis Mode Card -->
     <div class="tp-form-card">
-      <h2 class="tp-form-section-title">Analysis Mode</h2>
+      <h2 class="tp-card-title">Analysis Mode</h2>
 
       <div class="tp-checkbox-group">
         <label class="tp-checkbox-label-block">
@@ -269,11 +269,11 @@
 
     <!-- Token Parameters Card -->
     <div class="tp-form-card">
-      <h2 class="tp-form-section-title">Token Parameters{% if rtd_version is defined %} (<a href="https://cms.readthedocs.io/en/{{ rtd_version }}/Configuring%20a%20contest.html#feedback-to-contestants" target="_blank" rel="noopener noreferrer">documentation</a>){% endif %}</h2>
+      <h2 class="tp-card-title">Token Parameters{% if rtd_version is defined %} (<a href="https://cms.readthedocs.io/en/{{ rtd_version }}/Configuring%20a%20contest.html#feedback-to-contestants" target="_blank" rel="noopener noreferrer">documentation</a>){% endif %}</h2>
 
       <div class="tp-form-group">
         <label class="tp-form-label">Token mode</label>
-        <select name="token_mode" class="tp-form-input" style="width: 200px;">
+        <select name="token_mode" class="tp-form-input">
           <option value="{{ TOKEN_MODE_DISABLED }}" {{ "selected" if contest.token_mode == TOKEN_MODE_DISABLED else "" }}>Disabled</option>
           <option value="{{ TOKEN_MODE_FINITE }}" {{ "selected" if contest.token_mode == TOKEN_MODE_FINITE else "" }}>Finite</option>
           <option value="{{ TOKEN_MODE_INFINITE }}" {{ "selected" if contest.token_mode == TOKEN_MODE_INFINITE else "" }}>Infinite</option>
@@ -281,40 +281,37 @@
         <div class="tp-form-hint">Select 'disabled' to remove tokens completely, 'infinite' for allowing any number of tokens, or 'finite' to specify the amount with the following parameters.</div>
       </div>
 
-      <div class="tp-form-group">
-        <label class="tp-form-label">Maximum number of tokens</label>
-        <input type="text" name="token_max_number" class="tp-form-input" value="{{ contest.token_max_number if contest.token_max_number is not none else "" }}" style="width: 100px;">
-        <div class="tp-form-hint">The maximum number of tokens a contestant can use in the whole contest. Used only if tokens are finite.</div>
+      <div class="tp-field-row">
+        <div class="tp-form-group">
+          <label class="tp-form-label">Maximum number of tokens</label>
+          <input type="text" name="token_max_number" class="tp-form-input" value="{{ contest.token_max_number if contest.token_max_number is not none else "" }}">
+        </div>
+        <div class="tp-form-group">
+          <label class="tp-form-label">Minimum interval between tokens</label>
+          <input type="text" name="token_min_interval" class="tp-form-input" value="{{ contest.token_min_interval.total_seconds()|int }}">
+        </div>
       </div>
 
-      <div class="tp-form-group">
-        <label class="tp-form-label">Minimum interval between tokens (seconds)</label>
-        <input type="text" name="token_min_interval" class="tp-form-input" value="{{ contest.token_min_interval.total_seconds()|int }}" style="width: 100px;">
-        <div class="tp-form-hint">The minimum amount of time (in seconds) that a contestant needs to wait after using a token before being able to use another.</div>
+      <div class="tp-field-row">
+        <div class="tp-form-group">
+          <label class="tp-form-label">Initial number of tokens</label>
+          <input type="text" name="token_gen_initial" class="tp-form-input" value="{{ contest.token_gen_initial }}">
+        </div>
+        <div class="tp-form-group">
+          <label class="tp-form-label">Token generation number</label>
+          <input type="text" name="token_gen_number" class="tp-form-input" value="{{ contest.token_gen_number }}">
+        </div>
       </div>
 
-      <div class="tp-form-group">
-        <label class="tp-form-label">Initial number of tokens</label>
-        <input type="text" name="token_gen_initial" class="tp-form-input" value="{{ contest.token_gen_initial }}" style="width: 100px;">
-        <div class="tp-form-hint">The number of tokens that a contestant has available when their contest time starts.</div>
-      </div>
-
-      <div class="tp-form-group">
-        <label class="tp-form-label">Token generation number</label>
-        <input type="text" name="token_gen_number" class="tp-form-input" value="{{ contest.token_gen_number }}" style="width: 100px;">
-        <div class="tp-form-hint">The number of tokens that are generated periodically.</div>
-      </div>
-
-      <div class="tp-form-group">
-        <label class="tp-form-label">Token generation period (minutes)</label>
-        <input type="text" name="token_gen_interval" class="tp-form-input" value="{{ contest.token_gen_interval.total_seconds()|int // 60 }}" style="width: 100px;">
-        <div class="tp-form-hint">The amount of time (in minutes) between two token generation events.</div>
-      </div>
-
-      <div class="tp-form-group">
-        <label class="tp-form-label">Maximum accumulated tokens</label>
-        <input type="text" name="token_gen_max" class="tp-form-input" value="{{ contest.token_gen_max if contest.token_gen_max is not none else "" }}" style="width: 100px;">
-        <div class="tp-form-hint">Maximum number of tokens available to a contestant at any given time during the contest.</div>
+      <div class="tp-field-row">
+        <div class="tp-form-group">
+          <label class="tp-form-label">Token generation period</label>
+          <input type="text" name="token_gen_interval" class="tp-form-input" value="{{ contest.token_gen_interval.total_seconds()|int // 60 }}">
+        </div>
+        <div class="tp-form-group">
+          <label class="tp-form-label">Maximum accumulated tokens</label>
+          <input type="text" name="token_gen_max" class="tp-form-input" value="{{ contest.token_gen_max if contest.token_gen_max is not none else "" }}">
+        </div>
       </div>
     </div>
   </div>
