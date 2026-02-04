@@ -1,15 +1,33 @@
-{% if (contest is defined and contest.training_day is not none) or is_add_mode is defined %}
+{#
+  Training Day Groups Configuration Fragment.
+
+  This fragment provides the groups table and JavaScript for managing training day groups.
+  It can be used in both:
+  - contest.html (editing existing groups for a training day contest)
+  - add_training_day.html (adding groups when creating a new training day)
+
+  Required variables:
+  - timezone_name: The timezone name for display
+  - all_student_tags: List of available student tags for the tag selector
+
+  Optional variables:
+  - contest: The contest object (for edit mode in contest.html)
+  - is_add_mode: Set to true when used in add_training_day.html
+  - admin: The admin user object (for permission checks)
+#}
+
+{% set is_edit_mode = contest is defined and contest.training_day is not none %}
+{% set has_groups = is_edit_mode and contest.training_day.groups|length > 0 %}
+
+{% if is_edit_mode or is_add_mode is defined %}
 <!-- Training Day Groups Configuration -->
 <div class="tp-form-card" id="training-day-groups-section">
     <h2 class="tp-form-section-title">Main Groups Configuration</h2>
     <p class="tp-form-section-desc">Configure which student tags represent main groups for this training day. Students must have exactly one main group tag to participate. Leave empty if all students can participate.</p>
 
-    {% if contest is defined and contest.training_day is not none %}
-    {% set has_groups = contest.training_day.groups|length > 0 %}
-    {% if has_groups %}
+    {% if is_edit_mode and has_groups %}
     <form action="{{ url("contest", contest.id, "training_day_groups", "update") }}" method="POST" id="update-groups-form">
         {{ xsrf_form_html|safe }}
-    {% endif %}
     {% endif %}
 
     <div class="tp-groups-table-container">
@@ -24,7 +42,7 @@
                 </tr>
             </thead>
             <tbody id="groups-tbody">
-                {% if contest is defined and contest.training_day is not none %}
+                {% if is_edit_mode %}
                 {% for group in contest.training_day.groups %}
                 <tr id="group-row-existing-{{ group.id }}" data-group-id="{{ group.id }}">
                     <td>
@@ -50,7 +68,7 @@
                         <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }}/>
                     </td>
                     <td>
-                        <button type="button" class="tp-btn-remove" onclick="removeExistingGroup({{ group.id }}, '{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}')"{% if not admin.permission_all %} disabled{% endif %}>Remove</button>
+                        <button type="button" class="tp-btn-remove" onclick="removeExistingGroup({{ group.id }}, '{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}')"{% if admin is defined and not admin.permission_all %} disabled{% endif %}>Remove</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -59,9 +77,9 @@
         </table>
     </div>
 
-    {% if contest is defined and contest.training_day is not none and has_groups %}
+    {% if is_edit_mode and has_groups %}
     <div style="margin-top: 12px;">
-        <input type="submit" value="Save Group Changes" class="tp-btn-primary"{% if not admin.permission_all %} disabled{% endif %}/>
+        <input type="submit" value="Save Group Changes" class="tp-btn-primary"{% if admin is defined and not admin.permission_all %} disabled{% endif %}/>
     </div>
     </form>
     {% endif %}
