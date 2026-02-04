@@ -346,7 +346,7 @@
                     Minimum interval between tokens
                     <span class="tp-form-info" title="The minimum amount of time (in seconds) that a contestant needs to wait after using a token before being able to use another. It is used only if tokens are finite.">?</span>
                 </label>
-                <input type="text" id="token_min_interval" name="token_min_interval" value="{{ contest.token_min_interval.total_seconds()|int }}" class="tp-form-input">
+                <input type="text" id="token_min_interval" name="token_min_interval" value="{{ contest.token_min_interval.total_seconds()|int if contest.token_min_interval is not none else '' }}" class="tp-form-input">
             </div>
         </div>
 
@@ -373,7 +373,7 @@
                     Token generation period
                     <span class="tp-form-info" title="The amount of time (in minutes) between two token generation events. It is used only if tokens are finite.">?</span>
                 </label>
-                <input type="text" id="token_gen_interval" name="token_gen_interval" value="{{ contest.token_gen_interval.total_seconds()|int // 60 }}" class="tp-form-input">
+                <input type="text" id="token_gen_interval" name="token_gen_interval" value="{{ (contest.token_gen_interval.total_seconds()|int // 60) if contest.token_gen_interval is not none else '' }}" class="tp-form-input">
             </div>
             <div class="tp-form-group">
                 <label class="tp-form-label" for="token_gen_max">
@@ -409,14 +409,14 @@
                 Analysis mode start time (in {{ timezone_name|default('UTC') }})
                 <span class="tp-form-info" title="Start time of the analysis mode in {{ timezone_name|default('the UTC') }} timezone. Example: '2015-12-31 15:00:00'.">?</span>
             </label>
-            <input type="text" id="analysis_start" name="analysis_start" value="{% if timezone_name is defined %}{{ contest.analysis_start|format_datetime_input(timezone) }}{% else %}{{ contest.analysis_start }}{% endif %}" class="tp-form-input">
+            <input type="text" id="analysis_start" name="analysis_start" value="{% if timezone is defined %}{{ contest.analysis_start|format_datetime_input(timezone) }}{% else %}{{ contest.analysis_start }}{% endif %}" class="tp-form-input">
         </div>
         <div class="tp-form-group">
             <label class="tp-form-label" for="analysis_stop">
                 Analysis mode end time (in {{ timezone_name|default('UTC') }})
                 <span class="tp-form-info" title="End time of the analysis mode in {{ timezone_name|default('the UTC') }} timezone. Example: '2015-12-31 18:00:00'.">?</span>
             </label>
-            <input type="text" id="analysis_stop" name="analysis_stop" value="{% if timezone_name is defined %}{{ contest.analysis_stop|format_datetime_input(timezone) }}{% else %}{{ contest.analysis_stop }}{% endif %}" class="tp-form-input">
+            <input type="text" id="analysis_stop" name="analysis_stop" value="{% if timezone is defined %}{{ contest.analysis_stop|format_datetime_input(timezone) }}{% else %}{{ contest.analysis_stop }}{% endif %}" class="tp-form-input">
         </div>
     </div>
 </div>

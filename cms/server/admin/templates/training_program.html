@@ -63,14 +63,21 @@
     </form>
 
     <div style="margin-top: 24px; text-align: right;">
+        {% if admin.permission_all %}
         <form action="{{ url("training_programs") }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this training program?');">
             {{ xsrf_form_html|safe }}
             <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
-            <button type="submit" name="operation" value="Remove" class="tp-btn-remove">
+            <button type="submit" name="operation" value="Remove" class="tp-btn-remove" {% if not admin.permission_all %}disabled{% endif %}>
                 <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
                 Remove Program
             </button>
         </form>
+        {% else %}
+        <button type="button" class="tp-btn-remove" disabled title="Read-only" aria-disabled="true">
+            <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+            Remove Program
+        </button>
+        {% endif %}
     </div>
 </div>
 

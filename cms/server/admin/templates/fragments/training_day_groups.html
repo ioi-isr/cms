@@ -308,13 +308,24 @@ function addGroupRow() {
 
 document.getElementById('add-group-btn').addEventListener('click', addGroupRow);
 
-// Update group IDs on submit to ensure alphabetical checkbox mapping works
+// Update group IDs and alphabetical checkbox names on submit to ensure mapping works
 var mainForm = document.querySelector('form[name="add_training_day"]');
 if (mainForm) {
     mainForm.addEventListener('submit', function() {
         var groupIds = document.querySelectorAll('#groups-tbody input[name="group_id[]"]');
         groupIds.forEach(function(input, index) {
             input.value = index;
+        });
+        // Also renumber alphabetical_* checkbox names to align with group_id[] indices
+        var alphabeticalCheckboxes = document.querySelectorAll('#groups-tbody input[type="checkbox"][name^="alphabetical_"]');
+        alphabeticalCheckboxes.forEach(function(input, index) {
+            input.name = 'alphabetical_' + index;
+            input.id = 'alphabetical_' + index;
+            // Update associated label if present
+            var label = document.querySelector('label[for="' + input.id + '"]');
+            if (label) {
+                label.setAttribute('for', 'alphabetical_' + index);
+            }
         });
     });
 }
