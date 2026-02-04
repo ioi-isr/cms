@@ -1,20 +1,159 @@
-{% if contest.training_day is not none %}
-<h2>Main Groups Configuration</h2>
-<p class="hint">Configure which student tags represent main groups for this training day. Students must have exactly one main group tag to participate.</p>
+{% if (contest is defined and contest.training_day is not none) or is_add_mode is defined %}
+<!-- Training Day Groups Configuration -->
+<div class="tp-form-card" id="training-day-groups-section">
+    <h2 class="tp-form-section-title">Main Groups Configuration</h2>
+    <p class="tp-form-section-desc">Configure which student tags represent main groups for this training day. Students must have exactly one main group tag to participate. Leave empty if all students can participate.</p>
 
-<style>
-.tagify-tag-select { width: 160px; }
-</style>
+    {% if contest is defined and contest.training_day is not none %}
+    {% set has_groups = contest.training_day.groups|length > 0 %}
+    {% if has_groups %}
+    <form action="{{ url("contest", contest.id, "training_day_groups", "update") }}" method="POST" id="update-groups-form">
+        {{ xsrf_form_html|safe }}
+    {% endif %}
+    {% endif %}
+
+    <div class="tp-groups-table-container">
+        <table class="tp-groups-table" id="main-groups-table">
+            <thead>
+                <tr>
+                    <th>Tag Name</th>
+                    <th>Start Time ({{ timezone_name }})</th>
+                    <th>Duration</th>
+                    <th style="text-align: center;">Alphabetical Order</th>
+                    <th style="width: 80px;"></th>
+                </tr>
+            </thead>
+            <tbody id="groups-tbody">
+                {% if contest is defined and contest.training_day is not none %}
+                {% for group in contest.training_day.groups %}
+                <tr id="group-row-existing-{{ group.id }}" data-group-id="{{ group.id }}">
+                    <td>
+                        {{ group.tag_name }}
+                        <input type="hidden" name="group_id[]" value="{{ group.id }}"/>
+                        <input type="hidden" name="group_tag_name[]" value="{{ group.tag_name }}"/>
+                    </td>
+                    <td>
+                        <input type="datetime-local" name="group_start_time[]" class="tp-form-input" value="{{ group.start_time|format_datetime_input(timezone) if group.start_time else '' }}"/>
+                    </td>
+                    <td>
+                        {% set duration_seconds = (group.end_time - group.start_time).total_seconds() if group.start_time and group.end_time else 0 %}
+                        {% set duration_hours = (duration_seconds // 3600)|int %}
+                        {% set duration_minutes = ((duration_seconds % 3600) // 60)|int %}
+                        <div class="tp-group-duration">
+                            <input type="number" name="group_duration_hours[]" min="0" placeholder="0" value="{{ duration_hours if duration_seconds > 0 else '' }}"/>
+                            <span>h</span>
+                            <input type="number" name="group_duration_minutes[]" min="0" max="59" placeholder="0" value="{{ duration_minutes if duration_seconds > 0 else '' }}"/>
+                            <span>m</span>
+                        </div>
+                    </td>
+                    <td style="text-align: center;">
+                        <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }}/>
+                    </td>
+                    <td>
+                        <button type="button" class="tp-btn-remove" onclick="removeExistingGroup({{ group.id }}, '{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}')"{% if not admin.permission_all %} disabled{% endif %}>Remove</button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if contest is defined and contest.training_day is not none and has_groups %}
+    <div style="margin-top: 12px;">
+        <input type="submit" value="Save Group Changes" class="tp-btn-primary"{% if not admin.permission_all %} disabled{% endif %}/>
+    </div>
+    </form>
+    {% endif %}
+
+    <button type="button" id="add-group-btn" class="tp-btn-secondary tp-btn-add-group" style="margin-top: 16px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Add Main Group
+    </button>
+</div>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var tagInput = document.querySelector('input[name="tag_name"]');
-    if (tagInput && typeof Tagify !== 'undefined') {
-        var whitelist = {{ all_student_tags | tojson }};
-        var tagify = new Tagify(tagInput, {
+var allStudentTags = {{ all_student_tags | default([]) | tojson }};
+var groupRowIndex = 1000;
+
+function addGroupRow() {
+    var tbody = document.getElementById('groups-tbody');
+    var row = document.createElement('tr');
+    row.id = 'group-row-' + groupRowIndex;
+
+    var tagCell = document.createElement('td');
+    var tagInput = document.createElement('input');
+    tagInput.type = 'text';
+    tagInput.name = 'group_tag_name[]';
+    tagInput.placeholder = 'Select a student tag';
+    tagInput.style.width = '160px';
+    tagCell.appendChild(tagInput);
+    row.appendChild(tagCell);
+
+    var startCell = document.createElement('td');
+    var startInput = document.createElement('input');
+    startInput.type = 'datetime-local';
+    startInput.name = 'group_start_time[]';
+    startInput.className = 'tp-form-input';
+    startCell.appendChild(startInput);
+    row.appendChild(startCell);
+
+    var durationCell = document.createElement('td');
+    var durationDiv = document.createElement('div');
+    durationDiv.className = 'tp-group-duration';
+    var hoursInput = document.createElement('input');
+    hoursInput.type = 'number';
+    hoursInput.name = 'group_duration_hours[]';
+    hoursInput.min = '0';
+    hoursInput.placeholder = '0';
+    durationDiv.appendChild(hoursInput);
+    var hLabel = document.createElement('span');
+    hLabel.textContent = 'h';
+    durationDiv.appendChild(hLabel);
+    var minutesInput = document.createElement('input');
+    minutesInput.type = 'number';
+    minutesInput.name = 'group_duration_minutes[]';
+    minutesInput.min = '0';
+    minutesInput.max = '59';
+    minutesInput.placeholder = '0';
+    durationDiv.appendChild(minutesInput);
+    var mLabel = document.createElement('span');
+    mLabel.textContent = 'm';
+    durationDiv.appendChild(mLabel);
+    durationCell.appendChild(durationDiv);
+    row.appendChild(durationCell);
+
+    var alphaCell = document.createElement('td');
+    alphaCell.style.textAlign = 'center';
+
+    var groupIdInput = document.createElement('input');
+    groupIdInput.type = 'hidden';
+    groupIdInput.name = 'group_id[]';
+    groupIdInput.value = '';
+    alphaCell.appendChild(groupIdInput);
+
+    var alphaInput = document.createElement('input');
+    alphaInput.type = 'checkbox';
+    alphaInput.name = 'alphabetical_new_' + groupRowIndex;
+    alphaCell.appendChild(alphaInput);
+    row.appendChild(alphaCell);
+
+    var actionsCell = document.createElement('td');
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'tp-btn-remove';
+    removeBtn.textContent = 'Remove';
+    actionsCell.appendChild(removeBtn);
+    row.appendChild(actionsCell);
+
+    tbody.appendChild(row);
+
+    var tagifyInstance = null;
+    if (typeof Tagify !== 'undefined') {
+        tagifyInstance = new Tagify(tagInput, {
             mode: 'select',
-            whitelist: whitelist,
+            whitelist: allStudentTags,
             enforceWhitelist: true,
-            editTags: false,
             dropdown: {
                 maxItems: 20,
                 enabled: 0,
@@ -24,11 +163,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 return valuesArr.length ? valuesArr[0].value : '';
             }
         });
-        tagify.DOM.scope.classList.add('tagify-tag-select');
+        tagifyInstance.DOM.scope.style.width = '160px';
     }
-});
 
-function removeMainGroup(url) {
+    removeBtn.onclick = function() {
+        if (tagifyInstance) {
+            tagifyInstance.destroy();
+        }
+        row.remove();
+    };
+
+    groupRowIndex++;
+}
+
+function removeExistingGroup(groupId, url) {
     if (!confirm('Remove this main group?')) {
         return;
     }
@@ -52,103 +200,7 @@ function removeMainGroup(url) {
         alert('Error: ' + error);
     });
 }
+
+document.getElementById('add-group-btn').addEventListener('click', addGroupRow);
 </script>
-
-{% set has_groups = contest.training_day.groups|length > 0 %}
-{% if has_groups %}
-<form action="{{ url("contest", contest.id, "training_day_groups", "update") }}" method="POST" id="update-groups-form">
-  {{ xsrf_form_html|safe }}
-{% endif %}
-<table class="sub_table" id="main-groups-table">
-  <thead>
-    <tr>
-      <th>Tag Name</th>
-      <th>Start Time ({{ timezone_name }})</th>
-      <th>Duration</th>
-      <th>Alphabetical Task Order</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% if has_groups %}
-    {% for group in contest.training_day.groups %}
-    <tr>
-      <td>
-        {{ group.tag_name }}
-        <input type="hidden" name="group_id[]" value="{{ group.id }}"/>
-      </td>
-      <td>
-        <input type="datetime-local" name="start_time[]" value="{{ group.start_time|format_datetime_input(timezone) if group.start_time else '' }}"/>
-      </td>
-      <td>
-        {% set duration_seconds = (group.end_time - group.start_time).total_seconds() if group.start_time and group.end_time else 0 %}
-        {% set duration_hours = (duration_seconds // 3600)|int %}
-        {% set duration_minutes = ((duration_seconds % 3600) // 60)|int %}
-        <input type="number" name="duration_hours[]" min="0" style="width: 60px;" value="{{ duration_hours if duration_seconds > 0 else '' }}" placeholder="0"/> h
-        <input type="number" name="duration_minutes[]" min="0" max="59" style="width: 60px;" value="{{ duration_minutes if duration_seconds > 0 else '' }}" placeholder="0"/> m
-      </td>
-      <td style="text-align: center;">
-        <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }}/>
-      </td>
-      <td>
-        <button type="button" class="btn btn-danger btn-small" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}');"{% if not admin.permission_all %} disabled{% endif %}>Remove</button>
-      </td>
-    </tr>
-    {% endfor %}
-    {% else %}
-    <tr>
-      <td colspan="5" style="text-align: center; color: #666;">No main groups configured. All students can participate.</td>
-    </tr>
-    {% endif %}
-  </tbody>
-</table>
-{% if has_groups %}
-<input type="submit" value="Save Group Changes"{% if not admin.permission_all %} disabled{% endif %}/>
-</form>
-{% endif %}
-
-<h3>Add Main Group</h3>
-<form action="{{ url("contest", contest.id, "training_day_group", "add") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  <table class="sub_table">
-    <tr>
-      <td>
-        <span class="info" title="The student tag that identifies this main group."></span>
-        Tag Name
-      </td>
-      <td><input type="text" name="tag_name" required placeholder="Select a student tag" style="width: 160px;"/></td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="Custom start time for this group in contest timezone (optional). Leave empty to use contest default."></span>
-        Start Time ({{ timezone_name }})
-      </td>
-      <td><input type="datetime-local" name="start_time"/></td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="Duration for this group (optional). Leave empty to use contest default."></span>
-        Duration
-      </td>
-      <td>
-        <input type="number" name="duration_hours" min="0" style="width: 60px;" placeholder="0"/> hours
-        <input type="number" name="duration_minutes" min="0" max="59" style="width: 60px;" placeholder="0"/> minutes
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="If checked, tasks will be displayed alphabetically by name instead of custom order."></span>
-        <label for="alphabetical_task_order">Alphabetical Task Order</label>
-      </td>
-      <td>
-        <input type="checkbox" id="alphabetical_task_order" name="alphabetical_task_order"/>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2">
-        <input type="submit" value="Add Group"{% if not admin.permission_all %} disabled{% endif %}/>
-      </td>
-    </tr>
-  </table>
-</form>
 {% endif %}

@@ -1,45 +1,253 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Training Program</h1>
+{% set contest = training_program.managing_contest %}
+<div class="content-constraint" style="max-width: 1200px;">
+    <div class="page-title">
+        <h1>Training Program Configuration</h1>
+        <div class="page-subtitle">{{ training_program.name }}{% if training_program.description %} - {{ training_program.description }}{% endif %}</div>
+    </div>
+
+    <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
+    <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program">
+        {{ xsrf_form_html|safe }}
+
+        <div class="tp-config-grid">
+            <!-- Left Column -->
+            <div class="tp-config-column">
+                <!-- Training Program Information Card -->
+                <div class="tp-form-card">
+                    <h2 class="tp-form-section-title">Training Program Information</h2>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="name">Name</label>
+                        <input type="text" id="name" name="name" class="tp-form-input" value="{{ training_program.name }}" />
+                        <div class="tp-form-hint">A short name for the training program, preferably using only letters, numbers and underscores.</div>
+                    </div>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="description">Description</label>
+                        <textarea id="description" name="description" class="tp-form-input" rows="3">{{ training_program.description }}</textarea>
+                        <div class="tp-form-hint">The name of the training program as seen by users.</div>
+                    </div>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="allowed_localizations">Allowed localizations</label>
+                        <input type="text" id="allowed_localizations" name="allowed_localizations" class="tp-form-input" value="{{ contest.allowed_localizations|join(",") }}" />
+                        <div class="tp-form-hint">The list of languages that contestants can use, or empty for allowing any language. Example: 'en,ja'.</div>
+                    </div>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label">Allowed programming languages</label>
+                        <div class="tp-checkbox-grid">
+                            {% for lang in LANGUAGES %}
+                            <label class="tp-checkbox-label">
+                                <input type="checkbox" name="languages" value="{{ lang.name }}" {{ "checked" if lang.name in contest.languages else "" }} />
+                                {{ lang.name }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Options Card -->
+                <div class="tp-form-card">
+                    <h2 class="tp-form-section-title">Options</h2>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="submissions_download_allowed" name="submissions_download_allowed" {{ "checked" if contest.submissions_download_allowed else "" }} />
+                            <span>Submissions download allowed</span>
+                        </label>
+                        <div class="tp-form-hint">Whether contestants can download their own submissions.</div>
+                    </div>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="allow_questions" name="allow_questions" {{ "checked" if contest.allow_questions else "" }} />
+                            <span>Allow questions</span>
+                        </label>
+                        <div class="tp-form-hint">Whether contestants can submit questions.</div>
+                    </div>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="allow_delay_requests" name="allow_delay_requests" {{ "checked" if contest.allow_delay_requests else "" }} />
+                            <span>Allow delay requests</span>
+                        </label>
+                        <div class="tp-form-hint">If checked, contestants will be able to submit delay requests.</div>
+                    </div>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="allow_user_tests" name="allow_user_tests" {{ "checked" if contest.allow_user_tests else "" }} />
+                            <span>Allow user tests</span>
+                        </label>
+                        <div class="tp-form-hint">Whether contestants can submit user tests.</div>
+                    </div>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="allow_unofficial_submission_before_analysis_mode" name="allow_unofficial_submission_before_analysis_mode" {{ "checked" if contest.allow_unofficial_submission_before_analysis_mode else "" }} />
+                            <span>Allow unofficial submission before analysis mode</span>
+                        </label>
+                    </div>
+
+                    <div class="tp-form-group" style="margin-top: 16px;">
+                        <label class="tp-form-label" for="score_precision">Score decimal places</label>
+                        <input type="text" id="score_precision" name="score_precision" class="tp-form-input tp-form-input-small" value="{{ contest.score_precision }}" style="width: 80px;" />
+                        <div class="tp-form-hint">The number of decimal places the scores will be rounded to.</div>
+                    </div>
+                </div>
+
+                <!-- Login Section Card -->
+                <div class="tp-form-card">
+                    <h2 class="tp-form-section-title">Logging in</h2>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="block_hidden_participations" name="block_hidden_participations" {{ "checked" if contest.block_hidden_participations else "" }} />
+                            <span>Block hidden participations</span>
+                        </label>
+                        <div class="tp-form-hint">If checked, contestants that are marked as hidden will not be able to log in.</div>
+                    </div>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="allow_password_authentication" name="allow_password_authentication" {{ "checked" if contest.allow_password_authentication else "" }} />
+                            <span>Allow password authentication</span>
+                        </label>
+                        <div class="tp-form-hint">If checked, contestants will be able to log in using username and password.</div>
+                    </div>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="allow_registration" name="allow_registration" {{ "checked" if contest.allow_registration else "" }} />
+                            <span>Allow registration</span>
+                        </label>
+                        <div class="tp-form-hint">If checked, contestants will be able to autonomously create a user account and a participation.</div>
+                    </div>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="ip_restriction" name="ip_restriction" {{ "checked" if contest.ip_restriction else "" }} />
+                            <span>IP based login restriction</span>
+                        </label>
+                        <div class="tp-form-hint">If true, contestants with an IP address specified will only be able to log in from that address.</div>
+                    </div>
+
+                    <div class="tp-checkbox-group">
+                        <label class="tp-checkbox-label-block">
+                            <input type="checkbox" id="ip_autologin" name="ip_autologin" {{ "checked" if contest.ip_autologin else "" }} />
+                            <span>IP based autologin</span>
+                        </label>
+                        <div class="tp-form-hint">If true, contestants with an IP address specified will be automatically logged in when connecting from that address.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="tp-config-column">
+                <!-- Limits Card -->
+                <div class="tp-form-card">
+                    <h2 class="tp-form-section-title">Limits</h2>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="max_submission_number">Maximum number of submissions</label>
+                        <input type="text" id="max_submission_number" name="max_submission_number" class="tp-form-input" value="{{ contest.max_submission_number if contest.max_submission_number is not none else "" }}" />
+                        <div class="tp-form-hint">Maximum number of submissions each contestant can submit. Leave empty for no limits.</div>
+                    </div>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="max_user_test_number">Maximum number of user tests</label>
+                        <input type="text" id="max_user_test_number" name="max_user_test_number" class="tp-form-input" value="{{ contest.max_user_test_number if contest.max_user_test_number is not none else "" }}" />
+                        <div class="tp-form-hint">Maximum number of user tests each contestant can submit. Leave empty for no limits.</div>
+                    </div>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="min_submission_interval">Minimum interval between submissions</label>
+                        <input type="text" id="min_submission_interval" name="min_submission_interval" class="tp-form-input" value="{{ contest.min_submission_interval.total_seconds()|int if contest.min_submission_interval is not none else "" }}" />
+                        <div class="tp-form-hint">The minimum amount of time (in seconds) that a contestant needs to wait after a submission.</div>
+                    </div>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="min_submission_interval_grace_period">Minimum submission interval grace period</label>
+                        <input type="text" id="min_submission_interval_grace_period" name="min_submission_interval_grace_period" class="tp-form-input" value="{{ contest.min_submission_interval_grace_period.total_seconds()|int if contest.min_submission_interval_grace_period is not none else "" }}" />
+                        <div class="tp-form-hint">The amount of time (in seconds) until the end of participation in which the minimum interval is not enforced.</div>
+                    </div>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="min_user_test_interval">Minimum interval between user tests</label>
+                        <input type="text" id="min_user_test_interval" name="min_user_test_interval" class="tp-form-input" value="{{ contest.min_user_test_interval.total_seconds()|int if contest.min_user_test_interval is not none else "" }}" />
+                        <div class="tp-form-hint">The minimum amount of time (in seconds) that a contestant needs to wait after a user test.</div>
+                    </div>
+                </div>
+
+                <!-- Token Parameters Card -->
+                <div class="tp-form-card">
+                    <h2 class="tp-form-section-title">Token Parameters{% if rtd_version is defined %} <a href="https://cms.readthedocs.io/en/{{ rtd_version }}/Configuring%20a%20contest.html#feedback-to-contestants" target="_blank" rel="noopener noreferrer" style="font-size: 0.8em; font-weight: normal;">(documentation)</a>{% endif %}</h2>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="token_mode">Token mode</label>
+                        <select id="token_mode" name="token_mode" class="tp-form-input">
+                            <option value="{{ TOKEN_MODE_DISABLED }}" {{ "selected" if contest.token_mode == TOKEN_MODE_DISABLED else "" }}>Disabled</option>
+                            <option value="{{ TOKEN_MODE_FINITE }}" {{ "selected" if contest.token_mode == TOKEN_MODE_FINITE else "" }}>Finite</option>
+                            <option value="{{ TOKEN_MODE_INFINITE }}" {{ "selected" if contest.token_mode == TOKEN_MODE_INFINITE else "" }}>Infinite</option>
+                        </select>
+                        <div class="tp-form-hint">Select 'disabled' to remove tokens completely, 'infinite' for allowing any number of tokens, or 'finite' to specify the amount.</div>
+                    </div>
+
+                    <div class="tp-form-row">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label" for="token_max_number">Maximum number of tokens</label>
+                            <input type="text" id="token_max_number" name="token_max_number" class="tp-form-input" value="{{ contest.token_max_number if contest.token_max_number is not none else "" }}" />
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label" for="token_min_interval">Minimum interval between tokens</label>
+                            <input type="text" id="token_min_interval" name="token_min_interval" class="tp-form-input" value="{{ contest.token_min_interval.total_seconds()|int }}" />
+                        </div>
+                    </div>
+
+                    <div class="tp-form-row">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label" for="token_gen_initial">Initial number of tokens</label>
+                            <input type="text" id="token_gen_initial" name="token_gen_initial" class="tp-form-input" value="{{ contest.token_gen_initial }}" />
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label" for="token_gen_number">Token generation number</label>
+                            <input type="text" id="token_gen_number" name="token_gen_number" class="tp-form-input" value="{{ contest.token_gen_number }}" />
+                        </div>
+                    </div>
+
+                    <div class="tp-form-row">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label" for="token_gen_interval">Token generation period (minutes)</label>
+                            <input type="text" id="token_gen_interval" name="token_gen_interval" class="tp-form-input" value="{{ contest.token_gen_interval.total_seconds()|int // 60 }}" />
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label" for="token_gen_max">Maximum accumulated tokens</label>
+                            <input type="text" id="token_gen_max" name="token_gen_max" class="tp-form-input" value="{{ contest.token_gen_max if contest.token_gen_max is not none else "" }}" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="tp-form-actions" style="margin-top: 24px;">
+            <div>
+                <input type="submit" value="Update" class="tp-btn-primary"{% if not admin.permission_all %} disabled{% endif %} />
+                <input type="reset" value="Reset" class="tp-btn-secondary" />
+                <a href="{{ url("training_program", training_program.id, "export") }}" class="tp-btn-secondary" style="margin-left: 8px;">Export all tasks</a>
+            </div>
+        </div>
+    </form>
+
+    <form action="{{ url("training_programs") }}" method="POST" style="display:inline; margin-top: 12px;">
+        {{ xsrf_form_html|safe }}
+        <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
+        <input type="submit" name="operation" value="Remove" class="tp-btn-secondary" style="color: var(--tp-danger);"{% if not admin.permission_all %} disabled{% endif %} />
+    </form>
 </div>
-
-<!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
-<form enctype="multipart/form-data" action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program" style="display:inline;">
-  {{ xsrf_form_html|safe }}
-  <table class="sub_table">
-    <tr><td colspan=2><h2>Training Program Information</h2></td></tr>
-    <tr>
-      <td>
-        <span class="info" title="A short name for the training program, preferably using only letters, numbers and underscores."></span>
-        Name
-      </td>
-      <td><input type="text" name="name" value="{{ training_program.name }}"/></td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="The name of the training program as seen by users."></span>
-        Description
-      </td>
-      <td><textarea name="description">{{ training_program.description }}</textarea></td>
-    </tr>
-
-    {# Include contest configuration fields for the managing contest #}
-    {% set contest = training_program.managing_contest %}
-    {% with show_folder=false, show_name=false, show_description=false, show_login_section=true, show_analysis_section=false %}
-      {% include "fragments/contest_config_fields.html" %}
-    {% endwith %}
-  </table>
-  <input type="submit" value="Update"{% if not admin.permission_all %} disabled{% endif %}/>
-  <input type="reset" value="Reset">
-  <a href="{{ url("training_program", training_program.id, "export") }}"> ⇩ Export all tasks </a>
-</form>
-
-<form action="{{ url("training_programs") }}" method="POST" style="display:inline;">
-  {{ xsrf_form_html|safe }}
-  <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
-  <input type="submit" name="operation" value="Remove" style="float: right;"/>
-</form>
 
 {% endblock core %}
