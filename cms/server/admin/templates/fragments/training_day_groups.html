@@ -1,20 +1,180 @@
-{% if contest.training_day is not none %}
-<h2>Main Groups Configuration</h2>
-<p class="hint">Configure which student tags represent main groups for this training day. Students must have exactly one main group tag to participate.</p>
+{% set mode = mode|default('edit') %}
+{% set is_create = mode == 'create' %}
 
-<style>
-.tagify-tag-select { width: 160px; }
-</style>
+{% if not is_create %}
+<div class="tp-card">
+    <div class="tp-card-header-modern">
+        <div class="tp-card-header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <h3 class="tp-card-title-modern">Main Groups Configuration</h3>
+    </div>
+
+    <div class="tp-card-body">
+{% else %}
+<!-- Create mode: no card wrapper, just a section -->
+<div class="tp-form-section">
+    <h3 class="tp-form-section-title">Main Groups Configuration</h3>
+    <p class="tp-form-section-desc">Configure which student tags represent main groups. Students must have exactly one main group tag to participate.</p>
+{% endif %}
+
+        <style>
+            /* Fix Tagify height to match standard inputs */
+            .tp-groups-table .tagify {
+                --tags-border-color: var(--tp-border);
+                --tags-hover-border-color: var(--tp-border-dark);
+                --tags-focus-border-color: var(--tp-primary);
+                border-radius: 6px;
+                background: #fff;
+
+                /* Match standard input height/padding */
+                min-height: 38px;
+                padding: 3px 8px;
+                display: flex;
+                align-items: center;
+                width: 100%;
+                box-sizing: border-box;
+                margin: 0;
+                font-size: 1rem; /* Ensure consistent font size */
+            }
+
+            .tp-groups-table .tagify__input {
+                margin: 0;
+                line-height: 1.5;
+            }
+
+            .tp-groups-table .tagify__tag {
+                margin: 2px 4px 2px 0;
+            }
+
+            /* Ensure table cells align content vertically */
+            .tp-groups-table td {
+                vertical-align: middle;
+            }
+
+            /* Consistent input styling within table */
+            .tp-groups-table .tp-form-input {
+                font-family: inherit;
+                font-size: 1rem; /* Fix small font issue */
+            }
+        </style>
+
+        {% if not is_create %}
+            <!-- Hidden forms for Edit Mode actions -->
+            <form id="update-groups-form" action="{{ url("contest", contest.id, "training_day_groups", "update") }}" method="POST">
+                {{ xsrf_form_html|safe }}
+            </form>
+            <form id="add-group-form" action="{{ url("contest", contest.id, "training_day_group", "add") }}" method="POST">
+                {{ xsrf_form_html|safe }}
+            </form>
+        {% endif %}
+
+        <div class="tp-groups-table-container">
+            <table class="tp-groups-table" id="main-groups-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Tag Name</th>
+                        <th style="width: 25%;">Start Time ({{ timezone_name }})</th>
+                        <th style="width: 20%;">Duration</th>
+                        <th style="width: 20%; text-align: center;">Alphabetical Order</th>
+                        <th style="width: 10%;"></th>
+                    </tr>
+                </thead>
+                <tbody id="groups-tbody">
+                    {% if not is_create %}
+                        {# --- EDIT MODE: Existing Groups --- #}
+                        {% for group in contest.training_day.groups %}
+                        <tr>
+                            <td>
+                                <div class="tp-form-input" style="background-color: #f9fafb; border: 1px solid transparent; color: #374151; font-weight: 500; padding: 8px 10px; min-height: 38px; box-sizing: border-box; display: flex; align-items: center;">
+                                    {{ group.tag_name }}
+                                </div>
+                                <input type="hidden" name="group_id[]" value="{{ group.id }}" form="update-groups-form"/>
+                            </td>
+                            <td>
+                                <input type="datetime-local" name="start_time[]" value="{{ group.start_time|format_datetime_input(timezone) if group.start_time else '' }}" class="tp-form-input" style="padding: 8px 10px; height: 38px; box-sizing: border-box;" form="update-groups-form"/>
+                            </td>
+                            <td>
+                                {% set duration_seconds = (group.end_time - group.start_time).total_seconds() if group.start_time and group.end_time else 0 %}
+                                {% set duration_hours = (duration_seconds // 3600)|int %}
+                                {% set duration_minutes = ((duration_seconds % 3600) // 60)|int %}
+                                <div class="tp-group-duration" style="height: 38px; align-items: center;">
+                                    <input type="number" name="duration_hours[]" min="0" value="{{ duration_hours if duration_seconds > 0 else '' }}" placeholder="0" class="tp-form-input" form="update-groups-form"/>
+                                    <span>h</span>
+                                    <input type="number" name="duration_minutes[]" min="0" max="59" value="{{ duration_minutes if duration_seconds > 0 else '' }}" placeholder="0" class="tp-form-input" form="update-groups-form"/>
+                                    <span>m</span>
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }} style="width: 18px; height: 18px; cursor: pointer;" form="update-groups-form"/>
+                            </td>
+                            <td style="text-align: right;">
+                                <button type="button" class="tp-btn-remove" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}');" {% if not admin.permission_all %} disabled{% endif %}>Remove</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {# --- EDIT MODE: Add New Group Row --- #}
+                        <tr style="background-color: #f8fafc; border-top: 2px solid #e2e8f0;">
+                            <td style="position: relative;">
+                                <input type="text" name="tag_name" placeholder="New Group Tag" class="tp-form-input" style="background: white;" required form="add-group-form"/>
+                            </td>
+                            <td>
+                                <input type="datetime-local" name="start_time" class="tp-form-input" style="background: white; padding: 8px 10px; height: 38px; box-sizing: border-box;" form="add-group-form"/>
+                            </td>
+                            <td>
+                                <div class="tp-group-duration" style="height: 38px; align-items: center;">
+                                    <input type="number" name="duration_hours" min="0" placeholder="0" class="tp-form-input" style="background: white;" form="add-group-form"/>
+                                    <span>h</span>
+                                    <input type="number" name="duration_minutes" min="0" max="59" placeholder="0" class="tp-form-input" style="background: white;" form="add-group-form"/>
+                                    <span>m</span>
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" name="alphabetical_task_order" style="width: 18px; height: 18px; cursor: pointer;" form="add-group-form"/>
+                            </td>
+                            <td style="text-align: right;">
+                                <button type="submit" id="add-group-submit-btn" class="tp-btn-primary" style="display: none; padding: 6px 12px; font-size: 0.9em;" form="add-group-form" {% if not admin.permission_all %} disabled{% endif %}>
+                                    + Add
+                                </button>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_create %}
+            <!-- CREATE MODE: Button to add dynamic JS rows -->
+            <button type="button" id="add-group-btn" class="tp-btn-secondary tp-btn-add-group">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Add Main Group
+            </button>
+        {% else %}
+            <!-- EDIT MODE: Save changes button -->
+            <div style="margin-top: 16px; text-align: right;">
+                <button type="submit" class="tp-btn-primary" form="update-groups-form" {% if not admin.permission_all %} disabled{% endif %}>Save Group Changes</button>
+            </div>
+        {% endif %}
+
+    {% if not is_create %}
+    </div>
+</div>
+{% else %}
+</div>
+{% endif %}
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var tagInput = document.querySelector('input[name="tag_name"]');
-    if (tagInput && typeof Tagify !== 'undefined') {
-        var whitelist = {{ all_student_tags | tojson }};
-        var tagify = new Tagify(tagInput, {
+/* ... (Keep existing script content) ... */
+// Shared Tagify Configuration
+var allStudentTags = {{ all_student_tags | default([]) | tojson }};
+
+function initTagify(input, onTagChangeCallback) {
+    if (typeof Tagify !== 'undefined' && input) {
+        var tagifyInstance = new Tagify(input, {
             mode: 'select',
-            whitelist: whitelist,
+            whitelist: allStudentTags,
             enforceWhitelist: true,
-            editTags: false,
             dropdown: {
                 maxItems: 20,
                 enabled: 0,
@@ -24,8 +184,155 @@ document.addEventListener('DOMContentLoaded', function() {
                 return valuesArr.length ? valuesArr[0].value : '';
             }
         });
-        tagify.DOM.scope.classList.add('tagify-tag-select');
+
+        // Callback when tags are added/removed
+        if (onTagChangeCallback) {
+            tagifyInstance.on('add', onTagChangeCallback);
+            tagifyInstance.on('remove', onTagChangeCallback);
+        }
+
+        return tagifyInstance;
     }
+    return null;
+}
+
+{% if is_create %}
+// --- CREATE MODE LOGIC ---
+var groupRowIndex = 0;
+
+function addGroupRow() {
+    var tbody = document.getElementById('groups-tbody');
+    var row = document.createElement('tr');
+    row.id = 'group-row-' + groupRowIndex;
+
+    // Tag Name
+    var tagCell = document.createElement('td');
+    var tagInput = document.createElement('input');
+    tagInput.type = 'text';
+    tagInput.name = 'group_tag_name[]';
+    tagInput.placeholder = 'Select a student tag';
+    tagInput.className = 'tp-form-input';
+    tagInput.style.background = 'white';
+    tagCell.appendChild(tagInput);
+    row.appendChild(tagCell);
+
+    // Start Time
+    var startCell = document.createElement('td');
+    var startInput = document.createElement('input');
+    startInput.type = 'datetime-local';
+    startInput.name = 'group_start_time[]';
+    startInput.className = 'tp-form-input';
+    startInput.style.padding = '8px 10px';
+    startInput.style.height = '38px';
+    startInput.style.boxSizing = 'border-box';
+    startCell.appendChild(startInput);
+    row.appendChild(startCell);
+
+    // Duration
+    var durationCell = document.createElement('td');
+    var durationDiv = document.createElement('div');
+    durationDiv.className = 'tp-group-duration';
+    durationDiv.style.height = '38px';
+    durationDiv.style.alignItems = 'center';
+
+    var hoursInput = document.createElement('input');
+    hoursInput.type = 'number';
+    hoursInput.name = 'group_duration_hours[]';
+    hoursInput.min = '0';
+    hoursInput.placeholder = '0';
+    hoursInput.className = 'tp-form-input';
+    durationDiv.appendChild(hoursInput);
+
+    var hLabel = document.createElement('span');
+    hLabel.textContent = 'h';
+    durationDiv.appendChild(hLabel);
+
+    var minutesInput = document.createElement('input');
+    minutesInput.type = 'number';
+    minutesInput.name = 'group_duration_minutes[]';
+    minutesInput.min = '0';
+    minutesInput.max = '59';
+    minutesInput.placeholder = '0';
+    minutesInput.className = 'tp-form-input';
+    durationDiv.appendChild(minutesInput);
+
+    var mLabel = document.createElement('span');
+    mLabel.textContent = 'm';
+    durationDiv.appendChild(mLabel);
+
+    durationCell.appendChild(durationDiv);
+    row.appendChild(durationCell);
+
+    // Alpha Order
+    var alphaCell = document.createElement('td');
+    alphaCell.style.textAlign = 'center';
+
+    var groupIdInput = document.createElement('input');
+    groupIdInput.type = 'hidden';
+    groupIdInput.name = 'group_id[]';
+    groupIdInput.value = groupRowIndex;
+    alphaCell.appendChild(groupIdInput);
+
+    var alphaInput = document.createElement('input');
+    alphaInput.type = 'checkbox';
+    alphaInput.name = 'alphabetical_' + groupRowIndex;
+    alphaInput.style.width = '18px';
+    alphaInput.style.height = '18px';
+    alphaInput.style.cursor = 'pointer';
+    alphaCell.appendChild(alphaInput);
+    row.appendChild(alphaCell);
+
+    // Remove Action
+    var actionsCell = document.createElement('td');
+    actionsCell.style.textAlign = 'right';
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'tp-btn-remove';
+    removeBtn.textContent = 'Remove';
+    actionsCell.appendChild(removeBtn);
+    row.appendChild(actionsCell);
+
+    tbody.appendChild(row);
+
+    var tagifyInstance = initTagify(tagInput);
+
+    removeBtn.onclick = function() {
+        if (tagifyInstance) {
+            tagifyInstance.destroy();
+        }
+        row.remove();
+    };
+
+    groupRowIndex++;
+}
+
+document.getElementById('add-group-btn').addEventListener('click', addGroupRow);
+
+// Update group IDs on submit to ensure alphabetical checkbox mapping works
+var mainForm = document.querySelector('form[name="add_training_day"]');
+if (mainForm) {
+    mainForm.addEventListener('submit', function() {
+        var groupIds = document.querySelectorAll('#groups-tbody input[name="group_id[]"]');
+        groupIds.forEach(function(input, index) {
+            input.value = index;
+        });
+    });
+}
+{% else %}
+// --- EDIT MODE LOGIC ---
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Tagify for the "Add New Group" row
+    var newGroupInput = document.querySelector('input[name="tag_name"]');
+    var addBtn = document.getElementById('add-group-submit-btn');
+
+    initTagify(newGroupInput, function(e) {
+        // Toggle button visibility based on whether tags exist
+        if (e.detail.tagify.value.length > 0) {
+            addBtn.style.display = 'inline-block';
+        } else {
+            addBtn.style.display = 'none';
+        }
+    });
 });
 
 function removeMainGroup(url) {
@@ -52,103 +359,5 @@ function removeMainGroup(url) {
         alert('Error: ' + error);
     });
 }
+{% endif %}
 </script>
-
-{% set has_groups = contest.training_day.groups|length > 0 %}
-{% if has_groups %}
-<form action="{{ url("contest", contest.id, "training_day_groups", "update") }}" method="POST" id="update-groups-form">
-  {{ xsrf_form_html|safe }}
-{% endif %}
-<table class="sub_table" id="main-groups-table">
-  <thead>
-    <tr>
-      <th>Tag Name</th>
-      <th>Start Time ({{ timezone_name }})</th>
-      <th>Duration</th>
-      <th>Alphabetical Task Order</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% if has_groups %}
-    {% for group in contest.training_day.groups %}
-    <tr>
-      <td>
-        {{ group.tag_name }}
-        <input type="hidden" name="group_id[]" value="{{ group.id }}"/>
-      </td>
-      <td>
-        <input type="datetime-local" name="start_time[]" value="{{ group.start_time|format_datetime_input(timezone) if group.start_time else '' }}"/>
-      </td>
-      <td>
-        {% set duration_seconds = (group.end_time - group.start_time).total_seconds() if group.start_time and group.end_time else 0 %}
-        {% set duration_hours = (duration_seconds // 3600)|int %}
-        {% set duration_minutes = ((duration_seconds % 3600) // 60)|int %}
-        <input type="number" name="duration_hours[]" min="0" style="width: 60px;" value="{{ duration_hours if duration_seconds > 0 else '' }}" placeholder="0"/> h
-        <input type="number" name="duration_minutes[]" min="0" max="59" style="width: 60px;" value="{{ duration_minutes if duration_seconds > 0 else '' }}" placeholder="0"/> m
-      </td>
-      <td style="text-align: center;">
-        <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }}/>
-      </td>
-      <td>
-        <button type="button" class="btn btn-danger btn-small" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}');"{% if not admin.permission_all %} disabled{% endif %}>Remove</button>
-      </td>
-    </tr>
-    {% endfor %}
-    {% else %}
-    <tr>
-      <td colspan="5" style="text-align: center; color: #666;">No main groups configured. All students can participate.</td>
-    </tr>
-    {% endif %}
-  </tbody>
-</table>
-{% if has_groups %}
-<input type="submit" value="Save Group Changes"{% if not admin.permission_all %} disabled{% endif %}/>
-</form>
-{% endif %}
-
-<h3>Add Main Group</h3>
-<form action="{{ url("contest", contest.id, "training_day_group", "add") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  <table class="sub_table">
-    <tr>
-      <td>
-        <span class="info" title="The student tag that identifies this main group."></span>
-        Tag Name
-      </td>
-      <td><input type="text" name="tag_name" required placeholder="Select a student tag" style="width: 160px;"/></td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="Custom start time for this group in contest timezone (optional). Leave empty to use contest default."></span>
-        Start Time ({{ timezone_name }})
-      </td>
-      <td><input type="datetime-local" name="start_time"/></td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="Duration for this group (optional). Leave empty to use contest default."></span>
-        Duration
-      </td>
-      <td>
-        <input type="number" name="duration_hours" min="0" style="width: 60px;" placeholder="0"/> hours
-        <input type="number" name="duration_minutes" min="0" max="59" style="width: 60px;" placeholder="0"/> minutes
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="If checked, tasks will be displayed alphabetically by name instead of custom order."></span>
-        <label for="alphabetical_task_order">Alphabetical Task Order</label>
-      </td>
-      <td>
-        <input type="checkbox" id="alphabetical_task_order" name="alphabetical_task_order"/>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2">
-        <input type="submit" value="Add Group"{% if not admin.permission_all %} disabled{% endif %}/>
-      </td>
-    </tr>
-  </table>
-</form>
-{% endif %}
