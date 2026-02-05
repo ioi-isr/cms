@@ -161,19 +161,19 @@ show_training_day (bool): if true, show a column indicating which training day
 
         {% if status == SubmissionResult.COMPILATION_FAILED %}
         <span class="status-badge status-failed">Compilation failed</span>
-        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+        <div id="evaluation_{{ s.id }}_compilation_failed" class="submission-details" style="display: none;">
 
         {% elif status == SubmissionResult.EVALUATING %}
         <span class="status-badge status-pending">Evaluating...</span>
-        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+        <div id="evaluation_{{ s.id }}_evaluating" class="submission-details" style="display: none;">
 
         {% elif status == SubmissionResult.EVALUATION_FAILED %}
         <span class="status-badge status-failed">Evaluation error</span>
-        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+        <div id="evaluation_{{ s.id }}_evaluation_failed" class="submission-details" style="display: none;">
 
         {% elif status == SubmissionResult.SCORING %}
         <span class="status-badge status-pending">Scoring...</span>
-        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+        <div id="evaluation_{{ s.id }}_scoring" class="submission-details" style="display: none;">
           {% if sr.evaluated() %}
           <h3>Testcases</h3>
           <table class="ranking-table testcases-table">
@@ -211,7 +211,7 @@ show_training_day (bool): if true, show a column indicating which training day
             {% set max_score = "[Cannot get score type - see logs]" %}
           {% endif %}
         <span class="status-badge status-scored">Scored ({{ sr.score }} / {{ max_score }})</span>
-        <div id="evaluation_{{ s.id }}" class="score_details submission-details" style="display: none;">
+        <div id="evaluation_{{ s.id }}_scored" class="score_details submission-details" style="display: none;">
           {% if score_type is defined %}
             {{ score_type.get_html_details(sr.score_details, FEEDBACK_LEVEL_FULL)|safe }}
           {% else %}
@@ -220,7 +220,7 @@ show_training_day (bool): if true, show a column indicating which training day
 
         {% else %}
         <span class="status-badge status-unknown">[Unknown status]</span>
-        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+        <div id="evaluation_{{ s.id }}_unknown" class="submission-details" style="display: none;">
 
         {% endif %}
           <h3>Compilation output</h3>
@@ -242,7 +242,7 @@ show_training_day (bool): if true, show a column indicating which training day
     <div class="list-cell-wrapper submission-files">
       {% for filename, sub_file in s.files|dictsort(by="key") %}
         {% set real_filename = get_lang_filename(s.language, filename) %}
-      <a href="javascript:void(0);" class="file-link" onclick="utils.show_file('{{ real_filename }}','{{ url("submission_file", sub_file.id) }}')">{{ real_filename }}</a>
+      <button type="button" class="file-link" onclick="utils.show_file('{{ real_filename }}','{{ url("submission_file", sub_file.id) }}')">{{ real_filename }}</button>
       {% endfor %}
     </div>
   </td>

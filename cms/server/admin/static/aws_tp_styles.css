@@ -3060,3 +3060,20 @@
     gap: 12px;
     align-items: center;
 }
+
+/* Button styled as link for file links */
+button.file-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--tp-primary);
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    text-decoration: none;
+}
+
+button.file-link:hover {
+    text-decoration: underline;
+    color: var(--tp-primary-dark);
+}
