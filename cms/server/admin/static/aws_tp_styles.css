@@ -439,97 +439,9 @@
     box-sizing: border-box;
 }
 
-/* ==========================================================================
-   Bulk Assign Task Modal (specific styles)
-   ========================================================================== */
-
-.bulk-assign-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-}
-
 /* Ensure Tagify dropdown appears above the modal */
 .tagify__dropdown {
     z-index: 10001 !important;
-}
-
-.bulk-assign-modal-content {
-    background: var(--tp-bg-white);
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 480px;
-    width: 90%;
-    box-shadow: var(--tp-shadow-xl);
-}
-
-.bulk-assign-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--tp-border);
-}
-
-.bulk-assign-modal-header h2 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: var(--tp-text-primary);
-}
-
-.bulk-assign-close-btn {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: var(--tp-text-lighter);
-    line-height: 1;
-    padding: 0;
-}
-
-.bulk-assign-close-btn:hover {
-    color: var(--tp-text-primary);
-}
-
-.bulk-assign-description {
-    color: var(--tp-text-lighter);
-    font-size: 0.9rem;
-    margin: 0 0 20px 0;
-    padding: 0;
-}
-
-.bulk-assign-form-group {
-    margin-bottom: 16px;
-}
-
-.bulk-assign-form-group label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--tp-text-secondary);
-    margin-bottom: 6px;
-}
-
-.bulk-assign-form-group input[type="text"] {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.bulk-assign-form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--tp-border);
 }
 
 /* ==========================================================================
@@ -1384,61 +1296,8 @@
 }
 
 /* ==========================================================================
-   Histogram Modal Styles
+   Histogram Content Styles
    ========================================================================== */
-
-.histogram-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-}
-
-.histogram-modal-content {
-    background: var(--tp-bg-white);
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 800px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: var(--tp-shadow-xl);
-}
-
-.histogram-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--tp-border);
-}
-
-.histogram-modal-header h2 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: var(--tp-text-primary);
-}
-
-.histogram-close-btn {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: var(--tp-text-lighter);
-    line-height: 1;
-    padding: 0;
-}
-
-.histogram-close-btn:hover {
-    color: var(--tp-text-primary);
-}
 
 .histogram-filter-row {
     display: flex;

@@ -373,14 +373,15 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
 {% include 'fragments/histogram_modal.html' %}
 
-<!-- Scoreboard Sharing Modal -->
-<div id="scoreboardSharingModal" class="histogram-modal" style="display: none;">
-    <div class="histogram-modal-content" style="max-width: 700px;">
-        <div class="histogram-modal-header">
-            <h2 id="scoreboardSharingTitle">Scoreboard Sharing</h2>
-            <button class="histogram-close-btn" onclick="closeScoreboardSharingModal()">&times;</button>
-        </div>
-        <div class="scoreboard-sharing-body" style="padding: 20px;">
+<!-- Scoreboard Sharing Modal (Micromodal) -->
+<div class="modal modal--wide" id="modal-scoreboard-sharing" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="scoreboardSharingTitle" style="max-width: 700px;">
+            <header class="modal__header">
+                <h2 class="modal__title" id="scoreboardSharingTitle">Scoreboard Sharing</h2>
+                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+            </header>
+            <main class="modal__content">
             <p style="margin-bottom: 16px; color: var(--tp-text-secondary);">
                 Configure which student tags can view the scoreboard for this training day.
                 Students will only see results for their tag group.
@@ -424,10 +425,11 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                 + Add Tag
             </button>
 
-            <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--tp-border); padding-top: 16px;">
-                <button type="button" class="tp-btn-secondary" onclick="closeScoreboardSharingModal()">Cancel</button>
+            <footer class="modal__footer">
+                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
                 <button type="button" class="tp-btn-primary" onclick="saveScoreboardSharing()">Save</button>
-            </div>
+            </footer>
+            </main>
         </div>
     </div>
 </div>
@@ -557,7 +559,7 @@ function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayNa
         addSharingEntry('', 0, 0);
     }
 
-    document.getElementById('scoreboardSharingModal').style.display = 'flex';
+    MicroModal.show('modal-scoreboard-sharing');
 }
 
 function toggleEveryoneSettings() {
@@ -632,7 +634,7 @@ function validateEveryoneFields() {
 }
 
 function closeScoreboardSharingModal() {
-    document.getElementById('scoreboardSharingModal').style.display = 'none';
+    MicroModal.close('modal-scoreboard-sharing');
     currentSharingTrainingDayId = null;
 }
 
