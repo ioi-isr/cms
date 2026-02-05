@@ -59,16 +59,6 @@
             }
         </style>
 
-        {% if not is_create %}
-            <!-- Hidden forms for Edit Mode actions -->
-            <form id="update-groups-form" action="{{ url("contest", contest.id, "training_day_groups", "update") }}" method="POST">
-                {{ xsrf_form_html|safe }}
-            </form>
-            <form id="add-group-form" action="{{ url("contest", contest.id, "training_day_group", "add") }}" method="POST">
-                {{ xsrf_form_html|safe }}
-            </form>
-        {% endif %}
-
         <div class="tp-groups-table-container">
             <table class="tp-groups-table" id="main-groups-table">
                 <thead>

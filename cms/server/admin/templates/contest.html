@@ -10,7 +10,17 @@
 
     {% include "fragments/overload_warning.html" %}
 
-    <form enctype="multipart/form-data" action="{{ url("contest", contest.id) }}" method="POST" name="edit_contest">
+    {% if contest.training_day is not none %}
+        <!-- Separate forms for group actions to avoid nested forms inside edit_contest -->
+        <form id="update-groups-form" action="{{ url("contest", contest.id, "training_day_groups", "update") }}" method="POST">
+            {{ xsrf_form_html|safe }}
+        </form>
+        <form id="add-group-form" action="{{ url("contest", contest.id, "training_day_group", "add") }}" method="POST">
+            {{ xsrf_form_html|safe }}
+        </form>
+    {% endif %}
+
+    <form enctype="multipart/form-data" action="{{ url("contest", contest.id) }}" method="POST" name="edit_contest" style="display:inline;">
         {{ xsrf_form_html|safe }}
 
         <!-- Actions Bar (Moved to Top) -->

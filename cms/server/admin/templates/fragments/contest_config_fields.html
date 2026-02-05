@@ -26,7 +26,7 @@
 {% set show_login_section = show_login_section|default(true) %}
 {% set show_analysis_section = show_analysis_section|default(true) %}
 
-<!-- 1. Contest Information (Full Width) -->
+<!-- 1. Contest Information (Mixed Layout) -->
 <div class="tp-card col-span-12">
     <div class="tp-card-header-modern">
         <div class="tp-card-header-icon">
@@ -72,89 +72,87 @@
         </div>
         {% endif %}
 
-        <fieldset class="tp-form-group">
-            <legend class="tp-form-label">
-                Allowed programming languages
-                <span class="tp-form-info" title="Programming languages that contestants can use to solve the tasks. All the allowed languages must have task support, for example in managed tasks.">?</span>
-            </legend>
-            <div class="tp-language-container">
-                <div class="tp-language-grid">
-                    {% for lang in LANGUAGES %}
-                    <label class="tp-checkbox-card">
-                        <input type="checkbox" name="languages" value="{{ lang.name }}" {{ "checked" if lang.name in contest.languages else "" }}>
-                        <span>{{ lang.name }}</span>
+        <!-- Two Column Section: Languages & Features -->
+        <div class="tp-grid-layout">
+            <!-- Left Column: Allowed programming languages -->
+            <div class="col-span-6">
+                <fieldset class="tp-form-group">
+                    <legend class="tp-form-label">
+                        Allowed programming languages
+                        <span class="tp-form-info" title="Programming languages that contestants can use to solve the tasks. All the allowed languages must have task support, for example in managed tasks.">?</span>
+                    </legend>
+                    <div class="tp-language-container">
+                        <div class="tp-language-grid">
+                            {% for lang in LANGUAGES %}
+                            <label class="tp-checkbox-card">
+                                <input type="checkbox" name="languages" value="{{ lang.name }}" {{ "checked" if lang.name in contest.languages else "" }}>
+                                <span>{{ lang.name }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div class="tp-form-group">
+                    <label class="tp-form-label" for="allowed_localizations">
+                        Allowed localizations
+                        <span class="tp-form-info" title="The list of languages that contestants can use, or empty for allowing any language. Example: 'en,ja' (without quotes).">?</span>
                     </label>
-                    {% endfor %}
+                    <input type="text" id="allowed_localizations" name="allowed_localizations" value="{{ contest.allowed_localizations|join(",") }}" class="tp-form-input"/>
                 </div>
             </div>
-        </fieldset>
 
-        <div class="tp-form-group">
-            <label class="tp-form-label" for="allowed_localizations">
-                Allowed localizations
-                <span class="tp-form-info" title="The list of languages that contestants can use, or empty for allowing any language. Example: 'en,ja' (without quotes).">?</span>
-            </label>
-            <input type="text" id="allowed_localizations" name="allowed_localizations" value="{{ contest.allowed_localizations|join(",") }}" class="tp-form-input"/>
-        </div>
-    </div>
-</div>
+            <!-- Right Column: Features & Rules -->
+            <div class="col-span-6">
+                <!-- Toggles -->
+                <div class="tp-toggle-wrapper">
+                    <label class="tp-toggle-label" for="submissions_download_allowed">
+                        Submissions download allowed
+                        <span class="tp-form-info" title="Whether contestants can download their own submissions.">?</span>
+                    </label>
+                    <input type="checkbox" id="submissions_download_allowed" name="submissions_download_allowed" class="tp-toggle-input" {{ "checked" if contest.submissions_download_allowed else "" }}/>
+                </div>
 
-<!-- 2. Features & Rules (Half Width) -->
-<div class="tp-card col-span-6">
-    <div class="tp-card-header-modern">
-        <div class="tp-card-header-icon">
-            <svg class="icon" width="18" height="18"><use href="#icon-star"/></svg>
-        </div>
-        <h3 class="tp-card-title-modern">Features & Rules</h3>
-    </div>
-    <div class="tp-card-body">
-        <!-- Toggles -->
-        <div class="tp-toggle-wrapper">
-            <label class="tp-toggle-label" for="submissions_download_allowed">
-                Submissions download allowed
-                <span class="tp-form-info" title="Whether contestants can download their own submissions.">?</span>
-            </label>
-            <input type="checkbox" id="submissions_download_allowed" name="submissions_download_allowed" class="tp-toggle-input" {{ "checked" if contest.submissions_download_allowed else "" }}/>
-        </div>
+                <div class="tp-toggle-wrapper">
+                    <label class="tp-toggle-label" for="allow_questions">
+                        Allow questions
+                        <span class="tp-form-info" title="Whether contestants can submit questions.">?</span>
+                    </label>
+                    <input type="checkbox" id="allow_questions" name="allow_questions" class="tp-toggle-input" {{ "checked" if contest.allow_questions else "" }}/>
+                </div>
 
-        <div class="tp-toggle-wrapper">
-            <label class="tp-toggle-label" for="allow_questions">
-                Allow questions
-                <span class="tp-form-info" title="Whether contestants can submit questions.">?</span>
-            </label>
-            <input type="checkbox" id="allow_questions" name="allow_questions" class="tp-toggle-input" {{ "checked" if contest.allow_questions else "" }}/>
-        </div>
+                <div class="tp-toggle-wrapper">
+                    <label class="tp-toggle-label" for="allow_delay_requests">
+                        Allow delay requests
+                        <span class="tp-form-info" title="If checked, contestants will be able to submit delay requests for this contest.">?</span>
+                    </label>
+                    <input type="checkbox" id="allow_delay_requests" name="allow_delay_requests" class="tp-toggle-input" {{ "checked" if contest.allow_delay_requests else "" }}/>
+                </div>
 
-        <div class="tp-toggle-wrapper">
-            <label class="tp-toggle-label" for="allow_delay_requests">
-                Allow delay requests
-                <span class="tp-form-info" title="If checked, contestants will be able to submit delay requests for this contest.">?</span>
-            </label>
-            <input type="checkbox" id="allow_delay_requests" name="allow_delay_requests" class="tp-toggle-input" {{ "checked" if contest.allow_delay_requests else "" }}/>
-        </div>
+                <div class="tp-toggle-wrapper">
+                    <label class="tp-toggle-label" for="allow_user_tests">
+                        Allow user tests
+                        <span class="tp-form-info" title="Whether contestants can submit user tests.">?</span>
+                    </label>
+                    <input type="checkbox" id="allow_user_tests" name="allow_user_tests" class="tp-toggle-input" {{ "checked" if contest.allow_user_tests else "" }}/>
+                </div>
 
-        <div class="tp-toggle-wrapper">
-            <label class="tp-toggle-label" for="allow_user_tests">
-                Allow user tests
-                <span class="tp-form-info" title="Whether contestants can submit user tests.">?</span>
-            </label>
-            <input type="checkbox" id="allow_user_tests" name="allow_user_tests" class="tp-toggle-input" {{ "checked" if contest.allow_user_tests else "" }}/>
-        </div>
+                <div class="tp-toggle-wrapper">
+                    <label class="tp-toggle-label" for="allow_unofficial_submission_before_analysis_mode">
+                        Allow unofficial submission before analysis mode
+                        <span class="tp-form-info" title="Allow contestant to make unofficial submission before analysis mode">?</span>
+                    </label>
+                    <input type="checkbox" id="allow_unofficial_submission_before_analysis_mode" name="allow_unofficial_submission_before_analysis_mode" class="tp-toggle-input" {{ "checked" if contest.allow_unofficial_submission_before_analysis_mode else "" }}/>
+                </div>
 
-        <div class="tp-toggle-wrapper">
-            <label class="tp-toggle-label" for="allow_unofficial_submission_before_analysis_mode">
-                Allow unofficial submission before analysis mode
-                <span class="tp-form-info" title="Allow contestant to make unofficial submission before analysis mode">?</span>
-            </label>
-            <input type="checkbox" id="allow_unofficial_submission_before_analysis_mode" name="allow_unofficial_submission_before_analysis_mode" class="tp-toggle-input" {{ "checked" if contest.allow_unofficial_submission_before_analysis_mode else "" }}/>
-        </div>
-
-        <div class="tp-form-group" style="margin-top: 16px;">
-            <label class="tp-form-label" for="score_precision">
-                Score decimal places
-                <span class="tp-form-info" title="The number of decimal places the scores will be rounded to. Example: '2' to allow 98.76.">?</span>
-            </label>
-            <input type="text" id="score_precision" name="score_precision" value="{{ contest.score_precision }}" class="tp-form-input" style="max-width: 100px;">
+                <div class="tp-form-group" style="margin-top: 16px;">
+                    <label class="tp-form-label" for="score_precision">
+                        Score decimal places
+                        <span class="tp-form-info" title="The number of decimal places the scores will be rounded to. Example: '2' to allow 98.76.">?</span>
+                    </label>
+                    <input type="text" id="score_precision" name="score_precision" value="{{ contest.score_precision }}" class="tp-form-input" style="max-width: 100px;">
+                </div>
+            </div>
         </div>
     </div>
 </div>

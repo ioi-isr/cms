@@ -1178,7 +1178,7 @@ body.admin .notifications .notification {
 
 body.admin .notifications .communication {
     background-color: #DDE6F7;
-        border: 0.143em solid #5A6B84;
+    border: 0.143em solid #5A6B84;
 }
 
 body.admin .notifications .ignored {
