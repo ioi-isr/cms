@@ -3011,3 +3011,12 @@
     color: var(--tp-success-dark);
     border: 1px solid #bbf7d0;
 }
+
+/* Subpage popup z-index fix - ensure it appears above sticky headers */
+#subpage_popup {
+    z-index: 1000;
+}
+
+#subpage_popup::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+}
