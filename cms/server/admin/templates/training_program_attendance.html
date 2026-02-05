@@ -416,7 +416,10 @@ function saveAttendance() {
 }
 
 // Save button click handler
-document.getElementById('save-attendance-btn').addEventListener('click', saveAttendance);
+var saveAttendanceBtn = document.getElementById('save-attendance-btn');
+if (saveAttendanceBtn) {
+    saveAttendanceBtn.addEventListener('click', saveAttendance);
+}
 </script>
 
 {% endblock core %}

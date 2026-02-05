@@ -155,10 +155,24 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
 
         self.render_params_for_training_program(training_program)
         self.r_params["all_training_day_types"] = get_all_training_day_types(
             training_program)
+
+        # Data for the Add Training Day modal
+        tags_query = self.sql_session.query(
+            func.unnest(Student.student_tags).label("tag")
+        ).filter(
+            Student.training_program_id == training_program.id
+        ).distinct()
+        self.r_params["all_student_tags"] = sorted([row.tag for row in tags_query.all()])
+
+        # Add timezone info for the form (use managing contest timezone)
+        tz = get_timezone(None, managing_contest)
+        self.r_params["timezone"] = tz
+        self.r_params["timezone_name"] = get_timezone_name(tz)
 
         self.render("training_program_training_days.html", **self.r_params)
 
