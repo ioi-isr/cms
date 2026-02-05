@@ -127,14 +127,9 @@ CMS.TrainingProgram.openHistogramModal = function(scores, title, type, trainingD
     }
 
     MicroModal.show('modal-histogram', {
-        onShow: function() {
-            document.body.style.overflow = 'hidden';
-        },
         onClose: function() {
-            document.body.style.overflow = '';
             CMS.TrainingProgram._currentHistogramData = null;
-        },
-        awaitCloseAnimation: true
+        }
     });
     CMS.TrainingProgram._renderHistogram(scores, title, type);
 };

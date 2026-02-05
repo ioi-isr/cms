@@ -163,18 +163,6 @@
     var currentRemoveTaskId = null;
     var programName = {{ training_program.name | tojson }};
 
-    // Initialize Micromodal
-    MicroModal.init({
-        onShow: function(modal) {
-            document.body.style.overflow = 'hidden';
-        },
-        onClose: function(modal) {
-            document.body.style.overflow = '';
-            currentRemoveTaskId = null;
-        },
-        awaitCloseAnimation: true
-    });
-
     function openRemoveModal(taskId, taskName, hasTrainingDay, trainingDayName, isActive) {
         currentRemoveTaskId = taskId;
         var message = document.getElementById('remove-modal-message');
