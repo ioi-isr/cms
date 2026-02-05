@@ -2993,17 +2993,7 @@
     white-space: nowrap;
 }
 
-/* Status badges for submissions */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: 9999px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
+/* Submission status badges - extends .status-badge */
 .status-pending {
     background-color: var(--tp-info-light);
     color: var(--tp-info-dark);
@@ -3022,23 +3012,7 @@
     border: 1px solid #bbf7d0;
 }
 
-/* Empty state box */
-.empty-state-box {
-    text-align: center;
-    padding: 60px 20px;
-    background: var(--tp-bg-light);
-    border: 1px dashed var(--tp-border);
-    border-radius: 8px;
-    color: var(--tp-text-muted);
-}
-
-.empty-state-box h3 {
-    margin: 0 0 8px 0;
-    font-size: 1.1rem;
-    color: var(--tp-text-secondary);
-}
-
-.empty-state-box p {
-    margin: 0;
-    font-size: 0.9rem;
+.status-unknown {
+    background-color: var(--tp-bg-gray);
+    color: var(--tp-text-light);
 }
