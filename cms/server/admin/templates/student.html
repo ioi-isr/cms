@@ -76,6 +76,12 @@ CMS.AWSFormUtils.initTagify({
             {{ xsrf_form_html|safe }}
             <div class="tp-table-container">
                 <table class="ranking-table form-table">
+                    <thead class="visually-hidden">
+                        <tr>
+                            <th>Field</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <tr>
                             <td class="form-label">

@@ -192,6 +192,12 @@
                 <p style="margin: 8px 0; color: var(--tp-text-secondary);">A password reset link is active for this user. Copy and share the reset URL below if email delivery failed.</p>
                 <div class="tp-table-container" style="margin: 12px 0;">
                     <table class="ranking-table form-table">
+                        <thead class="visually-hidden">
+                            <tr>
+                                <th>Field</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             <tr>
                                 <td class="form-label"><strong>Reset URL:</strong></td>
@@ -244,6 +250,12 @@
             {% from "macro/user_fields.html" import user_fields with context %}
             <div class="tp-table-container">
                 <table class="ranking-table form-table">
+                    <thead class="visually-hidden">
+                        <tr>
+                            <th>Field</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
                     {{ user_fields(user) }}
                 </table>
             </div>
