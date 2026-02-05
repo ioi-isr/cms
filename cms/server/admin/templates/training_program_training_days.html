@@ -486,7 +486,7 @@ function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayNa
     var entriesContainer = document.getElementById('scoreboardSharingEntries');
 
     // Destroy existing Tagify instances before clearing to prevent memory leaks
-    entriesContainer.querySelectorAll('.scoreboard-sharing-entry').forEach(function(entryDiv) {
+    entriesContainer.querySelectorAll('.sharing-entry').forEach(function(entryDiv) {
         if (entryDiv._tagify) {
             entryDiv._tagify.destroy();
         }
