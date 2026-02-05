@@ -2589,7 +2589,7 @@
 }
 
 .tp-groups-table input[type="number"] {
-    width: 40px;
+    width: 50px;
     padding: 8px 6px;
 }
 
@@ -2605,6 +2605,17 @@
     color: var(--tp-text-lighter);
 }
 
+/* Override table font-size for buttons to maintain normal size */
+.tp-groups-table .tp-btn-primary,
+.tp-groups-table .tp-btn-secondary,
+.tp-groups-table .tp-btn-remove {
+    font-size: 0.9rem !important;
+    padding: 6px 16px !important;
+}
+
+.tp-groups-table .tp-btn-remove {
+    padding: 4px 10px;
+}
 .tp-btn-add-group {
     display: inline-flex;
     align-items: center;
@@ -2625,4 +2636,197 @@
 
 .tp-btn-remove:hover {
     background: var(--tp-danger-border);
+}
+
+/* ==========================================================================
+   Modern Grid & Card Layout (Redesign)
+   ========================================================================== */
+
+/* Main Grid Container */
+.tp-grid-layout {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+/* Card Component */
+.tp-card {
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    box-shadow: var(--tp-shadow-sm);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Card Header */
+.tp-card-header-modern {
+    padding: 16px 20px;
+    background: var(--tp-bg-white);
+    border-bottom: 1px solid var(--tp-border-light);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tp-card-header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--tp-info-light);
+    color: var(--tp-primary);
+    border-radius: 8px;
+}
+
+.tp-card-title-modern {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+    margin: 0;
+}
+
+/* Card Body */
+.tp-card-body {
+    padding: 24px;
+    flex: 1;
+}
+
+/* Grid Spans */
+.col-span-12 {
+    grid-column: span 12;
+}
+
+.col-span-6 {
+    grid-column: span 6;
+}
+
+
+@media (max-width: 1100px) {
+
+    .col-span-6 {
+        grid-column: span 12;
+    }
+}
+
+/* Modern Toggle Switch */
+.tp-toggle-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--tp-bg-gray);
+}
+
+.tp-toggle-wrapper:last-child {
+    border-bottom: none;
+}
+
+.tp-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: var(--tp-text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.tp-toggle-input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 44px;
+    height: 24px;
+    background: #e2e8f0;
+    border-radius: 24px;
+    position: relative;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.3s ease;
+    flex-shrink: 0;
+}
+
+.tp-toggle-input::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tp-toggle-input:checked {
+    background: var(--tp-primary);
+}
+
+.tp-toggle-input:checked::after {
+    transform: translateX(20px);
+}
+
+.tp-toggle-input:focus-visible {
+    box-shadow: 0 0 0 2px var(--tp-bg-white), 0 0 0 4px var(--tp-primary-light);
+}
+
+/* Language Grid */
+.tp-language-container {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    padding: 8px;
+    background-color: var(--tp-bg-gray);
+}
+
+.tp-language-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.tp-checkbox-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.tp-checkbox-card:hover {
+    background: #e2e8f0;
+}
+
+.tp-checkbox-card input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--tp-primary);
+    margin: 0;
+}
+
+.tp-checkbox-card span {
+    font-size: 0.85rem;
+    color: var(--tp-text-secondary);
+    line-height: 1.1;
+}
+
+/* Floating Actions Panel - Only when .tp-form-actions-float class is applied */
+.tp-form-actions.tp-form-actions-float {
+    position: sticky;
+    top: 20px;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.tp-form-actions.tp-form-actions-float:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
