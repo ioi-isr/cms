@@ -21,51 +21,60 @@ show_training_day (bool): if true, show a column indicating which training day
     the submission was made via (for training program submissions view).
 #}
 {% if pages == 0 %}
-<p>No submissions found.</p>
+<div class="empty-state-box">
+    <h3>No submissions found</h3>
+    <p>There are no submissions matching your criteria.</p>
+</div>
 
 {% else %}
 
-<details id="diffchooser" ontoggle="utils.update_diffchooser()">
+<details id="diffchooser" class="submissions-diff-chooser" ontoggle="utils.update_diffchooser()">
   <summary>Diff submissions...</summary>
-  Select two submissions from the table, or enter submission IDs: <br>
-  old: <input type="number" size="5" id="diff-old-input">
-  new: <input type="number" size="5" id="diff-new-input">
-  <button onclick="utils.do_diff()">Diff</button>
+  <div class="diff-chooser-content">
+    Select two submissions from the table, or enter submission IDs:
+    <div class="diff-inputs">
+      <label>old: <input type="number" size="5" id="diff-old-input"></label>
+      <label>new: <input type="number" size="5" id="diff-new-input"></label>
+      <button class="tp-btn-primary" onclick="utils.do_diff()">Diff</button>
+    </div>
+  </div>
 </details>
 
-<div class="table-search">
-  <label for="submissions_search">Search: </label>
-  <input type="text" id="submissions_search" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)">
+<div class="tp-filter-card submissions-filter-bar">
+  <label class="tp-filter-label" for="submissions_search">Search:</label>
+  <input type="text" id="submissions_search" class="tp-filter-input" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)">
 </div>
 
 {{ macro_pages.selector(page_url, page, pages) }}
 
-<table class="bordered" id="submissions_table">
-  <thead>
-    <tr>
-      <th class="diff-only">-</th>
-      <th class="diff-only">+</th>
-      <th>Time</th>
-      <th>User</th>
-      <th>Task</th>
-      {% if show_training_day %}
-      <th>Source</th>
-      {% endif %}
-      <th>Status</th>
-      <th>Latency</th>
-      <th>Files</th>
-      <th>Token</th>
-      <th>Official</th>
-      <th>Comment</th>
-      <th>Reevaluate</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for s in submissions|sort(attribute="timestamp")|reverse %}
-      {{ row(admin, url, s, dataset, timezone, show_training_day) }}
-    {% endfor %}
-  </tbody>
-</table>
+<div class="tp-table-container">
+  <table class="ranking-table submissions-table" id="submissions_table">
+    <thead>
+      <tr>
+        <th class="diff-only text-center no-sort" style="width: 30px;">-</th>
+        <th class="diff-only text-center no-sort" style="width: 30px;">+</th>
+        <th style="text-align: left;">Time</th>
+        <th style="text-align: left;">User</th>
+        <th style="text-align: left;">Task</th>
+        {% if show_training_day %}
+        <th style="text-align: left;">Source</th>
+        {% endif %}
+        <th style="text-align: left;">Status</th>
+        <th style="text-align: left;">Latency</th>
+        <th style="text-align: left;">Files</th>
+        <th class="text-center">Token</th>
+        <th class="text-center">Official</th>
+        <th style="text-align: left;">Comment</th>
+        <th class="text-center no-sort">Reevaluate</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in submissions|sort(attribute="timestamp")|reverse %}
+        {{ row(admin, url, s, dataset, timezone, show_training_day) }}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endif %}
 {%- endmacro %}
 
@@ -98,140 +107,176 @@ show_training_day (bool): if true, show a column indicating which training day
 {% endif %}
 {% set score_type = get_score_type(dataset=dataset) %}
 <tr>
-  <td class="diff-only"><input type=radio class="diff-radio" name="diff-radio-old" data-submission="{{ s.id }}"></td>
-  <td class="diff-only"><input type=radio class="diff-radio" name="diff-radio-new" data-submission="{{ s.id }}"></td>
-  <td><a href="{{ url("submission", s.id) }}">{{ s.timestamp|format_datetime_with_timezone(timezone) }}</a></td>
-  <td>
-    {# For training day submissions, link to the training day participation #}
-    {% if s.training_day is not none and s.training_day.contest is not none %}
-    <a href="{{ url("contest", s.training_day.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a>
-    {% else %}
-    <a href="{{ url("contest", s.participation.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a>
-    {% endif %}
+  <td class="diff-only">
+    <div class="list-cell-wrapper center-content">
+      <input type="radio" class="diff-radio" name="diff-radio-old" data-submission="{{ s.id }}">
+    </div>
   </td>
-  <td><a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a></td>
+  <td class="diff-only">
+    <div class="list-cell-wrapper center-content">
+      <input type="radio" class="diff-radio" name="diff-radio-new" data-submission="{{ s.id }}">
+    </div>
+  </td>
+  <td>
+    <div class="list-cell-wrapper">
+      <a href="{{ url("submission", s.id) }}" class="submission-time-link">{{ s.timestamp|format_datetime_with_timezone(timezone) }}</a>
+    </div>
+  </td>
+  <td>
+    <div class="list-cell-wrapper">
+      {# For training day submissions, link to the training day participation #}
+      {% if s.training_day is not none and s.training_day.contest is not none %}
+      <a href="{{ url("contest", s.training_day.contest.id, "user", s.participation.user.id, "edit") }}" class="student-name-link">{{ s.participation.user.username }}</a>
+      {% else %}
+      <a href="{{ url("contest", s.participation.contest.id, "user", s.participation.user.id, "edit") }}" class="student-name-link">{{ s.participation.user.username }}</a>
+      {% endif %}
+    </div>
+  </td>
+  <td>
+    <div class="list-cell-wrapper">
+      <a href="{{ url("task", s.task.id) }}" class="source-badge badge-training">{{ s.task.name }}</a>
+    </div>
+  </td>
   {% if show_training_day %}
   <td>
-    {% if s.training_day is not none %}
-      {% if s.training_day.contest is not none %}
-      <a href="{{ url("contest", s.training_day.contest.id) }}">{{ s.training_day.contest.description }}</a>
+    <div class="list-cell-wrapper">
+      {% if s.training_day is not none %}
+        {% if s.training_day.contest is not none %}
+        <a href="{{ url("contest", s.training_day.contest.id) }}" class="source-badge badge-training">{{ s.training_day.contest.description }}</a>
+        {% else %}
+        <span class="source-badge badge-archived">{{ s.training_day.description or s.training_day.name or "Archived" }}</span>
+        {% endif %}
       {% else %}
-      {{ s.training_day.description or s.training_day.name or "Archived Training Day" }}
+      <span class="source-badge badge-manual">Task Archive</span>
       {% endif %}
-    {% else %}
-    Task Archive
-    {% endif %}
+    </div>
   </td>
   {% endif %}
   <td>
-    {% if status == SubmissionResult.COMPILING %}
-    Compiling...
-    {% else %}
-    <div id="title_evaluation_{{ s.id }}" class="toggling_off">
-
-      {% if status == SubmissionResult.COMPILATION_FAILED %}
-      Compilation failed
-      <div id="evaluation_{{ s.id }}" style="display: none;">
-
-      {% elif status == SubmissionResult.EVALUATING %}
-      Evaluating...
-      <div id="evaluation_{{ s.id }}" style="display: none;">
-
-      {% elif status == SubmissionResult.EVALUATION_FAILED %}
-      Evaluation system error
-      <div id="evaluation_{{ s.id }}" style="display: none;">
-
-      {% elif status == SubmissionResult.SCORING %}
-      Scoring...
-      <div id="evaluation_{{ s.id }}" style="display: none;">
-        {% if sr.evaluated() %}
-        <h3>Testcases</h3>
-        <table class="nested bordered">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Codename</th>
-              <th>Outcome</th>
-              <th>Visible</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for ev in sr.evaluations|sort(attribute="codename") %}
-            <tr>
-              <td>{{ loop.index }}</td>
-              <td>{{ ev.codename }}</td>
-              <td>{{ ev.outcome }}</td>
-              <td style="text-align: center">
-                <input type="checkbox" disabled{{ " checked" if s.token is not none or ev.testcase.public else "" }}>
-              </td>
-              <td>{{ ev.text|format_status_text }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% endif %}
-
-      {% elif status == SubmissionResult.SCORED %}
-        {% if score_type is defined %}
-          {% set max_score = score_type.max_score %}
-        {% else %}
-          {% set max_score = "[Cannot get score type - see logs]" %}
-        {% endif %}
-      Scored ({{ sr.score }} / {{ max_score }})
-      <div id="evaluation_{{ s.id }}" class="score_details" style="display: none;">
-        {% if score_type is defined %}
-          {{ score_type.get_html_details(sr.score_details, FEEDBACK_LEVEL_FULL)|safe }}
-        {% else %}
-        [Cannot get score type - see logs]
-        {% endif %}
-
+    <div class="list-cell-wrapper">
+      {% if status == SubmissionResult.COMPILING %}
+      <span class="status-badge status-pending">Compiling...</span>
       {% else %}
-      [Unknown status]
-      <div id="evaluation_{{ s.id }}" style="display: none;">
+      <div id="title_evaluation_{{ s.id }}" class="toggling_off submission-status-wrapper">
+
+        {% if status == SubmissionResult.COMPILATION_FAILED %}
+        <span class="status-badge status-failed">Compilation failed</span>
+        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+
+        {% elif status == SubmissionResult.EVALUATING %}
+        <span class="status-badge status-pending">Evaluating...</span>
+        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+
+        {% elif status == SubmissionResult.EVALUATION_FAILED %}
+        <span class="status-badge status-failed">Evaluation error</span>
+        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+
+        {% elif status == SubmissionResult.SCORING %}
+        <span class="status-badge status-pending">Scoring...</span>
+        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+          {% if sr.evaluated() %}
+          <h3>Testcases</h3>
+          <table class="ranking-table testcases-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Codename</th>
+                <th>Outcome</th>
+                <th class="text-center">Visible</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ev in sr.evaluations|sort(attribute="codename") %}
+              <tr>
+                <td><div class="list-cell-wrapper">{{ loop.index }}</div></td>
+                <td><div class="list-cell-wrapper">{{ ev.codename }}</div></td>
+                <td><div class="list-cell-wrapper">{{ ev.outcome }}</div></td>
+                <td>
+                  <div class="list-cell-wrapper center-content">
+                    <input type="checkbox" disabled{{ " checked" if s.token is not none or ev.testcase.public else "" }}>
+                  </div>
+                </td>
+                <td><div class="list-cell-wrapper">{{ ev.text|format_status_text }}</div></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endif %}
+
+        {% elif status == SubmissionResult.SCORED %}
+          {% if score_type is defined %}
+            {% set max_score = score_type.max_score %}
+          {% else %}
+            {% set max_score = "[Cannot get score type - see logs]" %}
+          {% endif %}
+        <span class="status-badge status-scored">Scored ({{ sr.score }} / {{ max_score }})</span>
+        <div id="evaluation_{{ s.id }}" class="score_details submission-details" style="display: none;">
+          {% if score_type is defined %}
+            {{ score_type.get_html_details(sr.score_details, FEEDBACK_LEVEL_FULL)|safe }}
+          {% else %}
+          [Cannot get score type - see logs]
+          {% endif %}
+
+        {% else %}
+        <span class="status-badge status-unknown">[Unknown status]</span>
+        <div id="evaluation_{{ s.id }}" class="submission-details" style="display: none;">
+
+        {% endif %}
+          <h3>Compilation output</h3>
+          <pre class="compilation-output">{% if sr.compilation_text|length > 0 %}{{ sr.compilation_text|format_status_text }}{% endif %}</pre>
+        </div>
+      </div>
 
       {% endif %}
-        <h3>Compilation output</h3>{# TODO: trim long outputs and add facility to see raw #}
-        <pre>{% if sr.compilation_text|length > 0 %}{{ sr.compilation_text|format_status_text }}{% endif %}</pre>
-      </div>
     </div>
-
-    {% endif %}
-  </td>
-  <td id="latency">
-    {% if sr is not none and sr.scored_at is not none %}
-      {{ (sr.scored_at - s.timestamp).total_seconds()|format_duration }}
-    {% endif %}
   </td>
   <td>
-    {% for filename, sub_file in s.files|dictsort(by="key") %}
-      {% set real_filename = get_lang_filename(s.language, filename) %}
-    <a href="javascript:void(0);" onclick="utils.show_file('{{ real_filename }}','{{ url("submission_file", sub_file.id) }}')">{{ real_filename }}</a><br/>
-    {% endfor %}
+    <div class="list-cell-wrapper">
+      {% if sr is not none and sr.scored_at is not none %}
+        <span class="latency-value">{{ (sr.scored_at - s.timestamp).total_seconds()|format_duration }}</span>
+      {% endif %}
+    </div>
   </td>
   <td>
-    {% if s.token is none %}
-    No
-    {% else %}
-    Yes
-    {% endif %}
+    <div class="list-cell-wrapper submission-files">
+      {% for filename, sub_file in s.files|dictsort(by="key") %}
+        {% set real_filename = get_lang_filename(s.language, filename) %}
+      <a href="javascript:void(0);" class="file-link" onclick="utils.show_file('{{ real_filename }}','{{ url("submission_file", sub_file.id) }}')">{{ real_filename }}</a>
+      {% endfor %}
+    </div>
   </td>
   <td>
-    {% if s.official %}
-    Yes
-    {% else %}
-    No
-    {% endif %}
+    <div class="list-cell-wrapper center-content">
+      {% if s.token is none %}
+      <span class="badge-pill badge-slate">No</span>
+      {% else %}
+      <span class="badge-pill badge-teal">Yes</span>
+      {% endif %}
+    </div>
   </td>
   <td>
-    {{ s.short_comment }}
+    <div class="list-cell-wrapper center-content">
+      {% if s.official %}
+      <span class="badge-pill badge-teal">Yes</span>
+      {% else %}
+      <span class="badge-pill badge-slate">No</span>
+      {% endif %}
+    </div>
   </td>
   <td>
-    {{ macro_reevaluation_buttons.reevaluation_buttons(
-           admin.permission_all,
-           url("submission", s.id, dataset.id),
-           submission_id=s.id,
-           dataset_id=dataset.id) }}
+    <div class="list-cell-wrapper">
+      <span class="submission-comment">{{ s.short_comment }}</span>
+    </div>
+  </td>
+  <td>
+    <div class="list-cell-wrapper center-content">
+      {{ macro_reevaluation_buttons.reevaluation_buttons(
+             admin.permission_all,
+             url("submission", s.id, dataset.id),
+             submission_id=s.id,
+             dataset_id=dataset.id) }}
+    </div>
   </td>
 </tr>
 

@@ -2830,3 +2830,215 @@
 .tp-form-actions.tp-form-actions-float:hover {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
+
+/* ==========================================================================
+   Submissions Table Styles
+   ========================================================================== */
+
+.submissions-table {
+    width: 100%;
+}
+
+.submissions-table thead th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--tp-text-muted);
+    background: var(--tp-bg-light);
+    padding: 12px 8px !important;
+    white-space: nowrap;
+}
+
+.submissions-table tbody td {
+    padding: 0;
+    vertical-align: middle;
+}
+
+.submissions-diff-chooser {
+    background: var(--tp-bg-light);
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+}
+
+.submissions-diff-chooser summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+}
+
+.submissions-diff-chooser[open] summary {
+    margin-bottom: 12px;
+}
+
+.diff-chooser-content {
+    color: var(--tp-text-secondary);
+    font-size: 0.9rem;
+}
+
+.diff-inputs {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.diff-inputs label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    color: var(--tp-text-secondary);
+}
+
+.diff-inputs input[type="number"] {
+    width: 80px;
+    padding: 6px 10px;
+    border: 1px solid var(--tp-border-dark);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.submissions-filter-bar {
+    margin-bottom: 16px;
+}
+
+.submission-time-link {
+    color: var(--tp-text-primary);
+    text-decoration: none;
+    font-family: monospace;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.submission-time-link:hover {
+    color: var(--tp-primary);
+}
+
+.submission-status-wrapper {
+    cursor: pointer;
+}
+
+.submission-details {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--tp-bg-light);
+    border-radius: 6px;
+    border: 1px solid var(--tp-border);
+}
+
+.submission-details h3 {
+    margin: 0 0 12px 0;
+    font-size: 0.95rem;
+    color: var(--tp-text-primary);
+}
+
+.compilation-output {
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 4px;
+    padding: 12px;
+    font-size: 0.8rem;
+    overflow-x: auto;
+    max-height: 200px;
+    margin: 0;
+}
+
+.testcases-table {
+    width: 100%;
+    font-size: 0.85rem;
+}
+
+.testcases-table thead th {
+    padding: 8px 12px !important;
+    font-size: 0.75rem;
+}
+
+.testcases-table .list-cell-wrapper {
+    padding: 6px 12px;
+}
+
+.submission-files {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.file-link {
+    color: var(--tp-info);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-family: monospace;
+}
+
+.file-link:hover {
+    color: var(--tp-info-hover);
+    text-decoration: underline;
+}
+
+.latency-value {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--tp-text-secondary);
+}
+
+.submission-comment {
+    font-size: 0.85rem;
+    color: var(--tp-text-secondary);
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Status badges for submissions */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-pending {
+    background-color: var(--tp-info-light);
+    color: var(--tp-info-dark);
+    border: 1px solid var(--tp-info-border);
+}
+
+.status-failed {
+    background-color: var(--tp-danger-light);
+    color: var(--tp-danger-dark);
+    border: 1px solid var(--tp-danger-border);
+}
+
+.status-scored {
+    background-color: var(--tp-success-light);
+    color: var(--tp-success-dark);
+    border: 1px solid #bbf7d0;
+}
+
+/* Empty state box */
+.empty-state-box {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--tp-bg-light);
+    border: 1px dashed var(--tp-border);
+    border-radius: 8px;
+    color: var(--tp-text-muted);
+}
+
+.empty-state-box h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    color: var(--tp-text-secondary);
+}
+
+.empty-state-box p {
+    margin: 0;
+    font-size: 0.9rem;
+}
