@@ -1,45 +1,84 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Training Program</h1>
+<div class="content-constraint">
+
+    <div class="page-title">
+        <h1>Training Program</h1>
+        <div class="page-subtitle">Manage settings for {{ training_program.name }}</div>
+    </div>
+
+    <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program">
+        {{ xsrf_form_html|safe }}
+
+        <!-- Actions (Moved to Top) -->
+        <div class="tp-form-actions tp-form-actions-float" style="margin-bottom: 24px; margin-top: 0; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 12px; padding: 16px 24px;">
+            <div class="tp-form-submit-group">
+                <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>Update Program</button>
+                <input type="reset" class="tp-btn-secondary" value="Reset">
+            </div>
+
+            <a href="{{ url("training_program", training_program.id, "export") }}" class="tp-btn-secondary">
+                <svg class="icon" width="16" height="16"><use href="#icon-download"/></svg>
+                Export all tasks
+            </a>
+        </div>
+
+        <div class="tp-grid-layout">
+
+            <!-- TP Information Card -->
+            <div class="tp-card col-span-12">
+                <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon" width="18" height="18"><use href="#icon-graduation-cap"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">Training Program Information</h3>
+                </div>
+                <div class="tp-card-body">
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="name">
+                            Name
+                            <span class="tp-form-info" title="A short name for the training program, preferably using only letters, numbers and underscores.">?</span>
+                        </label>
+                        <input type="text" id="name" name="name" value="{{ training_program.name }}" class="tp-form-input"/>
+                    </div>
+
+                    <div class="tp-form-group">
+                        <label class="tp-form-label" for="description">
+                            Description
+                            <span class="tp-form-info" title="The name of the training program as seen by users.">?</span>
+                        </label>
+                        <textarea id="description" name="description" class="tp-form-input" rows="3">{{ training_program.description }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            {# Include contest configuration fields #}
+            {% set contest = training_program.managing_contest %}
+            {% with show_folder=false, show_name=false, show_description=false, show_login_section=true, show_analysis_section=false %}
+                {% include "fragments/contest_config_fields.html" %}
+            {% endwith %}
+
+        </div>
+    </form>
+
+    <div style="margin-top: 24px; text-align: right;">
+        {% if admin.permission_all %}
+        <form action="{{ url("training_programs") }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this training program?');">
+            {{ xsrf_form_html|safe }}
+            <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
+            <button type="submit" name="operation" value="Remove" class="tp-btn-remove" {% if not admin.permission_all %}disabled{% endif %}>
+                <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+                Remove Program
+            </button>
+        </form>
+        {% else %}
+        <button type="button" class="tp-btn-remove" disabled title="Read-only" aria-disabled="true">
+            <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+            Remove Program
+        </button>
+        {% endif %}
+    </div>
 </div>
-
-<!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
-<form enctype="multipart/form-data" action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program" style="display:inline;">
-  {{ xsrf_form_html|safe }}
-  <table class="sub_table">
-    <tr><td colspan=2><h2>Training Program Information</h2></td></tr>
-    <tr>
-      <td>
-        <span class="info" title="A short name for the training program, preferably using only letters, numbers and underscores."></span>
-        Name
-      </td>
-      <td><input type="text" name="name" value="{{ training_program.name }}"/></td>
-    </tr>
-    <tr>
-      <td>
-        <span class="info" title="The name of the training program as seen by users."></span>
-        Description
-      </td>
-      <td><textarea name="description">{{ training_program.description }}</textarea></td>
-    </tr>
-
-    {# Include contest configuration fields for the managing contest #}
-    {% set contest = training_program.managing_contest %}
-    {% with show_folder=false, show_name=false, show_description=false, show_login_section=true, show_analysis_section=false %}
-      {% include "fragments/contest_config_fields.html" %}
-    {% endwith %}
-  </table>
-  <input type="submit" value="Update"{% if not admin.permission_all %} disabled{% endif %}/>
-  <input type="reset" value="Reset">
-  <a href="{{ url("training_program", training_program.id, "export") }}"> ⇩ Export all tasks </a>
-</form>
-
-<form action="{{ url("training_programs") }}" method="POST" style="display:inline;">
-  {{ xsrf_form_html|safe }}
-  <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
-  <input type="submit" name="operation" value="Remove" style="float: right;"/>
-</form>
 
 {% endblock core %}

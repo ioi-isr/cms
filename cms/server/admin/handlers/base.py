@@ -446,13 +446,8 @@ class BaseHandler(CommonRequestHandler):
         if self.current_user is not None:
             params["admin"] = self.current_user
         if self.contest is not None:
-            params["unanswered"] = (
-                self.sql_session.query(Question)
-                .join(Participation)
-                .filter(Participation.contest_id == self.contest.id)
-                .filter(Question.reply_timestamp.is_(None))
-                .filter(Question.ignored.is_(False))
-                .count()
+            params["unanswered"] = count_unanswered_questions(
+                self.sql_session, self.contest.id
             )
             params["unanswered_delay_requests"] = (
                 self.sql_session.query(DelayRequest)
@@ -535,15 +530,10 @@ class BaseHandler(CommonRequestHandler):
         Returns:
             The initialized r_params dict.
         """
-        managing_contest = training_program.managing_contest
+        self.contest = training_program.managing_contest
         self.r_params = self.render_params()
         self.r_params["training_program"] = training_program
-        self.r_params["contest"] = managing_contest
-
-        # Count unanswered questions for the managing contest (used in sidebar)
-        self.r_params["unanswered"] = count_unanswered_questions(
-            self.sql_session, managing_contest.id
-        )
+        self.r_params["contest"] = self.contest
 
         # Add notification counts for training days
         (
