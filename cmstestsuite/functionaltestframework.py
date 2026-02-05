@@ -241,9 +241,9 @@ class FunctionalTestFramework:
         # Contest ID is returned as HTTP response.
         page = resp.text
         match = re.search(
-            r'<form enctype="multipart/form-data" '
-            r'action="../contest/([0-9]+)" '
-            r'method="POST" name="edit_contest" style="display:inline;">',
+            r'<form(?=[^>]*\bname=["\']edit_contest["\'])'
+            r'(?=[^>]*\baction=["\'][^"\']*contest/([0-9]+))'
+            r'[^>]*>',
             page)
         if match is not None:
             contest_id = int(match.groups()[0])
