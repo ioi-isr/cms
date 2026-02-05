@@ -246,15 +246,13 @@ class TrainingProgramHandler(BaseHandler):
         self.redirect(fallback)
 
 
-class AddTrainingProgramHandler(
-    SimpleHandler("add_training_program.html", permission_all=True)
-):
+class AddTrainingProgramHandler(BaseHandler):
     """Add a new training program."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self):
-        self.r_params = self.render_params()
-        self.render("add_training_program.html", **self.r_params)
+        # Redirect to training programs page with modal open
+        self.redirect(self.url("training_programs") + "?open_modal=add-program")
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):

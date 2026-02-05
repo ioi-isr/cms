@@ -144,6 +144,7 @@
 
 .modal__form-group input[type="text"],
 .modal__form-group input[type="number"],
+.modal__form-group input[type="datetime-local"],
 .modal__form-group textarea,
 .modal__form-group select {
     width: 100%;

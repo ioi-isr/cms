@@ -265,25 +265,11 @@ class AddTrainingDayHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-
-        self.render_params_for_training_program(training_program)
-
-        # Get all student tags for the tagify select dropdown
-        tags_query = self.sql_session.query(
-            func.unnest(Student.student_tags).label("tag")
-        ).filter(
-            Student.training_program_id == training_program.id
-        ).distinct()
-        self.r_params["all_student_tags"] = sorted([row.tag for row in tags_query.all()])
-
-        # Add timezone info for the form (use managing contest timezone)
-        tz = get_timezone(None, managing_contest)
-        self.r_params["timezone"] = tz
-        self.r_params["timezone_name"] = get_timezone_name(tz)
-
-        self.render("add_training_day.html", **self.r_params)
+        # Redirect to training days page with modal open
+        self.redirect(
+            self.url("training_program", training_program_id, "training_days")
+            + "?open_modal=add-training-day"
+        )
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str):
