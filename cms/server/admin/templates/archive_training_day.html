@@ -1,90 +1,93 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Archive Training Day: {{ contest.name }}</h1>
-</div>
+{% set back_url = url("training_program", training_program.id, "training_days") %}
+<div class="modal is-open" id="modal-archive-training-day" aria-hidden="false">
+    <div class="modal__overlay" tabindex="-1" onclick="if(event.target===this) window.location='{{ back_url }}';">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-archive-td-title">
+            <header class="modal__header modal__header--danger">
+                <h2 class="modal__title" id="modal-archive-td-title">Archive Training Day: {{ contest.name }}</h2>
+                <button class="modal__close" aria-label="Close modal" onclick="window.location='{{ back_url }}';">&times;</button>
+            </header>
+            <form action="{{ url("training_program", training_program.id, "training_day", training_day.id, "archive") }}" method="POST">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    <div class="modal__warning" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                        <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">
+                            <svg class="icon" width="16" height="16" style="vertical-align: middle; margin-right: 4px;"><use href="#icon-alert-triangle"/></svg>
+                            Warning: Archiving will permanently delete the contest!
+                        </p>
+                        <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.9rem;">
+                            <li>Extract and save attendance data (participation status, location, delay time, delay reasons)</li>
+                            <li>Extract and save ranking data (scores, score history)</li>
+                            <li>Save the training day name and description</li>
+                            <li><strong>Delete the contest and all participations permanently</strong></li>
+                        </ul>
+                        <p style="margin: 8px 0 0 0; color: #991b1b; font-weight: 600; font-size: 0.85rem;">This action cannot be undone.</p>
+                    </div>
 
-<p>
-  <a href="{{ url("training_program", training_program.id, "training_days") }}">&larr; Back to training days</a>
-</p>
+                    {% if users_not_finished %}
+                    <div class="modal__warning" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                        <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">Some students can still start or are currently in the training!</p>
+                        <p style="margin: 0 0 8px 0; color: #7f1d1d; font-size: 0.9rem;">The following {{ users_not_finished|length }} student(s) have not finished or missed the training yet:</p>
+                        <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.85rem;">
+                            {% for item in users_not_finished %}
+                            <li>
+                                <strong>{{ item.participation.user.first_name }} {{ item.participation.user.last_name }}</strong>
+                                ({{ item.participation.user.username }}) - {{ item.status_label }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <p style="margin: 8px 0 0 0; color: #7f1d1d; font-size: 0.85rem;">Archiving now will mark these students as "missed" and they will not be able to participate.</p>
+                    </div>
+                    {% endif %}
 
-<div class="notification notification_warning">
-  <strong>Warning:</strong> Archiving a training day will:
-  <ul>
-    <li>Extract and save attendance data (participation status, location, delay time, delay reasons)</li>
-    <li>Extract and save ranking data (scores, score history)</li>
-    <li>Save the training day name and description</li>
-    <li><strong>Delete the contest and all participations permanently</strong></li>
-  </ul>
-  This action cannot be undone.
-</div>
+                    <div style="margin-bottom: 16px;">
+                        <p style="margin-bottom: 8px; font-weight: 500;">Select Class IPs</p>
+                        <p style="margin-bottom: 12px; font-size: 0.85rem; color: var(--tp-text-secondary);">
+                            Select the IP addresses that correspond to the classroom. Students who participated from these IPs
+                            will be marked as "class", others as "home". If a student used both class and non-class IPs,
+                            they will be marked as "both".
+                        </p>
+                        {% if shared_ips %}
+                        <table class="bordered" style="width: 100%; font-size: 0.9rem;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">Select</th>
+                                    <th>IP Address</th>
+                                    <th>Student Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ip, count in shared_ips.items() | sort(attribute='1', reverse=true) %}
+                                <tr>
+                                    <td><input type="checkbox" name="class_ips" value="{{ ip }}" /></td>
+                                    <td>{{ ip }}</td>
+                                    <td>{{ count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p style="font-size: 0.85rem; color: var(--tp-text-muted); font-style: italic;">No shared IP addresses found (no IP with more than one student).</p>
+                        {% endif %}
+                    </div>
 
-<form action="{{ url("training_program", training_program.id, "training_day", training_day.id, "archive") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-
-  <h2>Select Class IPs</h2>
-  <p>
-    Select the IP addresses that correspond to the classroom. Students who participated from these IPs
-    will be marked as "class", others as "home". If a student used both class and non-class IPs,
-    they will be marked as "both".
-  </p>
-
-  {% if shared_ips %}
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th>Select</th>
-        <th>IP Address</th>
-        <th>Student Count</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for ip, count in shared_ips.items() | sort(attribute='1', reverse=true) %}
-      <tr>
-        <td>
-          <input type="checkbox" name="class_ips" value="{{ ip }}" />
-        </td>
-        <td>{{ ip }}</td>
-        <td>{{ count }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p><em>No shared IP addresses found (no IP with more than one student).</em></p>
-  {% endif %}
-
-  <h2>Confirm Archive</h2>
-
-  {% if users_not_finished %}
-  <div class="notification notification_warning" style="margin-bottom: 15px;">
-    <p><strong>Warning: Some students can still start or are currently in the training!</strong></p>
-    <p>The following {{ users_not_finished|length }} student(s) have not finished or missed the training yet:</p>
-    <ul style="margin-top: 8px; margin-bottom: 8px;">
-      {% for item in users_not_finished %}
-      <li>
-        <strong>{{ item.participation.user.first_name }} {{ item.participation.user.last_name }}</strong>
-        ({{ item.participation.user.username }}) - {{ item.status_label }}
-      </li>
-      {% endfor %}
-    </ul>
-    <p>Archiving now will mark these students as "missed" and they will not be able to participate.</p>
-  </div>
-  {% endif %}
-
-  <p>
-    <label>
-      <input type="checkbox" name="confirm_archive" required />
-      I understand this action is irreversible and will permanently delete the contest
-    </label>
-  </p>
-  <p>
-    <input type="submit" value="Archive Training Day"
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" name="confirm_archive" required style="margin-top: 3px;" />
+                        I understand this action is irreversible and will permanently delete the contest
+                    </label>
+                </main>
+                <footer class="modal__footer">
+                    <a href="{{ back_url }}" class="tp-btn-secondary" style="text-decoration: none;">Cancel</a>
+                    <button type="submit" class="tp-btn-danger"
 {% if not admin.permission_all %}
-           disabled
+                        disabled
 {% endif %}
-    />
-  </p>
-</form>
+                    >Archive Training Day</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock core %}

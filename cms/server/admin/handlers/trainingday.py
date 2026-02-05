@@ -431,36 +431,10 @@ class RemoveTrainingDayHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str, training_day_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        training_day = self.safe_get_item(TrainingDay, training_day_id)
-
-        if training_day.training_program_id != training_program.id:
-            raise tornado.web.HTTPError(404)
-
-        self.render_params_for_training_program(training_program)
-        self.r_params["training_day"] = training_day
-        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
-
-        # Stats for warning message
-        self.r_params["task_count"] = len(training_day.tasks)
-        # For archived training days, contest_id is None so counts are 0
-        if training_day.contest_id is not None:
-            self.r_params["participation_count"] = (
-                self.sql_session.query(Participation)
-                .filter(Participation.contest_id == training_day.contest_id)
-                .count()
-            )
-            self.r_params["submission_count"] = (
-                self.sql_session.query(Submission)
-                .join(Participation)
-                .filter(Participation.contest_id == training_day.contest_id)
-                .count()
-            )
-        else:
-            self.r_params["participation_count"] = 0
-            self.r_params["submission_count"] = 0
-
-        self.render("training_day_remove.html", **self.r_params)
+        self.redirect(
+            self.url("training_program", training_program_id, "training_days")
+            + "?open_modal=remove-training-day-" + training_day_id
+        )
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str, training_day_id: str):

@@ -246,12 +246,18 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                     <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
                                 </a>
                                 <!-- Remove button -->
-                                <a href="{{ url("training_program", training_program.id, "training_day", td.id, "remove") }}"
-                                   class="btn-icon-only"
-                                   {% if not admin.permission_all %}style="pointer-events: none; opacity: 0.5;"{% endif %}
+                                <button type="button" class="btn-icon-only"
+                                   {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
+                                   onclick="openRemoveTrainingDayModal(this); return false;"
+                                   data-td-name="{{ td.contest.name }}"
+                                   data-remove-url="{{ url('training_program', training_program.id, 'training_day', td.id, 'remove') }}"
+                                   data-participation-count="{{ td.contest.participations|length }}"
+                                   data-submission-count="{{ td.contest.submissions|length }}"
+                                   data-task-count="{{ td.tasks|length }}"
+                                   data-is-archived="false"
                                    title="Remove training day">
                                     <svg class="icon" width="18" height="18"><use href="#icon-trash"/></svg>
-                                </a>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -1016,7 +1022,100 @@ function saveScoreboardSharing(){
 
 // Save button click handler
 document.getElementById('save-scoreboard-sharing-btn').addEventListener('click', saveScoreboardSharing);
+
+// Remove Training Day Modal
+var currentRemoveTdUrl = null;
+
+function openRemoveTrainingDayModal(btn) {
+    var name = btn.getAttribute('data-td-name');
+    var removeUrl = btn.getAttribute('data-remove-url');
+    var participationCount = parseInt(btn.getAttribute('data-participation-count')) || 0;
+    var submissionCount = parseInt(btn.getAttribute('data-submission-count')) || 0;
+    var taskCount = parseInt(btn.getAttribute('data-task-count')) || 0;
+    var isArchived = btn.getAttribute('data-is-archived') === 'true';
+
+    currentRemoveTdUrl = removeUrl;
+
+    document.getElementById('remove-td-name').textContent = name;
+
+    var warningEl = document.getElementById('remove-td-warning');
+    if (isArchived) {
+        warningEl.innerHTML = '<strong>Note:</strong> This training day has been archived. The contest has already been deleted.<br>This operation cannot be undone.';
+    } else {
+        warningEl.innerHTML = '<strong>Warning:</strong> This will remove ' + participationCount + ' participation(s) and ' + submissionCount + ' submission(s) from the training day contest.<br>This operation cannot be undone.';
+    }
+
+    var taskNote = document.getElementById('remove-td-task-note');
+    if (taskCount > 0) {
+        taskNote.style.display = 'block';
+        taskNote.innerHTML = 'The training day has ' + taskCount + ' task(s) assigned. These tasks will remain in the training program but will no longer be assigned to any training day.';
+    } else {
+        taskNote.style.display = 'none';
+    }
+
+    MicroModal.show('modal-remove-training-day');
+}
+
+var confirmRemoveTdBtn = document.getElementById('confirm-remove-td-btn');
+if (confirmRemoveTdBtn) {
+    confirmRemoveTdBtn.addEventListener('click', function() {
+        var xsrfInput = document.querySelector('input[name="_xsrf"]');
+        if (!xsrfInput) {
+            alert('Missing XSRF token');
+            return;
+        }
+        fetch(currentRemoveTdUrl, {
+            method: 'DELETE',
+            headers: { 'X-XSRFToken': xsrfInput.value }
+        }).then(function(response) {
+            if (response.ok) return response.text();
+            throw new Error('Failed to remove training day');
+        }).then(function() {
+            window.location.reload();
+        }).catch(function(error) {
+            alert('Error: ' + error.message);
+        });
+    });
+}
+
+// Auto-open modal from URL parameter
+(function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var openModal = urlParams.get('open_modal');
+    if (openModal && openModal.startsWith('remove-training-day-')) {
+        var tdId = openModal.replace('remove-training-day-', '');
+        var btn = document.querySelector('button[data-remove-url*="/training_day/' + tdId + '/remove"]');
+        if (btn) openRemoveTrainingDayModal(btn);
+        urlParams.delete('open_modal');
+        history.replaceState(null, '', window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : ''));
+    }
+})();
 </script>
+
+<!-- Remove Training Day Modal -->
+{% if admin.permission_all %}
+<div class="modal modal--medium" id="modal-remove-training-day" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-remove-td-title">
+            <header class="modal__header modal__header--danger">
+                <h2 class="modal__title" id="modal-remove-td-title">Remove Training Day</h2>
+                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+            </header>
+            <main class="modal__content">
+                <p style="margin-bottom: 16px;">Are you sure you want to remove the training day <strong id="remove-td-name"></strong>?</p>
+                <div class="modal__warning" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                    <p style="margin: 0; color: #991b1b; font-size: 0.9rem;" id="remove-td-warning"></p>
+                </div>
+                <p id="remove-td-task-note" style="display: none; margin-bottom: 0; font-size: 0.9rem;"></p>
+            </main>
+            <footer class="modal__footer">
+                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                <button type="button" class="tp-btn-danger" id="confirm-remove-td-btn">Yes, Remove Training Day</button>
+            </footer>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% endblock core %}
 

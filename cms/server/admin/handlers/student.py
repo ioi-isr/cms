@@ -288,51 +288,10 @@ class RemoveTrainingProgramStudentHandler(StudentBaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str, user_id: str):
-        self.setup_student_context(training_program_id, user_id)
-        training_program = self.training_program
-        participation = self.participation
-        user = participation.user
-
-        # Use the helper to set up training program params first
-        # (this initializes r_params, so it must come before render_params_for_remove_confirmation)
-        self.render_params_for_training_program(training_program)
-        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
-        self.r_params["user"] = user
-
-        # Now add submission count (this adds to existing r_params)
-        submission_query = (
-            self.sql_session.query(Submission)
-            .filter(Submission.participation == participation)
+        self.redirect(
+            self.url("training_program", training_program_id, "students")
+            + "?open_modal=remove-student-" + user_id
         )
-        self.render_params_for_remove_confirmation(submission_query)
-
-        # Count submissions and participations from training days
-        training_day_contest_ids = [td.contest_id for td in training_program.training_days]
-        training_day_contest_ids = [
-            cid for cid in training_day_contest_ids if cid is not None
-        ]
-
-        if training_day_contest_ids:
-            training_day_participations = (
-                self.sql_session.query(Participation)
-                .filter(Participation.contest_id.in_(training_day_contest_ids))
-                .filter(Participation.user == user)
-                .count()
-            )
-            training_day_submissions = (
-                self.sql_session.query(Submission)
-                .join(Participation)
-                .filter(Participation.contest_id.in_(training_day_contest_ids))
-                .filter(Participation.user == user)
-                .count()
-            )
-        else:
-            training_day_participations = 0
-            training_day_submissions = 0
-
-        self.r_params["training_day_submissions"] = training_day_submissions
-        self.r_params["training_day_participations"] = training_day_participations
-        self.render("training_program_student_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str, user_id: str):
