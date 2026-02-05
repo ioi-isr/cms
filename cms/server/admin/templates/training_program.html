@@ -64,14 +64,10 @@
 
     <div style="margin-top: 24px; text-align: right;">
         {% if admin.permission_all %}
-        <form action="{{ url("training_programs") }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this training program?');">
-            {{ xsrf_form_html|safe }}
-            <input type="hidden" name="training_program_id" value="{{ training_program.id }}"/>
-            <button type="submit" name="operation" value="Remove" class="tp-btn-remove" {% if not admin.permission_all %}disabled{% endif %}>
-                <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
-                Remove Program
-            </button>
-        </form>
+        <button type="button" class="tp-btn-remove" onclick="MicroModal.show('modal-remove-program')">
+            <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+            Remove Program
+        </button>
         {% else %}
         <button type="button" class="tp-btn-remove" disabled title="Read-only" aria-disabled="true">
             <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
@@ -80,5 +76,21 @@
         {% endif %}
     </div>
 </div>
+
+{% include "fragments/modal_remove_training_program.html" %}
+
+<script>
+(function() {
+    // Auto-open remove modal if URL has open_modal=remove-program parameter
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('open_modal') === 'remove-program') {
+        MicroModal.show('modal-remove-program');
+        // Clean up URL
+        urlParams.delete('open_modal');
+        var newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+    }
+})();
+</script>
 
 {% endblock core %}
