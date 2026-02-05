@@ -133,86 +133,80 @@
     {% endif %}
 </div>
 
-<!-- Remove Task Modal -->
-<div id="remove-task-modal" class="bulk-assign-modal" style="display: none;">
-    <div class="bulk-assign-modal-content" style="max-width: 500px;">
-        <div class="bulk-assign-modal-header">
-            <h2>Remove Task</h2>
-            <button type="button" class="bulk-assign-close-btn" onclick="closeRemoveModal()">&times;</button>
-        </div>
-        <p id="remove-modal-message" style="color: var(--tp-text-secondary); margin-bottom: 16px;"></p>
-        <div id="remove-modal-warning" style="display: none; background: var(--tp-warning-light); border: 1px solid #fde68a; border-radius: 6px; padding: 12px; margin-bottom: 16px; color: var(--tp-warning-dark);">
-            <strong>Warning:</strong> <span id="remove-modal-warning-text"></span>
-        </div>
-        <p style="color: var(--tp-text-muted); font-size: 0.9rem; margin-bottom: 20px;">This operation cannot be undone.</p>
-        <div class="tp-form-actions">
-            <button type="button" class="tp-btn-secondary" onclick="closeRemoveModal()">Cancel</button>
-            {% if admin.permission_all %}
-            <button type="button" class="tp-btn-primary" style="background: var(--tp-danger); border-color: var(--tp-danger);" onclick="confirmRemoveTask()">Yes, Remove</button>
-            {% endif %}
+<!-- Remove Task Modal (Micromodal) -->
+<div class="modal" id="modal-remove-task" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-remove-task-title">
+            <header class="modal__header">
+                <h2 class="modal__title" id="modal-remove-task-title">Remove Task</h2>
+                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+            </header>
+            <main class="modal__content">
+                <p id="remove-modal-message"></p>
+                <div id="remove-modal-warning" class="modal__warning" style="display: none;">
+                    <strong>Warning:</strong> <span id="remove-modal-warning-text"></span>
+                </div>
+                <p style="color: var(--tp-text-muted); font-size: 0.9rem;">This operation cannot be undone.</p>
+            </main>
+            <footer class="modal__footer">
+                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                {% if admin.permission_all %}
+                <button type="button" class="tp-btn-primary" style="background: var(--tp-danger); border-color: var(--tp-danger);" id="confirm-remove-btn">Yes, Remove</button>
+                {% endif %}
+            </footer>
         </div>
     </div>
 </div>
 
 <script>
-// Remove task modal
-var currentRemoveTaskId = null;
-var programName = {{ training_program.name | tojson }};
+(function() {
+    var currentRemoveTaskId = null;
+    var programName = {{ training_program.name | tojson }};
 
-function openRemoveModal(taskId, taskName, hasTrainingDay, trainingDayName, isActive) {
-    currentRemoveTaskId = taskId;
-    var modal = document.getElementById('remove-task-modal');
-    var message = document.getElementById('remove-modal-message');
-    var warning = document.getElementById('remove-modal-warning');
-    var warningText = document.getElementById('remove-modal-warning-text');
+    function openRemoveModal(taskId, taskName, hasTrainingDay, trainingDayName, isActive) {
+        currentRemoveTaskId = taskId;
+        var message = document.getElementById('remove-modal-message');
+        var warning = document.getElementById('remove-modal-warning');
+        var warningText = document.getElementById('remove-modal-warning-text');
 
-    message.textContent = 'Are you sure you want to remove task "' + taskName + '" from training program "' + programName + '"?';
+        message.textContent = 'Are you sure you want to remove task "' + taskName + '" from training program "' + programName + '"?';
 
-    if (hasTrainingDay && trainingDayName) {
-        warning.style.display = 'block';
-        if (isActive) {
-            warningText.textContent = 'This task is also assigned to training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+        if (hasTrainingDay && trainingDayName) {
+            warning.style.display = 'block';
+            if (isActive) {
+                warningText.textContent = 'This task is also assigned to training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+            } else {
+                warningText.textContent = 'This task is also assigned to archived training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+            }
         } else {
-            warningText.textContent = 'This task is also assigned to archived training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+            warning.style.display = 'none';
         }
-    } else {
-        warning.style.display = 'none';
+
+        MicroModal.show('modal-remove-task');
     }
 
-    modal.style.display = 'flex';
-}
-
-document.querySelectorAll('.remove-task-btn').forEach(function(button) {
-    button.addEventListener('click', function() {
-        openRemoveModal(
-            this.dataset.taskId,
-            this.dataset.taskName,
-            this.dataset.hasTrainingDay === 'true',
-            this.dataset.trainingDayName || null,
-            this.dataset.isActive === 'true'
-        );
+    document.querySelectorAll('.remove-task-btn').forEach(function(button) {
+        button.addEventListener('click', function() {
+            openRemoveModal(
+                this.dataset.taskId,
+                this.dataset.taskName,
+                this.dataset.hasTrainingDay === 'true',
+                this.dataset.trainingDayName || null,
+                this.dataset.isActive === 'true'
+            );
+        });
     });
-});
 
-function closeRemoveModal() {
-    var modal = document.getElementById('remove-task-modal');
-    modal.style.display = 'none';
-    currentRemoveTaskId = null;
-}
-
-function confirmRemoveTask() {
-    if (currentRemoveTaskId) {
-        CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id) }}/task/' + currentRemoveTaskId + '/remove');
+    // Confirm remove button handler
+    var confirmBtn = document.getElementById('confirm-remove-btn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            if (currentRemoveTaskId) {
+                CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id) }}/task/' + currentRemoveTaskId + '/remove');
+            }
+            MicroModal.close('modal-remove-task');
+        });
     }
-    closeRemoveModal();
-}
-
-// Close modal when clicking outside
-document.getElementById('remove-task-modal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeRemoveModal();
-    }
-});
 
 // Drag and drop reordering using shared utility
 AdminTableUtils.initDragDropReorder({
@@ -241,10 +235,10 @@ AdminTableUtils.initDragDropReorder({
     }
 });
 
-// Table sorting using CMS.AWSUtils
-$(document).ready(function() {
-    // Enable sorting for tasks table but don't sort by default (use -1 to prevent initial sorting)
-    CMS.AWSUtils.init_table_sort($("#tasks-table"), false, -1);
-});
+    // Table sorting using CMS.AWSUtils
+    $(document).ready(function() {
+        CMS.AWSUtils.init_table_sort($("#tasks-table"), false, -1);
+    });
+})();
 </script>
 {% endblock core %}

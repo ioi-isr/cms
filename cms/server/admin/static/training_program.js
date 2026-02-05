@@ -63,7 +63,7 @@ CMS.TrainingProgram.init = function(options) {
  * Sets up Tagify for filtering and event listeners for closing.
  */
 CMS.TrainingProgram.initHistogramModal = function() {
-    var modal = document.getElementById('histogramModal');
+    var modal = document.getElementById('modal-histogram');
     if (!modal) return;
 
     CMS.TrainingProgram._histogramModal = modal;
@@ -87,18 +87,6 @@ CMS.TrainingProgram.initHistogramModal = function() {
             }
         });
     }
-
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            CMS.TrainingProgram.closeHistogramModal();
-        }
-    });
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.style.display === 'flex') {
-            CMS.TrainingProgram.closeHistogramModal();
-        }
-    });
 };
 
 
@@ -138,7 +126,11 @@ CMS.TrainingProgram.openHistogramModal = function(scores, title, type, trainingD
         tagify.removeAllTags();
     }
 
-    modal.style.display = 'flex';
+    MicroModal.show('modal-histogram', {
+        onClose: function() {
+            CMS.TrainingProgram._currentHistogramData = null;
+        }
+    });
     CMS.TrainingProgram._renderHistogram(scores, title, type);
 };
 
@@ -147,11 +139,7 @@ CMS.TrainingProgram.openHistogramModal = function(scores, title, type, trainingD
  * Close the histogram modal.
  */
 CMS.TrainingProgram.closeHistogramModal = function() {
-    var modal = CMS.TrainingProgram._histogramModal;
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    CMS.TrainingProgram._currentHistogramData = null;
+    MicroModal.close('modal-histogram');
 };
 
 
