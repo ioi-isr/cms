@@ -3011,8 +3011,3 @@
     color: var(--tp-success-dark);
     border: 1px solid #bbf7d0;
 }
-
-.status-unknown {
-    background-color: var(--tp-bg-gray);
-    color: var(--tp-text-light);
-}
