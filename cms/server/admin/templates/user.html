@@ -1,182 +1,267 @@
 {% extends "base.html" %}
 
 {% block core %}
-<h1>{{ user.first_name }} {{ user.last_name }} ({{ user.username }})</h1>
+<div class="content-constraint" style="max-width: 1000px;">
+    <!-- Header -->
+    <div class="page-title" style="margin-bottom: 24px;">
+        <h1>{{ user.first_name }} {{ user.last_name }}</h1>
+        <div class="page-subtitle">
+            Username: <strong>{{ user.username }}</strong>
+        </div>
+    </div>
 
-<h2 id="title_training_programs" class="toggling_on">Training Program Participations</h2>
-<div id="training_programs">
-  {% if training_program_participations|length == 0 %}
-  <p>No training program participations found.</p>
-  {% else %}
-  <p><em>Training program participations are managed via the training program interface. Use "Remove from training program" to remove a student.</em></p>
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th>Participation</th>
-        <th>Training Program</th>
-        <th>Description</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in training_program_participations %}
-      <tr>
-        <td><a href="{{ url("training_program", p.contest.training_program.id, "student", p.user.id, "edit") }}">{{ p.user.username }}</a></td>
-        <td><a href="{{ url("training_program", p.contest.training_program.id) }}">{{ p.contest.training_program.name }}</a></td>
-        <td>{{ p.contest.training_program.description }}</td>
-        <td>
-          <a href="{{ url("training_program", p.contest.training_program.id, "student", p.user.id, "remove") }}" onclick="return confirm('Remove {{ p.user.username }} from training program {{ p.contest.training_program.name }}? This will also remove all training day participations.');">Remove from training program</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-  <div class="hr"></div>
+    <!-- Training Program Participations Section -->
+    <div class="tp-section-header">
+        <h2 id="title_training_programs" class="toggling_on">Training Program Participations</h2>
+    </div>
+    <div id="training_programs">
+        {% if training_program_participations|length == 0 %}
+        <div class="empty-state-box">
+            <h3>No training program participations</h3>
+            <p>This user is not enrolled in any training programs.</p>
+        </div>
+        {% else %}
+        <div class="tp-filter-card" style="margin-bottom: 16px;">
+            <span style="color: var(--tp-text-secondary);"><em>Training program participations are managed via the training program interface. Use "Remove from training program" to remove a student.</em></span>
+        </div>
+        <div class="tp-table-container">
+            <table class="ranking-table">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Participation</th>
+                        <th style="text-align: left;">Training Program</th>
+                        <th style="text-align: left;">Description</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in training_program_participations %}
+                    <tr>
+                        <td>
+                            <div class="list-cell-wrapper">
+                                <a href="{{ url("training_program", p.contest.training_program.id, "student", p.user.id, "edit") }}" class="student-name-link">{{ p.user.username }}</a>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="list-cell-wrapper">
+                                <a href="{{ url("training_program", p.contest.training_program.id) }}" class="student-name-link">{{ p.contest.training_program.name }}</a>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="list-cell-wrapper">{{ p.contest.training_program.description }}</div>
+                        </td>
+                        <td class="text-center">
+                            <div class="list-cell-wrapper center-content">
+                                <a href="{{ url("training_program", p.contest.training_program.id, "student", p.user.id, "remove") }}" class="btn-icon-only" onclick="return confirm('Remove {{ p.user.username }} from training program {{ p.contest.training_program.name }}? This will also remove all training day participations.');" title="Remove from training program">
+                                    <svg class="icon" width="18" height="18"><use href="#icon-trash"/></svg>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Contest Participations Section -->
+    <div class="tp-section-header" style="margin-top: 32px;">
+        <h2 id="title_participations" class="toggling_on">Contest Participations</h2>
+    </div>
+    <div id="participations">
+        <div class="tp-filter-card" style="margin-bottom: 16px;">
+            <form action="{{ url("user", user.id, "add_participation") }}" method="POST" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                {{ xsrf_form_html|safe }}
+                <span style="color: var(--tp-text-secondary);">Add participation:</span>
+                <select name="contest_id" class="searchable-select" style="min-width: 200px;">
+                    <option value="" selected disabled hidden>Select a contest...</option>
+                    {% for c in unassigned_contests %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+                <label style="display: flex; align-items: center; gap: 4px;">
+                    <input type="checkbox" name="hidden" id="hidden" /> Hidden
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px;">
+                    <input type="checkbox" name="unrestricted" id="unrestricted" /> Unrestricted
+                </label>
+                <button type="submit" class="tp-btn-primary">Add</button>
+            </form>
+        </div>
+
+        {% if participations|length == 0 %}
+        <div class="empty-state-box">
+            <h3>No contest participations</h3>
+            <p>This user is not participating in any contests.</p>
+        </div>
+        {% else %}
+        <form action="{{ url("user", user.id, "edit_participation") }}" method="POST" onsubmit="return confirm('Are you sure you want to remove this participation?');">
+            {{ xsrf_form_html|safe }}
+            <div class="tp-table-container">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 40px;"></th>
+                            <th style="text-align: left;">Participation</th>
+                            <th class="text-center">Hidden</th>
+                            <th class="text-center">Unrestricted</th>
+                            <th style="text-align: left;">Contest</th>
+                            <th style="text-align: left;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in participations %}
+                        <tr>
+                            <td class="text-center">
+                                <div class="list-cell-wrapper center-content">
+                                    <input type="radio" name="contest_id" value="{{ p.contest.id }}"/>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="list-cell-wrapper">
+                                    <a href="{{ url("contest", p.contest.id, "user", p.user.id, "edit") }}" class="student-name-link">{{ p.user.username }}</a>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="list-cell-wrapper center-content">
+                                    {% if p.hidden %}
+                                    <span class="badge-pill badge-slate">Yes</span>
+                                    {% else %}
+                                    <span class="badge-pill badge-teal">No</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="list-cell-wrapper center-content">
+                                    {% if p.unrestricted %}
+                                    <span class="badge-pill badge-teal">Yes</span>
+                                    {% else %}
+                                    <span class="badge-pill badge-slate">No</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="list-cell-wrapper">
+                                    <a href="{{ url("contest", p.contest.id) }}" class="student-name-link">{{ p.contest.name }}</a>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="list-cell-wrapper">{{ p.contest.description }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-actions" style="margin-top: 16px;">
+                <button type="submit" name="operation" value="Remove" class="btn-outline" style="color: var(--tp-danger-dark);">Remove Selected</button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Password Reset Section -->
+    <div class="tp-section-header" style="margin-top: 32px;">
+        <h2 id="title_password_reset" class="toggling_on">Password Reset</h2>
+    </div>
+    <div id="password_reset">
+        {% if user.password_reset_pending %}
+        <div class="tp-filter-card" style="background-color: var(--tp-warning-light); border-color: var(--tp-warning-border); margin-bottom: 16px;">
+            <div style="width: 100%;">
+                <strong style="color: var(--tp-warning-dark);">Pending Password Reset</strong>
+                <p style="margin: 8px 0; color: var(--tp-text-secondary);">This user has submitted a password reset request that is awaiting approval.</p>
+                <div style="display: flex; gap: 12px;">
+                    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Approve password reset for ' + {{ user.username|tojson }} + '?');">
+                        {{ xsrf_form_html|safe }}
+                        <button type="submit" class="tp-btn-primary">Approve Reset</button>
+                    </form>
+                    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Deny password reset for ' + {{ user.username|tojson }} + '?');">
+                        {{ xsrf_form_html|safe }}
+                        <button type="submit" class="btn-outline" style="color: var(--tp-danger-dark);">Deny Reset</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if user.password_reset_token and user.password_reset_token_expires %}
+        <div class="tp-filter-card" style="background-color: var(--tp-info-light); border-color: var(--tp-info-border); margin-bottom: 16px;">
+            <div style="width: 100%;">
+                <strong style="color: var(--tp-info-dark);">Active Password Reset Token</strong>
+                <p style="margin: 8px 0; color: var(--tp-text-secondary);">A password reset link is active for this user. Copy and share the reset URL below if email delivery failed.</p>
+                <div class="tp-table-container" style="margin: 12px 0;">
+                    <table class="ranking-table form-table">
+                        <tbody>
+                            <tr>
+                                <td class="form-label"><strong>Reset URL:</strong></td>
+                                <td>
+                                    <div class="list-cell-wrapper">
+                                        {% if participations|length > 0 %}
+                                        <code style="word-break: break-all; background: var(--tp-bg-white); padding: 4px 8px; border-radius: 4px;">/{{ participations[0].contest.name }}/password_reset_confirm/{{ user.password_reset_token }}</code>
+                                        <br><small style="color: var(--tp-text-lighter);">(Relative path - prepend your CWS server address, e.g., https://your-cws-server.com)
+                                        {% if participations|length > 1 %}
+                                        <br>Note: This user participates in multiple contests. The reset URL works for any contest they're registered in.
+                                        {% endif %}
+                                        </small>
+                                        {% else %}
+                                        <div style="padding: 8px; background-color: var(--tp-warning-light); border: 1px solid var(--tp-warning-border); border-radius: 4px;">
+                                            <strong>Note:</strong> This user has no contest participations. Password reset links require a contest context.
+                                            <br>Please add a participation for this user first, then the reset URL will be available.
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="form-label"><strong>Expires:</strong></td>
+                                <td><div class="list-cell-wrapper">{{ user.password_reset_token_expires|format_datetime }}</div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <form action="{{ url("user", user.id, "clear_reset_token") }}" method="POST" style="display:inline;">
+                    {{ xsrf_form_html|safe }}
+                    <button type="submit" class="btn-outline" style="color: var(--tp-warning-dark);">Clear Token</button>
+                </form>
+            </div>
+        </div>
+        {% elif not user.password_reset_pending %}
+        <div class="empty-state-box">
+            <h3>No password reset</h3>
+            <p>No active password reset token or pending reset for this user.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- General Information Section -->
+    <div class="tp-section-header" style="margin-top: 32px;">
+        <h2 id="title_general_info" class="toggling_on">General Information</h2>
+    </div>
+    <div id="general_info">
+        <form enctype="multipart/form-data" action="{{ url("user", user.id) }}" method="POST">
+            {{ xsrf_form_html|safe }}
+            {% from "macro/user_fields.html" import user_fields with context %}
+            <div class="tp-table-container">
+                <table class="ranking-table form-table">
+                    {{ user_fields(user) }}
+                </table>
+            </div>
+            <div class="form-actions" style="margin-top: 16px; display: flex; justify-content: space-between;">
+                <div>
+                    <button type="submit" class="tp-btn-primary">Update</button>
+                    <button type="reset" class="btn-outline">Reset</button>
+                </div>
+                <form action="{{ url("users") }}" method="POST" style="display:inline;">
+                    {{ xsrf_form_html|safe }}
+                    <input type="hidden" name="user_id" value="{{ user.id }}"/>
+                    <button type="submit" name="operation" value="Remove" class="btn-outline" style="color: var(--tp-danger-dark);"
+                        {% if not admin.permission_all %}disabled{% endif %}>
+                        Remove User
+                    </button>
+                </form>
+            </div>
+        </form>
+    </div>
 </div>
-
-<h2 id="title_participations" class="toggling_on">Contest Participations</h2>
-<div id="participations">
-
-  <form action="{{ url("user", user.id, "add_participation") }}" method="POST">
-    {{ xsrf_form_html|safe }}
-    Add a new participation:
-    <select name="contest_id" class="searchable-select">
-      <option value="" selected disabled hidden>Select a contest...</option>
-      {% for c in unassigned_contests %}
-      <option value="{{ c.id }}">
-        {{ c.name }}
-      </option>
-      {% endfor %}
-    </select>
-    <input type="checkbox" name="hidden" id="hidden" /><label for="hidden">Hidden</label>
-    <input type="checkbox" name="unrestricted" id="unrestricted" /><label for="unrestricted">Unrestricted</label>
-    <input type="submit" value="Add participation" />
-  </form>
-
-  {% if participations|length == 0 %}
-  <p>No contest participations found.</p>
-  {% else %}
-  <form action="{{ url("user", user.id, "edit_participation") }}" method="POST" onsubmit="return confirm('Are you sure you want to remove this participation?');">
-    {{ xsrf_form_html|safe }}
-    Edit selected participation:
-    <input type="submit" name="operation" value="Remove" />
-    <table class="bordered">
-      <thead>
-        <tr>
-          <th></th>
-          <th>Participation</th>
-          <th>Hidden?</th>
-          <th>Unrestricted?</th>
-          <th>Contest</th>
-          <th>Contest description</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in participations %}
-        <tr>
-          <td>
-            <input type="radio" name="contest_id" value="{{ p.contest.id }}"/>
-          </td>
-          <td><a href="{{ url("contest", p.contest.id, "user", p.user.id, "edit") }}">{{ p.user.username }}</a></td>
-          <td>{{ p.hidden }}</td>
-          <td>{{ p.unrestricted }}</td>
-          <td><a href="{{ url("contest", p.contest.id) }}">{{ p.contest.name }}</a></td>
-          <td>{{ p.contest.description }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </form>
-  {% endif %}
-  <div class="hr"></div>
-</div>
-
-
-<h2 id="title_password_reset" class="toggling_on">Password Reset</h2>
-<div id="password_reset">
-  {% if user.password_reset_pending %}
-  <div class="panel-warning">
-    <strong>Pending Password Reset</strong>
-    <p>This user has submitted a password reset request that is awaiting approval.</p>
-    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Approve password reset for ' + {{ user.username|tojson }} + '?');">
-      {{ xsrf_form_html|safe }}
-      <input type="submit" value="Approve Reset" class="btn-success" />
-    </form>
-    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return confirm('Deny password reset for ' + {{ user.username|tojson }} + '?');">
-      {{ xsrf_form_html|safe }}
-      <input type="submit" value="Deny Reset" class="btn-danger" />
-    </form>
-  </div>
-  {% endif %}
-
-  {% if user.password_reset_token and user.password_reset_token_expires %}
-  <div class="panel-info">
-    <strong>Active Password Reset Token</strong>
-    <p>A password reset link is active for this user. Copy and share the reset URL below if email delivery failed.</p>
-    <table>
-      <tr>
-        <td><strong>Reset URL:</strong></td>
-        <td>
-          {% if participations|length > 0 %}
-          <code style="word-break: break-all;">/{{ participations[0].contest.name }}/password_reset_confirm/{{ user.password_reset_token }}</code>
-          <br><small>(Relative path - prepend your CWS server address, e.g., https://your-cws-server.com)
-          {% if participations|length > 1 %}
-          <br>Note: This user participates in multiple contests. The reset URL works for any contest they're registered in.
-          {% endif %}
-          </small>
-          {% else %}
-          <div class="alert alert-warning" style="padding: 5px; margin: 5px 0; background-color: #fcf8e3; border: 1px solid #faebcc; border-radius: 4px;">
-            <strong>Note:</strong> This user has no contest participations. Password reset links require a contest context.
-            <br>Please add a participation for this user first, then the reset URL will be available.
-          </div>
-          {% endif %}
-        </td>
-      </tr>
-      <tr>
-        <td><strong>Expires:</strong></td>
-        <td>{{ user.password_reset_token_expires|format_datetime }}</td>
-      </tr>
-    </table>
-    <p style="margin-top: 10px;">
-      <form action="{{ url("user", user.id, "clear_reset_token") }}" method="POST" style="display:inline;">
-        {{ xsrf_form_html|safe }}
-        <input type="submit" value="Clear Token" class="btn btn-warning" />
-      </form>
-    </p>
-  </div>
-  {% elif not user.password_reset_pending %}
-  <p>No active password reset token or pending reset for this user.</p>
-  {% endif %}
-  <div class="hr"></div>
-</div>
-
-
-<h2 id="title_general_info" class="toggling_on">General Information</h2>
-<div id="general_info">
-  <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
-  <form enctype="multipart/form-data" action="{{ url("user", user.id) }}" method="POST" style="display:inline;">
-    {{ xsrf_form_html|safe }}
-    {% from "macro/user_fields.html" import user_fields with context %}
-    <table>
-      {{ user_fields(user) }}
-    </table>
-    <input type="submit" value="Update" />
-    <input type="reset" value="Reset" />
-  </form>
-  <form action="{{ url("users") }}" method="POST" style="display:inline;">
-      {{ xsrf_form_html|safe }}
-      <input type="hidden" name="user_id" value="{{ user.id }}"/>
-      <input type="submit"
-           name="operation"
-           value="Remove" style="float: right;"
-  {% if not admin.permission_all %}
-           disabled
-  {% endif %}
-           />
-  </form>
-  <div class="hr"></div>
-</div>
-
-
 {% endblock core %}
