@@ -232,19 +232,6 @@ $(document).ready(init);
 $(document).ready(applySidebarState);
 $(document).ready(initSidebarEvents);
 
-// Helper function for sidebar links that should open modals
-// If the modal exists on the current page, open it; otherwise navigate to the fallback URL
-function openModalOrNavigate(event, modalId, fallbackUrl) {
-    var modal = document.getElementById(modalId);
-    if (modal && typeof MicroModal !== 'undefined') {
-        event.preventDefault();
-        MicroModal.show(modalId);
-        return false;
-    }
-    // Modal doesn't exist on this page, let the link navigate normally
-    return true;
-}
-
 //-->
     </script>
   </head>
@@ -348,7 +335,7 @@ function openModalOrNavigate(event, modalId, fallbackUrl) {
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("training_programs") }}?open_modal=add-program" onclick="return openModalOrNavigate(event, 'modal-add-program', this.href)">New training program</a>
+              <a class="sidebar-action-link" href="#" onclick="MicroModal.show('modal-add-program'); return false;">New training program</a>
             </div>
             {% endif %}
           </div>
@@ -551,7 +538,7 @@ function openModalOrNavigate(event, modalId, fallbackUrl) {
                 {% endif %}
                 {% if admin.permission_all %}
                   <div class="sidebar-actions">
-                    <a class="sidebar-action-link" href="{{ url("training_program", training_program.id, "training_days") }}?open_modal=add-training-day" onclick="return openModalOrNavigate(event, 'modal-add-training-day', this.href)">Add a training day</a>
+                    <a class="sidebar-action-link" href="#" onclick="MicroModal.show('modal-add-training-day'); return false;">Add a training day</a>
                   </div>
                 {% endif %}
               </ul>
@@ -705,6 +692,12 @@ function openModalOrNavigate(event, modalId, fallbackUrl) {
         </dialog>
         {% block core %}{% endblock core %}
       </div>
+
+      <!-- Global modals for sidebar actions -->
+      {% include "fragments/modal_add_training_program.html" %}
+      {% if training_program is defined %}
+      {% include "fragments/modal_add_training_day.html" %}
+      {% endif %}
 
     </div>
   </body>
