@@ -202,13 +202,11 @@ $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#students-table"), false, 0);
 });
 
-// Bulk Assign Task Modal using native dialog element
-var bulkAssignDialog = null;
+// Bulk Assign Task Modal using MicroModal
 var bulkAssignTagify = null;
 
 function initBulkAssignDialog() {
-    bulkAssignDialog = document.getElementById('bulkAssignDialog');
-    if (!bulkAssignDialog) return;
+    if (bulkAssignTagify) return;
 
     // Initialize tagify for tag selection
     var tagInput = document.getElementById('bulkAssignTagInput');
@@ -232,21 +230,13 @@ function initBulkAssignDialog() {
 }
 
 function openBulkAssignModal() {
-    if (!bulkAssignDialog) {
-        initBulkAssignDialog();
-    }
-    if (bulkAssignDialog) {
-        // Reset form
-        var taskSelect = document.getElementById('bulkAssignTaskSelect');
-        if (taskSelect) taskSelect.selectedIndex = 0;
-        if (bulkAssignTagify) bulkAssignTagify.removeAllTags();
-        bulkAssignDialog.showModal();
-    }
-}
-
-function closeBulkAssignModal() {
-    if (bulkAssignDialog) {
-        bulkAssignDialog.close();
+    initBulkAssignDialog();
+    // Reset form
+    var taskSelect = document.getElementById('bulkAssignTaskSelect');
+    if (taskSelect) taskSelect.selectedIndex = 0;
+    if (bulkAssignTagify) bulkAssignTagify.removeAllTags();
+    if (typeof MicroModal !== 'undefined') {
+        MicroModal.show('modal-bulk-assign');
     }
 }
 
@@ -256,41 +246,45 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Bulk Assign Task Dialog (native HTML dialog element) -->
-<dialog id="bulkAssignDialog" class="tp-dialog" style="max-width: 500px;">
-    <div class="tp-dialog-header">
-        <h3>Bulk Assign Task</h3>
-        <form method="dialog">
-            <button type="submit" class="tp-dialog-close">&times;</button>
-        </form>
+<!-- Bulk Assign Task Modal (Micromodal) -->
+<div class="modal" id="modal-bulk-assign" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="bulkAssignTitle">
+            <header class="modal__header">
+                <h2 class="modal__title" id="bulkAssignTitle">Bulk Assign Task</h2>
+                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+            </header>
+            <form action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    <p style="margin: 0 0 16px 0; color: var(--tp-text-secondary); font-size: 0.9rem;">
+                        Assign a task to all students who have the specified tag.
+                        Students who already have the task assigned will be skipped.
+                    </p>
+                    <div class="bulk-assign-row">
+                        <div class="modal__form-group">
+                            <label for="bulkAssignTaskSelect">Task</label>
+                            <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
+                                <option value="" selected disabled hidden>Select a task...</option>
+                                {% for task in (all_tasks or []) %}
+                                <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="bulkAssignTagInput">Student Tag</label>
+                            <input type="text" name="tag" id="bulkAssignTagInput" placeholder="Select a student tag..." />
+                        </div>
+                    </div>
+                </main>
+                <footer class="modal__footer">
+                    <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                    <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
+                        Assign Task to Group
+                    </button>
+                </footer>
+            </form>
+        </div>
     </div>
-    <form action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
-        {{ xsrf_form_html|safe }}
-        <div class="tp-dialog-body">
-            <p style="margin: 0 0 16px 0; color: var(--tp-text-secondary); font-size: 0.9rem;">
-                Assign a task to all students who have the specified tag.
-                Students who already have the task assigned will be skipped.
-            </p>
-            <div style="margin-bottom: 16px;">
-                <label for="bulkAssignTaskSelect">Task</label>
-                <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
-                    <option value="" selected disabled hidden>Select a task...</option>
-                    {% for task in (all_tasks or []) %}
-                    <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="bulkAssignTagInput">Student Tag</label>
-                <input type="text" name="tag" id="bulkAssignTagInput" placeholder="Select a student tag..." />
-            </div>
-        </div>
-        <div class="tp-dialog-footer">
-            <button type="button" class="btn-outline" onclick="closeBulkAssignModal()">Cancel</button>
-            <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
-                Assign Task to Group
-            </button>
-        </div>
-    </form>
-</dialog>
+</div>
 {% endblock core %}

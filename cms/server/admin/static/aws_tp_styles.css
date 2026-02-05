@@ -444,6 +444,26 @@
     z-index: 10001 !important;
 }
 
+/* Bulk assign modal layout */
+.bulk-assign-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.bulk-assign-row .modal__form-group {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+@media (max-width: 700px) {
+    .bulk-assign-row {
+        flex-direction: column;
+    }
+}
+
 /* ==========================================================================
    Text Utilities
    ========================================================================== */
