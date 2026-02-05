@@ -161,48 +161,15 @@ show_training_day (bool): if true, show a column indicating which training day
 
         {% if status == SubmissionResult.COMPILATION_FAILED %}
         <span class="status-badge status-failed">Compilation failed</span>
-        <div id="evaluation_{{ s.id }}_compilation_failed" class="submission-details" style="display: none;">
 
         {% elif status == SubmissionResult.EVALUATING %}
         <span class="status-badge status-pending">Evaluating...</span>
-        <div id="evaluation_{{ s.id }}_evaluating" class="submission-details" style="display: none;">
 
         {% elif status == SubmissionResult.EVALUATION_FAILED %}
         <span class="status-badge status-failed">Evaluation error</span>
-        <div id="evaluation_{{ s.id }}_evaluation_failed" class="submission-details" style="display: none;">
 
         {% elif status == SubmissionResult.SCORING %}
         <span class="status-badge status-pending">Scoring...</span>
-        <div id="evaluation_{{ s.id }}_scoring" class="submission-details" style="display: none;">
-          {% if sr.evaluated() %}
-          <h3>Testcases</h3>
-          <table class="ranking-table testcases-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Codename</th>
-                <th>Outcome</th>
-                <th class="text-center">Visible</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for ev in sr.evaluations|sort(attribute="codename") %}
-              <tr>
-                <td><div class="list-cell-wrapper">{{ loop.index }}</div></td>
-                <td><div class="list-cell-wrapper">{{ ev.codename }}</div></td>
-                <td><div class="list-cell-wrapper">{{ ev.outcome }}</div></td>
-                <td>
-                  <div class="list-cell-wrapper center-content">
-                    <input type="checkbox" disabled{{ " checked" if s.token is not none or ev.testcase.public else "" }}>
-                  </div>
-                </td>
-                <td><div class="list-cell-wrapper">{{ ev.text|format_status_text }}</div></td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          {% endif %}
 
         {% elif status == SubmissionResult.SCORED %}
           {% if score_type is defined %}
@@ -211,18 +178,52 @@ show_training_day (bool): if true, show a column indicating which training day
             {% set max_score = "[Cannot get score type - see logs]" %}
           {% endif %}
         <span class="status-badge status-scored">Scored ({{ sr.score }} / {{ max_score }})</span>
-        <div id="evaluation_{{ s.id }}_scored" class="score_details submission-details" style="display: none;">
-          {% if score_type is defined %}
-            {{ score_type.get_html_details(sr.score_details, FEEDBACK_LEVEL_FULL)|safe }}
-          {% else %}
-          [Cannot get score type - see logs]
-          {% endif %}
 
         {% else %}
         <span class="status-badge status-unknown">[Unknown status]</span>
-        <div id="evaluation_{{ s.id }}_unknown" class="submission-details" style="display: none;">
 
         {% endif %}
+
+        <div id="evaluation_{{ s.id }}" class="submission-details{% if status == SubmissionResult.SCORED %} score_details{% endif %}" style="display: none;">
+          {% if status == SubmissionResult.SCORING %}
+            {% if sr.evaluated() %}
+            <h3>Testcases</h3>
+            <table class="ranking-table testcases-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Codename</th>
+                  <th>Outcome</th>
+                  <th class="text-center">Visible</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ev in sr.evaluations|sort(attribute="codename") %}
+                <tr>
+                  <td><div class="list-cell-wrapper">{{ loop.index }}</div></td>
+                  <td><div class="list-cell-wrapper">{{ ev.codename }}</div></td>
+                  <td><div class="list-cell-wrapper">{{ ev.outcome }}</div></td>
+                  <td>
+                    <div class="list-cell-wrapper center-content">
+                      <input type="checkbox" disabled{{ " checked" if s.token is not none or ev.testcase.public else "" }}>
+                    </div>
+                  </td>
+                  <td><div class="list-cell-wrapper">{{ ev.text|format_status_text }}</div></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% endif %}
+
+          {% elif status == SubmissionResult.SCORED %}
+            {% if score_type is defined %}
+              {{ score_type.get_html_details(sr.score_details, FEEDBACK_LEVEL_FULL)|safe }}
+            {% else %}
+            [Cannot get score type - see logs]
+            {% endif %}
+
+          {% endif %}
           <h3>Compilation output</h3>
           <pre class="compilation-output">{% if sr.compilation_text|length > 0 %}{{ sr.compilation_text|format_status_text }}{% endif %}</pre>
         </div>
