@@ -31,7 +31,7 @@
                     <div style="display: flex; gap: 16px;">
                         <div class="modal__form-group" style="flex: 1;">
                             <label for="td-start">
-                                Start Time ({{ timezone_name }})
+                                Start Time ({{ timezone_name|default('UTC') }})
                                 <span class="tp-form-info" title="When the training day starts. If not specified and groups have start times, defaults to the earliest group start time.">?</span>
                             </label>
                             <input type="datetime-local" id="td-start" name="start" />
@@ -65,51 +65,45 @@
 </div>
 
 <script>
-(function() {
-    // Reset modal state when opened and handle auto-open
-    function resetAddTrainingDayModal() {
-        // Clear form fields
-        var form = document.getElementById('add-training-day-form');
-        if (form) {
-            form.reset();
-        }
-        // Clear groups added via JS (the shared fragment uses #groups-tbody)
-        var tbody = document.getElementById('groups-tbody');
-        if (tbody) {
-            // Destroy any Tagify instances
-            tbody.querySelectorAll('.tagify').forEach(function(el) {
-                if (el._tagify) {
-                    el._tagify.destroy();
-                }
-            });
-            tbody.innerHTML = '';
-        }
-        // Reset the group row index used by the shared fragment
-        if (typeof groupRowIndex !== 'undefined') {
-            groupRowIndex = 0;
-        }
+  (function() {
+  function resetAddTrainingDayModal() {
+    var form = document.getElementById('add-training-day-form');
+    if (form) form.reset();
+
+    var tbody = document.getElementById('groups-tbody');
+    if (tbody) {
+      tbody.querySelectorAll('.tagify').forEach(function(el) {
+        if (el._tagify) el._tagify.destroy();
+      });
+      tbody.innerHTML = '';
     }
 
-    // Initialize MicroModal with onShow callback
-    if (typeof MicroModal !== 'undefined') {
-        MicroModal.init({
-            onShow: function(modal) {
-                if (modal.id === 'modal-add-training-day') {
-                    resetAddTrainingDayModal();
-                }
-            }
-        });
+    if (typeof window.groupRowIndex !== 'undefined') {
+      window.groupRowIndex = 0;
     }
+  }
 
-    // Auto-open modal if URL has open_modal=add-training-day parameter
-    var urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('open_modal') === 'add-training-day') {
-        MicroModal.show('modal-add-training-day');
-        // Clean up URL
-        urlParams.delete('open_modal');
-        var newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
-        window.history.replaceState({}, '', newUrl);
-    }
+  // Init only once
+  if (typeof MicroModal !== 'undefined' && !window.__micromodalInited) {
+    MicroModal.init({
+      onShow: function(modal) {
+        if (modal && modal.id === 'modal-add-training-day') {
+          resetAddTrainingDayModal();
+        }
+      }
+    });
+    window.__micromodalInited = true;
+  }
+
+  // Auto-open
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('open_modal') === 'add-training-day' && typeof MicroModal !== 'undefined') {
+    MicroModal.show('modal-add-training-day');
+
+    urlParams.delete('open_modal');
+    var newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    window.history.replaceState({}, '', newUrl);
+  }
 })();
 </script>
 {% endif %}

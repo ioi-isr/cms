@@ -233,7 +233,9 @@ function openBulkAssignModal() {
     initBulkAssignDialog();
     // Reset form
     var taskSelect = document.getElementById('bulkAssignTaskSelect');
-    if (taskSelect) taskSelect.selectedIndex = 0;
+    if (taskSelect && taskSelect.tomselect) {
+        taskSelect.tomselect.clear(true);
+    }
     if (bulkAssignTagify) bulkAssignTagify.removeAllTags();
     if (typeof MicroModal !== 'undefined') {
         MicroModal.show('modal-bulk-assign');

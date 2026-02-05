@@ -139,10 +139,10 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                 Add Training Day
             </button>
             {% else %}
-            <span class="btn-filled-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; opacity: 0.5; cursor: not-allowed;">
+            <button type="button" class="btn-filled-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; opacity: 0.5; cursor: not-allowed;" disabled aria-disabled="true">
                 <svg class="icon" width="18" height="18"><use href="#icon-plus"/></svg>
                 Add Training Day
-            </span>
+            </button>
             {% endif %}
         </div>
     </div>
@@ -431,12 +431,11 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             <button type="button" class="tp-btn-secondary" onclick="addSharingEntry()" style="margin-bottom: 20px;">
                 + Add Tag
             </button>
-
+            </main>
             <footer class="modal__footer">
                 <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
                 <button type="button" class="tp-btn-primary" id="save-scoreboard-sharing-btn">Save</button>
             </footer>
-            </main>
         </div>
     </div>
 </div>

@@ -12,6 +12,7 @@
                 <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
             </header>
             <main class="modal__content">
+                {{ xsrf_form_html|safe }}
                 <p style="margin-bottom: 16px;">
                     Are you sure you want to remove the training program <strong>{{ training_program.name }}</strong>?
                 </p>
@@ -110,8 +111,9 @@
                 params.append('target_contest_id', targetContestId);
             }
 
-            // Get XSRF token
-            var xsrfInput = document.querySelector('input[name="_xsrf"]');
+            // Get XSRF token (scoped to this modal)
+            var modalEl = document.getElementById('modal-remove-program');
+            var xsrfInput = modalEl ? modalEl.querySelector('input[name="_xsrf"]') : null;
             if (!xsrfInput) {
                 alert('Missing XSRF token');
                 return;
