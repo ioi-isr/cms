@@ -195,9 +195,10 @@
     margin-left: 26px;
 }
 
-/* Ensure Tagify dropdown appears above the modal */
+/* Ensure Tagify dropdown appears above the modal overlay */
+.modal.is-open .tagify__dropdown,
 .tagify__dropdown {
-    z-index: 10001 !important;
+    z-index: 10002 !important;
 }
 
 /* Body scroll lock when modal is open */
