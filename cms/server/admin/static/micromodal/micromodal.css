@@ -66,10 +66,14 @@
     border-bottom: 1px solid var(--tp-border, #e5e7eb);
 }
 
-.modal__title {
+.modal__title,
+#core .modal__title {
     margin: 0;
+    padding: 0;
     font-size: 1.25rem;
     font-weight: 600;
+    font-family: inherit;
+    line-height: 1.4;
     color: var(--tp-text-primary, #1f2937);
 }
 

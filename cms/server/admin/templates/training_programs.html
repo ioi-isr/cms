@@ -82,7 +82,6 @@
                            data-tp-name="{{ tp.name }}"
                            data-remove-url="{{ url("training_programs", tp.id, "remove") }}"
                            data-participation-count="{{ tp.managing_contest.participations|length }}"
-                           data-submission-count="{{ tp.managing_contest.submissions|length }}"
                            data-task-count="{{ tp.managing_contest.tasks|length }}"
                            data-training-day-count="{{ tp.training_days|length }}">
                             <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
@@ -277,7 +276,6 @@ function openRemoveModal(linkElement) {
     var name = linkElement.getAttribute('data-tp-name');
     var removeUrl = linkElement.getAttribute('data-remove-url');
     var participationCount = parseInt(linkElement.getAttribute('data-participation-count')) || 0;
-    var submissionCount = parseInt(linkElement.getAttribute('data-submission-count')) || 0;
     var taskCount = parseInt(linkElement.getAttribute('data-task-count')) || 0;
     var trainingDayCount = parseInt(linkElement.getAttribute('data-training-day-count')) || 0;
 
@@ -288,7 +286,6 @@ function openRemoveModal(linkElement) {
 
     // Build stats list
     var statsHtml = '<li>' + participationCount + ' participation(s) will be deleted</li>';
-    statsHtml += '<li>' + submissionCount + ' submission(s) will be deleted</li>';
     statsHtml += '<li>' + trainingDayCount + ' training day(s) will be deleted</li>';
     document.getElementById('remove-program-stats').innerHTML = statsHtml;
 
