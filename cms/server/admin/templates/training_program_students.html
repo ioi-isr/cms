@@ -263,30 +263,29 @@ function openRemoveStudentModal(btn) {
     MicroModal.show('modal-remove-student');
 }
 
-var confirmRemoveStudentBtn = document.getElementById('confirm-remove-student-btn');
-if (confirmRemoveStudentBtn) {
-    confirmRemoveStudentBtn.addEventListener('click', function() {
-        var xsrfInput = document.querySelector('input[name="_xsrf"]');
-        if (!xsrfInput) {
-            alert('Missing XSRF token');
-            return;
-        }
-        fetch(currentRemoveStudentUrl, {
-            method: 'DELETE',
-            headers: { 'X-XSRFToken': xsrfInput.value }
-        }).then(function(response) {
-            if (response.ok) return response.text();
-            throw new Error('Failed to remove student');
-        }).then(function() {
-            window.location.reload();
-        }).catch(function(error) {
-            alert('Error: ' + error.message);
+document.addEventListener('DOMContentLoaded', function() {
+    var confirmRemoveStudentBtn = document.getElementById('confirm-remove-student-btn');
+    if (confirmRemoveStudentBtn) {
+        confirmRemoveStudentBtn.addEventListener('click', function() {
+            var xsrfInput = document.querySelector('input[name="_xsrf"]');
+            if (!xsrfInput) {
+                alert('Missing XSRF token');
+                return;
+            }
+            fetch(currentRemoveStudentUrl, {
+                method: 'DELETE',
+                headers: { 'X-XSRFToken': xsrfInput.value }
+            }).then(function(response) {
+                if (response.ok) return response.text();
+                throw new Error('Failed to remove student');
+            }).then(function() {
+                window.location.reload();
+            }).catch(function(error) {
+                alert('Error: ' + error.message);
+            });
         });
-    });
-}
+    }
 
-// Auto-open modal from URL parameter
-(function() {
     var urlParams = new URLSearchParams(window.location.search);
     var openModal = urlParams.get('open_modal');
     if (openModal && openModal.startsWith('remove-student-')) {
@@ -296,7 +295,7 @@ if (confirmRemoveStudentBtn) {
         urlParams.delete('open_modal');
         history.replaceState(null, '', window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : ''));
     }
-})();
+});
 </script>
 
 <!-- Remove Student Modal -->

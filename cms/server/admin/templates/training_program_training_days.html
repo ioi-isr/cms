@@ -252,7 +252,6 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                    data-td-name="{{ td.contest.name }}"
                                    data-remove-url="{{ url('training_program', training_program.id, 'training_day', td.id, 'remove') }}"
                                    data-participation-count="{{ td.contest.participations|length }}"
-                                   data-submission-count="{{ td.contest.submissions|length }}"
                                    data-task-count="{{ td.tasks|length }}"
                                    data-is-archived="false"
                                    title="Remove training day">
@@ -1030,7 +1029,6 @@ function openRemoveTrainingDayModal(btn) {
     var name = btn.getAttribute('data-td-name');
     var removeUrl = btn.getAttribute('data-remove-url');
     var participationCount = parseInt(btn.getAttribute('data-participation-count')) || 0;
-    var submissionCount = parseInt(btn.getAttribute('data-submission-count')) || 0;
     var taskCount = parseInt(btn.getAttribute('data-task-count')) || 0;
     var isArchived = btn.getAttribute('data-is-archived') === 'true';
 
@@ -1042,7 +1040,7 @@ function openRemoveTrainingDayModal(btn) {
     if (isArchived) {
         warningEl.innerHTML = '<strong>Note:</strong> This training day has been archived. The contest has already been deleted.<br>This operation cannot be undone.';
     } else {
-        warningEl.innerHTML = '<strong>Warning:</strong> This will remove ' + participationCount + ' participation(s) and ' + submissionCount + ' submission(s) from the training day contest.<br>This operation cannot be undone.';
+        warningEl.innerHTML = '<strong>Warning:</strong> This will remove ' + participationCount + ' participation(s) from the training day contest.<br>This operation cannot be undone.';
     }
 
     var taskNote = document.getElementById('remove-td-task-note');
@@ -1056,30 +1054,29 @@ function openRemoveTrainingDayModal(btn) {
     MicroModal.show('modal-remove-training-day');
 }
 
-var confirmRemoveTdBtn = document.getElementById('confirm-remove-td-btn');
-if (confirmRemoveTdBtn) {
-    confirmRemoveTdBtn.addEventListener('click', function() {
-        var xsrfInput = document.querySelector('input[name="_xsrf"]');
-        if (!xsrfInput) {
-            alert('Missing XSRF token');
-            return;
-        }
-        fetch(currentRemoveTdUrl, {
-            method: 'DELETE',
-            headers: { 'X-XSRFToken': xsrfInput.value }
-        }).then(function(response) {
-            if (response.ok) return response.text();
-            throw new Error('Failed to remove training day');
-        }).then(function() {
-            window.location.reload();
-        }).catch(function(error) {
-            alert('Error: ' + error.message);
+document.addEventListener('DOMContentLoaded', function() {
+    var confirmRemoveTdBtn = document.getElementById('confirm-remove-td-btn');
+    if (confirmRemoveTdBtn) {
+        confirmRemoveTdBtn.addEventListener('click', function() {
+            var xsrfInput = document.querySelector('input[name="_xsrf"]');
+            if (!xsrfInput) {
+                alert('Missing XSRF token');
+                return;
+            }
+            fetch(currentRemoveTdUrl, {
+                method: 'DELETE',
+                headers: { 'X-XSRFToken': xsrfInput.value }
+            }).then(function(response) {
+                if (response.ok) return response.text();
+                throw new Error('Failed to remove training day');
+            }).then(function() {
+                window.location.reload();
+            }).catch(function(error) {
+                alert('Error: ' + error.message);
+            });
         });
-    });
-}
+    }
 
-// Auto-open modal from URL parameter
-(function() {
     var urlParams = new URLSearchParams(window.location.search);
     var openModal = urlParams.get('open_modal');
     if (openModal && openModal.startsWith('remove-training-day-')) {
@@ -1089,7 +1086,7 @@ if (confirmRemoveTdBtn) {
         urlParams.delete('open_modal');
         history.replaceState(null, '', window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : ''));
     }
-})();
+});
 </script>
 
 <!-- Remove Training Day Modal -->
