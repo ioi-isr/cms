@@ -140,12 +140,19 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     'status_label': status_label,
                 })
 
+        fallback_page = self.url(
+            "training_program", training_program_id, "training_days"
+        )
+        referrer = self.request.headers.get("Referer", "")
+        back_url = referrer if referrer else fallback_page
+
         self.render_params_for_training_program(training_program)
         self.r_params["training_day"] = training_day
         self.r_params["contest"] = contest
         self.r_params["shared_ips"] = shared_ips
         self.r_params["users_not_finished"] = users_not_finished
         self.r_params["auto_open_modal"] = True
+        self.r_params["back_url"] = back_url
         self.render("archive_training_day.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

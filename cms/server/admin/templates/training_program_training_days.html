@@ -1081,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var openModal = urlParams.get('open_modal');
     if (openModal && openModal.startsWith('remove-training-day-')) {
         var tdId = openModal.replace('remove-training-day-', '');
-        var btn = document.querySelector('button[data-remove-url*="/training_day/' + tdId + '/remove"]');
+        var btn = document.querySelector('button[data-remove-url$="/training_day/' + tdId + '/remove"]');
         if (btn) openRemoveTrainingDayModal(btn);
         urlParams.delete('open_modal');
         history.replaceState(null, '', window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : ''));
