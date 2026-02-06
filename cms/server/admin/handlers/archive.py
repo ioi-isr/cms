@@ -25,6 +25,7 @@ Excel export handlers are in excel.py.
 import logging
 import typing
 from datetime import timedelta
+from urllib.parse import urlparse
 
 import tornado.web
 
@@ -144,7 +145,11 @@ class ArchiveTrainingDayHandler(BaseHandler):
             "training_program", training_program_id, "training_days"
         )
         referrer = self.request.headers.get("Referer", "")
-        back_url = referrer if referrer else fallback_page
+        back_url = fallback_page
+        if referrer:
+            parsed = urlparse(referrer)
+            if parsed.netloc == self.request.host:
+                back_url = referrer
 
         self.render_params_for_training_program(training_program)
         self.r_params["training_day"] = training_day
