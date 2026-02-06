@@ -4,7 +4,7 @@
 
 {% if admin is defined and admin.permission_all and training_program is defined %}
 <div class="modal modal--wide" id="modal-add-training-day" aria-hidden="true">
-    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+    <div class="modal__overlay" tabindex="-1">
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-training-day-title">
             <header class="modal__header">
                 <h2 class="modal__title" id="modal-add-training-day-title">Add Training Day</h2>
@@ -65,44 +65,21 @@
 </div>
 
 <script>
-  (function() {
-  function resetAddTrainingDayModal() {
-    var form = document.getElementById('add-training-day-form');
-    if (form) form.reset();
-
-    var tbody = document.getElementById('groups-tbody');
-    if (tbody) {
-      tbody.querySelectorAll('.tagify').forEach(function(el) {
-        if (el._tagify) el._tagify.destroy();
-      });
-      tbody.innerHTML = '';
-    }
-
-    if (typeof window.groupRowIndex !== 'undefined') {
-      window.groupRowIndex = 0;
-    }
-  }
-
-  // Init only once
-  if (typeof MicroModal !== 'undefined' && !window.__micromodalInited) {
-    MicroModal.init({
-      onShow: function(modal) {
-        if (modal && modal.id === 'modal-add-training-day') {
-          resetAddTrainingDayModal();
-        }
+(function() {
+  var modal = document.getElementById('modal-add-training-day');
+  if (modal) {
+    modal.addEventListener('modal-reset', function() {
+      var tbody = document.getElementById('groups-tbody');
+      if (tbody) {
+        tbody.querySelectorAll('.tagify').forEach(function(el) {
+          if (el._tagify) el._tagify.destroy();
+        });
+        tbody.innerHTML = '';
+      }
+      if (typeof window.groupRowIndex !== 'undefined') {
+        window.groupRowIndex = 0;
       }
     });
-    window.__micromodalInited = true;
-  }
-
-  // Auto-open
-  var urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('open_modal') === 'add-training-day' && typeof MicroModal !== 'undefined') {
-    MicroModal.show('modal-add-training-day');
-
-    urlParams.delete('open_modal');
-    var newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
-    window.history.replaceState({}, '', newUrl);
   }
 })();
 </script>

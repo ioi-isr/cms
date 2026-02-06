@@ -79,18 +79,5 @@
 
 {% include "fragments/modal_remove_training_program.html" %}
 
-<script>
-(function() {
-    // Auto-open remove modal if URL has open_modal=remove-program parameter
-    var urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('open_modal') === 'remove-program') {
-        MicroModal.show('modal-remove-program');
-        // Clean up URL
-        urlParams.delete('open_modal');
-        var newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
-        window.history.replaceState({}, '', newUrl);
-    }
-})();
-</script>
 
 {% endblock core %}

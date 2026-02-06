@@ -133,80 +133,32 @@
     {% endif %}
 </div>
 
-<!-- Remove Task Modal (Micromodal) -->
-<div class="modal" id="modal-remove-task" aria-hidden="true">
-    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
-        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-remove-task-title">
-            <header class="modal__header">
-                <h2 class="modal__title" id="modal-remove-task-title">Remove Task</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
-            <main class="modal__content">
-                <p id="remove-modal-message"></p>
-                <div id="remove-modal-warning" class="modal__warning" style="display: none;">
-                    <strong>Warning:</strong> <span id="remove-modal-warning-text"></span>
-                </div>
-                <p style="color: var(--tp-text-muted); font-size: 0.9rem;">This operation cannot be undone.</p>
-            </main>
-            <footer class="modal__footer">
-                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                {% if admin.permission_all %}
-                <button type="button" class="tp-btn-primary" style="background: var(--tp-danger); border-color: var(--tp-danger);" id="confirm-remove-btn">Yes, Remove</button>
-                {% endif %}
-            </footer>
-        </div>
-    </div>
-</div>
-
 <script>
 (function() {
-    var currentRemoveTaskId = null;
     var programName = {{ training_program.name | tojson }};
-
-    function openRemoveModal(taskId, taskName, hasTrainingDay, trainingDayName, isActive) {
-        currentRemoveTaskId = taskId;
-        var message = document.getElementById('remove-modal-message');
-        var warning = document.getElementById('remove-modal-warning');
-        var warningText = document.getElementById('remove-modal-warning-text');
-
-        message.textContent = 'Are you sure you want to remove task "' + taskName + '" from training program "' + programName + '"?';
-
-        if (hasTrainingDay && trainingDayName) {
-            warning.style.display = 'block';
-            if (isActive) {
-                warningText.textContent = 'This task is also assigned to training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
-            } else {
-                warningText.textContent = 'This task is also assigned to archived training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
-            }
-        } else {
-            warning.style.display = 'none';
-        }
-
-        MicroModal.show('modal-remove-task');
-    }
 
     document.querySelectorAll('.remove-task-btn').forEach(function(button) {
         button.addEventListener('click', function() {
-            openRemoveModal(
-                this.dataset.taskId,
-                this.dataset.taskName,
-                this.dataset.hasTrainingDay === 'true',
-                this.dataset.trainingDayName || null,
-                this.dataset.isActive === 'true'
-            );
+            var taskId = this.dataset.taskId;
+            var taskName = this.dataset.taskName;
+            var hasTrainingDay = this.dataset.hasTrainingDay === 'true';
+            var trainingDayName = this.dataset.trainingDayName || null;
+            var isActive = this.dataset.isActive === 'true';
+
+            var warningHtml = null;
+            if (hasTrainingDay && trainingDayName) {
+                var prefix = isActive ? '' : 'archived ';
+                warningHtml = 'This task is also assigned to ' + prefix + 'training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+            }
+
+            AdminModals.deleteResource({
+                title: 'Remove Task',
+                message: 'Are you sure you want to remove task "' + taskName + '" from training program "' + programName + '"?',
+                warningHtml: warningHtml,
+                deleteUrl: '{{ url("training_program", training_program.id) }}/task/' + taskId + '/remove'
+            });
         });
     });
-
-    // Confirm remove button handler
-    var confirmBtn = document.getElementById('confirm-remove-btn');
-    if (confirmBtn) {
-        confirmBtn.addEventListener('click', function() {
-            if (currentRemoveTaskId) {
-                CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id) }}/task/' + currentRemoveTaskId + '/remove');
-            }
-            MicroModal.close('modal-remove-task');
-        });
-    }
 
 // Drag and drop reordering using shared utility
 AdminTableUtils.initDragDropReorder({
