@@ -1866,10 +1866,15 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    width: 100%;
     padding: 10px 16px;
+    background: none;
+    border: none;
+    font-family: inherit;
     color: var(--tp-text-secondary) !important;
     text-decoration: none;
     font-size: 0.9rem;
+    cursor: pointer;
     transition: background 0.15s;
 }
 

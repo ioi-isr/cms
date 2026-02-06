@@ -365,7 +365,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="#" onclick="MicroModal.show('modal-add-program'); return false;">New training program</a>
+              <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-program')">New training program</button>
             </div>
             {% endif %}
           </div>
@@ -577,7 +577,7 @@ $(document).ready(initSidebarEvents);
                 {% endif %}
                 {% if admin.permission_all %}
                   <div class="sidebar-actions">
-                    <a class="sidebar-action-link" href="#" onclick="MicroModal.show('modal-add-training-day'); return false;">Add a training day</a>
+                    <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-training-day')">Add a training day</button>
                   </div>
                 {% endif %}
               </ul>

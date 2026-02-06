@@ -1028,8 +1028,8 @@ var currentRemoveTdUrl = null;
 function openRemoveTrainingDayModal(btn) {
     var name = btn.getAttribute('data-td-name');
     var removeUrl = btn.getAttribute('data-remove-url');
-    var participationCount = parseInt(btn.getAttribute('data-participation-count')) || 0;
-    var taskCount = parseInt(btn.getAttribute('data-task-count')) || 0;
+    var participationCount = Number.parseInt(btn.getAttribute('data-participation-count')) || 0;
+    var taskCount = Number.parseInt(btn.getAttribute('data-task-count')) || 0;
     var isArchived = btn.getAttribute('data-is-archived') === 'true';
 
     currentRemoveTdUrl = removeUrl;

@@ -77,7 +77,7 @@
                         </a>
                         {% if admin.permission_all %}
                         <div class="tp-menu-divider"></div>
-                        <a href="#" onclick="openRemoveModal(this); return false;" class="tp-menu-item tp-menu-item-danger"
+                        <button type="button" onclick="openRemoveModal(this)" class="tp-menu-item tp-menu-item-danger"
                            data-tp-id="{{ tp.id }}"
                            data-tp-name="{{ tp.name }}"
                            data-remove-url="{{ url("training_programs", tp.id, "remove") }}"
@@ -87,7 +87,7 @@
                            data-training-day-count="{{ tp.training_days|length }}">
                             <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
                             Remove
-                        </a>
+                        </button>
                         {% endif %}
                     </div>
                 </div>
@@ -276,10 +276,10 @@ function openRemoveModal(linkElement) {
     // Get data from data attributes
     var name = linkElement.getAttribute('data-tp-name');
     var removeUrl = linkElement.getAttribute('data-remove-url');
-    var participationCount = parseInt(linkElement.getAttribute('data-participation-count')) || 0;
-    var submissionCount = parseInt(linkElement.getAttribute('data-submission-count')) || 0;
-    var taskCount = parseInt(linkElement.getAttribute('data-task-count')) || 0;
-    var trainingDayCount = parseInt(linkElement.getAttribute('data-training-day-count')) || 0;
+    var participationCount = Number.parseInt(linkElement.getAttribute('data-participation-count')) || 0;
+    var submissionCount = Number.parseInt(linkElement.getAttribute('data-submission-count')) || 0;
+    var taskCount = Number.parseInt(linkElement.getAttribute('data-task-count')) || 0;
+    var trainingDayCount = Number.parseInt(linkElement.getAttribute('data-training-day-count')) || 0;
 
     currentRemoveUrl = removeUrl;
 
