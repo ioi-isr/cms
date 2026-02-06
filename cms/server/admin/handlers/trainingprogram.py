@@ -44,7 +44,7 @@ from cms.db import (
 from cms.server.admin.handlers.utils import get_training_day_notifications
 from cmscommon.datetime import make_datetime
 
-from .base import BaseHandler, SimpleHandler, require_permission
+from .base import BaseHandler, require_permission
 
 from .trainingprogramtask import (
     TrainingProgramTasksHandler,
