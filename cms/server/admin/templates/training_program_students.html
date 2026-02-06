@@ -263,6 +263,16 @@ function openRemoveStudentModal(btn) {
         confirmLabel: 'Yes, Remove Student'
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var openModal = urlParams.get('open_modal');
+    if (openModal && openModal.startsWith('remove-student-')) {
+        var userId = openModal.replace('remove-student-', '');
+        var btn = document.querySelector('button[data-remove-url$="/student/' + userId + '/remove"]');
+        if (btn) openRemoveStudentModal(btn);
+    }
+});
 </script>
 
 <!-- Bulk Assign Task Modal (Micromodal) -->

@@ -965,6 +965,16 @@ function openRemoveTrainingDayModal(btn) {
         confirmLabel: 'Yes, Remove Training Day'
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var openModal = urlParams.get('open_modal');
+    if (openModal && openModal.startsWith('remove-training-day-')) {
+        var tdId = openModal.replace('remove-training-day-', '');
+        var btn = document.querySelector('button[data-remove-url$="/training_day/' + tdId + '/remove"]');
+        if (btn) openRemoveTrainingDayModal(btn);
+    }
+});
 </script>
 
 {% endblock core %}
