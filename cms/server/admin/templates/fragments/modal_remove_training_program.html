@@ -135,7 +135,9 @@
             if (response.ok) {
                 return response.text();
             } else {
-                throw new Error('Failed to remove training program');
+                return response.text().then(function(text) {
+                    throw new Error(text || 'Failed to remove training program');
+                });
             }
         }).then(function() {
             window.location.href = '{{ url("training_programs") }}';

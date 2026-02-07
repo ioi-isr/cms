@@ -134,6 +134,8 @@ function initDragDropReorder(options) {
                 } else {
                     restoreOriginalOrder();
                 }
+            }).catch(function () {
+                restoreOriginalOrder();
             });
         } else {
             doSave();

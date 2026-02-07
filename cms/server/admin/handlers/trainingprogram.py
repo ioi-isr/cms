@@ -179,7 +179,11 @@ class TrainingProgramHandler(BaseHandler):
             if training_day_contest_ids
             else 0
         )
-        self.r_params["task_count"] = len(managing_contest.tasks)
+        self.r_params["task_count"] = (
+            self.sql_session.query(func.count(Task.id))
+            .filter(Task.contest == managing_contest)
+            .scalar()
+        )
 
         # Other contests available to move tasks into
         self.r_params["other_contests"] = get_available_contests(self.sql_session)

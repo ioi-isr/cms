@@ -959,7 +959,7 @@ function openRemoveTrainingDayModal(btn) {
 
     AdminModals.deleteResource({
         title: 'Remove Training Day',
-        message: 'Are you sure you want to remove the training day <strong>' + escapeHtml(name) + '</strong>?',
+        messageHtml: 'Are you sure you want to remove the training day <strong>' + escapeHtml(name) + '</strong>?',
         warningHtml: warningHtml,
         deleteUrl: removeUrl,
         confirmLabel: 'Yes, Remove Training Day'
@@ -973,7 +973,11 @@ document.addEventListener('DOMContentLoaded', function() {
         var tdId = openModal.replace('remove-training-day-', '');
         if (!/^\d+$/.test(tdId)) return;
         var btn = document.querySelector('button[data-remove-url$="/training_day/' + tdId + '/remove"]');
-        if (btn) openRemoveTrainingDayModal(btn);
+        if (btn) {
+            openRemoveTrainingDayModal(btn);
+            urlParams.delete('open_modal');
+            window.history.replaceState(null, '', window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : ''));
+        }
     }
 });
 </script>

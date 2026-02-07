@@ -9,7 +9,8 @@
 
 "use strict";
 
-var AdminModals = AdminModals || {};
+window.AdminModals = window.AdminModals || {};
+var AdminModals = window.AdminModals;
 
 /**
  * Utility function to escape HTML and prevent XSS (BUG-0001)
@@ -66,14 +67,21 @@ document.addEventListener('DOMContentLoaded', function() {
  * Opens a confirmation modal.
  * @param {Object} opts
  * @param {string} opts.title - Modal title
- * @param {string} opts.message - Main question text
- * @param {string|null} [opts.warningHtml] - Warning details HTML (optional)
+ * @param {string} [opts.message] - Main question text (safe, set via textContent)
+ * @param {string} [opts.messageHtml] - Main question HTML (set via innerHTML, opt-in)
+ * @param {string} [opts.warning] - Warning details text (safe, set via textContent)
+ * @param {string} [opts.warningHtml] - Warning details HTML (set via innerHTML, opt-in)
  * @param {string} [opts.confirmLabel] - Confirm button label (default "Confirm")
  * @param {function} opts.onConfirm - Callback when confirmed
  */
 AdminModals.confirm = function(opts) {
+    var messageEl = document.getElementById('modal-confirm-message');
     document.getElementById('modal-confirm-title').textContent = opts.title;
-    document.getElementById('modal-confirm-message').innerHTML = opts.message;
+    if (opts.messageHtml) {
+        messageEl.innerHTML = opts.messageHtml;
+    } else {
+        messageEl.textContent = opts.message || '';
+    }
 
     var warningBox = document.getElementById('modal-confirm-warning-box');
     var warningText = document.getElementById('modal-confirm-warning-text');
@@ -81,6 +89,9 @@ AdminModals.confirm = function(opts) {
     if (opts.warningHtml) {
         warningBox.style.display = 'block';
         warningText.innerHTML = opts.warningHtml;
+    } else if (opts.warning) {
+        warningBox.style.display = 'block';
+        warningText.textContent = opts.warning;
     } else {
         warningBox.style.display = 'none';
     }
@@ -103,8 +114,10 @@ AdminModals.confirm = function(opts) {
  * Specialized delete helper that handles XSRF and page reload.
  * @param {Object} opts
  * @param {string} opts.title - Modal title
- * @param {string} opts.message - Main question text
- * @param {string|null} [opts.warningHtml] - Warning details HTML (optional)
+ * @param {string} [opts.message] - Main question text (safe, set via textContent)
+ * @param {string} [opts.messageHtml] - Main question HTML (set via innerHTML, opt-in)
+ * @param {string} [opts.warning] - Warning details text (safe, set via textContent)
+ * @param {string} [opts.warningHtml] - Warning details HTML (set via innerHTML, opt-in)
  * @param {string} opts.deleteUrl - URL to send DELETE request to
  * @param {string} [opts.confirmLabel] - Confirm button label (default "Yes, Remove")
  * @param {function} [opts.onSuccess] - Optional callback on success (default: reload page)
@@ -113,6 +126,8 @@ AdminModals.deleteResource = function(opts) {
     AdminModals.confirm({
         title: opts.title,
         message: opts.message,
+        messageHtml: opts.messageHtml,
+        warning: opts.warning,
         warningHtml: opts.warningHtml || null,
         confirmLabel: opts.confirmLabel || 'Yes, Remove',
         onConfirm: function() {

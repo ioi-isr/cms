@@ -154,7 +154,7 @@
 
             AdminModals.deleteResource({
                 title: 'Remove Task',
-                message: 'Are you sure you want to remove task "' + escapeHtml(taskName) + '" from training program "' + escapeHtml(programName) + '"?',
+                messageHtml: 'Are you sure you want to remove task "' + escapeHtml(taskName) + '" from training program "' + escapeHtml(programName) + '"?',
                 warningHtml: warningHtml,
                 deleteUrl: '{{ url("training_program", training_program.id) }}/task/' + taskId + '/remove'
             });
