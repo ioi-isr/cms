@@ -828,8 +828,8 @@ CMS.AWSUtils.ajax_post = function(url) {
  * Toggles visibility of the question reply box.
  */
 CMS.AWSUtils.prototype.question_reply_toggle = function(event, invoker) {
-    var container = invoker.closest('.question-actions') || invoker.parentElement.parentElement;
-    var obj = container.querySelector(".reply_question");
+    var card = invoker.closest('.question-card');
+    var obj = card.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
     } else {
@@ -850,7 +850,7 @@ CMS.AWSUtils.prototype.init_questions_page = function() {
             var filter = this.dataset.filter;
             var cards = document.querySelectorAll('#paged_content_questions .question-card');
             cards.forEach(function(card) {
-                card.removeData ? $(card).removeData('hidden-by-page') : true;
+                $(card).removeData('hidden-by-page');
                 if (filter === 'all') {
                     card.style.display = '';
                 } else {
