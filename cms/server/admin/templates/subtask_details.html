@@ -27,41 +27,66 @@ window.filterTestcases = function(tableId, filter) {
 };
 
 window.promptRename = function(renameUrl, testcaseId, currentCodename, subtaskIndex) {
-  var newCodename = prompt('Enter new codename for testcase:', currentCodename);
-  if (newCodename && newCodename !== currentCodename) {
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = renameUrl.replace('TESTCASE_ID', testcaseId);
-
-    var input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'new_codename';
-    input.value = newCodename;
-    form.appendChild(input);
-
-    // Add subtask_index to redirect back to subtask details page
-    if (subtaskIndex !== undefined) {
-      var subtaskInput = document.createElement('input');
-      subtaskInput.type = 'hidden';
-      subtaskInput.name = 'subtask_index';
-      subtaskInput.value = subtaskIndex;
-      form.appendChild(subtaskInput);
+  Swal.fire({
+    title: 'Rename Testcase',
+    text: 'Enter new codename for testcase:',
+    input: 'text',
+    inputValue: currentCodename,
+    showCancelButton: true,
+    confirmButtonText: 'Rename',
+    cancelButtonText: 'Cancel',
+    reverseButtons: true,
+    inputValidator: function(value) {
+      if (!value || value.trim() === '') {
+        return 'Codename cannot be empty!';
+      }
+      if (value.trim() === currentCodename) {
+        return 'New codename must be different from current codename!';
+      }
     }
+  }).then(function(result) {
+    if (result.isConfirmed && result.value) {
+      var newCodename = result.value.trim();
+      if (newCodename !== currentCodename) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = renameUrl.replace('TESTCASE_ID', testcaseId);
 
-    var xsrfElem = document.querySelector('input[name="_xsrf"]');
-    if (!xsrfElem) {
-      alert('CSRF token missing; cannot submit form.');
-      return;
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'new_codename';
+        input.value = newCodename;
+        form.appendChild(input);
+
+        // Add subtask_index to redirect back to subtask details page
+        if (subtaskIndex !== undefined) {
+          var subtaskInput = document.createElement('input');
+          subtaskInput.type = 'hidden';
+          subtaskInput.name = 'subtask_index';
+          subtaskInput.value = subtaskIndex;
+          form.appendChild(subtaskInput);
+        }
+
+        var xsrfElem = document.querySelector('input[name="_xsrf"]');
+        if (!xsrfElem) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'CSRF token missing; cannot submit form.'
+          });
+          return;
+        }
+        var xsrf = document.createElement('input');
+        xsrf.type = 'hidden';
+        xsrf.name = '_xsrf';
+        xsrf.value = xsrfElem.value;
+        form.appendChild(xsrf);
+
+        document.body.appendChild(form);
+        form.submit();
+      }
     }
-    var xsrf = document.createElement('input');
-    xsrf.type = 'hidden';
-    xsrf.name = '_xsrf';
-    xsrf.value = xsrfElem.value;
-    form.appendChild(xsrf);
-
-    document.body.appendChild(form);
-    form.submit();
-  }
+  });
 };
 
 window.toggleSelectAll = function(tableId, masterCheckbox) {
