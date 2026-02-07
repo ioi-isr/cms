@@ -5,7 +5,7 @@
 <div class="tp-card">
     <div class="tp-card-header-modern">
         <div class="tp-card-header-icon">
-            <svg class="icon" width="18" height="18"><use href="#icon-users"/></svg>
+            <svg class="icon" width="18" height="18"><use href="#icon-apple"/></svg>
         </div>
         <h3 class="tp-card-title-modern">Main Groups Configuration</h3>
     </div>
@@ -64,7 +64,7 @@
                 <thead>
                     <tr>
                         <th style="width: 25%;">Tag Name</th>
-                        <th style="width: 25%;">Start Time ({{ timezone_name }})</th>
+                        <th style="width: 25%;">Start Time ({{ timezone_name|default('UTC') }})</th>
                         <th style="width: 20%;">Duration</th>
                         <th style="width: 20%; text-align: center;">Alphabetical Order</th>
                         <th style="width: 10%;"></th>
@@ -337,27 +337,26 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function removeMainGroup(url) {
-    if (!confirm('Remove this main group?')) {
-        return;
-    }
-    var xsrfInput = document.querySelector('input[name="_xsrf"]');
-    if (!xsrfInput) {
-        alert('Missing XSRF token');
-        return;
-    }
-    var formData = new FormData();
-    formData.append('_xsrf', xsrfInput.value);
-    fetch(url, {
-        method: 'POST',
-        body: formData
-    }).then(function(response) {
-        if (response.ok) {
-            window.location.reload();
-        } else {
-            alert('Failed to remove main group');
+    AdminModals.confirmThen('Remove this main group?', function() {
+        var xsrfInput = document.querySelector('input[name="_xsrf"]');
+        if (!xsrfInput) {
+            AdminModals.showError('Missing XSRF token');
+            return;
         }
-    }).catch(function(error) {
-        alert('Error: ' + error);
+        var formData = new FormData();
+        formData.append('_xsrf', xsrfInput.value);
+        fetch(url, {
+            method: 'POST',
+            body: formData
+        }).then(function(response) {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                AdminModals.showError('Failed to remove main group');
+            }
+        }).catch(function(error) {
+            AdminModals.showError(String(error));
+        });
     });
 }
 {% endif %}

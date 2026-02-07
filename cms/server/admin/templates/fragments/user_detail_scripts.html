@@ -90,6 +90,10 @@ function initUserDetail(options) {
   };
 
   function escapeHtml(value) {
+    // Use centralized escapeHtml for XSS prevention if available, otherwise fallback to jQuery
+    if (typeof window.escapeHtml === 'function') {
+      return window.escapeHtml(value == null ? "" : String(value));
+    }
     return $("<div/>").text(value == null ? "" : String(value)).html();
   }
 

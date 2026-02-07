@@ -175,7 +175,11 @@ CMS.AWSUtils.prototype.file_received = function(response, error) {
     var url = this.file_asked_url;
     var elements = [];
     if (error != null) {
-        alert("File request failed.");
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('File request failed.');
+        } else {
+            alert('File request failed.');
+        }
     } else {
         if (response.length > 100000) {
             elements.push($('<h1>').text(file_name));
@@ -470,7 +474,11 @@ CMS.AWSUtils.prototype.update_remaining_time = function() {
 CMS.AWSUtils.prototype.redirect_if_ok = function(url, response) {
     var msg = this.standard_response(response);
     if (msg != "") {
-        alert('Unable to invalidate (' + msg + ').');
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('Unable to invalidate (' + msg + ').');
+        } else {
+            alert('Unable to invalidate (' + msg + ').');
+        }
     } else {
         location.href = url;
     }

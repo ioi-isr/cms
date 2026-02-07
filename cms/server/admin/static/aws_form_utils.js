@@ -81,7 +81,7 @@ CMS.AWSFormUtils.initDateTimeValidation = function(formSelector, startSelector, 
         var startValue = startInput.valueAsNumber;
         var stopValue = stopInput.valueAsNumber;
         if (!Number.isNaN(startValue) && !Number.isNaN(stopValue) && stopValue <= startValue) {
-            alert('End time must be after start time');
+            AdminModals.showError('End time must be after start time');
             e.preventDefault();
         }
     });
@@ -134,7 +134,7 @@ CMS.AWSFormUtils.initRemovePage = function(config) {
             }
 
             if (!selectedAction) {
-                alert('Please select an option for handling tasks.');
+                AdminModals.showError('Please select an option for handling tasks.');
                 return;
             }
 
@@ -145,15 +145,17 @@ CMS.AWSFormUtils.initRemovePage = function(config) {
                 if (targetSelect && targetSelect.value) {
                     url += '&' + config.targetParamName + '=' + encodeURIComponent(targetSelect.value);
                 } else {
-                    alert('Please select a ' + config.targetLabel + ' to move tasks to.');
+                    AdminModals.showError('Please select a ' + config.targetLabel + ' to move tasks to.');
                     return;
                 }
             }
         }
 
-        if (confirm('Are you sure you want to remove this?')) {
-            CMS.AWSUtils.ajax_delete(url);
-        }
+        AdminModals.simpleConfirm('Are you sure you want to remove this?').then(function(confirmed) {
+            if (confirmed) {
+                CMS.AWSUtils.ajax_delete(url);
+            }
+        });
     };
     // Backward compatibility alias
     window.cmsDoRemove = CMS.AWSFormUtils.cmsDoRemove;
@@ -271,10 +273,12 @@ CMS.AWSFormUtils.initTagify = function(config) {
         // Track user-initiated removals (X click or backspace)
         var userRemovalTriggeredAt = 0;
 
+        // Native confirm() is used for all Tagify confirmation hooks
+        // because Tagify processes events synchronously — async dialogs
+        // (SweetAlert2) race with Tagify's internal state updates.
         tagifyOptions.hooks = {
             beforeRemoveTag: function(tags) {
                 return new Promise(function(resolve, reject) {
-                    // If this is a rollback from cancelled add, skip confirmation
                     if (isRollback) {
                         resolve();
                         return;
@@ -284,14 +288,12 @@ CMS.AWSFormUtils.initTagify = function(config) {
                     var isUserInitiated = (now - userRemovalTriggeredAt) < 200;
                     userRemovalTriggeredAt = 0;
 
-                    // Auto-removals (duplicates, etc.) don't need confirmation
                     if (!isUserInitiated) {
                         pendingSave = true;
                         resolve();
                         return;
                     }
 
-                    // User-initiated removal needs confirmation
                     var tagValue = tags[0].data.value;
                     if (confirm('Remove tag "' + tagValue + '"?')) {
                         pendingSave = true;
@@ -319,17 +321,14 @@ CMS.AWSFormUtils.initTagify = function(config) {
             }
         }, true);
 
-        // Handle add confirmation
         tagify.on('add', function(e) {
-            // Skip confirmation if not armed yet (initial page load)
             if (!armed) return;
 
             var tagValue = e.detail.data.value;
             if (confirm('Add tag "' + tagValue + '"?')) {
                 pendingSave = true;
+                tagify.trigger('change');
             } else {
-                // Roll back the add - use isRollback flag to skip beforeRemoveTag confirmation
-                // Use non-silent removal so Tagify properly updates its internal state
                 isRollback = true;
                 tagify.removeTags(e.detail.tag);
                 isRollback = false;
@@ -348,15 +347,17 @@ CMS.AWSFormUtils.initTagify = function(config) {
                 var oldVal = editingTagValue;
                 var newVal = e.detail.data && e.detail.data.value;
 
-                // No change, no confirmation needed
                 if (oldVal === newVal) {
                     return;
                 }
 
+                // Native confirm() is required here because Tagify processes
+                // edit:beforeUpdate synchronously — an async dialog would
+                // resolve after Tagify has already applied the edit.
                 if (confirm('Change tag "' + oldVal + '" to "' + newVal + '"?')) {
                     pendingSave = true;
+                    tagify.trigger('change');
                 } else {
-                    // Revert to old value
                     e.detail.data.value = oldVal;
                 }
             });
@@ -373,7 +374,7 @@ CMS.AWSFormUtils.initTagify = function(config) {
         if (config.pattern && config.invalidMessage) {
             tagify.on('invalid', function(e) {
                 if (e.detail.message === 'pattern mismatch') {
-                    alert(config.invalidMessage);
+                    AdminModals.showError(config.invalidMessage);
                 }
             });
         }

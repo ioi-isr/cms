@@ -77,10 +77,17 @@
                         </a>
                         {% if admin.permission_all %}
                         <div class="tp-menu-divider"></div>
-                        <a href="{{ url("training_programs", tp.id, "remove") }}" class="tp-menu-item tp-menu-item-danger">
+                        <button type="button" onclick="openRemoveModal(this)" class="tp-menu-item tp-menu-item-danger"
+                           data-tp-id="{{ tp.id }}"
+                           data-tp-name="{{ tp.name }}"
+                           data-remove-url="{{ url("training_programs", tp.id, "remove") }}"
+                           data-participation-count="{{ tp.managing_contest.participations|length }}"
+                           data-submission-count="{{ tp.managing_contest.participations|map(attribute='submissions')|map('length')|sum }}"
+                           data-task-count="{{ tp.managing_contest.tasks|length }}"
+                           data-training-day-count="{{ tp.training_days|length }}">
                             <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
                             Remove
-                        </a>
+                        </button>
                         {% endif %}
                     </div>
                 </div>
@@ -167,16 +174,18 @@
 
         <!-- Create New Program Card -->
         {% if admin.permission_all %}
-        <a href="{{ url("training_programs", "add") }}" class="tp-create-card">
+        <button type="button" class="tp-create-card" onclick="MicroModal.show('modal-add-program')">
             <div class="tp-create-icon">
                 <svg class="icon" width="32" height="32"><use href="#icon-plus"/></svg>
             </div>
             <div class="tp-create-title">Create New Program</div>
             <div class="tp-create-subtitle">Start a new training season</div>
-        </a>
+        </button>
         {% endif %}
     </div>
 </div>
+
+{% include "fragments/modal_remove_training_program.html" %}
 
 <script>
 function closeAllMenus() {
@@ -206,6 +215,40 @@ document.addEventListener('click', function(e) {
         closeAllMenus();
     }
 });
+
+function openRemoveModal(buttonElement) {
+    closeAllMenus();
+
+    var name = buttonElement.getAttribute('data-tp-name');
+    var removeUrl = buttonElement.getAttribute('data-remove-url');
+    var participationCount = Number.parseInt(buttonElement.getAttribute('data-participation-count')) || 0;
+    var submissionCount = Number.parseInt(buttonElement.getAttribute('data-submission-count')) || 0;
+    var taskCount = Number.parseInt(buttonElement.getAttribute('data-task-count')) || 0;
+    var trainingDayCount = Number.parseInt(buttonElement.getAttribute('data-training-day-count')) || 0;
+
+    document.getElementById('remove-program-name').textContent = name;
+
+    var statsHtml = '<li>' + participationCount + ' participation(s) will be deleted</li>';
+    statsHtml += '<li>' + submissionCount + ' submission(s) will be deleted</li>';
+    statsHtml += '<li>' + trainingDayCount + ' training day(s) will be deleted</li>';
+    document.getElementById('remove-program-stats').innerHTML = statsHtml;
+
+    var taskOptionsDiv = document.getElementById('remove-program-task-options');
+    if (taskCount > 0) {
+        taskOptionsDiv.style.display = 'block';
+        document.getElementById('remove-program-task-count').textContent = taskCount;
+    } else {
+        taskOptionsDiv.style.display = 'none';
+    }
+
+    document.querySelectorAll('#modal-remove-program input[name="action"]').forEach(function(r) {
+        r.checked = false;
+    });
+
+    document.getElementById('confirm-remove-program-btn').setAttribute('data-remove-url', removeUrl);
+
+    MicroModal.show('modal-remove-program');
+}
 </script>
 
 {% endblock core %}

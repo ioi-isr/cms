@@ -25,6 +25,7 @@ Excel export handlers are in excel.py.
 import logging
 import typing
 from datetime import timedelta
+from urllib.parse import urlparse
 
 import tornado.web
 
@@ -115,19 +116,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
 
         contest = training_day.contest
 
-        # Get all participations with their starting IPs
-        # Count students per IP (only IPs with more than one student)
         ip_counts: dict[str, int] = {}
         for participation in contest.participations:
             ips = self._parse_ip_addresses(participation.starting_ip_addresses)
             for ip in ips:
                 ip_counts[ip] = ip_counts.get(ip, 0) + 1
 
-        # Filter to only IPs with more than one student
         shared_ips = {ip: count for ip, count in ip_counts.items() if count > 1}
 
-        # Check if any participants can still start or are currently in contest
-        # This is used to show a warning on the archive confirmation page
         users_not_finished = []
         for _, participation, main_group in self._iterate_eligible_students(
             training_day, contest
@@ -145,11 +141,23 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     'status_label': status_label,
                 })
 
+        fallback_page = self.url(
+            "training_program", training_program_id, "training_days"
+        )
+        referrer = self.request.headers.get("Referer", "")
+        back_url = fallback_page
+        if referrer:
+            parsed = urlparse(referrer)
+            if parsed.netloc == self.request.host:
+                back_url = referrer
+
         self.render_params_for_training_program(training_program)
         self.r_params["training_day"] = training_day
         self.r_params["contest"] = contest
         self.r_params["shared_ips"] = shared_ips
         self.r_params["users_not_finished"] = users_not_finished
+        self.r_params["auto_open_modal"] = True
+        self.r_params["back_url"] = back_url
         self.render("archive_training_day.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
