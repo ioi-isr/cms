@@ -1839,36 +1839,8 @@ svg.icon {
     align-items: center;
 }
 
-.question-btn {
-    padding: 6px 16px;
-    border-radius: 6px;
-    font-size: 0.85em;
-    font-weight: 500;
-    cursor: pointer;
-    border: 1px solid #D1D5DB;
-    font-family: inherit;
-    transition: background-color 0.15s, border-color 0.15s;
-}
-
-.question-btn-secondary {
-    background: #fff;
-    color: #374151;
-}
-
-.question-btn-secondary:hover {
-    background-color: #F3F4F6;
-    border-color: #9CA3AF;
-}
-
-.question-btn-primary {
-    background-color: #7C3AED;
-    color: #fff;
-    border-color: #7C3AED;
-}
-
-.question-btn-primary:hover {
-    background-color: #6D28D9;
-    border-color: #6D28D9;
+.question-action-buttons .button-link {
+    margin-right: 0;
 }
 
 .question-card .reply_question {

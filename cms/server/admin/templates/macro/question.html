@@ -79,14 +79,14 @@ user_id (int|None): if we are rendering one of the questions on a single user's
               {% endif %}
               {% if not msg.ignored %}
                 <input type="hidden" name="ignore" value="yes"/>
-                <button type="submit" class="question-btn question-btn-secondary">Ignore</button>
+                <button type="submit" class="button-link button-link-secondary">Ignore</button>
               {% else %}
                 <input type="hidden" name="ignore" value="no"/>
-                <button type="submit" class="question-btn question-btn-secondary">Unignore</button>
+                <button type="submit" class="button-link button-link-secondary">Unignore</button>
               {% endif %}
             </form>
 
-            <button class="question-btn question-btn-primary" onclick="utils.question_reply_toggle(event, this);">&#128172; Reply</button>
+            <button class="button-link" onclick="utils.question_reply_toggle(event, this);">&#128172; Reply</button>
 
             {% if not msg.ignored %}
               <form class="claim_question_form inline" action="{{ url("contest", contest.id, "question", msg.id, "claim") }}" name="claim{{ msg.id }}" method="POST">
@@ -96,17 +96,17 @@ user_id (int|None): if we are rendering one of the questions on a single user's
                 {% endif %}
                 {% if msg.admin is none %}
                   <input type="hidden" name="claim" value="yes"/>
-                  <button type="submit" class="question-btn question-btn-secondary">Claim</button>
+                  <button type="submit" class="button-link button-link-secondary">Claim</button>
                 {% else %}
                   <input type="hidden" name="claim" value="no"/>
-                  <button type="submit" class="question-btn question-btn-secondary">Unclaim</button>
+                  <button type="submit" class="button-link button-link-secondary">Unclaim</button>
                 {% endif %}
               </form>
             {% endif %}
           </div>
         {% else %}
           <div class="question-action-buttons">
-            <button class="question-btn question-btn-secondary" onclick="utils.question_reply_toggle(event, this);">&#9998; Edit reply</button>
+            <button class="button-link button-link-secondary" onclick="utils.question_reply_toggle(event, this);">&#9998; Edit reply</button>
           </div>
         {% endif %}
 
@@ -128,7 +128,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
               Alternative answer:<br/>
               {{ macro_markdown.markdown_input("reply_question_text") }}
             </div>
-            <input type="submit" value="Send" class="question-btn question-btn-primary"/>
+            <button type="submit" class="button-link">Send</button>
             <span class="alternative_answer">
               {{ macro_markdown.markdown_preview() }}
             </span>
