@@ -117,6 +117,15 @@ class TrainingProgramListHandler(BaseHandler):
         self.r_params["active_training_days"] = active_training_days
         self.r_params["training_day_notifications"] = training_day_notifications
 
+        self.r_params["other_contests"] = (
+            self.sql_session.query(Contest)
+            .filter(~Contest.name.like(r"\_\_%", escape="\\"))
+            .filter(~Contest.training_day.has())
+            .filter(~Contest.training_program.has())
+            .order_by(Contest.name)
+            .all()
+        )
+
         self.render("training_programs.html", **self.r_params)
 
     @require_permission(BaseHandler.AUTHENTICATED)

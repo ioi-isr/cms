@@ -548,6 +548,10 @@ class BaseHandler(CommonRequestHandler):
         self.r_params["total_td_pending_delay_requests"] = \
             total_td_pending_delay_requests
 
+        self.r_params["all_student_tags"] = get_all_student_tags(
+            self.sql_session, training_program
+        )
+
         return self.r_params
 
     def setup_contest_or_training_program(

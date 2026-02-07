@@ -213,6 +213,11 @@
     z-index: 10002 !important;
 }
 
+/* Ensure SweetAlert2 popups appear above MicroModal overlays */
+.swal2-container {
+    z-index: 10003 !important;
+}
+
 /* Danger button for destructive actions in modals */
 .tp-btn-danger {
     background-color: #dc2626;

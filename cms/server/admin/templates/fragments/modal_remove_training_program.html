@@ -1,9 +1,10 @@
 <!-- Remove Training Program Modal Fragment -->
 <!-- Include this fragment in pages where the "Remove Training Program" modal is needed -->
-<!-- Required context: admin, url, xsrf_form_html, training_program -->
-<!-- Optional context: participation_count, submission_count, task_count, training_day_count, training_day_participation_count, training_day_submission_count, other_contests -->
+<!-- Required context: admin, url, xsrf_form_html -->
+<!-- Static mode (single program page): training_program, participation_count, submission_count, task_count, training_day_count, training_day_participation_count, training_day_submission_count, other_contests -->
+<!-- Dynamic mode (listing page): other_contests; caller JS populates modal via element IDs before showing -->
 
-{% if admin is defined and admin.permission_all and training_program is defined %}
+{% if admin is defined and admin.permission_all %}
 <div class="modal modal--medium" id="modal-remove-program" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1">
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-remove-program-title">
@@ -14,14 +15,15 @@
             <main class="modal__content">
                 {{ xsrf_form_html|safe }}
                 <p style="margin-bottom: 16px;">
-                    Are you sure you want to remove the training program <strong>{{ training_program.name }}</strong>?
+                    Are you sure you want to remove the training program <strong id="remove-program-name">{% if training_program is defined %}{{ training_program.name }}{% endif %}</strong>?
                 </p>
                 <div class="modal__warning" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
                     <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">
                         <svg class="icon" width="16" height="16" style="vertical-align: middle; margin-right: 4px;"><use href="#icon-alert-triangle"/></svg>
                         Warning: This action cannot be undone!
                     </p>
-                    <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.9rem;">
+                    <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.9rem;" id="remove-program-stats">
+                        {% if training_program is defined %}
                         <li>{{ participation_count|default(0) }} participation(s) will be deleted</li>
                         <li>{{ submission_count|default(0) }} submission(s) will be deleted</li>
                         <li>{{ training_day_count|default(0) }} training day(s) will be deleted</li>
@@ -29,13 +31,13 @@
                         <li>{{ training_day_participation_count|default(0) }} training day participation(s) will be deleted</li>
                         <li>{{ training_day_submission_count|default(0) }} training day submission(s) will be deleted</li>
                         {% endif %}
+                        {% endif %}
                     </ul>
                 </div>
 
-                {% if task_count|default(0) > 0 %}
-                <div style="margin-bottom: 16px;">
+                <div id="remove-program-task-options" style="{% if not training_program is defined or task_count|default(0) == 0 %}display: none; {% endif %}margin-bottom: 16px;">
                     <p style="margin-bottom: 12px; font-weight: 500;">
-                        The training program has <strong>{{ task_count }}</strong> task(s). What should happen to them?
+                        The training program has <strong id="remove-program-task-count">{% if training_program is defined %}{{ task_count|default(0) }}{% endif %}</strong> task(s). What should happen to them?
                     </p>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <label style="display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 6px; cursor: pointer;">
@@ -66,11 +68,11 @@
                         </label>
                     </div>
                 </div>
-                {% endif %}
             </main>
             <footer class="modal__footer">
                 <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                <button type="button" class="tp-btn-danger" id="confirm-remove-program-btn">Yes, Remove Program</button>
+                <button type="button" class="tp-btn-danger" id="confirm-remove-program-btn"
+                        data-remove-url="{% if training_program is defined %}{{ url("training_programs", training_program.id, "remove") }}{% endif %}">Yes, Remove Program</button>
             </footer>
         </div>
     </div>
@@ -79,66 +81,68 @@
 <script>
 (function() {
     var confirmBtn = document.getElementById('confirm-remove-program-btn');
-    if (confirmBtn) {
-        confirmBtn.addEventListener('click', function() {
-            var hasTaskOptions = {{ 'true' if task_count|default(0) > 0 else 'false' }};
-            var action = 'delete_all';
-            var targetContestId = null;
+    if (!confirmBtn) return;
 
-            if (hasTaskOptions) {
-                var selectedAction = document.querySelector('input[name="action"]:checked');
-                if (!selectedAction) {
-                    AdminModals.showError('Please select what to do with the tasks.');
-                    return;
-                }
-                action = selectedAction.value;
+    confirmBtn.addEventListener('click', function() {
+        var taskOptionsDiv = document.getElementById('remove-program-task-options');
+        var hasTaskOptions = taskOptionsDiv && taskOptionsDiv.style.display !== 'none';
+        var action = 'delete_all';
+        var targetContestId = null;
 
-                if (action === 'move') {
-                    var targetSelect = document.getElementById('target_contest_select');
-                    targetContestId = targetSelect ? targetSelect.value : null;
-                    if (!targetContestId) {
-                        AdminModals.showError('Please select a target contest to move tasks to.');
-                        return;
-                    }
-                }
-            }
-
-            // Build the URL with query parameters
-            var removeUrl = '{{ url("training_programs", training_program.id, "remove") }}';
-            var params = new URLSearchParams();
-            params.append('action', action);
-            if (targetContestId) {
-                params.append('target_contest_id', targetContestId);
-            }
-
-            // Get XSRF token (scoped to this modal)
-            var modalEl = document.getElementById('modal-remove-program');
-            var xsrfInput = modalEl ? modalEl.querySelector('input[name="_xsrf"]') : null;
-            if (!xsrfInput) {
-                AdminModals.showError('Missing XSRF token');
+        if (hasTaskOptions) {
+            var selectedAction = document.querySelector('#modal-remove-program input[name="action"]:checked');
+            if (!selectedAction) {
+                AdminModals.showError('Please select what to do with the tasks.');
                 return;
             }
+            action = selectedAction.value;
 
-            // Send DELETE request
-            fetch(removeUrl + '?' + params.toString(), {
-                method: 'DELETE',
-                headers: {
-                    'X-XSRFToken': xsrfInput.value
+            if (action === 'move') {
+                var targetSelect = document.getElementById('target_contest_select');
+                targetContestId = targetSelect ? targetSelect.value : null;
+                if (!targetContestId) {
+                    AdminModals.showError('Please select a target contest to move tasks to.');
+                    return;
                 }
-            }).then(function(response) {
-                if (response.ok) {
-                    return response.text();
-                } else {
-                    throw new Error('Failed to remove training program');
-                }
-            }).then(function(redirectUrl) {
-                // The handler returns a redirect URL
-                window.location.href = redirectUrl || '{{ url("training_programs") }}';
-            }).catch(function(error) {
-                AdminModals.showError(error.message);
-            });
+            }
+        }
+
+        var removeUrl = confirmBtn.getAttribute('data-remove-url');
+        if (!removeUrl) {
+            AdminModals.showError('Remove URL not set');
+            return;
+        }
+
+        var params = new URLSearchParams();
+        params.append('action', action);
+        if (targetContestId) {
+            params.append('target_contest_id', targetContestId);
+        }
+
+        var modalEl = document.getElementById('modal-remove-program');
+        var xsrfInput = modalEl ? modalEl.querySelector('input[name="_xsrf"]') : document.querySelector('input[name="_xsrf"]');
+        if (!xsrfInput) {
+            AdminModals.showError('Missing XSRF token');
+            return;
+        }
+
+        fetch(removeUrl + '?' + params.toString(), {
+            method: 'DELETE',
+            headers: {
+                'X-XSRFToken': xsrfInput.value
+            }
+        }).then(function(response) {
+            if (response.ok) {
+                return response.text();
+            } else {
+                throw new Error('Failed to remove training program');
+            }
+        }).then(function() {
+            window.location.href = '{{ url("training_programs") }}';
+        }).catch(function(error) {
+            AdminModals.showError(error.message);
         });
-    }
+    });
 })();
 </script>
 {% endif %}

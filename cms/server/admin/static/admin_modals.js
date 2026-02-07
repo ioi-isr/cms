@@ -212,11 +212,10 @@ AdminModals.confirmLink = function(event, message, options) {
 };
 
 /**
- * Shows a SweetAlert2 confirmation, then calls the callback if confirmed.
- * Use for inline onclick handlers that need async confirmation.
- * @param {string} message - Confirmation message
- * @param {function} callback - Function to call if confirmed
- * @param {Object} [options] - Optional SweetAlert2 overrides
+ * Shows a SweetAlert2 error dialog.
+ * @param {string} message - Error message
+ * @param {string} [title] - Dialog title (default "Error")
+ * @returns {Promise}
  */
 AdminModals.showError = function(message, title) {
     return Swal.fire({
@@ -226,6 +225,13 @@ AdminModals.showError = function(message, title) {
     });
 };
 
+/**
+ * Shows a SweetAlert2 confirmation, then calls the callback if confirmed.
+ * Use for inline onclick handlers that need async confirmation.
+ * @param {string} message - Confirmation message
+ * @param {function} callback - Function to call if confirmed
+ * @param {Object} [options] - Optional SweetAlert2 overrides
+ */
 AdminModals.confirmThen = function(message, callback, options) {
     AdminModals.simpleConfirm(message, options).then(function(confirmed) {
         if (confirmed) {

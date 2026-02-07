@@ -185,58 +185,7 @@
     </div>
 </div>
 
-<!-- Dynamic Remove Modal -->
-{% if admin.permission_all %}
-<div class="modal modal--medium" id="modal-remove-program" aria-hidden="true">
-    <div class="modal__overlay" tabindex="-1">
-        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-remove-program-title">
-            <header class="modal__header modal__header--danger">
-                <h2 class="modal__title" id="modal-remove-program-title">Remove Training Program</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
-            <main class="modal__content">
-                <p style="margin-bottom: 16px;">
-                    Are you sure you want to remove the training program <strong id="remove-program-name"></strong>?
-                </p>
-                <div class="modal__warning" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
-                    <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">
-                        <svg class="icon" width="16" height="16" style="vertical-align: middle; margin-right: 4px;"><use href="#icon-alert-triangle"/></svg>
-                        Warning: This action cannot be undone!
-                    </p>
-                    <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.9rem;" id="remove-program-stats">
-                    </ul>
-                </div>
-
-                <div id="remove-program-task-options" style="display: none; margin-bottom: 16px;">
-                    <p style="margin-bottom: 12px; font-weight: 500;">
-                        The training program has <strong id="remove-program-task-count"></strong> task(s). What should happen to them?
-                    </p>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <label style="display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 6px; cursor: pointer;">
-                            <input type="radio" name="remove_action" value="detach" style="margin-top: 3px;">
-                            <div>
-                                <span style="font-weight: 500;">Detach from program</span>
-                                <span style="display: block; font-size: 0.85rem; color: var(--tp-text-muted);">Tasks will remain in the system but won't belong to any contest</span>
-                            </div>
-                        </label>
-                        <label style="display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid #fecaca; border-radius: 6px; cursor: pointer; background: #fef2f2;">
-                            <input type="radio" name="remove_action" value="delete_all" style="margin-top: 3px;">
-                            <div>
-                                <span style="font-weight: 600; color: #991b1b;">Delete all tasks</span>
-                                <span style="display: block; font-size: 0.85rem; color: #7f1d1d;">Tasks will be permanently deleted from the system</span>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-            </main>
-            <footer class="modal__footer">
-                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                <button type="button" class="tp-btn-danger" id="confirm-remove-program-btn">Yes, Remove Program</button>
-            </footer>
-        </div>
-    </div>
-</div>
-{% endif %}
+{% include "fragments/modal_remove_training_program.html" %}
 
 <script>
 function closeAllMenus() {
@@ -267,13 +216,9 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Remove modal functionality
-var currentRemoveUrl = null;
-
 function openRemoveModal(linkElement) {
     closeAllMenus();
 
-    // Get data from data attributes
     var name = linkElement.getAttribute('data-tp-name');
     var removeUrl = linkElement.getAttribute('data-remove-url');
     var participationCount = Number.parseInt(linkElement.getAttribute('data-participation-count')) || 0;
@@ -281,82 +226,28 @@ function openRemoveModal(linkElement) {
     var taskCount = Number.parseInt(linkElement.getAttribute('data-task-count')) || 0;
     var trainingDayCount = Number.parseInt(linkElement.getAttribute('data-training-day-count')) || 0;
 
-    currentRemoveUrl = removeUrl;
-
-    // Populate the modal
     document.getElementById('remove-program-name').textContent = name;
 
-    // Build stats list
     var statsHtml = '<li>' + participationCount + ' participation(s) will be deleted</li>';
     statsHtml += '<li>' + submissionCount + ' submission(s) will be deleted</li>';
     statsHtml += '<li>' + trainingDayCount + ' training day(s) will be deleted</li>';
     document.getElementById('remove-program-stats').innerHTML = statsHtml;
 
-    // Show/hide task options
     var taskOptionsDiv = document.getElementById('remove-program-task-options');
     if (taskCount > 0) {
         taskOptionsDiv.style.display = 'block';
         document.getElementById('remove-program-task-count').textContent = taskCount;
-
-        // Reset radio selection
-        document.querySelectorAll('input[name="remove_action"]').forEach(function(r) {
-            r.checked = false;
-        });
     } else {
         taskOptionsDiv.style.display = 'none';
     }
 
-    // Show the modal
-    MicroModal.show('modal-remove-program');
-}
-
-// Handle confirm button click
-var confirmBtn = document.getElementById('confirm-remove-program-btn');
-if (confirmBtn) {
-    confirmBtn.addEventListener('click', function() {
-        var taskOptionsDiv = document.getElementById('remove-program-task-options');
-        var hasTaskOptions = taskOptionsDiv && taskOptionsDiv.style.display !== 'none';
-        var action = 'delete_all';
-
-        if (hasTaskOptions) {
-            var selectedAction = document.querySelector('input[name="remove_action"]:checked');
-            if (!selectedAction) {
-                AdminModals.showError('Please select what to do with the tasks.');
-                return;
-            }
-            action = selectedAction.value;
-        }
-
-        // Build the URL with query parameters
-        var params = new URLSearchParams();
-        params.append('action', action);
-
-        // Get XSRF token
-        var xsrfInput = document.querySelector('input[name="_xsrf"]');
-        if (!xsrfInput) {
-            AdminModals.showError('Missing XSRF token');
-            return;
-        }
-
-        // Send DELETE request
-        fetch(currentRemoveUrl + '?' + params.toString(), {
-            method: 'DELETE',
-            headers: {
-                'X-XSRFToken': xsrfInput.value
-            }
-        }).then(function(response) {
-            if (response.ok) {
-                return response.text();
-            } else {
-                throw new Error('Failed to remove training program');
-            }
-        }).then(function(redirectUrl) {
-            // Reload the page to show updated list
-            window.location.reload();
-        }).catch(function(error) {
-            AdminModals.showError(error.message);
-        });
+    document.querySelectorAll('#modal-remove-program input[name="action"]').forEach(function(r) {
+        r.checked = false;
     });
+
+    document.getElementById('confirm-remove-program-btn').setAttribute('data-remove-url', removeUrl);
+
+    MicroModal.show('modal-remove-program');
 }
 </script>
 
