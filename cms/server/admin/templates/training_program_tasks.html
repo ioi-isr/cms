@@ -100,7 +100,7 @@
                                 <!-- Detach button for archived training day tasks -->
                                 <button type="submit" name="operation" value="detach_{{ t.id }}" class="btn-icon-only btn-detach"
                                     {% if not admin.permission_all %}disabled{% endif %}
-                                    onclick="return AdminModals.confirmSubmit(event, 'Detach this task from the archived training day? It will become available for new training days.');"
+                                    onclick="return AdminModals.confirmSubmit(event, 'Detach this task from the archived training day? It will become available for new training days.', {icon: 'question'});"
                                     title="Detach from archived training day">
                                     <svg class="icon" width="18" height="18"><use href="#icon-unlock"/></svg>
                                 </button>

@@ -245,7 +245,7 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
 
     if (usesRegex === true || usesRegex === 'true') {
       AdminModals.simpleConfirm('Do you also want to update the subtask regex to match testcases containing "' + prefix + '" as a substring?',
-        { title: 'Update regex?', confirmButtonText: 'Yes, update regex', cancelButtonText: 'No, just add prefix' }
+        { title: 'Update regex?', icon: 'question', confirmButtonText: 'Yes, update regex', cancelButtonText: 'No, just add prefix' }
       ).then(function(updateRegex) {
         submitBatchAddPrefix(updateRegex);
       });

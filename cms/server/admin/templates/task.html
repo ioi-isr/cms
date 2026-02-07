@@ -74,7 +74,7 @@ $(document).ready(function() {
       AdminModals.simpleConfirm(
         "Score parameters have been changed for " + changedDatasets.length + " dataset(s). " +
         "Do you want to re-score all submissions (including model solutions) for the affected dataset(s)?",
-        { title: 'Re-score submissions?', confirmButtonText: 'Yes, re-score', cancelButtonText: 'No, just save' }
+        { title: 'Re-score submissions?', icon: 'question', confirmButtonText: 'Yes, re-score', cancelButtonText: 'No, just save' }
       ).then(function(shouldRescore) {
         if (shouldRescore) {
           $(form).append('<input type="hidden" name="rescore_datasets" value="' + changedDatasets.join(',') + '" />');
@@ -803,7 +803,7 @@ window.filterTestcases = function(dataset_id) {
                          'dataset_id': {{ dataset.id }},
                          'level': 'compilation'},
                          function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
-                         ); });"
+                         ); }, {icon: 'question'});"
                 title="Compilation" >C</button>
         <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                          'EvaluationService', 0,
@@ -811,14 +811,14 @@ window.filterTestcases = function(dataset_id) {
                          'dataset_id': {{ dataset.id }},
                          'level': 'evaluation'},
                          function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
-                         ); });"
+                         ); }, {icon: 'question'});"
                 title="Evaluation" >E</button>
         <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                          'ScoringService', 0,
                          'invalidate_model_solutions', {
                          'dataset_id': {{ dataset.id }}},
                          function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
-                         ); });"
+                         ); }, {icon: 'question'});"
                 title="Score" >S</button>
       </p>
 {% endif %}

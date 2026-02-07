@@ -367,7 +367,7 @@ function saveAttendance() {
         var action = justified ? 'mark this absence as justified' : 'remove the justified status';
         AdminModals.confirmThen('Are you sure you want to ' + action + '?', function() {
             _doSaveAttendance(justified, recorded, comment);
-        });
+        }, {icon: 'question'});
         return;
     }
     _doSaveAttendance(justified, recorded, comment);

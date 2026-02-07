@@ -74,7 +74,7 @@ function enable_worker(shard) {
                                          {},
                                          update_workers_status);
                        });
-    });
+    }, {icon: 'question'});
 }
 
 function disable_worker(shard) {
@@ -88,7 +88,7 @@ function disable_worker(shard) {
                                          {},
                                          update_workers_status);
                        });
-    });
+    }, {icon: 'question'});
 }
 
 var total_workers_configured = 0;
@@ -117,7 +117,7 @@ function set_workers_count() {
                               alert("Failed to set worker count. Please check the logs.");
                           }
                        });
-    });
+    }, {icon: 'question'});
 }
 
 function update_workers_status(response)

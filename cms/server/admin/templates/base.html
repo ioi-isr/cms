@@ -73,6 +73,17 @@
     <link rel="stylesheet" type="text/css" href="{{ url("static", "micromodal", "micromodal.css") }}">
     <script src="{{ url("static", "sweetalert2", "sweetalert2.all.min.js") }}"></script>
     <link rel="stylesheet" type="text/css" href="{{ url("static", "sweetalert2", "sweetalert2.min.css") }}">
+    <style>
+      .swal2-popup .swal2-styled.swal2-confirm {
+        background-color: var(--tp-primary, #0F766E);
+      }
+      .swal2-popup .swal2-styled.swal2-confirm:hover {
+        background-color: var(--tp-primary-hover, #0d655e);
+      }
+      .swal2-popup .swal2-styled.swal2-cancel {
+        background-color: #6e7881;
+      }
+    </style>
     <script src="{{ url("static", "js", "admin_table_utils.js") }}"></script>
     <script src="{{ url("static", "training_program.js") }}"></script>
     <script src="{{ url("static", "admin_modals.js") }}"></script>

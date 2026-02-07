@@ -99,11 +99,11 @@
   <div class="panel-warning">
     <strong>Pending Password Reset</strong>
     <p>This user has submitted a password reset request that is awaiting approval.</p>
-    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Approve password reset for {{ user.username }}?');">
+    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Approve password reset for {{ user.username }}?', {icon: 'question'});">
       {{ xsrf_form_html|safe }}
       <input type="submit" value="Approve Reset" class="btn-success" />
     </form>
-    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Deny password reset for {{ user.username }}?');">
+    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Deny password reset for {{ user.username }}?', {icon: 'question'});">
       {{ xsrf_form_html|safe }}
       <input type="submit" value="Deny Reset" class="btn-danger" />
     </form>

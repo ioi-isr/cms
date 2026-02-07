@@ -162,14 +162,11 @@ AdminModals.simpleConfirm = function(message, options) {
     return Swal.fire({
         title: opts.title || 'Are you sure?',
         text: message,
-        icon: 'warning',
+        icon: opts.icon || 'warning',
         showCancelButton: true,
         confirmButtonText: opts.confirmButtonText || 'Yes',
         cancelButtonText: opts.cancelButtonText || 'Cancel',
-        reverseButtons: true,
-        customClass: {
-            confirmButton: 'swal2-confirm-danger'
-        }
+        reverseButtons: true
     }).then(function(result) {
         return result.isConfirmed;
     });

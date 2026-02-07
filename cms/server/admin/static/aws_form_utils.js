@@ -329,7 +329,7 @@ CMS.AWSFormUtils.initTagify = function(config) {
             if (!armed) return;
 
             var tagValue = e.detail.data.value;
-            AdminModals.simpleConfirm('Add tag "' + tagValue + '"?').then(function(confirmed) {
+            AdminModals.simpleConfirm('Add tag "' + tagValue + '"?', {icon: 'question'}).then(function(confirmed) {
                 if (confirmed) {
                     pendingSave = true;
                     tagify.trigger('change');
@@ -358,7 +358,7 @@ CMS.AWSFormUtils.initTagify = function(config) {
                     return;
                 }
 
-                AdminModals.simpleConfirm('Change tag "' + oldVal + '" to "' + newVal + '"?').then(function(confirmed) {
+                AdminModals.simpleConfirm('Change tag "' + oldVal + '" to "' + newVal + '"?', {icon: 'question'}).then(function(confirmed) {
                     if (confirmed) {
                         pendingSave = true;
                         tagify.trigger('change');

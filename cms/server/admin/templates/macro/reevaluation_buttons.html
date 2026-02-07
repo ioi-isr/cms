@@ -43,7 +43,7 @@ contest_id (int|None): the id of the contest to invalidate.
 {% endfor %}
                   'level': 'compilation'},
                  function(response) { utils.redirect_if_ok('{{ next_page }}', response); }
-                 ); });"
+                 ); }, {icon: 'question'});"
 {% if not allowed %}
         disabled
 {% endif %}
@@ -56,7 +56,7 @@ contest_id (int|None): the id of the contest to invalidate.
 {% endfor %}
                   'level': 'evaluation'},
                  function(response) { utils.redirect_if_ok('{{ next_page }}', response); }
-                  ); });"
+                  ); }, {icon: 'question'});"
 {% if not allowed %}
         disabled
 {% endif %}
@@ -69,7 +69,7 @@ contest_id (int|None): the id of the contest to invalidate.
 {% endfor %}
                  },
                  function(response) { utils.redirect_if_ok('{{ next_page }}', response); }
-                 ); });"
+                 ); }, {icon: 'question'});"
 {% if not allowed %}
         disabled
 {% endif %}

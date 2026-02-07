@@ -128,7 +128,7 @@ function initDragDropReorder(options) {
         }
 
         if (confirmMessage) {
-            AdminModals.simpleConfirm(confirmMessage).then(function(confirmed) {
+            AdminModals.simpleConfirm(confirmMessage, {icon: 'question'}).then(function(confirmed) {
                 if (confirmed) {
                     doSave();
                 } else {
