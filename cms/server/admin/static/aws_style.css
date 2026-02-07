@@ -456,6 +456,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 
 .sidebar-action-link {
     font-size: 0.85em;
+    font-family: inherit;
     color: #E5E7EB;
     text-decoration: none;
     padding: 6px 10px;
@@ -464,6 +465,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     background-color: #0f172a;
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
     transition: all 0.15s ease-in-out;
+    cursor: pointer;
 }
 
 .sidebar-action-link:hover {

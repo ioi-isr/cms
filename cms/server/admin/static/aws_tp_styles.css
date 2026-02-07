@@ -439,97 +439,29 @@
     box-sizing: border-box;
 }
 
-/* ==========================================================================
-   Bulk Assign Task Modal (specific styles)
-   ========================================================================== */
-
-.bulk-assign-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-}
-
 /* Ensure Tagify dropdown appears above the modal */
 .tagify__dropdown {
     z-index: 10001 !important;
 }
 
-.bulk-assign-modal-content {
-    background: var(--tp-bg-white);
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 480px;
-    width: 90%;
-    box-shadow: var(--tp-shadow-xl);
-}
-
-.bulk-assign-modal-header {
+/* Bulk assign modal layout */
+.bulk-assign-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--tp-border);
-}
-
-.bulk-assign-modal-header h2 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: var(--tp-text-primary);
-}
-
-.bulk-assign-close-btn {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: var(--tp-text-lighter);
-    line-height: 1;
-    padding: 0;
-}
-
-.bulk-assign-close-btn:hover {
-    color: var(--tp-text-primary);
-}
-
-.bulk-assign-description {
-    color: var(--tp-text-lighter);
-    font-size: 0.9rem;
-    margin: 0 0 20px 0;
-    padding: 0;
-}
-
-.bulk-assign-form-group {
+    gap: 16px;
+    align-items: flex-start;
     margin-bottom: 16px;
 }
 
-.bulk-assign-form-group label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--tp-text-secondary);
-    margin-bottom: 6px;
+.bulk-assign-row .modal__form-group {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
 }
 
-.bulk-assign-form-group input[type="text"] {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.bulk-assign-form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--tp-border);
+@media (max-width: 700px) {
+    .bulk-assign-row {
+        flex-direction: column;
+    }
 }
 
 /* ==========================================================================
@@ -1125,115 +1057,6 @@
     font-size: 1.1em !important;
 }
 
-/* ==========================================================================
-   Attendance Modal Styles
-   ========================================================================== */
-
-.attendance-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-}
-
-.attendance-modal-content {
-    background: white;
-    border-radius: 8px;
-    width: 400px;
-    max-width: 90%;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.attendance-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.attendance-modal-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: #374151;
-}
-
-.attendance-modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #6b7280;
-    padding: 0;
-    line-height: 1;
-}
-
-.attendance-modal-close:hover {
-    color: #374151;
-}
-
-.attendance-modal-body {
-    padding: 20px;
-}
-
-.attendance-modal-row {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 16px;
-}
-
-.attendance-modal-row label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 500;
-    color: #374151;
-    margin-bottom: 6px;
-}
-
-.attendance-modal-row input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-}
-
-.attendance-modal-row textarea {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 0.9em;
-    resize: none;
-    box-sizing: border-box;
-}
-
-.attendance-modal-row textarea:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.attendance-modal-hint {
-    color: #6b7280;
-    font-size: 0.85em;
-    margin-top: 4px;
-}
-
-.attendance-modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 16px 20px;
-    border-top: 1px solid #e5e7eb;
-    background: #f9fafb;
-    border-radius: 0 0 8px 8px;
-}
-
 .attendance-cell {
     cursor: pointer;
     transition: background-color 0.2s;
@@ -1384,61 +1207,8 @@
 }
 
 /* ==========================================================================
-   Histogram Modal Styles
+   Histogram Content Styles
    ========================================================================== */
-
-.histogram-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-}
-
-.histogram-modal-content {
-    background: var(--tp-bg-white);
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 800px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: var(--tp-shadow-xl);
-}
-
-.histogram-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--tp-border);
-}
-
-.histogram-modal-header h2 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: var(--tp-text-primary);
-}
-
-.histogram-close-btn {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: var(--tp-text-lighter);
-    line-height: 1;
-    padding: 0;
-}
-
-.histogram-close-btn:hover {
-    color: var(--tp-text-primary);
-}
 
 .histogram-filter-row {
     display: flex;
@@ -2096,10 +1866,15 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    width: 100%;
     padding: 10px 16px;
+    background: none;
+    border: none;
+    font-family: inherit;
     color: var(--tp-text-secondary) !important;
     text-decoration: none;
     font-size: 0.9rem;
+    cursor: pointer;
     transition: background 0.15s;
 }
 

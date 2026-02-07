@@ -35,7 +35,7 @@ contest_id (int|None): the id of the contest to invalidate.
 {% elif contest_id is not none %}
   {% set invalidate_arguments = {"contest_id": contest_id} %}
 {% endif %}
-<button type="button" onclick="confirm('Do you really want to reevaluate?') && cmsrpc_request(
+<button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'EvaluationService', 0,
                  'invalidate_submission', {
 {% for key, value in invalidate_arguments.items() %}
@@ -43,12 +43,12 @@ contest_id (int|None): the id of the contest to invalidate.
 {% endfor %}
                   'level': 'compilation'},
                  function(response) { utils.redirect_if_ok('{{ next_page }}', response); }
-                 );"
+                 ); }, {icon: 'question'});"
 {% if not allowed %}
         disabled
 {% endif %}
         title="Compilation" >C</button>
-<button type="button" onclick="confirm('Do you really want to reevaluate?') && cmsrpc_request(
+<button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'EvaluationService', 0,
                  'invalidate_submission', {
 {% for key, value in invalidate_arguments.items() %}
@@ -56,12 +56,12 @@ contest_id (int|None): the id of the contest to invalidate.
 {% endfor %}
                   'level': 'evaluation'},
                  function(response) { utils.redirect_if_ok('{{ next_page }}', response); }
-                  );"
+                  ); }, {icon: 'question'});"
 {% if not allowed %}
         disabled
 {% endif %}
         title="Evaluation" >E</button>
-<button type="button" onclick="confirm('Do you really want to reevaluate?') && cmsrpc_request(
+<button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'ScoringService', 0,
                  'invalidate_submission', {
 {% for key, value in invalidate_arguments.items() %}
@@ -69,7 +69,7 @@ contest_id (int|None): the id of the contest to invalidate.
 {% endfor %}
                  },
                  function(response) { utils.redirect_if_ok('{{ next_page }}', response); }
-                 );"
+                 ); }, {icon: 'question'});"
 {% if not allowed %}
         disabled
 {% endif %}

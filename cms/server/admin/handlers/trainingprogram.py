@@ -41,10 +41,13 @@ from cms.db import (
     Submission,
     Task,
 )
-from cms.server.admin.handlers.utils import get_training_day_notifications
+from cms.server.admin.handlers.utils import (
+    get_available_contests,
+    get_training_day_notifications,
+)
 from cmscommon.datetime import make_datetime
 
-from .base import BaseHandler, SimpleHandler, require_permission
+from .base import BaseHandler, require_permission
 
 from .trainingprogramtask import (
     TrainingProgramTasksHandler,
@@ -117,6 +120,8 @@ class TrainingProgramListHandler(BaseHandler):
         self.r_params["active_training_days"] = active_training_days
         self.r_params["training_day_notifications"] = training_day_notifications
 
+        self.r_params["other_contests"] = get_available_contests(self.sql_session)
+
         self.render("training_programs.html", **self.r_params)
 
     @require_permission(BaseHandler.AUTHENTICATED)
@@ -140,7 +145,49 @@ class TrainingProgramHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
         self.render_params_for_training_program(training_program)
+
+        # Add data needed for the remove modal
+        self.r_params["participation_count"] = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest == managing_contest)
+            .count()
+        )
+        training_day_contest_ids = [
+            td.contest_id for td in training_program.training_days if td.contest_id
+        ]
+        self.r_params["training_day_count"] = len(training_program.training_days)
+        self.r_params["training_day_participation_count"] = (
+            self.sql_session.query(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .count()
+            if training_day_contest_ids
+            else 0
+        )
+        self.r_params["submission_count"] = (
+            self.sql_session.query(Submission)
+            .join(Participation)
+            .filter(Participation.contest == managing_contest)
+            .count()
+        )
+        self.r_params["training_day_submission_count"] = (
+            self.sql_session.query(Submission)
+            .join(Participation)
+            .filter(Participation.contest_id.in_(training_day_contest_ids))
+            .count()
+            if training_day_contest_ids
+            else 0
+        )
+        self.r_params["task_count"] = (
+            self.sql_session.query(func.count(Task.id))
+            .filter(Task.contest == managing_contest)
+            .scalar()
+        )
+
+        # Other contests available to move tasks into
+        self.r_params["other_contests"] = get_available_contests(self.sql_session)
+
         self.render("training_program.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -246,15 +293,13 @@ class TrainingProgramHandler(BaseHandler):
         self.redirect(fallback)
 
 
-class AddTrainingProgramHandler(
-    SimpleHandler("add_training_program.html", permission_all=True)
-):
+class AddTrainingProgramHandler(BaseHandler):
     """Add a new training program."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self):
-        self.r_params = self.render_params()
-        self.render("add_training_program.html", **self.r_params)
+        # Redirect to training programs page with modal open
+        self.redirect(self.url("training_programs") + "?open_modal=add-program")
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
@@ -326,54 +371,11 @@ class RemoveTrainingProgramHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-
-        self.render_params_for_training_program(training_program)
-        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
-
-        # Count related data that will be deleted
-        self.r_params["participation_count"] = (
-            self.sql_session.query(Participation)
-            .filter(Participation.contest == managing_contest)
-            .count()
+        # Redirect to training program page with remove modal open
+        self.redirect(
+            self.url("training_program", training_program_id)
+            + "?open_modal=remove-program"
         )
-        training_day_contest_ids = [td.contest_id for td in training_program.training_days]
-        self.r_params["training_day_count"] = len(training_day_contest_ids)
-        self.r_params["training_day_participation_count"] = (
-            self.sql_session.query(Participation)
-            .filter(Participation.contest_id.in_(training_day_contest_ids))
-            .count()
-            if training_day_contest_ids else 0
-        )
-        self.r_params["submission_count"] = (
-            self.sql_session.query(Submission)
-            .join(Participation)
-            .filter(Participation.contest == managing_contest)
-            .count()
-        )
-        self.r_params["training_day_submission_count"] = (
-            self.sql_session.query(Submission)
-            .join(Participation)
-            .filter(Participation.contest_id.in_(training_day_contest_ids))
-            .count()
-            if training_day_contest_ids else 0
-        )
-        self.r_params["task_count"] = len(managing_contest.tasks)
-
-        # Other contests available to move tasks into (excluding training day contests
-        # and managing contests for training programs)
-        self.r_params["other_contests"] = (
-            self.sql_session.query(Contest)
-            .filter(Contest.id != managing_contest.id)
-            .filter(~Contest.name.like(r'\_\_%', escape='\\'))
-            .filter(~Contest.training_day.has())
-            .filter(~Contest.training_program.has())
-            .order_by(Contest.name)
-            .all()
-        )
-
-        self.render("training_program_remove.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str):

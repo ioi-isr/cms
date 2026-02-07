@@ -18,7 +18,7 @@
     <div id="current_picture_container" style="margin-bottom: 10px;">
       <img src="{{ url('file', user.picture, 'picture') }}" alt="Profile picture" style="max-width: 160px; max-height: 240px; border: 1px solid #ccc;"/>
       <br/>
-      <button type="button" onclick="if(confirm('Are you sure you want to remove this picture?')) { CMS.AWSUtils.ajax_post('{{ url('user', user.id, 'remove_picture') }}'); }">Remove picture</button>
+      <button type="button" onclick="AdminModals.confirmThen('Are you sure you want to remove this picture?', function() { CMS.AWSUtils.ajax_post('{{ url('user', user.id, 'remove_picture') }}'); });">Remove picture</button>
     </div>
     {% endif %}
     <input type="file" name="picture" accept="image/jpeg,image/png,image/gif,image/webp" id="picture_input"/>

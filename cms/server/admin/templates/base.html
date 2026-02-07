@@ -69,8 +69,24 @@
     <script src="{{ url("static", "tomselect", "js", "tom-select.complete.min.js") }}"></script>
     <link rel="stylesheet" type="text/css" href="{{ url("static", "tagify", "tagify.css") }}">
     <script src="{{ url("static", "tagify", "tagify.min.js") }}"></script>
+    <script src="{{ url("static", "micromodal", "micromodal.min.js") }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "micromodal", "micromodal.css") }}">
+    <script src="{{ url("static", "sweetalert2", "sweetalert2.all.min.js") }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "sweetalert2", "sweetalert2.min.css") }}">
+    <style>
+      .swal2-popup .swal2-styled.swal2-confirm {
+        background-color: var(--tp-primary, #0F766E);
+      }
+      .swal2-popup .swal2-styled.swal2-confirm:hover {
+        background-color: var(--tp-primary-hover, #0d655e);
+      }
+      .swal2-popup .swal2-styled.swal2-cancel {
+        background-color: #6e7881;
+      }
+    </style>
     <script src="{{ url("static", "js", "admin_table_utils.js") }}"></script>
     <script src="{{ url("static", "training_program.js") }}"></script>
+    <script src="{{ url("static", "admin_modals.js") }}"></script>
 
     {% if contest is none %}
     <title>Admin</title>
@@ -289,14 +305,44 @@ $(document).ready(initSidebarEvents);
         {% endif %}
         <ul class="menu">
         {% if contest is none and training_program is not defined %}
-          <li class="menu_entry"><a class="menu_link" href="{{ url() }}">Overview</a></li>
-          <li class="menu_entry"><a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a></li>
+          <li class="menu_entry">
+            <span class="menu-icon">
+              <svg class="icon" width="18" height="18"><use href="#icon-activity"/></svg>
+            </span>
+            <a class="menu_link" href="{{ url() }}">Overview</a>
+          </li>
+          <li class="menu_entry">
+            <span class="menu-icon">
+              <svg class="icon" width="18" height="18"><use href="#icon-cpu"/></svg>
+            </span>
+            <a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a>
+          </li>
         {% elif training_program is defined %}
-          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "overview") }}">Overview</a></li>
-          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "resourceslist") }}">Resource usage</a></li>
+          <li class="menu_entry">
+            <span class="menu-icon">
+              <svg class="icon" width="18" height="18"><use href="#icon-activity"/></svg>
+            </span>
+            <a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "overview") }}">Overview</a>
+          </li>
+          <li class="menu_entry">
+            <span class="menu-icon">
+              <svg class="icon" width="18" height="18"><use href="#icon-cpu"/></svg>
+            </span>
+            <a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "resourceslist") }}">Resource usage</a>
+          </li>
         {% else %}
-          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "overview") }}">Overview</a></li>
-          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "resourceslist") }}">Resource usage</a></li>
+          <li class="menu_entry">
+            <span class="menu-icon">
+              <svg class="icon" width="18" height="18"><use href="#icon-activity"/></svg>
+            </span>
+            <a class="menu_link" href="{{ url("contest", contest.id, "overview") }}">Overview</a>
+          </li>
+          <li class="menu_entry">
+            <span class="menu-icon">
+              <svg class="icon" width="18" height="18"><use href="#icon-cpu"/></svg>
+            </span>
+            <a class="menu_link" href="{{ url("contest", contest.id, "resourceslist") }}">Resource usage</a>
+          </li>
         {% endif %}
         </ul>
         <div class="hr"></div>
@@ -333,7 +379,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("training_programs", "add") }}">New training program</a>
+              <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-program')">New training program</button>
             </div>
             {% endif %}
           </div>
@@ -498,11 +544,20 @@ $(document).ready(initSidebarEvents);
             </li>
           </ul>
 
+          <ul class="menu">
+            <li class="menu_entry">
+              <span class="menu-icon">
+                <svg class="icon" width="18" height="18"><use href="#icon-users"/></svg>
+              </span>
+              <a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a>
+            </li>
+          </ul>
+
           <ul class="sidebar-menu">
             <li class="sidebar-folder" data-folder-key="training-days-section">
               <div class="folder-header">
                 <span class="folder-icon-svg">
-                  <svg class="icon" width="18" height="18"><use href="#icon-calendar"/></svg>
+                  <svg class="icon" width="18" height="18"><use href="#icon-laptop-code"/></svg>
                 </span>
                 <a href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a>
                 <div class="sidebar-badge-container">
@@ -536,7 +591,7 @@ $(document).ready(initSidebarEvents);
                 {% endif %}
                 {% if admin.permission_all %}
                   <div class="sidebar-actions">
-                    <a class="sidebar-action-link" href="{{ url("training_program", training_program.id, "training_days", "add") }}">Add a training day</a>
+                    <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-training-day')">Add a training day</button>
                   </div>
                 {% endif %}
               </ul>
@@ -546,21 +601,15 @@ $(document).ready(initSidebarEvents);
           <ul class="menu">
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-bar-chart"/></svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-home-chart"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "ranking") }}">Home Task Scores</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-file-text"/></svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-file-code"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a>
-            </li>
-            <li class="menu_entry">
-              <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-users"/></svg>
-              </span>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
@@ -570,7 +619,7 @@ $(document).ready(initSidebarEvents);
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-check-square"/></svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-calendar-check"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a>
             </li>
@@ -614,7 +663,7 @@ $(document).ready(initSidebarEvents);
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-file-text"/></svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-file-code"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "submissions") }}">Submissions</a>
             </li>
@@ -660,7 +709,7 @@ $(document).ready(initSidebarEvents);
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-check-square"/></svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-calendar-check"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "delays_and_extra_times") }}">Attendance</a>
               <div class="sidebar-badge-container">
@@ -689,6 +738,38 @@ $(document).ready(initSidebarEvents);
           <div id="subpage_content"></div>
         </dialog>
         {% block core %}{% endblock core %}
+      </div>
+
+      <!-- Global modals for sidebar actions -->
+      {% include "fragments/modal_add_training_program.html" %}
+      {% if training_program is defined %}
+      {% include "fragments/modal_add_training_day.html" %}
+      {% endif %}
+
+      <!-- Generic Confirm Modal -->
+      <div class="modal modal--medium" id="modal-generic-confirm" aria-hidden="true">
+          <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+              <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-confirm-title">
+                  <header class="modal__header modal__header--danger">
+                      <h2 class="modal__title" id="modal-confirm-title">Confirm Action</h2>
+                      <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                  </header>
+                  <main class="modal__content">
+                      <p id="modal-confirm-message" style="margin-bottom: 16px;"></p>
+                      <div id="modal-confirm-warning-box" class="modal__warning" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; display: none;">
+                          <p style="margin: 0; color: #991b1b; font-weight: 600;">
+                              <svg class="icon" width="16" height="16" style="vertical-align: middle;"><use href="#icon-alert-triangle"/></svg>
+                              Warning
+                          </p>
+                          <div id="modal-confirm-warning-text" style="color: #7f1d1d; font-size: 0.9rem; margin-top: 4px;"></div>
+                      </div>
+                  </main>
+                  <footer class="modal__footer">
+                      <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                      <button type="button" class="tp-btn-danger" id="modal-confirm-btn">Confirm</button>
+                  </footer>
+              </div>
+          </div>
       </div>
 
     </div>
