@@ -1,0 +1,248 @@
+/* Micromodal CSS - Consistent modal styling for admin interface */
+
+/* Modal overlay */
+.modal {
+    display: none;
+}
+
+.modal.is-open {
+    display: flex;
+}
+
+.modal__overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+/* Modal container */
+.modal__container {
+    background: var(--tp-bg-white, #ffffff);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--tp-shadow-xl, 0 25px 50px -12px rgba(0, 0, 0, 0.25));
+    animation: modal-fade-in 0.2s ease-out;
+}
+
+/* Wide modal variant for histogram, scoreboard sharing, etc. */
+.modal--wide .modal__container {
+    max-width: 900px;
+}
+
+/* Medium modal variant */
+.modal--medium .modal__container {
+    max-width: 700px;
+}
+
+@keyframes modal-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal header */
+.modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--tp-border, #e5e7eb);
+}
+
+.modal__header--danger {
+    border-bottom-color: #fecaca;
+}
+
+.modal__header--danger .modal__title {
+    color: #991b1b;
+}
+.modal__title,
+#core .modal__title {
+    margin: 0;
+    padding: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1.4;
+    color: var(--tp-text-primary, #1f2937);
+}
+
+/* Close button */
+.modal__close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--tp-text-lighter, #9ca3af);
+    line-height: 1;
+    padding: 0;
+    transition: color 0.15s ease;
+}
+
+.modal__close:hover {
+    color: var(--tp-text-primary, #1f2937);
+}
+
+.modal__close:focus {
+    outline: 2px solid var(--tp-primary, #3b82f6);
+    outline-offset: 2px;
+}
+
+/* Modal content */
+.modal__content {
+    color: var(--tp-text-secondary, #4b5563);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.modal__content p {
+    margin: 0 0 16px 0;
+}
+
+.modal__content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Modal footer */
+.modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--tp-border, #e5e7eb);
+}
+
+/* Warning box inside modal */
+.modal__warning {
+    background: var(--tp-warning-light, #fef3c7);
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+    color: var(--tp-warning-dark, #92400e);
+}
+
+/* Form elements inside modal */
+.modal__form-group {
+    margin-bottom: 16px;
+}
+
+.modal__form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tp-text-secondary, #4b5563);
+    margin-bottom: 6px;
+}
+
+.modal__form-group input[type="text"],
+.modal__form-group input[type="number"],
+.modal__form-group input[type="datetime-local"],
+.modal__form-group textarea,
+.modal__form-group select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid var(--tp-border, #e5e7eb);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.modal__form-group input:focus,
+.modal__form-group textarea:focus,
+.modal__form-group select:focus {
+    outline: none;
+    border-color: var(--tp-primary, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal__form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Checkbox row inside modal */
+.modal__checkbox-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 16px;
+}
+
+.modal__checkbox-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.modal__checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.modal__hint {
+    font-size: 0.8rem;
+    color: var(--tp-text-muted, #6b7280);
+    margin-left: 26px;
+}
+
+/* Ensure Tagify dropdown appears above the modal overlay */
+.modal.is-open .tagify__dropdown,
+.tagify__dropdown {
+    z-index: 10002 !important;
+}
+
+/* Ensure SweetAlert2 popups appear above MicroModal overlays */
+.swal2-container {
+    z-index: 10003 !important;
+}
+
+/* Danger button for destructive actions in modals */
+.tp-btn-danger {
+    background-color: #dc2626;
+    color: white !important;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+    line-height: 1.5;
+    box-sizing: border-box;
+    vertical-align: middle;
+}
+
+.tp-btn-danger:hover {
+    background-color: #b91c1c;
+    color: white;
+}
+
+/* Body scroll lock when modal is open */
+body.modal-open {
+    overflow: hidden;
+}

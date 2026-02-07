@@ -16,7 +16,6 @@ var CMS = window.CMS || {};
 CMS.TrainingProgram = CMS.TrainingProgram || {};
 
 // Module state (stored on namespace for access by methods)
-CMS.TrainingProgram._histogramModal = null;
 CMS.TrainingProgram._histogramTagify = null;
 CMS.TrainingProgram._currentHistogramData = null;
 
@@ -62,11 +61,9 @@ CMS.TrainingProgram.init = function(options) {
  * Initialize the histogram modal.
  * Sets up Tagify for filtering and event listeners for closing.
  */
-CMS.TrainingProgram.initHistogramModal = function() {
-    var modal = document.getElementById('histogramModal');
-    if (!modal) return;
-
-    CMS.TrainingProgram._histogramModal = modal;
+CMS.TrainingProgram.initHistogramModal = function () {
+    // Prevent multiple initializations
+    if (CMS.TrainingProgram._histogramTagify) return;
 
     var histogramTagsInput = document.getElementById('histogramTagsFilter');
     if (histogramTagsInput && typeof Tagify !== 'undefined') {
@@ -87,18 +84,6 @@ CMS.TrainingProgram.initHistogramModal = function() {
             }
         });
     }
-
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            CMS.TrainingProgram.closeHistogramModal();
-        }
-    });
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.style.display === 'flex') {
-            CMS.TrainingProgram.closeHistogramModal();
-        }
-    });
 };
 
 
@@ -111,8 +96,9 @@ CMS.TrainingProgram.initHistogramModal = function() {
  * trainingDayId (number): ID of the training day
  * maxPossibleScore (number): Maximum possible score
  */
-CMS.TrainingProgram.openHistogramModal = function(scores, title, type, trainingDayId, maxPossibleScore) {
-    var modal = CMS.TrainingProgram._histogramModal;
+CMS.TrainingProgram.openHistogramModal = function (scores, title, type, trainingDayId, maxPossibleScore) {
+    // Guard: Check if modal exists in DOM
+    var modal = document.getElementById('modal-histogram');
     if (!modal) return;
 
     CMS.TrainingProgram._currentHistogramData = {
@@ -138,20 +124,13 @@ CMS.TrainingProgram.openHistogramModal = function(scores, title, type, trainingD
         tagify.removeAllTags();
     }
 
-    modal.style.display = 'flex';
+    MicroModal.show('modal-histogram', {
+        disableFocus: true,
+        onClose: function () {
+            CMS.TrainingProgram._currentHistogramData = null;
+        }
+    });
     CMS.TrainingProgram._renderHistogram(scores, title, type);
-};
-
-
-/**
- * Close the histogram modal.
- */
-CMS.TrainingProgram.closeHistogramModal = function() {
-    var modal = CMS.TrainingProgram._histogramModal;
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    CMS.TrainingProgram._currentHistogramData = null;
 };
 
 
@@ -446,7 +425,6 @@ CMS.TrainingProgram._renderHistogram = function(scores, title, type) {
 window.openHistogramModal = function(scores, title, type, trainingDayId, maxPossibleScore) {
     CMS.TrainingProgram.openHistogramModal(scores, title, type, trainingDayId, maxPossibleScore);
 };
-window.closeHistogramModal = CMS.TrainingProgram.closeHistogramModal;
 window.copyHistogramData = CMS.TrainingProgram.copyHistogramData;
 
 
