@@ -101,14 +101,20 @@ AdminModals.deleteResource = function(opts) {
         warningHtml: opts.warningHtml || null,
         confirmLabel: opts.confirmLabel || 'Yes, Remove',
         onConfirm: function() {
+            var xsrfToken = null;
             var xsrfInput = document.querySelector('input[name="_xsrf"]');
-            if (!xsrfInput) {
+            if (xsrfInput) {
+                xsrfToken = xsrfInput.value;
+            } else if (typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+            if (!xsrfToken) {
                 alert('Missing XSRF token');
                 return;
             }
             fetch(opts.deleteUrl, {
                 method: 'DELETE',
-                headers: { 'X-XSRFToken': xsrfInput.value }
+                headers: { 'X-XSRFToken': xsrfToken }
             }).then(function(resp) {
                 if (resp.ok) {
                     if (opts.onSuccess) {

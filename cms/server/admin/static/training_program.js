@@ -75,7 +75,7 @@ CMS.TrainingProgram.initHistogramModal = function() {
             whitelist: CMS.TrainingProgram._config.allStudentTags,
             enforceWhitelist: true,
             editTags: false,
-            dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
+            dropdown: { enabled: 1, maxItems: 20, closeOnSelect: true },
             originalInputValueFormat: function(valuesArr) {
                 return valuesArr.map(function(item) { return item.value; }).join(', ');
             }
