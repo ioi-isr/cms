@@ -4,6 +4,15 @@
 
 :root {
     --ranking-header-top: 60px;
+    --tp-question-card-bg: #ffffff;
+    --tp-question-border: #E5E7EB;
+    --tp-question-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --tp-question-unanswered-border: #FCD34D;
+    --tp-question-unanswered-header-bg: #FFFBEB;
+    --tp-question-unanswered-divider: #FCD34D;
+    --tp-question-claimed-border: #93C5FD;
+    --tp-question-claimed-header-bg: #EFF6FF;
+    --tp-question-claimed-divider: #93C5FD;
 }
 
 .searchable-select {
@@ -1676,12 +1685,13 @@ svg.icon {
 }
 
 .question-card {
-    border: 1px solid var(--tp-border, #E5E7EB);
+    border: 1px solid var(--tp-question-border, var(--tp-border, #E5E7EB));
     border-radius: 12px;
     margin-bottom: 1.25em;
-    background: #fff;
-    box-shadow: var(--tp-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+    background: var(--tp-question-card-bg, #fff);
+    box-shadow: var(--tp-question-shadow, var(--tp-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05)));
     transition: box-shadow 0.15s;
+    overflow: hidden;
 }
 
 .question-card:hover {
@@ -1689,8 +1699,8 @@ svg.icon {
 }
 
 .question-unanswered {
-    border-color: #FCD34D;
-    background: linear-gradient(to bottom, var(--tp-warning-light, #FEF3C7), #fff 60px);
+    border-color: var(--tp-question-unanswered-border, #FCD34D);
+    background: #fff;
 }
 
 .question-ignored {
@@ -1699,12 +1709,38 @@ svg.icon {
 }
 
 .question-claimed {
-    border-color: #93C5FD;
-    background: linear-gradient(to bottom, #EFF6FF, #fff 60px);
+    border-color: var(--tp-question-claimed-border, #93C5FD);
+    background: #fff;
 }
 
 .question-answered {
-    border-color: var(--tp-border, #E5E7EB);
+    border-color: var(--tp-question-border, var(--tp-border, #E5E7EB));
+}
+
+.question-card.question-unanswered .question-card-header,
+.question-card.question-unanswered .question-card-meta {
+    background: var(--tp-question-unanswered-header-bg, #FFFBEB);
+}
+
+.question-card.question-unanswered .question-card-header {
+    border-radius: 12px 12px 0 0;
+}
+
+.question-card.question-unanswered .question-card-meta {
+    border-bottom: 1px solid var(--tp-question-unanswered-divider, #FCD34D);
+}
+
+.question-card.question-claimed .question-card-header,
+.question-card.question-claimed .question-card-meta {
+    background: var(--tp-question-claimed-header-bg, #EFF6FF);
+}
+
+.question-card.question-claimed .question-card-header {
+    border-radius: 12px 12px 0 0;
+}
+
+.question-card.question-claimed .question-card-meta {
+    border-bottom: 1px solid var(--tp-question-claimed-divider, #93C5FD);
 }
 
 .question-card-header {

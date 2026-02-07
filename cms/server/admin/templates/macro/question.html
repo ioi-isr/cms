@@ -32,9 +32,8 @@ user_id (int|None): if we are rendering one of the questions on a single user's
         <span class="question-status-badge question-badge-claimed">CLAIMED</span>
       {% endif %}
     </div>
-    {% if admin.permission_all or admin.permission_messaging %}
+    {% if (admin.permission_all or admin.permission_messaging) and msg.reply_timestamp is none %}
     <div class="question-header-actions">
-      {% if msg.reply_timestamp is none %}
         <form class="ignore_question_form inline" action="{{ url("contest", contest.id, "question", msg.id, "ignore") }}" name="ignore{{ msg.id }}" method="POST">
           {{ xsrf_form_html|safe }}
           {% if user_id is not none %}
@@ -68,11 +67,6 @@ user_id (int|None): if we are rendering one of the questions on a single user's
         <button class="question-btn question-btn-primary" onclick="utils.question_reply_toggle(event, this);">
           <svg class="icon" width="16" height="16"><use href="#icon-reply"/></svg> Reply
         </button>
-      {% else %}
-        <button class="question-btn question-btn-outline" onclick="utils.question_reply_toggle(event, this);">
-          <svg class="icon" width="14" height="14"><use href="#icon-reply"/></svg> Reply
-        </button>
-      {% endif %}
     </div>
     {% endif %}
   </div>
