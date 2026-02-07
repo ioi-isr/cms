@@ -57,14 +57,17 @@
 
     <!-- Remove Action -->
     <div style="margin-top: 24px; text-align: right;">
-        <form action="{{ url("contests") }}" method="POST" style="display:inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to remove this contest? This cannot be undone.');">
-            {{ xsrf_form_html|safe }}
-            <input type="hidden" name="contest_id" value="{{ contest.id }}"/>
-                <button type="submit" name="operation" value="Remove" class="tp-btn-remove" {% if not admin.permission_all %}disabled{% endif %}>
-                    <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
-                    Remove Contest
-                </button>
-        </form>
+        {% if admin.permission_all %}
+        <a href="{{ url("contests", contest.id, "remove") }}" class="tp-btn-remove">
+            <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+            Remove Contest
+        </a>
+        {% else %}
+        <button class="tp-btn-remove" disabled>
+            <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+            Remove Contest
+        </button>
+        {% endif %}
     </div>
 </div>
 

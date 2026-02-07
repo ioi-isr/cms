@@ -184,8 +184,16 @@ AdminModals.simpleConfirm = function(message, options) {
 AdminModals.confirmSubmit = function(event, message, options) {
     event.preventDefault();
     var form = event.target;
+    var submitter = event.submitter;
     AdminModals.simpleConfirm(message, options).then(function(confirmed) {
         if (confirmed) {
+            if (submitter && submitter.name) {
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = submitter.name;
+                hidden.value = submitter.value;
+                form.appendChild(hidden);
+            }
             form.submit();
         }
     });
