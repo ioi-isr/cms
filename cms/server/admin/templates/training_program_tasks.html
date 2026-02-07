@@ -148,12 +148,12 @@
             var warningHtml = null;
             if (hasTrainingDay && trainingDayName) {
                 var prefix = isActive ? '' : 'archived ';
-                warningHtml = 'This task is also assigned to ' + prefix + 'training day "' + trainingDayName + '". Removing it from the training program will also remove it from the training day.';
+                warningHtml = 'This task is also assigned to ' + prefix + 'training day "' + escapeHtml(trainingDayName) + '". Removing it from the training program will also remove it from the training day.';
             }
 
             AdminModals.deleteResource({
                 title: 'Remove Task',
-                message: 'Are you sure you want to remove task "' + taskName + '" from training program "' + programName + '"?',
+                message: 'Are you sure you want to remove task "' + escapeHtml(taskName) + '" from training program "' + escapeHtml(programName) + '"?',
                 warningHtml: warningHtml,
                 deleteUrl: '{{ url("training_program", training_program.id) }}/task/' + taskId + '/remove'
             });

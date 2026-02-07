@@ -66,6 +66,13 @@
     border-bottom: 1px solid var(--tp-border, #e5e7eb);
 }
 
+.modal__header--danger {
+    border-bottom-color: #fecaca;
+}
+
+.modal__header--danger .modal__title {
+    color: #991b1b;
+}
 .modal__title,
 #core .modal__title {
     margin: 0;

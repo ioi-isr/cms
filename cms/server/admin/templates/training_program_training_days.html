@@ -678,12 +678,12 @@ function addSharingEntry(tag, topNames, topToShow) {
     var html = '<div class="sharing-entry" id="' + entryId + '" style="display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px; flex-wrap: wrap;">' +
         '<div style="flex: 1; min-width: 120px;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
-            '<input type="text" class="sharing-tag" data-sharing-tag-input="true" placeholder="Select a tag" style="width: 160px;" value="' + (tag || '') + '">' +
+            '<input type="text" class="sharing-tag" data-sharing-tag-input="true" placeholder="Select a tag" style="width: 160px;" value="' + escapeHtml(tag || '') + '">' +
         '</div>' +
         '<div style="min-width: 140px;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>' +
             '<div style="display: flex; align-items: center; gap: 6px;">' +
-                '<input type="number" class="sharing-top-to-show" value="' + topToShowVal + '" min="0" ' + (topToShowIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
+                '<input type="number" class="sharing-top-to-show" value="' + escapeHtml(topToShowVal.toString()) + '" min="0" ' + (topToShowIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
                 '<input type="checkbox" class="sharing-top-to-show-all" ' + (topToShowIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
                 '<span style="font-size: 0.85rem;">All</span>' +
             '</div>' +
@@ -691,7 +691,7 @@ function addSharingEntry(tag, topNames, topToShow) {
         '<div style="min-width: 140px;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names</label>' +
             '<div style="display: flex; align-items: center; gap: 6px;">' +
-                '<input type="number" class="sharing-top-names" value="' + topNamesVal + '" min="0" ' + (topNamesIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
+                '<input type="number" class="sharing-top-names" value="' + escapeHtml(topNamesVal.toString()) + '" min="0" ' + (topNamesIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
                 '<input type="checkbox" class="sharing-top-names-all" ' + (topNamesIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
                 '<span style="font-size: 0.85rem;">All</span>' +
             '</div>' +
@@ -951,15 +951,15 @@ function openRemoveTrainingDayModal(btn) {
     if (isArchived) {
         warningHtml = 'This training day has been archived. The contest has already been deleted.<br>This operation cannot be undone.';
     } else {
-        warningHtml = 'This will remove ' + participationCount + ' participation(s) from the training day contest.<br>This operation cannot be undone.';
+        warningHtml = 'This will remove ' + escapeHtml(participationCount.toString()) + ' participation(s) from the training day contest.<br>This operation cannot be undone.';
     }
     if (taskCount > 0) {
-        warningHtml += '<br><br>The training day has ' + taskCount + ' task(s) assigned. These tasks will remain in the training program but will no longer be assigned to any training day.';
+        warningHtml += '<br><br>The training day has ' + escapeHtml(taskCount.toString()) + ' task(s) assigned. These tasks will remain in the training program but will no longer be assigned to any training day.';
     }
 
     AdminModals.deleteResource({
         title: 'Remove Training Day',
-        message: 'Are you sure you want to remove the training day <strong>' + name + '</strong>?',
+        message: 'Are you sure you want to remove the training day <strong>' + escapeHtml(name) + '</strong>?',
         warningHtml: warningHtml,
         deleteUrl: removeUrl,
         confirmLabel: 'Yes, Remove Training Day'

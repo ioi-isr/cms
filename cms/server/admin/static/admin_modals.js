@@ -10,6 +10,20 @@
 
 var AdminModals = AdminModals || {};
 
+/**
+ * Utility function to escape HTML and prevent XSS (BUG-0001)
+ * @param {string} text - Text to escape
+ * @return {string} - Escaped HTML-safe text
+ */
+AdminModals.escapeHtml = function (text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+};
+
+// Expose globally for convenience
+window.escapeHtml = AdminModals.escapeHtml;
+
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof MicroModal === 'undefined') return;
 
