@@ -112,23 +112,32 @@ function initDragDropReorder(options) {
             return;
         }
 
-        if (confirmMessage && !confirm(confirmMessage)) {
-            restoreOriginalOrder();
-            return;
+        function doSave() {
+            var orderedIds = rows.map(function(row, index) {
+                return {
+                    id: row.getAttribute('data-' + rowIdAttr),
+                    position: index
+                };
+            });
+
+            if (options.onSave) {
+                options.onSave(orderedIds);
+            }
+
+            originalOrder = null;
         }
 
-        var orderedIds = rows.map(function(row, index) {
-            return {
-                id: row.getAttribute('data-' + rowIdAttr),
-                position: index
-            };
-        });
-
-        if (options.onSave) {
-            options.onSave(orderedIds);
+        if (confirmMessage) {
+            AdminModals.simpleConfirm(confirmMessage).then(function(confirmed) {
+                if (confirmed) {
+                    doSave();
+                } else {
+                    restoreOriginalOrder();
+                }
+            });
+        } else {
+            doSave();
         }
-
-        originalOrder = null;
     }
 }
 

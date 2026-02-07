@@ -175,68 +175,71 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
   var prefix = prompt('Enter prefix to add to selected testcases:', defaultPrefix);
   if (!prefix) return;
 
-  // Ask if user wants to update the subtask regex
-  // Accept both boolean true and string 'true' for backwards compatibility
-  var updateRegex = false;
+  function submitBatchAddPrefix(updateRegex) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+
+    ids.forEach(function(id) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'testcase_id';
+      input.value = id;
+      form.appendChild(input);
+    });
+
+    var opInput = document.createElement('input');
+    opInput.type = 'hidden';
+    opInput.name = 'operation';
+    opInput.value = 'add_prefix';
+    form.appendChild(opInput);
+
+    var valInput = document.createElement('input');
+    valInput.type = 'hidden';
+    valInput.name = 'value';
+    valInput.value = prefix;
+    form.appendChild(valInput);
+
+    if (updateRegex) {
+      var regexInput = document.createElement('input');
+      regexInput.type = 'hidden';
+      regexInput.name = 'update_regex';
+      regexInput.value = 'true';
+      form.appendChild(regexInput);
+    }
+
+    if (subtaskIndex !== undefined) {
+      var subtaskInput = document.createElement('input');
+      subtaskInput.type = 'hidden';
+      subtaskInput.name = 'subtask_index';
+      subtaskInput.value = subtaskIndex;
+      form.appendChild(subtaskInput);
+    }
+
+    var xsrfElem = document.querySelector('input[name="_xsrf"]');
+    if (!xsrfElem) {
+      Swal.fire('Error', 'CSRF token missing; cannot submit form.', 'error');
+      return;
+    }
+    var xsrf = document.createElement('input');
+    xsrf.type = 'hidden';
+    xsrf.name = '_xsrf';
+    xsrf.value = xsrfElem.value;
+    form.appendChild(xsrf);
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
   if (usesRegex === true || usesRegex === 'true') {
-    updateRegex = confirm('Do you also want to update the subtask regex to match testcases containing "' + prefix + '" as a substring?');
+    AdminModals.simpleConfirm('Do you also want to update the subtask regex to match testcases containing "' + prefix + '" as a substring?',
+      { title: 'Update regex?', confirmButtonText: 'Yes, update regex', cancelButtonText: 'No, just add prefix' }
+    ).then(function(updateRegex) {
+      submitBatchAddPrefix(updateRegex);
+    });
+  } else {
+    submitBatchAddPrefix(false);
   }
-
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = url;
-
-  ids.forEach(function(id) {
-    var input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'testcase_id';
-    input.value = id;
-    form.appendChild(input);
-  });
-
-  var opInput = document.createElement('input');
-  opInput.type = 'hidden';
-  opInput.name = 'operation';
-  opInput.value = 'add_prefix';
-  form.appendChild(opInput);
-
-  var valInput = document.createElement('input');
-  valInput.type = 'hidden';
-  valInput.name = 'value';
-  valInput.value = prefix;
-  form.appendChild(valInput);
-
-  // Add update_regex flag if user agreed
-  if (updateRegex) {
-    var regexInput = document.createElement('input');
-    regexInput.type = 'hidden';
-    regexInput.name = 'update_regex';
-    regexInput.value = 'true';
-    form.appendChild(regexInput);
-  }
-
-  // Add subtask_index to redirect back to subtask details page
-  if (subtaskIndex !== undefined) {
-    var subtaskInput = document.createElement('input');
-    subtaskInput.type = 'hidden';
-    subtaskInput.name = 'subtask_index';
-    subtaskInput.value = subtaskIndex;
-    form.appendChild(subtaskInput);
-  }
-
-  var xsrfElem = document.querySelector('input[name="_xsrf"]');
-  if (!xsrfElem) {
-    alert('CSRF token missing; cannot submit form.');
-    return;
-  }
-  var xsrf = document.createElement('input');
-  xsrf.type = 'hidden';
-  xsrf.name = '_xsrf';
-  xsrf.value = xsrfElem.value;
-  form.appendChild(xsrf);
-
-  document.body.appendChild(form);
-  form.submit();
 };
 
 window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {

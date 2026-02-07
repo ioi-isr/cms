@@ -365,10 +365,15 @@ function saveAttendance() {
     // Check if justified status changed (for missed entries) and confirm
     if (currentAttendanceData.status === 'missed' && justified !== currentAttendanceData.justified) {
         var action = justified ? 'mark this absence as justified' : 'remove the justified status';
-        if (!confirm('Are you sure you want to ' + action + '?')) {
-            return;
-        }
+        AdminModals.confirmThen('Are you sure you want to ' + action + '?', function() {
+            _doSaveAttendance(justified, recorded, comment);
+        });
+        return;
     }
+    _doSaveAttendance(justified, recorded, comment);
+}
+
+function _doSaveAttendance(justified, recorded, comment) {
 
     var data = {
         justified: justified,

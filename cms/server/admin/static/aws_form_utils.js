@@ -151,9 +151,11 @@ CMS.AWSFormUtils.initRemovePage = function(config) {
             }
         }
 
-        if (confirm('Are you sure you want to remove this?')) {
-            CMS.AWSUtils.ajax_delete(url);
-        }
+        AdminModals.simpleConfirm('Are you sure you want to remove this?').then(function(confirmed) {
+            if (confirmed) {
+                CMS.AWSUtils.ajax_delete(url);
+            }
+        });
     };
     // Backward compatibility alias
     window.cmsDoRemove = CMS.AWSFormUtils.cmsDoRemove;
@@ -293,12 +295,14 @@ CMS.AWSFormUtils.initTagify = function(config) {
 
                     // User-initiated removal needs confirmation
                     var tagValue = tags[0].data.value;
-                    if (confirm('Remove tag "' + tagValue + '"?')) {
-                        pendingSave = true;
-                        resolve();
-                    } else {
-                        reject(new Error('User cancelled tag removal'));
-                    }
+                    AdminModals.simpleConfirm('Remove tag "' + tagValue + '"?').then(function(confirmed) {
+                        if (confirmed) {
+                            pendingSave = true;
+                            resolve();
+                        } else {
+                            reject(new Error('User cancelled tag removal'));
+                        }
+                    });
                 });
             }
         };
@@ -325,15 +329,16 @@ CMS.AWSFormUtils.initTagify = function(config) {
             if (!armed) return;
 
             var tagValue = e.detail.data.value;
-            if (confirm('Add tag "' + tagValue + '"?')) {
-                pendingSave = true;
-            } else {
-                // Roll back the add - use isRollback flag to skip beforeRemoveTag confirmation
-                // Use non-silent removal so Tagify properly updates its internal state
-                isRollback = true;
-                tagify.removeTags(e.detail.tag);
-                isRollback = false;
-            }
+            AdminModals.simpleConfirm('Add tag "' + tagValue + '"?').then(function(confirmed) {
+                if (confirmed) {
+                    pendingSave = true;
+                    tagify.trigger('change');
+                } else {
+                    isRollback = true;
+                    tagify.removeTags(e.detail.tag);
+                    isRollback = false;
+                }
+            });
         });
 
         // Handle edit confirmation
@@ -353,12 +358,14 @@ CMS.AWSFormUtils.initTagify = function(config) {
                     return;
                 }
 
-                if (confirm('Change tag "' + oldVal + '" to "' + newVal + '"?')) {
-                    pendingSave = true;
-                } else {
-                    // Revert to old value
-                    e.detail.data.value = oldVal;
-                }
+                AdminModals.simpleConfirm('Change tag "' + oldVal + '" to "' + newVal + '"?').then(function(confirmed) {
+                    if (confirmed) {
+                        pendingSave = true;
+                        tagify.trigger('change');
+                    } else {
+                        e.detail.data.value = oldVal;
+                    }
+                });
             });
         }
 

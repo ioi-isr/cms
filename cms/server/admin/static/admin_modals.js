@@ -1,7 +1,7 @@
 /* Contest Management System
  * Copyright © 2024 IOI-ISR
  *
- * Centralized modal management using MicroModal.
+ * Centralized modal management using MicroModal and SweetAlert2.
  * Provides global initialization, URL-driven auto-open, and generic
  * confirm/delete helpers so individual templates don't duplicate logic.
  */
@@ -62,40 +62,39 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Opens a confirmation modal.
+ * Opens a SweetAlert2 confirmation dialog.
  * @param {Object} opts
  * @param {string} opts.title - Modal title
- * @param {string} opts.message - Main question text
+ * @param {string} opts.message - Main question text (supports HTML)
  * @param {string|null} [opts.warningHtml] - Warning details HTML (optional)
  * @param {string} [opts.confirmLabel] - Confirm button label (default "Confirm")
  * @param {function} opts.onConfirm - Callback when confirmed
  */
 AdminModals.confirm = function(opts) {
-    document.getElementById('modal-confirm-title').textContent = opts.title;
-    document.getElementById('modal-confirm-message').innerHTML = opts.message;
-
-    var warningBox = document.getElementById('modal-confirm-warning-box');
-    var warningText = document.getElementById('modal-confirm-warning-text');
-
+    var htmlContent = opts.message;
     if (opts.warningHtml) {
-        warningBox.style.display = 'block';
-        warningText.innerHTML = opts.warningHtml;
-    } else {
-        warningBox.style.display = 'none';
+        htmlContent += '<div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-top: 16px; text-align: left;">' +
+            '<p style="margin: 0; color: #991b1b; font-weight: 600;">⚠ Warning</p>' +
+            '<div style="color: #7f1d1d; font-size: 0.9rem; margin-top: 4px;">' + opts.warningHtml + '</div>' +
+            '</div>';
     }
 
-    var btn = document.getElementById('modal-confirm-btn');
-    var newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
-
-    newBtn.textContent = opts.confirmLabel || 'Confirm';
-
-    newBtn.addEventListener('click', function() {
-        opts.onConfirm();
-        MicroModal.close('modal-generic-confirm');
+    Swal.fire({
+        title: opts.title,
+        html: htmlContent,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: opts.confirmLabel || 'Confirm',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        customClass: {
+            confirmButton: 'swal2-confirm-danger'
+        }
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            opts.onConfirm();
+        }
     });
-
-    MicroModal.show('modal-generic-confirm');
 };
 
 /**
@@ -123,7 +122,7 @@ AdminModals.deleteResource = function(opts) {
                 xsrfToken = get_cookie('_xsrf');
             }
             if (!xsrfToken) {
-                alert('Missing XSRF token');
+                Swal.fire('Error', 'Missing XSRF token', 'error');
                 return;
             }
             fetch(opts.deleteUrl, {
@@ -137,11 +136,93 @@ AdminModals.deleteResource = function(opts) {
                         window.location.reload();
                     }
                 } else {
-                    alert('Error: Failed to delete resource');
+                    Swal.fire('Error', 'Failed to delete resource', 'error');
                 }
             }).catch(function(error) {
-                alert('Error: ' + error.message);
+                Swal.fire('Error', error.message, 'error');
             });
+        }
+    });
+};
+
+/**
+ * Simple SweetAlert2 confirmation that returns a Promise<boolean>.
+ * Drop-in async replacement for native confirm().
+ * @param {string} message - The confirmation message
+ * @param {Object} [options] - Optional overrides
+ * @param {string} [options.title] - Dialog title (default "Are you sure?")
+ * @param {string} [options.confirmButtonText] - Confirm button text (default "Yes")
+ * @param {string} [options.cancelButtonText] - Cancel button text (default "Cancel")
+ * @returns {Promise<boolean>}
+ */
+AdminModals.simpleConfirm = function(message, options) {
+    var opts = options || {};
+    return Swal.fire({
+        title: opts.title || 'Are you sure?',
+        text: message,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: opts.confirmButtonText || 'Yes',
+        cancelButtonText: opts.cancelButtonText || 'Cancel',
+        reverseButtons: true,
+        customClass: {
+            confirmButton: 'swal2-confirm-danger'
+        }
+    }).then(function(result) {
+        return result.isConfirmed;
+    });
+};
+
+/**
+ * Intercepts a form submission, shows a SweetAlert2 confirmation,
+ * and only submits the form if confirmed.
+ * Use via: onsubmit="return AdminModals.confirmSubmit(event, 'message')"
+ * @param {Event} event - The submit event
+ * @param {string} message - Confirmation message
+ * @param {Object} [options] - Optional SweetAlert2 overrides
+ * @returns {boolean} Always returns false to prevent default submission
+ */
+AdminModals.confirmSubmit = function(event, message, options) {
+    event.preventDefault();
+    var form = event.target;
+    AdminModals.simpleConfirm(message, options).then(function(confirmed) {
+        if (confirmed) {
+            form.submit();
+        }
+    });
+    return false;
+};
+
+/**
+ * Shows a SweetAlert2 confirmation, then navigates to the given URL if confirmed.
+ * Use via: onclick="return AdminModals.confirmLink(event, 'message')"
+ * @param {Event} event - The click event
+ * @param {string} message - Confirmation message
+ * @param {Object} [options] - Optional SweetAlert2 overrides
+ * @returns {boolean} Always returns false to prevent default navigation
+ */
+AdminModals.confirmLink = function(event, message, options) {
+    event.preventDefault();
+    var href = event.currentTarget.getAttribute('href');
+    AdminModals.simpleConfirm(message, options).then(function(confirmed) {
+        if (confirmed) {
+            window.location.href = href;
+        }
+    });
+    return false;
+};
+
+/**
+ * Shows a SweetAlert2 confirmation, then calls the callback if confirmed.
+ * Use for inline onclick handlers that need async confirmation.
+ * @param {string} message - Confirmation message
+ * @param {function} callback - Function to call if confirmed
+ * @param {Object} [options] - Optional SweetAlert2 overrides
+ */
+AdminModals.confirmThen = function(message, callback, options) {
+    AdminModals.simpleConfirm(message, options).then(function(confirmed) {
+        if (confirmed) {
+            callback();
         }
     });
 };

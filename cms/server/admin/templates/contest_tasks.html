@@ -21,14 +21,18 @@ if (addTaskForm) {
         var select = this.querySelector('select[name="task_id"]');
         var selectedTaskId = parseInt(select.value, 10);
         if (selectedTaskId && !programTaskIds.includes(selectedTaskId)) {
-            var confirmed = confirm(
-                'This task is not in the training program. ' +
-                'Adding it to this training day will also add it to the training program. ' +
-                'Do you want to continue?'
-            );
-            if (!confirmed) {
                 e.preventDefault();
-            }
+                var form = this;
+                AdminModals.simpleConfirm(
+                    'This task is not in the training program. ' +
+                    'Adding it to this training day will also add it to the training program. ' +
+                    'Do you want to continue?'
+                ).then(function(confirmed) {
+                    if (confirmed) {
+                        form.submit();
+                    }
+                });
+                return;
         }
     });
 }
