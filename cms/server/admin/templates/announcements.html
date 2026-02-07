@@ -48,39 +48,41 @@ inputs.forEach(function(input) {
 </datalist>
 
 {% if admin.permission_all or admin.permission_messaging %}
-<div class="announcement-form-card">
-  <div class="announcement-form-card-header">
-    <svg class="icon" width="20" height="20"><use href="#icon-edit"/></svg>
-    <h2>Post New Announcement</h2>
+<div class="tp-card" style="margin-bottom: 2em;">
+  <div class="tp-card-header-modern">
+    <div class="tp-card-header-icon">
+      <svg class="icon" width="18" height="18"><use href="#icon-edit"/></svg>
+    </div>
+    <h3 class="tp-card-title-modern">Post New Announcement</h3>
   </div>
-  <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "add") }}{% endif %}">
-    {{ xsrf_form_html|safe }}
-    <div class="announcement-form-field">
-      <label for="new_subject">Subject</label>
-      <input type="text" name="subject" id="new_subject" class="announcement-form-input" list="task_names_list" autocomplete="off">
-    </div>
-    <div class="announcement-form-field">
-      <label>Text</label>
+  <div class="tp-card-body">
+    <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "add") }}{% endif %}">
+      {{ xsrf_form_html|safe }}
+      <label class="question-form-label">SUBJECT</label>
+      <input type="text" name="subject" id="new_subject" class="question-form-select" list="task_names_list" autocomplete="off">
+      <label class="question-form-label">TEXT</label>
       {{ macro_markdown.markdown_input("text") }}
-    </div>
-    {% if training_program is defined or is_training_day %}
-    <div class="announcement-form-field">
-      <label>Visible to tags</label>
+      {% if training_program is defined or is_training_day %}
+      <label class="question-form-label">VISIBLE TO TAGS</label>
       <div class="announcement-tags-row">
         <input type="text" id="visible_to_tags" name="visible_to_tags" class="announcement-visibility-tags" placeholder="Leave empty for all students">
         <button type="button" class="question-btn question-btn-outline" onclick="var t = this.closest('.announcement-tags-row').querySelector('.announcement-visibility-tags'); if (t._tagify) t._tagify.removeAllTags();">All students</button>
       </div>
-    </div>
-    {% endif %}
-    <div class="announcement-form-actions">
-      <button type="submit" class="question-btn question-btn-primary">
-        <svg class="icon" width="16" height="16"><use href="#icon-plus"/></svg> Add announcement
-      </button>
-      <button type="button" class="question-btn question-btn-outline" onclick="utils.render_markdown_preview(this)">
-        <svg class="icon" width="16" height="16"><use href="#icon-eye"/></svg> Preview Markdown
-      </button>
-    </div>
-  </form>
+      {% endif %}
+      <div class="question-reply-form-actions">
+        <div class="question-reply-form-left">
+          <button type="button" class="question-btn question-btn-outline question-btn-preview" onclick="utils.render_markdown_preview(this)">
+            <svg class="icon" width="16" height="16"><use href="#icon-eye"/></svg> Preview Markdown
+          </button>
+        </div>
+        <div class="question-reply-form-right">
+          <button type="submit" class="question-btn question-btn-primary">
+            <svg class="icon" width="16" height="16"><use href="#icon-plus"/></svg> Add announcement
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
 </div>
 {% endif %}
 
@@ -91,30 +93,39 @@ inputs.forEach(function(input) {
   <div id="page_selector_announcements" class="questions-pagination"></div>
   <div id="paged_content_announcements">
   {% for msg in contest.announcements|reverse %}
-  <div class="announcement-card">
-    <div class="announcement-card-header">
-      <h3 class="announcement-card-subject">{{ msg.subject }}</h3>
-      <div class="announcement-card-header-right">
-        <span class="question-meta-item">
-          <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
-          {{ msg.timestamp|format_datetime }}
-        </span>
+  <div class="question-card question-unanswered announcement-card">
+    <div class="question-card-header">
+      <div class="question-card-title-row">
+        <h3 class="question-subject">{{ msg.subject }}</h3>
         {% if admin.permission_all or admin.permission_messaging %}
-        {% if training_program is defined %}
-        <button type="button" class="announcement-action-link" onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}');">
-          <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
-        </button>
-        {% else %}
-        <button type="button" class="announcement-action-link" onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}');">
-          <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
-        </button>
+        <div class="question-header-actions">
+          <button type="button" class="question-btn question-btn-outline" onclick="utils.announcement_edit_toggle(event, this);">
+            <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit
+          </button>
+          {% if training_program is defined %}
+          <button type="button" class="question-btn question-btn-outline" onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}');">
+            <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
+          </button>
+          {% else %}
+          <button type="button" class="question-btn question-btn-outline" onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}');">
+            <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
+          </button>
+          {% endif %}
+        </div>
         {% endif %}
-        {% endif %}
+      </div>
+      <div class="question-header-right">
+        <div class="question-card-meta question-card-meta-inline">
+          <span class="question-meta-item">
+            <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
+            {{ msg.timestamp|format_datetime }}
+          </span>
+        </div>
       </div>
     </div>
 
-    <div class="announcement-card-body">
-      {{ msg.text | markdown }}
+    <div class="question-card-body">
+      <div class="question-text">{{ msg.text | markdown }}</div>
     </div>
 
     <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
@@ -122,59 +133,51 @@ inputs.forEach(function(input) {
     <input type="hidden" class="announcement_raw_visible_to_tags" value="{{ msg.visible_to_tags|join(', ')|e }}">
 
     <div class="announcement-card-footer">
-      <div class="announcement-card-footer-left">
-        {% if (training_program is defined or is_training_day) and msg.visible_to_tags %}
-        <span class="question-meta-item">
-          <svg class="icon" width="16" height="16"><use href="#icon-tag"/></svg>
-          Visible to:
-          {% for tag in msg.visible_to_tags %}
-            <span class="announcement-tag-badge">{{ tag }}</span>
-          {% endfor %}
-        </span>
-        {% endif %}
-        <span class="question-meta-item">
-          <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
-          By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
-        </span>
-      </div>
-      <div class="announcement-card-footer-right">
-        {% if admin.permission_all or admin.permission_messaging %}
-        <button type="button" class="announcement-action-link" onclick="utils.announcement_edit_toggle(event, this);">
-          <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit
-        </button>
-        {% endif %}
-      </div>
+      {% if (training_program is defined or is_training_day) and msg.visible_to_tags %}
+      <span class="question-meta-item">
+        <svg class="icon" width="16" height="16"><use href="#icon-tag"/></svg>
+        Visible to:
+        {% for tag in msg.visible_to_tags %}
+          <span class="announcement-tag-badge">{{ tag }}</span>
+        {% endfor %}
+      </span>
+      {% endif %}
+      <span class="question-meta-item">
+        <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
+        By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
+      </span>
     </div>
 
     {% if admin.permission_all or admin.permission_messaging %}
-    <div class="announcement-edit-section">
+    <div class="question-actions">
       <div class="reply_question">
-        <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "edit", msg.id) }}{% endif %}">
-          {{ xsrf_form_html|safe }}
-          {% if training_program is defined %}
-          <input type="hidden" name="announcement_id" value="{{ msg.id }}">
-          {% endif %}
-          <div class="announcement-form-field">
-            <label>Subject</label>
-            <input type="text" name="subject" class="announcement-form-input" list="task_names_list" autocomplete="off">
-          </div>
-          <div class="announcement-form-field">
-            <label>Text</label>
+        <div class="question-reply-form-section">
+          <form class="reply_question_form" method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "edit", msg.id) }}{% endif %}">
+            {{ xsrf_form_html|safe }}
+            {% if training_program is defined %}
+            <input type="hidden" name="announcement_id" value="{{ msg.id }}">
+            {% endif %}
+            <label class="question-form-label">SUBJECT</label>
+            <input type="text" name="subject" class="question-form-select" list="task_names_list" autocomplete="off">
+            <label class="question-form-label">TEXT</label>
             {{ macro_markdown.markdown_input("text") }}
-          </div>
-          {% if training_program is defined or is_training_day %}
-          <div class="announcement-form-field">
-            <label>Visible to tags</label>
+            {% if training_program is defined or is_training_day %}
+            <label class="question-form-label">VISIBLE TO TAGS</label>
             <input type="text" id="edit_visible_to_tags_{{ msg.id }}" name="visible_to_tags" class="announcement-visibility-tags">
-          </div>
-          {% endif %}
-          <div class="announcement-form-actions">
-            <button type="submit" class="question-btn question-btn-primary">Edit announcement</button>
-            <button type="button" class="question-btn question-btn-outline" onclick="utils.render_markdown_preview(this)">
-              <svg class="icon" width="16" height="16"><use href="#icon-eye"/></svg> Preview Markdown
-            </button>
-          </div>
-        </form>
+            {% endif %}
+            <div class="question-reply-form-actions">
+              <div class="question-reply-form-left">
+                <button type="button" class="question-btn question-btn-outline question-btn-preview" onclick="utils.render_markdown_preview(this)">
+                  <svg class="icon" width="16" height="16"><use href="#icon-eye"/></svg> Preview Markdown
+                </button>
+              </div>
+              <div class="question-reply-form-right">
+                <button type="button" class="question-btn question-btn-outline" onclick="utils.announcement_edit_toggle(event, this);">Cancel</button>
+                <button type="submit" class="question-btn question-btn-primary">Edit announcement</button>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
     {% endif %}
