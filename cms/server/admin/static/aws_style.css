@@ -1725,20 +1725,12 @@ svg.icon {
 }
 
 .question-card.question-unanswered .question-card-header {
-    border-radius: 12px 12px 0 0;
-}
-
-.question-card.question-unanswered .question-card-header {
     border-bottom: 1px solid var(--tp-question-unanswered-divider, #FCD34D);
 }
 
 .question-card.question-claimed .question-card-header,
 .question-card.question-claimed .question-card-meta {
     background: var(--tp-question-claimed-header-bg, #EFF6FF);
-}
-
-.question-card.question-claimed .question-card-header {
-    border-radius: 12px 12px 0 0;
 }
 
 .question-card.question-claimed .question-card-header {
@@ -1751,10 +1743,6 @@ svg.icon {
 }
 
 .question-card.question-answered .question-card-header {
-    border-radius: 12px 12px 0 0;
-}
-
-.question-card.question-answered .question-card-header {
     border-bottom: 1px solid var(--tp-question-answered-divider, #99F6E4);
 }
 .question-card-header {
@@ -1764,6 +1752,7 @@ svg.icon {
     padding: 14px 24px;
     gap: 16px;
     flex-wrap: wrap;
+    border-radius: 12px 12px 0 0;
 }
 
 .question-card-title-row {

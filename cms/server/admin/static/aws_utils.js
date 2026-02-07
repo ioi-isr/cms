@@ -740,7 +740,7 @@ CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
     };
 
     if (npages <= maxAllVisible) {
-        for (var i = 1; i <= npages; i++) appendPage(i);
+        for (let i = 1; i <= npages; i++) appendPage(i);
         return;
     }
 
@@ -749,7 +749,7 @@ CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
 
     appendPage(1);
     if (start > 2) selector.append(" ... ");
-    for (var i = start; i <= end; i++) appendPage(i);
+    for (let i = start; i <= end; i++) appendPage(i);
     if (end < npages - 1) selector.append(" ... ");
     appendPage(npages);
 };
