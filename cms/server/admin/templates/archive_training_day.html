@@ -3,11 +3,11 @@
 {% block core %}
 {% set back_url = back_url|default(url("training_program", training_program.id, "training_days")) %}
 <div class="modal is-open" id="modal-archive-training-day" aria-hidden="false">
-    <div class="modal__overlay" tabindex="-1" role="presentation" onclick="if(event.target===this) window.location='{{ back_url }}';" onKeyDown="if(event.key==='Escape') window.location='{{ back_url }}';">
+    <div class="modal__overlay" tabindex="-1" role="presentation" onclick='if(event.target===this) window.location = {{ back_url|tojson }};' onKeyDown='if(event.key==="Escape") window.location = {{ back_url|tojson }};'>
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-archive-td-title">
             <header class="modal__header modal__header--danger">
                 <h2 class="modal__title" id="modal-archive-td-title">Archive Training Day: {{ contest.name }}</h2>
-                <button class="modal__close" aria-label="Close modal" onclick="window.location='{{ back_url }}';">&times;</button>
+                <button class="modal__close" aria-label="Close modal" onclick='window.location = {{ back_url|tojson }};'>&times;</button>
             </header>
             <form action="{{ url("training_program", training_program.id, "training_day", training_day.id, "archive") }}" method="POST">
                 {{ xsrf_form_html|safe }}
@@ -95,7 +95,7 @@
 // Global Escape key handler for robust modal closing
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        window.location = '{{ back_url }}';
+        window.location = {{ back_url|tojson }};
     }
 });
 </script>

@@ -41,7 +41,10 @@ from cms.db import (
     Submission,
     Task,
 )
-from cms.server.admin.handlers.utils import get_training_day_notifications
+from cms.server.admin.handlers.utils import (
+    get_available_contests,
+    get_training_day_notifications,
+)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
@@ -117,14 +120,7 @@ class TrainingProgramListHandler(BaseHandler):
         self.r_params["active_training_days"] = active_training_days
         self.r_params["training_day_notifications"] = training_day_notifications
 
-        self.r_params["other_contests"] = (
-            self.sql_session.query(Contest)
-            .filter(~Contest.name.like(r"\_\_%", escape="\\"))
-            .filter(~Contest.training_day.has())
-            .filter(~Contest.training_program.has())
-            .order_by(Contest.name)
-            .all()
-        )
+        self.r_params["other_contests"] = get_available_contests(self.sql_session)
 
         self.render("training_programs.html", **self.r_params)
 
@@ -186,14 +182,7 @@ class TrainingProgramHandler(BaseHandler):
         self.r_params["task_count"] = len(managing_contest.tasks)
 
         # Other contests available to move tasks into
-        self.r_params["other_contests"] = (
-            self.sql_session.query(Contest)
-            .filter(~Contest.name.like(r"\_\_%", escape="\\"))
-            .filter(~Contest.training_day.has())
-            .filter(~Contest.training_program.has())
-            .order_by(Contest.name)
-            .all()
-        )
+        self.r_params["other_contests"] = get_available_contests(self.sql_session)
 
         self.render("training_program.html", **self.r_params)
 
