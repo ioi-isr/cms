@@ -57,7 +57,6 @@ inputs.forEach(function(input) {
   </div>
   <div class="tp-card-body">
     <form method="post" action="{% if training_program is defined %}{{ url("training_program", training_program.id, "announcements") }}{% else %}{{ url("contest", contest.id, "announcements", "add") }}{% endif %}">
-      <div class="question-reply-form-section">
       {{ xsrf_form_html|safe }}
       <label class="question-form-label">SUBJECT</label>
       <input type="text" name="subject" id="new_subject" class="question-form-select" list="task_names_list" autocomplete="off">
@@ -79,20 +78,17 @@ inputs.forEach(function(input) {
           </button>
         </div>
       </div>
-      </div>
     </form>
   </div>
 </div>
 {% endif %}
-
-<h2 class="announcement-history-title">History</h2>
 
 {% if contest.announcements != [] %}
 <div id="announcements">
   <div id="page_selector_announcements" class="questions-pagination"></div>
   <div id="paged_content_announcements">
   {% for msg in contest.announcements|reverse %}
-  <div class="question-card question-unanswered announcement-card">
+  <div class="question-card question-claimed announcement-card">
     <div class="question-card-header">
       <div class="question-card-title-row">
         <h3 class="question-subject">{{ msg.subject }}</h3>
@@ -175,7 +171,7 @@ inputs.forEach(function(input) {
               <div class="question-reply-form-right">
                 <button type="button" class="question-btn question-btn-outline" onclick="utils.announcement_edit_toggle(event, this);">Cancel</button>
                 <button type="submit" class="question-btn question-btn-primary">
-                  <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit
+                  <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit Announcement
                 </button>
               </div>
             </div>
