@@ -701,23 +701,34 @@ CMS.AWSUtils.prototype.standard_response = function(response) {
 CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
     elements_per_page = elements_per_page || 5;
 
-    var children = $("#paged_content_" + item).children();
+    var children = $("#paged_content_" + item).children().filter(function() {
+        return $(this).css('display') !== 'none' || $(this).data('hidden-by-page') === true;
+    });
+    children.each(function() { $(this).removeData('hidden-by-page'); });
     var npages = Math.ceil(children.length / elements_per_page);
     var final_page = Math.min(page, npages) - 1;
+    if (final_page < 0) final_page = 0;
     children.each(function(i, child) {
         if (i >= elements_per_page * final_page
             && i < elements_per_page * (final_page + 1)) {
             $(child).show();
         } else {
             $(child).hide();
+            $(child).data('hidden-by-page', true);
         }
     });
 
     var self = this;
     var selector = $("#page_selector_" + item);
     selector.empty();
+    if (npages <= 1) return;
     selector.append("Pages: ");
+    var maxVisible = 10;
     for (var i = 1; i <= npages; i++) {
+        if (npages > maxVisible + 2 && i > maxVisible && i < npages) {
+            if (i === maxVisible + 1) selector.append(" ... ");
+            continue;
+        }
         if (i != page) {
             selector.append($("<a>").text(i + " ")
                             .click(function(j) {
@@ -727,7 +738,7 @@ CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
                                 };
                             }(i)));
         } else {
-            selector.append(i + " ");
+            selector.append($("<span>").addClass("page-current").text(i + " "));
         }
     }
 };
@@ -817,15 +828,38 @@ CMS.AWSUtils.ajax_post = function(url) {
  * Toggles visibility of the question reply box.
  */
 CMS.AWSUtils.prototype.question_reply_toggle = function(event, invoker) {
-    var obj = invoker.parentElement.parentElement.querySelector(".reply_question");
+    var container = invoker.closest('.question-actions') || invoker.parentElement.parentElement;
+    var obj = container.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
-        invoker.innerHTML = "Hide reply";
     } else {
         obj.style.display = "none";
-        invoker.innerHTML = "Reply";
     }
     event.preventDefault();
+};
+
+CMS.AWSUtils.prototype.init_questions_page = function() {
+    var self = this;
+    self.show_page("questions", 1);
+
+    var tabs = document.querySelectorAll('.questions-tab');
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            this.classList.add('active');
+            var filter = this.dataset.filter;
+            var cards = document.querySelectorAll('#paged_content_questions .question-card');
+            cards.forEach(function(card) {
+                card.removeData ? $(card).removeData('hidden-by-page') : true;
+                if (filter === 'all') {
+                    card.style.display = '';
+                } else {
+                    card.style.display = card.dataset.status === filter ? '' : 'none';
+                }
+            });
+            self.show_page("questions", 1);
+        });
+    });
 }
 
 CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
