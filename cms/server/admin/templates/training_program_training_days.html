@@ -971,6 +971,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var openModal = urlParams.get('open_modal');
     if (openModal && openModal.startsWith('remove-training-day-')) {
         var tdId = openModal.replace('remove-training-day-', '');
+        if (!/^\d+$/.test(tdId)) return;
         var btn = document.querySelector('button[data-remove-url$="/training_day/' + tdId + '/remove"]');
         if (btn) openRemoveTrainingDayModal(btn);
     }

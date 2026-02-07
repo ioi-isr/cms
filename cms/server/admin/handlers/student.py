@@ -288,6 +288,8 @@ class RemoveTrainingProgramStudentHandler(StudentBaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str, user_id: str):
+        self.safe_get_item(TrainingProgram, training_program_id)
+        self.safe_get_item(User, user_id)
         self.redirect(
             self.url("training_program", training_program_id, "students")
             + "?open_modal=remove-student-" + user_id

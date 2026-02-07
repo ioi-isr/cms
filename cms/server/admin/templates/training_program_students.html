@@ -254,10 +254,11 @@ function openRemoveStudentModal(btn) {
     var username = btn.getAttribute('data-username');
     var fullName = btn.getAttribute('data-full-name');
     var removeUrl = btn.getAttribute('data-remove-url');
+    var programName = {{ training_program.name | tojson }};
 
     AdminModals.deleteResource({
         title: 'Remove Student from Training Program',
-        message: 'Are you sure you want to remove <strong>' + fullName + ' (' + username + ')</strong> from training program <strong>{{ training_program.name }}</strong>, including all related data?',
+        message: 'Are you sure you want to remove <strong>' + fullName + ' (' + username + ')</strong> from training program <strong>' + escapeHtml(programName) + '</strong>, including all related data?',
         warningHtml: 'This will remove all submissions from the main training program, as well as all training day participations and submissions. This operation cannot be undone.',
         deleteUrl: removeUrl,
         confirmLabel: 'Yes, Remove Student'
@@ -269,6 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var openModal = urlParams.get('open_modal');
     if (openModal && openModal.startsWith('remove-student-')) {
         var userId = openModal.replace('remove-student-', '');
+        if (!/^\d+$/.test(userId)) return;
         var btn = document.querySelector('button[data-remove-url$="/student/' + userId + '/remove"]');
         if (btn) openRemoveStudentModal(btn);
     }
