@@ -1,7 +1,8 @@
 /* Contest Management System
  * Copyright © 2024 IOI-ISR
  *
- * Centralized modal management using MicroModal and SweetAlert2.
+ * Centralized modal management using MicroModal.
+ * SweetAlert2 is used as a drop-in replacement for native confirm() dialogs.
  * Provides global initialization, URL-driven auto-open, and generic
  * confirm/delete helpers so individual templates don't duplicate logic.
  */
@@ -62,39 +63,40 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Opens a SweetAlert2 confirmation dialog.
+ * Opens a confirmation modal.
  * @param {Object} opts
  * @param {string} opts.title - Modal title
- * @param {string} opts.message - Main question text (supports HTML)
+ * @param {string} opts.message - Main question text
  * @param {string|null} [opts.warningHtml] - Warning details HTML (optional)
  * @param {string} [opts.confirmLabel] - Confirm button label (default "Confirm")
  * @param {function} opts.onConfirm - Callback when confirmed
  */
 AdminModals.confirm = function(opts) {
-    var htmlContent = opts.message;
+    document.getElementById('modal-confirm-title').textContent = opts.title;
+    document.getElementById('modal-confirm-message').innerHTML = opts.message;
+
+    var warningBox = document.getElementById('modal-confirm-warning-box');
+    var warningText = document.getElementById('modal-confirm-warning-text');
+
     if (opts.warningHtml) {
-        htmlContent += '<div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-top: 16px; text-align: left;">' +
-            '<p style="margin: 0; color: #991b1b; font-weight: 600;">⚠ Warning</p>' +
-            '<div style="color: #7f1d1d; font-size: 0.9rem; margin-top: 4px;">' + opts.warningHtml + '</div>' +
-            '</div>';
+        warningBox.style.display = 'block';
+        warningText.innerHTML = opts.warningHtml;
+    } else {
+        warningBox.style.display = 'none';
     }
 
-    Swal.fire({
-        title: opts.title,
-        html: htmlContent,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: opts.confirmLabel || 'Confirm',
-        cancelButtonText: 'Cancel',
-        reverseButtons: true,
-        customClass: {
-            confirmButton: 'swal2-confirm-danger'
-        }
-    }).then(function(result) {
-        if (result.isConfirmed) {
-            opts.onConfirm();
-        }
+    var btn = document.getElementById('modal-confirm-btn');
+    var newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+
+    newBtn.textContent = opts.confirmLabel || 'Confirm';
+
+    newBtn.addEventListener('click', function() {
+        opts.onConfirm();
+        MicroModal.close('modal-generic-confirm');
     });
+
+    MicroModal.show('modal-generic-confirm');
 };
 
 /**
@@ -122,7 +124,7 @@ AdminModals.deleteResource = function(opts) {
                 xsrfToken = get_cookie('_xsrf');
             }
             if (!xsrfToken) {
-                Swal.fire('Error', 'Missing XSRF token', 'error');
+                alert('Missing XSRF token');
                 return;
             }
             fetch(opts.deleteUrl, {
@@ -136,10 +138,10 @@ AdminModals.deleteResource = function(opts) {
                         window.location.reload();
                     }
                 } else {
-                    Swal.fire('Error', 'Failed to delete resource', 'error');
+                    alert('Error: Failed to delete resource');
                 }
             }).catch(function(error) {
-                Swal.fire('Error', error.message, 'error');
+                alert('Error: ' + error.message);
             });
         }
     });

@@ -218,7 +218,7 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
 
     var xsrfElem = document.querySelector('input[name="_xsrf"]');
     if (!xsrfElem) {
-      Swal.fire('Error', 'CSRF token missing; cannot submit form.', 'error');
+      alert('CSRF token missing; cannot submit form.');
       return;
     }
     var xsrf = document.createElement('input');
