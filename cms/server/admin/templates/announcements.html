@@ -64,10 +64,7 @@ inputs.forEach(function(input) {
       {{ macro_markdown.markdown_input("text") }}
       {% if training_program is defined or is_training_day %}
       <label class="question-form-label">VISIBLE TO TAGS</label>
-      <div class="announcement-tags-row">
-        <input type="text" id="visible_to_tags" name="visible_to_tags" class="announcement-visibility-tags" placeholder="Leave empty for all students">
-        <button type="button" class="question-btn question-btn-outline" onclick="var t = this.closest('.announcement-tags-row').querySelector('.announcement-visibility-tags'); if (t._tagify) t._tagify.removeAllTags();">All students</button>
-      </div>
+      <input type="text" id="visible_to_tags" name="visible_to_tags" class="announcement-visibility-tags" placeholder="Leave empty for all students">
       {% endif %}
       <div class="question-reply-form-actions">
         <div class="question-reply-form-left">
@@ -97,22 +94,6 @@ inputs.forEach(function(input) {
     <div class="question-card-header">
       <div class="question-card-title-row">
         <h3 class="question-subject">{{ msg.subject }}</h3>
-        {% if admin.permission_all or admin.permission_messaging %}
-        <div class="question-header-actions">
-          <button type="button" class="question-btn question-btn-outline" onclick="utils.announcement_edit_toggle(event, this);">
-            <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit
-          </button>
-          {% if training_program is defined %}
-          <button type="button" class="question-btn question-btn-outline" onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}');">
-            <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
-          </button>
-          {% else %}
-          <button type="button" class="question-btn question-btn-outline" onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}');">
-            <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
-          </button>
-          {% endif %}
-        </div>
-        {% endif %}
       </div>
       <div class="question-header-right">
         <div class="question-card-meta question-card-meta-inline">
@@ -120,6 +101,17 @@ inputs.forEach(function(input) {
             <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
             {{ msg.timestamp|format_datetime }}
           </span>
+          {% if admin.permission_all or admin.permission_messaging %}
+          {% if training_program is defined %}
+          <button type="button" class="question-edit-reply-link" onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}');">
+            <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
+          </button>
+          {% else %}
+          <button type="button" class="question-edit-reply-link" onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}');">
+            <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
+          </button>
+          {% endif %}
+          {% endif %}
         </div>
       </div>
     </div>
@@ -133,19 +125,26 @@ inputs.forEach(function(input) {
     <input type="hidden" class="announcement_raw_visible_to_tags" value="{{ msg.visible_to_tags|join(', ')|e }}">
 
     <div class="announcement-card-footer">
-      {% if (training_program is defined or is_training_day) and msg.visible_to_tags %}
-      <span class="question-meta-item">
-        <svg class="icon" width="16" height="16"><use href="#icon-tag"/></svg>
-        Visible to:
-        {% for tag in msg.visible_to_tags %}
-          <span class="announcement-tag-badge">{{ tag }}</span>
-        {% endfor %}
-      </span>
+      <div class="announcement-card-footer-left">
+        {% if (training_program is defined or is_training_day) and msg.visible_to_tags %}
+        <span class="question-meta-item">
+          <svg class="icon" width="16" height="16"><use href="#icon-tag"/></svg>
+          Visible to:
+          {% for tag in msg.visible_to_tags %}
+            <span class="announcement-tag-badge">{{ tag }}</span>
+          {% endfor %}
+        </span>
+        {% endif %}
+        <span class="question-meta-item">
+          <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
+          By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
+        </span>
+      </div>
+      {% if admin.permission_all or admin.permission_messaging %}
+      <button type="button" class="question-edit-reply-link" onclick="utils.announcement_edit_toggle(event, this);">
+        <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit
+      </button>
       {% endif %}
-      <span class="question-meta-item">
-        <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
-        By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
-      </span>
     </div>
 
     {% if admin.permission_all or admin.permission_messaging %}
@@ -173,7 +172,9 @@ inputs.forEach(function(input) {
               </div>
               <div class="question-reply-form-right">
                 <button type="button" class="question-btn question-btn-outline" onclick="utils.announcement_edit_toggle(event, this);">Cancel</button>
-                <button type="submit" class="question-btn question-btn-primary">Edit announcement</button>
+                <button type="submit" class="question-btn question-btn-primary">
+                  <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit
+                </button>
               </div>
             </div>
           </form>

@@ -2109,25 +2109,21 @@ svg.icon {
     margin-bottom: 1em;
 }
 
-.announcement-tags-row {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-}
-
-.announcement-tags-row .announcement-visibility-tags {
-    flex: 1;
-}
-
 .announcement-card-footer {
     display: flex;
     align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
+    justify-content: space-between;
     padding: 12px 24px;
     border-top: 1px solid var(--tp-border, #E5E7EB);
     font-size: 0.85em;
     color: var(--tp-text-muted, #64748b);
+}
+
+.announcement-card-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
 }
 
 .announcement-tag-badge {
