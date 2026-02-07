@@ -273,10 +273,12 @@ CMS.AWSFormUtils.initTagify = function(config) {
         // Track user-initiated removals (X click or backspace)
         var userRemovalTriggeredAt = 0;
 
+        // Native confirm() is used for all Tagify confirmation hooks
+        // because Tagify processes events synchronously — async dialogs
+        // (SweetAlert2) race with Tagify's internal state updates.
         tagifyOptions.hooks = {
             beforeRemoveTag: function(tags) {
                 return new Promise(function(resolve, reject) {
-                    // If this is a rollback from cancelled add, skip confirmation
                     if (isRollback) {
                         resolve();
                         return;
@@ -286,23 +288,19 @@ CMS.AWSFormUtils.initTagify = function(config) {
                     var isUserInitiated = (now - userRemovalTriggeredAt) < 200;
                     userRemovalTriggeredAt = 0;
 
-                    // Auto-removals (duplicates, etc.) don't need confirmation
                     if (!isUserInitiated) {
                         pendingSave = true;
                         resolve();
                         return;
                     }
 
-                    // User-initiated removal needs confirmation
                     var tagValue = tags[0].data.value;
-                    AdminModals.simpleConfirm('Remove tag "' + tagValue + '"?').then(function(confirmed) {
-                        if (confirmed) {
-                            pendingSave = true;
-                            resolve();
-                        } else {
-                            reject(new Error('User cancelled tag removal'));
-                        }
-                    });
+                    if (confirm('Remove tag "' + tagValue + '"?')) {
+                        pendingSave = true;
+                        resolve();
+                    } else {
+                        reject(new Error('User cancelled tag removal'));
+                    }
                 });
             }
         };
@@ -323,22 +321,18 @@ CMS.AWSFormUtils.initTagify = function(config) {
             }
         }, true);
 
-        // Handle add confirmation
         tagify.on('add', function(e) {
-            // Skip confirmation if not armed yet (initial page load)
             if (!armed) return;
 
             var tagValue = e.detail.data.value;
-            AdminModals.simpleConfirm('Add tag "' + tagValue + '"?', {icon: 'question'}).then(function(confirmed) {
-                if (confirmed) {
-                    pendingSave = true;
-                    tagify.trigger('change');
-                } else {
-                    isRollback = true;
-                    tagify.removeTags(e.detail.tag);
-                    isRollback = false;
-                }
-            });
+            if (confirm('Add tag "' + tagValue + '"?')) {
+                pendingSave = true;
+                tagify.trigger('change');
+            } else {
+                isRollback = true;
+                tagify.removeTags(e.detail.tag);
+                isRollback = false;
+            }
         });
 
         // Handle edit confirmation
