@@ -353,19 +353,19 @@ CMS.AWSFormUtils.initTagify = function(config) {
                 var oldVal = editingTagValue;
                 var newVal = e.detail.data && e.detail.data.value;
 
-                // No change, no confirmation needed
                 if (oldVal === newVal) {
                     return;
                 }
 
-                AdminModals.simpleConfirm('Change tag "' + oldVal + '" to "' + newVal + '"?', {icon: 'question'}).then(function(confirmed) {
-                    if (confirmed) {
-                        pendingSave = true;
-                        tagify.trigger('change');
-                    } else {
-                        e.detail.data.value = oldVal;
-                    }
-                });
+                // Native confirm() is required here because Tagify processes
+                // edit:beforeUpdate synchronously — an async dialog would
+                // resolve after Tagify has already applied the edit.
+                if (confirm('Change tag "' + oldVal + '" to "' + newVal + '"?')) {
+                    pendingSave = true;
+                    tagify.trigger('change');
+                } else {
+                    e.detail.data.value = oldVal;
+                }
             });
         }
 
