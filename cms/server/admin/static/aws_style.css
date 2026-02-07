@@ -815,6 +815,7 @@ th .column-sort {
 
 .markdown_input {
     width: 100%;
+    box-sizing: border-box;
 }
 
 
@@ -2047,6 +2048,7 @@ svg.icon {
     background: #fff;
     color: var(--tp-text-primary, #1e293b);
     appearance: auto;
+    box-sizing: border-box;
 }
 
 .question-form-select:focus {
@@ -2068,6 +2070,7 @@ svg.icon {
     font-family: inherit;
     font-size: 1em;
     resize: vertical;
+    box-sizing: border-box;
 }
 
 .question-card .reply_question_form .markdown_input:focus {
