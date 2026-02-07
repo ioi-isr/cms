@@ -31,9 +31,8 @@ user_id (int|None): if we are rendering one of the questions on a single user's
       {% elif status == "claimed" %}
         <span class="question-status-badge question-badge-claimed">CLAIMED</span>
       {% endif %}
-    </div>
-    {% if (admin.permission_all or admin.permission_messaging) and msg.reply_timestamp is none %}
-    <div class="question-header-actions">
+      {% if (admin.permission_all or admin.permission_messaging) and msg.reply_timestamp is none %}
+      <div class="question-header-actions">
         <form class="ignore_question_form inline" action="{{ url("contest", contest.id, "question", msg.id, "ignore") }}" name="ignore{{ msg.id }}" method="POST">
           {{ xsrf_form_html|safe }}
           {% if user_id is not none %}
@@ -67,21 +66,23 @@ user_id (int|None): if we are rendering one of the questions on a single user's
         <button class="question-btn question-btn-primary" onclick="utils.question_reply_toggle(event, this);">
           <svg class="icon" width="16" height="16"><use href="#icon-reply"/></svg> Reply
         </button>
+      </div>
+      {% endif %}
     </div>
-    {% endif %}
-  </div>
-
-  <div class="question-card-meta">
-    {% if user_id is none %}
-      <span class="question-meta-item">
-        <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
-        <a href="{{ url("contest", contest.id, "user", msg.participation.user.id, "edit") }}" title="{{ msg.participation.user.first_name }} {{ msg.participation.user.last_name }}">{{ msg.participation.user.username }}</a>
-      </span>
-    {% endif %}
-    <span class="question-meta-item">
-      <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
-      {{ msg.question_timestamp|format_datetime }}
-    </span>
+    <div class="question-header-right">
+      <div class="question-card-meta question-card-meta-inline">
+        {% if user_id is none %}
+          <span class="question-meta-item">
+            <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
+            <a href="{{ url("contest", contest.id, "user", msg.participation.user.id, "edit") }}" title="{{ msg.participation.user.first_name }} {{ msg.participation.user.last_name }}">{{ msg.participation.user.username }}</a>
+          </span>
+        {% endif %}
+        <span class="question-meta-item">
+          <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
+          {{ msg.question_timestamp|format_datetime }}
+        </span>
+      </div>
+    </div>
   </div>
 
   <div class="question-card-body">

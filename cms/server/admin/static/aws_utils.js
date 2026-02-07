@@ -723,12 +723,9 @@ CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
     selector.empty();
     if (npages <= 1) return;
     selector.append("Pages: ");
-    var maxVisible = 10;
-    for (var i = 1; i <= npages; i++) {
-        if (npages > maxVisible + 2 && i > maxVisible && i < npages) {
-            if (i === maxVisible + 1) selector.append(" ... ");
-            continue;
-        }
+    var windowRadius = 2;
+    var maxAllVisible = windowRadius * 2 + 3;
+    var appendPage = function(i) {
         if (i != page) {
             selector.append($("<a>").text(i + " ")
                             .click(function(j) {
@@ -740,7 +737,21 @@ CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
         } else {
             selector.append($("<span>").addClass("page-current").text(i + " "));
         }
+    };
+
+    if (npages <= maxAllVisible) {
+        for (var i = 1; i <= npages; i++) appendPage(i);
+        return;
     }
+
+    var start = Math.max(2, page - windowRadius);
+    var end = Math.min(npages - 1, page + windowRadius);
+
+    appendPage(1);
+    if (start > 2) selector.append(" ... ");
+    for (var i = start; i <= end; i++) appendPage(i);
+    if (end < npages - 1) selector.append(" ... ");
+    appendPage(npages);
 };
 
 
