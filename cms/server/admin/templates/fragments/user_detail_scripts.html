@@ -90,7 +90,7 @@ function initUserDetail(options) {
   };
 
   function escapeHtml(value) {
-    // Use centralized escapeHtml if available (BUG-0001), otherwise fallback to jQuery
+    // Use centralized escapeHtml for XSS prevention if available, otherwise fallback to jQuery
     if (typeof window.escapeHtml === 'function') {
       return window.escapeHtml(value == null ? "" : String(value));
     }

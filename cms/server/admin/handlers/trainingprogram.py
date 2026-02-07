@@ -188,7 +188,6 @@ class TrainingProgramHandler(BaseHandler):
         # Other contests available to move tasks into
         self.r_params["other_contests"] = (
             self.sql_session.query(Contest)
-            .filter(Contest.id != managing_contest.id)
             .filter(~Contest.name.like(r"\_\_%", escape="\\"))
             .filter(~Contest.training_day.has())
             .filter(~Contest.training_program.has())

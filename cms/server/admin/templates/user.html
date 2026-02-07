@@ -25,7 +25,10 @@
         <td><a href="{{ url("training_program", p.contest.training_program.id) }}">{{ p.contest.training_program.name }}</a></td>
         <td>{{ p.contest.training_program.description }}</td>
         <td>
-          <a href="{{ url("training_program", p.contest.training_program.id, "student", p.user.id, "remove") }}" onclick="return AdminModals.confirmLink(event, 'Remove {{ p.user.username }} from training program {{ p.contest.training_program.name }}? This will also remove all training day participations.');">Remove from training program</a>
+          <a href="{{ url("training_program", p.contest.training_program.id, "student", p.user.id, "remove") }}"
+             data-username="{{ p.user.username }}"
+             data-training-name="{{ p.contest.training_program.name }}"
+             onclick="return AdminModals.confirmLink(event, 'Remove ' + this.dataset.username + ' from training program ' + this.dataset.trainingName + '? This will also remove all training day participations.');">Remove from training program</a>
         </td>
       </tr>
       {% endfor %}
@@ -99,11 +102,15 @@
   <div class="panel-warning">
     <strong>Pending Password Reset</strong>
     <p>This user has submitted a password reset request that is awaiting approval.</p>
-    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Approve password reset for {{ user.username }}?', {icon: 'question'});">
+    <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;"
+      data-username="{{ user.username }}"
+      onsubmit="return AdminModals.confirmSubmit(event, 'Approve password reset for ' + this.dataset.username + '?', {icon: 'question'});">
       {{ xsrf_form_html|safe }}
       <input type="submit" value="Approve Reset" class="btn-success" />
     </form>
-    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Deny password reset for {{ user.username }}?', {icon: 'question'});">
+    <form action="{{ url("user", user.id, "deny_password_reset") }}" method="POST" style="display:inline;"
+          data-username="{{ user.username }}"
+          onsubmit="return AdminModals.confirmSubmit(event, 'Deny password reset for ' + this.dataset.username + '?', {icon: 'question'});">
       {{ xsrf_form_html|safe }}
       <input type="submit" value="Deny Reset" class="btn-danger" />
     </form>

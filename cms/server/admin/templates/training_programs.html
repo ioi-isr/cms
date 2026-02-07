@@ -216,15 +216,15 @@ document.addEventListener('click', function(e) {
     }
 });
 
-function openRemoveModal(linkElement) {
+function openRemoveModal(buttonElement) {
     closeAllMenus();
 
-    var name = linkElement.getAttribute('data-tp-name');
-    var removeUrl = linkElement.getAttribute('data-remove-url');
-    var participationCount = Number.parseInt(linkElement.getAttribute('data-participation-count')) || 0;
-    var submissionCount = Number.parseInt(linkElement.getAttribute('data-submission-count')) || 0;
-    var taskCount = Number.parseInt(linkElement.getAttribute('data-task-count')) || 0;
-    var trainingDayCount = Number.parseInt(linkElement.getAttribute('data-training-day-count')) || 0;
+    var name = buttonElement.getAttribute('data-tp-name');
+    var removeUrl = buttonElement.getAttribute('data-remove-url');
+    var participationCount = Number.parseInt(buttonElement.getAttribute('data-participation-count')) || 0;
+    var submissionCount = Number.parseInt(buttonElement.getAttribute('data-submission-count')) || 0;
+    var taskCount = Number.parseInt(buttonElement.getAttribute('data-task-count')) || 0;
+    var trainingDayCount = Number.parseInt(buttonElement.getAttribute('data-training-day-count')) || 0;
 
     document.getElementById('remove-program-name').textContent = name;
 
