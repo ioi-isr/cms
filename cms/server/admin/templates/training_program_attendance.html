@@ -407,11 +407,11 @@ function _doSaveAttendance(justified, recorded, comment) {
             updateAttendanceCell(currentAttendanceId, justified, recorded, comment);
             closeAttendanceModal();
         } else {
-            alert('Failed to save: ' + (result.error || 'Unknown error'));
+            AdminModals.showError(result.error || 'Unknown error');
         }
     })
     .catch(function(error) {
-        alert('Error saving attendance: ' + error.message);
+        AdminModals.showError(error.message);
     })
     .finally(function() {
         // Always restore button state

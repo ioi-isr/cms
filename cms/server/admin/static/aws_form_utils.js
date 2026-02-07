@@ -81,7 +81,7 @@ CMS.AWSFormUtils.initDateTimeValidation = function(formSelector, startSelector, 
         var startValue = startInput.valueAsNumber;
         var stopValue = stopInput.valueAsNumber;
         if (!Number.isNaN(startValue) && !Number.isNaN(stopValue) && stopValue <= startValue) {
-            alert('End time must be after start time');
+            AdminModals.showError('End time must be after start time');
             e.preventDefault();
         }
     });
@@ -134,7 +134,7 @@ CMS.AWSFormUtils.initRemovePage = function(config) {
             }
 
             if (!selectedAction) {
-                alert('Please select an option for handling tasks.');
+                AdminModals.showError('Please select an option for handling tasks.');
                 return;
             }
 
@@ -145,7 +145,7 @@ CMS.AWSFormUtils.initRemovePage = function(config) {
                 if (targetSelect && targetSelect.value) {
                     url += '&' + config.targetParamName + '=' + encodeURIComponent(targetSelect.value);
                 } else {
-                    alert('Please select a ' + config.targetLabel + ' to move tasks to.');
+                    AdminModals.showError('Please select a ' + config.targetLabel + ' to move tasks to.');
                     return;
                 }
             }
@@ -380,7 +380,7 @@ CMS.AWSFormUtils.initTagify = function(config) {
         if (config.pattern && config.invalidMessage) {
             tagify.on('invalid', function(e) {
                 if (e.detail.message === 'pattern mismatch') {
-                    alert(config.invalidMessage);
+                    AdminModals.showError(config.invalidMessage);
                 }
             });
         }

@@ -321,7 +321,7 @@ if (confirmBtn) {
         if (hasTaskOptions) {
             var selectedAction = document.querySelector('input[name="remove_action"]:checked');
             if (!selectedAction) {
-                alert('Please select what to do with the tasks.');
+                AdminModals.showError('Please select what to do with the tasks.');
                 return;
             }
             action = selectedAction.value;
@@ -334,7 +334,7 @@ if (confirmBtn) {
         // Get XSRF token
         var xsrfInput = document.querySelector('input[name="_xsrf"]');
         if (!xsrfInput) {
-            alert('Missing XSRF token');
+            AdminModals.showError('Missing XSRF token');
             return;
         }
 
@@ -354,7 +354,7 @@ if (confirmBtn) {
             // Reload the page to show updated list
             window.location.reload();
         }).catch(function(error) {
-            alert('Error: ' + error.message);
+            AdminModals.showError(error.message);
         });
     });
 }

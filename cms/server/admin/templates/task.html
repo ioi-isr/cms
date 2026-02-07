@@ -124,7 +124,7 @@ window.toggleSelectAllTestcases = function(dataset_id, masterCheckbox) {
 window.deleteSelectedTestcases = function(dataset_id, url) {
   var checkboxes = $(".multi_delete_checkbox_" + dataset_id + ":checked");
   if (checkboxes.length === 0) {
-    alert("No testcases selected.");
+    AdminModals.showError('No testcases selected.');
     return;
   }
   AdminModals.simpleConfirm("Are you sure you want to delete the selected testcases from this dataset?").then(function(confirmed) {

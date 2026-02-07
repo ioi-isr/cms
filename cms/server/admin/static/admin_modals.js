@@ -124,7 +124,7 @@ AdminModals.deleteResource = function(opts) {
                 xsrfToken = get_cookie('_xsrf');
             }
             if (!xsrfToken) {
-                alert('Missing XSRF token');
+                AdminModals.showError('Missing XSRF token');
                 return;
             }
             fetch(opts.deleteUrl, {
@@ -138,10 +138,10 @@ AdminModals.deleteResource = function(opts) {
                         window.location.reload();
                     }
                 } else {
-                    alert('Error: Failed to delete resource');
+                    AdminModals.showError('Failed to delete resource');
                 }
             }).catch(function(error) {
-                alert('Error: ' + error.message);
+                AdminModals.showError(error.message);
             });
         }
     });
@@ -218,6 +218,14 @@ AdminModals.confirmLink = function(event, message, options) {
  * @param {function} callback - Function to call if confirmed
  * @param {Object} [options] - Optional SweetAlert2 overrides
  */
+AdminModals.showError = function(message, title) {
+    return Swal.fire({
+        title: title || 'Error',
+        text: message,
+        icon: 'error'
+    });
+};
+
 AdminModals.confirmThen = function(message, callback, options) {
     AdminModals.simpleConfirm(message, options).then(function(confirmed) {
         if (confirmed) {

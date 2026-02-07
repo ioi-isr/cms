@@ -88,7 +88,7 @@
             if (hasTaskOptions) {
                 var selectedAction = document.querySelector('input[name="action"]:checked');
                 if (!selectedAction) {
-                    alert('Please select what to do with the tasks.');
+                    AdminModals.showError('Please select what to do with the tasks.');
                     return;
                 }
                 action = selectedAction.value;
@@ -97,7 +97,7 @@
                     var targetSelect = document.getElementById('target_contest_select');
                     targetContestId = targetSelect ? targetSelect.value : null;
                     if (!targetContestId) {
-                        alert('Please select a target contest to move tasks to.');
+                        AdminModals.showError('Please select a target contest to move tasks to.');
                         return;
                     }
                 }
@@ -115,7 +115,7 @@
             var modalEl = document.getElementById('modal-remove-program');
             var xsrfInput = modalEl ? modalEl.querySelector('input[name="_xsrf"]') : null;
             if (!xsrfInput) {
-                alert('Missing XSRF token');
+                AdminModals.showError('Missing XSRF token');
                 return;
             }
 
@@ -135,7 +135,7 @@
                 // The handler returns a redirect URL
                 window.location.href = redirectUrl || '{{ url("training_programs") }}';
             }).catch(function(error) {
-                alert('Error: ' + error.message);
+                AdminModals.showError(error.message);
             });
         });
     }

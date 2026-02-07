@@ -192,11 +192,11 @@ window.findCommonSubstring = function(strings) {
 window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRegex, suggestedPrefix) {
   var ids = getSelectedTestcaseIds(tableId);
   if (ids.length === 0) {
-    alert('No testcases selected.');
+    AdminModals.showError('No testcases selected.');
     return;
   }
 
-  var defaultPrefix = suggestedPrefix || '';
+  var defaultPrefix= suggestedPrefix || '';
   Swal.fire({
     title: 'Add Prefix',
     text: 'Enter prefix to add to selected testcases:',
@@ -255,7 +255,7 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
 
     var xsrfElem = document.querySelector('input[name="_xsrf"]');
     if (!xsrfElem) {
-      alert('CSRF token missing; cannot submit form.');
+      AdminModals.showError('CSRF token missing; cannot submit form.');
       return;
     }
     var xsrf = document.createElement('input');
@@ -283,11 +283,11 @@ window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRege
 window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
   var ids = getSelectedTestcaseIds(tableId);
   if (ids.length === 0) {
-    alert('No testcases selected.');
+    AdminModals.showError('No testcases selected.');
     return;
   }
 
-  var codenames = getSelectedCodenames(tableId);
+  var codenames= getSelectedCodenames(tableId);
   var commonSubstring = findCommonSubstring(codenames);
 
   Swal.fire({
@@ -308,7 +308,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     // Verify all selected testcases contain the substring
     var allContain = codenames.every(function(c) { return c.indexOf(substring) !== -1; });
     if (!allContain) {
-      alert('Not all selected testcases contain the substring "' + substring + '".');
+      AdminModals.showError('Not all selected testcases contain the substring "' + substring + '".');
       return;
     }
 
@@ -346,7 +346,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 
     var xsrfElem = document.querySelector('input[name="_xsrf"]');
     if (!xsrfElem) {
-      alert('CSRF token missing; cannot submit form.');
+      AdminModals.showError('CSRF token missing; cannot submit form.');
       return;
     }
     var xsrf = document.createElement('input');

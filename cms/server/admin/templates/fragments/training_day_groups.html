@@ -340,7 +340,7 @@ function removeMainGroup(url) {
     AdminModals.confirmThen('Remove this main group?', function() {
         var xsrfInput = document.querySelector('input[name="_xsrf"]');
         if (!xsrfInput) {
-            alert('Missing XSRF token');
+            AdminModals.showError('Missing XSRF token');
             return;
         }
         var formData = new FormData();
@@ -352,10 +352,10 @@ function removeMainGroup(url) {
             if (response.ok) {
                 window.location.reload();
             } else {
-                alert('Failed to remove main group');
+                AdminModals.showError('Failed to remove main group');
             }
         }).catch(function(error) {
-            alert('Error: ' + error);
+            AdminModals.showError(String(error));
         });
     });
 }

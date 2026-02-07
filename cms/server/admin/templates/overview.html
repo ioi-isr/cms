@@ -96,11 +96,11 @@ var total_workers_configured = 0;
 function set_workers_count() {
     var count = parseInt($("#worker_count_input").val());
     if (isNaN(count) || count < 0) {
-        alert("Please enter a valid number of workers (0 or greater).");
+        AdminModals.showError('Please enter a valid number of workers (0 or greater).');
         return;
     }
     if (count > total_workers_configured) {
-        alert("Please enter a number between 0 and " + total_workers_configured + " (total configured workers).");
+        AdminModals.showError('Please enter a number between 0 and ' + total_workers_configured + ' (total configured workers).');
         return;
     }
     AdminModals.confirmThen("Do you really want to enable workers 0 to " + (count - 1) + " and disable the rest?", function() {
@@ -114,7 +114,7 @@ function set_workers_count() {
                                              {},
                                              update_workers_status);
                           } else {
-                              alert("Failed to set worker count. Please check the logs.");
+                              AdminModals.showError('Failed to set worker count. Please check the logs.');
                           }
                        });
     }, {icon: 'question'});

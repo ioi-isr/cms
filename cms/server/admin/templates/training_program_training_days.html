@@ -841,11 +841,11 @@ function saveScoreboardSharing(){
         var topToShow = topToShowAll ? 'all' : parseInt(document.getElementById('everyoneTopToShow').value) || 0;
         var topNames = topNamesAll ? 'all' : parseInt(document.getElementById('everyoneTopNames').value) || 0;
         if (!topToShowAll && topToShow < 0) {
-            alert('Results to show cannot be negative.');
+            AdminModals.showError('Results to show cannot be negative.');
             return;
         }
         if (!topNamesAll && topNames < 0) {
-            alert('Full names cannot be negative.');
+            AdminModals.showError('Full names cannot be negative.');
             return;
         }
 
@@ -874,11 +874,11 @@ function saveScoreboardSharing(){
         var topToShow = topToShowAllCheckbox.checked ? 'all' : parseInt(topToShowInput.value, 10);
         var topNames = topNamesAllCheckbox.checked ? 'all' : parseInt(topNamesInput.value, 10);
         if (!topToShowAllCheckbox.checked && topToShow < 0) {
-            alert('Results to show cannot be negative.');
+            AdminModals.showError('Results to show cannot be negative.');
             return;
         }
         if (!topNamesAllCheckbox.checked && topNames < 0) {
-            alert('Full names cannot be negative.');
+            AdminModals.showError('Full names cannot be negative.');
             return;
         }
 
@@ -897,7 +897,7 @@ function saveScoreboardSharing(){
     }
 
     if (hasDuplicate) {
-        alert('Duplicate tags are not allowed.');
+        AdminModals.showError('Duplicate tags are not allowed.');
         return;
     }
 
@@ -905,7 +905,7 @@ function saveScoreboardSharing(){
     var formData = new FormData();
     var xsrfEl = document.querySelector('input[name="_xsrf"]');
     if (!xsrfEl) {
-        alert('Error: XSRF token not found. Please refresh the page.');
+        AdminModals.showError('XSRF token not found. Please refresh the page.');
         return;
     }
     formData.append('_xsrf', xsrfEl.value);
@@ -929,11 +929,11 @@ function saveScoreboardSharing(){
             closeScoreboardSharingModal();
             location.reload();
         } else {
-            alert('Error: ' + (data.error || 'Unknown error'));
+            AdminModals.showError(data.error || 'Unknown error');
         }
     })
     .catch(function(error) {
-        alert('Error saving: ' + error.message);
+        AdminModals.showError(error.message);
     });
 }
 
