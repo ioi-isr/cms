@@ -874,17 +874,16 @@ CMS.AWSUtils.prototype.init_questions_page = function() {
 }
 
 CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
-    const notification = invoker.closest('.notification_msg');
-    const subjectText = notification.querySelector('.announcement_raw_subject').value;
-    const bodyText = notification.querySelector('.announcement_raw_text').value;
-    const form = notification.querySelector('.reply_question form');
+    const card = invoker.closest('.announcement-card');
+    const subjectText = card.querySelector('.announcement_raw_subject').value;
+    const bodyText = card.querySelector('.announcement_raw_text').value;
+    const form = card.querySelector('.reply_question form');
 
     form.querySelector('input[name="subject"]').value = subjectText;
     form.querySelector('textarea[name="text"]').value = bodyText;
 
-    // Populate visible_to_tags field if it exists
     const visibleToTagsInput = form.querySelector('input[name="visible_to_tags"]');
-    const rawVisibleToTags = notification.querySelector('.announcement_raw_visible_to_tags');
+    const rawVisibleToTags = card.querySelector('.announcement_raw_visible_to_tags');
     if (visibleToTagsInput && rawVisibleToTags) {
         const rawValue = rawVisibleToTags.value;
         const tagify = visibleToTagsInput._tagify;
@@ -897,13 +896,11 @@ CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
         }
     }
 
-    var obj = notification.querySelector(".reply_question");
+    var obj = card.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
-        invoker.innerHTML = "Hide Edit";
     } else {
         obj.style.display = "none";
-        invoker.innerHTML = "Edit";
     }
     event.preventDefault();
 }
