@@ -309,7 +309,7 @@ CMS.AWSFormUtils.initTagify({
       </td>
       <td>
         {% if participation.delay_time.total_seconds() > 0 %}
-          {% set delay_mins = (participation.delay_time.total_seconds() / 60)|int %}
+          {% set delay_mins = (participation.delay_time.total_seconds() / 60)|round(0, 'ceil')|int %}
           <span class="delays-time-value">+{{ delay_mins }}m</span>
         {% else %}
           <span class="delays-text-light">-</span>
@@ -317,7 +317,7 @@ CMS.AWSFormUtils.initTagify({
       </td>
       <td>
         {% if participation.extra_time.total_seconds() > 0 %}
-          {% set extra_mins = (participation.extra_time.total_seconds() / 60)|int %}
+          {% set extra_mins = (participation.extra_time.total_seconds() / 60)|round(0, 'ceil')|int %}
           <span class="delays-time-value">+{{ extra_mins }}m</span>
         {% else %}
           <span class="delays-text-light">-</span>
@@ -362,7 +362,7 @@ CMS.AWSFormUtils.initTagify({
             <svg class="icon" width="20" height="20"><use href="#icon-user"/></svg>
             <div>
               <div class="delays-history-card-username">@{{ req.participation.user.username }}</div>
-              <div class="delays-history-card-userid">User ID: {{ req.participation.user.username }}</div>
+              <div class="delays-history-card-userid">User ID: {{ req.participation.user.id }}</div>
             </div>
           </div>
           {% if req.status == 'approved' %}
