@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import 'macro/delay_request.html' as macro_delay_request with context %}
 
 {% block js_init %}
 
@@ -350,12 +349,79 @@ CMS.AWSFormUtils.initTagify({
 <!-- Request History -->
 {% if delay_requests != [] %}
 <div class="delays-history-section">
-  <h2 class="delays-section-title">Request History</h2>
-  <div id="all_delay_requests" class="notifications delays-history-content">
-    <div id="page_selector_all_delay_requests"></div>
-    <div id="paged_content_all_delay_requests">
+  <div class="delays-history-header">
+    <h2 class="delays-section-title">Request History</h2>
+    <div id="page_selector_all_delay_requests" class="delays-history-pagination"></div>
+  </div>
+  <div id="all_delay_requests">
+    <div id="paged_content_all_delay_requests" class="delays-history-grid">
     {% for req in delay_requests %}
-      {{ macro_delay_request.delay_request(req, show_buttons=False) }}
+      <div class="delays-history-card">
+        <div class="delays-history-card-header">
+          <div class="delays-history-card-user">
+            <svg class="icon" width="20" height="20"><use href="#icon-user"/></svg>
+            <div>
+              <div class="delays-history-card-username">@{{ req.participation.user.username }}</div>
+              <div class="delays-history-card-userid">User ID: {{ req.participation.user.username }}</div>
+            </div>
+          </div>
+          {% if req.status == 'approved' %}
+            <span class="delays-history-badge delays-history-badge-approved">
+              <svg class="icon" width="14" height="14"><use href="#icon-check"/></svg> Approved
+            </span>
+          {% elif req.status == 'rejected' %}
+            <span class="delays-history-badge delays-history-badge-rejected">
+              <svg class="icon" width="14" height="14"><use href="#icon-x"/></svg> Rejected
+            </span>
+          {% elif req.status == 'admin_configured' %}
+            <span class="delays-history-badge delays-history-badge-configured">
+              <svg class="icon" width="14" height="14"><use href="#icon-sliders"/></svg> Admin Configured
+            </span>
+          {% elif req.status == 'pending' %}
+            <span class="delays-history-badge delays-history-badge-pending">
+              <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> Pending
+            </span>
+          {% endif %}
+        </div>
+        <div class="delays-history-card-body">
+          <div class="delays-history-card-field">
+            <div class="delays-history-card-field-label">
+              <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> Requested Start
+            </div>
+            <div class="delays-history-card-field-value">{{ req.requested_start_time|format_datetime }}</div>
+          </div>
+          <div class="delays-history-card-reason">
+            <div class="delays-history-card-reason-label">
+              <svg class="icon" width="14" height="14"><use href="#icon-message-circle"/></svg> Reason
+            </div>
+            <div class="delays-history-card-reason-box">{{ req.reason }}</div>
+          </div>
+          {% if req.status == 'rejected' and req.rejection_reason %}
+          <div class="delays-history-card-field" style="margin-top: 8px;">
+            <div class="delays-history-card-field-label">
+              <svg class="icon" width="14" height="14"><use href="#icon-x"/></svg> Rejection Reason
+            </div>
+            <div class="delays-history-card-reason-box">{{ req.rejection_reason }}</div>
+          </div>
+          {% endif %}
+        </div>
+        {% if req.status != 'pending' %}
+        <div class="delays-history-card-footer">
+          {% if req.admin %}
+          <div class="delays-history-card-meta-row">
+            <span><svg class="icon" width="14" height="14"><use href="#icon-users"/></svg> Processed by:</span>
+            <span>{{ req.admin.name }}</span>
+          </div>
+          {% endif %}
+          {% if req.processed_timestamp %}
+          <div class="delays-history-card-meta-row">
+            <span><svg class="icon" width="14" height="14"><use href="#icon-check"/></svg> At:</span>
+            <span>{{ req.processed_timestamp|format_datetime }}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
     {% endfor %}
     </div>
   </div>
