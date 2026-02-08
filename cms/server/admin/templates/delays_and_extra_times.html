@@ -58,35 +58,77 @@ CMS.AWSFormUtils.initTagify({
   </button>
 </div>
 
-<!-- Alert Cards Row -->
+<!-- Pending Delay Requests Section -->
 {% set pending_count = delay_requests|selectattr('status', 'equalto', 'pending')|list|length if delay_requests else 0 %}
 {% set has_ineligible = ineligible_students is defined and ineligible_students|length > 0 %}
 
-{% if pending_count > 0 or has_ineligible %}
-<div class="delays-alert-grid{% if not (pending_count > 0 and has_ineligible) %} delays-alert-grid-single{% endif %}">
-  {% if pending_count > 0 %}
-  <div class="delays-alert-card delays-alert-card-warning">
-    <div class="delays-alert-header">
-      <span class="delays-alert-header-icon"><svg class="icon" width="18" height="18"><use href="#icon-alert-triangle"/></svg></span>
-      <span class="delays-alert-title">Pending Delay Requests</span>
-      <span class="delays-alert-count">{{ pending_count }}</span>
-    </div>
-    <div class="delays-alert-content">
-      <div id="pending_delay_requests" class="notifications">
-        <div id="page_selector_pending_delay_requests"></div>
-        <div id="paged_content_pending_delay_requests">
-        {% for req in delay_requests %}
-          {% if req.status == 'pending' %}
-            {{ macro_delay_request.delay_request(req, warning=(delay_request_warnings or {}).get(req.id)) }}
-          {% endif %}
-        {% endfor %}
+{% if pending_count > 0 %}
+<div class="delays-pending-section">
+  <div class="delays-pending-title-row">
+    <svg class="icon delays-pending-title-icon" width="20" height="20"><use href="#icon-alert-triangle"/></svg>
+    <h2 class="delays-section-title">Pending Delay Requests</h2>
+    <span class="delays-pending-count">{{ pending_count }}</span>
+  </div>
+  <div id="pending_delay_requests" class="notifications">
+    <div id="page_selector_pending_delay_requests"></div>
+    <div id="paged_content_pending_delay_requests">
+    {% for req in delay_requests %}
+      {% if req.status == 'pending' %}
+      {% set warning = (delay_request_warnings or {}).get(req.id) %}
+      <div class="question-card">
+        <div class="question-card-header">
+          <div class="question-card-title-row">
+            <h3 class="question-subject">User: {{ req.participation.user.first_name }} {{ req.participation.user.last_name }}</h3>
+          </div>
+          <div class="question-header-right">
+            <div class="question-card-meta question-card-meta-inline">
+              <span class="question-meta-item">
+                <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">{{ req.participation.user.username }}</a>
+                &mdash; {{ req.request_timestamp|format_datetime }}
+              </span>
+            </div>
+          </div>
         </div>
+        <div class="question-card-body">
+          <div class="delays-request-field">
+            <span class="delays-request-label">Requested Start Time:</span>
+            <span>{{ req.requested_start_time|format_datetime }}</span>
+          </div>
+          {% if warning and warning.group_name is defined and warning.group_start is defined %}
+          <div class="delays-request-warning">
+            <svg class="icon" width="16" height="16"><use href="#icon-alert-triangle"/></svg>
+            <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
+          </div>
+          {% endif %}
+          <div class="delays-request-field">
+            <span class="delays-request-label">Reason:</span>
+            <div class="delays-request-reason">{{ req.reason }}</div>
+          </div>
+        </div>
+        {% if admin.permission_all or admin.permission_messaging %}
+        <div class="delays-request-actions">
+          <form action="{{ url("contest", contest.id, "delay_request", req.id, "approve") }}" method="POST" class="delays-inline-form">
+            {{ xsrf_form_html|safe }}
+            <button type="submit" class="delays-btn-approve">Approve</button>
+          </form>
+          <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" class="delays-inline-form delays-reject-form">
+            {{ xsrf_form_html|safe }}
+            <button type="submit" class="delays-btn-reject">Reject</button>
+            <input type="text" name="rejection_reason" class="delays-reject-input" placeholder="Rejection reason (optional)">
+          </form>
+        </div>
+        {% endif %}
       </div>
+      {% endif %}
+    {% endfor %}
     </div>
   </div>
-  {% endif %}
+</div>
+{% endif %}
 
-  {% if has_ineligible %}
+<!-- Ineligible Students Section -->
+{% if has_ineligible %}
+<div class="delays-ineligible-section">
   <div class="delays-alert-card delays-alert-card-danger">
     <div class="delays-alert-header">
       <span class="delays-alert-header-icon"><svg class="icon" width="18" height="18"><use href="#icon-info"/></svg></span>
@@ -144,7 +186,6 @@ CMS.AWSFormUtils.initTagify({
       </table>
     </div>
   </div>
-  {% endif %}
 </div>
 {% endif %}
 
@@ -201,7 +242,8 @@ CMS.AWSFormUtils.initTagify({
       <th>User</th>
       <th>Status</th>
       <th>Timing <span class="delays-th-hint">({{ timezone_name }})</span></th>
-      <th>Delays / Extra</th>
+      <th>Delay</th>
+      <th>Extra Time</th>
       <th>IP Address</th>
       <th>Actions</th>
     </tr>
@@ -269,14 +311,16 @@ CMS.AWSFormUtils.initTagify({
       <td>
         {% if participation.delay_time.total_seconds() > 0 %}
           {% set delay_mins = (participation.delay_time.total_seconds() / 60)|int %}
-          <span class="delays-extra-badge delays-extra-badge-delay">Delay: +{{ delay_mins }}m</span>
+          <span class="delays-time-value">+{{ delay_mins }}m</span>
+        {% else %}
+          <span class="delays-text-light">-</span>
         {% endif %}
+      </td>
+      <td>
         {% if participation.extra_time.total_seconds() > 0 %}
           {% set extra_mins = (participation.extra_time.total_seconds() / 60)|int %}
-          {% if participation.delay_time.total_seconds() > 0 %}<br>{% endif %}
-          <span class="delays-extra-badge delays-extra-badge-extra">Extra: +{{ extra_mins }}m</span>
-        {% endif %}
-        {% if participation.delay_time.total_seconds() == 0 and participation.extra_time.total_seconds() == 0 %}
+          <span class="delays-time-value">+{{ extra_mins }}m</span>
+        {% else %}
           <span class="delays-text-light">-</span>
         {% endif %}
       </td>
@@ -327,7 +371,7 @@ CMS.AWSFormUtils.initTagify({
 
 <!-- Set Delay for User Modal (Micromodal) -->
 <div class="modal" id="modal-set-delay" aria-hidden="true">
-  <div class="modal__overlay" tabindex="-1">
+  <div class="modal__overlay" tabindex="-1" data-micromodal-close>
     <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-set-delay-title">
       <header class="modal__header">
         <h2 class="modal__title" id="modal-set-delay-title">Set Delay for User</h2>

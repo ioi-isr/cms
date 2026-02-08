@@ -2648,21 +2648,37 @@
     color: var(--tp-text-muted);
 }
 
-.delays-alert-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+.delays-pending-section {
     margin-bottom: 28px;
 }
 
-.delays-alert-grid-single {
-    grid-template-columns: 1fr;
+.delays-pending-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
 }
 
-@media (max-width: 900px) {
-    .delays-alert-grid {
-        grid-template-columns: 1fr;
-    }
+.delays-pending-title-icon {
+    color: var(--tp-warning);
+}
+
+.delays-pending-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    background: var(--tp-primary);
+}
+
+.delays-ineligible-section {
+    margin-bottom: 28px;
 }
 
 .delays-alert-card {
@@ -2888,18 +2904,122 @@
     color: var(--tp-text-light);
 }
 
-.delays-extra-badge {
-    display: inline-block;
-    font-size: 0.82rem;
+.delays-time-value {
+    font-size: 0.85rem;
     font-weight: 600;
+    color: var(--tp-text-primary);
 }
 
-.delays-extra-badge-delay {
+.delays-request-field {
+    margin-bottom: 12px;
+}
+
+.delays-request-field:last-child {
+    margin-bottom: 0;
+}
+
+.delays-request-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--tp-text-secondary);
+    margin-right: 8px;
+}
+
+.delays-request-reason {
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: var(--tp-bg-light);
+    border: 1px solid var(--tp-border);
+    border-radius: 6px;
+    font-size: 0.88rem;
+    color: var(--tp-text-primary);
+}
+
+.delays-request-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 8px;
+    font-size: 0.85rem;
     color: var(--tp-warning-dark);
 }
 
-.delays-extra-badge-extra {
-    color: var(--tp-primary);
+.delays-request-warning .icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.delays-request-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--tp-border);
+}
+
+.delays-btn-approve {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 20px;
+    background: var(--tp-success);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.delays-btn-approve:hover {
+    background: var(--tp-success-dark);
+}
+
+.delays-btn-reject {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 20px;
+    background: var(--tp-danger);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.delays-btn-reject:hover {
+    background: var(--tp-danger-dark);
+}
+
+.delays-reject-form {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 10px;
+}
+
+.delays-reject-input {
+    padding: 8px 12px;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-white);
+    min-width: 220px;
+    transition: border-color 0.2s;
+}
+
+.delays-reject-input:focus {
+    outline: none;
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 
