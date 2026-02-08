@@ -506,6 +506,7 @@
     width: auto;
     border-collapse: separate; /* Required for sticky headers */
     border-spacing: 0;
+    background-color: #ffffff;
     font-size: 0.9rem;
     white-space: nowrap;
 }
@@ -524,6 +525,7 @@
     border-right: 1px solid var(--tp-border);
     background-clip: padding-box;
     vertical-align: middle;
+    background-color: #ffffff;
     height: 1px;
 }
 
