@@ -23,197 +23,628 @@ CMS.AWSFormUtils.initTagify({
 });
 {% endif %}
 
+(function() {
+    var searchInput = document.getElementById('participations-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            var filter = this.value.toLowerCase();
+            var rows = document.querySelectorAll('#participations-table tbody tr');
+            rows.forEach(function(row) {
+                var text = row.textContent.toLowerCase();
+                row.style.display = text.indexOf(filter) !== -1 ? '' : 'none';
+            });
+        });
+    }
+})();
+
 {% endblock js_init %}
 
 {% block core %}
 
 <style>
-/* Status row colors for attendance tracking */
-tr.pre-contest {
-  background-color: #e8ddff !important; /* Light purple - contest not started */
+.delays-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
 }
 
-tr.can-start {
-  background-color: #fffacd !important; /* Light yellow - can still start */
+.delays-page-header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
 }
 
-tr.in-contest {
-  background-color: #d1ecf1 !important; /* Light blue - currently in contest */
+.delays-page-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--tp-info-light);
+  color: var(--tp-primary);
+  border-radius: 10px;
+  flex-shrink: 0;
+  font-size: 1.4rem;
 }
 
-tr.finished {
-  background-color: #d4edda !important; /* Light green - participated and finished */
+.delays-page-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: var(--tp-text-primary);
 }
 
-tr.missed {
-  background-color: #f8d7da !important; /* Light red - missed opportunity */
+.delays-page-subtitle {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: var(--tp-text-muted);
 }
 
-.status-badge {
-  display: inline-block;
-  padding: 2px 6px;
-  margin-left: 8px;
-  font-size: 11px;
-  font-weight: bold;
-  border-radius: 3px;
-  background-color: #666;
+.delays-alert-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 900px) {
+  .delays-alert-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.delays-alert-card {
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+}
+
+.delays-alert-card-warning {
+  background: var(--tp-warning-light);
+  border: 1px solid #fde68a;
+}
+
+.delays-alert-card-danger {
+  background: var(--tp-danger-light);
+  border: 1px solid var(--tp-danger-border);
+}
+
+.delays-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.delays-alert-header-icon {
+  font-size: 1.1rem;
+}
+
+.delays-alert-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.delays-alert-card-warning .delays-alert-title {
+  color: var(--tp-warning-dark);
+}
+
+.delays-alert-card-danger .delays-alert-title {
+  color: var(--tp-danger-dark);
+}
+
+.delays-alert-count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
   color: white;
 }
 
-.status-icon {
-  margin-right: 4px;
+.delays-alert-card-warning .delays-alert-count {
+  background: var(--tp-warning);
 }
 
-tr.pre-contest .status-badge {
-  background-color: #6f42c1; /* Purple */
+.delays-alert-card-danger .delays-alert-count {
+  background: var(--tp-danger);
 }
 
-tr.can-start .status-badge {
-  background-color: #ffc107; /* Yellow/amber */
+.delays-alert-description {
+  font-size: 0.85rem;
+  margin-bottom: 12px;
 }
 
-tr.in-contest .status-badge {
-  background-color: #17a2b8; /* Blue */
+.delays-alert-card-danger .delays-alert-description {
+  color: var(--tp-danger-dark);
 }
 
-tr.finished .status-badge {
-  background-color: #28a745; /* Green */
+.delays-alert-content {
+  background: var(--tp-bg-white);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-tr.missed .status-badge {
-  background-color: #dc3545; /* Red */
+.delays-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
-/* Subtle link styling for usernames in the table - override body.admin a color */
-a.username-link,
-a.username-link:link,
-a.username-link:visited {
-  color: #222 !important;
+.delays-section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--tp-text-primary);
+  margin: 0;
+}
+
+.delays-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.delays-search-input {
+  padding: 7px 12px 7px 34px;
+  border: 1px solid var(--tp-border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: var(--tp-bg-white);
+  color: var(--tp-text-primary);
+  width: 200px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.delays-search-input:focus {
+  outline: none;
+  border-color: var(--tp-primary);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.delays-search-wrapper {
+  position: relative;
+}
+
+.delays-search-wrapper::before {
+  content: '\1F50D';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.delays-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--tp-border);
+  border-radius: 8px;
+  background: var(--tp-bg-white);
+  color: var(--tp-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
   text-decoration: none;
+  font-size: 1rem;
 }
 
-a.username-link:hover {
-  text-decoration: underline;
+.delays-icon-btn:hover {
+  background: var(--tp-bg-gray);
+  border-color: var(--tp-border-dark);
+}
+
+.delays-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.88rem;
+}
+
+.delays-table thead th {
+  background: var(--tp-bg-light);
+  color: var(--tp-text-muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--tp-border-light);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.delays-table tbody tr {
+  transition: background 0.15s;
+}
+
+.delays-table tbody tr:hover {
+  background: var(--tp-bg-hover);
+}
+
+.delays-table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--tp-border-light);
+  vertical-align: middle;
+}
+
+.delays-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.delays-user-name {
+  font-weight: 600;
+  color: var(--tp-text-primary);
+  text-decoration: none;
+  display: block;
+}
+
+.delays-user-name:hover {
+  color: var(--tp-primary);
+}
+
+.delays-username {
+  font-size: 0.8rem;
+  color: var(--tp-text-muted);
+}
+
+.delays-timing-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--tp-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 6px;
+  display: inline-block;
+  width: 50px;
+}
+
+.delays-timing-value {
+  font-size: 0.85rem;
+  color: var(--tp-text-primary);
+}
+
+.delays-timing-value-actual {
+  font-weight: 700;
+}
+
+.delays-timing-none {
+  color: var(--tp-text-light);
+}
+
+.delays-extra-badge {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.delays-extra-badge-delay {
+  color: var(--tp-warning-dark);
+}
+
+.delays-extra-badge-extra {
+  color: var(--tp-primary);
+}
+
+.delays-actions-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--tp-text-muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.delays-actions-btn:hover {
+  background: var(--tp-bg-gray);
+  color: var(--tp-text-primary);
+}
+
+.delays-actions-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: var(--tp-bg-white);
+  border: 1px solid var(--tp-border);
+  border-radius: 8px;
+  box-shadow: var(--tp-shadow-md);
+  min-width: 180px;
+  z-index: 100;
+  padding: 4px;
+}
+
+.delays-actions-menu.show {
+  display: block;
+}
+
+.delays-actions-menu form {
+  display: block;
+}
+
+.delays-actions-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  font-size: 0.85rem;
+  color: var(--tp-text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.delays-actions-menu button:hover {
+  background: var(--tp-bg-gray);
+}
+
+.delays-actions-menu button.text-danger {
+  color: var(--tp-danger);
+}
+
+.delays-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.delays-status-pre-contest {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.delays-status-can-start {
+  background: var(--tp-warning-light);
+  color: var(--tp-warning-dark);
+}
+
+.delays-status-in-contest {
+  background: #ccfbf1;
+  color: var(--tp-primary);
+}
+
+.delays-status-finished {
+  background: var(--tp-success-light);
+  color: var(--tp-success-dark);
+}
+
+.delays-status-missed {
+  background: var(--tp-danger-light);
+  color: var(--tp-danger-dark);
+}
+
+.delays-archive-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--tp-success-light);
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin-bottom: 18px;
+}
+
+.delays-archive-banner strong {
+  color: var(--tp-success-dark);
+}
+
+.delays-archive-banner p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--tp-success-dark);
+}
+
+.delays-ineligible-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.delays-ineligible-item + .delays-ineligible-item {
+  border-top: 1px solid var(--tp-border-light);
+}
+
+.delays-ineligible-name {
+  font-weight: 600;
+  color: var(--tp-text-primary);
+  font-size: 0.9rem;
+}
+
+.delays-ineligible-reason {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--tp-danger);
+  background: var(--tp-bg-white);
+  border: 1px solid var(--tp-danger-border);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+.delays-ineligible-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--tp-text-muted);
+  flex: 1;
+  min-width: 200px;
+}
+
+.delays-ineligible-tags label {
+  font-weight: 600;
+  white-space: nowrap;
 }
 </style>
 
-<div class="core_title">
-  <h1>Attendance</h1>
-  <p class="muted">All times shown in {{ timezone_name }}</p>
+<!-- Page Header -->
+<div class="delays-page-header">
+  <div class="delays-page-header-left">
+    <div class="delays-page-header-icon">&#128197;</div>
+    <div>
+      <h1>Attendance</h1>
+      <div class="delays-page-subtitle">Monitor student participation, manage delays, and track IP addresses.</div>
+    </div>
+  </div>
+  <button type="button" class="btn-filled-primary" onclick="MicroModal.show('modal-set-delay')">
+    &#9201; Set Delay for User
+  </button>
 </div>
 
-{% if delay_requests != [] %}
-<h2 id="title_pending_delay_requests_section" class="toggling_on">Pending Delay Requests</h2>
-<div id="pending_delay_requests_section">
-<div id="pending_delay_requests" class="notifications">
-  <div id="page_selector_pending_delay_requests"></div>
-  <div id="paged_content_pending_delay_requests">
-  {% for req in delay_requests %}
-    {% if req.status == 'pending' %}
-      {{ macro_delay_request.delay_request(req, warning=(delay_request_warnings or {}).get(req.id)) }}
-    {% endif %}
-  {% endfor %}
+<!-- Alert Cards Row -->
+{% set pending_count = delay_requests|selectattr('status', 'equalto', 'pending')|list|length if delay_requests else 0 %}
+{% set has_ineligible = ineligible_students is defined and ineligible_students|length > 0 %}
+
+{% if pending_count > 0 or has_ineligible %}
+<div class="delays-alert-grid" {% if not (pending_count > 0 and has_ineligible) %}style="grid-template-columns: 1fr;"{% endif %}>
+  {% if pending_count > 0 %}
+  <div class="delays-alert-card delays-alert-card-warning">
+    <div class="delays-alert-header">
+      <span class="delays-alert-header-icon">&#9888;</span>
+      <span class="delays-alert-title">Pending Delay Requests</span>
+      <span class="delays-alert-count">{{ pending_count }}</span>
+    </div>
+    <div class="delays-alert-content">
+      <div id="pending_delay_requests" class="notifications">
+        <div id="page_selector_pending_delay_requests"></div>
+        <div id="paged_content_pending_delay_requests">
+        {% for req in delay_requests %}
+          {% if req.status == 'pending' %}
+            {{ macro_delay_request.delay_request(req, warning=(delay_request_warnings or {}).get(req.id)) }}
+          {% endif %}
+        {% endfor %}
+        </div>
+      </div>
+    </div>
   </div>
-</div>
+  {% endif %}
+
+  {% if has_ineligible %}
+  <div class="delays-alert-card delays-alert-card-danger">
+    <div class="delays-alert-header">
+      <span class="delays-alert-header-icon">&#9432;</span>
+      <span class="delays-alert-title">Ineligible Students</span>
+      <span class="delays-alert-count">{{ ineligible_students|length }}</span>
+    </div>
+    <div class="delays-alert-description">Students missing a main group tag cannot participate.</div>
+    <div class="delays-alert-content">
+      {% for item in ineligible_students %}
+        {% set student = item.student %}
+        <div class="delays-ineligible-item">
+          <div>
+            <span class="delays-ineligible-name">{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}</span>
+            <span style="color: var(--tp-text-muted); font-size: 0.85rem;">(@{{ student.participation.user.username }})</span>
+          </div>
+          <span class="delays-ineligible-reason">
+            {% if item.reason == 'no main group' %}No main group tag{% else %}Multiple main group tags{% endif %}
+          </span>
+          <div class="delays-ineligible-tags">
+            <label>Tags:</label>
+            <input type="text"
+                   class="student-tags-editable"
+                   name="student_tags"
+                   value="{{ (student.student_tags or [])|join(', ') }}"
+                   data-save-url="{{ url("training_program", ineligible_training_program.id, "student", student.participation.user.id, "tags") }}"
+                   style="flex: 1;"/>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 
-<h2 id="title_participations_section" class="toggling_on">All Participations</h2>
-<div id="participations_section">
-  <div class="btn-group" style="margin-top: 10px;">
-    <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="btn btn-info">
-      <i class="icon-download-alt icon-white"></i> Export CSV
-    </a>
-    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" style="display: inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to remove all delays and extra times for all participants?');">
-      {{ xsrf_form_html|safe }}
-      <button type="submit" class="btn btn-warning">
-        <i class="icon-remove icon-white"></i> Remove All Delays & Extra Times
-      </button>
-    </form>
-    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" style="display: inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to erase all starting times for all participants?');">
-      {{ xsrf_form_html|safe }}
-      <button type="submit" class="btn btn-danger">
-        <i class="icon-trash icon-white"></i> Erase All Start Times
-      </button>
-    </form>
-    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "reset_ip_addresses") }}" method="POST" style="display: inline;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to reset all IP addresses for all participants?');">
-      {{ xsrf_form_html|safe }}
-      <button type="submit" class="btn btn-danger">
-        <i class="icon-trash icon-white"></i> Reset All IP Addresses
-      </button>
-    </form>
-  </div>
-
+<!-- Archive-ready banner -->
 {% if contest.training_day and all_finished_or_missed and participation_statuses|length > 0 %}
-<div class="notification notification_success" style="margin-bottom: 15px;">
-  <strong>All participants have finished or missed this training day.</strong>
-  This training day is ready to be archived.
-  <a href="{{ url("training_program", contest.training_day.training_program.id, "training_day", contest.training_day.id, "archive") }}" class="btn btn-success" style="margin-left: 15px;">
-    <i class="icon-folder-close icon-white"></i> Archive Training Day
+<div class="delays-archive-banner">
+  <div>
+    <p><strong>All participants have finished or missed this training day.</strong> This training day is ready to be archived.</p>
+  </div>
+  <a href="{{ url("training_program", contest.training_day.training_program.id, "training_day", contest.training_day.id, "archive") }}" class="tp-btn-primary" style="margin-left: auto; white-space: nowrap;">
+    Archive Training Day
   </a>
 </div>
 {% endif %}
 
-<table class="table table-striped table-bordered">
+<!-- Participations Section -->
+<div class="delays-section-header">
+  <h2 class="delays-section-title">Participations</h2>
+  <div class="delays-section-actions">
+    <div class="delays-search-wrapper">
+      <input type="text" id="participations-search" class="delays-search-input" placeholder="Search user...">
+    </div>
+    <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="tp-btn-secondary" style="gap: 6px;">
+      &#128229; Export CSV
+    </a>
+    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" style="display: inline; margin: 0;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to remove all delays and extra times for all participants?');">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="delays-icon-btn" title="Remove All Delays &amp; Extra Times">&#128465;</button>
+    </form>
+    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" style="display: inline; margin: 0;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to erase all starting times for all participants?');">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="delays-icon-btn" title="Erase All Start Times">&#128336;</button>
+    </form>
+    <form action="{{ url("contest", contest.id, "delays_and_extra_times", "reset_ip_addresses") }}" method="POST" style="display: inline; margin: 0;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to reset all IP addresses for all participants?');">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="delays-icon-btn" title="Reset All IP Addresses">&#128260;</button>
+    </form>
+  </div>
+</div>
+
+<div class="tp-table-container">
+<table class="delays-table" id="participations-table">
   <thead>
     <tr>
       <th>User</th>
-      <th>Username</th>
-      <th>Delay Time (seconds)</th>
-      <th>Planned Start Time</th>
-      <th>Actual Start Time</th>
-      <th>IP Address</th>
-      <th>Extra Time (seconds)</th>
       <th>Status</th>
+      <th>Timing <span style="font-weight: 400; text-transform: none; letter-spacing: normal;">({{ timezone_name }})</span></th>
+      <th>Delays / Extra</th>
+      <th>IP Address</th>
       <th>Actions</th>
     </tr>
   </thead>
   <tbody>
   {% for item in participation_statuses %}
     {% set participation = item.participation %}
-    <tr class="{{ item.status_class }}">
+    <tr>
       <td>
-        <a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}" class="username-link">{{ participation.user.first_name }} {{ participation.user.last_name }}</a>
+        <a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}" class="delays-user-name">{{ participation.user.first_name }} {{ participation.user.last_name }}</a>
+        <span class="delays-username">@{{ participation.user.username }}</span>
       </td>
-      <td><a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}" class="username-link">{{ participation.user.username }}</a></td>
-      <td>{{ participation.delay_time.total_seconds()|int }}</td>
-      <td>
-        {% if participation.delay_time.total_seconds() > 0 %}
-          {{ (contest.start + participation.delay_time)|format_datetime }}
-        {% elif item.main_group and item.main_group.start_time %}
-          {{ item.main_group.start_time|format_datetime }}
-        {% else %}
-          {{ contest.start|format_datetime }}
-        {% endif %}
-      </td>
-      <td>
-        {% if participation.starting_time %}
-          {{ participation.starting_time|format_datetime }}
-        {% else %}
-          -
-        {% endif %}
-      </td>
-      <td>
-        {% if participation.starting_ip_addresses %}
-          {{ participation.starting_ip_addresses }}
-        {% else %}
-          -
-        {% endif %}
-      </td>
-      <td>{{ participation.extra_time.total_seconds()|int }}</td>
       <td>
         {% if item.status_label %}
-          <span class="status-badge">
-            {% if item.status_class == "pre-contest" %}
-              <span class="status-icon">⏳</span>
-            {% elif item.status_class == "can-start" %}
-              <span class="status-icon">▶</span>
-            {% elif item.status_class == "in-contest" %}
-              <span class="status-icon">⏱</span>
-            {% elif item.status_class == "finished" %}
-              <span class="status-icon">✓</span>
-            {% elif item.status_class == "missed" %}
-              <span class="status-icon">⛔</span>
+          <span class="delays-status-badge delays-status-{{ item.status_class }}">
+            {% if item.status_class == "pre-contest" %}&#9203;
+            {% elif item.status_class == "can-start" %}&#9655;
+            {% elif item.status_class == "in-contest" %}&#9201;
+            {% elif item.status_class == "finished" %}&#10003;
+            {% elif item.status_class == "missed" %}&#9940;
             {% endif %}
             {{ item.status_label }}
           </span>
@@ -222,19 +653,69 @@ a.username-link:hover {
         {% endif %}
       </td>
       <td>
-        {% if participation.delay_time.total_seconds() > 0 or participation.extra_time.total_seconds() > 0 %}
-        <form action="{{ url("contest", contest.id, "participation", participation.id, "remove_delay_and_extra_time") }}" method="POST" style="display: inline;">
-          {{ xsrf_form_html|safe }}
-          <button type="submit" class="btn btn-warning btn-small">
-            {% if participation.delay_time.total_seconds() == 0 %}
-              Remove extra time
-            {% elif participation.extra_time.total_seconds() == 0 %}
-              Remove delay
+        <div>
+          <span class="delays-timing-label">PLAN</span>
+          <span class="delays-timing-value">
+            {% if participation.delay_time.total_seconds() > 0 %}
+              {{ (contest.start + participation.delay_time)|format_time }}
+            {% elif item.main_group and item.main_group.start_time %}
+              {{ item.main_group.start_time|format_time }}
             {% else %}
-              Remove delay and extra time
+              {{ contest.start|format_time }}
             {% endif %}
-          </button>
-        </form>
+          </span>
+        </div>
+        <div>
+          <span class="delays-timing-label">ACTUAL</span>
+          {% if participation.starting_time %}
+            <span class="delays-timing-value delays-timing-value-actual">{{ participation.starting_time|format_time }}</span>
+          {% else %}
+            <span class="delays-timing-none">--:--:--</span>
+          {% endif %}
+        </div>
+      </td>
+      <td>
+        {% if participation.delay_time.total_seconds() > 0 %}
+          {% set delay_mins = (participation.delay_time.total_seconds() / 60)|int %}
+          <span class="delays-extra-badge delays-extra-badge-delay">Delay: +{{ delay_mins }}m</span>
+        {% endif %}
+        {% if participation.extra_time.total_seconds() > 0 %}
+          {% set extra_mins = (participation.extra_time.total_seconds() / 60)|int %}
+          {% if participation.delay_time.total_seconds() > 0 %}<br>{% endif %}
+          <span class="delays-extra-badge delays-extra-badge-extra">Extra: +{{ extra_mins }}m</span>
+        {% endif %}
+        {% if participation.delay_time.total_seconds() == 0 and participation.extra_time.total_seconds() == 0 %}
+          <span style="color: var(--tp-text-light);">-</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if participation.starting_ip_addresses %}
+          {{ participation.starting_ip_addresses }}
+        {% else %}
+          <span style="color: var(--tp-text-light);">-</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if participation.delay_time.total_seconds() > 0 or participation.extra_time.total_seconds() > 0 %}
+        <div style="position: relative;">
+          <button type="button" class="delays-actions-btn" onclick="toggleActionsMenu(this)">&#8943;</button>
+          <div class="delays-actions-menu">
+            <form action="{{ url("contest", contest.id, "participation", participation.id, "remove_delay_and_extra_time") }}" method="POST">
+              {{ xsrf_form_html|safe }}
+              <button type="submit" class="text-danger">
+                {% if participation.delay_time.total_seconds() == 0 %}
+                  Remove extra time
+                {% elif participation.extra_time.total_seconds() == 0 %}
+                  Remove delay
+                {% else %}
+                  Remove delay and extra time
+                {% endif %}
+              </button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+          <span style="color: var(--tp-text-light);">&#8943;</span>
         {% endif %}
       </td>
     </tr>
@@ -243,107 +724,86 @@ a.username-link:hover {
 </table>
 </div>
 
-{% if ineligible_students is defined and ineligible_students|length > 0 %}
-<h2 id="title_ineligible_students_section" class="toggling_on">Ineligible Students</h2>
-<div id="ineligible_students_section">
-  <p class="hint">These students cannot participate in this training day because they do not have exactly one main group tag. Edit their tags below to fix this.</p>
-  <table class="table table-striped table-bordered">
-    <thead>
-      <tr>
-        <th>Student</th>
-        <th>Username</th>
-        <th>Current Main Group Tags</th>
-        <th>Reason</th>
-        <th>All Student Tags (editable)</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for item in ineligible_students %}
-      {% set student = item.student %}
-      <tr class="missed">
-        <td>{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}</td>
-        <td>{{ student.participation.user.username }}</td>
-        <td>
-          {% if item.matching_tags %}
-            <input type="text" class="main-group-tags-display" value="{{ item.matching_tags|join(', ') }}" readonly style="border: none; background: transparent; width: 100%;"/>
-          {% else %}
-            <em>(none)</em>
-          {% endif %}
-        </td>
-        <td>
-          {% if item.reason == 'no main group' %}
-            No main group tag
-          {% else %}
-            Multiple main group tags
-          {% endif %}
-        </td>
-        <td>
-          <input type="text"
-                 class="student-tags-editable"
-                 name="student_tags"
-                 value="{{ (student.student_tags or [])|join(', ') }}"
-                 data-save-url="{{ url("training_program", ineligible_training_program.id, "student", student.participation.user.id, "tags") }}"
-                 style="width: 100%;"/>
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
-
-<h2 id="title_admin_configure_delay_section" class="toggling_on">Set Delay for User</h2>
-<div id="admin_configure_delay_section">
-  <p class="muted">Configure a delayed start time for a user. This will create an approved delay request and set the user's delay time.</p>
-  <form action="{{ url("contest", contest.id, "delays_and_extra_times", "admin_configure") }}" method="POST" class="form-horizontal" style="margin-top: 10px;">
-    {{ xsrf_form_html|safe }}
-    <div class="control-group">
-      <label class="control-label" for="participation_id">User</label>
-      <div class="controls">
-        <select name="participation_id" id="participation_id" class="searchable-select" required>
-          <option value="" selected disabled hidden>Select a user...</option>
-          {% for item in participation_statuses %}
-            {% set participation = item.participation %}
-            <option value="{{ participation.id }}">{{ participation.user.first_name }} {{ participation.user.last_name }} ({{ participation.user.username }})</option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
-    <div class="control-group">
-      <label class="control-label" for="requested_start_time">Start Time</label>
-      <div class="controls">
-        <input type="datetime-local" name="requested_start_time" id="requested_start_time" required>
-        <span class="help-inline">Contest starts at {{ contest.start|format_datetime }}</span>
-      </div>
-    </div>
-    <div class="control-group">
-      <label class="control-label" for="reason">Reason</label>
-      <div class="controls">
-        <textarea name="reason" id="reason" rows="2" style="width: 400px;" required placeholder="Brief reason for the delay"></textarea>
-      </div>
-    </div>
-    <div class="control-group">
-      <div class="controls">
-        <button type="submit" class="btn btn-primary">
-          <i class="icon-time icon-white"></i> Set Delay
-        </button>
-      </div>
-    </div>
-  </form>
-</div>
-
+<!-- Request History -->
 {% if delay_requests != [] %}
-<h2 id="title_all_delay_requests_section" class="toggling_on">All Delay Requests</h2>
-<div id="all_delay_requests_section">
-<div id="all_delay_requests" class="notifications">
-  <div id="page_selector_all_delay_requests"></div>
-  <div id="paged_content_all_delay_requests">
-  {% for req in delay_requests %}
-    {{ macro_delay_request.delay_request(req, show_buttons=False) }}
-  {% endfor %}
+<div style="margin-top: 36px;">
+  <h2 class="delays-section-title">Request History</h2>
+  <div id="all_delay_requests" class="notifications" style="margin-top: 12px;">
+    <div id="page_selector_all_delay_requests"></div>
+    <div id="paged_content_all_delay_requests">
+    {% for req in delay_requests %}
+      {{ macro_delay_request.delay_request(req, show_buttons=False) }}
+    {% endfor %}
+    </div>
   </div>
 </div>
+{% else %}
+<div style="margin-top: 36px;">
+  <h2 class="delays-section-title">Request History</h2>
+  <div style="text-align: center; padding: 24px; background: var(--tp-bg-light); border-radius: 8px; border: 1px solid var(--tp-border-light); margin-top: 12px; color: var(--tp-text-muted); font-size: 0.9rem;">
+    No historical requests to show.
+  </div>
 </div>
 {% endif %}
+
+<!-- Set Delay for User Modal (Micromodal) -->
+<div class="modal" id="modal-set-delay" aria-hidden="true">
+  <div class="modal__overlay" tabindex="-1">
+    <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-set-delay-title">
+      <header class="modal__header">
+        <h2 class="modal__title" id="modal-set-delay-title">Set Delay for User</h2>
+        <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+      </header>
+      <form action="{{ url("contest", contest.id, "delays_and_extra_times", "admin_configure") }}" method="POST">
+        {{ xsrf_form_html|safe }}
+        <main class="modal__content">
+          <p style="color: var(--tp-text-muted); font-size: 0.85rem; margin-top: 0;">Configure a delayed start time for a user. This will create an approved delay request and set the user's delay time.</p>
+          <div class="modal__form-group">
+            <label for="participation_id">User</label>
+            <select name="participation_id" id="participation_id" class="tp-form-input searchable-select" required style="width: 100%;">
+              <option value="" selected disabled hidden>Select a user...</option>
+              {% for item in participation_statuses %}
+                {% set participation = item.participation %}
+                <option value="{{ participation.id }}">{{ participation.user.first_name }} {{ participation.user.last_name }} ({{ participation.user.username }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="modal__form-group">
+            <label for="requested_start_time">Start Time</label>
+            <input type="datetime-local" name="requested_start_time" id="requested_start_time" class="tp-form-input" required>
+            <small style="color: var(--tp-text-muted); font-size: 0.8rem;">Contest starts at {{ contest.start|format_datetime }}</small>
+          </div>
+          <div class="modal__form-group">
+            <label for="reason">Reason</label>
+            <textarea name="reason" id="reason" rows="2" class="tp-form-input" required placeholder="Brief reason for the delay" style="resize: vertical;"></textarea>
+          </div>
+        </main>
+        <footer class="modal__footer">
+          <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+          <button type="submit" class="tp-btn-primary">Set Delay</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleActionsMenu(btn) {
+    var menu = btn.nextElementSibling;
+    var allMenus = document.querySelectorAll('.delays-actions-menu.show');
+    allMenus.forEach(function(m) {
+        if (m !== menu) m.classList.remove('show');
+    });
+    menu.classList.toggle('show');
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.delays-actions-btn') && !e.target.closest('.delays-actions-menu')) {
+        document.querySelectorAll('.delays-actions-menu.show').forEach(function(m) {
+            m.classList.remove('show');
+        });
+    }
+});
+</script>
 
 {% endblock core %}
