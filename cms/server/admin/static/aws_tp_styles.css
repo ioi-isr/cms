@@ -826,6 +826,10 @@
     gap: 15px;
 }
 
+.tp-page-header .page-title {
+    margin-bottom: 0;
+}
+
 /* Filter Bar */
 .tp-filter-card {
     background-color: var(--tp-bg-light);
@@ -1453,6 +1457,11 @@
     color: var(--tp-text-primary);
     font-weight: 700;
     margin: 0;
+}
+
+.tp-section-header--wrap {
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 /* Tasks table specific styles */
@@ -2612,44 +2621,6 @@
    Delays & Extra Times Page
    ========================================================================== */
 
-.delays-page-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 28px;
-}
-
-.delays-page-header-left {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-}
-
-.delays-page-header-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    background: var(--tp-info-light);
-    color: var(--tp-primary);
-    border-radius: 10px;
-    flex-shrink: 0;
-    font-size: 1.4rem;
-}
-
-.delays-page-header h1 {
-    margin: 0;
-    font-size: 1.75rem;
-    color: var(--tp-text-primary);
-}
-
-.delays-page-subtitle {
-    margin-top: 4px;
-    font-size: 0.9rem;
-    color: var(--tp-text-muted);
-}
-
 .delays-pending-section {
     margin-bottom: 28px;
 }
@@ -2757,22 +2728,8 @@
     background: var(--tp-bg-white);
     border-radius: 8px;
     border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.delays-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.delays-section-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--tp-text-primary);
-    margin: 0;
+    overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
 }
 
 .delays-section-actions {
@@ -2837,6 +2794,7 @@
     border-collapse: separate;
     border-spacing: 0;
     font-size: 0.88rem;
+    background-color: #ffffff;
 }
 
 .delays-table thead th {
@@ -2864,22 +2822,11 @@
     padding: 14px 16px;
     border-bottom: 1px solid var(--tp-border-light);
     vertical-align: middle;
+    background-color: #ffffff;
 }
 
 .delays-table tbody tr:last-child td {
     border-bottom: none;
-}
-
-.delays-user-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.delays-user-name-row {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    max-width: 100%;
 }
 
 .delays-timing-label {
@@ -2888,9 +2835,9 @@
     color: var(--tp-text-light);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-right: 6px;
+    margin-right: 12px;
     display: inline-block;
-    width: 50px;
+    width: 100px;
 }
 
 .delays-timing-value {
@@ -2909,33 +2856,6 @@
 .delays-time-value {
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--tp-text-primary);
-}
-
-.delays-request-field {
-    margin-bottom: 12px;
-}
-
-.delays-request-field:last-child {
-    margin-bottom: 0;
-}
-
-.delays-request-label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--tp-text-secondary);
-    margin-right: 8px;
-}
-
-.delays-request-reason {
-    margin-top: 6px;
-    padding: 8px 12px;
-    background: var(--tp-bg-light);
-    border: 1px solid var(--tp-border);
-    border-radius: 6px;
-    font-size: 0.88rem;
     color: var(--tp-text-primary);
 }
 
@@ -3130,13 +3050,6 @@
     margin-top: 36px;
 }
 
-.delays-history-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-}
-
 .delays-history-pagination {
     display: flex;
     align-items: center;
@@ -3167,6 +3080,10 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
+}
+
+.delays-history-grid.delays-history-grid-single {
+    grid-template-columns: 1fr;
 }
 
 @media (max-width: 1100px) {
@@ -3205,22 +3122,6 @@
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.delays-history-card-user > .icon {
-    color: var(--tp-text-light);
-    flex-shrink: 0;
-}
-
-.delays-history-card-username {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: var(--tp-text-primary);
-}
-
-.delays-history-card-userid {
-    font-size: 0.78rem;
-    color: var(--tp-text-muted);
 }
 
 .delays-history-badge {
@@ -3361,15 +3262,6 @@
     margin-top: 0;
 }
 
-.delays-modal-hint {
-    color: var(--tp-text-muted);
-    font-size: 0.8rem;
-}
-
 .delays-modal-textarea {
     resize: vertical;
-}
-
-.delays-export-btn {
-    gap: 6px;
 }

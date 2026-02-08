@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'macro/delay_request.html' as macro_delay_request with context %}
 
 {% block js_init %}
 
@@ -41,21 +42,29 @@ CMS.AWSFormUtils.initTagify({
 {% block core %}
 
 <!-- Page Header -->
-<div class="delays-page-header">
-  <div class="delays-page-header-left">
-    <div class="delays-page-header-icon">
-      <svg class="icon" width="24" height="24"><use href="#icon-calendar-check"/></svg>
-    </div>
-    <div>
-      <h1>Attendance</h1>
-      <div class="delays-page-subtitle">Monitor student participation, manage delays, and track IP addresses.</div>
-    </div>
+<div class="tp-page-header">
+  <div class="page-title">
+    <h1>Attendance</h1>
+    <div class="page-subtitle">Monitor student participation, manage delays, and track IP addresses.</div>
   </div>
   <button type="button" class="btn-filled-primary" onclick="MicroModal.show('modal-set-delay')">
     <svg class="icon" width="16" height="16"><use href="#icon-clock"/></svg>
     Set Delay for User
   </button>
 </div>
+
+<!-- Archive-ready banner -->
+{% if contest.training_day and all_finished_or_missed and participation_statuses|length > 0 %}
+<div class="delays-archive-banner">
+  <div>
+    <p><strong>All participants have finished or missed this training day.</strong> This training day is ready to be archived.</p>
+  </div>
+  <a href="{{ url("training_program", contest.training_day.training_program.id, "training_day", contest.training_day.id, "archive") }}" class="tp-btn-primary delays-archive-btn">
+    <svg class="icon" width="16" height="16"><use href="#icon-archive-down"/></svg>
+    Archive Training Day
+  </a>
+</div>
+{% endif %}
 
 <!-- Pending Delay Requests Section -->
 {% set pending_count = delay_requests|selectattr('status', 'equalto', 'pending')|list|length if delay_requests else 0 %}
@@ -65,7 +74,7 @@ CMS.AWSFormUtils.initTagify({
 <div class="delays-pending-section">
   <div class="delays-pending-title-row">
     <svg class="icon delays-pending-title-icon" width="20" height="20"><use href="#icon-alert-triangle"/></svg>
-    <h2 class="delays-section-title">Pending Delay Requests</h2>
+    <h2 class="tp-section-header">Pending Delay Requests</h2>
     <span class="delays-pending-count">{{ pending_count }}</span>
   </div>
   <div id="pending_delay_requests" class="notifications">
@@ -74,50 +83,7 @@ CMS.AWSFormUtils.initTagify({
     {% for req in delay_requests %}
       {% if req.status == 'pending' %}
       {% set warning = (delay_request_warnings or {}).get(req.id) %}
-      <div class="question-card">
-        <div class="question-card-header">
-          <div class="question-card-title-row">
-            <h3 class="question-subject">User: {{ req.participation.user.first_name }} {{ req.participation.user.last_name }}</h3>
-          </div>
-          <div class="question-header-right">
-            <div class="question-card-meta question-card-meta-inline">
-              <span class="question-meta-item">
-                <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">{{ req.participation.user.username }}</a>
-                &mdash; {{ req.request_timestamp|format_datetime }}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div class="question-card-body">
-          <div class="delays-request-field">
-            <span class="delays-request-label">Requested Start Time:</span>
-            <span>{{ req.requested_start_time|format_datetime }}</span>
-          </div>
-          {% if warning and warning.group_name is defined and warning.group_start is defined %}
-          <div class="delays-request-warning">
-            <svg class="icon" width="16" height="16"><use href="#icon-alert-triangle"/></svg>
-            <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
-          </div>
-          {% endif %}
-          <div class="delays-request-field">
-            <span class="delays-request-label">Reason:</span>
-            <div class="delays-request-reason">{{ req.reason }}</div>
-          </div>
-        </div>
-        {% if admin.permission_all or admin.permission_messaging %}
-        <div class="delays-request-actions">
-          <form action="{{ url("contest", contest.id, "delay_request", req.id, "approve") }}" method="POST" class="delays-inline-form">
-            {{ xsrf_form_html|safe }}
-            <button type="submit" class="delays-btn-approve">Approve</button>
-          </form>
-          <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" class="delays-inline-form delays-reject-form">
-            {{ xsrf_form_html|safe }}
-            <button type="submit" class="delays-btn-reject">Reject</button>
-            <input type="text" name="rejection_reason" class="delays-reject-input" placeholder="Rejection reason (optional)">
-          </form>
-        </div>
-        {% endif %}
-      </div>
+      {{ macro_delay_request.delay_request(req, warning=warning, variant="pending") }}
       {% endif %}
     {% endfor %}
     </div>
@@ -151,11 +117,13 @@ CMS.AWSFormUtils.initTagify({
           <tr>
             <td>
               <div class="student-name-wrapper">
-                <div class="delays-user-info">
-                  <div class="delays-user-name-row">
-                    <span class="student-name-link" title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}">{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}</span>
-                    <span class="student-username">(@{{ student.participation.user.username }})</span>
-                  </div>
+                <div class="student-info">
+                  <a class="student-name-link"
+                      href="{{ url("training_program", ineligible_training_program.id, "student", student.participation.user.id, "edit") }}"
+                      title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}">
+                    {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
+                  </a>
+                  <span class="student-username">(@{{ student.participation.user.username }})</span>
                 </div>
               </div>
             </td>
@@ -188,28 +156,15 @@ CMS.AWSFormUtils.initTagify({
 </div>
 {% endif %}
 
-<!-- Archive-ready banner -->
-{% if contest.training_day and all_finished_or_missed and participation_statuses|length > 0 %}
-<div class="delays-archive-banner">
-  <div>
-    <p><strong>All participants have finished or missed this training day.</strong> This training day is ready to be archived.</p>
-  </div>
-  <a href="{{ url("training_program", contest.training_day.training_program.id, "training_day", contest.training_day.id, "archive") }}" class="tp-btn-primary delays-archive-btn">
-    <svg class="icon" width="16" height="16"><use href="#icon-archive-down"/></svg>
-    Archive Training Day
-  </a>
-</div>
-{% endif %}
-
 <!-- Participations Section -->
-<div class="delays-section-header">
-  <h2 class="delays-section-title">Participations</h2>
+<div class="tp-section-header tp-section-header--wrap">
+  <h2 class="tp-section-header">Participations</h2>
   <div class="delays-section-actions">
     <div class="delays-search-wrapper">
       <svg class="icon delays-search-icon" width="16" height="16"><use href="#icon-search"/></svg>
       <input type="text" id="participations-search" class="delays-search-input" placeholder="Search user...">
     </div>
-    <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="tp-btn-secondary delays-export-btn">
+    <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="tp-btn-secondary">
       <svg class="icon" width="16" height="16"><use href="#icon-download"/></svg>
       Export CSV
     </a>
@@ -253,15 +208,13 @@ CMS.AWSFormUtils.initTagify({
     <tr>
       <td>
         <div class="student-name-wrapper">
-          <div class="delays-user-info">
-            <div class="delays-user-name-row">
-              <a class="student-name-link"
-                 href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}"
-                 title="{{ participation.user.first_name }} {{ participation.user.last_name }}">
-                {{ participation.user.first_name }} {{ participation.user.last_name }}
-              </a>
-              <span class="student-username">(@{{ participation.user.username }})</span>
-            </div>
+          <div class="student-info">
+            <a class="student-name-link"
+                href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}"
+                title="{{ participation.user.first_name }} {{ participation.user.last_name }}">
+              {{ participation.user.first_name }} {{ participation.user.last_name }}
+            </a>
+            <span class="student-username">(@{{ participation.user.username }})</span>
           </div>
         </div>
       </td>
@@ -287,7 +240,7 @@ CMS.AWSFormUtils.initTagify({
       </td>
       <td>
         <div>
-          <span class="delays-timing-label">PLAN</span>
+          <span class="delays-timing-label">PLANNED START</span>
           <span class="delays-timing-value">
             {% if participation.delay_time.total_seconds() > 0 %}
               {{ (contest.start + participation.delay_time)|format_time }}
@@ -299,7 +252,7 @@ CMS.AWSFormUtils.initTagify({
           </span>
         </div>
         <div>
-          <span class="delays-timing-label">ACTUAL</span>
+          <span class="delays-timing-label">ACTUAL START</span>
           {% if participation.starting_time %}
             <span class="delays-timing-value delays-timing-value-actual">{{ participation.starting_time|format_time }}</span>
           {% else %}
@@ -349,86 +302,21 @@ CMS.AWSFormUtils.initTagify({
 <!-- Request History -->
 {% if delay_requests != [] %}
 <div class="delays-history-section">
-  <div class="delays-history-header">
-    <h2 class="delays-section-title">Request History</h2>
+  <div class="tp-section-header">
+    <h2 class="tp-section-header">Request History</h2>
     <div id="page_selector_all_delay_requests" class="delays-history-pagination"></div>
   </div>
   <div id="all_delay_requests">
     <div id="paged_content_all_delay_requests" class="delays-history-grid">
     {% for req in delay_requests %}
-      <div class="delays-history-card">
-        <div class="delays-history-card-header">
-          <div class="delays-history-card-user">
-            <svg class="icon" width="20" height="20"><use href="#icon-user"/></svg>
-            <div>
-              <div class="delays-history-card-username">@{{ req.participation.user.username }}</div>
-              <div class="delays-history-card-userid">User ID: {{ req.participation.user.id }}</div>
-            </div>
-          </div>
-          {% if req.status == 'approved' %}
-            <span class="delays-history-badge delays-history-badge-approved">
-              <svg class="icon" width="14" height="14"><use href="#icon-check"/></svg> Approved
-            </span>
-          {% elif req.status == 'rejected' %}
-            <span class="delays-history-badge delays-history-badge-rejected">
-              <svg class="icon" width="14" height="14"><use href="#icon-x"/></svg> Rejected
-            </span>
-          {% elif req.status == 'admin_configured' %}
-            <span class="delays-history-badge delays-history-badge-configured">
-              <svg class="icon" width="14" height="14"><use href="#icon-sliders"/></svg> Admin Configured
-            </span>
-          {% elif req.status == 'pending' %}
-            <span class="delays-history-badge delays-history-badge-pending">
-              <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> Pending
-            </span>
-          {% endif %}
-        </div>
-        <div class="delays-history-card-body">
-          <div class="delays-history-card-field">
-            <div class="delays-history-card-field-label">
-              <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> Requested Start
-            </div>
-            <div class="delays-history-card-field-value">{{ req.requested_start_time|format_datetime }}</div>
-          </div>
-          <div class="delays-history-card-reason">
-            <div class="delays-history-card-reason-label">
-              <svg class="icon" width="14" height="14"><use href="#icon-message-circle"/></svg> Reason
-            </div>
-            <div class="delays-history-card-reason-box">{{ req.reason }}</div>
-          </div>
-          {% if req.status == 'rejected' and req.rejection_reason %}
-          <div class="delays-history-card-field" style="margin-top: 8px;">
-            <div class="delays-history-card-field-label">
-              <svg class="icon" width="14" height="14"><use href="#icon-x"/></svg> Rejection Reason
-            </div>
-            <div class="delays-history-card-reason-box">{{ req.rejection_reason }}</div>
-          </div>
-          {% endif %}
-        </div>
-        {% if req.status != 'pending' %}
-        <div class="delays-history-card-footer">
-          {% if req.admin %}
-          <div class="delays-history-card-meta-row">
-            <span><svg class="icon" width="14" height="14"><use href="#icon-users"/></svg> Processed by:</span>
-            <span>{{ req.admin.name }}</span>
-          </div>
-          {% endif %}
-          {% if req.processed_timestamp %}
-          <div class="delays-history-card-meta-row">
-            <span><svg class="icon" width="14" height="14"><use href="#icon-check"/></svg> At:</span>
-            <span>{{ req.processed_timestamp|format_datetime }}</span>
-          </div>
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
+      {{ macro_delay_request.delay_request(req, show_buttons=False, variant="history") }}
     {% endfor %}
     </div>
   </div>
 </div>
 {% else %}
 <div class="delays-history-section">
-  <h2 class="delays-section-title">Request History</h2>
+  <h2 class="tp-section-header">Request History</h2>
   <div class="delays-empty-state">
     No historical requests to show.
   </div>
@@ -460,7 +348,7 @@ CMS.AWSFormUtils.initTagify({
           <div class="modal__form-group">
             <label for="requested_start_time">Start Time</label>
             <input type="datetime-local" name="requested_start_time" id="requested_start_time" class="tp-form-input" required>
-            <small class="delays-modal-hint">Contest starts at {{ contest.start|format_datetime }}</small>
+            <small class="modal__hint">Contest starts at {{ contest.start|format_datetime }}</small>
           </div>
           <div class="modal__form-group">
             <label for="reason">Reason</label>

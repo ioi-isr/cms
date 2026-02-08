@@ -1592,24 +1592,6 @@ svg.icon {
 
 /* QUESTIONS PAGE */
 
-.questions-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 1.5em;
-}
-
-.questions-header h1 {
-    margin-bottom: 0.1em;
-}
-
-.questions-subtitle {
-    color: #6B7280;
-    font-size: 0.95em;
-    margin: 0;
-    padding: 0;
-}
-
 .questions-tabs {
     display: flex;
     gap: 0;

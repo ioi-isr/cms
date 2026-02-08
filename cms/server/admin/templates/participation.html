@@ -149,7 +149,7 @@
 <h2 id="title_delay_requests" class="toggling_on">Delay Requests</h2>
 <div id="delay_requests">
   {% if participation.delay_requests != [] %}
-  <div class="notifications">
+  <div class="delays-history-grid delays-history-grid-single">
     {% for req in participation.delay_requests|reverse %}
       {{ macro_delay_request.delay_request(req, selected_user.id) }}
     {% endfor %}

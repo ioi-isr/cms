@@ -33,6 +33,13 @@ inputs.forEach(function(input) {
 
 {% block core %}
 
+<div class="tp-page-header">
+  <div class="page-title">
+    <h1>Announcements</h1>
+    <p class="page-subtitle">Post updates and manage announcements for participants.</p>
+  </div>
+</div>
+
 {% if training_program is defined %}
 {{ info_alert.alert(
     title="Training Program Announcements",

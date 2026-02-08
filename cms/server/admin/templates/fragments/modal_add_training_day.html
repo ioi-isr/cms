@@ -19,13 +19,13 @@
                             <span style="color: var(--tp-danger);">*</span>
                         </label>
                         <input type="text" id="td-name" name="name" placeholder="e.g., day1" required />
-                        <small class="modal__hint" style="margin-left: 0;">A unique identifier for the training day contest</small>
+                        <small class="modal__hint">A unique identifier for the training day contest</small>
                     </div>
 
                     <div class="modal__form-group">
                         <label for="td-description">Description</label>
                         <input type="text" id="td-description" name="description" placeholder="e.g., Training Day 1 - Graphs" />
-                        <small class="modal__hint" style="margin-left: 0;">Human-readable description (defaults to name if empty)</small>
+                        <small class="modal__hint">Human-readable description (defaults to name if empty)</small>
                     </div>
 
                     <div style="display: flex; gap: 16px;">
@@ -35,7 +35,7 @@
                                 <span class="tp-form-info" title="When the training day starts. If not specified and groups have start times, defaults to the earliest group start time.">?</span>
                             </label>
                             <input type="datetime-local" id="td-start" name="start" />
-                            <small class="modal__hint" style="margin-left: 0;">Optional, defaults to earliest group time</small>
+                            <small class="modal__hint">Optional, defaults to earliest group time</small>
                         </div>
                         <div class="modal__form-group" style="flex: 1;">
                             <label for="td-duration">Duration</label>
@@ -45,7 +45,7 @@
                                 <input type="number" id="td-duration-minutes" name="duration_minutes" min="0" max="59" placeholder="0" style="width: 70px;" />
                                 <span>minutes</span>
                             </div>
-                            <small class="modal__hint" style="margin-left: 0;">Optional</small>
+                            <small class="modal__hint">Optional</small>
                         </div>
                     </div>
 
