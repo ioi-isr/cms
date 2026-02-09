@@ -834,6 +834,13 @@ CMS.AWSUtils.ajax_delete_reload = function (url) {
     settings["success"] = function () {
         window.location.reload();
     };
+    settings["error"] = function (xhr) {
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('Delete failed (' + xhr.status + ').');
+        } else {
+            alert('Delete failed (' + xhr.status + ').');
+        }
+    };
     $.ajax(url, settings);
 };
 

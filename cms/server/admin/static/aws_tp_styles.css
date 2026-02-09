@@ -525,7 +525,6 @@
     border-right: 1px solid var(--tp-border);
     background-clip: padding-box;
     vertical-align: middle;
-    background-color: var(--tp-bg-white);
     height: 1px;
 }
 

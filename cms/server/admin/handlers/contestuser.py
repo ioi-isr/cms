@@ -407,6 +407,8 @@ class MessageHandler(BaseHandler):
 
         fallback = self.url("contest", contest_id, "user", user_id, "edit")
         redirect_url = self.get_argument("next", fallback)
+        if not redirect_url.startswith("/") or redirect_url.startswith("//"):
+            redirect_url = fallback
         self.redirect(redirect_url)
 
 
@@ -446,6 +448,8 @@ class EditMessageHandler(BaseHandler):
 
         fallback = self.url("contest", contest_id, "user", user_id, "edit")
         redirect_url = self.get_argument("next", fallback)
+        if not redirect_url.startswith("/") or redirect_url.startswith("//"):
+            redirect_url = fallback
         self.redirect(redirect_url)
 
 
