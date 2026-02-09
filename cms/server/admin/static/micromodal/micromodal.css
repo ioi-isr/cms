@@ -204,7 +204,7 @@
 .modal__hint {
     font-size: 0.8rem;
     color: var(--tp-text-muted, #6b7280);
-    margin-left: 26px;
+    margin-left: 6px;
 }
 
 /* Ensure Tagify dropdown appears above the modal overlay */

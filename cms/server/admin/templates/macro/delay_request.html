@@ -1,6 +1,6 @@
 {# This macro should be imported "with context". #}
 
-{% macro delay_request(req, user_id=None, show_buttons=True, warning=None) %}
+{% macro delay_request(req, user_id=None, show_buttons=True, warning=None, variant="auto") %}
 {#
 Render one delay request by a participant.
 
@@ -10,61 +10,155 @@ user_id (int|None): if we are rendering one of the delay requests on a single us
     the contest attendance page, then None.
 show_buttons (bool): whether to show approve/reject buttons for pending requests.
 warning (dict|None): if provided, contains 'group_name' and 'group_start' for warning display.
+variant (str): "pending", "history", or "auto" to pick layout.
 #}
-<div class="notification {% if req.status == 'approved' or req.status == 'admin_configured' %}notification_success{% elif req.status == 'rejected' %}notification_error{% endif %}">
-  <div class="notification_msg">
-    <div class="notification_timestamp">
-      {% if user_id is none %}
-        <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">{{ req.participation.user.username }}</a> &mdash;
-      {% endif %}
-      {{ req.request_timestamp|format_datetime }}
+{% set use_pending_layout = variant == "pending" or (variant == "auto" and req.status == "pending") %}
+{% set can_show_buttons = show_buttons and req.status == "pending" and (admin.permission_all or admin.permission_messaging) %}
+
+{% if use_pending_layout %}
+<div class="question-card question-unanswered">
+  <div class="question-card-header">
+    <div class="question-card-title-row">
+      <h3 class="question-subject">
+        {% if user_id is none %}
+        User: {{ req.participation.user.first_name }} {{ req.participation.user.last_name }}
+        {% else %}
+        Delay Request
+        {% endif %}
+      </h3>
     </div>
-    <div class="notification_subject">
-      {% if user_id is none %}
-      <strong>User:</strong> {{ req.participation.user.first_name }} {{ req.participation.user.last_name }}
-      {% else %}
-      <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}
-      {% endif %}
-    </div>
-    <div class="notification_text">
-      {% if user_id is none %}
-      <strong>Requested Start Time:</strong> {{ req.requested_start_time|format_datetime }}<br>
-      {% endif %}
-      {% if warning and warning.group_name is defined and warning.group_start is defined %}
-      <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 8px; margin: 8px 0; border-radius: 4px;">
-        <strong style="color: #856404;">Warning:</strong> Requested start time is earlier than the student's group start time.
-        <br>Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.
+    <div class="question-header-right">
+      <div class="question-card-meta question-card-meta-inline">
+        {% if user_id is none %}
+        <span class="question-meta-item">
+          <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
+          <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">{{ req.participation.user.username }}</a>
+        </span>
+        {% endif %}
+        <span class="question-meta-item">
+          <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
+          {{ req.request_timestamp|format_datetime }}
+        </span>
       </div>
-      {% endif %}
-      <strong>Reason:</strong> {{ req.reason }}<br>
-      {% if req.status != 'pending' %}
-        <strong>Status:</strong> {% if req.status == 'admin_configured' %}Admin Configured{% else %}{{ req.status }}{% endif %}
-        {% if req.status == 'rejected' and req.rejection_reason %}
-          <br><strong>Rejection Reason:</strong> {{ req.rejection_reason }}
-        {% endif %}
-        {% if req.processed_timestamp %}
-          <br><strong>Processed:</strong> {{ req.processed_timestamp|format_datetime }}
-        {% endif %}
-        {% if req.admin %}
-          <br><strong>Processed by:</strong> {{ req.admin.name }}
-        {% endif %}
-      {% endif %}
     </div>
-    {% if show_buttons and req.status == 'pending' and (admin.permission_all or admin.permission_messaging) %}
-      <div class="notification_buttons">
-        <form action="{{ url("contest", contest.id, "delay_request", req.id, "approve") }}" method="POST" style="display: inline;">
-          {{ xsrf_form_html|safe }}
-          <button type="submit" class="btn btn-success">Approve</button>
-        </form>
-        <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" style="display: inline;">
-          {{ xsrf_form_html|safe }}
-          <button type="submit" class="btn btn-danger">Reject</button>
-          <div style="display: inline-block; margin-right: 5px;">
-            <input type="text" name="rejection_reason" placeholder="Rejection reason (optional)" style="width: 160px;">
-          </div>
-        </form>
+  </div>
+  <div class="question-card-body">
+    <div class="delays-history-card-field">
+      <div class="delays-history-card-field-label">
+        <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg>
+        Requested Start
       </div>
+      <div class="delays-history-card-field-value">{{ req.requested_start_time|format_datetime }}</div>
+    </div>
+    {% if warning and warning.group_name is defined and warning.group_start is defined %}
+    <div class="delays-request-warning">
+      <svg class="icon" width="16" height="16"><use href="#icon-alert-triangle"/></svg>
+      <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
+    </div>
+    {% endif %}
+    <div class="delays-history-card-reason">
+      <div class="delays-history-card-reason-label">
+        <svg class="icon" width="14" height="14"><use href="#icon-message-circle"/></svg>
+        Reason
+      </div>
+      <div class="delays-history-card-reason-box">{{ req.reason or '—' }}</div>
+    </div>
+  </div>
+  {% if can_show_buttons %}
+  <div class="delays-request-actions">
+    <form action="{{ url("contest", contest.id, "delay_request", req.id, "approve") }}" method="POST" class="delays-inline-form">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="delays-btn-approve">Approve</button>
+    </form>
+    <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" class="delays-inline-form delays-reject-form">
+      {{ xsrf_form_html|safe }}
+      <button type="submit" class="delays-btn-reject">Reject</button>
+      <input type="text" name="rejection_reason" class="delays-reject-input" placeholder="Rejection reason (optional)">
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="delays-history-card{% if req.status == 'pending' %} question-unanswered{% endif %}">
+  <div class="delays-history-card-header">
+    <div class="delays-history-card-user">
+      <svg class="icon" width="20" height="20"><use href="#icon-user"/></svg>
+      <div class="student-info">
+        {% if user_id is none %}
+        <a class="student-name-link"
+           href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}"
+           title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">
+          {{ req.participation.user.first_name }} {{ req.participation.user.last_name }}
+        </a>
+        <span class="student-username">(@{{ req.participation.user.username }})</span>
+        {% else %}
+        <span class="student-name-link">Delay Request</span>
+        <span class="student-username">{{ req.request_timestamp|format_datetime }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if req.status == 'approved' %}
+      <span class="delays-history-badge delays-history-badge-approved">
+        <svg class="icon" width="14" height="14"><use href="#icon-check"/></svg> Approved
+      </span>
+    {% elif req.status == 'rejected' %}
+      <span class="delays-history-badge delays-history-badge-rejected">
+        <svg class="icon" width="14" height="14"><use href="#icon-x"/></svg> Rejected
+      </span>
+    {% elif req.status == 'admin_configured' %}
+      <span class="delays-history-badge delays-history-badge-configured">
+        <svg class="icon" width="14" height="14"><use href="#icon-sliders"/></svg> Admin Configured
+      </span>
+    {% elif req.status == 'pending' %}
+      <span class="delays-history-badge delays-history-badge-pending">
+        <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> Pending
+      </span>
     {% endif %}
   </div>
+  <div class="delays-history-card-body">
+    <div class="delays-history-card-field">
+      <div class="delays-history-card-field-label">
+        <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> Requested Start
+      </div>
+      <div class="delays-history-card-field-value">{{ req.requested_start_time|format_datetime }}</div>
+    </div>
+    {% if warning and warning.group_name is defined and warning.group_start is defined %}
+    <div class="delays-request-warning">
+      <svg class="icon" width="16" height="16"><use href="#icon-alert-triangle"/></svg>
+      <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
+    </div>
+    {% endif %}
+    <div class="delays-history-card-reason">
+      <div class="delays-history-card-reason-label">
+        <svg class="icon" width="14" height="14"><use href="#icon-message-circle"/></svg> Reason
+      </div>
+      <div class="delays-history-card-reason-box">{{ req.reason or '—' }}</div>
+    </div>
+    {% if req.status == 'rejected' and req.rejection_reason %}
+    <div class="delays-history-card-field" style="margin-top: 8px;">
+      <div class="delays-history-card-field-label">
+        <svg class="icon" width="14" height="14"><use href="#icon-x"/></svg> Rejection Reason
+      </div>
+      <div class="delays-history-card-reason-box">{{ req.rejection_reason }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% if req.status != 'pending' %}
+  <div class="delays-history-card-footer">
+    {% if req.admin %}
+    <div class="delays-history-card-meta-row">
+      <span><svg class="icon" width="14" height="14"><use href="#icon-users"/></svg> Processed by:</span>
+      <span>{{ req.admin.name }}</span>
+    </div>
+    {% endif %}
+    {% if req.processed_timestamp %}
+    <div class="delays-history-card-meta-row">
+      <span><svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> At:</span>
+      <span>{{ req.processed_timestamp|format_datetime }}</span>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
+{% endif %}
 {% endmacro %}
