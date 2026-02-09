@@ -243,18 +243,19 @@ CMS.AWSFormUtils.initTagify({
           <span class="delays-timing-label">PLANNED START</span>
           <span class="delays-timing-value">
             {% if participation.delay_time.total_seconds() > 0 %}
-              {{ (contest.start + participation.delay_time)|format_time }}
+              {{ (contest.start + participation.delay_time)|format_datetime }}
             {% elif item.main_group and item.main_group.start_time %}
-              {{ item.main_group.start_time|format_time }}
+              {{ item.main_group.start_time|format_datetime }}
             {% else %}
-              {{ contest.start|format_time }}
+              {{ contest.start|format_datetime }}
             {% endif %}
           </span>
         </div>
         <div>
           <span class="delays-timing-label">ACTUAL START</span>
           {% if participation.starting_time %}
-            <span class="delays-timing-value delays-timing-value-actual">{{ participation.starting_time|format_time }}</span>
+            <span class="delays-timing-value delays-timing-value-actual">{{ participation.starting_time|format_datetime }}</span>
+
           {% else %}
             <span class="delays-timing-none">--:--:--</span>
           {% endif %}
