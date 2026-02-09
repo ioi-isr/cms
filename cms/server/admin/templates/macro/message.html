@@ -1,6 +1,7 @@
 {# This macro should be imported "with context". #}
 
-{% import 'macro/markdown_input.html' as macro_markdown %}
+{% import 'macro/content_card.html' as card with context %}
+
 
 {% macro send_message_form(action_url, redirect_url="") %}
 {#
@@ -9,38 +10,10 @@ Render the "Send New Message" card.
 action_url (str): the URL to POST the new message to.
 redirect_url (str): optional URL to redirect to after sending (passed as hidden 'next' field).
 #}
-{% if admin.permission_all or admin.permission_messaging %}
-<div class="tp-card" style="margin-bottom: 2em;">
-  <div class="tp-card-header-modern">
-    <div class="tp-card-header-icon">
-      <svg class="icon" width="18" height="18"><use href="#icon-edit"/></svg>
-    </div>
-    <h3 class="tp-card-title-modern">Send New Message</h3>
-  </div>
-  <div class="tp-card-body">
-    <form method="post" action="{{ action_url }}">
-      {{ xsrf_form_html|safe }}
-      {% if redirect_url %}<input type="hidden" name="next" value="{{ redirect_url }}">{% endif %}
-      <label class="question-form-label">SUBJECT</label>
-      <input type="text" name="message_subject" class="question-form-select" autocomplete="off">
-      <label class="question-form-label">TEXT</label>
-      {{ macro_markdown.markdown_input("message_text") }}
-      <div class="question-reply-form-actions">
-        <div class="question-reply-form-left">
-          <button type="button" class="question-btn question-btn-outline question-btn-preview" onclick="utils.render_markdown_preview(this)">
-            <svg class="icon" width="16" height="16"><use href="#icon-eye"/></svg> Preview Markdown
-          </button>
-        </div>
-        <div class="question-reply-form-right">
-          <button type="submit" class="question-btn question-btn-primary">
-            <svg class="icon" width="16" height="16"><use href="#icon-plus"/></svg> Send message
-          </button>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
-{% endif %}
+{% set hidden_html %}
+  {% if redirect_url %}<input type="hidden" name="next" value="{{ redirect_url }}">{% endif %}
+{% endset %}
+{{ card.new_item_card("Send New Message", action_url, subject_name="message_subject", text_name="message_text", submit_label="Send message", extra_hidden_html=hidden_html) }}
 {% endmacro %}
 
 
@@ -53,25 +26,16 @@ delete_url (str): the URL to DELETE the message.
 edit_url (str): the URL to POST the edited message.
 redirect_url (str): optional URL to redirect to after editing (passed as hidden 'next' field).
 #}
+{% set delete_btn %}
+  <button type="button" class="question-edit-reply-link" onclick="CMS.AWSUtils.ajax_delete_reload('{{ delete_url }}');">
+    <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
+  </button>
+{% endset %}
+{% set hidden_html %}
+  {% if redirect_url %}<input type="hidden" name="next" value="{{ redirect_url }}">{% endif %}
+{% endset %}
 <div class="question-card question-claimed announcement-card">
-  <div class="question-card-header">
-    <div class="question-card-title-row">
-      <h3 class="question-subject">{{ msg.subject }}</h3>
-    </div>
-    <div class="question-header-right">
-      <div class="question-card-meta question-card-meta-inline">
-        <span class="question-meta-item">
-          <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
-          {{ msg.timestamp|format_datetime }}
-        </span>
-        {% if admin.permission_all or admin.permission_messaging %}
-        <button type="button" class="question-edit-reply-link" onclick="CMS.AWSUtils.ajax_delete_reload('{{ delete_url }}');">
-          <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
-        </button>
-        {% endif %}
-      </div>
-    </div>
-  </div>
+  {{ card.card_header(msg.subject, msg.timestamp, delete_button_html=delete_btn) }}
 
   <div class="question-card-body">
     <div class="question-text">{{ msg.text | markdown }}</div>
@@ -80,49 +44,9 @@ redirect_url (str): optional URL to redirect to after editing (passed as hidden 
   <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
   <textarea class="announcement_raw_text" style="display:none;">{{ msg.text|e }}</textarea>
 
-  <div class="announcement-card-footer">
-    <div class="announcement-card-footer-left">
-      <span class="question-meta-item">
-        <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
-        By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
-      </span>
-    </div>
-    {% if admin.permission_all or admin.permission_messaging %}
-    <button type="button" class="question-edit-reply-link" onclick="utils.announcement_edit_toggle(event, this);">
-      <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit
-    </button>
-    {% endif %}
-  </div>
+  {{ card.card_footer(msg.admin.name if msg.admin is not none else "<unknown>") }}
 
-  {% if admin.permission_all or admin.permission_messaging %}
-  <div class="question-actions">
-    <div class="reply_question">
-      <div class="question-reply-form-section">
-        <form class="reply_question_form" method="post" action="{{ edit_url }}">
-          {{ xsrf_form_html|safe }}
-          {% if redirect_url %}<input type="hidden" name="next" value="{{ redirect_url }}">{% endif %}
-          <label class="question-form-label">SUBJECT</label>
-          <input type="text" name="subject" class="question-form-select" autocomplete="off">
-          <label class="question-form-label">TEXT</label>
-          {{ macro_markdown.markdown_input("text") }}
-          <div class="question-reply-form-actions">
-            <div class="question-reply-form-left">
-              <button type="button" class="question-btn question-btn-outline question-btn-preview" onclick="utils.render_markdown_preview(this)">
-                <svg class="icon" width="16" height="16"><use href="#icon-eye"/></svg> Preview Markdown
-              </button>
-            </div>
-            <div class="question-reply-form-right">
-              <button type="button" class="question-btn question-btn-outline" onclick="utils.announcement_edit_toggle(event, this);">Cancel</button>
-              <button type="submit" class="question-btn question-btn-primary">
-                <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit Message
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-  {% endif %}
+  {{ card.edit_form(edit_url, "Edit Message", extra_hidden_html=hidden_html) }}
 </div>
 {% endmacro %}
 
