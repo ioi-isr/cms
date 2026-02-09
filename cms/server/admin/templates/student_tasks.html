@@ -162,7 +162,7 @@
                             {% set sub_count = submission_counts.get(st.task.id, 0) %}
                             {% if sub_count > 0 %}
                                 <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "submissions") }}" style="text-decoration: none; color: #0F766E; font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 2px;">
-                                    {{ sub_count }}<span style="font-size: 1em; opacity: 0.6;">↗</span>
+                                    {{ sub_count }}<svg class="icon" width="16" height="16" style="opacity: 0.6;" aria-hidden="true" focusable="false"><use href="#icon-external-link"/></svg>
                                 </a>
                             {% else %}
                                 <span style="color: #cbd5e1; font-weight: 500;">0</span>

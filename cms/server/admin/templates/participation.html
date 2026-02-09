@@ -5,6 +5,7 @@
 {% import 'macro/question.html' as macro_question with context %}
 {% import 'macro/delay_request.html' as macro_delay_request with context %}
 {% import 'macro/markdown_input.html' as macro_markdown %}
+{% import 'macro/message.html' as macro_message with context %}
 
 {% block core %}
 <h1>
@@ -149,7 +150,7 @@
 <h2 id="title_delay_requests" class="toggling_on">Delay Requests</h2>
 <div id="delay_requests">
   {% if participation.delay_requests != [] %}
-  <div class="notifications">
+  <div class="delays-history-grid delays-history-grid-single">
     {% for req in participation.delay_requests|reverse %}
       {{ macro_delay_request.delay_request(req, selected_user.id) }}
     {% endfor %}
@@ -166,67 +167,15 @@
 <h2 id="title_messages" class="toggling_on">Messages</h2>
 <div id="messages">
 
-  <div class="notifications">
-      <div class="notification communication">
-        <form id="send_message_form" action="{{ url("contest", contest.id, "user", selected_user.id, "message") }}" method="POST">
-          {{ xsrf_form_html|safe }}
-          <div class="notification_msg">
-            <div class="notification_subject">
-              Subject:
-              <input id="send_message_subject" type="text" name="message_subject" style="width: 100%" />
-            </div>
-            <div class="notification_text">
-              Text:
-              {{ macro_markdown.markdown_input("message_text") }}
-            </div>
-          <input type="submit" value="Send"/>
-          {{ macro_markdown.markdown_preview() }}
-          </div>
-        </form>
-      </div>
+  {{ macro_message.send_message_form(url("contest", contest.id, "user", selected_user.id, "message")) }}
 
-    {% if participation.messages != [] %}
-
-      {% for msg in participation.messages|reverse %}
-      <div class="notification communication">
-        <div class="notification_msg">
-          <div class="announcement_remove">
-            <a onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "user", selected_user.id, "message", msg.id) }}'); ">Remove</a>
-          </div>
-          <div class="notification_timestamp">{{ msg.timestamp|format_datetime }}</div>
-          <div class="notification_subject">{{ msg.subject }}</div>
-          <div class="notification_text">{{ msg.text | markdown }}</div>
-          <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
-          <textarea class="announcement_raw_text" style="display:none;">{{ msg.text|e }}</textarea>
-          <hr>
-          <div class="notification_admin_owner">
-            By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
-          </div>
-          <a href="javascript:void(0);" onclick="utils.announcement_edit_toggle(event, this);">Edit</a>
-          <div class="reply_question">
-            <form method="post" action="{{ url("contest", contest.id, "user", selected_user.id, "message", msg.id, "edit") }}" >
-              {{ xsrf_form_html|safe }}
-              <div class="notification_subject">
-                <label for="edit_subject">Edit Message</label>
-                <input type="text" name="subject" id="edit_subject" style="width: 100%">
-              </div>
-              <div class="notification_text">
-                <label for="text">Text</label>
-                {{ macro_markdown.markdown_input("text") }}
-              </div>
-              <input type="submit"
-                     value="Edit message" />
-              {{ macro_markdown.markdown_preview() }}
-            </form>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-
-    {% else %}
-      No messages.
-    {% endif %}
-  </div>
+  {% if participation.messages != [] %}
+    {% for msg in participation.messages|reverse %}
+      {{ macro_message.message_card(msg, url("contest", contest.id, "user", selected_user.id, "message", msg.id), url("contest", contest.id, "user", selected_user.id, "message", msg.id, "edit")) }}
+    {% endfor %}
+  {% else %}
+    <p class="questions-empty">No messages.</p>
+  {% endif %}
   <div class="hr"></div>
 </div>
 

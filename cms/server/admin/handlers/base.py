@@ -367,7 +367,7 @@ class BaseHandler(CommonRequestHandler):
             if (
                 remaining_path.startswith("/question/")
                 or remaining_path.startswith("/announcement/")
-                or remaining_path.endswith("/message")
+                or re.search(r"(?:^|/)message(?:/|$)", remaining_path)
                 or remaining_path.endswith("/detail")
                 or remaining_path.endswith("/submissions")
                 or remaining_path.endswith("/ranking/history")

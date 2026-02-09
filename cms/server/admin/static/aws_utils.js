@@ -823,6 +823,29 @@ CMS.AWSUtils.ajax_delete = function(url) {
 
 
 /**
+ * Sends a delete request and on success reloads the current page
+ * instead of following the server's redirect URL.
+ */
+CMS.AWSUtils.ajax_delete_reload = function (url) {
+    var settings = {
+        "type": "DELETE",
+        headers: { "X-XSRFToken": get_cookie("_xsrf") }
+    };
+    settings["success"] = function () {
+        window.location.reload();
+    };
+    settings["error"] = function (xhr) {
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('Delete failed (' + xhr.status + ').');
+        } else {
+            alert('Delete failed (' + xhr.status + ').');
+        }
+    };
+    $.ajax(url, settings);
+};
+
+
+/**
  * Sends a post request and on success. See AWSUtils.ajax_request
  * for more details.
  */

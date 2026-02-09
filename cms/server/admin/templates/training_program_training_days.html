@@ -345,7 +345,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                             onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
                                             aria-label="Show histogram for {{ task_info.get('name', 'Task ' ~ task_id_str) }}">
                                         {{ task_info.get('name', 'Task ' ~ task_id_str) }}
-                                        <span class="histogram-icon" aria-hidden="true">&#128202;</span>
+                                        <span class="histogram-icon" aria-hidden="true"><svg class="icon" width="16" height="16"><use href="#icon-histogram"/></svg></span>
                                     </button>
                                 {% endfor %}
                             {% else %}
@@ -360,7 +360,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                             <button type="button" class="btn-icon-only" title="Configure scoreboard sharing"
                                     onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
                                     {% if not admin.permission_all %}disabled{% endif %}>
-                                <svg class="icon" width="16" height="16"><use href="#icon-external-link"/></svg>
+                                <svg class="icon" width="16" height="16"><use href="#icon-share"/></svg>
                             </button>
                             {% if td.scoreboard_sharing %}
                             <span class="source-badge badge-shared" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
@@ -477,7 +477,7 @@ AdminTableUtils.initDragDropReorder({
 // Initialize table sorting for both tables using CMS.AWSUtils
 $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#training-days-table"), false, -1);
-    CMS.AWSUtils.init_table_sort($("#archived-training-days-table"), false, 0);
+    CMS.AWSUtils.init_table_sort($("#archived-training-days-table"), false, 3);
 });
 
 // Scoreboard Sharing Modal
