@@ -186,7 +186,7 @@ CMS.AWSFormUtils.initTagify({
 <h2 id="title_messages" class="toggling_on">Messages</h2>
 <div id="messages">
 
-  {% set student_page_url = "/training_program/" ~ training_program.id ~ "/student/" ~ selected_user.id ~ "/edit" %}
+  {% set student_page_url = url("training_program", training_program.id, "student", selected_user.id, "edit") %}
   {{ macro_message.send_message_form(url("contest", training_program.managing_contest.id, "user", selected_user.id, "message"), redirect_url=student_page_url) }}
 
   {% if participation.messages != [] %}
