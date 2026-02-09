@@ -2811,18 +2811,19 @@
 }
 
 .delays-table tbody tr {
+    background: var(--tp-bg-white);
     transition: background 0.15s;
 }
 
-.delays-table tbody tr:hover {
-    background: var(--tp-bg-hover);
+.delays-table tbody tr:hover td {
+    background-color: var(--tp-bg-hover);
 }
 
 .delays-table tbody td {
     padding: 14px 16px;
     border-bottom: 1px solid var(--tp-border-light);
     vertical-align: middle;
-    background-color: var(--tp-bg-white);
+    background-color: transparent;
 }
 
 .delays-table tbody tr:last-child td {

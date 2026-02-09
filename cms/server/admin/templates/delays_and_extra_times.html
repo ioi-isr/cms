@@ -263,12 +263,11 @@ CMS.AWSFormUtils.initTagify({
       </td>
       <td>
         {% if participation.delay_time.total_seconds() > 0 %}
-          {% set delay_seconds = participation.delay_time.total_seconds()|int %}
-          {% if delay_seconds < 120 %}
-            <span class="delays-time-value">+{{ delay_seconds }}s</span>
+          {% set delay_minutes = participation.delay_time.total_seconds() / 60 %}
+          {% if delay_minutes < 60 %}
+            <span class="delays-time-value">{{ "+%.1f"|format(delay_minutes) }} minutes</span>
           {% else %}
-            {% set delay_mins = (delay_seconds / 60)|round(0, 'ceil')|int %}
-            <span class="delays-time-value">+{{ delay_mins }}m</span>
+            <span class="delays-time-value">{{ "+%.1f"|format(delay_minutes / 60) }} hours</span>
           {% endif %}
         {% else %}
           <span class="delays-text-light">-</span>
@@ -276,12 +275,11 @@ CMS.AWSFormUtils.initTagify({
       </td>
       <td>
         {% if participation.extra_time.total_seconds() > 0 %}
-          {% set extra_seconds = participation.extra_time.total_seconds()|int %}
-          {% if extra_seconds < 120 %}
-            <span class="delays-time-value">+{{ extra_seconds }}s</span>
+          {% set extra_minutes = participation.extra_time.total_seconds() / 60 %}
+          {% if extra_minutes < 60 %}
+            <span class="delays-time-value">{{ "+%.1f"|format(extra_minutes) }} minutes</span>
           {% else %}
-            {% set extra_mins = (extra_seconds / 60)|round(0, 'ceil')|int %}
-            <span class="delays-time-value">+{{ extra_mins }}m</span>
+            <span class="delays-time-value">{{ "+%.1f"|format(extra_minutes / 60) }} hours</span>
           {% endif %}
         {% else %}
           <span class="delays-text-light">-</span>
