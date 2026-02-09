@@ -823,6 +823,22 @@ CMS.AWSUtils.ajax_delete = function(url) {
 
 
 /**
+ * Sends a delete request and on success reloads the current page
+ * instead of following the server's redirect URL.
+ */
+CMS.AWSUtils.ajax_delete_reload = function (url) {
+    var settings = {
+        "type": "DELETE",
+        headers: { "X-XSRFToken": get_cookie("_xsrf") }
+    };
+    settings["success"] = function () {
+        window.location.reload();
+    };
+    $.ajax(url, settings);
+};
+
+
+/**
  * Sends a post request and on success. See AWSUtils.ajax_request
  * for more details.
  */
