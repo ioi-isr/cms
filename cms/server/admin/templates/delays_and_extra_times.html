@@ -357,7 +357,7 @@ CMS.AWSFormUtils.initTagify({
             </select>
           </div>
           <div class="modal__form-group">
-            <label for="requested_start_time">Start Time</label>
+            <label for="requested_start_time">Start Time ({{ timezone_name }})</label>
             <input type="datetime-local" name="requested_start_time" id="requested_start_time" class="tp-form-input" required>
             <small class="modal__hint">Contest starts at {{ contest.start|format_datetime }} ({{ timezone_name }})</small>
           </div>
