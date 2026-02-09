@@ -506,7 +506,7 @@
     width: auto;
     border-collapse: separate; /* Required for sticky headers */
     border-spacing: 0;
-    background-color: #ffffff;
+    background-color: var(--tp-bg-white);
     font-size: 0.9rem;
     white-space: nowrap;
 }
@@ -525,7 +525,7 @@
     border-right: 1px solid var(--tp-border);
     background-clip: padding-box;
     vertical-align: middle;
-    background-color: #ffffff;
+    background-color: var(--tp-bg-white);
     height: 1px;
 }
 
@@ -2699,8 +2699,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
+    min-width: 24px;
     height: 24px;
+    padding: 0 6px;
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 700;
@@ -2729,7 +2730,7 @@
     border-radius: 8px;
     border: 1px solid rgba(0, 0, 0, 0.06);
     overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    -webkit-overflow-scrolling: touch;
 }
 
 .delays-section-actions {
@@ -2794,7 +2795,7 @@
     border-collapse: separate;
     border-spacing: 0;
     font-size: 0.88rem;
-    background-color: #ffffff;
+    background-color: var(--tp-bg-white);
 }
 
 .delays-table thead th {
@@ -2822,7 +2823,7 @@
     padding: 14px 16px;
     border-bottom: 1px solid var(--tp-border-light);
     vertical-align: middle;
-    background-color: #ffffff;
+    background-color: var(--tp-bg-white);
 }
 
 .delays-table tbody tr:last-child td {

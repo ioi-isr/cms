@@ -74,7 +74,7 @@ CMS.AWSFormUtils.initTagify({
 <div class="delays-pending-section">
   <div class="delays-pending-title-row">
     <svg class="icon delays-pending-title-icon" width="20" height="20"><use href="#icon-alert-triangle"/></svg>
-    <h2 class="tp-section-header">Pending Delay Requests</h2>
+    <h2>Pending Delay Requests</h2>
     <span class="delays-pending-count">{{ pending_count }}</span>
   </div>
   <div id="pending_delay_requests" class="notifications">
@@ -158,7 +158,7 @@ CMS.AWSFormUtils.initTagify({
 
 <!-- Participations Section -->
 <div class="tp-section-header tp-section-header--wrap">
-  <h2 class="tp-section-header">Participations</h2>
+  <h2>Participations</h2>
   <div class="delays-section-actions">
     <div class="delays-search-wrapper">
       <svg class="icon delays-search-icon" width="16" height="16"><use href="#icon-search"/></svg>
@@ -262,16 +262,26 @@ CMS.AWSFormUtils.initTagify({
       </td>
       <td>
         {% if participation.delay_time.total_seconds() > 0 %}
-          {% set delay_mins = (participation.delay_time.total_seconds() / 60)|round(0, 'ceil')|int %}
-          <span class="delays-time-value">+{{ delay_mins }}m</span>
+          {% set delay_seconds = participation.delay_time.total_seconds()|int %}
+          {% if delay_seconds < 120 %}
+            <span class="delays-time-value">+{{ delay_seconds }}s</span>
+          {% else %}
+            {% set delay_mins = (delay_seconds / 60)|round(0, 'ceil')|int %}
+            <span class="delays-time-value">+{{ delay_mins }}m</span>
+          {% endif %}
         {% else %}
           <span class="delays-text-light">-</span>
         {% endif %}
       </td>
       <td>
         {% if participation.extra_time.total_seconds() > 0 %}
-          {% set extra_mins = (participation.extra_time.total_seconds() / 60)|round(0, 'ceil')|int %}
-          <span class="delays-time-value">+{{ extra_mins }}m</span>
+          {% set extra_seconds = participation.extra_time.total_seconds()|int %}
+          {% if extra_seconds < 120 %}
+            <span class="delays-time-value">+{{ extra_seconds }}s</span>
+          {% else %}
+            {% set extra_mins = (extra_seconds / 60)|round(0, 'ceil')|int %}
+            <span class="delays-time-value">+{{ extra_mins }}m</span>
+          {% endif %}
         {% else %}
           <span class="delays-text-light">-</span>
         {% endif %}
@@ -300,10 +310,10 @@ CMS.AWSFormUtils.initTagify({
 </div>
 
 <!-- Request History -->
-{% if delay_requests != [] %}
+{% if delay_requests %}
 <div class="delays-history-section">
   <div class="tp-section-header">
-    <h2 class="tp-section-header">Request History</h2>
+    <h2>Request History</h2>
     <div id="page_selector_all_delay_requests" class="delays-history-pagination"></div>
   </div>
   <div id="all_delay_requests">
@@ -316,7 +326,7 @@ CMS.AWSFormUtils.initTagify({
 </div>
 {% else %}
 <div class="delays-history-section">
-  <h2 class="tp-section-header">Request History</h2>
+  <h2>Request History</h2>
   <div class="delays-empty-state">
     No historical requests to show.
   </div>
@@ -348,7 +358,7 @@ CMS.AWSFormUtils.initTagify({
           <div class="modal__form-group">
             <label for="requested_start_time">Start Time</label>
             <input type="datetime-local" name="requested_start_time" id="requested_start_time" class="tp-form-input" required>
-            <small class="modal__hint">Contest starts at {{ contest.start|format_datetime }}</small>
+            <small class="modal__hint">Contest starts at {{ contest.start|format_datetime }} ({{ timezone_name }})</small>
           </div>
           <div class="modal__form-group">
             <label for="reason">Reason</label>

@@ -250,12 +250,12 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
           {% for task in training_day_tasks.get(td.id, []) %}
           <th class="task-header" title="{{ task.title }}" data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-sort-settings="numeric" scope="col">
               <span class="header-text">{{ task.name }}</span>
-              <button class="histogram-icon" title="View histogram" type="button" onclick='event.stopPropagation(); showTaskHistogram({{ task.id }}, {{ task.name|tojson }}, {{ td.id }})'>&#128202;</button>
+              <button class="histogram-icon" title="View histogram" type="button" onclick='event.stopPropagation(); showTaskHistogram({{ task.id }}, {{ task.name|tojson }}, {{ td.id }})'><svg class="icon" width="20" height="20"><use href="#icon-histogram"/></svg></button>
           </th>
           {% endfor %}
           <th class="total-col total-col-header" title="Daily Total" data-training-day-id="{{ td.id }}" data-sort-settings="numeric" scope="col">
               <span class="header-text">Total</span>
-              <button class="histogram-icon" title="View histogram" type="button" onclick='event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, {{ (td.description or td.name or "Session")|tojson }})'>&#128202;</button>
+              <button class="histogram-icon" title="View histogram" type="button" onclick='event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, {{ (td.description or td.name or "Session")|tojson }})'><svg class="icon" width="24" height="24"><use href="#icon-histogram"/></svg></button>
           </th>
         {% endfor %}
       </tr>
@@ -288,7 +288,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                         <a class="history-link"
                            href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if params %}?{{ params | join('&') }}{% endif %}"
                            title="View score/rank history">
-                            📊
+                            <svg class="icon" width="24" height="24"><use href="#icon-line-chart"/></svg>
                         </a>
                     </div>
                     {% if student.student_tags %}
