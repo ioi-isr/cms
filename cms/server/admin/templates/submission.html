@@ -19,7 +19,7 @@
 <h2 id="title_details" class="toggling_on">Submission details</h2>
 <div id="details">
 
-  <table class="bordered">
+  <table class="table is-bordered is-striped is-hoverable is-fullwidth">
     <thead>
       <tr>
         <th>Property</th>
@@ -196,7 +196,7 @@
           <div id="title_evaluation_failure_details" class="toggling_off">
             <button type="button" onclick="utils.toggle('evaluation_failure_details')">Details</button>
             <div id="evaluation_failure_details" style="display: none; margin-top: 10px;">
-              <table class="nested bordered">
+              <table class="table is-bordered is-striped is-narrow nested">
                 {% if sr.last_evaluation_failure_details %}
                 <tr>
                   <td><strong>Exit status</strong></td>
@@ -347,7 +347,7 @@
 <h2 id="title_evaluation_admin" class="toggling_on">Evaluation (as seen by the admin)</h2>
 <div id="evaluation_admin">
 
-  <table class="bordered">
+  <table class="table is-bordered is-striped is-hoverable is-fullwidth">
     <thead>
       <tr>
         <th>#</th>

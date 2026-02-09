@@ -80,7 +80,7 @@ You are cloning the dataset "{{ original_dataset.description }}".
         </select>
 
         {% for task_type_name, task_type in TASK_TYPES.items() %}
-        <table class="TaskTypeOptions bordered" id="TaskType{{ task_type_name }}Options" style="display: none;">
+        <table class="TaskTypeOptions table is-bordered is-striped is-hoverable" id="TaskType{{ task_type_name }}Options" style="display: none;">
           {% if original_dataset is not none and task_type_name == original_dataset.task_type %}
             {% set values = original_dataset_task_type_parameters %}
           {% else %}

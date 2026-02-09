@@ -12,7 +12,7 @@
   {% if new_users %}
   <h2>New Users ({{ new_users|length }})</h2>
   <p>The following users will be created:</p>
-  <table class="bordered">
+  <table class="table is-bordered is-striped is-hoverable is-fullwidth">
     <thead>
       <tr>
         <th>Row</th>
@@ -54,7 +54,7 @@
       Deselect All
     </button>
   </p>
-  <table class="bordered">
+  <table class="table is-bordered is-striped is-hoverable is-fullwidth">
     <thead>
       <tr>
         <th>Update?</th>
@@ -117,7 +117,7 @@
   {% if failed_users %}
   <h2 style="color: #d00;">Failed Users ({{ failed_users|length }})</h2>
   <p>The following users could not be imported due to validation errors:</p>
-  <table class="bordered">
+  <table class="table is-bordered is-striped is-hoverable is-fullwidth">
     <thead>
       <tr>
         <th>Row</th>

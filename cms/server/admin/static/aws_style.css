@@ -736,28 +736,12 @@ table.nested th, table.nested td {
     padding: 0 0.25em;
 }
 
-table.bordered {
+table.table.is-bordered {
     border-radius: 0.5em 0.5em 0 0;
 }
 
-table.bordered td, table.bordered th {
-    border-right: 1px solid #53637D;
-}
-
-table.bordered td:last-child, table.bordered th:last-child {
-    border-right: 0;
-}
-
-table.bordered thead th {
+table.table thead th {
     background-color: white;
-}
-
-table.bordered tbody tr:nth-child(even) {
-    background-color: white;
-}
-
-table.bordered tbody tr:nth-child(odd) {
-    background-color: #D8E2F2;
 }
 
 table.TaskTypeOptions {
@@ -988,21 +972,11 @@ body.admin table th {
     border-bottom: 0.072em solid #64748B;
 }
 
-body.admin table.bordered td,
-body.admin table.bordered th {
-    border-right: 1px solid #64748B;
-}
-
-body.admin table.bordered td:last-child,
-body.admin table.bordered th:last-child {
-    border-right: 0;
-}
-
-body.admin table.bordered tbody tr:nth-child(even) {
+body.admin table.table.is-striped tbody tr:not(.is-selected):nth-child(even) {
     background-color: white;
 }
 
-body.admin table.bordered tbody tr:nth-child(odd) {
+body.admin table.table.is-striped tbody tr:not(.is-selected):nth-child(odd) {
     background-color: #DEE6F5;
 }
 
