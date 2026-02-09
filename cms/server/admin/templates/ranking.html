@@ -151,7 +151,7 @@
 <script>
   $(document).ready(function() {
     {% for group_data in main_groups_data %}
-    CMS.AWSUtils.init_table_sort($("#ranking-table-{{ loop.index }}"), true, -1);
+    CMS.AWSUtils.init_table_sort($("#ranking-table-{{ loop.index }}"), true, -1, true);
     {% endfor %}
 
     $(".show-indicators-toggle").on("change", function() {
@@ -238,7 +238,7 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
 </table>
 <script>
   $(document).ready(function() {
-    CMS.AWSUtils.init_table_sort($("#ranking-table"), true, -1);
+    CMS.AWSUtils.init_table_sort($("#ranking-table"), true, -1, true);
 
     $(".show-indicators-toggle").on("change", function() {
       if (this.checked) {
