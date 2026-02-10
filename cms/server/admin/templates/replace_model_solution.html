@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block core %}
+
+<div class="core_title">
+  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Replace Model Solution</h1>
+</div>
+<p>Upload a new file for model solution <strong>{{ meta.description }}</strong> ({{ meta.name }}). The current submission will be detached and remain in submission history.</p>
+
+{% set allowed_langs = task.get_allowed_languages() or [] %}
+{% set language_required = task.submission_format|any("endswith", ".%l") %}
+{% set allow_partial = task.submission_format|length > 1 and not language_required %}
+
+{% if allow_partial %}
+<p><strong>You may submit any subset of outputs in a single submission.</strong></p>
+{% endif %}
+
+<div style="display: flex; gap: 40px; flex-wrap: wrap;">
+<div>
+<form enctype="multipart/form-data" action="{{ url("model_solution", meta.id, "replace") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+{% set selected_language = meta.submission.language if meta.submission else None %}
+{% include "fragments/model_solution_file_fields.html" %}
+  </table>
+  <input type="submit" value="Replace">
+  <a href="{{ url("task", task.id) }}">Cancel</a>
+</form>
+</div>
+
+{% if allow_partial %}
+<div>
+<form enctype="multipart/form-data" action="{{ url("model_solution", meta.id, "replace") }}" method="POST">
+  {{ xsrf_form_html|safe }}
+  <table>
+    <tr>
+      <td>submission.zip:</td>
+      <td><input type="file" name="submission" class="ms-file-input" required /></td>
+    </tr>
+  </table>
+  <input type="submit" value="Replace">
+  <a href="{{ url("task", task.id) }}">Cancel</a>
+</form>
+</div>
+{% endif %}
+
+</div>
+
+{% if language_required %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const TASK_LANGUAGES = {
+{% for lang in allowed_langs %}
+        "{{ lang }}": {
+{% for extension in (lang|to_language).source_extensions %}
+            "{{ extension }}": true,
+{% endfor %}
+        },
+{% endfor %}
+    };
+
+    document.querySelectorAll('form[action$="replace"]').forEach(function(form) {
+        const select = form.querySelector('select[name="language"]');
+        if (!select) return;
+        const inputs = form.querySelectorAll('input[type="file"]');
+        const filter = function() {
+            CMS.AWSUtils.filter_languages(select.options, inputs, TASK_LANGUAGES);
+        };
+        inputs.forEach(function(input) {
+            input.addEventListener('change', filter);
+        });
+        filter();
+    });
+});
+</script>
+{% endif %}
+{% endblock core %}
