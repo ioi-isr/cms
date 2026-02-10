@@ -898,6 +898,7 @@ window.filterTestcases = function(dataset_id) {
             <td>
               <a href="{{ url("model_solution", meta.id, "edit") }}">Edit</a>
 {% if admin.permission_all %}
+              | <a href="{{ url("model_solution", meta.id, "replace") }}">Replace</a>
               | <a onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');">Delete</a>
 {% endif %}
             </td>

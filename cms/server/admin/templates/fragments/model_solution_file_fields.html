@@ -1,0 +1,27 @@
+{#
+  Shared file upload fields for model solution forms (add and replace).
+
+  Expected variables:
+    task: the Task object
+    allowed_langs: list of allowed language names
+    language_required: whether a language selector is needed
+    selected_language: (optional) language to pre-select
+#}
+{% for filename in task.submission_format %}
+    <tr>
+      <td>{{ filename }}:</td>
+      <td><input type="file" name="{{ filename }}" class="ms-file-input" /></td>
+    </tr>
+{% endfor %}
+{% if language_required %}
+    <tr>
+      <td>Language:</td>
+      <td>
+        <select name="language">
+{% for lang in allowed_langs %}
+          <option value="{{ lang }}" {{ "selected" if selected_language is defined and selected_language == lang else "" }}>{{ lang }}</option>
+{% endfor %}
+        </select>
+      </td>
+    </tr>
+{% endif %}
