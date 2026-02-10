@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% import "fragments/model_solution_fields.html" as ms_fields with context %}
 
 {% block core %}
+{% include "fragments/model_solution_styles.html" %}
 
 <div class="core_title">
   <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Replace Model Solution</h1>
@@ -19,10 +21,10 @@
 <div>
 <form enctype="multipart/form-data" action="{{ url("model_solution", meta.id, "replace") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  <table>
-{% set selected_language = meta.submission.language if meta.submission else None %}
-{% include "fragments/model_solution_file_fields.html" %}
-  </table>
+  <div class="ms-form">
+    {% set selected_language = meta.submission.language if meta.submission else None %}
+    {{ ms_fields.file_fields(task, allowed_langs, language_required, selected_language, "replace-form1") }}
+  </div>
   <input type="submit" value="Replace">
   <a href="{{ url("task", task.id) }}">Cancel</a>
 </form>
@@ -32,12 +34,14 @@
 <div>
 <form enctype="multipart/form-data" action="{{ url("model_solution", meta.id, "replace") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  <table>
-    <tr>
-      <td>submission.zip:</td>
-      <td><input type="file" name="submission" class="ms-file-input" required /></td>
-    </tr>
-  </table>
+  <div class="ms-form">
+    <div class="ms-form-row">
+      <label class="ms-form-label" for="replace-form2-submission-zip">submission.zip:</label>
+      <div class="ms-form-field">
+        <input id="replace-form2-submission-zip" type="file" name="submission" class="ms-file-input" required />
+      </div>
+    </div>
+  </div>
   <input type="submit" value="Replace">
   <a href="{{ url("task", task.id) }}">Cancel</a>
 </form>
@@ -46,32 +50,5 @@
 
 </div>
 
-{% if language_required %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const TASK_LANGUAGES = {
-{% for lang in allowed_langs %}
-        "{{ lang }}": {
-{% for extension in (lang|to_language).source_extensions %}
-            "{{ extension }}": true,
-{% endfor %}
-        },
-{% endfor %}
-    };
-
-    document.querySelectorAll('form[action$="replace"]').forEach(function(form) {
-        const select = form.querySelector('select[name="language"]');
-        if (!select) return;
-        const inputs = form.querySelectorAll('input[type="file"]');
-        const filter = function() {
-            CMS.AWSUtils.filter_languages(select.options, inputs, TASK_LANGUAGES);
-        };
-        inputs.forEach(function(input) {
-            input.addEventListener('change', filter);
-        });
-        filter();
-    });
-});
-</script>
-{% endif %}
+{{ ms_fields.language_filter_script('form[action$="replace"]', allowed_langs, language_required) }}
 {% endblock core %}
