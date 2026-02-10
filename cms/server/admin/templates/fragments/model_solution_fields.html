@@ -17,8 +17,8 @@
              type="text"
              name="name"
              class="ms-form-control"
-             pattern="^(?!.*\.\.)([^/\\*?<>|:&quot;])+$"
-             title="Cannot contain: / \ * ? < > | : &quot; or .."
+             pattern="^[\\w\\-\\s()^]+$"
+             title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)."
              required />
       <div class="ms-form-hint">(identifier for export, e.g., 'intended', 'bruteforce')</div>
     </div>
@@ -93,7 +93,7 @@
     </div>
   </div>
 
-  {% if subtasks %}
+{% if subtasks and ms %}
   <div class="ms-form-row ms-form-row-full">
     <div class="ms-form-field">
       {{ ms.auto_calc_checkbox(form_id) }}

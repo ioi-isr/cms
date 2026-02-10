@@ -24,9 +24,15 @@ from typing import Callable
 
 import tornado.web
 
-from cms.db import Dataset, ModelSolutionMeta, \
-    get_or_create_model_solution_participation, create_model_solution, \
-    create_model_solution_submission, validate_model_solution_name
+from cms.db import (
+    Dataset,
+    ModelSolutionMeta,
+    Task,
+    get_or_create_model_solution_participation,
+    create_model_solution,
+    create_model_solution_submission,
+    validate_model_solution_name,
+)
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.contest.submission import UnacceptableSubmission
 from cms.server.contest.submission.workflow import _extract_and_match_files
@@ -513,7 +519,6 @@ class ConfigureImportedModelSolutionsHandler(BaseHandler):
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, task_id):
-        from cms.db import Task
         task = self.safe_get_item(Task, task_id)
         dataset = task.active_dataset
         self.contest = task.contest
@@ -571,7 +576,6 @@ class ConfigureImportedModelSolutionsHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
-        from cms.db import Task
         task = self.safe_get_item(Task, task_id)
         dataset = task.active_dataset
         fallback_page = self.url("task", task_id, "model_solutions", "configure")
