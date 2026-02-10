@@ -266,6 +266,7 @@ class AddModelSolutionHandler(BaseHandler):
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         try:
             attrs = {}
@@ -300,7 +301,7 @@ class AddModelSolutionHandler(BaseHandler):
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(self.url("task", task.id))
+            self.redirect(fallback_page)
             return
 
         if self.try_commit():
@@ -316,7 +317,7 @@ class AddModelSolutionHandler(BaseHandler):
             self.service.evaluation_service.new_submission(
                 submission_id=submission.id)
 
-        self.redirect(self.url("task", task.id))
+        self.redirect(fallback_page)
 
 
 class ModelSolutionHandler(BaseHandler):
