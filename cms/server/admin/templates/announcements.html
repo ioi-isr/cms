@@ -76,18 +76,18 @@ inputs.forEach(function(input) {
   {% set delete_btn %}
     {% if training_program is defined %}
     <button type="button" class="question-edit-reply-link" onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}');">
-      <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
+      <svg class="cms-icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
     </button>
     {% else %}
     <button type="button" class="question-edit-reply-link" onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}');">
-      <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
+      <svg class="cms-icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
     </button>
     {% endif %}
   {% endset %}
   {% set tags_html %}
     {% if (training_program is defined or is_training_day) and msg.visible_to_tags %}
     <span class="question-meta-item">
-      <svg class="icon" width="16" height="16"><use href="#icon-tag"/></svg>
+      <svg class="cms-icon" width="16" height="16"><use href="#icon-tag"/></svg>
       Visible to:
       {% for tag in msg.visible_to_tags %}
         <span class="announcement-tag-badge">{{ tag }}</span>

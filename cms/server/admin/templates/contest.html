@@ -32,7 +32,7 @@
 
             <div style="display: flex; gap: 10px; align-items: center;">
                 <a href="{{ url("contest", contest.id, "export") }}" class="tp-btn-secondary">
-                    <svg class="icon" width="16" height="16"><use href="#icon-download"/></svg>
+                    <svg class="cms-icon" width="16" height="16"><use href="#icon-download"/></svg>
                     Export
                 </a>
             </div>
@@ -61,14 +61,14 @@
             {% if contest.training_day is none %}
                 <!-- Regular Contest: Use contest removal confirmation -->
                 <button type="button" class="tp-btn-remove" onclick="AdminModals.confirmThen('Are you sure you want to remove this contest? This action cannot be undone.', function() { window.location.href = '{{ url("contests", contest.id, "remove") }}'; }, {icon: 'warning', confirmButtonText: 'Yes, Remove Contest'})">
-                    <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+                    <svg class="cms-icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
                     Remove Contest
                 </button>
             {% endif %}
         {% else %}
             {% if contest.training_day is none %}
             <button class="tp-btn-remove" disabled>
-                <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+                <svg class="cms-icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
                 Remove Contest
             </button>
             {% endif %}

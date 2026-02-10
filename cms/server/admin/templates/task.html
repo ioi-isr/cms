@@ -684,7 +684,7 @@ window.filterTestcases = function(dataset_id) {
           [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
         {% endif %}
       {% endif %}
-      <table class="table is-bordered is-striped is-hoverable is-fullwidth subtask-validators">
+      <table class="table is-bordered is-striped is-hoverable subtask-validators">
         <thead>
           <tr>
             <th>Subtask</th>
@@ -822,7 +822,7 @@ window.filterTestcases = function(dataset_id) {
                 title="Score" >S</button>
       </p>
 {% endif %}
-      <table class="table is-bordered is-striped is-hoverable is-fullwidth" style="text-align:center">
+      <table class="table is-bordered is-striped is-hoverable" style="text-align:center">
         <thead>
           <tr>
             <th>#</th>
@@ -909,7 +909,7 @@ window.filterTestcases = function(dataset_id) {
 
 {% if dataset.id in subtask_info and dataset.model_solution_metas|length > 0 %}
       <h5 style="margin-top: 20px;">Subtask Score Validation</h5>
-      <table class="table is-bordered is-striped is-hoverable is-fullwidth" style="text-align:center">
+      <table class="table is-bordered is-striped is-hoverable" style="text-align:center">
         <thead>
           <tr>
             <th>Model Solution</th>
@@ -977,7 +977,7 @@ window.filterTestcases = function(dataset_id) {
         {% if dataset.generators|length == 0 %}
           No generators.
         {% else %}
-          <table class="table is-bordered is-striped is-hoverable is-fullwidth" style="text-align:center; margin-top: 10px;">
+          <table class="table is-bordered is-striped is-hoverable" style="text-align:center; margin-top: 10px;">
             <thead>
               <tr>
                 <th>Filename</th>
@@ -1020,7 +1020,7 @@ window.filterTestcases = function(dataset_id) {
         <div id="testcase_search_error_{{ dataset.id }}" style="color:#c00; display:none; margin-top:4px; font-size:12px;"></div>
       </div>
 {% endif %}
-      <table id="testcases_table_{{ dataset.id }}" class="table is-bordered is-striped is-hoverable is-fullwidth" style="text-align:center">
+      <table id="testcases_table_{{ dataset.id }}" class="table is-bordered is-striped is-hoverable" style="text-align:center">
         <thead>
           <tr>
             <th class="multi_delete_col_{{ dataset.id }}" style="display:none;">

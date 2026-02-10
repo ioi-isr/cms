@@ -84,7 +84,7 @@
     </div>
   </div>
 
-  <table class="table is-bordered is-striped is-hoverable is-fullwidth td-ranking-table" id="ranking-table-{{ loop.index }}">
+  <table class="table is-bordered is-striped is-hoverable td-ranking-table" id="ranking-table-{{ loop.index }}">
     <thead>
       <tr>
         <th>Username</th>
@@ -168,7 +168,7 @@
 {# Regular contest or training day without groups - show single table #}
 Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>, <a href="{{ url("contest", contest.id, "ranking", "txt") }}">text</a>.
 <label style="margin-left: 20px;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label>
-<table id="ranking-table" class="table is-bordered is-striped is-hoverable is-fullwidth td-ranking-table">
+<table id="ranking-table" class="table is-bordered is-striped is-hoverable td-ranking-table">
   <thead>
     <tr>
       <th>Username</th>

@@ -9,7 +9,7 @@
   <p>No training program participations found.</p>
   {% else %}
   <p><em>Training program participations are managed via the training program interface. Use "Remove from training program" to remove a student.</em></p>
-  <table class="table is-bordered is-striped is-hoverable is-fullwidth">
+  <table class="table is-bordered is-striped is-hoverable">
     <thead>
       <tr>
         <th>Participation</th>
@@ -64,7 +64,7 @@
     {{ xsrf_form_html|safe }}
     Edit selected participation:
     <input type="submit" name="operation" value="Remove" />
-    <table class="table is-bordered is-striped is-hoverable is-fullwidth">
+    <table class="table is-bordered is-striped is-hoverable">
       <thead>
         <tr>
           <th></th>

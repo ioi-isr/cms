@@ -28,7 +28,7 @@ redirect_url (str): optional URL to redirect to after editing (passed as hidden 
 #}
 {% set delete_btn %}
   <button type="button" class="question-edit-reply-link" onclick="CMS.AWSUtils.ajax_delete_reload('{{ delete_url }}');">
-    <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
+    <svg class="cms-icon" width="14" height="14"><use href="#icon-trash"/></svg> Remove
   </button>
 {% endset %}
 {% set hidden_html %}

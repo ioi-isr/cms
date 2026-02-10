@@ -304,43 +304,43 @@ $(document).ready(initSidebarEvents);
           </a>
         </div>
         {% endif %}
-        <ul class="menu">
+        <ul class="cms-menu">
         {% if contest is none and training_program is not defined %}
           <li class="menu_entry">
             <span class="menu-icon">
-              <svg class="icon" width="18" height="18"><use href="#icon-activity"/></svg>
+              <svg class="cms-icon" width="18" height="18"><use href="#icon-activity"/></svg>
             </span>
             <a class="menu_link" href="{{ url() }}">Overview</a>
           </li>
           <li class="menu_entry">
             <span class="menu-icon">
-              <svg class="icon" width="18" height="18"><use href="#icon-cpu"/></svg>
+              <svg class="cms-icon" width="18" height="18"><use href="#icon-cpu"/></svg>
             </span>
             <a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a>
           </li>
         {% elif training_program is defined %}
           <li class="menu_entry">
             <span class="menu-icon">
-              <svg class="icon" width="18" height="18"><use href="#icon-activity"/></svg>
+              <svg class="cms-icon" width="18" height="18"><use href="#icon-activity"/></svg>
             </span>
             <a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "overview") }}">Overview</a>
           </li>
           <li class="menu_entry">
             <span class="menu-icon">
-              <svg class="icon" width="18" height="18"><use href="#icon-cpu"/></svg>
+              <svg class="cms-icon" width="18" height="18"><use href="#icon-cpu"/></svg>
             </span>
             <a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "resourceslist") }}">Resource usage</a>
           </li>
         {% else %}
           <li class="menu_entry">
             <span class="menu-icon">
-              <svg class="icon" width="18" height="18"><use href="#icon-activity"/></svg>
+              <svg class="cms-icon" width="18" height="18"><use href="#icon-activity"/></svg>
             </span>
             <a class="menu_link" href="{{ url("contest", contest.id, "overview") }}">Overview</a>
           </li>
           <li class="menu_entry">
             <span class="menu-icon">
-              <svg class="icon" width="18" height="18"><use href="#icon-cpu"/></svg>
+              <svg class="cms-icon" width="18" height="18"><use href="#icon-cpu"/></svg>
             </span>
             <a class="menu_link" href="{{ url("contest", contest.id, "resourceslist") }}">Resource usage</a>
           </li>
@@ -536,19 +536,19 @@ $(document).ready(initSidebarEvents);
           </div>
         </div>
         {% elif training_program is defined %}
-          <ul class="menu">
+          <ul class="cms-menu">
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-settings"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-settings"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id) }}">General</a>
             </li>
           </ul>
 
-          <ul class="menu">
+          <ul class="cms-menu">
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-users"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-users"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a>
             </li>
@@ -558,7 +558,7 @@ $(document).ready(initSidebarEvents);
             <li class="sidebar-folder" data-folder-key="training-days-section">
               <div class="folder-header">
                 <span class="folder-icon-svg">
-                  <svg class="icon" width="18" height="18"><use href="#icon-laptop-code"/></svg>
+                  <svg class="cms-icon" width="18" height="18"><use href="#icon-laptop-code"/></svg>
                 </span>
                 <a href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a>
                 <div class="sidebar-badge-container">
@@ -599,46 +599,46 @@ $(document).ready(initSidebarEvents);
             </li>
           </ul>
 
-          <ul class="menu">
+          <ul class="cms-menu">
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-home-chart"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-home-chart"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "ranking") }}">Home Task Scores</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-file-code"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-file-code"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-clipboard-list"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-clipboard-list"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-calendar-check"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-calendar-check"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-trophy"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-trophy"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "combined_ranking") }}">Ranking</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-megaphone"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-megaphone"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-message-circle"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-message-circle"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "questions") }}">Questions</a>
               <div class="sidebar-badge-container">
@@ -649,29 +649,29 @@ $(document).ready(initSidebarEvents);
             </li>
           </ul>
         {% else %}
-          <ul class="menu">
+          <ul class="cms-menu">
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-settings"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-settings"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id) }}">General</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-trophy"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-trophy"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "ranking") }}">Ranking</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-file-code"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-file-code"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "submissions") }}">Submissions</a>
             </li>
             {% if contest.allow_user_tests %}
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-play-circle"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-play-circle"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "user_tests") }}">User tests</a>
             </li>
@@ -679,26 +679,26 @@ $(document).ready(initSidebarEvents);
             {% if contest.training_day is none %}
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-users"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-users"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "users") }}">Users</a>
             </li>
             {% endif %}
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-clipboard-list"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-clipboard-list"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "tasks") }}">Tasks</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-megaphone"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-megaphone"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "announcements") }}">Announcements</a>
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-message-circle"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-message-circle"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "questions") }}">Questions</a>
               <div class="sidebar-badge-container">
@@ -710,7 +710,7 @@ $(document).ready(initSidebarEvents);
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-calendar-check"/></svg>
+                <svg class="cms-icon" width="18" height="18"><use href="#icon-calendar-check"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "delays_and_extra_times") }}">Attendance</a>
               <div class="sidebar-badge-container">
@@ -759,7 +759,7 @@ $(document).ready(initSidebarEvents);
                       <p id="modal-confirm-message" style="margin-bottom: 16px;"></p>
                       <div id="modal-confirm-warning-box" class="modal__warning" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; display: none;">
                           <p style="margin: 0; color: #991b1b; font-weight: 600;">
-                              <svg class="icon" width="16" height="16" style="vertical-align: middle;"><use href="#icon-alert-triangle"/></svg>
+                              <svg class="cms-icon" width="16" height="16" style="vertical-align: middle;"><use href="#icon-alert-triangle"/></svg>
                               Warning
                           </p>
                           <div id="modal-confirm-warning-text" style="color: #7f1d1d; font-size: 0.9rem; margin-top: 4px;"></div>

@@ -3,6 +3,9 @@
 }
 
 :root {
+    --bulma-primary-h: 175deg;
+    --bulma-primary-s: 77%;
+    --bulma-primary-l: 26%;
     --ranking-header-top: 60px;
     --tp-question-card-bg: #ffffff;
     --tp-question-border: #E5E7EB;
@@ -513,7 +516,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     color: #dce3ec;
 }
 
-.menu {
+.cms-menu {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -814,7 +817,7 @@ th .column-sort {
     padding: 1em 0 0.5em;
 }
 
-#notifications .notification {
+#notifications .cms-notification {
     text-align: left;
     margin-bottom: 0.572em;
     font-size: 0.875em;
@@ -824,11 +827,11 @@ th .column-sort {
     box-shadow: black 0.072em 0.072em 0.144em;
 }
 
-#notifications .notification_msg {
+#notifications .cms-notification_msg {
     padding: 0.429em;
 }
 
-#notifications .notification_close {
+#notifications .cms-notification_close {
     float: right;
     cursor: pointer;
     background-color: #FFE475;
@@ -842,11 +845,11 @@ th .column-sort {
     font-weight: bold;
 }
 
-#notifications .notification_close:hover {
+#notifications .cms-notification_close:hover {
     background-color: #FEF7CB;
 }
 
-#notifications .notification_subject {
+#notifications .cms-notification_subject {
     font-weight: bold;
 }
 
@@ -860,7 +863,7 @@ th .column-sort {
 
 /* COMMUNICATIONS */
 
-.notifications .notification {
+.cms-notifications .cms-notification {
     text-align: left;
     margin-bottom: 0.572em;
     font-size: 0.875em;
@@ -870,16 +873,16 @@ th .column-sort {
     box-shadow: black 0.072em 0.072em 0.144em;
 }
 
-.notifications .communication {
+.cms-notifications .communication {
     background-color: #D9E3F3;
     border: 0.143em solid #53637D;
 }
 
-.notifications .notification_msg {
+.cms-notifications .cms-notification_msg {
     padding: 0.429em;
 }
 
-.notifications .notification_close {
+.cms-notifications .cms-notification_close {
     float: right;
     cursor: pointer;
     background-color: #FFE475;
@@ -893,15 +896,15 @@ th .column-sort {
     font-weight: bold;
 }
 
-.notifications .notification_close:hover {
+.cms-notifications .cms-notification_close:hover {
     background-color: #FEF7CB;
 }
 
-.notifications .notification_subject {
+.cms-notifications .cms-notification_subject {
     font-weight: bold;
 }
 
-.notifications .notification_timestamp {
+.cms-notifications .cms-notification_timestamp {
     float: right;
     padding-right: 0.5em;
 }
@@ -1145,27 +1148,27 @@ body.admin .validator-running::before {
     color: #2563eb;
 }
 
-body.admin #notifications .notification {
+body.admin #notifications .cms-notification {
     background-color: #F7CBFE;
     border: 0.143em solid #E475FF;
 }
 
-body.admin #notifications .notification_close {
+body.admin #notifications .cms-notification_close {
     background-color: #E475FF;
     border-left: 0.143em solid #E475FF;
     border-bottom: 0.143em solid #E475FF;
 }
 
-body.admin #notifications .notification_close:hover {
+body.admin #notifications .cms-notification_close:hover {
     background-color: #F7CBFE;
 }
 
-body.admin .notifications .notification {
+body.admin .cms-notifications .cms-notification {
     background-color: #F7CBFE;
     border: 0.143em solid #E475FF;
 }
 
-body.admin .notifications .communication {
+body.admin .cms-notifications .communication {
     background-color: #DDE6F7;
     border: 0.143em solid #5A6B84;
 }
@@ -1192,17 +1195,17 @@ body.admin .notifications .ignore_reply {
     padding-right: 0.5em;
 }
 
-body.admin .notifications .notification_admin_owner {
+body.admin .cms-notifications .cms-notification_admin_owner {
     font-style: italic;
 }
 
-body.admin .notifications .notification_close {
+body.admin .cms-notifications .cms-notification_close {
     background-color: #E475FF;
     border-left: 0.143em solid #E475FF;
     border-bottom: 0.143em solid #E475FF;
 }
 
-body.admin .notifications .notification_close:hover {
+body.admin .cms-notifications .cms-notification_close:hover {
     background-color: #F7CBFE;
 }
 
@@ -1516,7 +1519,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* SVG icon base styles for sprite usage */
-svg.icon {
+svg.cms-icon {
     display: inline-block;
     vertical-align: middle;
     fill: none;
@@ -1783,7 +1786,7 @@ svg.icon {
     border-color: var(--tp-primary-hover, #0d655e);
 }
 
-.question-btn .icon {
+.question-btn .cms-icon {
     flex-shrink: 0;
 }
 
@@ -1839,7 +1842,7 @@ svg.icon {
     gap: 6px;
 }
 
-.question-meta-item .icon {
+.question-meta-item .cms-icon {
     color: var(--tp-text-light, #9CA3AF);
 }
 
