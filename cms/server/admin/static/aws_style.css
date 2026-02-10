@@ -156,6 +156,7 @@ input:focus, textarea:focus {
     position: fixed;
     padding: 0 1em;
     width: 234px;
+    box-sizing: content-box; /* prevent Bulma's border-box from shrinking sidebar */
     background: linear-gradient(180deg, var(--sidebar-bg-dark) 0%, var(--sidebar-bg-light) 100%);
     color: var(--sidebar-text);
     text-shadow: none;
