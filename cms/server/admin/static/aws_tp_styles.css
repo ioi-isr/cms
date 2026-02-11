@@ -3266,3 +3266,126 @@
 .delays-modal-textarea {
     resize: vertical;
 }
+
+/* Archive Training Day Modal Styles */
+.network-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.network-group {
+    border: 1px solid var(--tp-border, #e5e7eb);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--tp-bg-white, #fff);
+    transition: box-shadow 0.15s ease;
+}
+
+.network-group:hover {
+    box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
+}
+
+.network-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    background: var(--tp-bg-light, #f8fafc);
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.network-header:hover {
+    background: var(--tp-bg-gray, #f3f4f6);
+}
+
+.network-header:focus-visible {
+    outline: 2px solid var(--tp-primary, #0F766E);
+    outline-offset: -2px;
+}
+
+.network-toggle-icon {
+    font-size: 0.7rem;
+    color: var(--tp-text-muted, #64748b);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+}
+
+.network-group.expanded .network-toggle-icon {
+    transform: rotate(90deg);
+}
+
+.network-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+}
+
+.network-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--tp-primary, #0F766E);
+}
+
+.network-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--tp-text-primary, #1e293b);
+    font-family: monospace;
+}
+
+.network-count {
+    font-size: 0.8rem;
+    color: var(--tp-text-muted, #64748b);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.network-ips {
+    border-top: 1px solid var(--tp-border, #e5e7eb);
+    padding: 4px 0;
+}
+
+.ip-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px 7px 46px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+    font-size: 0.85rem;
+}
+
+.ip-row:hover {
+    background: var(--tp-bg-hover, #f9fafb);
+}
+
+.ip-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--tp-primary, #0F766E);
+}
+
+.ip-addr {
+    color: var(--tp-text-secondary, #374151);
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.ip-count {
+    font-size: 0.78rem;
+    color: var(--tp-text-light, #9ca3af);
+    margin-left: auto;
+    white-space: nowrap;
+}
