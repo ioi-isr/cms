@@ -6,7 +6,8 @@
 
 <script>
 (function() {
-    var modal = document.getElementById('modal-archive-training-day');
+    var modalId = 'modal-archive-td-{{ training_day.id }}';
+    var modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.add('is-open');
         modal.setAttribute('aria-hidden', 'false');
@@ -15,7 +16,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         var backUrl = {{ back_url|tojson }};
         if (typeof MicroModal !== 'undefined') {
-            MicroModal.show('modal-archive-training-day', {
+            MicroModal.show(modalId, {
                 onClose: function() {
                     window.location = backUrl;
                 }

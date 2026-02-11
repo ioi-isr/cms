@@ -87,11 +87,68 @@ __all__ = [
     "TrainingProgramCombinedRankingHistoryHandler",
     "TrainingProgramFilterMixin",
     "UpdateAttendanceHandler",
+    "compute_archive_modal_data",
     "get_attendance_view_data",
     "get_ranking_view_data",
     "FilterContext",
     "build_filename",
 ]
+
+
+def compute_archive_modal_data(
+    sql_session, training_day: "TrainingDay", contest: "Contest", timestamp
+) -> dict:
+    """Compute data needed for the archive training day modal.
+
+    Returns a dict with 'network_hierarchy' and 'users_not_finished' keys.
+    This is used by pages that include the modal_archive_training_day.html
+    fragment directly (training days page, delays page) as well as the
+    standalone archive page.
+    """
+    ip_counts: dict[str, int] = {}
+    for participation in contest.participations:
+        ips = ArchiveTrainingDayHandler._parse_ip_addresses(
+            participation.starting_ip_addresses
+        )
+        for ip in ips:
+            ip_counts[ip] = ip_counts.get(ip, 0) + 1
+
+    network_hierarchy = ArchiveTrainingDayHandler._build_network_hierarchy(
+        ip_counts
+    )
+
+    users_not_finished = []
+    training_program = training_day.training_program
+    user_to_student = build_user_to_student_map(training_program)
+
+    for participation in contest.participations:
+        if participation.hidden:
+            continue
+        student = user_to_student.get(participation.user_id)
+        if student is None:
+            continue
+        is_eligible, main_group, _ = check_training_day_eligibility(
+            sql_session, participation, training_day, student=student
+        )
+        if not is_eligible:
+            continue
+        main_group_start = main_group.start_time if main_group else None
+        main_group_end = main_group.end_time if main_group else None
+        status_class, status_label = compute_participation_status(
+            contest, participation, timestamp,
+            main_group_start, main_group_end
+        )
+        if status_class not in ('finished', 'missed'):
+            users_not_finished.append({
+                'participation': participation,
+                'status_class': status_class,
+                'status_label': status_label,
+            })
+
+    return {
+        'network_hierarchy': network_hierarchy,
+        'users_not_finished': users_not_finished,
+    }
 
 
 class ArchiveTrainingDayHandler(BaseHandler):
@@ -163,30 +220,9 @@ class ArchiveTrainingDayHandler(BaseHandler):
 
         contest = training_day.contest
 
-        ip_counts: dict[str, int] = {}
-        for participation in contest.participations:
-            ips = self._parse_ip_addresses(participation.starting_ip_addresses)
-            for ip in ips:
-                ip_counts[ip] = ip_counts.get(ip, 0) + 1
-
-        network_hierarchy = self._build_network_hierarchy(ip_counts)
-
-        users_not_finished = []
-        for _, participation, main_group in self._iterate_eligible_students(
-            training_day, contest
-        ):
-            main_group_start = main_group.start_time if main_group else None
-            main_group_end = main_group.end_time if main_group else None
-            status_class, status_label = compute_participation_status(
-                contest, participation, self.timestamp,
-                main_group_start, main_group_end
-            )
-            if status_class not in ('finished', 'missed'):
-                users_not_finished.append({
-                    'participation': participation,
-                    'status_class': status_class,
-                    'status_label': status_label,
-                })
+        archive_data = compute_archive_modal_data(
+            self.sql_session, training_day, contest, self.timestamp
+        )
 
         fallback_page = self.url(
             "training_program", training_program_id, "training_days"
@@ -201,18 +237,12 @@ class ArchiveTrainingDayHandler(BaseHandler):
         self.render_params_for_training_program(training_program)
         self.r_params["training_day"] = training_day
         self.r_params["contest"] = contest
-        self.r_params["network_hierarchy"] = network_hierarchy
-        self.r_params["users_not_finished"] = users_not_finished
+        self.r_params["network_hierarchy"] = archive_data["network_hierarchy"]
+        self.r_params["users_not_finished"] = archive_data["users_not_finished"]
 
-        if self.request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            self.render(
-                "fragments/modal_archive_training_day.html",
-                **self.r_params,
-            )
-        else:
-            self.r_params["auto_open_modal"] = True
-            self.r_params["back_url"] = back_url
-            self.render("archive_training_day.html", **self.r_params)
+        self.r_params["auto_open_modal"] = True
+        self.r_params["back_url"] = back_url
+        self.render("archive_training_day.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str, training_day_id: str):

@@ -59,10 +59,10 @@ CMS.AWSFormUtils.initTagify({
   <div>
     <p><strong>All participants have finished or missed this training day.</strong> This training day is ready to be archived.</p>
   </div>
-  <a href="{{ url("training_program", contest.training_day.training_program.id, "training_day", contest.training_day.id, "archive") }}" class="tp-btn-primary delays-archive-btn">
+  <button type="button" class="tp-btn-primary delays-archive-btn" onclick="MicroModal.show('modal-archive-td-{{ contest.training_day.id }}')">
     <svg class="icon" width="16" height="16"><use href="#icon-archive-down"/></svg>
     Archive Training Day
-  </a>
+  </button>
 </div>
 {% endif %}
 
@@ -373,5 +373,13 @@ CMS.AWSFormUtils.initTagify({
   </div>
 </div>
 
+
+{% if contest.training_day and contest.training_day.id in archive_modal_data %}
+{% set training_day = contest.training_day %}
+{% set training_program = training_day.training_program %}
+{% set network_hierarchy = archive_modal_data[training_day.id]['network_hierarchy'] %}
+{% set users_not_finished = archive_modal_data[training_day.id]['users_not_finished'] %}
+{% include 'fragments/modal_archive_training_day.html' %}
+{% endif %}
 
 {% endblock core %}

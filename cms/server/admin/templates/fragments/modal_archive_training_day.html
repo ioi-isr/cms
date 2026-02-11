@@ -1,18 +1,16 @@
 <!-- Archive Training Day Modal Fragment -->
-<!-- Include this fragment in pages where the "Archive Training Day" modal is needed -->
+<!-- Include this fragment on pages where the "Archive Training Day" modal is needed -->
 <!-- Required context: admin, training_program, training_day, contest, network_hierarchy, users_not_finished, url, xsrf_form_html -->
 
 {% if admin is defined and admin.permission_all %}
-<div class="modal" id="modal-archive-training-day" aria-hidden="true" data-no-reset>
+<div class="modal" id="modal-archive-td-{{ training_day.id }}" aria-hidden="true" data-no-reset>
     <div class="modal__overlay" tabindex="-1" data-micromodal-close>
-        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-archive-td-title" style="max-width: 640px;">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-archive-td-title-{{ training_day.id }}" style="max-width: 640px;">
             <header class="modal__header modal__header--danger">
-                <h2 class="modal__title" id="modal-archive-td-title">Archive Training Day: {{ contest.name }}</h2>
+                <h2 class="modal__title" id="modal-archive-td-title-{{ training_day.id }}">Archive Training Day: {{ contest.name }}</h2>
                 <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
             </header>
-            <form id="archive-training-day-form"
-                  action="{{ url("training_program", training_program.id, "training_day", training_day.id, "archive") }}"
-                  method="POST">
+            <form action="{{ url("training_program", training_program.id, "training_day", training_day.id, "archive") }}" method="POST">
                 {{ xsrf_form_html|safe }}
                 <main class="modal__content">
                     <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
@@ -87,7 +85,7 @@
                     </div>
 
                     <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 0.9rem;">
-                        <input type="checkbox" name="confirm_archive" style="margin-top: 3px;" />
+                        <input type="checkbox" name="confirm_archive" required style="margin-top: 3px;" />
                         I understand this action is irreversible and will permanently delete the contest
                     </label>
                 </main>
@@ -233,8 +231,7 @@ window.archiveModal = window.archiveModal || {};
 
 archiveModal.toggleNetwork = function(event) {
     if (event.target.closest('.network-label')) return;
-    var headerEl = event.currentTarget;
-    var group = headerEl.closest('.network-group');
+    var group = event.currentTarget.closest('.network-group');
     var ipsContainer = group.querySelector('.network-ips');
     var isExpanded = group.classList.contains('expanded');
     if (isExpanded) {
@@ -256,7 +253,7 @@ archiveModal.handleNetworkKeydown = function(event) {
 
 archiveModal.toggleNetworkIps = function(networkCheckbox) {
     var networkIdx = networkCheckbox.getAttribute('data-network');
-    var modal = document.getElementById('modal-archive-training-day');
+    var modal = networkCheckbox.closest('.modal');
     var ipCheckboxes = modal.querySelectorAll('.ip-checkbox[data-network="' + networkIdx + '"]');
     var checked = networkCheckbox.checked;
     for (var i = 0; i < ipCheckboxes.length; i++) {
@@ -271,7 +268,7 @@ archiveModal.toggleNetworkIps = function(networkCheckbox) {
 
 archiveModal.syncNetworkCheckbox = function(ipCheckbox) {
     var networkIdx = ipCheckbox.getAttribute('data-network');
-    var modal = document.getElementById('modal-archive-training-day');
+    var modal = ipCheckbox.closest('.modal');
     var ipCheckboxes = modal.querySelectorAll('.ip-checkbox[data-network="' + networkIdx + '"]');
     var networkCheckbox = modal.querySelector('.network-checkbox[data-network="' + networkIdx + '"]');
     var allChecked = true;
@@ -283,49 +280,5 @@ archiveModal.syncNetworkCheckbox = function(ipCheckbox) {
     networkCheckbox.checked = allChecked;
     networkCheckbox.indeterminate = someChecked && !allChecked;
 };
-
-(function() {
-    var form = document.getElementById('archive-training-day-form');
-    if (!form) return;
-
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        var confirmCheckbox = form.querySelector('input[name="confirm_archive"]');
-        if (!confirmCheckbox || !confirmCheckbox.checked) {
-            if (typeof AdminModals !== 'undefined') {
-                AdminModals.showError('Please confirm by checking the checkbox.');
-            }
-            return;
-        }
-
-        var submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Archiving...';
-        }
-
-        fetch(form.action, {
-            method: 'POST',
-            body: new FormData(form)
-        }).then(function(response) {
-            if (response.ok) {
-                window.location.href = response.url;
-            } else {
-                return response.text().then(function(text) {
-                    throw new Error(text || 'Failed to archive training day');
-                });
-            }
-        }).catch(function(error) {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Archive Training Day';
-            }
-            if (typeof AdminModals !== 'undefined') {
-                AdminModals.showError(error.message);
-            }
-        });
-    });
-})();
 </script>
 {% endif %}

@@ -242,8 +242,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                 <button type="button"
                                    class="btn-icon-only btn-archive"
                                    {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
-                                   onclick="openArchiveModal(this)"
-                                   data-archive-url="{{ url("training_program", training_program.id, "training_day", td.id, "archive") }}"
+                                   onclick="MicroModal.show('modal-archive-td-{{ td.id }}')"
                                    title="Archive training day">
                                     <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
                                 </button>
@@ -387,7 +386,13 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
 {% include 'fragments/histogram_modal.html' %}
 
-<div id="archive-modal-container"></div>
+{% for td in training_program.training_days if td.contest is not none and td.id in archive_modal_data %}
+{% set training_day = td %}
+{% set contest = td.contest %}
+{% set network_hierarchy = archive_modal_data[td.id]['network_hierarchy'] %}
+{% set users_not_finished = archive_modal_data[td.id]['users_not_finished'] %}
+{% include 'fragments/modal_archive_training_day.html' %}
+{% endfor %}
 
 <!-- Scoreboard Sharing Modal (Micromodal) -->
 <div class="modal modal--medium" id="modal-scoreboard-sharing" aria-hidden="true">
@@ -943,40 +948,6 @@ function saveScoreboardSharing(){
 
 // Save button click handler
 document.getElementById('save-scoreboard-sharing-btn').addEventListener('click', saveScoreboardSharing);
-
-function openArchiveModal(btn) {
-    var archiveUrl = btn.getAttribute('data-archive-url');
-    var container = document.getElementById('archive-modal-container');
-    if (!container) return;
-
-    container.innerHTML = '';
-    btn.disabled = true;
-
-    fetch(archiveUrl, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    }).then(function(response) {
-        if (!response.ok) throw new Error('Could not load archive dialog (status ' + response.status + ')');
-        return response.text();
-    }).then(function(html) {
-        btn.disabled = false;
-        container.innerHTML = html;
-
-        container.querySelectorAll('script').forEach(function(oldScript) {
-            var newScript = document.createElement('script');
-            newScript.textContent = oldScript.textContent;
-            oldScript.parentNode.replaceChild(newScript, oldScript);
-        });
-
-        MicroModal.show('modal-archive-training-day', {
-            onClose: function() {
-                container.innerHTML = '';
-            }
-        });
-    }).catch(function(err) {
-        btn.disabled = false;
-        AdminModals.showError('Failed to load archive modal: ' + err.message);
-    });
-}
 
 function openRemoveTrainingDayModal(btn) {
     var name = btn.getAttribute('data-td-name');
