@@ -1,0 +1,101 @@
+<!-- Archive Training Day Modal Fragment -->
+<!-- Include this fragment on pages where the "Archive Training Day" modal is needed -->
+<!-- Required context: admin, training_program, training_day, contest, network_hierarchy, users_not_finished, url, xsrf_form_html -->
+
+{% if admin is defined and admin.permission_all %}
+<div class="modal" id="modal-archive-td-{{ training_day.id }}" aria-hidden="true" data-no-reset>
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-archive-td-title-{{ training_day.id }}" style="max-width: 640px;">
+            <header class="modal__header modal__header--danger">
+                <h2 class="modal__title" id="modal-archive-td-title-{{ training_day.id }}">Archive Training Day: {{ contest.name }}</h2>
+                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+            </header>
+            <form action="{{ url("training_program", training_program.id, "training_day", training_day.id, "archive") }}" method="POST">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                        <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">
+                            <svg class="icon" width="16" height="16" style="vertical-align: middle; margin-right: 4px;"><use href="#icon-alert-triangle"/></svg>
+                            Warning: Archiving will permanently delete the contest!
+                        </p>
+                        <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.9rem;">
+                            <li>Extract and save attendance data (participation status, location, delay time, delay reasons)</li>
+                            <li>Extract and save ranking data (scores, score history)</li>
+                            <li>Save the training day name and description</li>
+                            <li><strong>Delete the contest and all participations permanently</strong></li>
+                        </ul>
+                        <p style="margin: 8px 0 0 0; color: #991b1b; font-weight: 600; font-size: 0.85rem;">This action cannot be undone.</p>
+                    </div>
+
+                    {% if users_not_finished %}
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                        <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">Some students can still start or are currently in the training!</p>
+                        <p style="margin: 0 0 8px 0; color: #7f1d1d; font-size: 0.9rem;">The following {{ users_not_finished|length }} student(s) have not finished or missed the training yet:</p>
+                        <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.85rem;">
+                            {% for item in users_not_finished %}
+                            <li>
+                                <strong>{{ item.participation.user.first_name }} {{ item.participation.user.last_name }}</strong>
+                                ({{ item.participation.user.username }}) - {{ item.status_label }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <p style="margin: 8px 0 0 0; color: #7f1d1d; font-size: 0.85rem;">Archiving now will mark these students as "missed" and they will not be able to participate.</p>
+                    </div>
+                    {% endif %}
+
+                    <div style="margin-bottom: 16px;">
+                        <p style="margin-bottom: 8px; font-weight: 500;">Select Class Networks / IPs</p>
+                        <p style="margin-bottom: 12px; font-size: 0.85rem; color: var(--tp-text-secondary);">
+                            Select the IP networks or individual addresses that correspond to the classroom. Students who participated from these IPs
+                            will be marked as "class", others as "home". If a student used both class and non-class IPs,
+                            they will be marked as "both".
+                        </p>
+                        {% if network_hierarchy %}
+                        <div class="network-tree">
+                            {% for net in network_hierarchy %}
+                            {% set net_idx = loop.index0 %}
+                            <div class="network-group" data-network="{{ net_idx }}">
+                                <div class="network-header" role="button" tabindex="0"
+                                     onclick="archiveModal.toggleNetwork(event)"
+                                     onkeydown="archiveModal.handleNetworkKeydown(event)">
+                                    <span class="network-toggle-icon">&#9654;</span>
+                                    <label class="network-label">
+                                        <input type="checkbox" class="network-checkbox" data-network="{{ net_idx }}"
+                                               onchange="archiveModal.toggleNetworkIps(this)" />
+                                        <span class="network-name">{{ net.network }}</span>
+                                        <span class="network-count">{{ net.total_count }} {{ "student" if net.total_count == 1 else "students" }}</span>
+                                    </label>
+                                </div>
+                                <div class="network-ips" style="display: none;">
+                                    {% for entry in net.ips %}
+                                    <label class="ip-row">
+                                        <input type="checkbox" name="class_ips" value="{{ entry.ip }}" class="ip-checkbox" data-network="{{ net_idx }}" onchange="archiveModal.syncNetworkCheckbox(this)" />
+                                        <span class="ip-addr">{{ entry.ip }}</span>
+                                        <span class="ip-count">{{ entry.count }} {{ "student" if entry.count == 1 else "students" }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p style="font-size: 0.85rem; color: var(--tp-text-muted); font-style: italic;">No networks with multiple students found.</p>
+                        {% endif %}
+                    </div>
+
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" name="confirm_archive" required style="margin-top: 3px;" />
+                        I understand this action is irreversible and will permanently delete the contest
+                    </label>
+                </main>
+                <footer class="modal__footer">
+                    <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                    <button type="submit" class="tp-btn-danger">Archive Training Day</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+

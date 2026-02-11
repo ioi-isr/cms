@@ -43,6 +43,7 @@ from cms.db import (
 from cms.server.admin.handlers.utils import get_all_training_day_types, parse_tags
 from cmscommon.datetime import make_datetime, get_timezone, get_timezone_name
 
+from .archive import compute_archive_modal_data
 from .base import BaseHandler, require_permission, parse_datetime_with_timezone
 
 
@@ -173,6 +174,14 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
         tz = get_timezone(None, managing_contest)
         self.r_params["timezone"] = tz
         self.r_params["timezone_name"] = get_timezone_name(tz)
+
+        archive_modal_data = {}
+        for td in training_program.training_days:
+            if td.contest is not None:
+                archive_modal_data[td.id] = compute_archive_modal_data(
+                    self.sql_session, td, td.contest, self.timestamp
+                )
+        self.r_params["archive_modal_data"] = archive_modal_data
 
         self.render("training_program_training_days.html", **self.r_params)
 
