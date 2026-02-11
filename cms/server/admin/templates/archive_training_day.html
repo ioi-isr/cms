@@ -52,11 +52,12 @@
                         {% if network_hierarchy %}
                         <div class="network-tree">
                             {% for net in network_hierarchy %}
-                            <div class="network-group" data-network="{{ loop.index0 }}">
+                            {% set net_idx = loop.index0 %}
+                            <div class="network-group" data-network="{{ net_idx }}">
                                 <div class="network-header" onclick="toggleNetwork(this)">
                                     <span class="network-toggle-icon">&#9654;</span>
                                     <label class="network-label" onclick="event.stopPropagation();">
-                                        <input type="checkbox" class="network-checkbox" data-network="{{ loop.index0 }}" onchange="toggleNetworkIps(this)" />
+                                        <input type="checkbox" class="network-checkbox" data-network="{{ net_idx }}" onchange="toggleNetworkIps(this)" />
                                         <span class="network-name">{{ net.network }}</span>
                                         <span class="network-count">{{ net.total_count }} {{ "student" if net.total_count == 1 else "students" }}</span>
                                     </label>
@@ -64,7 +65,7 @@
                                 <div class="network-ips" style="display: none;">
                                     {% for entry in net.ips %}
                                     <label class="ip-row">
-                                        <input type="checkbox" name="class_ips" value="{{ entry.ip }}" class="ip-checkbox" data-network="{{ loop.parent.loop.index0 }}" onchange="syncNetworkCheckbox(this)" />
+                                        <input type="checkbox" name="class_ips" value="{{ entry.ip }}" class="ip-checkbox" data-network="{{ net_idx }}" onchange="syncNetworkCheckbox(this)" />
                                         <span class="ip-addr">{{ entry.ip }}</span>
                                         <span class="ip-count">{{ entry.count }} {{ "student" if entry.count == 1 else "students" }}</span>
                                     </label>
