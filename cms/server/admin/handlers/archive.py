@@ -203,9 +203,16 @@ class ArchiveTrainingDayHandler(BaseHandler):
         self.r_params["contest"] = contest
         self.r_params["network_hierarchy"] = network_hierarchy
         self.r_params["users_not_finished"] = users_not_finished
-        self.r_params["auto_open_modal"] = True
-        self.r_params["back_url"] = back_url
-        self.render("archive_training_day.html", **self.r_params)
+
+        if self.request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            self.render(
+                "fragments/modal_archive_training_day.html",
+                **self.r_params,
+            )
+        else:
+            self.r_params["auto_open_modal"] = True
+            self.r_params["back_url"] = back_url
+            self.render("archive_training_day.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str, training_day_id: str):

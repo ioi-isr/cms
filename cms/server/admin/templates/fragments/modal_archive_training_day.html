@@ -1,0 +1,331 @@
+<!-- Archive Training Day Modal Fragment -->
+<!-- Include this fragment in pages where the "Archive Training Day" modal is needed -->
+<!-- Required context: admin, training_program, training_day, contest, network_hierarchy, users_not_finished, url, xsrf_form_html -->
+
+{% if admin is defined and admin.permission_all %}
+<div class="modal" id="modal-archive-training-day" aria-hidden="true" data-no-reset>
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-archive-td-title" style="max-width: 640px;">
+            <header class="modal__header modal__header--danger">
+                <h2 class="modal__title" id="modal-archive-td-title">Archive Training Day: {{ contest.name }}</h2>
+                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+            </header>
+            <form id="archive-training-day-form"
+                  action="{{ url("training_program", training_program.id, "training_day", training_day.id, "archive") }}"
+                  method="POST">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                        <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">
+                            <svg class="icon" width="16" height="16" style="vertical-align: middle; margin-right: 4px;"><use href="#icon-alert-triangle"/></svg>
+                            Warning: Archiving will permanently delete the contest!
+                        </p>
+                        <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.9rem;">
+                            <li>Extract and save attendance data (participation status, location, delay time, delay reasons)</li>
+                            <li>Extract and save ranking data (scores, score history)</li>
+                            <li>Save the training day name and description</li>
+                            <li><strong>Delete the contest and all participations permanently</strong></li>
+                        </ul>
+                        <p style="margin: 8px 0 0 0; color: #991b1b; font-weight: 600; font-size: 0.85rem;">This action cannot be undone.</p>
+                    </div>
+
+                    {% if users_not_finished %}
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                        <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">Some students can still start or are currently in the training!</p>
+                        <p style="margin: 0 0 8px 0; color: #7f1d1d; font-size: 0.9rem;">The following {{ users_not_finished|length }} student(s) have not finished or missed the training yet:</p>
+                        <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.85rem;">
+                            {% for item in users_not_finished %}
+                            <li>
+                                <strong>{{ item.participation.user.first_name }} {{ item.participation.user.last_name }}</strong>
+                                ({{ item.participation.user.username }}) - {{ item.status_label }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <p style="margin: 8px 0 0 0; color: #7f1d1d; font-size: 0.85rem;">Archiving now will mark these students as "missed" and they will not be able to participate.</p>
+                    </div>
+                    {% endif %}
+
+                    <div style="margin-bottom: 16px;">
+                        <p style="margin-bottom: 8px; font-weight: 500;">Select Class Networks / IPs</p>
+                        <p style="margin-bottom: 12px; font-size: 0.85rem; color: var(--tp-text-secondary);">
+                            Select the IP networks or individual addresses that correspond to the classroom. Students who participated from these IPs
+                            will be marked as "class", others as "home". If a student used both class and non-class IPs,
+                            they will be marked as "both".
+                        </p>
+                        {% if network_hierarchy %}
+                        <div class="network-tree">
+                            {% for net in network_hierarchy %}
+                            {% set net_idx = loop.index0 %}
+                            <div class="network-group" data-network="{{ net_idx }}">
+                                <div class="network-header" role="button" tabindex="0"
+                                     onclick="archiveModal.toggleNetwork(event)"
+                                     onkeydown="archiveModal.handleNetworkKeydown(event)">
+                                    <span class="network-toggle-icon">&#9654;</span>
+                                    <span class="network-label">
+                                        <input type="checkbox" class="network-checkbox" data-network="{{ net_idx }}"
+                                               onchange="archiveModal.toggleNetworkIps(this)"
+                                               onclick="event.stopPropagation();" />
+                                        <span class="network-name">{{ net.network }}</span>
+                                        <span class="network-count">{{ net.total_count }} {{ "student" if net.total_count == 1 else "students" }}</span>
+                                    </span>
+                                </div>
+                                <div class="network-ips" style="display: none;">
+                                    {% for entry in net.ips %}
+                                    <label class="ip-row">
+                                        <input type="checkbox" name="class_ips" value="{{ entry.ip }}" class="ip-checkbox" data-network="{{ net_idx }}" onchange="archiveModal.syncNetworkCheckbox(this)" />
+                                        <span class="ip-addr">{{ entry.ip }}</span>
+                                        <span class="ip-count">{{ entry.count }} {{ "student" if entry.count == 1 else "students" }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p style="font-size: 0.85rem; color: var(--tp-text-muted); font-style: italic;">No networks with multiple students found.</p>
+                        {% endif %}
+                    </div>
+
+                    <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" name="confirm_archive" style="margin-top: 3px;" />
+                        I understand this action is irreversible and will permanently delete the contest
+                    </label>
+                </main>
+                <footer class="modal__footer">
+                    <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                    <button type="submit" class="tp-btn-danger"
+{% if not admin.permission_all %}
+                        disabled
+{% endif %}
+                    >Archive Training Day</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.network-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.network-group {
+    border: 1px solid var(--tp-border, #e5e7eb);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--tp-bg-white, #fff);
+    transition: box-shadow 0.15s ease;
+}
+
+.network-group:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.network-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    background: var(--tp-bg-light, #f8fafc);
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.network-header:hover {
+    background: var(--tp-bg-gray, #f3f4f6);
+}
+
+.network-header:focus-visible {
+    outline: 2px solid var(--tp-primary, #0F766E);
+    outline-offset: -2px;
+}
+
+.network-toggle-icon {
+    font-size: 0.7rem;
+    color: var(--tp-text-muted, #64748b);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+}
+
+.network-group.expanded .network-toggle-icon {
+    transform: rotate(90deg);
+}
+
+.network-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+}
+
+.network-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--tp-primary, #0F766E);
+}
+
+.network-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--tp-text-primary, #1e293b);
+    font-family: monospace;
+}
+
+.network-count {
+    font-size: 0.8rem;
+    color: var(--tp-text-muted, #64748b);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.network-ips {
+    border-top: 1px solid var(--tp-border, #e5e7eb);
+    padding: 4px 0;
+}
+
+.ip-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px 7px 46px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+    font-size: 0.85rem;
+}
+
+.ip-row:hover {
+    background: var(--tp-bg-hover, #f9fafb);
+}
+
+.ip-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--tp-primary, #0F766E);
+}
+
+.ip-addr {
+    color: var(--tp-text-secondary, #374151);
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.ip-count {
+    font-size: 0.78rem;
+    color: var(--tp-text-light, #9ca3af);
+    margin-left: auto;
+    white-space: nowrap;
+}
+</style>
+
+<script>
+window.archiveModal = window.archiveModal || {};
+
+archiveModal.toggleNetwork = function(event) {
+    if (event.target.closest('.network-label')) return;
+    var headerEl = event.currentTarget;
+    var group = headerEl.closest('.network-group');
+    var ipsContainer = group.querySelector('.network-ips');
+    var isExpanded = group.classList.contains('expanded');
+    if (isExpanded) {
+        group.classList.remove('expanded');
+        ipsContainer.style.display = 'none';
+    } else {
+        group.classList.add('expanded');
+        ipsContainer.style.display = '';
+    }
+};
+
+archiveModal.handleNetworkKeydown = function(event) {
+    if (event.target.closest('.network-label')) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+        archiveModal.toggleNetwork(event);
+        event.preventDefault();
+    }
+};
+
+archiveModal.toggleNetworkIps = function(networkCheckbox) {
+    var networkIdx = networkCheckbox.getAttribute('data-network');
+    var modal = document.getElementById('modal-archive-training-day');
+    var ipCheckboxes = modal.querySelectorAll('.ip-checkbox[data-network="' + networkIdx + '"]');
+    var checked = networkCheckbox.checked;
+    for (var i = 0; i < ipCheckboxes.length; i++) {
+        ipCheckboxes[i].checked = checked;
+    }
+    var group = networkCheckbox.closest('.network-group');
+    if (checked && !group.classList.contains('expanded')) {
+        group.classList.add('expanded');
+        group.querySelector('.network-ips').style.display = '';
+    }
+};
+
+archiveModal.syncNetworkCheckbox = function(ipCheckbox) {
+    var networkIdx = ipCheckbox.getAttribute('data-network');
+    var modal = document.getElementById('modal-archive-training-day');
+    var ipCheckboxes = modal.querySelectorAll('.ip-checkbox[data-network="' + networkIdx + '"]');
+    var networkCheckbox = modal.querySelector('.network-checkbox[data-network="' + networkIdx + '"]');
+    var allChecked = true;
+    var someChecked = false;
+    for (var i = 0; i < ipCheckboxes.length; i++) {
+        if (ipCheckboxes[i].checked) someChecked = true;
+        else allChecked = false;
+    }
+    networkCheckbox.checked = allChecked;
+    networkCheckbox.indeterminate = someChecked && !allChecked;
+};
+
+(function() {
+    var form = document.getElementById('archive-training-day-form');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        var confirmCheckbox = form.querySelector('input[name="confirm_archive"]');
+        if (!confirmCheckbox || !confirmCheckbox.checked) {
+            if (typeof AdminModals !== 'undefined') {
+                AdminModals.showError('Please confirm by checking the checkbox.');
+            }
+            return;
+        }
+
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Archiving...';
+        }
+
+        fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form)
+        }).then(function(response) {
+            if (response.ok) {
+                window.location.href = response.url;
+            } else {
+                return response.text().then(function(text) {
+                    throw new Error(text || 'Failed to archive training day');
+                });
+            }
+        }).catch(function(error) {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Archive Training Day';
+            }
+            if (typeof AdminModals !== 'undefined') {
+                AdminModals.showError(error.message);
+            }
+        });
+    });
+})();
+</script>
+{% endif %}
