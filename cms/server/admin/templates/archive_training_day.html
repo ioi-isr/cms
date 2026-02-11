@@ -21,6 +21,9 @@
                     window.location = backUrl;
                 }
             });
+        } else {
+            // Fallback: redirect if MicroModal didn't load
+            window.location = backUrl;
         }
     });
 })();

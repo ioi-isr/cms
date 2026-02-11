@@ -107,6 +107,8 @@ def compute_archive_modal_data(
     """
     ip_counts: dict[str, int] = {}
     for participation in contest.participations:
+        if participation.hidden:
+            continue
         ips = ArchiveTrainingDayHandler._parse_ip_addresses(
             participation.starting_ip_addresses
         )
