@@ -22,8 +22,10 @@ Analytics handlers (attendance, ranking) are in training_analytics.py.
 Excel export handlers are in excel.py.
 """
 
+import ipaddress
 import logging
 import typing
+from collections import defaultdict
 from datetime import timedelta
 from urllib.parse import urlparse
 
@@ -102,6 +104,51 @@ class ArchiveTrainingDayHandler(BaseHandler):
             return []
         return [ip.strip() for ip in ip_string.split(",") if ip.strip()]
 
+    @staticmethod
+    def _get_network_prefix(ip_str: str) -> str:
+        """Get the /24 network prefix for an IP address.
+
+        Returns the network string (e.g. "192.168.1.0/24") or the
+        original string under an "Other" key if parsing fails.
+        """
+        try:
+            addr = ipaddress.ip_address(ip_str)
+            network = ipaddress.ip_network(f"{addr}/24", strict=False)
+            return str(network)
+        except ValueError:
+            return "Other"
+
+    @staticmethod
+    def _build_network_hierarchy(
+        ip_counts: dict[str, int],
+    ) -> list[dict[str, object]]:
+        """Group IPs by /24 network and return networks with multiple entries.
+
+        Returns a sorted list of dicts, each with:
+          - "network": the network string (e.g. "192.168.1.0/24")
+          - "total_count": sum of student counts across all IPs in the network
+          - "ips": list of {"ip": str, "count": int} sorted by count desc
+        Only networks whose total student count > 1 are included.
+        """
+        networks: dict[str, list[tuple[str, int]]] = defaultdict(list)
+        for ip, count in ip_counts.items():
+            prefix = ArchiveTrainingDayHandler._get_network_prefix(ip)
+            networks[prefix].append((ip, count))
+
+        result: list[dict[str, object]] = []
+        for network, ip_list in networks.items():
+            total = sum(c for _, c in ip_list)
+            if total <= 1:
+                continue
+            ip_list.sort(key=lambda x: x[1], reverse=True)
+            result.append({
+                "network": network,
+                "total_count": total,
+                "ips": [{"ip": ip, "count": count} for ip, count in ip_list],
+            })
+        result.sort(key=lambda x: x["total_count"], reverse=True)
+        return result
+
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str, training_day_id: str):
         """Show the archive confirmation page with IP selection."""
@@ -122,7 +169,7 @@ class ArchiveTrainingDayHandler(BaseHandler):
             for ip in ips:
                 ip_counts[ip] = ip_counts.get(ip, 0) + 1
 
-        shared_ips = {ip: count for ip, count in ip_counts.items() if count > 1}
+        network_hierarchy = self._build_network_hierarchy(ip_counts)
 
         users_not_finished = []
         for _, participation, main_group in self._iterate_eligible_students(
@@ -154,7 +201,7 @@ class ArchiveTrainingDayHandler(BaseHandler):
         self.render_params_for_training_program(training_program)
         self.r_params["training_day"] = training_day
         self.r_params["contest"] = contest
-        self.r_params["shared_ips"] = shared_ips
+        self.r_params["network_hierarchy"] = network_hierarchy
         self.r_params["users_not_finished"] = users_not_finished
         self.r_params["auto_open_modal"] = True
         self.r_params["back_url"] = back_url
