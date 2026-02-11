@@ -163,14 +163,17 @@ class ArchiveTrainingDayHandler(BaseHandler):
 
     @staticmethod
     def _get_network_prefix(ip_str: str) -> str:
-        """Get the /24 network prefix for an IP address.
+        """Get the network prefix for an IP address.
 
-        Returns the network string (e.g. "192.168.1.0/24") or the
-        original string under an "Other" key if parsing fails.
+        Returns the network string (e.g. "192.168.1.0/24" for IPv4 or
+        "2001:db8::/64" for IPv6) or the original string under an "Other"
+        key if parsing fails.
         """
         try:
             addr = ipaddress.ip_address(ip_str)
-            network = ipaddress.ip_network(f"{addr}/24", strict=False)
+            # Use /24 for IPv4 (standard LAN subnet) and /64 for IPv6 (standard subnet)
+            prefix = "/24" if addr.version == 4 else "/64"
+            network = ipaddress.ip_network(f"{addr}{prefix}", strict=False)
             return str(network)
         except ValueError:
             return "Other"

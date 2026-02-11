@@ -59,13 +59,12 @@
                                      onclick="archiveModal.toggleNetwork(event)"
                                      onkeydown="archiveModal.handleNetworkKeydown(event)">
                                     <span class="network-toggle-icon">&#9654;</span>
-                                    <span class="network-label">
+                                    <label class="network-label">
                                         <input type="checkbox" class="network-checkbox" data-network="{{ net_idx }}"
-                                               onchange="archiveModal.toggleNetworkIps(this)"
-                                               onclick="event.stopPropagation();" />
+                                               onchange="archiveModal.toggleNetworkIps(this)" />
                                         <span class="network-name">{{ net.network }}</span>
                                         <span class="network-count">{{ net.total_count }} {{ "student" if net.total_count == 1 else "students" }}</span>
-                                    </span>
+                                    </label>
                                 </div>
                                 <div class="network-ips" style="display: none;">
                                     {% for entry in net.ips %}
@@ -230,7 +229,7 @@
 window.archiveModal = window.archiveModal || {};
 
 archiveModal.toggleNetwork = function(event) {
-    if (event.target.closest('.network-label')) return;
+    if (event.target.type === 'checkbox') return;
     var group = event.currentTarget.closest('.network-group');
     var ipsContainer = group.querySelector('.network-ips');
     var isExpanded = group.classList.contains('expanded');
@@ -244,7 +243,7 @@ archiveModal.toggleNetwork = function(event) {
 };
 
 archiveModal.handleNetworkKeydown = function(event) {
-    if (event.target.closest('.network-label')) return;
+    if (event.target.type === 'checkbox') return;
     if (event.key === 'Enter' || event.key === ' ') {
         archiveModal.toggleNetwork(event);
         event.preventDefault();
