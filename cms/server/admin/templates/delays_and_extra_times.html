@@ -40,7 +40,7 @@ CMS.AWSFormUtils.initTagify({
 {% endblock js_init %}
 
 {% block core %}
-
+<div class="content-constraint" style="max-width: 1500px;">
 <!-- Page Header -->
 <div class="tp-page-header">
   <div class="page-title">
@@ -171,19 +171,19 @@ CMS.AWSFormUtils.initTagify({
     <form action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" class="delays-inline-form" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to remove all delays and extra times for all participants?');">
       {{ xsrf_form_html|safe }}
       <button type="submit" class="delays-icon-btn" title="Remove All Delays &amp; Extra Times" aria-label="Remove All Delays & Extra Times">
-        <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
+        <svg class="icon" width="16" height="16"><use href="#icon-delay-extra"/></svg>
       </button>
     </form>
     <form action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" class="delays-inline-form" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to erase all starting times for all participants?');">
       {{ xsrf_form_html|safe }}
       <button type="submit" class="delays-icon-btn" title="Erase All Start Times" aria-label="Erase All Start Times">
-        <svg class="icon" width="16" height="16"><use href="#icon-clock"/></svg>
+        <svg class="icon" width="16" height="16"><use href="#icon-refresh"/></svg>
       </button>
     </form>
     <form action="{{ url("contest", contest.id, "delays_and_extra_times", "reset_ip_addresses") }}" method="POST" class="delays-inline-form" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to reset all IP addresses for all participants?');">
       {{ xsrf_form_html|safe }}
       <button type="submit" class="delays-icon-btn" title="Reset All IP Addresses" aria-label="Reset All IP Addresses">
-        <svg class="icon" width="16" height="16"><use href="#icon-refresh"/></svg>
+        <svg class="icon" width="16" height="16"><use href="#icon-ip-reset"/></svg>
       </button>
     </form>
   </div>
@@ -297,7 +297,7 @@ CMS.AWSFormUtils.initTagify({
         <form action="{{ url("contest", contest.id, "participation", participation.id, "remove_delay_and_extra_time") }}" method="POST" class="delays-inline-form">
           {{ xsrf_form_html|safe }}
           <button type="submit" class="btn-icon-only" title="{% if participation.delay_time.total_seconds() == 0 %}Remove extra time{% elif participation.extra_time.total_seconds() == 0 %}Remove delay{% else %}Remove delay and extra time{% endif %}" aria-label="{% if participation.delay_time.total_seconds() == 0 %}Remove extra time{% elif participation.extra_time.total_seconds() == 0 %}Remove delay{% else %}Remove delay and extra time{% endif %}">
-            <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
+            <svg class="icon" width="24" height="24"><use href="#icon-delay-extra"/></svg>
           </button>
         </form>
         {% endif %}
@@ -382,4 +382,5 @@ CMS.AWSFormUtils.initTagify({
 {% include 'fragments/modal_archive_training_day.html' %}
 {% endif %}
 
+</div>
 {% endblock core %}
