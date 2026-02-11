@@ -29,6 +29,7 @@ window.escapeHtml = AdminModals.escapeHtml;
 /**
  * Archive Training Day Modal functionality
  */
+window.archiveModal = window.archiveModal || {};
 var archiveModal = window.archiveModal;
 
 archiveModal.toggleNetwork = function (event) {
