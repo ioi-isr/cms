@@ -29,7 +29,7 @@ window.escapeHtml = AdminModals.escapeHtml;
 /**
  * Archive Training Day Modal functionality
  */
-window.archiveModal = window.archiveModal || {};
+var archiveModal = window.archiveModal;
 
 archiveModal.toggleNetwork = function (event) {
     if (event.target.type === 'checkbox') return;
@@ -61,6 +61,8 @@ archiveModal.toggleNetworkIps = function (networkCheckbox) {
     for (var i = 0; i < ipCheckboxes.length; i++) {
         ipCheckboxes[i].checked = checked;
     }
+    // Clear indeterminate state when explicitly setting checked state
+    networkCheckbox.indeterminate = false;
     var group = networkCheckbox.closest('.network-group');
     if (checked && !group.classList.contains('expanded')) {
         group.classList.add('expanded');

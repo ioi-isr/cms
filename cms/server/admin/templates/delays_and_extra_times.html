@@ -59,7 +59,9 @@ CMS.AWSFormUtils.initTagify({
   <div>
     <p><strong>All participants have finished or missed this training day.</strong> This training day is ready to be archived.</p>
   </div>
-  <button type="button" class="tp-btn-primary delays-archive-btn" onclick="MicroModal.show('modal-archive-td-{{ contest.training_day.id }}')">
+  <button type="button" class="tp-btn-primary delays-archive-btn"
+    {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
+    onclick="MicroModal.show('modal-archive-td-{{ contest.training_day.id }}')">
     <svg class="icon" width="16" height="16"><use href="#icon-archive-down"/></svg>
     Archive Training Day
   </button>
