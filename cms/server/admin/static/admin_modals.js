@@ -26,6 +26,66 @@ AdminModals.escapeHtml = function (text) {
 // Expose globally for convenience
 window.escapeHtml = AdminModals.escapeHtml;
 
+/**
+ * Archive Training Day Modal functionality
+ */
+window.archiveModal = window.archiveModal || {};
+var archiveModal = window.archiveModal;
+
+archiveModal.toggleNetwork = function (event) {
+    if (event.target.type === 'checkbox') return;
+    var group = event.currentTarget.closest('.network-group');
+    var ipsContainer = group.querySelector('.network-ips');
+    var isExpanded = group.classList.contains('expanded');
+    if (isExpanded) {
+        group.classList.remove('expanded');
+        ipsContainer.style.display = 'none';
+    } else {
+        group.classList.add('expanded');
+        ipsContainer.style.display = '';
+    }
+};
+
+archiveModal.handleNetworkKeydown = function (event) {
+    if (event.target.type === 'checkbox') return;
+    if (event.key === 'Enter' || event.key === ' ') {
+        archiveModal.toggleNetwork(event);
+        event.preventDefault();
+    }
+};
+
+archiveModal.toggleNetworkIps = function (networkCheckbox) {
+    var networkIdx = networkCheckbox.getAttribute('data-network');
+    var modal = networkCheckbox.closest('.modal');
+    var ipCheckboxes = modal.querySelectorAll('.ip-checkbox[data-network="' + networkIdx + '"]');
+    var checked = networkCheckbox.checked;
+    for (var i = 0; i < ipCheckboxes.length; i++) {
+        ipCheckboxes[i].checked = checked;
+    }
+    // Clear indeterminate state when explicitly setting checked state
+    networkCheckbox.indeterminate = false;
+    var group = networkCheckbox.closest('.network-group');
+    if (checked && !group.classList.contains('expanded')) {
+        group.classList.add('expanded');
+        group.querySelector('.network-ips').style.display = '';
+    }
+};
+
+archiveModal.syncNetworkCheckbox = function (ipCheckbox) {
+    var networkIdx = ipCheckbox.getAttribute('data-network');
+    var modal = ipCheckbox.closest('.modal');
+    var ipCheckboxes = modal.querySelectorAll('.ip-checkbox[data-network="' + networkIdx + '"]');
+    var networkCheckbox = modal.querySelector('.network-checkbox[data-network="' + networkIdx + '"]');
+    var allChecked = true;
+    var someChecked = false;
+    for (var i = 0; i < ipCheckboxes.length; i++) {
+        if (ipCheckboxes[i].checked) someChecked = true;
+        else allChecked = false;
+    }
+    networkCheckbox.checked = allChecked;
+    networkCheckbox.indeterminate = someChecked && !allChecked;
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof MicroModal === 'undefined') return;
 

@@ -22,8 +22,10 @@ Analytics handlers (attendance, ranking) are in training_analytics.py.
 Excel export handlers are in excel.py.
 """
 
+import ipaddress
 import logging
 import typing
+from collections import defaultdict
 from datetime import timedelta
 from urllib.parse import urlparse
 
@@ -85,11 +87,70 @@ __all__ = [
     "TrainingProgramCombinedRankingHistoryHandler",
     "TrainingProgramFilterMixin",
     "UpdateAttendanceHandler",
+    "compute_archive_modal_data",
     "get_attendance_view_data",
     "get_ranking_view_data",
     "FilterContext",
     "build_filename",
 ]
+
+
+def compute_archive_modal_data(
+    sql_session, training_day: "TrainingDay", contest: "Contest", timestamp
+) -> dict:
+    """Compute data needed for the archive training day modal.
+
+    Returns a dict with 'network_hierarchy' and 'users_not_finished' keys.
+    This is used by pages that include the modal_archive_training_day.html
+    fragment directly (training days page, delays page) as well as the
+    standalone archive page.
+    """
+    ip_counts: dict[str, int] = {}
+    for participation in contest.participations:
+        if participation.hidden:
+            continue
+        ips = ArchiveTrainingDayHandler._parse_ip_addresses(
+            participation.starting_ip_addresses
+        )
+        for ip in ips:
+            ip_counts[ip] = ip_counts.get(ip, 0) + 1
+
+    network_hierarchy = ArchiveTrainingDayHandler._build_network_hierarchy(
+        ip_counts
+    )
+
+    users_not_finished = []
+    training_program = training_day.training_program
+    user_to_student = build_user_to_student_map(training_program)
+
+    for participation in contest.participations:
+        if participation.hidden:
+            continue
+        student = user_to_student.get(participation.user_id)
+        if student is None:
+            continue
+        is_eligible, main_group, _ = check_training_day_eligibility(
+            sql_session, participation, training_day, student=student
+        )
+        if not is_eligible:
+            continue
+        main_group_start = main_group.start_time if main_group else None
+        main_group_end = main_group.end_time if main_group else None
+        status_class, status_label = compute_participation_status(
+            contest, participation, timestamp,
+            main_group_start, main_group_end
+        )
+        if status_class not in ('finished', 'missed'):
+            users_not_finished.append({
+                'participation': participation,
+                'status_class': status_class,
+                'status_label': status_label,
+            })
+
+    return {
+        'network_hierarchy': network_hierarchy,
+        'users_not_finished': users_not_finished,
+    }
 
 
 class ArchiveTrainingDayHandler(BaseHandler):
@@ -101,6 +162,54 @@ class ArchiveTrainingDayHandler(BaseHandler):
         if not ip_string:
             return []
         return [ip.strip() for ip in ip_string.split(",") if ip.strip()]
+
+    @staticmethod
+    def _get_network_prefix(ip_str: str) -> str:
+        """Get the network prefix for an IP address.
+
+        Returns the network string (e.g. "192.168.1.0/24" for IPv4 or
+        "2001:db8::/64" for IPv6) or the original string under an "Other"
+        key if parsing fails.
+        """
+        try:
+            addr = ipaddress.ip_address(ip_str)
+            # Use /24 for IPv4 (standard LAN subnet) and /64 for IPv6 (standard subnet)
+            prefix = "/24" if addr.version == 4 else "/64"
+            network = ipaddress.ip_network(f"{addr}{prefix}", strict=False)
+            return str(network)
+        except ValueError:
+            return "Other"
+
+    @staticmethod
+    def _build_network_hierarchy(
+        ip_counts: dict[str, int],
+    ) -> list[dict[str, object]]:
+        """Group IPs by /24 network and return networks with multiple entries.
+
+        Returns a sorted list of dicts, each with:
+          - "network": the network string (e.g. "192.168.1.0/24")
+          - "total_count": sum of student counts across all IPs in the network
+          - "ips": list of {"ip": str, "count": int} sorted by count desc
+        Only networks whose total student count > 1 are included.
+        """
+        networks: dict[str, list[tuple[str, int]]] = defaultdict(list)
+        for ip, count in ip_counts.items():
+            prefix = ArchiveTrainingDayHandler._get_network_prefix(ip)
+            networks[prefix].append((ip, count))
+
+        result: list[dict[str, object]] = []
+        for network, ip_list in networks.items():
+            total = sum(c for _, c in ip_list)
+            if total <= 1:
+                continue
+            ip_list.sort(key=lambda x: x[1], reverse=True)
+            result.append({
+                "network": network,
+                "total_count": total,
+                "ips": [{"ip": ip, "count": count} for ip, count in ip_list],
+            })
+        result.sort(key=lambda x: x["total_count"], reverse=True)
+        return result
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str, training_day_id: str):
@@ -116,30 +225,9 @@ class ArchiveTrainingDayHandler(BaseHandler):
 
         contest = training_day.contest
 
-        ip_counts: dict[str, int] = {}
-        for participation in contest.participations:
-            ips = self._parse_ip_addresses(participation.starting_ip_addresses)
-            for ip in ips:
-                ip_counts[ip] = ip_counts.get(ip, 0) + 1
-
-        shared_ips = {ip: count for ip, count in ip_counts.items() if count > 1}
-
-        users_not_finished = []
-        for _, participation, main_group in self._iterate_eligible_students(
-            training_day, contest
-        ):
-            main_group_start = main_group.start_time if main_group else None
-            main_group_end = main_group.end_time if main_group else None
-            status_class, status_label = compute_participation_status(
-                contest, participation, self.timestamp,
-                main_group_start, main_group_end
-            )
-            if status_class not in ('finished', 'missed'):
-                users_not_finished.append({
-                    'participation': participation,
-                    'status_class': status_class,
-                    'status_label': status_label,
-                })
+        archive_data = compute_archive_modal_data(
+            self.sql_session, training_day, contest, self.timestamp
+        )
 
         fallback_page = self.url(
             "training_program", training_program_id, "training_days"
@@ -154,8 +242,9 @@ class ArchiveTrainingDayHandler(BaseHandler):
         self.render_params_for_training_program(training_program)
         self.r_params["training_day"] = training_day
         self.r_params["contest"] = contest
-        self.r_params["shared_ips"] = shared_ips
-        self.r_params["users_not_finished"] = users_not_finished
+        self.r_params["network_hierarchy"] = archive_data["network_hierarchy"]
+        self.r_params["users_not_finished"] = archive_data["users_not_finished"]
+
         self.r_params["auto_open_modal"] = True
         self.r_params["back_url"] = back_url
         self.render("archive_training_day.html", **self.r_params)
