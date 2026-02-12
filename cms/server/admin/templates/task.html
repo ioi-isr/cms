@@ -1587,10 +1587,10 @@ document.addEventListener('click', function(e) {
                             </div>
                             <div class="ms-subtask-cards" id="ms-{{ dataset.id }}-cards" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
                                 {% for st in ds_subtasks if st.max_score > 0 %}
-                                <div class="ms-card-subtask" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" onclick="ModelSolutionModal.toggleCard(this);">
+                                <div class="ms-card-subtask selected" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" onclick="ModelSolutionModal.toggleCard(this);">
                                     <div style="font-weight: 600; font-size: 0.9rem;">{{ st.display_name }}</div>
                                     <div style="font-size: 0.8rem; color: var(--tp-text-muted);">{{ st.max_score }} points</div>
-                                    <svg class="ms-card-check icon" width="16" height="16"><use href="#icon-check"/></svg>
+                                    <span class="ms-card-check"><svg class="icon" width="14" height="14"><use href="#icon-check"/></svg></span>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -1622,21 +1622,35 @@ document.addEventListener('click', function(e) {
                                         <tr style="border-bottom: 1px solid var(--tp-border);">
                                             <td style="padding: 6px 8px; font-weight: 500;">{{ st.display_name }} <span style="color: var(--tp-text-muted); font-weight: 400;">({{ st.max_score }} pts)</span></td>
                                             <td style="text-align: center; padding: 6px 8px;">
-                                                <input type="number" min="0" max="100" step="1" value="0" class="ms-adv-pct" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" onchange="ModelSolutionModal.pctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                                <input type="number" min="0" max="100" step="1" value="100" class="ms-adv-pct" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.pctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
                                             </td>
                                             <td style="text-align: center; padding: 6px 8px;">
-                                                <span class="ms-adv-min-display" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}">0.00</span>
+                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-min-input" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.minMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
                                             </td>
                                             <td style="text-align: center; padding: 6px 8px;">
-                                                <span class="ms-adv-max-display" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}">0.00</span>
+                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-max-input" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.minMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
                                             </td>
                                         </tr>
                                         {% endfor %}
+                                        <tr style="border-top: 2px solid var(--tp-border);">
+                                            <td style="padding: 6px 8px; font-weight: 700;">Full Solution</td>
+                                            <td style="text-align: center; padding: 6px 8px;">
+                                                <input type="number" min="0" max="100" step="1" value="100" class="ms-adv-total-pct" id="ms-{{ dataset.id }}-adv-total-pct" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalPctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                            </td>
+                                            <td style="text-align: center; padding: 6px 8px; font-weight: 700;">
+                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-total-min-input" id="ms-{{ dataset.id }}-adv-total-min" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalMinMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px; font-weight: 700;" />
+                                            </td>
+                                            <td style="text-align: center; padding: 6px 8px; font-weight: 700;">
+                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-total-max-input" id="ms-{{ dataset.id }}-adv-total-max" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalMinMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px; font-weight: 700;" />
+                                            </td>
+                                        </tr>
                                         <tr>
-                                            <td style="padding: 6px 8px; font-weight: 700;">Total</td>
-                                            <td></td>
-                                            <td style="text-align: center; padding: 6px 8px; font-weight: 700;" id="ms-{{ dataset.id }}-adv-total-min">0.00</td>
-                                            <td style="text-align: center; padding: 6px 8px; font-weight: 700;" id="ms-{{ dataset.id }}-adv-total-max">0.00</td>
+                                            <td colspan="4" style="padding: 6px 8px;">
+                                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--tp-text-muted); cursor: pointer;">
+                                                    <input type="checkbox" class="ms-adv-calc-from-subtasks" id="ms-{{ dataset.id }}-calc-total" data-dataset="{{ dataset.id }}" checked onchange="ModelSolutionModal.calcFromSubtasksChanged(this);" />
+                                                    Calculate total from subtasks
+                                                </label>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>

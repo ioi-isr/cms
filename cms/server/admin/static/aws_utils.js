@@ -1260,10 +1260,10 @@ var ModelSolutionModal = (function() {
         if (descInput) descInput.value = '';
 
         var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
-        cards.forEach(function(c) { c.classList.remove('selected'); });
+        cards.forEach(function(c) { c.classList.add('selected'); });
 
         var advPcts = document.querySelectorAll('.ms-adv-pct[data-dataset="' + dsId + '"]');
-        advPcts.forEach(function(inp) { inp.value = 0; });
+        advPcts.forEach(function(inp) { inp.value = 100; });
 
         var advSection = document.getElementById('ms-' + dsId + '-advanced');
         if (advSection) advSection.style.display = 'none';
@@ -1272,6 +1272,9 @@ var ModelSolutionModal = (function() {
         if (arrow) arrow.style.transform = '';
         var label = document.getElementById('ms-' + dsId + '-adv-label');
         if (label) label.textContent = 'Show Advanced Scoring';
+
+        var calcCheckbox = document.getElementById('ms-' + dsId + '-calc-total');
+        if (calcCheckbox) calcCheckbox.checked = true;
 
         _recalcFromCards(dsId);
     }
@@ -1294,10 +1297,10 @@ var ModelSolutionModal = (function() {
             var pctInput = document.querySelector('.ms-adv-pct[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
             if (pctInput) pctInput.value = selected ? 100 : 0;
 
-            var minDisp = document.querySelector('.ms-adv-min-display[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
-            var maxDisp = document.querySelector('.ms-adv-max-display[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
-            if (minDisp) minDisp.textContent = val.toFixed(2);
-            if (maxDisp) maxDisp.textContent = val.toFixed(2);
+            var minInp = document.querySelector('.ms-adv-min-input[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            var maxInp = document.querySelector('.ms-adv-max-input[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            if (minInp) minInp.value = val.toFixed(2);
+            if (maxInp) maxInp.value = val.toFixed(2);
         });
 
         var totalEl = document.getElementById('ms-' + dsId + '-total');
@@ -1308,16 +1311,16 @@ var ModelSolutionModal = (function() {
         if (scoreMin) scoreMin.value = total;
         if (scoreMax) scoreMax.value = total;
 
-        _updateAdvTotals(dsId);
+        _syncAdvTotals(dsId);
     }
 
-    function _recalcFromAdvanced(dsId) {
+    function _recalcFromPct(dsId) {
         var pctInputs = document.querySelectorAll('.ms-adv-pct[data-dataset="' + dsId + '"]');
         var totalMin = 0, totalMax = 0;
         pctInputs.forEach(function(inp) {
             var idx = inp.dataset.idx;
             var max = parseFloat(inp.dataset.max);
-            var pct = Math.max(0, Math.min(100, parseInt(inp.value) || 0));
+            var pct = Math.max(0, Math.min(100, parseFloat(inp.value) || 0));
             var score = max * pct / 100;
 
             var minHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-min');
@@ -1327,21 +1330,16 @@ var ModelSolutionModal = (function() {
             totalMin += score;
             totalMax += score;
 
-            var minDisp = document.querySelector('.ms-adv-min-display[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
-            var maxDisp = document.querySelector('.ms-adv-max-display[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
-            if (minDisp) minDisp.textContent = score.toFixed(2);
-            if (maxDisp) maxDisp.textContent = score.toFixed(2);
+            var minInp = document.querySelector('.ms-adv-min-input[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            var maxInp = document.querySelector('.ms-adv-max-input[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            if (minInp) minInp.value = score.toFixed(2);
+            if (maxInp) maxInp.value = score.toFixed(2);
 
             var card = document.querySelector('#ms-' + dsId + '-cards .ms-card-subtask[data-idx="' + idx + '"]');
             if (card) {
                 if (pct > 0) card.classList.add('selected');
                 else card.classList.remove('selected');
             }
-        });
-
-        var selectedTotal = 0;
-        document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask.selected').forEach(function(c) {
-            selectedTotal += parseFloat(c.dataset.max);
         });
 
         var scoreMin = document.getElementById('ms-' + dsId + '-score-min');
@@ -1352,23 +1350,91 @@ var ModelSolutionModal = (function() {
         var totalEl = document.getElementById('ms-' + dsId + '-total');
         if (totalEl) totalEl.textContent = Math.round(totalMax);
 
-        _updateAdvTotals(dsId);
+        _syncAdvTotals(dsId);
     }
 
-    function _updateAdvTotals(dsId) {
-        var pctInputs = document.querySelectorAll('.ms-adv-pct[data-dataset="' + dsId + '"]');
+    function _recalcFromMinMax(dsId) {
+        var minInputs = document.querySelectorAll('.ms-adv-min-input[data-dataset="' + dsId + '"]');
+        var maxInputs = document.querySelectorAll('.ms-adv-max-input[data-dataset="' + dsId + '"]');
         var totalMin = 0, totalMax = 0;
-        pctInputs.forEach(function(inp) {
-            var max = parseFloat(inp.dataset.max);
-            var pct = Math.max(0, Math.min(100, parseInt(inp.value) || 0));
-            var score = max * pct / 100;
-            totalMin += score;
-            totalMax += score;
+
+        minInputs.forEach(function(inp) {
+            var idx = inp.dataset.idx;
+            var minVal = parseFloat(inp.value) || 0;
+            var minHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-min');
+            if (minHidden) minHidden.value = minVal;
+            totalMin += minVal;
         });
+
+        maxInputs.forEach(function(inp) {
+            var idx = inp.dataset.idx;
+            var maxVal = parseFloat(inp.value) || 0;
+            var maxHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-max');
+            if (maxHidden) maxHidden.value = maxVal;
+            totalMax += maxVal;
+
+            var card = document.querySelector('#ms-' + dsId + '-cards .ms-card-subtask[data-idx="' + idx + '"]');
+            if (card) {
+                if (maxVal > 0) card.classList.add('selected');
+                else card.classList.remove('selected');
+            }
+        });
+
+        var calcCheckbox = document.getElementById('ms-' + dsId + '-calc-total');
+        if (calcCheckbox && calcCheckbox.checked) {
+            var scoreMin = document.getElementById('ms-' + dsId + '-score-min');
+            var scoreMax = document.getElementById('ms-' + dsId + '-score-max');
+            if (scoreMin) scoreMin.value = totalMin;
+            if (scoreMax) scoreMax.value = totalMax;
+
+            var totalEl = document.getElementById('ms-' + dsId + '-total');
+            if (totalEl) totalEl.textContent = Math.round(totalMax);
+        }
+
+        _syncAdvTotals(dsId);
+    }
+
+    function _syncAdvTotals(dsId) {
+        var calcCheckbox = document.getElementById('ms-' + dsId + '-calc-total');
+        var calcFromSubtasks = calcCheckbox && calcCheckbox.checked;
+
+        if (calcFromSubtasks) {
+            var minInputs = document.querySelectorAll('.ms-adv-min-input[data-dataset="' + dsId + '"]');
+            var maxInputs = document.querySelectorAll('.ms-adv-max-input[data-dataset="' + dsId + '"]');
+            var totalMin = 0, totalMax = 0;
+            minInputs.forEach(function(inp) { totalMin += parseFloat(inp.value) || 0; });
+            maxInputs.forEach(function(inp) { totalMax += parseFloat(inp.value) || 0; });
+
+            var advTotalMin = document.getElementById('ms-' + dsId + '-adv-total-min');
+            var advTotalMax = document.getElementById('ms-' + dsId + '-adv-total-max');
+            if (advTotalMin) advTotalMin.value = totalMin.toFixed(2);
+            if (advTotalMax) advTotalMax.value = totalMax.toFixed(2);
+
+            var totalScore = parseFloat((advTotalMax || advTotalMin || {}).dataset.totalScore) || 0;
+            var advTotalPct = document.getElementById('ms-' + dsId + '-adv-total-pct');
+            if (advTotalPct && totalScore > 0) {
+                advTotalPct.value = Math.round((totalMax / totalScore) * 100);
+            }
+
+            var scoreMin = document.getElementById('ms-' + dsId + '-score-min');
+            var scoreMax = document.getElementById('ms-' + dsId + '-score-max');
+            if (scoreMin) scoreMin.value = totalMin;
+            if (scoreMax) scoreMax.value = totalMax;
+
+            var totalEl = document.getElementById('ms-' + dsId + '-total');
+            if (totalEl) totalEl.textContent = Math.round(totalMax);
+        }
+
+        _setTotalEditable(dsId, !calcFromSubtasks);
+    }
+
+    function _setTotalEditable(dsId, editable) {
+        var advTotalPct = document.getElementById('ms-' + dsId + '-adv-total-pct');
         var advTotalMin = document.getElementById('ms-' + dsId + '-adv-total-min');
         var advTotalMax = document.getElementById('ms-' + dsId + '-adv-total-max');
-        if (advTotalMin) advTotalMin.textContent = totalMin.toFixed(2);
-        if (advTotalMax) advTotalMax.textContent = totalMax.toFixed(2);
+        if (advTotalPct) advTotalPct.readOnly = !editable;
+        if (advTotalMin) advTotalMin.readOnly = !editable;
+        if (advTotalMax) advTotalMax.readOnly = !editable;
     }
 
     return {
@@ -1406,23 +1472,33 @@ var ModelSolutionModal = (function() {
                     var idx = c.dataset.idx;
                     var max = parseFloat(c.dataset.max);
                     var stData = subtaskScores[idx] || subtaskScores[String(idx)];
+                    c.classList.remove('selected');
+                    var pctInput = document.querySelector('.ms-adv-pct[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+                    if (pctInput) pctInput.value = 0;
                     if (stData) {
+                        var stMin = parseFloat(stData.min || 0);
                         var stMax = parseFloat(stData.max || 0);
                         if (stMax > 0) {
                             c.classList.add('selected');
                             var pct = Math.round((stMax / max) * 100);
                             if (pct !== 100 && pct !== 0) hasPartial = true;
-                            var pctInput = document.querySelector('.ms-adv-pct[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
                             if (pctInput) pctInput.value = pct;
                         }
+                        var minInp = document.querySelector('.ms-adv-min-input[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+                        var maxInp = document.querySelector('.ms-adv-max-input[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+                        if (minInp) minInp.value = stMin.toFixed(2);
+                        if (maxInp) maxInp.value = stMax.toFixed(2);
                     }
                 });
 
                 if (hasPartial) {
                     ModelSolutionModal.toggleAdvanced(dsId);
                 }
-                _recalcFromAdvanced(dsId);
+                _recalcFromPct(dsId);
             } else {
+                var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
+                cards.forEach(function(c) { c.classList.remove('selected'); });
+
                 var scoreMinEl = document.getElementById('ms-' + dsId + '-score-min');
                 var scoreMaxEl = document.getElementById('ms-' + dsId + '-score-max');
                 if (scoreMinEl) scoreMinEl.value = scoreMin || 0;
@@ -1468,7 +1544,63 @@ var ModelSolutionModal = (function() {
 
         pctChanged: function(input) {
             var dsId = input.dataset.dataset;
-            _recalcFromAdvanced(dsId);
+            _recalcFromPct(dsId);
+        },
+
+        minMaxChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var idx = input.dataset.idx;
+            var pctInput = document.querySelector('.ms-adv-pct[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            if (pctInput) pctInput.value = '';
+            _recalcFromMinMax(dsId);
+        },
+
+        totalPctChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var totalScore = parseFloat(input.dataset.totalScore) || 0;
+            var pct = Math.max(0, Math.min(100, parseFloat(input.value) || 0));
+            var score = totalScore * pct / 100;
+
+            var advTotalMin = document.getElementById('ms-' + dsId + '-adv-total-min');
+            var advTotalMax = document.getElementById('ms-' + dsId + '-adv-total-max');
+            if (advTotalMin) advTotalMin.value = score.toFixed(2);
+            if (advTotalMax) advTotalMax.value = score.toFixed(2);
+
+            var scoreMin = document.getElementById('ms-' + dsId + '-score-min');
+            var scoreMax = document.getElementById('ms-' + dsId + '-score-max');
+            if (scoreMin) scoreMin.value = score;
+            if (scoreMax) scoreMax.value = score;
+
+            var totalEl = document.getElementById('ms-' + dsId + '-total');
+            if (totalEl) totalEl.textContent = Math.round(score);
+        },
+
+        totalMinMaxChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var advTotalMin = document.getElementById('ms-' + dsId + '-adv-total-min');
+            var advTotalMax = document.getElementById('ms-' + dsId + '-adv-total-max');
+            var advTotalPct = document.getElementById('ms-' + dsId + '-adv-total-pct');
+            if (advTotalPct) advTotalPct.value = '';
+
+            var totalMin = parseFloat(advTotalMin ? advTotalMin.value : 0) || 0;
+            var totalMax = parseFloat(advTotalMax ? advTotalMax.value : 0) || 0;
+
+            var scoreMin = document.getElementById('ms-' + dsId + '-score-min');
+            var scoreMax = document.getElementById('ms-' + dsId + '-score-max');
+            if (scoreMin) scoreMin.value = totalMin;
+            if (scoreMax) scoreMax.value = totalMax;
+
+            var totalEl = document.getElementById('ms-' + dsId + '-total');
+            if (totalEl) totalEl.textContent = Math.round(totalMax);
+        },
+
+        calcFromSubtasksChanged: function(checkbox) {
+            var dsId = checkbox.dataset.dataset;
+            if (checkbox.checked) {
+                _syncAdvTotals(dsId);
+            } else {
+                _setTotalEditable(dsId, true);
+            }
         }
     };
 })();

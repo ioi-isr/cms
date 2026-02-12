@@ -2314,12 +2314,18 @@ svg.icon {
 
 .ms-card-check {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 6px;
+    right: 6px;
     display: none;
-    color: #0d9488;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ecfdf5;
+    color: #16a34a;
+    align-items: center;
+    justify-content: center;
 }
 
 .ms-card-subtask.selected .ms-card-check {
-    display: block;
+    display: inline-flex;
 }
