@@ -318,41 +318,52 @@ document.addEventListener('click', function(e) {
                     </div>
 
                     <div class="tp-form-group">
-                        <label class="tp-form-label">
-                            Statements
-                            <span class="tp-form-info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants.">?</span>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <label class="tp-form-label" style="margin-bottom: 0;">
+                                Statements
+                                <span class="tp-form-info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants.">?</span>
+                            </label>
                             {% if admin.permission_all %}
-                            <a href="{{ url("task", task.id, "statements", "add") }}" style="font-weight: 400; font-size: 0.85rem; margin-left: 8px;">+ Add</a>
+                            <a href="{{ url("task", task.id, "statements", "add") }}" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem;">+ Add Statement</a>
                             {% endif %}
-                        </label>
+                        </div>
                         {% if task.statements|length == 0 %}
                         <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No statements uploaded yet</div>
                         {% else %}
                         <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
                             <table class="tp-tasks-table" style="margin: 0;">
+                                <thead>
+                                    <tr>
+                                        <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em;">Language / Source</th>
+                                        <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em; text-align: center;">Primary</th>
+                                        <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em; text-align: center;">Actions</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
                                 {% for statement in task.statements.values() %}
                                 <tr>
                                     <td>
-                                        <div class="list-cell-wrapper">
-                                            <a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}">{{ statement.language }}</a>
+                                        <div class="list-cell-wrapper" style="gap: 10px;">
+                                            <span style="display: inline-block; padding: 2px 8px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 4px; font-size: 0.8rem; font-weight: 600; color: var(--tp-text-secondary);">{{ statement.language }}</span>
+                                            <a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                                {{ task.name }}_{{ statement.language }}.pdf
+                                            </a>
                                             {% if statement.source_digest %}
-                                            <a href="{{ url("file", statement.source_digest, task.name + "_" + statement.language + (statement.source_extension or "_source")) }}" style="margin-left: 8px; font-size: 0.85rem; color: var(--tp-text-muted);">source</a>
+                                            <a href="{{ url("file", statement.source_digest, task.name + "_" + statement.language + (statement.source_extension or "_source")) }}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--tp-text-muted);">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                                source
+                                            </a>
                                             {% endif %}
                                         </div>
                                     </td>
-                                    <td>
-                                        <div class="list-cell-wrapper">
-                                            <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
-                                                <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} />
-                                                Primary
-                                            </label>
-                                        </div>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--tp-primary);" />
                                     </td>
-                                    <td>
-                                        <div class="list-cell-wrapper">
-                                            <a onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" style="color: var(--tp-danger); font-size: 0.85rem; cursor: pointer;">Delete</a>
-                                        </div>
+                                    <td style="text-align: center;">
+                                        <a onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" style="color: var(--tp-text-muted); cursor: pointer; font-size: 1.1rem;" title="Delete">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </a>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -363,21 +374,24 @@ document.addEventListener('click', function(e) {
                     </div>
 
                     <div class="tp-form-group">
-                        <label class="tp-form-label">
-                            Attachments
-                            <span class="tp-form-info" title="Attachments for this task. Contestants can view and download attachments from the task page.">?</span>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <label class="tp-form-label" style="margin-bottom: 0;">
+                                Attachments
+                                <span class="tp-form-info" title="Attachments for this task. Contestants can view and download attachments from the task page.">?</span>
+                            </label>
                             {% if admin.permission_all %}
-                            <a href="{{ url("task", task.id, "attachments", "add") }}" style="font-weight: 400; font-size: 0.85rem; margin-left: 8px;">+ Add</a>
+                            <a href="{{ url("task", task.id, "attachments", "add") }}" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem;">+ Add File</a>
                             {% endif %}
-                        </label>
+                        </div>
                         {% if task.attachments|length == 0 %}
                         <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No attachments.</div>
                         {% else %}
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
                             {% for attachment in task.attachments.values() %}
-                            <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 6px; font-size: 0.9rem;">
+                            <div style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 20px; font-size: 0.9rem;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tp-primary)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 <a href="{{ url("file", attachment.digest, attachment.filename) }}">{{ attachment.filename }}</a>
-                                <a onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" style="color: var(--tp-danger); cursor: pointer; font-size: 0.8rem;">x</a>
+                                <a onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" style="color: var(--tp-text-muted); cursor: pointer; font-size: 0.85rem;">&times;</a>
                             </div>
                             {% endfor %}
                         </div>
@@ -393,7 +407,7 @@ document.addEventListener('click', function(e) {
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <input type="text" name="submission_format" value="{{ task.submission_format|join(", ") }}" class="tp-form-input"/>
                                 {% if task.active_dataset.task_type == "OutputOnly" %}
-                                <a onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="tp-btn-secondary" style="white-space: nowrap; padding: 6px 12px;">Default</a>
+                                <a onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="tp-btn-secondary" style="white-space: nowrap; padding: 6px 12px;">Set Default</a>
                                 {% endif %}
                             </div>
                         </div>
@@ -415,13 +429,15 @@ document.addEventListener('click', function(e) {
                             Allowed programming languages
                             <span class="tp-form-info" title="Programming languages that contestants can use to solve this task. If none are selected, all contest languages are allowed.">?</span>
                         </legend>
-                        <div class="tp-language-grid">
-                            {% for lang in LANGUAGES %}
-                            <label class="tp-checkbox-card">
-                                <input type="checkbox" name="allowed_languages" value="{{ lang.name }}" {{ "checked" if task.allowed_languages is not none and lang.name in task.allowed_languages else "" }}>
-                                <span>{{ lang.name }}</span>
-                            </label>
-                            {% endfor %}
+                        <div style="padding: 16px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 10px;">
+                            <div class="tp-language-grid">
+                                {% for lang in LANGUAGES %}
+                                <label class="tp-checkbox-card">
+                                    <input type="checkbox" name="allowed_languages" value="{{ lang.name }}" {{ "checked" if task.allowed_languages is not none and lang.name in task.allowed_languages else "" }}>
+                                    <span>{{ lang.name }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
                         </div>
                     </fieldset>
                 </div>
@@ -784,13 +800,15 @@ document.addEventListener('click', function(e) {
                             {% endfor %}
 
                             <div class="tp-form-group" style="margin-top: 16px;">
-                                <label class="tp-form-label">
-                                    Managers
-                                    <span class="tp-form-info" title="Managers are sources, headers, libraries or binaries used during evaluation.">?</span>
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                    <label class="tp-form-label" style="margin-bottom: 0;">
+                                        Managers
+                                        <span class="tp-form-info" title="Managers are sources, headers, libraries or binaries used during evaluation.">?</span>
+                                    </label>
                                     {% if admin.permission_all %}
-                                    <a href="{{ url("dataset", dataset.id, "managers", "add") }}" style="font-weight: 400; font-size: 0.85rem; margin-left: 8px;">+ Add</a>
+                                    <a href="{{ url("dataset", dataset.id, "managers", "add") }}" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem;">+ Add Manager</a>
                                     {% endif %}
-                                </label>
+                                </div>
                                 {% if dataset.managers|length == 0 %}
                                 <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No managers.</div>
                                 {% else %}
@@ -799,13 +817,14 @@ document.addEventListener('click', function(e) {
                                     {% if m.filename.startswith('checker.') %}{% set flags.checker_src = True %}{% endif %}
                                     {% if m.filename.startswith('manager.') %}{% set flags.manager_src = True %}{% endif %}
                                 {% endfor %}
-                                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
                                     {% for manager in dataset.managers.values() %}
                                     {% if (manager.filename == 'checker' and flags.checker_src) or (manager.filename == 'manager' and flags.manager_src) %}
                                     {% else %}
-                                    <div class="manager" style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 6px; font-size: 0.9rem;">
+                                    <div class="manager" style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 20px; font-size: 0.9rem;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tp-primary)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                         <a href="{{ url("file", manager.digest, manager.filename) }}">{{ manager.filename }}</a>
-                                        <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" style="color: var(--tp-danger); cursor: pointer; font-size: 0.8rem;">x</a>
+                                        <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" style="color: var(--tp-text-muted); cursor: pointer; font-size: 0.85rem;">&times;</a>
                                     </div>
                                     {% endif %}
                                     {% endfor %}
