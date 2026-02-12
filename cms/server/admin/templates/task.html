@@ -271,20 +271,25 @@ document.addEventListener('click', function(e) {
     <form enctype="multipart/form-data" action="{{ url("task", task.id) }}" method="POST" name="edit_task" style="display:inline;">
         {{ xsrf_form_html|safe }}
 
-        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 24px; flex-wrap: wrap;">
-            <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>Update</button>
-            <input type="reset" class="tp-btn-secondary" value="Reset">
-            <a href="{{ url("task", task.id, "export") }}" class="tp-btn-secondary" style="margin-left: auto;">
-                <svg class="icon" width="16" height="16" style="vertical-align: text-bottom;"><use href="#icon-download"/></svg>
-                Export
-            </a>
+        <!-- Actions Bar (Floating Card) -->
+        <div class="tp-form-actions tp-form-actions-float" style="margin-bottom: 24px; margin-top: 0; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 12px; padding: 16px 24px;">
+            <div class="tp-form-submit-group">
+                 <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>Update Task</button>
+                 <input type="reset" class="tp-btn-secondary" value="Reset Changes">
+            </div>
+            <div class="tp-form-secondary-actions">
+                 <a href="{{ url("task", task.id, "export") }}" class="tp-btn-secondary">
+                     <svg class="icon" width="16" height="16" style="vertical-align: text-bottom;"><use href="#icon-download"/></svg>
+                     Export Task
+                 </a>
+            </div>
         </div>
 
         <!-- Main Tabs -->
         <div class="task-page-tabs">
             <button type="button" class="task-page-tab active" data-tab="task-info">Task Information</button>
-            <button type="button" class="task-page-tab" data-tab="tokens">Tokens</button>
             <button type="button" class="task-page-tab" data-tab="limits-scoring">Limits & Scoring</button>
+            <button type="button" class="task-page-tab" data-tab="tokens">Tokens</button>
         </div>
 
         <!-- TAB: Task Information -->
@@ -312,11 +317,10 @@ document.addEventListener('click', function(e) {
                             </label>
                             <input type="text" name="title" value="{{ task.title }}" class="tp-form-input">
                         </div>
-                    </div>
-
-                    <div class="tp-form-group">
-                        <label class="tp-form-label">Position</label>
-                        <div style="padding: 10px 0; color: var(--tp-text-secondary);">{{ task.num }}</div>
+                      <div class="tp-form-group">
+                          <label class="tp-form-label">Position</label>
+                          <div style="padding: 10px 0; color: var(--tp-text-secondary);">{{ task.num }}</div>
+                      </div>
                     </div>
 
                     <div class="tp-form-group">
@@ -351,13 +355,13 @@ document.addEventListener('click', function(e) {
                                         <div class="list-cell-wrapper" style="gap: 10px;">
                                             <span style="display: inline-block; padding: 2px 8px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 4px; font-size: 0.8rem; font-weight: 600; color: var(--tp-text-secondary);">{{ statement.language }}</span>
                                             <a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}" style="display: inline-flex; align-items: center; gap: 4px;">
-                                                <svg class="icon" width="14" height="14"><use href="#icon-file"/></svg>
+                                                <svg class="icon" width="14" height="14"><use href="#icon-pdf-statement"/></svg>
                                                 {{ task.name }}_{{ statement.language }}.pdf
                                             </a>
                                             {% if statement.source_digest %}
                                             <a href="{{ url("file", statement.source_digest, task.name + "_" + statement.language + (statement.source_extension or "_source")) }}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--tp-text-muted);">
-                                                <svg class="icon" width="12" height="12"><use href="#icon-file"/></svg>
-                                                source
+                                                <svg class="icon" width="12" height="12"><use href="#icon-doc-statement"/></svg>
+                                                {{ task.name }}_{{ statement.language }}{{ statement.source_extension or "_source" }}
                                             </a>
                                             {% endif %}
                                         </div>
@@ -925,10 +929,10 @@ document.addEventListener('click', function(e) {
                         <table class="tp-tasks-table validator-table" style="margin: 0;">
                             <thead>
                                 <tr>
-                                    <th style="width: 100px;">Subtask</th>
-                                    <th style="width: 240px;">Validator</th>
+                                    <th style="width: 10%;">Subtask</th>
+                                    <th style="width: 10%;">Validator</th>
                                     <th>Test Results</th>
-                                    <th style="width: 140px; text-align: right;">Additional Tests Passed</th>
+                                    <th style="width: 20%;">Additional Tests Passed</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -993,7 +997,9 @@ document.addEventListener('click', function(e) {
                                             No validator
                                           </span>
                                           {% if admin.permission_all %}
-                                          <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" style="color: var(--tp-primary); font-weight: 600; font-size: 0.85rem; margin-left: 4px;">Add</a>
+                                          <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" style="color: var(--tp-primary); display: inline-flex; padding: 2px; margin-left: 4px;">
+                                            <svg class="icon" width="14" height="14"><use href="#icon-file-plus"/></svg>
+                                          </a>
                                           {% endif %}
                                         {% endif %}
                                         </div>

@@ -405,19 +405,15 @@ class AddManagerHandler(BaseHandler):
     def get(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
-        self.contest = task.contest
 
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("add_manager.html", **self.r_params)
+        # Redirect to task page since we now use modal for adding managers
+        self.redirect(self.url("task", task.id))
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "managers", "add")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         # Check if any files were uploaded
         if "manager" not in self.request.files:
