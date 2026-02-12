@@ -1098,7 +1098,7 @@ document.addEventListener('click', function(e) {
                             </div>
                             {% endif %}
                             {% if admin.permission_all %}
-                            <a href="{{ url("dataset", dataset.id, "model_solutions", "add") }}" class="tp-btn-primary" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+                            <a href="{{ url("dataset", dataset.id, "model_solutions", "add") }}" class="tp-btn-secondary" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
                                 <svg class="icon" width="14" height="14"><use href="#icon-plus"/></svg> Add
                             </a>
                             {% endif %}
@@ -1116,13 +1116,14 @@ document.addEventListener('click', function(e) {
                                     <th style="text-align: right;">Actual</th>
                                     <th style="width: 60px;">Valid</th>
                                     <th>Status</th>
-                                    <th style="text-align: right;">Actions</th>
+                                    <th>Reevaluate</th>
+                                    <th>Ops</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% if dataset.model_solution_metas|length == 0 %}
                                 <tr>
-                                    <td colspan="8"><div class="list-cell-wrapper center-content" style="color: var(--tp-text-muted); padding: 24px 0;">No model solutions yet</div></td>
+                                    <td colspan="9"><div class="list-cell-wrapper center-content" style="color: var(--tp-text-muted); padding: 24px 0;">No model solutions yet</div></td>
                                 </tr>
                                 {% else %}
                                 {% for meta in dataset.model_solution_metas %}
@@ -1139,9 +1140,9 @@ document.addEventListener('click', function(e) {
                                         </div>
                                     </td>
                                     <td><div class="list-cell-wrapper center-content" style="color: var(--tp-text-muted);">{{ submission.language if submission.language else "N/A" }}</div></td>
-                                    <td><div class="list-cell-wrapper" style="text-align: right; font-family: monospace; color: var(--tp-text-secondary);">{{ "%.2f"|format(meta.expected_score_min) }} - {{ "%.2f"|format(meta.expected_score_max) }}</div></td>
+                                    <td><div class="list-cell-wrapper" style="text-align: right; font-family: monospace; font-size: 0.95rem; color: var(--tp-text-secondary);">{{ "%.2f"|format(meta.expected_score_min) }} - {{ "%.2f"|format(meta.expected_score_max) }}</div></td>
                                     <td>
-                                        <div class="list-cell-wrapper" style="text-align: right; font-family: monospace; font-weight: 700;">
+                                        <div class="list-cell-wrapper" style="text-align: right; font-family: monospace; font-size: 0.95rem; font-weight: 700;">
                                         {% if msr and msr.score is not none %}
                                         {{ "%.2f"|format(msr.score) }}
                                         {% else %}
@@ -1181,14 +1182,16 @@ document.addEventListener('click', function(e) {
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="list-cell-wrapper" style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
-                                        <div class="btn-group">
+                                        <div class="list-cell-wrapper center-content" style="gap: 4px;">
                                         {{ macro_reevaluation_buttons.reevaluation_buttons(
                                              admin.permission_all,
                                              url("task", task.id),
                                              submission_id=submission.id,
                                              dataset_id=dataset.id) }}
                                         </div>
+                                    </td>
+                                    <td>
+                                        <div class="list-cell-wrapper center-content" style="gap: 4px;">
                                         <button type="button" class="btn-icon-only" onclick="window.location.href='{{ url("model_solution", meta.id, "edit") }}';" title="Edit">
                                             <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg>
                                         </button>
