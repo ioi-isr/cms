@@ -25,7 +25,7 @@ Excel export handlers are in excel.py.
 import ipaddress
 import logging
 import typing
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from datetime import timedelta
 from urllib.parse import urlparse
 
@@ -87,6 +87,8 @@ __all__ = [
     "TrainingProgramCombinedRankingHistoryHandler",
     "TrainingProgramFilterMixin",
     "UpdateAttendanceHandler",
+    "StudentArchiveData",
+    "perform_training_day_archiving",
     "collect_score_history",
     "collect_task_scores_and_submissions",
     "compute_archive_modal_data",
@@ -97,6 +99,96 @@ __all__ = [
     "FilterContext",
     "build_filename",
 ]
+
+
+# Data structure to hold all necessary info for archiving a single student
+StudentArchiveData = namedtuple(
+    "StudentArchiveData",
+    [
+        "student",
+        "attendance_kwargs",  # dict for ArchivedAttendance constructor
+        "visible_tasks",  # list of tasks visible to this student
+        "score_participation",  # Participation to use for score cache
+        "submission_participation",  # Participation to use for submission queries
+        "history_participation",  # Participation to use for history queries
+        "starting_time",  # Timestamp or None
+        "user_id",
+        "user_display",
+    ],
+)
+
+
+def perform_training_day_archiving(
+    sql_session,
+    training_day: TrainingDay,
+    all_tasks: list[Task],
+    student_datas: list[StudentArchiveData],
+) -> None:
+    """Execute the core archiving process for tasks and students.
+
+    This function is shared between the standard Archive handler and the
+    Import Contest handler. It creates the archived_tasks_data blob on the
+    TrainingDay and creates ArchivedAttendance and ArchivedStudentRanking
+    records for all provided students.
+    """
+    # 1. Archive Tasks Metadata
+    training_day.archived_tasks_data = {
+        str(task.id): build_task_data_for_archive(task) for task in all_tasks
+    }
+
+    # 2. Archive Students
+    td_task_ids = {t.id for t in all_tasks}
+
+    for data in student_datas:
+        # Create Attendance
+        archived_attendance = ArchivedAttendance(
+            training_day_id=training_day.id,
+            student_id=data.student.id,
+            **data.attendance_kwargs,
+        )
+        sql_session.add(archived_attendance)
+
+        # Ensure Student Tasks
+        ensure_student_tasks(
+            sql_session, data.student, data.visible_tasks, training_day
+        )
+
+        # Collect Scores and Submissions
+        student_missed = data.starting_time is None
+
+        task_scores, submissions = collect_task_scores_and_submissions(
+            sql_session,
+            training_day,
+            data.score_participation,
+            data.submission_participation,
+            data.visible_tasks,
+            student_missed,
+            data.starting_time,
+            data.user_display,
+        )
+
+        # Collect History
+        history = collect_score_history(
+            sql_session,
+            data.history_participation,
+            td_task_ids,
+            student_missed,
+            data.starting_time,
+            data.user_id,
+            data.user_display,
+            training_day.name,
+        )
+
+        # Create Ranking
+        create_archived_ranking(
+            sql_session,
+            training_day,
+            data.student,
+            list(data.student.student_tags or []),
+            task_scores,
+            submissions,
+            history,
+        )
 
 
 def compute_archive_modal_data(
@@ -192,8 +284,6 @@ def collect_task_scores_and_submissions(
 ) -> tuple[dict[str, float], dict[str, list[dict]]]:
     """Collect scores and submissions for visible tasks.
 
-    This is a shared function used by both archiving and importing.
-
     sql_session: the database session.
     training_day: the training day.
     score_participation: participation used for score cache lookups.
@@ -270,8 +360,6 @@ def collect_score_history(
     training_day_name: str = "",
 ) -> list[list]:
     """Collect score history for the student.
-
-    This is a shared function used by both archiving and importing.
 
     sql_session: the database session.
     history_participation: participation used for history queries.
@@ -362,7 +450,6 @@ class ArchiveTrainingDayHandler(BaseHandler):
         """
         try:
             addr = ipaddress.ip_address(ip_str)
-            # Use /24 for IPv4 (standard LAN subnet) and /64 for IPv6 (standard subnet)
             prefix = "/24" if addr.version == 4 else "/64"
             network = ipaddress.ip_network(f"{addr}{prefix}", strict=False)
             return str(network)
@@ -459,27 +546,26 @@ class ArchiveTrainingDayHandler(BaseHandler):
             return
 
         contest = training_day.contest
-
-        # Get selected class IPs from form
         class_ips = set(self.get_arguments("class_ips"))
 
         try:
-            # Save name, description, and start_time from contest before archiving
+            # 1. Update Training Day Metadata
             training_day.name = contest.name
             training_day.description = contest.description
             training_day.start_time = contest.start
-
-            # Calculate and store the training day duration
-            # Use max duration among main groups (if any), or training day duration
             training_day.duration = self._calculate_training_day_duration(
                 training_day, contest
             )
 
-            # Archive attendance data for each student
-            self._archive_attendance_data(training_day, contest, class_ips)
+            # 2. Build Student Archive Data
+            student_datas = self._build_student_archive_data(
+                training_day, contest, class_ips
+            )
 
-            # Archive ranking data for each student
-            self._archive_ranking_data(training_day, contest)
+            # 3. Perform Archiving (Shared Logic)
+            perform_training_day_archiving(
+                self.sql_session, training_day, list(training_day.tasks), student_datas
+            )
 
             # Delete the contest (this will cascade delete participations)
             self.sql_session.delete(contest)
@@ -573,14 +659,30 @@ class ArchiveTrainingDayHandler(BaseHandler):
 
             yield student, participation, main_group
 
-    def _archive_attendance_data(
+    def _get_visible_tasks(
+        self,
+        training_day: TrainingDay,
+        participation: Participation,
+        training_day_tasks: list[Task],
+    ) -> list[Task]:
+        """Determine which tasks should be visible to this student."""
+        visible_tasks: list[Task] = []
+        for task in training_day_tasks:
+            if can_access_task(self.sql_session, task, participation, training_day):
+                visible_tasks.append(task)
+        return visible_tasks
+
+    def _build_student_archive_data(
         self, training_day: TrainingDay, contest: Contest, class_ips: set[str]
-    ) -> None:
-        """Extract and store attendance data for all students."""
+    ) -> list[StudentArchiveData]:
+        """Prepare all data required to archive the eligible students."""
+        student_datas = []
+        training_day_tasks = list(training_day.tasks)
+
         for student, participation, _ in self._iterate_eligible_students(
             training_day, contest
         ):
-            # Determine status
+            # 1. Determine Attendance Location/Status
             if participation.starting_time is None:
                 status = "missed"
                 location = None
@@ -599,183 +701,53 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     elif has_class_ip:
                         location = "class"
 
-            # Get delay time
-            delay_time = participation.delay_time
-
-            # Concatenate delay reasons from all delay requests
+            # 2. Get Delays
+            delay_reasons = None
             delay_requests = (
                 self.sql_session.query(DelayRequest)
                 .filter(DelayRequest.participation_id == participation.id)
                 .order_by(DelayRequest.request_timestamp)
                 .all()
             )
-            delay_reasons = None
             if delay_requests:
                 reasons = [dr.reason for dr in delay_requests if dr.reason]
                 if reasons:
                     delay_reasons = "; ".join(reasons)
 
-            # Create archived attendance record
-            archived_attendance = ArchivedAttendance(
-                status=status,
-                location=location,
-                delay_time=delay_time,
-                delay_reasons=delay_reasons,
-            )
-            archived_attendance.training_day_id = training_day.id
-            archived_attendance.student_id = student.id
-            self.sql_session.add(archived_attendance)
+            attendance_kwargs = {
+                "status": status,
+                "location": location,
+                "delay_time": participation.delay_time,
+                "delay_reasons": delay_reasons,
+            }
 
-    def _get_visible_tasks(
-        self,
-        training_day: TrainingDay,
-        participation: Participation,
-        training_day_tasks: list[Task],
-    ) -> list[Task]:
-        """Determine which tasks should be visible to this student."""
-        visible_tasks: list[Task] = []
-        for task in training_day_tasks:
-            if can_access_task(self.sql_session, task, participation, training_day):
-                visible_tasks.append(task)
-        return visible_tasks
-
-    def _ensure_student_tasks(
-        self,
-        student: Student,
-        visible_tasks: list[Task],
-        training_day: TrainingDay,
-    ) -> None:
-        """Add visible tasks to student's StudentTask records if not already present."""
-        ensure_student_tasks(self.sql_session, student, visible_tasks, training_day)
-
-    def _collect_task_scores_and_submissions(
-        self,
-        training_day: TrainingDay,
-        participation: Participation,
-        managing_participation: Participation,
-        visible_tasks: list[Task],
-        student_missed: bool,
-    ) -> tuple[dict[str, float], dict[str, list[dict]]]:
-        """Collect scores and submissions for visible tasks."""
-        return collect_task_scores_and_submissions(
-            self.sql_session,
-            training_day=training_day,
-            score_participation=participation,
-            submission_participation=managing_participation,
-            visible_tasks=visible_tasks,
-            student_missed=student_missed,
-            starting_time=participation.starting_time,
-            user_display=f"{participation.user.username} (id={participation.user_id})",
-        )
-
-    def _collect_score_history(
-        self,
-        training_day: TrainingDay,
-        participation: Participation,
-        training_day_task_ids: set[int],
-        student_missed: bool,
-    ) -> list[list]:
-        """Collect score history for the student."""
-        return collect_score_history(
-            self.sql_session,
-            history_participation=participation,
-            training_day_task_ids=training_day_task_ids,
-            student_missed=student_missed,
-            starting_time=participation.starting_time,
-            user_id=participation.user_id,
-            user_display=f"{participation.user.username} (id={participation.user_id})",
-            training_day_name=training_day.name,
-        )
-
-    def _process_student_ranking(
-        self,
-        training_day: TrainingDay,
-        student: Student,
-        participation: Participation,
-        training_day_tasks: list[Task],
-        training_day_task_ids: set[int],
-    ) -> None:
-        """Process and store ranking data for a single student."""
-        # Get all student tags (as list for array storage)
-        student_tags = list(student.student_tags) if student.student_tags else []
-
-        # Determine which tasks should be visible to this student based on their tags
-        visible_tasks = self._get_visible_tasks(
-            training_day, participation, training_day_tasks
-        )
-
-        # Add visible tasks to student's StudentTask records if not already present
-        self._ensure_student_tasks(student, visible_tasks, training_day)
-
-        # Get the managing participation for this user
-        managing_participation = get_managing_participation(
-            self.sql_session, training_day, participation.user
-        )
-        if managing_participation is None:
-            raise ValueError(
-                f"User {participation.user.username} (id={participation.user_id}) "
-                f"does not have a participation in the managing contest "
-                f"'{training_day.training_program.managing_contest.name}' "
-                f"for training day '{training_day.name}'"
+            # 3. Determine Context Objects
+            visible_tasks = self._get_visible_tasks(
+                training_day, participation, training_day_tasks
             )
 
-        # Check if student missed the training (no starting_time)
-        student_missed = participation.starting_time is None
-
-        # Get task scores for ALL visible tasks
-        task_scores, submissions = self._collect_task_scores_and_submissions(
-            training_day,
-            participation,
-            managing_participation,
-            visible_tasks,
-            student_missed,
-        )
-
-        # Get score history
-        history = self._collect_score_history(
-            training_day,
-            participation,
-            training_day_task_ids,
-            student_missed,
-        )
-
-        # Create archived ranking record
-        create_archived_ranking(
-            self.sql_session, training_day, student,
-            student_tags, task_scores, submissions, history,
-        )
-
-    def _archive_ranking_data(
-        self, training_day: TrainingDay, contest: Contest
-    ) -> None:
-        """Extract and store ranking data for all students.
-
-        Stores on TrainingDay:
-        - archived_tasks_data: task metadata including extra_headers for submission table
-
-        Stores on ArchivedStudentRanking (per student):
-        - task_scores: scores for ALL visible tasks (including 0 scores)
-          The presence of a task_id key indicates the task was visible.
-        - submissions: submission data for each task in RWS format
-        - history: score history in RWS format
-        """
-        # Get the tasks assigned to this training day
-        training_day_tasks = training_day.tasks
-        training_day_task_ids = {task.id for task in training_day_tasks}
-
-        # Build and store tasks_data on the training day
-        training_day.archived_tasks_data = {
-            str(task.id): build_task_data_for_archive(task)
-            for task in training_day_tasks
-        }
-
-        for student, participation, _ in self._iterate_eligible_students(
-            training_day, contest
-        ):
-            self._process_student_ranking(
-                training_day,
-                student,
-                participation,
-                training_day_tasks,
-                training_day_task_ids,
+            managing_participation = get_managing_participation(
+                self.sql_session, training_day, participation.user
             )
+            if managing_participation is None:
+                raise ValueError(
+                    f"User {participation.user.username} "
+                    f"(id={participation.user_id}) does not have a "
+                    f"managing participation"
+                )
+
+            student_datas.append(
+                StudentArchiveData(
+                    student=student,
+                    attendance_kwargs=attendance_kwargs,
+                    visible_tasks=visible_tasks,
+                    score_participation=participation,
+                    submission_participation=managing_participation,
+                    history_participation=participation,
+                    starting_time=participation.starting_time,
+                    user_id=participation.user_id,
+                    user_display=f"{participation.user.username} (id={participation.user_id})",
+                )
+            )
+
+        return student_datas
