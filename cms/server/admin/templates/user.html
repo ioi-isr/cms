@@ -259,20 +259,18 @@
                     {{ user_fields(user) }}
                 </table>
             </div>
-            <div class="form-actions" style="margin-top: 16px; display: flex; justify-content: space-between;">
-                <div>
-                    <button type="submit" class="tp-btn-primary">Update</button>
-                    <button type="reset" class="btn-outline">Reset</button>
-                </div>
-                <form action="{{ url("users") }}" method="POST" style="display:inline;">
-                    {{ xsrf_form_html|safe }}
-                    <input type="hidden" name="user_id" value="{{ user.id }}"/>
-                    <button type="submit" name="operation" value="Remove" class="btn-outline" style="color: var(--tp-danger-dark);"
-                        {% if not admin.permission_all %}disabled{% endif %}>
-                        Remove User
-                    </button>
-                </form>
+            <div class="form-actions" style="margin-top: 16px;">
+                <button type="submit" class="tp-btn-primary">Update</button>
+                <button type="reset" class="btn-outline">Reset</button>
             </div>
+        </form>
+        <form action="{{ url("users") }}" method="POST" style="margin-top: 16px; text-align: right;">
+            {{ xsrf_form_html|safe }}
+            <input type="hidden" name="user_id" value="{{ user.id }}"/>
+            <button type="submit" name="operation" value="Remove" class="btn-outline" style="color: var(--tp-danger-dark);"
+                {% if not admin.permission_all %}disabled{% endif %}>
+                Remove User
+            </button>
         </form>
     </div>
 </div>
