@@ -167,22 +167,24 @@ class ImportContestAsTrainingDayHandler(BaseHandler):
 
         # 4. Migrate submissions for participating students
         task_ids = {t.id for t in imported_tasks}
-        for student, imported_participation in participating:
-            managing_participation = student.participation
-            submissions = (
-                self.sql_session.query(Submission)
-                .filter(
-                    Submission.participation_id == imported_participation.id
-                )
-                .filter(Submission.task_id.in_(task_ids))
-                .all()
+        imported_part_ids = {p.id for _, p in participating}
+        imported_to_managing = {
+            p.id: s.participation
+            for s, p in participating
+        }
+        all_submissions = (
+            self.sql_session.query(Submission)
+            .filter(Submission.participation_id.in_(imported_part_ids))
+            .filter(Submission.task_id.in_(task_ids))
+            .all()
+        )
+        for sub in all_submissions:
+            managing_participation = imported_to_managing[sub.participation_id]
+            sub.opaque_id = Submission.generate_opaque_id(
+                self.sql_session, managing_participation.id
             )
-            for sub in submissions:
-                sub.opaque_id = Submission.generate_opaque_id(
-                    self.sql_session, managing_participation.id
-                )
-                sub.participation_id = managing_participation.id
-                sub.training_day_id = training_day.id
+            sub.participation_id = managing_participation.id
+            sub.training_day_id = training_day.id
         self.sql_session.flush()
 
         # 5. Delete submissions from non-participating users (with warning)
