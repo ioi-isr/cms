@@ -1120,7 +1120,12 @@ body.admin .subtask-section-divider {
     margin: -0.4em 0 0.8em;
 }
 
-/* Validator status badges */
+/* Validator table */
+body.admin .validator-table td {
+    vertical-align: middle;
+}
+
+/* Validator status (inline text) */
 body.admin .validator-status {
     font-weight: 700;
     display: inline-flex;
@@ -1128,47 +1133,67 @@ body.admin .validator-status {
     gap: 4px;
 }
 
-body.admin .validator-status::before {
-    content: "●";
-    font-size: 0.85em;
-}
-
-body.admin .validator-pass {
-    color: #15803d;
-}
-body.admin .validator-pass::before {
-    color: #16a34a;
-}
-
-body.admin .validator-fail,
-body.admin .validator-missing {
-    color: #b91c1c;
-}
-body.admin .validator-fail::before,
-body.admin .validator-missing::before {
-    color: #dc2626;
-}
-
-body.admin .validator-error {
-    color: #b45309;
-}
-body.admin .validator-error::before {
-    color: #d97706;
-}
-
-body.admin .validator-unvalidated {
-    color: #6b7280;
-}
-body.admin .validator-unvalidated::before {
-    color: #9ca3af;
-}
-
 body.admin .validator-running {
     color: #1d4ed8;
     font-style: italic;
 }
-body.admin .validator-running::before {
-    color: #2563eb;
+
+/* Validator badges (pill-shaped) */
+body.admin .validator-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+body.admin .validator-badge::before {
+    content: "\25CF";
+    font-size: 0.7em;
+}
+
+body.admin .validator-badge--pass {
+    background: #ecfdf5;
+    color: #15803d;
+}
+body.admin .validator-badge--pass::before {
+    color: #16a34a;
+}
+
+body.admin .validator-badge--fail {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+body.admin .validator-badge--fail::before {
+    color: #dc2626;
+}
+
+body.admin .validator-badge--error {
+    background: #fffbeb;
+    color: #b45309;
+}
+body.admin .validator-badge--error::before {
+    color: #d97706;
+}
+
+body.admin .validator-badge--muted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+body.admin .validator-badge--muted::before {
+    color: #9ca3af;
+}
+
+body.admin .validator-badge--warning {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+body.admin .validator-badge--warning::before {
+    display: none;
 }
 
 body.admin #notifications .notification {

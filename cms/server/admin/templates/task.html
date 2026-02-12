@@ -856,14 +856,17 @@ document.addEventListener('click', function(e) {
             <div class="dataset-subtab-content" id="ds-validators-{{ dataset.id }}">
                 <div class="tp-card">
                     <div class="tp-card-header-modern">
-                            <div class="tp-card-header-icon">
-                                <svg class="icon" width="18" height="18"><use href="#icon-subtask-validator"/></svg>
-                            </div>
-                            <h3 class="tp-card-title-modern">
-                                Subtask Validators
-                                <span class="tp-form-info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid.">?</span>
-                            </h3>
+                        <div class="tp-card-header-icon">
+                            <svg class="icon" width="18" height="18"><use href="#icon-subtask-validator"/></svg>
                         </div>
+                        <h3 class="tp-card-title-modern">
+                            Subtask Validators
+                            <span class="tp-form-info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid.">?</span>
+                        </h3>
+                        <span style="margin-left: auto; font-size: 0.9rem; color: var(--tp-text-muted);">
+                            <strong style="color: var(--tp-text-primary);">{{ subtask_info[dataset.id]|length }}</strong> subtasks configured
+                        </span>
+                    </div>
                     <div class="tp-card-body">
                         {% set ds_ns = namespace(total_not_validated=0,
                                                  not_validated_codenames=[],
@@ -919,13 +922,13 @@ document.addEventListener('click', function(e) {
                         {% endif %}
 
                         <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
-                        <table class="tp-tasks-table" style="margin: 0;">
+                        <table class="tp-tasks-table validator-table" style="margin: 0;">
                             <thead>
                                 <tr>
-                                    <th>Subtask</th>
-                                    <th>Validator</th>
-                                    <th>Tests</th>
-                                    <th>Additional Tests Passed</th>
+                                    <th style="width: 100px;">Subtask</th>
+                                    <th style="width: 240px;">Validator</th>
+                                    <th>Test Results</th>
+                                    <th style="width: 140px; text-align: right;">Additional Tests Passed</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -962,58 +965,71 @@ document.addEventListener('click', function(e) {
                                   {% endif %}
                                 {% endfor %}
                                 <tr>
-                                    <td><div class="list-cell-wrapper">{{ subtask.display_name }}</div></td>
+                                    <td><div class="list-cell-wrapper" style="font-weight: 600;">{{ subtask.display_name }}</div></td>
                                     <td>
-                                        <div class="list-cell-wrapper">
+                                        <div class="list-cell-wrapper" style="display: flex; align-items: center; gap: 6px;">
                                         {% if admin.permission_all %}
                                         <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
                                         {% endif %}
                                         {% if validator %}
-                                          <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
+                                          <svg class="icon" width="16" height="16" style="color: var(--tp-primary); flex-shrink: 0;"><use href="#icon-file-code"/></svg>
+                                          <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')" style="color: var(--tp-primary); font-weight: 500;">{{ validator.filename }}</a>
                                           {% if validator.executable_digest is none %}
-                                            <span class="validator-status validator-error">(compilation failed)</span>
+                                            <span class="validator-badge validator-badge--error">compilation failed</span>
                                           {% endif %}
                                           {% if admin.permission_all %}
-                                          <span style="margin-left: 8px; font-size: 0.85rem;">
-                                            <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">replace</a>
-                                            | <a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>
+                                          <span style="margin-left: auto; display: flex; gap: 4px; flex-shrink: 0;">
+                                            <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px;">
+                                                <svg class="icon" width="14" height="14"><use href="#icon-refresh"/></svg>
+                                            </a>
+                                            <a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px;">
+                                                <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg>
+                                            </a>
                                           </span>
                                           {% endif %}
                                         {% else %}
-                                          <span class="validator-status validator-missing">No validator</span>
+                                          <span class="validator-badge validator-badge--warning">
+                                            <svg class="icon" width="14" height="14"><use href="#icon-alert-triangle"/></svg>
+                                            No validator
+                                          </span>
                                           {% if admin.permission_all %}
-                                          <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" style="margin-left: 8px; font-size: 0.85rem;">add</a>
+                                          <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" style="color: var(--tp-primary); font-weight: 600; font-size: 0.85rem; margin-left: 4px;">Add</a>
                                           {% endif %}
                                         {% endif %}
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="list-cell-wrapper">
-                                        {{ ns.subtask_tc_count }}
+                                        <div class="list-cell-wrapper" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                         {% if validator and validator.id in running_validator_ids %}
-                                          (<span class="validator-status validator-running">Validating...</span>)
+                                          <span class="validator-status validator-running">Validating...</span>
                                         {% elif validator and validator.validation_results|length > 0 %}
-                                          ({% if ns.subtask_failed == 0 and ns.subtask_error == 0 and ns.subtask_not_validated == 0 %}
-                                            <span class="validator-status validator-pass">all {{ ns.subtask_passed }} passed</span>
-                                          {% else %}
-                                            {% set has_prev = false %}
-                                            {% if ns.subtask_passed > 0 %}<span class="validator-status validator-pass">{{ ns.subtask_passed }} passed</span>{% set has_prev = true %}{% endif %}
-                                            {% if ns.subtask_failed > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-fail">{{ ns.subtask_failed }} failed</span>{% set has_prev = true %}{% endif %}
-                                            {% if ns.subtask_error > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-error">{{ ns.subtask_error }} error</span>{% set has_prev = true %}{% endif %}
-                                            {% if ns.subtask_not_validated > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-unvalidated">{{ ns.subtask_not_validated }} not validated</span>{% endif %}
-                                          {% endif %})
+                                          <span style="font-weight: 500; color: var(--tp-text-primary);">{{ ns.subtask_tc_count }} tests:</span>
+                                          {% if ns.subtask_passed > 0 %}
+                                          <span class="validator-badge validator-badge--pass">{{ ns.subtask_passed }} passed</span>
+                                          {% endif %}
+                                          {% if ns.subtask_failed > 0 %}
+                                          <span class="validator-badge validator-badge--fail">{{ ns.subtask_failed }} failed</span>
+                                          {% endif %}
+                                          {% if ns.subtask_error > 0 %}
+                                          <span class="validator-badge validator-badge--error">{{ ns.subtask_error }} error</span>
+                                          {% endif %}
+                                          {% if ns.subtask_not_validated > 0 %}
+                                          <span class="validator-badge validator-badge--muted">{{ ns.subtask_not_validated }} not validated</span>
+                                          {% endif %}
+                                          <a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}" style="color: var(--tp-text-muted); font-size: 0.85rem;">[details]</a>
                                         {% elif validator %}
-                                          (<span class="validator-status validator-unvalidated">not validated</span>)
+                                          <span style="color: var(--tp-text-muted);">-</span>
+                                        {% else %}
+                                          <span style="color: var(--tp-text-muted);">-</span>
                                         {% endif %}
-                                        [<a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}">details</a>]
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="list-cell-wrapper">
+                                        <div class="list-cell-wrapper" style="text-align: right; color: var(--tp-text-muted);">
                                         {% if validator and validator.validation_results|length > 0 %}
                                           {{ ns.other_passed }} / {{ ns.other_tc_count }}
                                         {% elif validator %}
-                                          <em>Not validated</em>
+                                          -
                                         {% else %}
                                           -
                                         {% endif %}
