@@ -1087,10 +1087,10 @@ CMS.AWSUtils.updateScoreRangeFromSubtasks = function(formOrSolId, options) {
     var minSum = 0;
     var maxSum = 0;
     minInputs.forEach(function(input) {
-        minSum += parseFloat(input.value) || 0;
+        minSum += Number.parseFloat(input.value) || 0;
     });
     maxInputs.forEach(function(input) {
-        maxSum += parseFloat(input.value) || 0;
+        maxSum += Number.parseFloat(input.value) || 0;
     });
 
     if (scoreMinInput) scoreMinInput.value = minSum.toFixed(2);
@@ -1138,7 +1138,7 @@ CMS.AWSUtils.initModelSolutionSubtasks = function(options) {
     // Full score button handler
     document.querySelectorAll('.btn-full-score').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var maxScore = parseFloat(this.dataset.maxScore);
+            var maxScore = Number.parseFloat(this.dataset.maxScore);
             var minInput, maxInput, formOrSolId;
 
             if (multiSolution) {
@@ -1284,7 +1284,7 @@ var ModelSolutionModal = (function() {
         var total = 0;
         cards.forEach(function(c) {
             var idx = c.dataset.idx;
-            var max = parseFloat(c.dataset.max);
+            var max = Number.parseFloat(c.dataset.max);
             var selected = c.classList.contains('selected');
             var val = selected ? max : 0;
             total += val;
@@ -1319,8 +1319,8 @@ var ModelSolutionModal = (function() {
         var totalMin = 0, totalMax = 0;
         pctInputs.forEach(function(inp) {
             var idx = inp.dataset.idx;
-            var max = parseFloat(inp.dataset.max);
-            var pct = Math.max(0, Math.min(100, parseFloat(inp.value) || 0));
+            var max = Number.parseFloat(inp.dataset.max);
+            var pct = Math.max(0, Math.min(100, Number.parseFloat(inp.value) || 0));
             var score = max * pct / 100;
 
             var minHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-min');
@@ -1360,7 +1360,7 @@ var ModelSolutionModal = (function() {
 
         minInputs.forEach(function(inp) {
             var idx = inp.dataset.idx;
-            var minVal = parseFloat(inp.value) || 0;
+            var minVal = Number.parseFloat(inp.value) || 0;
             var minHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-min');
             if (minHidden) minHidden.value = minVal;
             totalMin += minVal;
@@ -1368,7 +1368,7 @@ var ModelSolutionModal = (function() {
 
         maxInputs.forEach(function(inp) {
             var idx = inp.dataset.idx;
-            var maxVal = parseFloat(inp.value) || 0;
+            var maxVal = Number.parseFloat(inp.value) || 0;
             var maxHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-max');
             if (maxHidden) maxHidden.value = maxVal;
             totalMax += maxVal;
@@ -1402,15 +1402,15 @@ var ModelSolutionModal = (function() {
             var minInputs = document.querySelectorAll('.ms-adv-min-input[data-dataset="' + dsId + '"]');
             var maxInputs = document.querySelectorAll('.ms-adv-max-input[data-dataset="' + dsId + '"]');
             var totalMin = 0, totalMax = 0;
-            minInputs.forEach(function(inp) { totalMin += parseFloat(inp.value) || 0; });
-            maxInputs.forEach(function(inp) { totalMax += parseFloat(inp.value) || 0; });
+            minInputs.forEach(function (inp) { totalMin += Number.parseFloat(inp.value) || 0; });
+            maxInputs.forEach(function (inp) { totalMax += Number.parseFloat(inp.value) || 0; });
 
             var advTotalMin = document.getElementById('ms-' + dsId + '-adv-total-min');
             var advTotalMax = document.getElementById('ms-' + dsId + '-adv-total-max');
             if (advTotalMin) advTotalMin.value = totalMin.toFixed(2);
             if (advTotalMax) advTotalMax.value = totalMax.toFixed(2);
 
-            var totalScore = parseFloat((advTotalMax || advTotalMin || {}).dataset.totalScore) || 0;
+            var totalScore = Number.parseFloat((advTotalMax || advTotalMin || {}).dataset.totalScore) || 0;
             var advTotalPct = document.getElementById('ms-' + dsId + '-adv-total-pct');
             if (advTotalPct && totalScore > 0) {
                 advTotalPct.value = Math.round((totalMax / totalScore) * 100);
@@ -1470,14 +1470,14 @@ var ModelSolutionModal = (function() {
                 var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
                 cards.forEach(function(c) {
                     var idx = c.dataset.idx;
-                    var max = parseFloat(c.dataset.max);
+                    var max = Number.parseFloat(c.dataset.max);
                     var stData = subtaskScores[idx] || subtaskScores[String(idx)];
                     c.classList.remove('selected');
                     var pctInput = document.querySelector('.ms-adv-pct[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
                     if (pctInput) pctInput.value = 0;
                     if (stData) {
-                        var stMin = parseFloat(stData.min || 0);
-                        var stMax = parseFloat(stData.max || 0);
+                        var stMin = Number.parseFloat(stData.min || 0);
+                        var stMax = Number.parseFloat(stData.max || 0);
                         if (stMax > 0) {
                             c.classList.add('selected');
                             var pct = Math.round((stMax / max) * 100);
@@ -1557,8 +1557,8 @@ var ModelSolutionModal = (function() {
 
         totalPctChanged: function(input) {
             var dsId = input.dataset.dataset;
-            var totalScore = parseFloat(input.dataset.totalScore) || 0;
-            var pct = Math.max(0, Math.min(100, parseFloat(input.value) || 0));
+            var totalScore = Number.parseFloat(input.dataset.totalScore) || 0;
+            var pct = Math.max(0, Math.min(100, Number.parseFloat(input.value) || 0));
             var score = totalScore * pct / 100;
 
             var advTotalMin = document.getElementById('ms-' + dsId + '-adv-total-min');
@@ -1582,8 +1582,8 @@ var ModelSolutionModal = (function() {
             var advTotalPct = document.getElementById('ms-' + dsId + '-adv-total-pct');
             if (advTotalPct) advTotalPct.value = '';
 
-            var totalMin = parseFloat(advTotalMin ? advTotalMin.value : 0) || 0;
-            var totalMax = parseFloat(advTotalMax ? advTotalMax.value : 0) || 0;
+            var totalMin = Number.parseFloat(advTotalMin ? advTotalMin.value : 0) || 0;
+            var totalMax = Number.parseFloat(advTotalMax ? advTotalMax.value : 0) || 0;
 
             var scoreMin = document.getElementById('ms-' + dsId + '-score-min');
             var scoreMax = document.getElementById('ms-' + dsId + '-score-max');

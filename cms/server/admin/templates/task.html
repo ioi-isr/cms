@@ -421,7 +421,7 @@ document.addEventListener('click', function(e) {
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <input type="text" name="submission_format" value="{{ task.submission_format|join(", ") }}" class="tp-form-input"/>
                                 {% if task.active_dataset.task_type == "OutputOnly" %}
-                                <a onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="tp-btn-secondary" style="white-space: nowrap; padding: 6px 12px;">Set Default</a>
+                                <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="tp-btn-secondary" style="white-space: nowrap; padding: 6px 12px; background: none; border: none; cursor: pointer;">Set Default</button>
                                 {% endif %}
                             </div>
                         </div>
@@ -654,19 +654,19 @@ document.addEventListener('click', function(e) {
                             <svg class="icon" width="16" height="16"><use href="#icon-clipboard-list"/></svg>
                             Clone
                         </a>
-                        <a onclick="AdminModals.renameDataset('{{ url("dataset", dataset.id, "rename") }}', '{{ dataset.description|e }}');" class="tp-menu-item" style="cursor: pointer;">
+                        <button type="button" onclick="AdminModals.renameDataset('{{ url("dataset", dataset.id, "rename") }}', '{{ dataset.description|e }}');" class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
                             <svg class="icon" width="16" height="16"><use href="#icon-edit"/></svg>
                             Rename
-                        </a>
+                        </button>
                         <a href="{{ url("dataset", dataset.id) }}" class="tp-menu-item">
                             <svg class="icon" width="16" height="16"><use href="#icon-activity"/></svg>
                             View results
                         </a>
                         {% if dataset is not sameas (task.active_dataset) %}
-                        <a onclick="CMS.AWSUtils.ajax_post('{{ url("dataset", dataset.id, "autojudge") }}');" class="tp-menu-item" style="cursor: pointer;">
+                        <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("dataset", dataset.id, "autojudge") }}');" class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
                             <svg class="icon" width="16" height="16"><use href="#icon-cpu"/></svg>
                             {% if dataset.autojudge %}Disable{% else %}Enable{% endif %} background judging
-                        </a>
+                        </button>
                         <div class="tp-menu-divider"></div>
                         <a href="{{ url("dataset", dataset.id, "delete") }}" class="tp-menu-item tp-menu-item-danger">
                             <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
@@ -918,7 +918,7 @@ document.addEventListener('click', function(e) {
                             <div class="tp-info-alert-content">
                                 <div class="tp-info-alert-message">{{ ds_ns.total_not_validated }} testcase(s) have not been validated.
                                 {% if admin.permission_all %}
-                                    <a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600;">Rerun validators</a>
+                                    <button type="button" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600; background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer;">Rerun validators</button>
                                 {% endif %}
                                 </div>
                             </div>
@@ -983,12 +983,12 @@ document.addEventListener('click', function(e) {
                                           {% endif %}
                                           {% if admin.permission_all %}
                                           <span style="margin-left: auto; display: flex; gap: 4px; flex-shrink: 0;">
-                                            <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px;">
+                                            <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
                                                 <svg class="icon" width="14" height="14"><use href="#icon-refresh"/></svg>
-                                            </a>
-                                            <a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px;">
+                                            </button>
+                                            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
                                                 <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg>
-                                            </a>
+                                            </button>
                                           </span>
                                           {% endif %}
                                         {% else %}
@@ -997,9 +997,9 @@ document.addEventListener('click', function(e) {
                                             No validator
                                           </span>
                                           {% if admin.permission_all %}
-                                          <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" class="validator-add" style="color: var(--tp-primary); display: inline-flex; padding: 2px; margin-left: 4px;">
+                                          <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" class="validator-add" style="color: var(--tp-primary); display: inline-flex; padding: 2px; margin-left: 4px; background: none; border: none; cursor: pointer;">
                                             <svg class="icon" width="14" height="14"><use href="#icon-file-plus"/></svg>
-                                          </a>
+                                          </button>
                                           {% endif %}
                                         {% endif %}
                                         </div>
@@ -1346,7 +1346,7 @@ document.addEventListener('click', function(e) {
                             {% endif %}
                             <button type="button" onclick="showDownloadTestcasesDialog({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "download") }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Download all</button>
                             {% if admin.permission_all %}
-                            <a href="javascript:void(0);" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});" class="tp-btn-secondary" style="padding: 4px 12px; color: var(--tp-danger);">Delete multiple</a>
+                            <button type="button" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});" class="tp-btn-secondary" style="padding: 4px 12px; color: var(--tp-danger); background: none; border: none; cursor: pointer;">Delete multiple</button>
                             {% endif %}
                         </div>
                     </div>
@@ -1442,8 +1442,8 @@ document.addEventListener('click', function(e) {
 
                         {% if admin.permission_all %}
                         <div class="multi_delete_actions" id="multi_delete_actions_{{ dataset.id }}" style="display:none; margin-top: 18px;">
-                            <a href="javascript:void(0);" id="cancel_multi_delete_{{ dataset.id }}" class="tp-btn-secondary" style="display:none;" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</a>
-                            <a href="javascript:void(0);" id="delete_selected_{{ dataset.id }}" class="tp-btn-secondary" style="display:none; color: var(--tp-danger); border-color: var(--tp-danger);" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete selected</a>
+                            <button type="button" id="cancel_multi_delete_{{ dataset.id }}" class="tp-btn-secondary" style="display:none; background: none; border: none; cursor: pointer;" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</button>
+                            <button type="button" id="delete_selected_{{ dataset.id }}" class="tp-btn-secondary" style="display:none; color: var(--tp-danger); background: none; border: 1px solid var(--tp-danger); cursor: pointer;" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete selected</button>
                         </div>
                         {% endif %}
                     </div>
@@ -1537,7 +1537,7 @@ document.addEventListener('click', function(e) {
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
                         <div class="modal__form-group">
-                            <label>Filename</label>
+                            <div style="font-weight: 600; color: var(--tp-text-primary); margin-bottom: 4px;">Filename</div>
                             <div style="padding: 6px 0; font-weight: 500; color: var(--tp-text-primary);">{{ generator.filename }}</div>
                         </div>
                         <div class="modal__form-group">
@@ -1578,11 +1578,11 @@ document.addEventListener('click', function(e) {
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
                         <div class="modal__form-group">
-                            <label>Generator</label>
+                            <div style="font-weight: 600; color: var(--tp-text-primary); margin-bottom: 4px;">Generator</div>
                             <div style="padding: 6px 0; font-weight: 500; color: var(--tp-text-primary);">{{ generator.filename }}</div>
                         </div>
                         <div class="modal__form-group">
-                            <label>Templates</label>
+                            <div style="font-weight: 600; color: var(--tp-text-primary); margin-bottom: 4px;">Templates</div>
                             <div style="padding: 6px 0; font-size: 0.9rem; color: var(--tp-text-secondary);">
                                 Input: <code>{{ generator.input_filename_template }}</code> &nbsp;/&nbsp; Output: <code>{{ generator.output_filename_template }}</code>
                             </div>
@@ -1837,7 +1837,7 @@ document.addEventListener('click', function(e) {
                             </div>
                             <div class="ms-subtask-cards" id="ms-{{ dataset.id }}-cards" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
                                 {% for st in ds_subtasks if st.max_score > 0 %}
-                                <div class="ms-card-subtask selected" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" onclick="ModelSolutionModal.toggleCard(this);">
+                                <div class="ms-card-subtask selected" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" role="button" tabindex="0" onclick="ModelSolutionModal.toggleCard(this);" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); ModelSolutionModal.toggleCard(this); }">
                                     <div style="font-weight: 600; font-size: 0.9rem;">{{ st.display_name }}</div>
                                     <div style="font-size: 0.8rem; color: var(--tp-text-muted);">{{ st.max_score }} points</div>
                                     <span class="ms-card-check"><svg class="icon" width="14" height="14"><use href="#icon-check"/></svg></span>
