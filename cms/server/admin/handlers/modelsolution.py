@@ -332,22 +332,7 @@ class ModelSolutionHandler(BaseHandler):
 
 
 class EditModelSolutionHandler(BaseHandler):
-    """Handler for editing a model solution's metadata.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, meta_id):
-        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
-        task = meta.dataset.task
-        dataset = meta.dataset
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["meta"] = meta
-        self.r_params["subtasks"] = get_subtask_info(dataset)
-        self.render("edit_model_solution.html", **self.r_params)
-
+    """Handler for editing a model solution's metadata."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, meta_id):
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)

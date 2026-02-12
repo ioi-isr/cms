@@ -224,45 +224,33 @@ class CloneDatasetHandler(BaseHandler):
 
 
 class RenameDatasetHandler(BaseHandler):
-    """Rename the descripton of a dataset.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("rename_dataset.html", **self.r_params)
-
+    """Rename the descripton of a dataset (AJAX-only)."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "rename")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
         description: str = self.get_argument("description", "")
 
+        if not description:
+            self.set_status(400)
+            self.write({"error": "Description is required."})
+            return
+
         # Ensure description is unique.
         if any(description == d.description
                for d in task.datasets if d is not dataset):
-            self.service.add_notification(
-                make_datetime(),
-                "Dataset name \"%s\" is already taken." % description,
-                "Please choose a unique name for this dataset.")
-            self.redirect(fallback_page)
+            self.set_status(400)
+            self.write({"error": 'Dataset name "%s" is already taken.' % description})
             return
 
         dataset.description = description
 
         if self.try_commit():
-            self.redirect(self.url("task", task.id))
+            self.write({"success": True, "description": description})
         else:
-            self.redirect(fallback_page)
+            self.set_status(500)
+            self.write({"error": "Failed to save changes."})
 
 
 class DeleteDatasetHandler(BaseHandler):

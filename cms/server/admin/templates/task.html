@@ -654,7 +654,7 @@ document.addEventListener('click', function(e) {
                             <svg class="icon" width="16" height="16"><use href="#icon-clipboard-list"/></svg>
                             Clone
                         </a>
-                        <a href="{{ url("dataset", dataset.id, "rename") }}" class="tp-menu-item">
+                        <a onclick="AdminModals.renameDataset('{{ url("dataset", dataset.id, "rename") }}', '{{ dataset.description|e }}');" class="tp-menu-item" style="cursor: pointer;">
                             <svg class="icon" width="16" height="16"><use href="#icon-edit"/></svg>
                             Rename
                         </a>
@@ -971,7 +971,7 @@ document.addEventListener('click', function(e) {
                                 <tr>
                                     <td><div class="list-cell-wrapper" style="font-weight: 600;">{{ subtask.display_name }}</div></td>
                                     <td>
-                                        <div class="list-cell-wrapper" style="display: flex; align-items: center; gap: 6px;">
+                                        <div class="list-cell-wrapper validator-column" style="display: flex; align-items: center; gap: 6px;">
                                         {% if admin.permission_all %}
                                         <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
                                         {% endif %}
@@ -997,7 +997,7 @@ document.addEventListener('click', function(e) {
                                             No validator
                                           </span>
                                           {% if admin.permission_all %}
-                                          <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" style="color: var(--tp-primary); display: inline-flex; padding: 2px; margin-left: 4px;">
+                                          <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" class="validator-add" style="color: var(--tp-primary); display: inline-flex; padding: 2px; margin-left: 4px;">
                                             <svg class="icon" width="14" height="14"><use href="#icon-file-plus"/></svg>
                                           </a>
                                           {% endif %}
