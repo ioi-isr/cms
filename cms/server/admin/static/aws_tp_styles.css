@@ -394,6 +394,16 @@
     background: var(--tp-danger-light) !important;
 }
 
+.btn-compilation:hover {
+    color: var(--tp-warning) !important;
+    background: var(--tp-warning-light) !important;
+}
+
+.btn-score:hover {
+    color: var(--tp-success) !important;
+    background: var(--tp-success-light) !important;
+}
+
 /* Disabled state for both buttons and anchors */
 .btn-icon-only:disabled,
 .btn-icon-only[aria-disabled="true"],

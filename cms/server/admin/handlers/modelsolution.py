@@ -253,21 +253,7 @@ def _process_model_solution_files(handler, task):
 
 
 class AddModelSolutionHandler(BaseHandler):
-    """Handler for adding a new model solution to a dataset.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["subtasks"] = get_subtask_info(dataset)
-        self.render("add_model_solution.html", **self.r_params)
-
+    """Handler for adding a new model solution to a dataset."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
