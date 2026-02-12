@@ -40,7 +40,11 @@ from cms.db import (
     TrainingDay,
     TrainingDayGroup,
 )
-from cms.server.admin.handlers.utils import get_all_training_day_types, parse_tags
+from cms.server.admin.handlers.utils import (
+    get_all_training_day_types,
+    get_available_contests,
+    parse_tags,
+)
 from cmscommon.datetime import make_datetime, get_timezone, get_timezone_name
 
 from .archive import compute_archive_modal_data
@@ -182,6 +186,10 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
                     self.sql_session, td, td.contest, self.timestamp
                 )
         self.r_params["archive_modal_data"] = archive_modal_data
+
+        self.r_params["available_contests"] = get_available_contests(
+            self.sql_session
+        )
 
         self.render("training_program_training_days.html", **self.r_params)
 

@@ -212,6 +212,8 @@ from .archive import \
     UpdateAttendanceHandler, \
     ExportAttendanceHandler, \
     ExportCombinedRankingHandler
+from .import_contest_as_td import \
+    ImportContestAsTrainingDayHandler
 
 
 HANDLERS = [
@@ -398,6 +400,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/types", TrainingDayTypesHandler),
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/scoreboard_sharing", ScoreboardSharingHandler),
     (r"/training_program/([0-9]+)/training_day/([0-9]+)/archive", ArchiveTrainingDayHandler),
+    (r"/training_program/([0-9]+)/import_contest_as_training_day", ImportContestAsTrainingDayHandler),
     (r"/training_program/([0-9]+)/attendance", TrainingProgramAttendanceHandler),
     (r"/training_program/([0-9]+)/attendance/export", ExportAttendanceHandler),
     (r"/training_program/([0-9]+)/attendance/([0-9]+)", UpdateAttendanceHandler),
