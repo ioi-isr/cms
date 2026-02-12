@@ -2,34 +2,58 @@
 
 {% block core %}
 
-<div class="core_title">
-  <h1>Teams list</h1>
+<div class="core_title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <h1 style="margin:0;">Teams</h1>
+  {% if admin.permission_all %}
+  <button type="button" class="tp-btn tp-btn-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
+    <svg class="icon" width="16" height="16" style="margin-right:4px;vertical-align:text-bottom;"><use href="#icon-plus"/></svg>
+    Add Team
+  </button>
+  {% endif %}
 </div>
 
-<form action="{{ url("teams") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Edit selected team:
-  <input type="submit" name="operation" value="Remove" {% if not admin.permission_all %} disabled {% endif %} />
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Code</th>
-        <th>Name</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in team_list|sort(attribute="code") %}
-      <tr>
-        <td>
-          <input type="radio" name="team_id" value="{{ t.id }}" />
-        </td>
-        <td><a href="{{ url("team", t.id) }}">{{ t.code }}</a></td>
-        <td>{{ t.name }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
+{% if team_list|length == 0 %}
+<div style="text-align:center;padding:48px 24px;color:#6b7280;">
+  <p style="font-size:16px;margin-bottom:12px;">No teams have been created yet.</p>
+  {% if admin.permission_all %}
+  <button type="button" class="tp-btn tp-btn-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
+    Create your first team
+  </button>
+  {% endif %}
+</div>
+{% else %}
+<table class="bordered" style="width:100%;">
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th>Name</th>
+      {% if admin.permission_all %}
+      <th style="width:80px;text-align:center;">Actions</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in team_list|sort(attribute="code") %}
+    <tr>
+      <td><a href="{{ url("team", t.id) }}">{{ t.code }}</a></td>
+      <td>{{ t.name }}</td>
+      {% if admin.permission_all %}
+      <td style="text-align:center;">
+        <button type="button" class="tp-btn-remove" title="Remove team"
+          onclick="AdminModals.deleteResource({
+            title: 'Remove Team',
+            message: 'Are you sure you want to remove team &quot;{{ t.code }}&quot;?',
+            deleteUrl: '{{ url("teams", t.id, "remove") }}',
+            confirmLabel: 'Yes, Remove'
+          })">
+          <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg>
+        </button>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
 
 {% endblock core %}

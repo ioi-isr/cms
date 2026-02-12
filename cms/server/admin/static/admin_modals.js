@@ -322,3 +322,192 @@ AdminModals.confirmThen = function(message, callback, options) {
         }
     });
 };
+
+/**
+ * Shows a SweetAlert2 dialog for adding a new team.
+ * Posts via AJAX to the given URL and reloads on success.
+ * @param {string} postUrl - The URL to POST the new team to
+ */
+AdminModals.showAddTeamDialog = function (postUrl) {
+    Swal.fire({
+        title: 'Add New Team',
+        html: `
+            <div class="swal-custom-form">
+                <div class="form-group">
+                    <label for="swal-team-code">Team Code</label>
+                    <input id="swal-team-code" class="swal2-input" placeholder="e.g. ISR" maxlength="3" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="swal-team-name">Team Name</label>
+                    <input id="swal-team-name" class="swal2-input" placeholder="e.g. Israel">
+                </div>
+            </div>
+            <style>
+                .swal-custom-form { text-align: left; }
+                .swal-custom-form .form-group { margin-bottom: 1rem; }
+                .swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }
+                .swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }
+            </style>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Create Team',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: () => {
+            const codeInput = Swal.getPopup().querySelector('#swal-team-code');
+            const nameInput = Swal.getPopup().querySelector('#swal-team-name');
+            if (codeInput) codeInput.focus();
+
+            [codeInput, nameInput].forEach(input => {
+                if (input) input.addEventListener('keyup', (e) => {
+                    if (e.key === 'Enter') Swal.clickConfirm();
+                });
+            });
+        },
+
+        preConfirm: async () => {
+            const codeInput = document.getElementById('swal-team-code');
+            const nameInput = document.getElementById('swal-team-name');
+            const code = codeInput.value.trim();
+            const name = nameInput.value.trim();
+
+            if (!code) {
+                Swal.showValidationMessage('Team code is required');
+                setTimeout(() => codeInput.focus(), 100);
+                return false;
+            }
+            if (!name) {
+                Swal.showValidationMessage('Team name is required');
+                setTimeout(() => nameInput.focus(), 100);
+                return false;
+            }
+
+            let xsrfToken = document.querySelector('input[name="_xsrf"]')?.value;
+            if (!xsrfToken && typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+
+            const formData = new FormData();
+            formData.append('code', code);
+            formData.append('name', name);
+
+            try {
+                const response = await fetch(postUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-XSRFToken': xsrfToken || ''
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create team');
+                }
+                return data;
+            } catch (error) {
+                Swal.showValidationMessage(error.message || 'Network error occurred');
+                return false;
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Team Created',
+                text: `Team "${result.value.code}" has been created successfully.`,
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.reload();
+            });
+        }
+    });
+};
+
+/**
+ * Shows a SweetAlert2 dialog for adding a new task.
+ * Posts via AJAX to the given URL and redirects to the new task page on success.
+ * @param {string} postUrl - The URL to POST the new task to
+ * @param {string} taskBaseUrl - The base URL for task pages (e.g. "/task/")
+ */
+AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
+    Swal.fire({
+        title: 'Add New Task',
+        html: `
+            <div class="swal-custom-form">
+                <div class="form-group">
+                    <label for="swal-task-name">Task Name</label>
+                    <input id="swal-task-name" class="swal2-input" placeholder="e.g. aplusb">
+                    <small class="form-hint">A short name using only letters, numbers and underscores.</small>
+                </div>
+            </div>
+            <style>
+                .swal-custom-form { text-align: left; }
+                .swal-custom-form .form-group { margin-bottom: 1rem; }
+                .swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }
+                .swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }
+                .swal-custom-form .form-hint { display: block; margin-top: 6px; font-size: 0.8em; color: #6b7280; }
+            </style>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Create Task',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: () => {
+            const nameInput = Swal.getPopup().querySelector('#swal-task-name');
+            if (nameInput) {
+                nameInput.focus();
+                nameInput.addEventListener('keyup', (e) => {
+                    if (e.key === 'Enter') Swal.clickConfirm();
+                });
+            }
+        },
+
+        preConfirm: async () => {
+            const nameInput = document.getElementById('swal-task-name');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                Swal.showValidationMessage('Task name is required');
+                setTimeout(() => nameInput.focus(), 100);
+                return false;
+            }
+
+            let xsrfToken = document.querySelector('input[name="_xsrf"]')?.value;
+            if (!xsrfToken && typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+
+            const formData = new FormData();
+            formData.append('name', name);
+
+            try {
+                const response = await fetch(postUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-XSRFToken': xsrfToken || ''
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create task');
+                }
+                return data;
+            } catch (error) {
+                Swal.showValidationMessage(error.message || 'Network error occurred');
+                return false;
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            window.location.href = taskBaseUrl + result.value.id;
+        }
+    });
+};

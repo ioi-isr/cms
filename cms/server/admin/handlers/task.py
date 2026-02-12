@@ -51,16 +51,17 @@ from cms.grading.subtask_validation import get_running_validator_ids
 logger = logging.getLogger(__name__)
 
 
-class AddTaskHandler(SimpleHandler("add_task.html", permission_all=True)):
+class AddTaskHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("tasks", "add")
+        is_ajax = "application/json" in self.request.headers.get("Accept", "")
 
         try:
             attrs = dict()
 
             self.get_string(attrs, "name", empty=None)
-            assert attrs.get("name") is not None, "No task name specified."
+            if not attrs.get("name"):
+                raise ValueError("No task name specified.")
             attrs["title"] = attrs["name"]
 
             # Set default submission format as ["taskname.%l"]
@@ -71,9 +72,13 @@ class AddTaskHandler(SimpleHandler("add_task.html", permission_all=True)):
             self.sql_session.add(task)
 
         except Exception as error:
+            if is_ajax:
+                self.set_status(400)
+                self.write({"error": str(error)})
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
+            self.redirect(self.url("tasks"))
             return
 
         try:
@@ -94,17 +99,30 @@ class AddTaskHandler(SimpleHandler("add_task.html", permission_all=True)):
             task.active_dataset = dataset
 
         except Exception as error:
+            if is_ajax:
+                self.set_status(400)
+                self.write({"error": str(error)})
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
+            self.redirect(self.url("tasks"))
             return
 
         if self.try_commit():
             # Create the task on RWS.
             self.service.proxy_service.reinitialize()
+            if is_ajax:
+                self.write({"ok": True, "id": task.id, "name": task.name})
+                return
             self.redirect(self.url("task", task.id))
         else:
-            self.redirect(fallback_page)
+            if is_ajax:
+                self.set_status(500)
+                self.write(
+                    {"error": "Failed to save task. The name may already exist."}
+                )
+                return
+            self.redirect(self.url("tasks"))
 
 
 class TaskHandler(BaseHandler):
@@ -637,26 +655,9 @@ class AddDatasetHandler(BaseHandler):
 
 
 class TaskListHandler(SimpleHandler("tasks.html")):
-    """Get returns the list of all tasks, post perform operations on
-    a specific task (removing them from CMS).
+    """Get returns the list of all tasks."""
 
-    """
-
-    REMOVE = "Remove"
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def post(self):
-        task_id = self.get_argument("task_id")
-        operation = self.get_argument("operation")
-
-        if operation == self.REMOVE:
-            asking_page = self.url("tasks", task_id, "remove")
-            # Open asking for remove page
-            self.redirect(asking_page)
-        else:
-            self.service.add_notification(
-                make_datetime(), "Invalid operation %s" % operation, "")
-            self.redirect(self.url("tasks"))
+    pass
 
 
 class RemoveTaskHandler(BaseHandler):
