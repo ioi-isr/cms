@@ -109,7 +109,7 @@ class CheckManagersPresence(Check):
         r = fw.admin_req('task/%s' % task_id)
         page = r.text
         # Extract manager filenames by matching link text inside manager divs
-        names = set(m for m in re.findall(r'<div class="manager">\s*<a [^>]*>([^<]+)</a>', page))
+        names = set(m for m in re.findall(r'<div class="manager"[^>]*>\s*<a [^>]*>([^<]+)</a>', page))
         missing = [n for n in self.present if n not in names]
         unexpected = [n for n in self.absent if n in names]
         if missing or unexpected:
