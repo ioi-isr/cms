@@ -1054,7 +1054,7 @@ document.addEventListener('click', function(e) {
             <!-- Sub-tab: Model Solutions -->
             <div class="dataset-subtab-content" id="ds-models-{{ dataset.id }}">
                 <div class="tp-card">
-                    <div class="tp-card-header-modern">
+                    <div class="tp-card-header-modern" style="flex-wrap: wrap; gap: 12px;">
                         <div class="tp-card-header-icon">
                             <svg class="icon" width="18" height="18"><use href="#icon-file-code"/></svg>
                         </div>
@@ -1062,85 +1062,90 @@ document.addEventListener('click', function(e) {
                             Model Solutions
                             <span class="tp-form-info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.">?</span>
                         </h3>
-                        {% if admin.permission_all %}
-                        <a href="{{ url("dataset", dataset.id, "model_solutions", "add") }}" class="tp-btn-secondary" style="margin-left: auto; padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
-                            <svg class="icon" width="16" height="16"><use href="#icon-file-plus"/></svg>
-                            Add
-                        </a>
-                        {% endif %}
+                        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                            {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
+                            <span style="font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Reevaluate All:</span>
+                            <div class="btn-group">
+                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                                 'EvaluationService', 0,
+                                                 'invalidate_model_solutions', {
+                                                 'dataset_id': {{ dataset.id }},
+                                                 'level': 'compilation'},
+                                                 function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                                                 ); }, {icon: 'question'});"
+                                        title="Compilation">
+                                    <svg class="icon" width="14" height="14"><use href="#icon-compile"/></svg> Compile
+                                </button>
+                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                                 'EvaluationService', 0,
+                                                 'invalidate_model_solutions', {
+                                                 'dataset_id': {{ dataset.id }},
+                                                 'level': 'evaluation'},
+                                                 function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                                                 ); }, {icon: 'question'});"
+                                        title="Evaluation">
+                                    <svg class="icon" width="14" height="14"><use href="#icon-evaluate"/></svg> Eval
+                                </button>
+                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                                 'ScoringService', 0,
+                                                 'invalidate_model_solutions', {
+                                                 'dataset_id': {{ dataset.id }}},
+                                                 function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                                                 ); }, {icon: 'question'});"
+                                        title="Score">
+                                    <svg class="icon" width="14" height="14"><use href="#icon-score-type"/></svg> Score
+                                </button>
+                            </div>
+                            {% endif %}
+                            {% if admin.permission_all %}
+                            <a href="{{ url("dataset", dataset.id, "model_solutions", "add") }}" class="tp-btn-primary" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+                                <svg class="icon" width="14" height="14"><use href="#icon-plus"/></svg> Add
+                            </a>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="tp-card-body">
-                        {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
-                        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 0.9rem; font-weight: 600; color: var(--tp-text-secondary);">Reevaluate all:</span>
-                            <button type="button" class="btn-icon-only" style="width: 28px; height: 28px;" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
-                                             'EvaluationService', 0,
-                                             'invalidate_model_solutions', {
-                                             'dataset_id': {{ dataset.id }},
-                                             'level': 'compilation'},
-                                             function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
-                                             ); }, {icon: 'question'});"
-                                    title="Compilation">
-                                <svg class="icon" width="14" height="14"><use href="#icon-compile"/></svg>
-                            </button>
-                            <button type="button" class="btn-icon-only" style="width: 28px; height: 28px;" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
-                                             'EvaluationService', 0,
-                                             'invalidate_model_solutions', {
-                                             'dataset_id': {{ dataset.id }},
-                                             'level': 'evaluation'},
-                                             function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
-                                             ); }, {icon: 'question'});"
-                                    title="Evaluation">
-                                <svg class="icon" width="14" height="14"><use href="#icon-evaluate"/></svg>
-                            </button>
-                            <button type="button" class="btn-icon-only" style="width: 28px; height: 28px;" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
-                                             'ScoringService', 0,
-                                             'invalidate_model_solutions', {
-                                             'dataset_id': {{ dataset.id }}},
-                                             function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
-                                             ); }, {icon: 'question'});"
-                                    title="Score">
-                                <svg class="icon" width="14" height="14"><use href="#icon-score-type"/></svg>
-                            </button>
-                        </div>
-                        {% endif %}
-
                         <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
                         <table class="tp-tasks-table" style="margin: 0; text-align: center;">
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Description</th>
+                                    <th style="width: 40px;">#</th>
+                                    <th style="text-align: left;">Description</th>
                                     <th>Language</th>
-                                    <th>Expected Score Range</th>
-                                    <th>Actual Score</th>
-                                    <th>In Range?</th>
+                                    <th style="text-align: right;">Expected Range</th>
+                                    <th style="text-align: right;">Actual</th>
+                                    <th style="width: 60px;">Valid</th>
                                     <th>Status</th>
-                                    <th>Comment</th>
-                                    <th>Reevaluate</th>
-                                    <th>Ops</th>
+                                    <th style="text-align: right;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% if dataset.model_solution_metas|length == 0 %}
                                 <tr>
-                                    <td colspan="10"><div class="list-cell-wrapper center-content" style="color: var(--tp-text-muted);">No model solutions yet</div></td>
+                                    <td colspan="8"><div class="list-cell-wrapper center-content" style="color: var(--tp-text-muted); padding: 24px 0;">No model solutions yet</div></td>
                                 </tr>
                                 {% else %}
                                 {% for meta in dataset.model_solution_metas %}
                                 {% set submission = meta.submission %}
                                 {% set msr = submission.get_result(dataset) %}
                                 <tr id="model_solution_{{ meta.id }}">
-                                    <td><div class="list-cell-wrapper center-content" style="font-weight: bold;">{{ loop.index }}</div></td>
-                                    <td><div class="list-cell-wrapper"><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></div></td>
-                                    <td><div class="list-cell-wrapper center-content">{{ submission.language if submission.language else "N/A" }}</div></td>
-                                    <td><div class="list-cell-wrapper center-content">{{ "%.2f"|format(meta.expected_score_min) }} - {{ "%.2f"|format(meta.expected_score_max) }}</div></td>
+                                    <td><div class="list-cell-wrapper center-content" style="font-family: monospace; color: var(--tp-text-muted);">{{ loop.index }}</div></td>
                                     <td>
-                                        <div class="list-cell-wrapper center-content">
+                                        <div class="list-cell-wrapper" style="text-align: left;">
+                                            <a href="{{ url("model_solution", meta.id) }}" style="font-weight: 500;">{{ meta.description }}</a>
+                                            {% if submission.comment %}
+                                            <span style="font-size: 0.8rem; color: var(--tp-text-muted); margin-left: 6px;">{{ submission.comment }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td><div class="list-cell-wrapper center-content" style="color: var(--tp-text-muted);">{{ submission.language if submission.language else "N/A" }}</div></td>
+                                    <td><div class="list-cell-wrapper" style="text-align: right; font-family: monospace; color: var(--tp-text-secondary);">{{ "%.2f"|format(meta.expected_score_min) }} - {{ "%.2f"|format(meta.expected_score_max) }}</div></td>
+                                    <td>
+                                        <div class="list-cell-wrapper" style="text-align: right; font-family: monospace; font-weight: 700;">
                                         {% if msr and msr.score is not none %}
                                         {{ "%.2f"|format(msr.score) }}
                                         {% else %}
-                                        N/A
+                                        <span style="color: var(--tp-text-muted); font-weight: 400;">N/A</span>
                                         {% endif %}
                                         </div>
                                     </td>
@@ -1148,57 +1153,50 @@ document.addEventListener('click', function(e) {
                                         <div class="list-cell-wrapper center-content">
                                         {% set score_in_range = meta.is_score_in_range() %}
                                         {% if score_in_range is none %}
-                                        <span style="color: gray;">Not scored</span>
+                                        <span style="color: var(--tp-text-muted);">-</span>
                                         {% elif score_in_range %}
-                                        <span style="color: var(--tp-success);">&#10003; Yes</span>
+                                        <span class="valid-icon valid-icon--yes"><svg class="icon" width="14" height="14"><use href="#icon-check"/></svg></span>
                                         {% else %}
-                                        <span style="color: var(--tp-danger);">&#10007; No</span>
+                                        <span class="valid-icon valid-icon--no"><svg class="icon" width="14" height="14"><use href="#icon-x"/></svg></span>
                                         {% endif %}
                                         </div>
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content">
                                         {% if msr is none %}
-                                        Not evaluated
+                                        <span class="status-badge status-badge--muted">Not evaluated</span>
                                         {% elif not msr.compiled() %}
-                                        Compiling...
+                                        <span class="status-badge status-badge--info">Compiling...</span>
                                         {% elif msr.compilation_failed() %}
-                                        <span style="color: var(--tp-danger);">Compilation failed</span>
+                                        <span class="status-badge status-badge--danger">Compilation failed</span>
                                         {% elif not msr.evaluated() %}
-                                        Evaluating...
+                                        <span class="status-badge status-badge--info">Evaluating...</span>
                                         {% elif msr.evaluation_failed() %}
-                                        <span style="color: var(--tp-danger);">Evaluation error</span>
+                                        <span class="status-badge status-badge--danger">Evaluation error</span>
                                         {% elif not msr.scored() %}
-                                        Scoring...
+                                        <span class="status-badge status-badge--warning">Scoring...</span>
                                         {% else %}
-                                        <span style="color: var(--tp-success);">Scored</span>
+                                        <span class="status-badge status-badge--success">Scored</span>
                                         {% endif %}
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="list-cell-wrapper center-content" style="font-size: 0.85rem;">
-                                        {{ submission.comment if submission.comment else "" }}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="list-cell-wrapper center-content">
+                                        <div class="list-cell-wrapper" style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                                        <div class="btn-group">
                                         {{ macro_reevaluation_buttons.reevaluation_buttons(
                                              admin.permission_all,
                                              url("task", task.id),
                                              submission_id=submission.id,
                                              dataset_id=dataset.id) }}
                                         </div>
-                                    </td>
-                                    <td>
-                                        <div class="list-cell-wrapper center-content" style="gap: 8px; font-size: 0.85rem;">
-                                        <button type="button" class="btn-icon-only" onclick="window.location.href='{{ url("model_solution", meta.id, "edit") }}';" title="Edit model solution">
+                                        <button type="button" class="btn-icon-only" onclick="window.location.href='{{ url("model_solution", meta.id, "edit") }}';" title="Edit">
                                             <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg>
                                         </button>
                                         {% if admin.permission_all %}
-                                        <button type="button" class="btn-icon-only" onclick="window.location.href='{{ url("model_solution", meta.id, "replace") }}';" title="Replace model solution">
+                                        <button type="button" class="btn-icon-only" onclick="window.location.href='{{ url("model_solution", meta.id, "replace") }}';" title="Replace">
                                             <svg class="icon" width="14" height="14"><use href="#icon-replace"/></svg>
                                         </button>
-                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');" title="Delete model solution">
+                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');" title="Delete">
                                             <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg>
                                         </button>
                                         {% endif %}
@@ -1212,15 +1210,15 @@ document.addEventListener('click', function(e) {
                         </div>
 
                         {% if dataset.id in subtask_info and dataset.model_solution_metas|length > 0 %}
-                        <div style="margin-top: 24px;">
-                            <h4 style="font-size: 1rem; font-weight: 600; color: var(--tp-text-primary); margin-bottom: 12px;">Subtask Score Validation</h4>
+                        <div style="margin-top: 24px; border-top: 1px solid var(--tp-border); padding-top: 20px;">
+                            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--tp-text-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Subtask Score Validation</h4>
                             <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
                             <table class="tp-tasks-table" style="margin: 0; text-align: center;">
                                 <thead>
                                     <tr>
-                                        <th>Model Solution</th>
+                                        <th style="text-align: left; position: sticky; left: 0; background: var(--tp-bg-secondary, #f9fafb); z-index: 1; border-right: 1px solid var(--tp-border); min-width: 160px;">Model Solution</th>
                                         {% for st in subtask_info[dataset.id] %}
-                                        <th>{{ st.display_name }}</th>
+                                        <th style="min-width: 120px;">{{ st.display_name }}</th>
                                         {% endfor %}
                                     </tr>
                                 </thead>
@@ -1229,16 +1227,16 @@ document.addEventListener('click', function(e) {
                                 {% set msr = meta.submission.get_result(dataset) %}
                                 {% if msr and msr.scored() %}
                                 <tr>
-                                    <td><div class="list-cell-wrapper"><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></div></td>
+                                    <td style="text-align: left; position: sticky; left: 0; background: #fff; z-index: 1; border-right: 1px solid var(--tp-border);"><div class="list-cell-wrapper"><a href="{{ url("model_solution", meta.id) }}" style="font-weight: 500;">{{ meta.description }}</a></div></td>
                                     {% for st in subtask_info[dataset.id] %}
                                     {% if st.max_score == 0 %}
                                     {% set outcomes = meta.get_subtask_testcase_outcomes(st.idx) %}
                                     <td>
                                         <div class="list-cell-wrapper center-content">
                                         {% if outcomes %}
-                                        <span style="font-family: monospace;">{{ outcomes|safe }}</span>
+                                        <span style="font-family: monospace; font-size: 0.85rem;">{{ outcomes|safe }}</span>
                                         {% else %}
-                                        <span style="color: gray;">N/A</span>
+                                        <span style="color: var(--tp-text-muted);">N/A</span>
                                         {% endif %}
                                         </div>
                                     </td>
@@ -1248,16 +1246,16 @@ document.addEventListener('click', function(e) {
                                     {% set st_key = st.idx|string %}
                                     {% set expected_min = meta.subtask_expected_scores[st_key].min if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
                                     {% set expected_max = meta.subtask_expected_scores[st_key].max if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
-                                    <td>
-                                        <div class="list-cell-wrapper center-content">
+                                    <td class="{% if status == 'in_range' %}score-cell--in-range{% elif status == 'out_of_range' %}score-cell--out-of-range{% endif %}">
+                                        <div class="list-cell-wrapper center-content" style="font-family: monospace; font-size: 0.85rem;">
                                         {% if status == "not_configured" %}
-                                        <span style="color: gray;">Not configured</span>
+                                        <span style="color: var(--tp-text-muted);">-</span>
                                         {% elif status == "in_range" %}
-                                        <span style="color: var(--tp-success);">&#10003; {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+                                        <svg class="icon" width="12" height="12"><use href="#icon-check"/></svg> {{ "%.1f"|format(actual) }} <span style="color: var(--tp-text-muted); font-weight: 400;">({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
                                         {% elif status == "out_of_range" %}
-                                        <span style="color: var(--tp-danger);">&#10007; {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+                                        <svg class="icon" width="12" height="12"><use href="#icon-x"/></svg> {{ "%.1f"|format(actual) }} <span style="font-weight: 400;">({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
                                         {% else %}
-                                        <span style="color: gray;">N/A</span>
+                                        <span style="color: var(--tp-text-muted);">N/A</span>
                                         {% endif %}
                                         </div>
                                     </td>

@@ -1196,6 +1196,147 @@ body.admin .validator-badge--warning::before {
     display: none;
 }
 
+/* Button group (connected buttons) */
+body.admin .btn-group {
+    display: inline-flex;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+body.admin .btn-group > button,
+body.admin .btn-group > a {
+    padding: 4px 10px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    background: var(--tp-bg-white, #fff);
+    border: 1px solid var(--tp-border, #e5e7eb);
+    color: var(--tp-text-secondary, #4b5563);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.15s, color 0.15s;
+    margin-left: -1px;
+    line-height: 1.4;
+}
+
+body.admin .btn-group > button:first-child,
+body.admin .btn-group > a:first-child {
+    border-radius: 6px 0 0 6px;
+    margin-left: 0;
+}
+
+body.admin .btn-group > button:last-child,
+body.admin .btn-group > a:last-child {
+    border-radius: 0 6px 6px 0;
+}
+
+body.admin .btn-group > button:hover,
+body.admin .btn-group > a:hover {
+    background: var(--tp-bg-secondary, #f9fafb);
+    color: var(--tp-primary, #3b82f6);
+    z-index: 1;
+}
+
+body.admin .btn-group > .btn-icon-only {
+    background: var(--tp-bg-white, #fff);
+    border: 1px solid var(--tp-border, #e5e7eb);
+    border-radius: 0;
+    padding: 4px 8px;
+    color: var(--tp-text-secondary, #4b5563) !important;
+    width: auto;
+    height: auto;
+    margin-left: -1px;
+}
+
+body.admin .btn-group > .btn-icon-only:first-child {
+    border-radius: 6px 0 0 6px;
+    margin-left: 0;
+}
+
+body.admin .btn-group > .btn-icon-only:last-child {
+    border-radius: 0 6px 6px 0;
+}
+
+body.admin .btn-group > .btn-icon-only:hover {
+    background: var(--tp-bg-secondary, #f9fafb) !important;
+    color: var(--tp-primary, #3b82f6) !important;
+}
+
+body.admin .btn-group > .btn-icon-only:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Status badge (pill) */
+body.admin .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+body.admin .status-badge--success {
+    background: #ecfdf5;
+    color: #15803d;
+}
+
+body.admin .status-badge--danger {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+body.admin .status-badge--warning {
+    background: #fffbeb;
+    color: #b45309;
+}
+
+body.admin .status-badge--muted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+body.admin .status-badge--info {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+/* Valid icon (circular check/X) */
+body.admin .valid-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+body.admin .valid-icon--yes {
+    background: #ecfdf5;
+    color: #16a34a;
+}
+
+body.admin .valid-icon--no {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+/* Score matrix cells */
+body.admin .score-cell--in-range {
+    background: rgba(236, 253, 245, 0.3);
+    color: #15803d;
+}
+
+body.admin .score-cell--out-of-range {
+    background: rgba(254, 242, 242, 0.3);
+    color: #b91c1c;
+    font-weight: 700;
+}
+
 body.admin #notifications .notification {
     background-color: #F7CBFE;
     border: 0.143em solid #E475FF;
