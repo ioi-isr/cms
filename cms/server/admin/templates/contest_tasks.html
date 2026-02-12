@@ -41,95 +41,208 @@ if (addTaskForm) {
 {% endblock js_init %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Tasks list of <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a></h1>
-</div>
+<div class="content-constraint" style="max-width: 900px;">
+    <!-- Header -->
+    <div class="page-title">
+        <h1>Tasks</h1>
+        <div class="page-subtitle">
+            {% if is_training_day %}
+            Training Day: <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
+            {% else %}
+            Contest: <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
+            {% endif %}
+        </div>
+    </div>
 
 {% if is_training_day %}
-<p><em>This contest is a training day. Tasks are managed through the training day, not the contest directly.</em></p>
+    <p style="color: var(--tp-text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+        <em>This contest is a training day. Tasks are managed through the training day, not the contest directly.</em>
+    </p>
 {% endif %}
 
 {% if contest.start <= timestamp %}
-<span style="color: red;">Warning: the contest is visible to contestants, tasks added can be seen</span>
+    <div class="tp-info-alert tp-info-alert-warning" style="margin-bottom: 20px;">
+        <div class="tp-info-alert-icon">
+            <svg class="icon" width="20" height="20"><use href="#icon-alert-triangle"/></svg>
+        </div>
+        <div class="tp-info-alert-content">
+            <div class="tp-info-alert-message">The contest is visible to contestants, tasks added can be seen.</div>
+        </div>
+    </div>
 {% endif %}
 
-<form id="add-task-form" action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Add a new task:
-  <select name="task_id" class="searchable-select">
-    <option value="" selected disabled hidden>Select a new task...</option>
-    {% for t in unassigned_tasks %}
-    <option value="{{ t.id }}"{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} data-not-in-program="true"{% endif %}>
-      {{ t.name }}{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} (not in training program){% endif %}
-    </option>
-    {% endfor %}
-  </select>
-  <input type="submit"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="Add task" />
-</form>
+    <!-- Add Task Card -->
+    <div class="tp-filter-card">
+        <label class="tp-filter-label" for="task_id">Add Task:</label>
+        <form id="add-task-form" action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px; flex: 1;">
+            {{ xsrf_form_html|safe }}
+            <div style="flex-grow: 1;">
+                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;">
+                    <option value="" selected disabled hidden>Select a task...</option>
+                    {% for t in unassigned_tasks %}
+                    <option value="{{ t.id }}"{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} data-not-in-program="true"{% endif %}>
+                        {{ t.name }}{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} (not in training program){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
+                Add Task
+            </button>
+        </form>
+    </div>
 
-<form action="{{ url("contest", contest.id, "tasks") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Remove selected task from the {% if is_training_day %}training day{% else %}contest{% endif %}:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="{% if is_training_day %}Remove from training day{% else %}Remove from contest{% endif %}" />
+    <!-- Tasks Table -->
+    <div class="tp-section-header">
+        <h2>All Tasks ({{ contest.get_tasks()|length }})</h2>
+    </div>
 
-  <br>
-
-  Move selected task:
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="to the top" />
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="up by 1" />
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="down by 1" />
-  <input type="submit" name="operation"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="to the bottom" />
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Title</th>
+    <form action="{{ url("contest", contest.id, "tasks") }}" method="POST" id="tasks-form">
+        {{ xsrf_form_html|safe }}
+        <input type="hidden" name="reorder_data" id="reorder-data" value="" />
+        <div class="tp-table-container">
+            <table class="ranking-table tp-tasks-table" id="tasks-table">
+                <thead>
+                    <tr>
+                        <th class="grip-column no-sort"></th>
+                        <th style="text-align: left;">Task</th>
 {% if is_training_day %}
-        <th>Visible to</th>
+                        <th class="no-sort" style="text-align: left; min-width: 200px;">Visible to</th>
 {% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in contest.get_tasks() %}
-      <tr>
-        <td>
-          <input type="radio" name="task_id" value="{{ t.id }}"/>
-        </td>
-        <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
-        <td>{{ t.title }}</td>
+                        <th class="text-center no-sort" style="width: 80px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tasks-tbody">
+                    {% for t in contest.get_tasks() %}
+                    <tr data-task-id="{{ t.id }}"
+                        data-name="{{ t.name }}"
+                        {% if admin.permission_all %}draggable="true"{% endif %}>
+                        <!-- Drag handle -->
+                        <td class="grip-cell">
+                            <div class="grip-handle" title="Drag to reorder">
+                                <svg class="icon" width="16" height="16"><use href="#icon-grip"/></svg>
+                            </div>
+                        </td>
+
+                        <!-- Task name and title -->
+                        <td data-value="{{ t.name }}">
+                            <div class="student-name-wrapper">
+                                <div class="student-info">
+                                    <a class="student-name-link" href="{{ url("task", t.id) }}" title="{{ t.title }}">
+                                        {{ t.name }}
+                                    </a>
+                                    <span class="student-username">{{ t.title }}</span>
+                                </div>
+                            </div>
+                        </td>
+
 {% if is_training_day %}
-        <td style="min-width: 200px;">
-          <input type="text" class="task-visibility-tags" data-task-id="{{ t.id }}" value="{{ t.visible_to_tags|join(', ') }}"/>
-        </td>
+                        <!-- Visible to tags -->
+                        <td>
+                            <div class="list-cell-wrapper">
+                                <input type="text" class="task-visibility-tags" data-task-id="{{ t.id }}" value="{{ t.visible_to_tags|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
+                            </div>
+                        </td>
 {% endif %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
+
+                        <!-- Actions -->
+                        <td class="text-center">
+                            <div class="list-cell-wrapper center-content">
+                                <button type="button" class="btn-icon-only remove-task-btn"
+                                    data-task-id="{{ t.id }}"
+                                    data-task-name="{{ t.name | e }}"
+                                    {% if not admin.permission_all %}disabled{% endif %}
+                                    title="Remove from {% if is_training_day %}training day{% else %}contest{% endif %}">
+                                    <svg class="icon" width="18" height="18"><use href="#icon-trash"/></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% if not contest.get_tasks() %}
+    <div class="empty-state-box">
+        <h3>No tasks yet</h3>
+        <p>Use the "Add Task" button above to add tasks.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    var isTrainingDay = {{ is_training_day | tojson }};
+    var scopeName = isTrainingDay ? 'training day' : 'contest';
+    var colSpan = isTrainingDay ? 4 : 3;
+
+    document.querySelectorAll('.remove-task-btn').forEach(function(button) {
+        button.addEventListener('click', function() {
+            var taskId = this.dataset.taskId;
+            var taskName = this.dataset.taskName;
+
+            AdminModals.simpleConfirm(
+                'Remove task "' + escapeHtml(taskName) + '" from this ' + scopeName + '?',
+                {icon: 'question'}
+            ).then(function(confirmed) {
+                if (confirmed) {
+                    var form = document.getElementById('tasks-form');
+
+                    var operationInput = form.querySelector('input[name="operation"]');
+                    if (!operationInput) {
+                        operationInput = document.createElement('input');
+                        operationInput.type = 'hidden';
+                        operationInput.name = 'operation';
+                        form.appendChild(operationInput);
+                    }
+                    operationInput.value = 'remove';
+
+                    var taskInput = form.querySelector('input[name="task_id"]');
+                    if (!taskInput) {
+                        taskInput = document.createElement('input');
+                        taskInput.type = 'hidden';
+                        taskInput.name = 'task_id';
+                        form.appendChild(taskInput);
+                    }
+                    taskInput.value = taskId;
+
+                    form.submit();
+                }
+            });
+        });
+    });
+
+    AdminTableUtils.initDragDropReorder({
+        tbodyId: 'tasks-tbody',
+        rowSelector: 'tr',
+        rowIdAttr: 'task-id',
+        colSpan: colSpan,
+        confirmMessage: 'Save the new task order?',
+        onSave: function(orderedIds) {
+            var order = orderedIds.map(function(item) {
+                return { task_id: item.id, new_num: item.position };
+            });
+            var form = document.getElementById('tasks-form');
+            var reorderInput = document.getElementById('reorder-data');
+            reorderInput.value = JSON.stringify(order);
+
+            var operationInput = form.querySelector('input[name="operation"]');
+            if (!operationInput) {
+                operationInput = document.createElement('input');
+                operationInput.type = 'hidden';
+                operationInput.name = 'operation';
+                form.appendChild(operationInput);
+            }
+            operationInput.value = 'reorder';
+            form.submit();
+        }
+    });
+
+    $(document).ready(function() {
+        CMS.AWSUtils.init_table_sort($("#tasks-table"), false, -1);
+    });
+})();
+</script>
 {% endblock core %}
