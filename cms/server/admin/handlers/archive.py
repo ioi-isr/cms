@@ -87,11 +87,7 @@ __all__ = [
     "TrainingProgramCombinedRankingHistoryHandler",
     "TrainingProgramFilterMixin",
     "UpdateAttendanceHandler",
-    "collect_score_history",
-    "collect_task_scores_and_submissions",
     "compute_archive_modal_data",
-    "create_archived_ranking",
-    "ensure_student_tasks",
     "get_attendance_view_data",
     "get_ranking_view_data",
     "FilterContext",
@@ -155,191 +151,6 @@ def compute_archive_modal_data(
         'network_hierarchy': network_hierarchy,
         'users_not_finished': users_not_finished,
     }
-
-
-def ensure_student_tasks(
-    sql_session,
-    student: Student,
-    visible_tasks: list[Task],
-    training_day: TrainingDay,
-) -> None:
-    """Add visible tasks to student's StudentTask records if not already present.
-
-    sql_session: the database session.
-    student: the student to add tasks for.
-    visible_tasks: the list of tasks to add.
-    training_day: the training day that is the source of the tasks.
-    """
-    existing_task_ids = {st.task_id for st in student.student_tasks}
-    for task in visible_tasks:
-        if task.id not in existing_task_ids:
-            student_task = StudentTask(assigned_at=make_datetime())
-            student_task.student_id = student.id
-            student_task.task_id = task.id
-            student_task.source_training_day_id = training_day.id
-            sql_session.add(student_task)
-
-
-def collect_task_scores_and_submissions(
-    sql_session,
-    training_day: TrainingDay,
-    score_participation: Participation,
-    submission_participation: Participation,
-    visible_tasks: list[Task],
-    student_missed: bool,
-    starting_time,
-    user_display: str = "",
-) -> tuple[dict[str, float], dict[str, list[dict]]]:
-    """Collect scores and submissions for visible tasks.
-
-    This is a shared function used by both archiving and importing.
-
-    sql_session: the database session.
-    training_day: the training day.
-    score_participation: participation used for score cache lookups.
-    submission_participation: participation used for submission queries.
-    visible_tasks: tasks to collect data for.
-    student_missed: whether the student missed the training.
-    starting_time: the reference starting time for time offset calculations.
-    user_display: display string for error messages.
-    """
-    task_scores: dict[str, float] = {}
-    submissions: dict[str, list[dict]] = {}
-
-    for task in visible_tasks:
-        task_id = task.id
-
-        if student_missed:
-            task_scores[str(task_id)] = 0.0
-        else:
-            cache_entry = get_cached_score_entry(
-                sql_session, score_participation, task
-            )
-            task_scores[str(task_id)] = cache_entry.score
-
-        task_submissions = (
-            sql_session.query(Submission)
-            .filter(Submission.participation_id == submission_participation.id)
-            .filter(Submission.task_id == task_id)
-            .filter(Submission.training_day_id == training_day.id)
-            .filter(Submission.official.is_(True))
-            .order_by(Submission.timestamp)
-            .all()
-        )
-
-        if student_missed and task_submissions:
-            raise ValueError(
-                f"User {user_display} "
-                f"has no starting_time but has {len(task_submissions)} submission(s) "
-                f"for task '{task.name}' in training day '{training_day.name}'"
-            )
-
-        submissions[str(task_id)] = []
-        for sub in task_submissions:
-            result = sub.get_result()
-            if result is None or not result.scored():
-                continue
-
-            if sub.timestamp is not None and starting_time is not None:
-                time_offset = int(
-                    (sub.timestamp - starting_time).total_seconds()
-                )
-            else:
-                time_offset = 0
-
-            submissions[str(task_id)].append(
-                {
-                    "task": str(task_id),
-                    "time": time_offset,
-                    "score": result.score,
-                    "token": sub.tokened(),
-                    "extra": result.ranking_score_details or [],
-                }
-            )
-    return task_scores, submissions
-
-
-def collect_score_history(
-    sql_session,
-    history_participation: Participation,
-    training_day_task_ids: set[int],
-    student_missed: bool,
-    starting_time,
-    user_id: int,
-    user_display: str = "",
-    training_day_name: str = "",
-) -> list[list]:
-    """Collect score history for the student.
-
-    This is a shared function used by both archiving and importing.
-
-    sql_session: the database session.
-    history_participation: participation used for history queries.
-    training_day_task_ids: set of task IDs for the training day.
-    student_missed: whether the student missed the training.
-    starting_time: the reference starting time for time offset calculations.
-    user_id: the user ID for history records.
-    user_display: display string for error messages.
-    training_day_name: the training day name for error messages.
-    """
-    history: list[list] = []
-    score_histories = (
-        sql_session.query(ScoreHistory)
-        .filter(ScoreHistory.participation_id == history_participation.id)
-        .filter(ScoreHistory.task_id.in_(training_day_task_ids))
-        .order_by(ScoreHistory.timestamp)
-        .all()
-    )
-
-    if student_missed and score_histories:
-        raise ValueError(
-            f"User {user_display} "
-            f"has no starting_time but has {len(score_histories)} score history "
-            f"record(s) in training day '{training_day_name}'"
-        )
-
-    for sh in score_histories:
-        if sh.timestamp is not None and starting_time is not None:
-            time_offset = (
-                sh.timestamp - starting_time
-            ).total_seconds()
-        else:
-            time_offset = 0
-        history.append([user_id, sh.task_id, time_offset, sh.score])
-    return history
-
-
-def create_archived_ranking(
-    sql_session,
-    training_day: TrainingDay,
-    student: Student,
-    student_tags: list[str],
-    task_scores: dict[str, float],
-    submissions: dict[str, list[dict]],
-    history: list[list],
-) -> ArchivedStudentRanking:
-    """Create and persist an archived ranking record for a student.
-
-    sql_session: the database session.
-    training_day: the training day being archived.
-    student: the student.
-    student_tags: the student's tags at archive time.
-    task_scores: scores for visible tasks.
-    submissions: submission data for each task.
-    history: score history data.
-
-    return: the created ArchivedStudentRanking.
-    """
-    archived_ranking = ArchivedStudentRanking(
-        student_tags=student_tags,
-        task_scores=task_scores if task_scores else None,
-        submissions=submissions if submissions else None,
-        history=history if history else None,
-    )
-    archived_ranking.training_day_id = training_day.id
-    archived_ranking.student_id = student.id
-    sql_session.add(archived_ranking)
-    return archived_ranking
 
 
 class ArchiveTrainingDayHandler(BaseHandler):
@@ -646,7 +457,14 @@ class ArchiveTrainingDayHandler(BaseHandler):
         training_day: TrainingDay,
     ) -> None:
         """Add visible tasks to student's StudentTask records if not already present."""
-        ensure_student_tasks(self.sql_session, student, visible_tasks, training_day)
+        existing_task_ids = {st.task_id for st in student.student_tasks}
+        for task in visible_tasks:
+            if task.id not in existing_task_ids:
+                student_task = StudentTask(assigned_at=make_datetime())
+                student_task.student_id = student.id
+                student_task.task_id = task.id
+                student_task.source_training_day_id = training_day.id
+                self.sql_session.add(student_task)
 
     def _collect_task_scores_and_submissions(
         self,
@@ -657,16 +475,64 @@ class ArchiveTrainingDayHandler(BaseHandler):
         student_missed: bool,
     ) -> tuple[dict[str, float], dict[str, list[dict]]]:
         """Collect scores and submissions for visible tasks."""
-        return collect_task_scores_and_submissions(
-            self.sql_session,
-            training_day=training_day,
-            score_participation=participation,
-            submission_participation=managing_participation,
-            visible_tasks=visible_tasks,
-            student_missed=student_missed,
-            starting_time=participation.starting_time,
-            user_display=f"{participation.user.username} (id={participation.user_id})",
-        )
+        task_scores: dict[str, float] = {}
+        submissions: dict[str, list[dict]] = {}
+
+        for task in visible_tasks:
+            task_id = task.id
+
+            if student_missed:
+                # Student missed the training - set score to 0
+                task_scores[str(task_id)] = 0.0
+            else:
+                # Get score from the training day participation (for cache lookup)
+                cache_entry = get_cached_score_entry(
+                    self.sql_session, participation, task
+                )
+                task_scores[str(task_id)] = cache_entry.score
+
+            # Get official submissions for this task from the managing participation
+            task_submissions = (
+                self.sql_session.query(Submission)
+                .filter(Submission.participation_id == managing_participation.id)
+                .filter(Submission.task_id == task_id)
+                .filter(Submission.training_day_id == training_day.id)
+                .filter(Submission.official.is_(True))
+                .order_by(Submission.timestamp)
+                .all()
+            )
+
+            # If student missed but has submissions, this is an error
+            if student_missed and task_submissions:
+                raise ValueError(
+                    f"User {participation.user.username} (id={participation.user_id}) "
+                    f"has no starting_time but has {len(task_submissions)} submission(s) "
+                    f"for task '{task.name}' in training day '{training_day.name}'"
+                )
+
+            submissions[str(task_id)] = []
+            for sub in task_submissions:
+                result = sub.get_result()
+                if result is None or not result.scored():
+                    continue
+
+                if sub.timestamp is not None:
+                    time_offset = int(
+                        (sub.timestamp - participation.starting_time).total_seconds()
+                    )
+                else:
+                    time_offset = 0
+
+                submissions[str(task_id)].append(
+                    {
+                        "task": str(task_id),
+                        "time": time_offset,
+                        "score": result.score,
+                        "token": sub.tokened(),
+                        "extra": result.ranking_score_details or [],
+                    }
+                )
+        return task_scores, submissions
 
     def _collect_score_history(
         self,
@@ -676,16 +542,32 @@ class ArchiveTrainingDayHandler(BaseHandler):
         student_missed: bool,
     ) -> list[list]:
         """Collect score history for the student."""
-        return collect_score_history(
-            self.sql_session,
-            history_participation=participation,
-            training_day_task_ids=training_day_task_ids,
-            student_missed=student_missed,
-            starting_time=participation.starting_time,
-            user_id=participation.user_id,
-            user_display=f"{participation.user.username} (id={participation.user_id})",
-            training_day_name=training_day.name,
+        history: list[list] = []
+        score_histories = (
+            self.sql_session.query(ScoreHistory)
+            .filter(ScoreHistory.participation_id == participation.id)
+            .filter(ScoreHistory.task_id.in_(training_day_task_ids))
+            .order_by(ScoreHistory.timestamp)
+            .all()
         )
+
+        # If student missed but has score history, this is an error
+        if student_missed and score_histories:
+            raise ValueError(
+                f"User {participation.user.username} (id={participation.user_id}) "
+                f"has no starting_time but has {len(score_histories)} score history "
+                f"record(s) in training day '{training_day.name}'"
+            )
+
+        for sh in score_histories:
+            if sh.timestamp is not None:
+                time_offset = (
+                    sh.timestamp - participation.starting_time
+                ).total_seconds()
+            else:
+                time_offset = 0
+            history.append([participation.user_id, sh.task_id, time_offset, sh.score])
+        return history
 
     def _process_student_ranking(
         self,
@@ -740,10 +622,15 @@ class ArchiveTrainingDayHandler(BaseHandler):
         )
 
         # Create archived ranking record
-        create_archived_ranking(
-            self.sql_session, training_day, student,
-            student_tags, task_scores, submissions, history,
+        archived_ranking = ArchivedStudentRanking(
+            student_tags=student_tags,
+            task_scores=task_scores if task_scores else None,
+            submissions=submissions if submissions else None,
+            history=history if history else None,
         )
+        archived_ranking.training_day_id = training_day.id
+        archived_ranking.student_id = student.id
+        self.sql_session.add(archived_ranking)
 
     def _archive_ranking_data(
         self, training_day: TrainingDay, contest: Contest

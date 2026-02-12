@@ -7,16 +7,16 @@
     <div class="modal__overlay" tabindex="-1">
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-import-contest-title">
             <header class="modal__header">
-                <h2 class="modal__title" id="modal-import-contest-title">Import Contest as Past Training Day</h2>
+                <h2 class="modal__title" id="modal-import-contest-title">Import Contest as Training Day</h2>
                 <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
             </header>
             <form action="{{ url("training_program", training_program.id, "import_contest_as_training_day") }}" method="POST" name="import_contest_as_td" id="import-contest-form">
                 {{ xsrf_form_html|safe }}
                 <main class="modal__content">
                     <p style="margin-bottom: 16px; color: var(--tp-text-secondary);">
-                        Import an existing contest as an archived training day. Submissions from students
-                        who are already enrolled in this training program will be migrated. The contest
-                        will be deleted after import.
+                        Import an existing contest as an active training day. Submissions from students
+                        who are already enrolled in this training program will be migrated. You can
+                        archive the training day afterwards using the normal archive flow.
                     </p>
 
                     <div class="modal__form-group">
@@ -40,10 +40,10 @@
                     <div class="alert alert--warning" style="margin-top: 16px;">
                         <strong>Warning:</strong> This action will:
                         <ul style="margin: 8px 0 0 20px; padding: 0;">
-                            <li>Create a new archived training day from the selected contest</li>
+                            <li>Create a new active training day from the selected contest</li>
+                            <li>Move tasks to the managing contest</li>
                             <li>Migrate submissions for students enrolled in this program</li>
                             <li>Delete submissions from users not enrolled in this program</li>
-                            <li>Delete the original contest</li>
                         </ul>
                         This operation cannot be undone.
                     </div>

@@ -15,11 +15,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Admin handler for importing a contest as a past training day.
+"""Admin handler for importing a contest as a training day.
 
-This creates a new training day from an existing contest, migrates
-submissions for participating students, and archives the training day
-in one operation. It reuses the shared archiving functions from archive.py.
+This creates a new active (living) training day from an existing contest,
+migrating submissions for participating students. The training day can
+then be archived normally using the existing archive flow.
 """
 
 import logging
@@ -29,32 +29,23 @@ from cms.db import (
     TrainingProgram,
     Submission,
     Student,
-    Task,
     TrainingDay,
     Participation,
-    ArchivedAttendance,
 )
 from cms.grading.scorecache import invalidate_score_cache
 from cms.server.admin.handlers.utils import (
-    build_task_data_for_archive,
     build_user_to_student_map,
     get_available_contests,
 )
 from cmscommon.datetime import make_datetime
 
-from .archive import (
-    ensure_student_tasks,
-    collect_task_scores_and_submissions,
-    collect_score_history,
-    create_archived_ranking,
-)
 from .base import BaseHandler, require_permission
 
 logger = logging.getLogger(__name__)
 
 
 class ImportContestAsTrainingDayHandler(BaseHandler):
-    """Import an existing contest as a past (archived) training day."""
+    """Import an existing contest as an active training day."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str):
@@ -99,8 +90,8 @@ class ImportContestAsTrainingDayHandler(BaseHandler):
             self.service.add_notification(
                 make_datetime(),
                 "Contest imported",
-                f"Contest '{contest.name}' has been imported as a past "
-                f"training day successfully"
+                f"Contest '{contest.name}' has been imported as a "
+                f"training day. You can now archive it when ready."
             )
 
         self.redirect(fallback_page)
@@ -111,18 +102,19 @@ class ImportContestAsTrainingDayHandler(BaseHandler):
         managing_contest: Contest,
         contest: Contest,
     ) -> None:
-        """Perform the full import: create TD, migrate, archive, delete."""
-        # 1. Create training day (archived immediately, no contest_id)
+        """Import a contest as a living training day.
+
+        Creates a TrainingDay linked to the contest, moves tasks to the
+        managing contest, and migrates submissions for enrolled students.
+        The training day remains active and can be archived normally.
+        """
+        # 1. Create training day linked to the imported contest
         position = len(training_program.training_days)
         training_day = TrainingDay(
             training_program=training_program,
             position=position,
-            name=contest.name,
-            description=contest.description,
-            start_time=contest.start,
         )
-        if contest.stop and contest.start:
-            training_day.duration = contest.stop - contest.start
+        training_day.contest_id = contest.id
         self.sql_session.add(training_day)
         self.sql_session.flush()
 
@@ -216,8 +208,8 @@ class ImportContestAsTrainingDayHandler(BaseHandler):
                 )
                 self.sql_session.flush()
 
-        # 6. Invalidate and rebuild score cache for managing participations
-        for student, imported_participation in participating:
+        # 6. Invalidate score cache for managing participations on migrated tasks
+        for student, _imported_participation in participating:
             managing_participation = student.participation
             for task in imported_tasks:
                 invalidate_score_cache(
@@ -226,72 +218,3 @@ class ImportContestAsTrainingDayHandler(BaseHandler):
                     task_id=task.id,
                 )
         self.sql_session.flush()
-
-        # 7. Build archived_tasks_data
-        training_day.archived_tasks_data = {
-            str(task.id): build_task_data_for_archive(task)
-            for task in imported_tasks
-        }
-
-        # 8. Build attendance and ranking records for each participating student
-        for student, imported_participation in participating:
-            managing_participation = student.participation
-
-            if imported_participation.starting_time is None:
-                status = "missed"
-                location = None
-            else:
-                status = "participated"
-                location = "home"
-
-            archived_attendance = ArchivedAttendance(
-                status=status,
-                location=location,
-            )
-            archived_attendance.training_day_id = training_day.id
-            archived_attendance.student_id = student.id
-            self.sql_session.add(archived_attendance)
-
-            student_tags = (
-                list(student.student_tags) if student.student_tags else []
-            )
-            student_missed = imported_participation.starting_time is None
-
-            ensure_student_tasks(
-                self.sql_session, student, imported_tasks, training_day
-            )
-
-            user_display = (
-                f"{imported_participation.user.username} "
-                f"(id={imported_participation.user_id})"
-            )
-
-            task_scores, submissions = collect_task_scores_and_submissions(
-                self.sql_session,
-                training_day=training_day,
-                score_participation=managing_participation,
-                submission_participation=managing_participation,
-                visible_tasks=imported_tasks,
-                student_missed=student_missed,
-                starting_time=imported_participation.starting_time,
-                user_display=user_display,
-            )
-
-            history = collect_score_history(
-                self.sql_session,
-                history_participation=managing_participation,
-                training_day_task_ids=task_ids,
-                student_missed=student_missed,
-                starting_time=imported_participation.starting_time,
-                user_id=imported_participation.user_id,
-                user_display=user_display,
-                training_day_name=training_day.name or "",
-            )
-
-            create_archived_ranking(
-                self.sql_session, training_day, student,
-                student_tags, task_scores, submissions, history,
-            )
-
-        # 9. Delete the imported contest (cascades participations etc.)
-        self.sql_session.delete(contest)
