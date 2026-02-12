@@ -367,7 +367,7 @@ class BaseHandler(CommonRequestHandler):
             if (
                 remaining_path.startswith("/question/")
                 or remaining_path.startswith("/announcement/")
-                or remaining_path.endswith("/message")
+                or re.search(r"(?:^|/)message(?:/|$)", remaining_path)
                 or remaining_path.endswith("/detail")
                 or remaining_path.endswith("/submissions")
                 or remaining_path.endswith("/ranking/history")
@@ -548,6 +548,10 @@ class BaseHandler(CommonRequestHandler):
         self.r_params["total_td_pending_delay_requests"] = \
             total_td_pending_delay_requests
 
+        self.r_params["all_student_tags"] = get_all_student_tags(
+            self.sql_session, training_program
+        )
+
         return self.r_params
 
     def setup_contest_or_training_program(
@@ -644,9 +648,6 @@ class BaseHandler(CommonRequestHandler):
 
         # For bulk assign task modal
         self.r_params["all_tasks"] = managing_contest.get_tasks()
-        self.r_params["all_student_tags"] = get_all_student_tags(
-            self.sql_session, training_program
-        )
 
         return self.r_params
 

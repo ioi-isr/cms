@@ -88,7 +88,7 @@ ENV PATH="/home/cmsuser/cms/bin:$PATH"
 
 COPY --chown=cmsuser:cmsuser . /home/cmsuser/src
 
-RUN --mount=type=cache,target=/home/cmsuser/.cache/pip,uid=1001 ./install.py cms --devel
+RUN --mount=type=cache,target=/home/cmsuser/.cache/pip,uid=1001 ./install.py cms --devel --editable
 
 RUN <<EOF
 #!/bin/bash -ex

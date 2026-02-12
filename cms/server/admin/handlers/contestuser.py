@@ -296,7 +296,7 @@ class ParticipationHandler(BaseHandler):
         else:
             submission_query = self.sql_session.query(Submission)\
                 .filter(Submission.participation == participation)
-        
+
         page = int(self.get_query_argument("page", 0))
         self.render_params_for_submissions(submission_query, page)
 
@@ -405,7 +405,11 @@ class MessageHandler(BaseHandler):
             logger.info("Message submitted to user %s in contest %s.",
                         user.username, self.contest.name)
 
-        self.redirect(self.url("contest", contest_id, "user", user_id, "edit"))
+        fallback = self.url("contest", contest_id, "user", user_id, "edit")
+        redirect_url = self.get_argument("next", fallback)
+        if not redirect_url.startswith("/") or redirect_url.startswith("//"):
+            redirect_url = fallback
+        self.redirect(redirect_url)
 
 
 class EditMessageHandler(BaseHandler):
@@ -441,7 +445,12 @@ class EditMessageHandler(BaseHandler):
         else:
             self.service.add_notification(
                 make_datetime(), "Subject is mandatory.", "")
-        self.redirect(self.url("contest", contest_id, "user", user_id, "edit"))
+
+        fallback = self.url("contest", contest_id, "user", user_id, "edit")
+        redirect_url = self.get_argument("next", fallback)
+        if not redirect_url.startswith("/") or redirect_url.startswith("//"):
+            redirect_url = fallback
+        self.redirect(redirect_url)
 
 
 class DeleteMessageHandler(BaseHandler):

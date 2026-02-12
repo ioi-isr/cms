@@ -24,6 +24,7 @@ from sqlalchemy import func, union
 
 from cms.db import (
     Session,
+    Contest,
     Student,
     Participation,
     Question,
@@ -32,11 +33,31 @@ from cms.db import (
     TrainingDay,
     Task,
 )
+from cms.server.util import exclude_internal_contests
 
 if typing.TYPE_CHECKING:
     from cms.db import TrainingProgram
 
 logger = logging.getLogger(__name__)
+
+
+def get_available_contests(sql_session: Session) -> list["Contest"]:
+    """Get contests available for task moves or associations.
+
+    Returns contests that are not internal (name starting with '__'),
+    not managing contests for training programs, and not training day
+    contests. Results are ordered by name.
+
+    sql_session: The database session.
+
+    return: List of available Contest objects.
+    """
+    return (
+        exclude_internal_contests(sql_session.query(Contest))
+        .filter(~Contest.training_day.has())
+        .order_by(Contest.name)
+        .all()
+    )
 
 
 def get_all_student_tags(

@@ -99,7 +99,8 @@ class ContestAnnouncementsHandler(BaseHandler):
         visible_to_tags = parse_tags(visible_to_tags_str)
 
         if not subject:
-            self.application.service.add_notification("error", "Subject is required")
+            self.service.add_notification(
+                make_datetime(), "Subject is required.", "")
             self.redirect(fallback_page)
             return
 

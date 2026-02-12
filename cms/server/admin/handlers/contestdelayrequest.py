@@ -227,6 +227,17 @@ class DelaysAndExtraTimesHandler(BaseHandler):
                     })
             self.r_params["ineligible_students"] = ineligible
 
+        from .archive import compute_archive_modal_data
+        if training_day is not None and training_day.contest is not None:
+            archive_data = compute_archive_modal_data(
+                self.sql_session, training_day, self.contest, self.timestamp
+            )
+            self.r_params["archive_modal_data"] = {
+                training_day.id: archive_data,
+            }
+        else:
+            self.r_params["archive_modal_data"] = {}
+
         self.render("delays_and_extra_times.html", **self.r_params)
 
 

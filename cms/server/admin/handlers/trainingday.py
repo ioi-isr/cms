@@ -40,9 +40,14 @@ from cms.db import (
     TrainingDay,
     TrainingDayGroup,
 )
-from cms.server.admin.handlers.utils import get_all_training_day_types, parse_tags
+from cms.server.admin.handlers.utils import (
+    get_all_training_day_types,
+    get_available_contests,
+    parse_tags,
+)
 from cmscommon.datetime import make_datetime, get_timezone, get_timezone_name
 
+from .archive import compute_archive_modal_data
 from .base import BaseHandler, require_permission, parse_datetime_with_timezone
 
 
@@ -155,10 +160,36 @@ class TrainingProgramTrainingDaysHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, training_program_id: str):
         training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        managing_contest = training_program.managing_contest
 
         self.render_params_for_training_program(training_program)
         self.r_params["all_training_day_types"] = get_all_training_day_types(
             training_program)
+
+        # Data for the Add Training Day modal
+        tags_query = self.sql_session.query(
+            func.unnest(Student.student_tags).label("tag")
+        ).filter(
+            Student.training_program_id == training_program.id
+        ).distinct()
+        self.r_params["all_student_tags"] = sorted([row.tag for row in tags_query.all()])
+
+        # Add timezone info for the form (use managing contest timezone)
+        tz = get_timezone(None, managing_contest)
+        self.r_params["timezone"] = tz
+        self.r_params["timezone_name"] = get_timezone_name(tz)
+
+        archive_modal_data = {}
+        for td in training_program.training_days:
+            if td.contest is not None:
+                archive_modal_data[td.id] = compute_archive_modal_data(
+                    self.sql_session, td, td.contest, self.timestamp
+                )
+        self.r_params["archive_modal_data"] = archive_modal_data
+
+        self.r_params["available_contests"] = get_available_contests(
+            self.sql_session
+        )
 
         self.render("training_program_training_days.html", **self.r_params)
 
@@ -251,25 +282,11 @@ class AddTrainingDayHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        managing_contest = training_program.managing_contest
-
-        self.render_params_for_training_program(training_program)
-
-        # Get all student tags for the tagify select dropdown
-        tags_query = self.sql_session.query(
-            func.unnest(Student.student_tags).label("tag")
-        ).filter(
-            Student.training_program_id == training_program.id
-        ).distinct()
-        self.r_params["all_student_tags"] = sorted([row.tag for row in tags_query.all()])
-
-        # Add timezone info for the form (use managing contest timezone)
-        tz = get_timezone(None, managing_contest)
-        self.r_params["timezone"] = tz
-        self.r_params["timezone_name"] = get_timezone_name(tz)
-
-        self.render("add_training_day.html", **self.r_params)
+        # Redirect to training days page with modal open
+        self.redirect(
+            self.url("training_program", training_program_id, "training_days")
+            + "?open_modal=add-training-day"
+        )
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str):
@@ -431,36 +448,10 @@ class RemoveTrainingDayHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, training_program_id: str, training_day_id: str):
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        training_day = self.safe_get_item(TrainingDay, training_day_id)
-
-        if training_day.training_program_id != training_program.id:
-            raise tornado.web.HTTPError(404)
-
-        self.render_params_for_training_program(training_program)
-        self.r_params["training_day"] = training_day
-        self.r_params["unanswered"] = 0  # Override for deletion confirmation page
-
-        # Stats for warning message
-        self.r_params["task_count"] = len(training_day.tasks)
-        # For archived training days, contest_id is None so counts are 0
-        if training_day.contest_id is not None:
-            self.r_params["participation_count"] = (
-                self.sql_session.query(Participation)
-                .filter(Participation.contest_id == training_day.contest_id)
-                .count()
-            )
-            self.r_params["submission_count"] = (
-                self.sql_session.query(Submission)
-                .join(Participation)
-                .filter(Participation.contest_id == training_day.contest_id)
-                .count()
-            )
-        else:
-            self.r_params["participation_count"] = 0
-            self.r_params["submission_count"] = 0
-
-        self.render("training_day_remove.html", **self.r_params)
+        self.redirect(
+            self.url("training_program", training_program_id, "training_days")
+            + "?open_modal=remove-training-day-" + training_day_id
+        )
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, training_program_id: str, training_day_id: str):

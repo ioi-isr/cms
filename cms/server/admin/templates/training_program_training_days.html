@@ -131,12 +131,28 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             </div>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-            <a href="{{ url("training_program", training_program.id, "training_days", "add") }}"
+            {% if admin.permission_all %}
+            <button type="button" onclick="MicroModal.show('modal-import-contest')"
+               class="btn-filled-secondary">
+                <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
+                Import Contest
+            </button>
+            <button type="button" onclick="MicroModal.show('modal-add-training-day')"
                class="btn-filled-primary"
-               style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px;">
+               style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: none; cursor: pointer;">
                 <svg class="icon" width="18" height="18"><use href="#icon-plus"/></svg>
                 Add Training Day
-            </a>
+            </button>
+            {% else %}
+            <button type="button" class="btn-filled-secondary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; opacity: 0.5; cursor: not-allowed;" disabled aria-disabled="true">
+                <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
+                Import Contest
+            </button>
+            <button type="button" class="btn-filled-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; opacity: 0.5; cursor: not-allowed;" disabled aria-disabled="true">
+                <svg class="icon" width="18" height="18"><use href="#icon-plus"/></svg>
+                Add Training Day
+            </button>
+            {% endif %}
         </div>
     </div>
 
@@ -232,19 +248,25 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <td class="text-center">
                             <div class="list-cell-wrapper center-content" style="gap: 4px;">
                                 <!-- Archive button -->
-                                <a href="{{ url("training_program", training_program.id, "training_day", td.id, "archive") }}"
+                                <button type="button"
                                    class="btn-icon-only btn-archive"
-                                   {% if not admin.permission_all %}style="pointer-events: none; opacity: 0.5;"{% endif %}
+                                   {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
+                                   onclick="MicroModal.show('modal-archive-td-{{ td.id }}')"
                                    title="Archive training day">
                                     <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
-                                </a>
+                                </button>
                                 <!-- Remove button -->
-                                <a href="{{ url("training_program", training_program.id, "training_day", td.id, "remove") }}"
-                                   class="btn-icon-only"
-                                   {% if not admin.permission_all %}style="pointer-events: none; opacity: 0.5;"{% endif %}
+                                <button type="button" class="btn-icon-only"
+                                   {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
+                                   onclick="openRemoveTrainingDayModal(this); return false;"
+                                   data-td-name="{{ td.contest.name }}"
+                                   data-remove-url="{{ url('training_program', training_program.id, 'training_day', td.id, 'remove') }}"
+                                   data-participation-count="{{ td.contest.participations|length }}"
+                                   data-task-count="{{ td.tasks|length }}"
+                                   data-is-archived="false"
                                    title="Remove training day">
                                     <svg class="icon" width="18" height="18"><use href="#icon-trash"/></svg>
-                                </a>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -333,7 +355,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                             onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
                                             aria-label="Show histogram for {{ task_info.get('name', 'Task ' ~ task_id_str) }}">
                                         {{ task_info.get('name', 'Task ' ~ task_id_str) }}
-                                        <span class="histogram-icon" aria-hidden="true">&#128202;</span>
+                                        <span class="histogram-icon" aria-hidden="true"><svg class="icon" width="16" height="16"><use href="#icon-histogram"/></svg></span>
                                     </button>
                                 {% endfor %}
                             {% else %}
@@ -348,7 +370,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                             <button type="button" class="btn-icon-only" title="Configure scoreboard sharing"
                                     onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
                                     {% if not admin.permission_all %}disabled{% endif %}>
-                                <svg class="icon" width="16" height="16"><use href="#icon-external-link"/></svg>
+                                <svg class="icon" width="16" height="16"><use href="#icon-share"/></svg>
                             </button>
                             {% if td.scoreboard_sharing %}
                             <span class="source-badge badge-shared" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
@@ -372,15 +394,25 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 </div>
 
 {% include 'fragments/histogram_modal.html' %}
+{% include 'fragments/modal_import_contest_as_td.html' %}
 
-<!-- Scoreboard Sharing Modal -->
-<div id="scoreboardSharingModal" class="histogram-modal" style="display: none;">
-    <div class="histogram-modal-content" style="max-width: 700px;">
-        <div class="histogram-modal-header">
-            <h2 id="scoreboardSharingTitle">Scoreboard Sharing</h2>
-            <button class="histogram-close-btn" onclick="closeScoreboardSharingModal()">&times;</button>
-        </div>
-        <div class="scoreboard-sharing-body" style="padding: 20px;">
+{% for td in training_program.training_days if td.contest is not none and td.id in archive_modal_data %}
+{% set training_day = td %}
+{% set contest = td.contest %}
+{% set network_hierarchy = archive_modal_data[td.id]['network_hierarchy'] %}
+{% set users_not_finished = archive_modal_data[td.id]['users_not_finished'] %}
+{% include 'fragments/modal_archive_training_day.html' %}
+{% endfor %}
+
+<!-- Scoreboard Sharing Modal (Micromodal) -->
+<div class="modal modal--medium" id="modal-scoreboard-sharing" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="scoreboardSharingTitle">
+            <header class="modal__header">
+                <h2 class="modal__title" id="scoreboardSharingTitle">Scoreboard Sharing</h2>
+                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+            </header>
+            <main class="modal__content">
             <p style="margin-bottom: 16px; color: var(--tp-text-secondary);">
                 Configure which student tags can view the scoreboard for this training day.
                 Students will only see results for their tag group.
@@ -423,11 +455,11 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             <button type="button" class="tp-btn-secondary" onclick="addSharingEntry()" style="margin-bottom: 20px;">
                 + Add Tag
             </button>
-
-            <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--tp-border); padding-top: 16px;">
-                <button type="button" class="tp-btn-secondary" onclick="closeScoreboardSharingModal()">Cancel</button>
-                <button type="button" class="tp-btn-primary" onclick="saveScoreboardSharing()">Save</button>
-            </div>
+            </main>
+            <footer class="modal__footer">
+                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                <button type="button" class="tp-btn-primary" id="save-scoreboard-sharing-btn">Save</button>
+            </footer>
         </div>
     </div>
 </div>
@@ -464,7 +496,7 @@ AdminTableUtils.initDragDropReorder({
 // Initialize table sorting for both tables using CMS.AWSUtils
 $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#training-days-table"), false, -1);
-    CMS.AWSUtils.init_table_sort($("#archived-training-days-table"), false, 0);
+    CMS.AWSUtils.init_table_sort($("#archived-training-days-table"), false, 3);
 });
 
 // Scoreboard Sharing Modal
@@ -484,7 +516,7 @@ function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayNa
     var entriesContainer = document.getElementById('scoreboardSharingEntries');
 
     // Destroy existing Tagify instances before clearing to prevent memory leaks
-    entriesContainer.querySelectorAll('.scoreboard-sharing-entry').forEach(function(entryDiv) {
+    entriesContainer.querySelectorAll('.sharing-entry').forEach(function(entryDiv) {
         if (entryDiv._tagify) {
             entryDiv._tagify.destroy();
         }
@@ -557,7 +589,7 @@ function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayNa
         addSharingEntry('', 0, 0);
     }
 
-    document.getElementById('scoreboardSharingModal').style.display = 'flex';
+    MicroModal.show('modal-scoreboard-sharing');
 }
 
 function toggleEveryoneSettings() {
@@ -632,7 +664,7 @@ function validateEveryoneFields() {
 }
 
 function closeScoreboardSharingModal() {
-    document.getElementById('scoreboardSharingModal').style.display = 'none';
+    MicroModal.close('modal-scoreboard-sharing');
     currentSharingTrainingDayId = null;
 }
 
@@ -642,11 +674,7 @@ function addSharingEntry(tag, topNames, topToShow) {
     topToShow = topToShow === undefined ? 0 : topToShow;
 
     var entriesContainer = document.getElementById('scoreboardSharingEntries');
-    var entryDiv = document.createElement('div');
-    entryDiv.className = 'sharing-entry';
-    entryDiv.style.cssText = 'display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px; flex-wrap: wrap;';
 
-    // Get student count for this tag
     var tagStudentCount = 0;
     if (tag && currentSharingTrainingDayId && window.historicalStudentTags && window.historicalStudentTags[currentSharingTrainingDayId]) {
         Object.keys(window.historicalStudentTags[currentSharingTrainingDayId]).forEach(function(studentId) {
@@ -662,153 +690,75 @@ function addSharingEntry(tag, topNames, topToShow) {
     var topToShowVal = topToShowIsAll ? tagStudentCount : topToShow;
     var topNamesVal = topNamesIsAll ? tagStudentCount : topNames;
 
-    // Build text input for Tagify (matching add_training_day.html style)
     var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
         tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
 
-    var tagInput = document.createElement('input');
-    tagInput.type = 'text';
-    tagInput.className = 'sharing-tag';
-    tagInput.setAttribute('data-sharing-tag-input', 'true');
-    tagInput.placeholder = 'Select a tag';
-    tagInput.style.width = '160px';
-    if (tag) {
-        tagInput.value = tag;
-    }
+    var entryId = 'sharing-entry-' + Date.now();
+    var html = '<div class="sharing-entry" id="' + entryId + '" style="display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px; flex-wrap: wrap;">' +
+        '<div style="flex: 1; min-width: 120px;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
+            '<input type="text" class="sharing-tag" data-sharing-tag-input="true" placeholder="Select a tag" style="width: 160px;" value="' + escapeHtml(tag || '') + '">' +
+        '</div>' +
+        '<div style="min-width: 140px;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>' +
+            '<div style="display: flex; align-items: center; gap: 6px;">' +
+                '<input type="number" class="sharing-top-to-show" value="' + escapeHtml(topToShowVal.toString()) + '" min="0" ' + (topToShowIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
+                '<input type="checkbox" class="sharing-top-to-show-all" ' + (topToShowIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
+                '<span style="font-size: 0.85rem;">All</span>' +
+            '</div>' +
+        '</div>' +
+        '<div style="min-width: 140px;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names</label>' +
+            '<div style="display: flex; align-items: center; gap: 6px;">' +
+                '<input type="number" class="sharing-top-names" value="' + escapeHtml(topNamesVal.toString()) + '" min="0" ' + (topNamesIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
+                '<input type="checkbox" class="sharing-top-names-all" ' + (topNamesIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
+                '<span style="font-size: 0.85rem;">All</span>' +
+            '</div>' +
+        '</div>' +
+        '<button type="button" class="sharing-remove-btn" style="margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">\u00D7</button>' +
+    '</div>';
 
-    // Build tag container
-    var tagContainer = document.createElement('div');
-    tagContainer.style.cssText = 'flex: 1; min-width: 120px;';
-    var tagLabel = document.createElement('label');
-    tagLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
-    tagLabel.textContent = 'Tag';
-    tagContainer.appendChild(tagLabel);
-    tagContainer.appendChild(tagInput);
+    entriesContainer.insertAdjacentHTML('beforeend', html);
 
-    // Build "Results to Show" container
-    var topToShowContainer = document.createElement('div');
-    topToShowContainer.style.cssText = 'min-width: 140px;';
-    var topToShowLabel = document.createElement('label');
-    topToShowLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
-    topToShowLabel.textContent = 'Results to Show';
-    topToShowContainer.appendChild(topToShowLabel);
+    var entryDiv = document.getElementById(entryId);
+    var tagInput = entryDiv.querySelector('.sharing-tag');
+    var topToShowInput = entryDiv.querySelector('.sharing-top-to-show');
+    var topToShowAllCheckbox = entryDiv.querySelector('.sharing-top-to-show-all');
+    var topNamesInput = entryDiv.querySelector('.sharing-top-names');
+    var topNamesAllCheckbox = entryDiv.querySelector('.sharing-top-names-all');
 
-    var topToShowInputContainer = document.createElement('div');
-    topToShowInputContainer.style.cssText = 'display: flex; align-items: center; gap: 6px;';
-    var topToShowInput = document.createElement('input');
-    topToShowInput.type = 'number';
-    topToShowInput.className = 'sharing-top-to-show';
-    topToShowInput.value = topToShowVal;
-    topToShowInput.min = '0';
-    topToShowInput.disabled = topToShowIsAll;
-    topToShowInput.style.cssText = 'width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;';
-    var topToShowAllCheckbox = document.createElement('input');
-    topToShowAllCheckbox.type = 'checkbox';
-    topToShowAllCheckbox.className = 'sharing-top-to-show-all';
-    topToShowAllCheckbox.checked = topToShowIsAll;
-    topToShowAllCheckbox.style.cursor = 'pointer';
-    var topToShowAllSpan = document.createElement('span');
-    topToShowAllSpan.style.cssText = 'font-size: 0.85rem;';
-    topToShowAllSpan.textContent = 'All';
-    topToShowInputContainer.appendChild(topToShowInput);
-    topToShowInputContainer.appendChild(topToShowAllCheckbox);
-    topToShowInputContainer.appendChild(topToShowAllSpan);
-    topToShowContainer.appendChild(topToShowInputContainer);
-
-    // Build "Full Names" container
-    var topNamesContainer = document.createElement('div');
-    topNamesContainer.style.cssText = 'min-width: 140px;';
-    var topNamesLabel = document.createElement('label');
-    topNamesLabel.style.cssText = 'display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;';
-    topNamesLabel.textContent = 'Full Names';
-    topNamesContainer.appendChild(topNamesLabel);
-
-    var topNamesInputContainer = document.createElement('div');
-    topNamesInputContainer.style.cssText = 'display: flex; align-items: center; gap: 6px;';
-    var topNamesInput = document.createElement('input');
-    topNamesInput.type = 'number';
-    topNamesInput.className = 'sharing-top-names';
-    topNamesInput.value = topNamesVal;
-    topNamesInput.min = '0';
-    topNamesInput.disabled = topNamesIsAll;
-    topNamesInput.style.cssText = 'width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;';
-    var topNamesAllCheckbox = document.createElement('input');
-    topNamesAllCheckbox.type = 'checkbox';
-    topNamesAllCheckbox.className = 'sharing-top-names-all';
-    topNamesAllCheckbox.checked = topNamesIsAll;
-    topNamesAllCheckbox.style.cursor = 'pointer';
-    var topNamesAllSpan = document.createElement('span');
-    topNamesAllSpan.style.cssText = 'font-size: 0.85rem;';
-    topNamesAllSpan.textContent = 'All';
-    topNamesInputContainer.appendChild(topNamesInput);
-    topNamesInputContainer.appendChild(topNamesAllCheckbox);
-    topNamesInputContainer.appendChild(topNamesAllSpan);
-    topNamesContainer.appendChild(topNamesInputContainer);
-
-    // Build remove button
-    var removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.className = 'sharing-remove-btn';
-    removeBtn.style.cssText = 'margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;';
-    removeBtn.title = 'Remove';
-    removeBtn.textContent = '\u00D7';
-
-    // Append all elements to entryDiv
-    entryDiv.appendChild(tagContainer);
-    entryDiv.appendChild(topToShowContainer);
-    entryDiv.appendChild(topNamesContainer);
-    entryDiv.appendChild(removeBtn);
-
-    entriesContainer.appendChild(entryDiv);
-
-    // Initialize Tagify on the tag input (matching add_training_day.html style)
-    var tagifyInstance = null;
     if (typeof Tagify !== 'undefined') {
-        tagifyInstance = new Tagify(tagInput, {
+        var tagifyInstance = new Tagify(tagInput, {
             mode: 'select',
             whitelist: whitelist,
             enforceWhitelist: true,
-            dropdown: {
-                maxItems: 20,
-                enabled: 0,
-                closeOnSelect: true
-            },
+            dropdown: { maxItems: 20, enabled: 0, closeOnSelect: true },
             originalInputValueFormat: function(valuesArr) {
                 return valuesArr.length ? valuesArr[0].value : '';
             }
         });
         tagifyInstance.DOM.scope.style.width = '160px';
-
         tagifyInstance.on('change', function() {
             entryDiv.dataset.tag = tagInput.value;
             normalizeTagEntry(entryDiv);
         });
-
-        // Store reference for cleanup on remove
         entryDiv._tagify = tagifyInstance;
     }
 
-    // Set up event listeners for checkboxes and validation
-    removeBtn.onclick = function() {
-        if (entryDiv._tagify) {
-            entryDiv._tagify.destroy();
-        }
+    entryDiv.querySelector('.sharing-remove-btn').onclick = function() {
+        if (entryDiv._tagify) entryDiv._tagify.destroy();
         entryDiv.remove();
     };
-    if (tag) {
-        entryDiv.dataset.tag = tag;
-    }
+    if (tag) entryDiv.dataset.tag = tag;
 
     topToShowAllCheckbox.onchange = function() {
         topToShowInput.disabled = this.checked;
         normalizeTagEntry(entryDiv);
     };
-
     topNamesAllCheckbox.onchange = function() {
         topNamesInput.disabled = this.checked;
         normalizeTagEntry(entryDiv);
     };
-
     topToShowInput.oninput = function() { normalizeTagEntry(entryDiv); };
     topNamesInput.oninput = function() { normalizeTagEntry(entryDiv); };
 
@@ -910,11 +860,11 @@ function saveScoreboardSharing(){
         var topToShow = topToShowAll ? 'all' : parseInt(document.getElementById('everyoneTopToShow').value) || 0;
         var topNames = topNamesAll ? 'all' : parseInt(document.getElementById('everyoneTopNames').value) || 0;
         if (!topToShowAll && topToShow < 0) {
-            alert('Results to show cannot be negative.');
+            AdminModals.showError('Results to show cannot be negative.');
             return;
         }
         if (!topNamesAll && topNames < 0) {
-            alert('Full names cannot be negative.');
+            AdminModals.showError('Full names cannot be negative.');
             return;
         }
 
@@ -943,11 +893,11 @@ function saveScoreboardSharing(){
         var topToShow = topToShowAllCheckbox.checked ? 'all' : parseInt(topToShowInput.value, 10);
         var topNames = topNamesAllCheckbox.checked ? 'all' : parseInt(topNamesInput.value, 10);
         if (!topToShowAllCheckbox.checked && topToShow < 0) {
-            alert('Results to show cannot be negative.');
+            AdminModals.showError('Results to show cannot be negative.');
             return;
         }
         if (!topNamesAllCheckbox.checked && topNames < 0) {
-            alert('Full names cannot be negative.');
+            AdminModals.showError('Full names cannot be negative.');
             return;
         }
 
@@ -966,7 +916,7 @@ function saveScoreboardSharing(){
     }
 
     if (hasDuplicate) {
-        alert('Duplicate tags are not allowed.');
+        AdminModals.showError('Duplicate tags are not allowed.');
         return;
     }
 
@@ -974,7 +924,7 @@ function saveScoreboardSharing(){
     var formData = new FormData();
     var xsrfEl = document.querySelector('input[name="_xsrf"]');
     if (!xsrfEl) {
-        alert('Error: XSRF token not found. Please refresh the page.');
+        AdminModals.showError('XSRF token not found. Please refresh the page.');
         return;
     }
     formData.append('_xsrf', xsrfEl.value);
@@ -998,21 +948,57 @@ function saveScoreboardSharing(){
             closeScoreboardSharingModal();
             location.reload();
         } else {
-            alert('Error: ' + (data.error || 'Unknown error'));
+            AdminModals.showError(data.error || 'Unknown error');
         }
     })
     .catch(function(error) {
-        alert('Error saving: ' + error.message);
+        AdminModals.showError(error.message);
     });
 }
 
-// Close modal when clicking outside
-document.getElementById('scoreboardSharingModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeScoreboardSharingModal();
+// Save button click handler
+document.getElementById('save-scoreboard-sharing-btn').addEventListener('click', saveScoreboardSharing);
+
+function openRemoveTrainingDayModal(btn) {
+    var name = btn.getAttribute('data-td-name');
+    var removeUrl = btn.getAttribute('data-remove-url');
+    var participationCount = Number.parseInt(btn.getAttribute('data-participation-count')) || 0;
+    var taskCount = Number.parseInt(btn.getAttribute('data-task-count')) || 0;
+    var isArchived = btn.getAttribute('data-is-archived') === 'true';
+
+    var warningHtml;
+    if (isArchived) {
+        warningHtml = 'This training day has been archived. The contest has already been deleted.<br>This operation cannot be undone.';
+    } else {
+        warningHtml = 'This will remove ' + escapeHtml(participationCount.toString()) + ' participation(s) from the training day contest.<br>This operation cannot be undone.';
+    }
+    if (taskCount > 0) {
+        warningHtml += '<br><br>The training day has ' + escapeHtml(taskCount.toString()) + ' task(s) assigned. These tasks will remain in the training program but will no longer be assigned to any training day.';
+    }
+
+    AdminModals.deleteResource({
+        title: 'Remove Training Day',
+        messageHtml: 'Are you sure you want to remove the training day <strong>' + escapeHtml(name) + '</strong>?',
+        warningHtml: warningHtml,
+        deleteUrl: removeUrl,
+        confirmLabel: 'Yes, Remove Training Day'
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var openModal = urlParams.get('open_modal');
+    if (openModal && openModal.startsWith('remove-training-day-')) {
+        var tdId = openModal.replace('remove-training-day-', '');
+        if (!/^\d+$/.test(tdId)) return;
+        var btn = document.querySelector('button[data-remove-url$="/training_day/' + tdId + '/remove"]');
+        if (btn) {
+            openRemoveTrainingDayModal(btn);
+            urlParams.delete('open_modal');
+            window.history.replaceState(null, '', window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : ''));
+        }
     }
 });
 </script>
 
 {% endblock core %}
-

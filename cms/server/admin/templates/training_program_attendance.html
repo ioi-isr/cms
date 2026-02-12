@@ -160,7 +160,7 @@ AdminTableUtils.initFilterTagify({
                   {% elif att.location == "home" %}
                     <span class="location-icon">&#x1F3E0;</span> Home
                   {% elif att.location == "both" %}
-                    <span class="location-icon">&#x21C4;</span> Both
+                    <span class="location-icon">&#x1F3EB; &#x21C4; &#x1F3E0;</span> Both
                   {% elif att.location %}
                     <span>{{ att.location }}</span>
                   {% else %}
@@ -211,36 +211,38 @@ AdminTableUtils.initFilterTagify({
   });
 </script>
 
-<!-- Attendance Edit Modal -->
-<div id="attendance-modal" class="attendance-modal">
-  <div class="attendance-modal-content">
-    <div class="attendance-modal-header">
-      <h3>Edit Attendance</h3>
-      <button type="button" class="attendance-modal-close" onclick="closeAttendanceModal()">&times;</button>
-    </div>
-    <div class="attendance-modal-body">
-      <div class="attendance-modal-row" id="justified-row">
-        <label for="modal-justified">
-          <input type="checkbox" id="modal-justified" />
-          Mark as Justified
-        </label>
-        <small class="attendance-modal-hint">Check this if the absence was justified (e.g., sick leave)</small>
-      </div>
-      <div class="attendance-modal-row">
-        <label for="modal-recorded">
-          <input type="checkbox" id="modal-recorded" />
-          Recorded
-        </label>
-        <small class="attendance-modal-hint">Check this if the student was recorded (screen recording)</small>
-      </div>
-      <div class="attendance-modal-row">
-        <label for="modal-comment">Comment:</label>
-        <textarea id="modal-comment" rows="3" placeholder="Add a comment about this attendance..."></textarea>
-      </div>
-    </div>
-    <div class="attendance-modal-footer">
-      <button type="button" class="tp-btn-secondary" onclick="closeAttendanceModal()">Cancel</button>
-      <button type="button" class="tp-btn-primary" onclick="saveAttendance()">Save</button>
+<!-- Attendance Edit Modal (Micromodal) -->
+<div class="modal" id="modal-attendance" aria-hidden="true">
+  <div class="modal__overlay" tabindex="-1">
+    <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-attendance-title">
+      <header class="modal__header">
+        <h2 class="modal__title" id="modal-attendance-title">Edit Attendance</h2>
+        <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+      </header>
+      <main class="modal__content">
+        <div class="modal__checkbox-row" id="justified-row">
+          <label for="modal-justified">
+            <input type="checkbox" id="modal-justified" />
+            Mark as Justified
+          </label>
+          <small class="modal__hint">Check this if the absence was justified (e.g., sick leave)</small>
+        </div>
+        <div class="modal__checkbox-row">
+          <label for="modal-recorded">
+            <input type="checkbox" id="modal-recorded" />
+            Recorded
+          </label>
+          <small class="modal__hint">Check this if the student was recorded (screen recording)</small>
+        </div>
+        <div class="modal__form-group">
+          <label for="modal-comment">Comment:</label>
+          <textarea id="modal-comment" rows="3" placeholder="Add a comment about this attendance..."></textarea>
+        </div>
+      </main>
+      <footer class="modal__footer">
+        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+        <button type="button" class="tp-btn-primary" id="save-attendance-btn">Save</button>
+      </footer>
     </div>
   </div>
 </div>
@@ -275,13 +277,13 @@ function openAttendanceModal(el) {
 
     var isMissed = currentAttendanceData.status === 'missed';
     document.getElementById('justified-row').style.display = isMissed ? 'flex' : 'none';
-    document.getElementById('modal-recorded').closest('.attendance-modal-row').style.display = isMissed ? 'none' : 'flex';
+    document.getElementById('modal-recorded').closest('.modal__checkbox-row').style.display = isMissed ? 'none' : 'flex';
 
-    document.getElementById('attendance-modal').style.display = 'flex';
+    MicroModal.show('modal-attendance');
 }
 
 function closeAttendanceModal() {
-    document.getElementById('attendance-modal').style.display = 'none';
+    MicroModal.close('modal-attendance');
     currentAttendanceId = null;
     currentAttendanceData = {};
 }
@@ -363,10 +365,15 @@ function saveAttendance() {
     // Check if justified status changed (for missed entries) and confirm
     if (currentAttendanceData.status === 'missed' && justified !== currentAttendanceData.justified) {
         var action = justified ? 'mark this absence as justified' : 'remove the justified status';
-        if (!confirm('Are you sure you want to ' + action + '?')) {
-            return;
-        }
+        AdminModals.confirmThen('Are you sure you want to ' + action + '?', function() {
+            _doSaveAttendance(justified, recorded, comment);
+        }, {icon: 'question'});
+        return;
     }
+    _doSaveAttendance(justified, recorded, comment);
+}
+
+function _doSaveAttendance(justified, recorded, comment) {
 
     var data = {
         justified: justified,
@@ -375,7 +382,7 @@ function saveAttendance() {
     };
 
     // Add visual feedback
-    var saveBtn = document.querySelector('.attendance-modal-footer .tp-btn-primary');
+    var saveBtn = document.getElementById('save-attendance-btn');
     var originalText = saveBtn.innerText;
     saveBtn.disabled = true;
     saveBtn.innerText = "Saving...";
@@ -400,11 +407,11 @@ function saveAttendance() {
             updateAttendanceCell(currentAttendanceId, justified, recorded, comment);
             closeAttendanceModal();
         } else {
-            alert('Failed to save: ' + (result.error || 'Unknown error'));
+            AdminModals.showError(result.error || 'Unknown error');
         }
     })
     .catch(function(error) {
-        alert('Error saving attendance: ' + error.message);
+        AdminModals.showError(error.message);
     })
     .finally(function() {
         // Always restore button state
@@ -413,13 +420,11 @@ function saveAttendance() {
     });
 }
 
-// Close modal when clicking outside
-document.addEventListener('click', function(e) {
-    var modal = document.getElementById('attendance-modal');
-    if (e.target === modal) {
-        closeAttendanceModal();
-    }
-});
+// Save button click handler
+var saveAttendanceBtn = document.getElementById('save-attendance-btn');
+if (saveAttendanceBtn) {
+    saveAttendanceBtn.addEventListener('click', saveAttendance);
+}
 </script>
 
 {% endblock core %}

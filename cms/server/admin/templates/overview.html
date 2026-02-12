@@ -64,7 +64,7 @@ function update_queue_status(response)
 };
 
 function enable_worker(shard) {
-    if (confirm("Do you really want to enable worker " + shard + "?")) {
+    AdminModals.confirmThen("Do you really want to enable worker " + shard + "?", function() {
         cmsrpc_request("EvaluationService", 0,
                        "enable_worker",
                        {"shard":shard},
@@ -74,11 +74,11 @@ function enable_worker(shard) {
                                          {},
                                          update_workers_status);
                        });
-    }
+    }, {icon: 'question'});
 }
 
 function disable_worker(shard) {
-    if (confirm("Do you really want to disable worker " + shard + "?")) {
+    AdminModals.confirmThen("Do you really want to disable worker " + shard + "?", function() {
         cmsrpc_request("EvaluationService", 0,
                        "disable_worker",
                        {"shard":shard},
@@ -88,7 +88,7 @@ function disable_worker(shard) {
                                          {},
                                          update_workers_status);
                        });
-    }
+    }, {icon: 'question'});
 }
 
 var total_workers_configured = 0;
@@ -96,14 +96,14 @@ var total_workers_configured = 0;
 function set_workers_count() {
     var count = parseInt($("#worker_count_input").val());
     if (isNaN(count) || count < 0) {
-        alert("Please enter a valid number of workers (0 or greater).");
+        AdminModals.showError('Please enter a valid number of workers (0 or greater).');
         return;
     }
     if (count > total_workers_configured) {
-        alert("Please enter a number between 0 and " + total_workers_configured + " (total configured workers).");
+        AdminModals.showError('Please enter a number between 0 and ' + total_workers_configured + ' (total configured workers).');
         return;
     }
-    if (confirm("Do you really want to enable workers 0 to " + (count - 1) + " and disable the rest?")) {
+    AdminModals.confirmThen("Do you really want to enable workers 0 to " + (count - 1) + " and disable the rest?", function() {
         cmsrpc_request("EvaluationService", 0,
                        "set_workers_count",
                        {"count": count},
@@ -114,10 +114,10 @@ function set_workers_count() {
                                              {},
                                              update_workers_status);
                           } else {
-                              alert("Failed to set worker count. Please check the logs.");
+                              AdminModals.showError('Failed to set worker count. Please check the logs.');
                           }
                        });
-    }
+    }, {icon: 'question'});
 }
 
 function update_workers_status(response)

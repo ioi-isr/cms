@@ -27,41 +27,66 @@ window.filterTestcases = function(tableId, filter) {
 };
 
 window.promptRename = function(renameUrl, testcaseId, currentCodename, subtaskIndex) {
-  var newCodename = prompt('Enter new codename for testcase:', currentCodename);
-  if (newCodename && newCodename !== currentCodename) {
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = renameUrl.replace('TESTCASE_ID', testcaseId);
-
-    var input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'new_codename';
-    input.value = newCodename;
-    form.appendChild(input);
-
-    // Add subtask_index to redirect back to subtask details page
-    if (subtaskIndex !== undefined) {
-      var subtaskInput = document.createElement('input');
-      subtaskInput.type = 'hidden';
-      subtaskInput.name = 'subtask_index';
-      subtaskInput.value = subtaskIndex;
-      form.appendChild(subtaskInput);
+  Swal.fire({
+    title: 'Rename Testcase',
+    text: 'Enter new codename for testcase:',
+    input: 'text',
+    inputValue: currentCodename,
+    showCancelButton: true,
+    confirmButtonText: 'Rename',
+    cancelButtonText: 'Cancel',
+    reverseButtons: true,
+    inputValidator: function(value) {
+      if (!value || value.trim() === '') {
+        return 'Codename cannot be empty!';
+      }
+      if (value.trim() === currentCodename) {
+        return 'New codename must be different from current codename!';
+      }
     }
+  }).then(function(result) {
+    if (result.isConfirmed && result.value) {
+      var newCodename = result.value.trim();
+      if (newCodename !== currentCodename) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = renameUrl.replace('TESTCASE_ID', testcaseId);
 
-    var xsrfElem = document.querySelector('input[name="_xsrf"]');
-    if (!xsrfElem) {
-      alert('CSRF token missing; cannot submit form.');
-      return;
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'new_codename';
+        input.value = newCodename;
+        form.appendChild(input);
+
+        // Add subtask_index to redirect back to subtask details page
+        if (subtaskIndex !== undefined) {
+          var subtaskInput = document.createElement('input');
+          subtaskInput.type = 'hidden';
+          subtaskInput.name = 'subtask_index';
+          subtaskInput.value = subtaskIndex;
+          form.appendChild(subtaskInput);
+        }
+
+        var xsrfElem = document.querySelector('input[name="_xsrf"]');
+        if (!xsrfElem) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'CSRF token missing; cannot submit form.'
+          });
+          return;
+        }
+        var xsrf = document.createElement('input');
+        xsrf.type = 'hidden';
+        xsrf.name = '_xsrf';
+        xsrf.value = xsrfElem.value;
+        form.appendChild(xsrf);
+
+        document.body.appendChild(form);
+        form.submit();
+      }
     }
-    var xsrf = document.createElement('input');
-    xsrf.type = 'hidden';
-    xsrf.name = '_xsrf';
-    xsrf.value = xsrfElem.value;
-    form.appendChild(xsrf);
-
-    document.body.appendChild(form);
-    form.submit();
-  }
+  });
 };
 
 window.toggleSelectAll = function(tableId, masterCheckbox) {
@@ -167,144 +192,172 @@ window.findCommonSubstring = function(strings) {
 window.batchAddPrefix = function(datasetId, tableId, url, subtaskIndex, usesRegex, suggestedPrefix) {
   var ids = getSelectedTestcaseIds(tableId);
   if (ids.length === 0) {
-    alert('No testcases selected.');
+    AdminModals.showError('No testcases selected.');
     return;
   }
 
-  var defaultPrefix = suggestedPrefix || '';
-  var prefix = prompt('Enter prefix to add to selected testcases:', defaultPrefix);
-  if (!prefix) return;
+  var defaultPrefix= suggestedPrefix || '';
+  Swal.fire({
+    title: 'Add Prefix',
+    text: 'Enter prefix to add to selected testcases:',
+    input: 'text',
+    inputValue: defaultPrefix,
+    showCancelButton: true,
+    confirmButtonText: 'OK',
+    cancelButtonText: 'Cancel',
+    inputValidator: function(value) {
+      if (!value) return 'Please enter a prefix.';
+    }
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    var prefix = result.value;
 
-  // Ask if user wants to update the subtask regex
-  // Accept both boolean true and string 'true' for backwards compatibility
-  var updateRegex = false;
-  if (usesRegex === true || usesRegex === 'true') {
-    updateRegex = confirm('Do you also want to update the subtask regex to match testcases containing "' + prefix + '" as a substring?');
+    function submitBatchAddPrefix(updateRegex) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+
+    ids.forEach(function(id) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'testcase_id';
+      input.value = id;
+      form.appendChild(input);
+    });
+
+    var opInput = document.createElement('input');
+    opInput.type = 'hidden';
+    opInput.name = 'operation';
+    opInput.value = 'add_prefix';
+    form.appendChild(opInput);
+
+    var valInput = document.createElement('input');
+    valInput.type = 'hidden';
+    valInput.name = 'value';
+    valInput.value = prefix;
+    form.appendChild(valInput);
+
+    if (updateRegex) {
+      var regexInput = document.createElement('input');
+      regexInput.type = 'hidden';
+      regexInput.name = 'update_regex';
+      regexInput.value = 'true';
+      form.appendChild(regexInput);
+    }
+
+    if (subtaskIndex !== undefined) {
+      var subtaskInput = document.createElement('input');
+      subtaskInput.type = 'hidden';
+      subtaskInput.name = 'subtask_index';
+      subtaskInput.value = subtaskIndex;
+      form.appendChild(subtaskInput);
+    }
+
+    var xsrfElem = document.querySelector('input[name="_xsrf"]');
+    if (!xsrfElem) {
+      AdminModals.showError('CSRF token missing; cannot submit form.');
+      return;
+    }
+    var xsrf = document.createElement('input');
+    xsrf.type = 'hidden';
+    xsrf.name = '_xsrf';
+    xsrf.value = xsrfElem.value;
+    form.appendChild(xsrf);
+
+    document.body.appendChild(form);
+    form.submit();
   }
 
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = url;
-
-  ids.forEach(function(id) {
-    var input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'testcase_id';
-    input.value = id;
-    form.appendChild(input);
+    if (usesRegex === true || usesRegex === 'true') {
+      AdminModals.simpleConfirm('Do you also want to update the subtask regex to match testcases containing "' + prefix + '" as a substring?',
+        { title: 'Update regex?', icon: 'question', confirmButtonText: 'Yes, update regex', cancelButtonText: 'No, just add prefix' }
+      ).then(function(updateRegex) {
+        submitBatchAddPrefix(updateRegex);
+      });
+    } else {
+      submitBatchAddPrefix(false);
+    }
   });
-
-  var opInput = document.createElement('input');
-  opInput.type = 'hidden';
-  opInput.name = 'operation';
-  opInput.value = 'add_prefix';
-  form.appendChild(opInput);
-
-  var valInput = document.createElement('input');
-  valInput.type = 'hidden';
-  valInput.name = 'value';
-  valInput.value = prefix;
-  form.appendChild(valInput);
-
-  // Add update_regex flag if user agreed
-  if (updateRegex) {
-    var regexInput = document.createElement('input');
-    regexInput.type = 'hidden';
-    regexInput.name = 'update_regex';
-    regexInput.value = 'true';
-    form.appendChild(regexInput);
-  }
-
-  // Add subtask_index to redirect back to subtask details page
-  if (subtaskIndex !== undefined) {
-    var subtaskInput = document.createElement('input');
-    subtaskInput.type = 'hidden';
-    subtaskInput.name = 'subtask_index';
-    subtaskInput.value = subtaskIndex;
-    form.appendChild(subtaskInput);
-  }
-
-  var xsrfElem = document.querySelector('input[name="_xsrf"]');
-  if (!xsrfElem) {
-    alert('CSRF token missing; cannot submit form.');
-    return;
-  }
-  var xsrf = document.createElement('input');
-  xsrf.type = 'hidden';
-  xsrf.name = '_xsrf';
-  xsrf.value = xsrfElem.value;
-  form.appendChild(xsrf);
-
-  document.body.appendChild(form);
-  form.submit();
 };
 
 window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
   var ids = getSelectedTestcaseIds(tableId);
   if (ids.length === 0) {
-    alert('No testcases selected.');
+    AdminModals.showError('No testcases selected.');
     return;
   }
 
-  var codenames = getSelectedCodenames(tableId);
+  var codenames= getSelectedCodenames(tableId);
   var commonSubstring = findCommonSubstring(codenames);
 
-  var substring = prompt('Enter the substring to remove from selected testcases (detected: "' + commonSubstring + '"):', commonSubstring);
-  if (substring === null || substring === '') return;
+  Swal.fire({
+    title: 'Remove Substring',
+    text: 'Enter the substring to remove from selected testcases (detected: "' + commonSubstring + '"):',
+    input: 'text',
+    inputValue: commonSubstring,
+    showCancelButton: true,
+    confirmButtonText: 'OK',
+    cancelButtonText: 'Cancel',
+    inputValidator: function(value) {
+      if (!value) return 'Please enter a substring.';
+    }
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    var substring = result.value;
 
-  // Verify all selected testcases contain the substring
-  var allContain = codenames.every(function(c) { return c.indexOf(substring) !== -1; });
-  if (!allContain) {
-    alert('Not all selected testcases contain the substring "' + substring + '".');
-    return;
-  }
+    // Verify all selected testcases contain the substring
+    var allContain = codenames.every(function(c) { return c.indexOf(substring) !== -1; });
+    if (!allContain) {
+      AdminModals.showError('Not all selected testcases contain the substring "' + substring + '".');
+      return;
+    }
 
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = url;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
 
-  ids.forEach(function(id) {
-    var input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'testcase_id';
-    input.value = id;
-    form.appendChild(input);
+    ids.forEach(function(id) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'testcase_id';
+      input.value = id;
+      form.appendChild(input);
+    });
+
+    var opInput = document.createElement('input');
+    opInput.type = 'hidden';
+    opInput.name = 'operation';
+    opInput.value = 'remove_substring';
+    form.appendChild(opInput);
+
+    var valInput = document.createElement('input');
+    valInput.type = 'hidden';
+    valInput.name = 'value';
+    valInput.value = substring;
+    form.appendChild(valInput);
+
+    if (subtaskIndex !== undefined) {
+      var subtaskInput = document.createElement('input');
+      subtaskInput.type = 'hidden';
+      subtaskInput.name = 'subtask_index';
+      subtaskInput.value = subtaskIndex;
+      form.appendChild(subtaskInput);
+    }
+
+    var xsrfElem = document.querySelector('input[name="_xsrf"]');
+    if (!xsrfElem) {
+      AdminModals.showError('CSRF token missing; cannot submit form.');
+      return;
+    }
+    var xsrf = document.createElement('input');
+    xsrf.type = 'hidden';
+    xsrf.name = '_xsrf';
+    xsrf.value = xsrfElem.value;
+    form.appendChild(xsrf);
+
+    document.body.appendChild(form);
+    form.submit();
   });
-
-  var opInput = document.createElement('input');
-  opInput.type = 'hidden';
-  opInput.name = 'operation';
-  opInput.value = 'remove_substring';
-  form.appendChild(opInput);
-
-  var valInput = document.createElement('input');
-  valInput.type = 'hidden';
-  valInput.name = 'value';
-  valInput.value = substring;
-  form.appendChild(valInput);
-
-  // Add subtask_index to redirect back to subtask details page
-  if (subtaskIndex !== undefined) {
-    var subtaskInput = document.createElement('input');
-    subtaskInput.type = 'hidden';
-    subtaskInput.name = 'subtask_index';
-    subtaskInput.value = subtaskIndex;
-    form.appendChild(subtaskInput);
-  }
-
-  var xsrfElem = document.querySelector('input[name="_xsrf"]');
-  if (!xsrfElem) {
-    alert('CSRF token missing; cannot submit form.');
-    return;
-  }
-  var xsrf = document.createElement('input');
-  xsrf.type = 'hidden';
-  xsrf.name = '_xsrf';
-  xsrf.value = xsrfElem.value;
-  form.appendChild(xsrf);
-
-  document.body.appendChild(form);
-  form.submit();
 };
 {% endblock js_init %}
 

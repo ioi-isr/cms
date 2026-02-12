@@ -1,0 +1,86 @@
+<!-- Add Training Day Modal Fragment -->
+<!-- Include this fragment in pages where the "Add Training Day" modal is needed -->
+<!-- Required context: admin, url, xsrf_form_html, training_program, all_student_tags, timezone_name -->
+
+{% if admin is defined and admin.permission_all and training_program is defined %}
+<div class="modal modal--wide" id="modal-add-training-day" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-training-day-title">
+            <header class="modal__header">
+                <h2 class="modal__title" id="modal-add-training-day-title">Add Training Day</h2>
+                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+            </header>
+            <form action="{{ url("training_program", training_program.id, "training_days", "add") }}" method="POST" name="add_training_day" id="add-training-day-form">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    <div class="modal__form-group">
+                        <label for="td-name">
+                            Name (codename)
+                            <span style="color: var(--tp-danger);">*</span>
+                        </label>
+                        <input type="text" id="td-name" name="name" placeholder="e.g., day1" required />
+                        <small class="modal__hint">A unique identifier for the training day contest</small>
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label for="td-description">Description</label>
+                        <input type="text" id="td-description" name="description" placeholder="e.g., Training Day 1 - Graphs" />
+                        <small class="modal__hint">Human-readable description (defaults to name if empty)</small>
+                    </div>
+
+                    <div style="display: flex; gap: 16px;">
+                        <div class="modal__form-group" style="flex: 1;">
+                            <label for="td-start">
+                                Start Time ({{ timezone_name|default('UTC') }})
+                                <span class="tp-form-info" title="When the training day starts. If not specified and groups have start times, defaults to the earliest group start time.">?</span>
+                            </label>
+                            <input type="datetime-local" id="td-start" name="start" />
+                            <small class="modal__hint">Optional, defaults to earliest group time</small>
+                        </div>
+                        <div class="modal__form-group" style="flex: 1;">
+                            <label for="td-duration">Duration</label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" id="td-duration-hours" name="duration_hours" min="0" placeholder="0" style="width: 70px;" />
+                                <span>hours</span>
+                                <input type="number" id="td-duration-minutes" name="duration_minutes" min="0" max="59" placeholder="0" style="width: 70px;" />
+                                <span>minutes</span>
+                            </div>
+                            <small class="modal__hint">Optional</small>
+                        </div>
+                    </div>
+
+                    <!-- Main Groups Configuration - using shared fragment -->
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--tp-border, #e5e7eb);">
+                        {% set mode = 'create' %}
+                        {% include "fragments/training_day_groups.html" %}
+                    </div>
+                </main>
+                <footer class="modal__footer">
+                    <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                    <button type="submit" class="tp-btn-primary">Create Training Day</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+  var modal = document.getElementById('modal-add-training-day');
+  if (modal) {
+    modal.addEventListener('modal-reset', function() {
+      var tbody = document.getElementById('groups-tbody');
+      if (tbody) {
+        tbody.querySelectorAll('.tagify').forEach(function(el) {
+          if (el._tagify) el._tagify.destroy();
+        });
+        tbody.innerHTML = '';
+      }
+      if (typeof window.groupRowIndex !== 'undefined') {
+        window.groupRowIndex = 0;
+      }
+    });
+  }
+})();
+</script>
+{% endif %}

@@ -175,7 +175,11 @@ CMS.AWSUtils.prototype.file_received = function(response, error) {
     var url = this.file_asked_url;
     var elements = [];
     if (error != null) {
-        alert("File request failed.");
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('File request failed.');
+        } else {
+            alert('File request failed.');
+        }
     } else {
         if (response.length > 100000) {
             elements.push($('<h1>').text(file_name));
@@ -470,7 +474,11 @@ CMS.AWSUtils.prototype.update_remaining_time = function() {
 CMS.AWSUtils.prototype.redirect_if_ok = function(url, response) {
     var msg = this.standard_response(response);
     if (msg != "") {
-        alert('Unable to invalidate (' + msg + ').');
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('Unable to invalidate (' + msg + ').');
+        } else {
+            alert('Unable to invalidate (' + msg + ').');
+        }
     } else {
         location.href = url;
     }
@@ -693,23 +701,31 @@ CMS.AWSUtils.prototype.standard_response = function(response) {
 CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
     elements_per_page = elements_per_page || 5;
 
-    var children = $("#paged_content_" + item).children();
+    var children = $("#paged_content_" + item).children().filter(function() {
+        return $(this).css('display') !== 'none' || $(this).data('hidden-by-page') === true;
+    });
+    children.each(function() { $(this).removeData('hidden-by-page'); });
     var npages = Math.ceil(children.length / elements_per_page);
     var final_page = Math.min(page, npages) - 1;
+    if (final_page < 0) final_page = 0;
     children.each(function(i, child) {
         if (i >= elements_per_page * final_page
             && i < elements_per_page * (final_page + 1)) {
             $(child).show();
         } else {
             $(child).hide();
+            $(child).data('hidden-by-page', true);
         }
     });
 
     var self = this;
     var selector = $("#page_selector_" + item);
     selector.empty();
+    if (npages <= 1) return;
     selector.append("Pages: ");
-    for (var i = 1; i <= npages; i++) {
+    var windowRadius = 2;
+    var maxAllVisible = windowRadius * 2 + 3;
+    var appendPage = function(i) {
         if (i != page) {
             selector.append($("<a>").text(i + " ")
                             .click(function(j) {
@@ -719,9 +735,23 @@ CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
                                 };
                             }(i)));
         } else {
-            selector.append(i + " ");
+            selector.append($("<span>").addClass("page-current").text(i + " "));
         }
+    };
+
+    if (npages <= maxAllVisible) {
+        for (let i = 1; i <= npages; i++) appendPage(i);
+        return;
     }
+
+    var start = Math.max(2, page - windowRadius);
+    var end = Math.min(npages - 1, page + windowRadius);
+
+    appendPage(1);
+    if (start > 2) selector.append(" ... ");
+    for (let i = start; i <= end; i++) appendPage(i);
+    if (end < npages - 1) selector.append(" ... ");
+    appendPage(npages);
 };
 
 
@@ -793,6 +823,29 @@ CMS.AWSUtils.ajax_delete = function(url) {
 
 
 /**
+ * Sends a delete request and on success reloads the current page
+ * instead of following the server's redirect URL.
+ */
+CMS.AWSUtils.ajax_delete_reload = function (url) {
+    var settings = {
+        "type": "DELETE",
+        headers: { "X-XSRFToken": get_cookie("_xsrf") }
+    };
+    settings["success"] = function () {
+        window.location.reload();
+    };
+    settings["error"] = function (xhr) {
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('Delete failed (' + xhr.status + ').');
+        } else {
+            alert('Delete failed (' + xhr.status + ').');
+        }
+    };
+    $.ajax(url, settings);
+};
+
+
+/**
  * Sends a post request and on success. See AWSUtils.ajax_request
  * for more details.
  */
@@ -809,29 +862,51 @@ CMS.AWSUtils.ajax_post = function(url) {
  * Toggles visibility of the question reply box.
  */
 CMS.AWSUtils.prototype.question_reply_toggle = function(event, invoker) {
-    var obj = invoker.parentElement.parentElement.querySelector(".reply_question");
+    var card = invoker.closest('.question-card');
+    var obj = card.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
-        invoker.innerHTML = "Hide reply";
     } else {
         obj.style.display = "none";
-        invoker.innerHTML = "Reply";
     }
     event.preventDefault();
+};
+
+CMS.AWSUtils.prototype.init_questions_page = function() {
+    var self = this;
+    self.show_page("questions", 1);
+
+    var tabs = document.querySelectorAll('.questions-tab');
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            this.classList.add('active');
+            var filter = this.dataset.filter;
+            var cards = document.querySelectorAll('#paged_content_questions .question-card');
+            cards.forEach(function(card) {
+                $(card).removeData('hidden-by-page');
+                if (filter === 'all') {
+                    card.style.display = '';
+                } else {
+                    card.style.display = card.dataset.status === filter ? '' : 'none';
+                }
+            });
+            self.show_page("questions", 1);
+        });
+    });
 }
 
 CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
-    const notification = invoker.closest('.notification_msg');
-    const subjectText = notification.querySelector('.announcement_raw_subject').value;
-    const bodyText = notification.querySelector('.announcement_raw_text').value;
-    const form = notification.querySelector('.reply_question form');
+    const card = invoker.closest('.announcement-card');
+    const subjectText = card.querySelector('.announcement_raw_subject').value;
+    const bodyText = card.querySelector('.announcement_raw_text').value;
+    const form = card.querySelector('.reply_question form');
 
     form.querySelector('input[name="subject"]').value = subjectText;
     form.querySelector('textarea[name="text"]').value = bodyText;
 
-    // Populate visible_to_tags field if it exists
     const visibleToTagsInput = form.querySelector('input[name="visible_to_tags"]');
-    const rawVisibleToTags = notification.querySelector('.announcement_raw_visible_to_tags');
+    const rawVisibleToTags = card.querySelector('.announcement_raw_visible_to_tags');
     if (visibleToTagsInput && rawVisibleToTags) {
         const rawValue = rawVisibleToTags.value;
         const tagify = visibleToTagsInput._tagify;
@@ -844,13 +919,11 @@ CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
         }
     }
 
-    var obj = notification.querySelector(".reply_question");
+    var obj = card.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
-        invoker.innerHTML = "Hide Edit";
     } else {
         obj.style.display = "none";
-        invoker.innerHTML = "Edit";
     }
     event.preventDefault();
 }
