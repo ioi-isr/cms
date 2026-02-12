@@ -66,25 +66,11 @@ CMS.AWSUtils.create_url_builder = function(url_root) {
 CMS.AWSUtils.prototype.display_subpage = function(elements) {
     var content = $("#subpage_content");
     content.empty();
-    // TODO: update jQuery to allow appending of arrays of elements.
     for (var i = 0; i < elements.length; ++i) {
         elements[i].appendTo(content);
     }
-    document.getElementById('subpage_popup').show();
+    MicroModal.show('modal-show-file');
 };
-
-// set up some event listeners for the subpage
-window.addEventListener('DOMContentLoaded', () => {
-    $('#subpage_close').on('click', () => {
-        document.getElementById('subpage_popup').close();
-    });
-});
-
-document.addEventListener('keydown', function(event) {
-    if (event.key === "Escape") {
-        document.getElementById('subpage_popup').close();
-    }
-});
 
 CMS.AWSUtils.filename_to_lang = function(file_name) {
     // TODO: update if adding a new language to cms
@@ -173,41 +159,47 @@ CMS.AWSUtils.filter_languages = function(options, inputs, languages) {
 CMS.AWSUtils.prototype.file_received = function(response, error) {
     var file_name = this.file_asked_name;
     var url = this.file_asked_url;
-    var elements = [];
     if (error != null) {
         if (window.AdminModals && typeof AdminModals.showError === 'function') {
             AdminModals.showError('File request failed.');
         } else {
             alert('File request failed.');
         }
-    } else {
-        if (response.length > 100000) {
-            elements.push($('<h1>').text(file_name));
-            elements.push($('<a>').text("Download").prop("href", url));
-            this.display_subpage(elements);
-            return;
-        }
-        var lang_name = CMS.AWSUtils.filename_to_lang(file_name);
+        return;
+    }
 
-        elements.push($('<h1>').text(file_name));
-        elements.push($('<a>').text("Download").prop("href", url));
-        elements.push($('<span>').text(" - "))
-        elements.push($('<a>').text("copy").prop('href', '#').on('click', (event) => {
+    $('#modal-show-file-title').text(file_name);
+    $('#modal-show-file-download').prop('href', url);
+
+    var content = $('#subpage_content');
+    content.empty();
+
+    if (response.length > 100000) {
+        content.append($('<p>').text('File is too large to display. Use the Download link above.'));
+        $('#modal-show-file-copy').hide();
+        MicroModal.show('modal-show-file');
+        return;
+    }
+
+    var lang_name = CMS.AWSUtils.filename_to_lang(file_name);
+    var codearea = $('<code>').text(response).addClass('line-numbers').addClass('language-' + lang_name);
+    content.append($('<pre>').css('margin', '0').append(codearea));
+
+    $('#modal-show-file-copy').show().off('click').on('click', function(event) {
+        var code_el = $('#subpage_content code')[0];
+        if (code_el) {
             var range = document.createRange();
-            var code_area = $('#subpage_content code')[0];
-            range.setStartBefore(code_area);
-            range.setEndAfter(code_area);
+            range.setStartBefore(code_el);
+            range.setEndAfter(code_el);
             window.getSelection().removeAllRanges();
             window.getSelection().addRange(range);
-            // execCommand is deprecated, but this seems much less annoying than the new clipboard api
             document.execCommand('copy');
-            event.preventDefault(); // prevent the <a> from navigating
-        }));
-        var codearea = $('<code>').text(response).addClass('line-numbers').addClass('language-' + lang_name);
-        elements.push($('<pre>').append(codearea));
-        this.display_subpage(elements);
-        Prism.highlightAllUnder(document.getElementById('subpage_content'));
-    }
+        }
+        event.preventDefault();
+    });
+
+    MicroModal.show('modal-show-file');
+    Prism.highlightAllUnder(document.getElementById('subpage_content'));
 };
 
 
