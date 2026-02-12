@@ -3436,3 +3436,265 @@
     margin-left: auto;
     white-space: nowrap;
 }
+
+/* ==========================================================================
+   Task Page - Main Tabs
+   ========================================================================== */
+
+.task-page-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--tp-border);
+    margin-bottom: 0;
+}
+
+.task-page-tab {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--tp-text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.task-page-tab:hover {
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-light);
+}
+
+.task-page-tab.active {
+    color: var(--tp-primary);
+    border-bottom-color: var(--tp-primary);
+    font-weight: 600;
+}
+
+.task-page-tab-content {
+    display: none;
+    padding-top: 20px;
+}
+
+.task-page-tab-content.active {
+    display: block;
+}
+
+/* ==========================================================================
+   Task Page - Dataset Tabs
+   ========================================================================== */
+
+.dataset-tabs-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 2px solid var(--tp-border);
+    margin-bottom: 0;
+    flex-wrap: wrap;
+}
+
+.dataset-tab-wrapper {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.dataset-tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--tp-text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.dataset-tab-btn:hover {
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-light);
+}
+
+.dataset-tab-btn.active {
+    color: var(--tp-primary);
+    border-bottom-color: var(--tp-primary);
+    font-weight: 600;
+}
+
+.dataset-tab-add {
+    padding: 8px 14px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--tp-text-muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.dataset-tab-add:hover {
+    color: var(--tp-primary);
+    background: var(--tp-bg-light);
+}
+
+.dataset-panel {
+    display: none;
+}
+
+.dataset-panel.active {
+    display: block;
+}
+
+/* ==========================================================================
+   Task Page - Dataset Sub-tabs
+   ========================================================================== */
+
+.dataset-subtabs-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--tp-border);
+    margin-top: 12px;
+    margin-bottom: 0;
+    background: var(--tp-bg-light);
+    border-radius: 8px 8px 0 0;
+    padding: 0 8px;
+}
+
+.dataset-subtab-btn {
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--tp-text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+}
+
+.dataset-subtab-btn:hover {
+    color: var(--tp-text-primary);
+}
+
+.dataset-subtab-btn.active {
+    color: var(--tp-primary);
+    border-bottom-color: var(--tp-primary);
+    font-weight: 600;
+    background: var(--tp-bg-white);
+    border-radius: 6px 6px 0 0;
+}
+
+.dataset-subtab-content {
+    display: none;
+    padding-top: 20px;
+}
+
+.dataset-subtab-content.active {
+    display: block;
+}
+
+/* ==========================================================================
+   Task Page - Language Checkbox Grid
+   ========================================================================== */
+
+.tp-language-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tp-checkbox-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--tp-border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    background: var(--tp-bg-white);
+}
+
+.tp-checkbox-card:hover {
+    border-color: var(--tp-primary-light);
+    background: var(--tp-bg-light);
+}
+
+.tp-checkbox-card input[type="checkbox"]:checked + span {
+    color: var(--tp-primary);
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   Task Page - Remove Button
+   ========================================================================== */
+
+.tp-btn-remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--tp-bg-white);
+    color: var(--tp-danger);
+    border: 1px solid var(--tp-danger-border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tp-btn-remove:hover {
+    background: var(--tp-danger-light);
+    border-color: var(--tp-danger);
+}
+
+.tp-btn-remove:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Task Page - Info Alert (for validator warnings)
+   ========================================================================== */
+
+.tp-info-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.tp-info-alert-info {
+    background: var(--tp-info-light);
+    border: 1px solid var(--tp-info-border);
+    color: var(--tp-info-dark);
+}
+
+.tp-info-alert-warning {
+    background: var(--tp-warning-light);
+    border: 1px solid #fbbf24;
+    color: var(--tp-warning-dark);
+}
+
+.tp-info-alert-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.tp-info-alert-message {
+    line-height: 1.5;
+}
+
+.tp-info-alert-message a {
+    font-weight: 600;
+    text-decoration: underline;
+}
