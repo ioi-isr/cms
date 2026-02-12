@@ -86,12 +86,15 @@ class ImportContestAsTrainingDayHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
+        # Save contest name before commit to avoid ObjectDeletedError
+        contest_name = contest.name
+
         if self.try_commit():
             self.service.add_notification(
                 make_datetime(),
                 "Contest imported",
-                f"Contest '{contest.name}' has been imported as a "
-                f"training day. You can now archive it when ready."
+                f"Contest '{contest_name}' has been imported as a "
+                f"training day. You can now archive it when ready.",
             )
 
         self.redirect(fallback_page)
@@ -148,6 +151,8 @@ class ImportContestAsTrainingDayHandler(BaseHandler):
         non_participating_ids: list[int] = []
 
         for participation in contest.participations:
+            if participation.hidden:
+                continue
             student = user_to_student.get(participation.user_id)
             if student is not None:
                 participating.append((student, participation))
