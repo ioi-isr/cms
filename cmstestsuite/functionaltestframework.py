@@ -293,7 +293,7 @@ class FunctionalTestFramework:
         resp = self.admin_req('task/%s' % task_id)
         page = resp.text
         match = re.search(
-            r'id="title_dataset_([0-9]+).* \(Live\)</',
+            r'data-dataset-id="([0-9]+)"[^>]*>[^<]*<[^>]*>Live</',
             page)
         if match is None:
             raise TestException("Unable to create contest.")
