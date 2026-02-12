@@ -1192,7 +1192,7 @@ document.addEventListener('click', function(e) {
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content" style="gap: 4px;">
-                                        <button type="button" class="btn-icon-only" onclick="ModelSolutionModal.openEdit({{ dataset.id }}, '{{ url("model_solution", meta.id, "edit") }}', {{ meta.name|tojson }}, {{ meta.description|tojson }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson }});" title="Edit">
+                                        <button type="button" class="btn-icon-only" onclick="ModelSolutionModal.openEdit({{ dataset.id }}, '{{ url("model_solution", meta.id, "edit") }}', {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});" title="Edit">
                                             <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg>
                                         </button>
                                         {% if admin.permission_all %}

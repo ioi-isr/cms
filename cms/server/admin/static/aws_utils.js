@@ -1494,7 +1494,7 @@ var ModelSolutionModal = (function() {
                 if (hasPartial) {
                     ModelSolutionModal.toggleAdvanced(dsId);
                 }
-                _recalcFromPct(dsId);
+                _recalcFromMinMax(dsId);
             } else {
                 var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
                 cards.forEach(function(c) { c.classList.remove('selected'); });
