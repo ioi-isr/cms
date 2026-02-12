@@ -1537,6 +1537,24 @@
     background-color: var(--tp-bg-hover);
 }
 
+/* Task page specific compact styling for test cases table */
+.testcases-table .list-cell-wrapper {
+    padding: 6px 8px;
+}
+
+.testcases-table .tp-tasks-table thead th {
+    padding: 6px 8px !important;
+}
+
+.testcases-table .tp-tasks-table td {
+    vertical-align: middle;
+}
+
+/* Statements table vertical alignment */
+.statements-table .tp-tasks-table td {
+    vertical-align: middle;
+}
+
 /* Tagify inputs inside tables */
 .tp-tasks-table .tagify {
     width: 100%;

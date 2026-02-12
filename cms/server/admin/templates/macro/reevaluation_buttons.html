@@ -47,7 +47,9 @@ contest_id (int|None): the id of the contest to invalidate.
 {% if not allowed %}
         disabled
 {% endif %}
-        title="Compilation" >C</button>
+        title="Compilation" class="btn-icon-only" style="width: 28px; height: 28px;">
+    <svg class="icon" width="14" height="14"><use href="#icon-compile"/></svg>
+</button>
 <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'EvaluationService', 0,
                  'invalidate_submission', {
@@ -60,7 +62,9 @@ contest_id (int|None): the id of the contest to invalidate.
 {% if not allowed %}
         disabled
 {% endif %}
-        title="Evaluation" >E</button>
+        title="Evaluation" class="btn-icon-only" style="width: 28px; height: 28px;">
+    <svg class="icon" width="14" height="14"><use href="#icon-evaluate"/></svg>
+</button>
 <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'ScoringService', 0,
                  'invalidate_submission', {
@@ -73,5 +77,7 @@ contest_id (int|None): the id of the contest to invalidate.
 {% if not allowed %}
         disabled
 {% endif %}
-        title="Score" >S</button>
+        title="Score" class="btn-icon-only" style="width: 28px; height: 28px;">
+    <svg class="icon" width="14" height="14"><use href="#icon-score-type"/></svg>
+</button>
 {% endmacro %}

@@ -69,6 +69,9 @@ CMS.AWSUtils.prototype.display_subpage = function(elements) {
     for (var i = 0; i < elements.length; ++i) {
         elements[i].appendTo(content);
     }
+    $('#modal-show-file-title').text('');
+    $('#modal-show-file-download').hide();
+    $('#modal-show-file-copy').hide();
     MicroModal.show('modal-show-file');
 };
 
@@ -168,16 +171,12 @@ CMS.AWSUtils.prototype.file_received = function(response, error) {
         return;
     }
 
-    $('#modal-show-file-title').text(file_name);
-    $('#modal-show-file-download').prop('href', url);
-
     var content = $('#subpage_content');
     content.empty();
 
     if (response.length > 100000) {
         content.append($('<p>').text('File is too large to display. Use the Download link above.'));
-        $('#modal-show-file-copy').hide();
-        MicroModal.show('modal-show-file');
+        this.display_subpage([content]);
         return;
     }
 
