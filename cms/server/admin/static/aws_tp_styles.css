@@ -922,6 +922,27 @@
     color: white;
 }
 
+.btn-filled-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--tp-bg-gray);
+    color: var(--tp-text-primary);
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-filled-secondary:hover {
+    background: var(--tp-border);
+    border-color: var(--tp-border-dark);
+    color: var(--tp-text-primary);
+}
+
 /* Data Table Wrapper */
 .tp-table-container {
     overflow-x: auto;

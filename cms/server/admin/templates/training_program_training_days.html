@@ -132,6 +132,12 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
             {% if admin.permission_all %}
+            <button type="button" onclick="MicroModal.show('modal-import-contest')"
+               class="btn-filled-secondary"
+               style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: none; cursor: pointer;">
+                <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
+                Import Contest
+            </button>
             <button type="button" onclick="MicroModal.show('modal-add-training-day')"
                class="btn-filled-primary"
                style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: none; cursor: pointer;">
@@ -139,6 +145,10 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                 Add Training Day
             </button>
             {% else %}
+            <button type="button" class="btn-filled-secondary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; opacity: 0.5; cursor: not-allowed;" disabled aria-disabled="true">
+                <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
+                Import Contest
+            </button>
             <button type="button" class="btn-filled-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; opacity: 0.5; cursor: not-allowed;" disabled aria-disabled="true">
                 <svg class="icon" width="18" height="18"><use href="#icon-plus"/></svg>
                 Add Training Day
@@ -385,6 +395,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 </div>
 
 {% include 'fragments/histogram_modal.html' %}
+{% include 'fragments/modal_import_contest_as_td.html' %}
 
 {% for td in training_program.training_days if td.contest is not none and td.id in archive_modal_data %}
 {% set training_day = td %}
