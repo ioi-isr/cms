@@ -324,7 +324,7 @@ document.addEventListener('click', function(e) {
                                 <span class="tp-form-info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants.">?</span>
                             </label>
                             {% if admin.permission_all %}
-                            <a href="{{ url("task", task.id, "statements", "add") }}" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem;">+ Add Statement</a>
+                            <button type="button" onclick="MicroModal.show('modal-add-statement');" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem;">+ Add Statement</button>
                             {% endif %}
                         </div>
                         {% if task.statements|length == 0 %}
@@ -380,7 +380,7 @@ document.addEventListener('click', function(e) {
                                 <span class="tp-form-info" title="Attachments for this task. Contestants can view and download attachments from the task page.">?</span>
                             </label>
                             {% if admin.permission_all %}
-                            <a href="{{ url("task", task.id, "attachments", "add") }}" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem;">+ Add File</a>
+                            <button type="button" onclick="document.getElementById('attachment_file').click();" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem;">+ Add File</button>
                             {% endif %}
                         </div>
                         {% if task.attachments|length == 0 %}
@@ -806,7 +806,7 @@ document.addEventListener('click', function(e) {
                                         <span class="tp-form-info" title="Managers are sources, headers, libraries or binaries used during evaluation.">?</span>
                                     </label>
                                     {% if admin.permission_all %}
-                                    <a href="{{ url("dataset", dataset.id, "managers", "add") }}" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem;">+ Add Manager</a>
+                                    <button type="button" onclick="document.getElementById('manager_file_{{ dataset.id }}').click();" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem;">+ Add Manager</button>
                                     {% endif %}
                                 </div>
                                 {% if dataset.managers|length == 0 %}
@@ -1390,9 +1390,17 @@ document.addEventListener('click', function(e) {
         {% endif %}
     </form>
 
-    {# Validator upload forms - placed outside the main task form to avoid nested form issues #}
+    {# File upload forms - placed outside the main task form to avoid nested form issues #}
     {% if admin.permission_all %}
+    <form id="attachment_form" method="POST" action="{{ url("task", task.id, "attachments", "add") }}" enctype="multipart/form-data" style="display: none;">
+        {{ xsrf_form_html|safe }}
+        <input type="file" id="attachment_file" name="attachment" multiple onchange="if(this.files.length) this.form.submit();" />
+    </form>
     {% for dataset in task.datasets %}
+    <form id="manager_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "managers", "add") }}" enctype="multipart/form-data" style="display: none;">
+        {{ xsrf_form_html|safe }}
+        <input type="file" id="manager_file_{{ dataset.id }}" name="manager" multiple onchange="if(this.files.length) this.form.submit();" />
+    </form>
     {% if subtask_info.get(dataset.id) %}
     {% for subtask in subtask_info[dataset.id] %}
     <form id="validator_form_{{ dataset.id }}_{{ subtask.idx }}" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx|string, "validator", "add") }}" enctype="multipart/form-data" style="display: none;">
@@ -1404,6 +1412,48 @@ document.addEventListener('click', function(e) {
     </form>
     {% endif %}
     {% endfor %}
+    {% endif %}
+
+    <!-- Add Statement Modal -->
+    {% if admin.permission_all %}
+    <div class="modal" id="modal-add-statement" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1">
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-statement-title">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-statement-title">Add Statement</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form action="{{ url("task", task.id, "statements", "add") }}" method="POST" enctype="multipart/form-data">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label for="stmt-language">
+                                Language code
+                                <span style="color: var(--tp-danger);">*</span>
+                            </label>
+                            <input type="text" id="stmt-language" name="language" placeholder="e.g., en, he" required />
+                            <small class="modal__hint">ISO language code for this statement</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="stmt-file">
+                                Statement (PDF)
+                                <span style="color: var(--tp-danger);">*</span>
+                            </label>
+                            <input type="file" id="stmt-file" name="statement" accept=".pdf" required />
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="stmt-source">Source file (optional, DOC/DOCX/TEX)</label>
+                            <input type="file" id="stmt-source" name="source" accept=".doc,.docx,.tex" />
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Upload Statement</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
     {% endif %}
 
     <!-- Remove Task -->
