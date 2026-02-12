@@ -24,8 +24,6 @@ in one operation. It reuses the shared archiving functions from archive.py.
 
 import logging
 
-import tornado.web
-
 from cms.db import (
     Contest,
     TrainingProgram,
