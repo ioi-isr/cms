@@ -2288,3 +2288,38 @@ svg.icon {
     font-size: 0.85em;
     font-weight: 500;
 }
+
+/* MODEL SOLUTION MODAL - SUBTASK CARDS */
+
+.ms-card-subtask {
+    position: relative;
+    border: 2px solid var(--tp-border, #E5E7EB);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: #fff;
+    user-select: none;
+}
+
+.ms-card-subtask:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+}
+
+.ms-card-subtask.selected {
+    border-color: #0d9488;
+    background: #f0fdfa;
+}
+
+.ms-card-check {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: none;
+    color: #0d9488;
+}
+
+.ms-card-subtask.selected .ms-card-check {
+    display: block;
+}

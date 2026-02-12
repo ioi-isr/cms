@@ -364,11 +364,10 @@ class EditModelSolutionHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, meta_id):
-        fallback_page = self.url("model_solution", meta_id, "edit")
-
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
         task = meta.dataset.task
         dataset = meta.dataset
+        fallback_page = self.url("task", task.id)
 
         try:
             attrs = {}

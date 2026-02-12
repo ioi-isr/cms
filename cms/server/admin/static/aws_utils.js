@@ -1237,6 +1237,243 @@ CMS.AWSUtils.initModelSolutionSubtasks = function(options) {
 };
 
 
+/**
+ * ModelSolutionModal - shared modal logic for add/edit model solutions.
+ */
+var ModelSolutionModal = (function() {
+    var _advancedOpen = {};
+
+    function _resetModal(dsId) {
+        var form = document.getElementById('ms-form-' + dsId);
+        if (!form) return;
+        form.reset();
+        form.querySelector('input[name="_ms_mode"]').value = 'add';
+        document.getElementById('modal-ms-' + dsId + '-title').textContent = 'Add Model Solution';
+        document.getElementById('ms-' + dsId + '-submit').textContent = 'Add Model Solution';
+
+        var fileSection = document.getElementById('ms-' + dsId + '-file-section');
+        if (fileSection) fileSection.style.display = '';
+
+        var nameInput = document.getElementById('ms-' + dsId + '-name');
+        if (nameInput) { nameInput.value = ''; nameInput.readOnly = false; }
+        var descInput = document.getElementById('ms-' + dsId + '-description');
+        if (descInput) descInput.value = '';
+
+        var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
+        cards.forEach(function(c) { c.classList.remove('selected'); });
+
+        var advPcts = document.querySelectorAll('.ms-adv-pct[data-dataset="' + dsId + '"]');
+        advPcts.forEach(function(inp) { inp.value = 0; });
+
+        var advSection = document.getElementById('ms-' + dsId + '-advanced');
+        if (advSection) advSection.style.display = 'none';
+        _advancedOpen[dsId] = false;
+        var arrow = document.getElementById('ms-' + dsId + '-adv-arrow');
+        if (arrow) arrow.style.transform = '';
+        var label = document.getElementById('ms-' + dsId + '-adv-label');
+        if (label) label.textContent = 'Show Advanced Scoring';
+
+        _recalcFromCards(dsId);
+    }
+
+    function _recalcFromCards(dsId) {
+        var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
+        var total = 0;
+        cards.forEach(function(c) {
+            var idx = c.dataset.idx;
+            var max = parseFloat(c.dataset.max);
+            var selected = c.classList.contains('selected');
+            var val = selected ? max : 0;
+            total += val;
+
+            var minHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-min');
+            var maxHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-max');
+            if (minHidden) minHidden.value = val;
+            if (maxHidden) maxHidden.value = val;
+
+            var pctInput = document.querySelector('.ms-adv-pct[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            if (pctInput) pctInput.value = selected ? 100 : 0;
+
+            var minDisp = document.querySelector('.ms-adv-min-display[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            var maxDisp = document.querySelector('.ms-adv-max-display[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            if (minDisp) minDisp.textContent = val.toFixed(2);
+            if (maxDisp) maxDisp.textContent = val.toFixed(2);
+        });
+
+        var totalEl = document.getElementById('ms-' + dsId + '-total');
+        if (totalEl) totalEl.textContent = total;
+
+        var scoreMin = document.getElementById('ms-' + dsId + '-score-min');
+        var scoreMax = document.getElementById('ms-' + dsId + '-score-max');
+        if (scoreMin) scoreMin.value = total;
+        if (scoreMax) scoreMax.value = total;
+
+        _updateAdvTotals(dsId);
+    }
+
+    function _recalcFromAdvanced(dsId) {
+        var pctInputs = document.querySelectorAll('.ms-adv-pct[data-dataset="' + dsId + '"]');
+        var totalMin = 0, totalMax = 0;
+        pctInputs.forEach(function(inp) {
+            var idx = inp.dataset.idx;
+            var max = parseFloat(inp.dataset.max);
+            var pct = Math.max(0, Math.min(100, parseInt(inp.value) || 0));
+            var score = max * pct / 100;
+
+            var minHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-min');
+            var maxHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-max');
+            if (minHidden) minHidden.value = score;
+            if (maxHidden) maxHidden.value = score;
+            totalMin += score;
+            totalMax += score;
+
+            var minDisp = document.querySelector('.ms-adv-min-display[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            var maxDisp = document.querySelector('.ms-adv-max-display[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+            if (minDisp) minDisp.textContent = score.toFixed(2);
+            if (maxDisp) maxDisp.textContent = score.toFixed(2);
+
+            var card = document.querySelector('#ms-' + dsId + '-cards .ms-card-subtask[data-idx="' + idx + '"]');
+            if (card) {
+                if (pct > 0) card.classList.add('selected');
+                else card.classList.remove('selected');
+            }
+        });
+
+        var selectedTotal = 0;
+        document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask.selected').forEach(function(c) {
+            selectedTotal += parseFloat(c.dataset.max);
+        });
+
+        var scoreMin = document.getElementById('ms-' + dsId + '-score-min');
+        var scoreMax = document.getElementById('ms-' + dsId + '-score-max');
+        if (scoreMin) scoreMin.value = totalMin;
+        if (scoreMax) scoreMax.value = totalMax;
+
+        var totalEl = document.getElementById('ms-' + dsId + '-total');
+        if (totalEl) totalEl.textContent = Math.round(totalMax);
+
+        _updateAdvTotals(dsId);
+    }
+
+    function _updateAdvTotals(dsId) {
+        var pctInputs = document.querySelectorAll('.ms-adv-pct[data-dataset="' + dsId + '"]');
+        var totalMin = 0, totalMax = 0;
+        pctInputs.forEach(function(inp) {
+            var max = parseFloat(inp.dataset.max);
+            var pct = Math.max(0, Math.min(100, parseInt(inp.value) || 0));
+            var score = max * pct / 100;
+            totalMin += score;
+            totalMax += score;
+        });
+        var advTotalMin = document.getElementById('ms-' + dsId + '-adv-total-min');
+        var advTotalMax = document.getElementById('ms-' + dsId + '-adv-total-max');
+        if (advTotalMin) advTotalMin.textContent = totalMin.toFixed(2);
+        if (advTotalMax) advTotalMax.textContent = totalMax.toFixed(2);
+    }
+
+    return {
+        openAdd: function(dsId, addUrl) {
+            _resetModal(dsId);
+            var form = document.getElementById('ms-form-' + dsId);
+            if (form && addUrl) {
+                form.action = addUrl;
+            }
+            MicroModal.show('modal-ms-' + dsId);
+        },
+
+        openEdit: function(dsId, editUrl, name, description, scoreMin, scoreMax, subtaskScores) {
+            _resetModal(dsId);
+            var form = document.getElementById('ms-form-' + dsId);
+            if (!form) return;
+
+            form.action = editUrl;
+            form.querySelector('input[name="_ms_mode"]').value = 'edit';
+            document.getElementById('modal-ms-' + dsId + '-title').textContent = 'Edit Model Solution';
+            document.getElementById('ms-' + dsId + '-submit').textContent = 'Save Changes';
+
+            var fileSection = document.getElementById('ms-' + dsId + '-file-section');
+            if (fileSection) fileSection.style.display = 'none';
+
+            var nameInput = document.getElementById('ms-' + dsId + '-name');
+            if (nameInput) nameInput.value = name || '';
+            var descInput = document.getElementById('ms-' + dsId + '-description');
+            if (descInput) descInput.value = description || '';
+
+            if (subtaskScores) {
+                var hasPartial = false;
+                var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
+                cards.forEach(function(c) {
+                    var idx = c.dataset.idx;
+                    var max = parseFloat(c.dataset.max);
+                    var stData = subtaskScores[idx] || subtaskScores[String(idx)];
+                    if (stData) {
+                        var stMax = parseFloat(stData.max || 0);
+                        if (stMax > 0) {
+                            c.classList.add('selected');
+                            var pct = Math.round((stMax / max) * 100);
+                            if (pct !== 100 && pct !== 0) hasPartial = true;
+                            var pctInput = document.querySelector('.ms-adv-pct[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
+                            if (pctInput) pctInput.value = pct;
+                        }
+                    }
+                });
+
+                if (hasPartial) {
+                    ModelSolutionModal.toggleAdvanced(dsId);
+                }
+                _recalcFromAdvanced(dsId);
+            } else {
+                var scoreMinEl = document.getElementById('ms-' + dsId + '-score-min');
+                var scoreMaxEl = document.getElementById('ms-' + dsId + '-score-max');
+                if (scoreMinEl) scoreMinEl.value = scoreMin || 0;
+                if (scoreMaxEl) scoreMaxEl.value = scoreMax || 0;
+
+                var totalEl = document.getElementById('ms-' + dsId + '-total');
+                if (totalEl) totalEl.textContent = Math.round(scoreMax || 0);
+
+                var scoreMinSimple = document.getElementById('ms-' + dsId + '-score-min-simple');
+                var scoreMaxSimple = document.getElementById('ms-' + dsId + '-score-max-simple');
+                if (scoreMinSimple) scoreMinSimple.value = scoreMin || 0;
+                if (scoreMaxSimple) scoreMaxSimple.value = scoreMax || 100;
+            }
+
+            MicroModal.show('modal-ms-' + dsId);
+        },
+
+        toggleCard: function(cardEl) {
+            var dsId = cardEl.closest('.ms-expected-results').id.replace('ms-', '').replace('-expected', '');
+            if (_advancedOpen[dsId]) return;
+            cardEl.classList.toggle('selected');
+            _recalcFromCards(dsId);
+        },
+
+        toggleAdvanced: function(dsId) {
+            var section = document.getElementById('ms-' + dsId + '-advanced');
+            var arrow = document.getElementById('ms-' + dsId + '-adv-arrow');
+            var label = document.getElementById('ms-' + dsId + '-adv-label');
+            if (!section) return;
+
+            _advancedOpen[dsId] = !_advancedOpen[dsId];
+            if (_advancedOpen[dsId]) {
+                section.style.display = '';
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+                if (label) label.textContent = 'Hide Advanced Scoring';
+            } else {
+                section.style.display = 'none';
+                if (arrow) arrow.style.transform = '';
+                if (label) label.textContent = 'Show Advanced Scoring';
+                _recalcFromCards(dsId);
+            }
+        },
+
+        pctChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            _recalcFromAdvanced(dsId);
+        }
+    };
+})();
+
+
 // Form utilities (initDateTimeValidation, initRemovePage, initReadOnlyTagify, initTagify)
 // have been moved to aws_form_utils.js for better code organization.
 // Backward compatibility aliases are set up in aws_form_utils.js.
