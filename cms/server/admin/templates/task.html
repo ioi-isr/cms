@@ -1266,13 +1266,13 @@ document.addEventListener('click', function(e) {
                         </div>
 
                         {% if dataset.id in subtask_info and dataset.model_solution_metas|length > 0 %}
-                        <div style="margin-top: 24px; border-top: 1px solid var(--tp-border); padding-top: 20px;">
-                            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--tp-text-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Subtask Score Validation</h4>
-                            <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
-                            <table class="tp-tasks-table" style="margin: 0; text-align: center;">
-                                <thead>
-                                    <tr>
-                                        <th style="text-align: left; position: sticky; left: 0; background: var(--tp-bg-secondary, #f9fafb); z-index: 1; border-right: 1px solid var(--tp-border); min-width: 160px;">Model Solution</th>
+                          <div style="margin-top: 24px; border-top: 1px solid var(--tp-border); padding-top: 20px;">
+                              <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--tp-text-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Subtask Score Validation</h4>
+                              <div class="subtask-score-table-container" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
+                              <table class="tp-tasks-table subtask-score-table" style="margin: 0; text-align: center;">
+                                  <thead>
+                                      <tr>
+                                          <th style="text-align: left; position: sticky; left: 0; background: var(--tp-bg-secondary, #f9fafb); z-index: 1; border-right: 1px solid var(--tp-border); min-width: 160px;">Model Solution</th>
                                         {% for st in subtask_info[dataset.id] %}
                                         <th style="min-width: 120px;">{{ st.display_name }}</th>
                                         {% endfor %}
