@@ -224,45 +224,36 @@ class CloneDatasetHandler(BaseHandler):
 
 
 class RenameDatasetHandler(BaseHandler):
-    """Rename the descripton of a dataset.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("rename_dataset.html", **self.r_params)
-
+    """Rename the descripton of a dataset (AJAX-only)."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "rename")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        description: str = self.get_argument("description", "")
+        description: str = self.get_argument("description", "").strip()
 
-        # Ensure description is unique.
-        if any(description == d.description
-               for d in task.datasets if d is not dataset):
-            self.service.add_notification(
-                make_datetime(),
-                "Dataset name \"%s\" is already taken." % description,
-                "Please choose a unique name for this dataset.")
-            self.redirect(fallback_page)
+        if not description:
+            self.set_status(400)
+            self.write({"error": "Description is required."})
+            return
+
+        # Ensure description is unique (comparing trimmed values)
+        if any(
+            description == d.description.strip()
+            for d in task.datasets
+            if d is not dataset
+        ):
+            self.set_status(400)
+            self.write({"error": 'Dataset name "%s" is already taken.' % description})
             return
 
         dataset.description = description
 
         if self.try_commit():
-            self.redirect(self.url("task", task.id))
+            self.write({"success": True, "description": description})
         else:
-            self.redirect(fallback_page)
+            self.set_status(500)
+            self.write({"error": "Failed to save changes."})
 
 
 class DeleteDatasetHandler(BaseHandler):
@@ -570,22 +561,10 @@ class AddTestcaseHandler(BaseHandler):
     """Add a testcase to a dataset."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("add_testcase.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "testcases", "add")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         codename = self.get_argument("codename")
 
@@ -647,22 +626,10 @@ class AddTestcasesHandler(BaseHandler):
     """Add several testcases to a dataset."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("add_testcases.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "testcases", "add_multiple")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         try:
             archive = self.request.files["archive"][0]
@@ -819,22 +786,10 @@ class DownloadTestcasesHandler(BaseHandler):
 
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, dataset_id):
+    def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("download_testcases.html", **self.r_params)
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def post(self, dataset_id):
-        fallback_page = \
-            self.url("dataset", dataset_id, "testcases", "download")
-
-        dataset = self.safe_get_item(Dataset, dataset_id)
+        fallback_page = self.url("task", task.id)
 
         # Get zip file name, input/output file names templates,
         # or use default ones.
@@ -879,26 +834,12 @@ class DownloadTestcasesHandler(BaseHandler):
 
 
 class AddGeneratorHandler(BaseHandler):
-    """Add a generator to a dataset.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("add_generator.html", **self.r_params)
-
+    """Add a generator to a dataset."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "generators", "add")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
         task_name = task.name
 
         generator_file = self.request.files.get("generator")
@@ -1040,31 +981,9 @@ class AddGeneratorHandler(BaseHandler):
 
 
 class EditGeneratorHandler(BaseHandler):
-    """Edit a generator's filename templates.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id, generator_id):
-        generator = self.safe_get_item(Generator, generator_id)
-        dataset = self.safe_get_item(Dataset, dataset_id)
-
-        if generator.dataset is not dataset:
-            raise tornado.web.HTTPError(404)
-
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["generator"] = generator
-        self.render("edit_generator.html", **self.r_params)
-
+    """Edit a generator's filename templates."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id, generator_id):
-        fallback_page = self.url("dataset", dataset_id, "generator",
-                                 generator_id, "edit")
-
         generator = self.safe_get_item(Generator, generator_id)
         dataset = self.safe_get_item(Dataset, dataset_id)
 
@@ -1072,6 +991,7 @@ class EditGeneratorHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         input_filename_template = self.get_argument(
             "input_filename_template", "input.*").strip()
@@ -1122,62 +1042,24 @@ class GenerateTestcasesHandler(BaseHandler):
 
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id, generator_id):
-        generator = self.safe_get_item(Generator, generator_id)
-        dataset = self.safe_get_item(Dataset, dataset_id)
-
-        if generator.dataset is not dataset:
-            raise tornado.web.HTTPError(404)
-
-        if generator.executable_digest is None:
-            self.service.add_notification(
-                make_datetime(),
-                "Generator not compiled",
-                "The generator has not been compiled successfully.")
-            self.redirect(self.url("task", dataset.task.id))
-            return
-
-        task = dataset.task
-        self.contest = task.contest
-
-        # Get model solutions that have been compiled (have executables)
-        # Only for Batch tasks - model solution output generation is not
-        # supported for other task types
-        compiled_model_solutions = []
-        if dataset.task_type == "Batch":
-            for meta in dataset.model_solution_metas:
-                result = meta.submission.get_result(dataset)
-                if result is not None and result.executables:
-                    compiled_model_solutions.append(meta)
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["generator"] = generator
-        self.r_params["model_solutions"] = compiled_model_solutions
-        self.r_params["task_type"] = dataset.task_type
-        self.render("generate_testcases.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id, generator_id):
-        fallback_page = self.url("dataset", dataset_id, "generator",
-                                 generator_id, "generate")
-
         generator = self.safe_get_item(Generator, generator_id)
         dataset = self.safe_get_item(Dataset, dataset_id)
 
         if generator.dataset is not dataset:
             raise tornado.web.HTTPError(404)
 
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
         if generator.executable_digest is None:
             self.service.add_notification(
                 make_datetime(),
                 "Generator not compiled",
-                "The generator has not been compiled successfully.")
-            self.redirect(self.url("task", dataset.task.id))
+                "The generator has not been compiled successfully.",
+            )
+            self.redirect(fallback_page)
             return
-
-        task = dataset.task
 
         overwrite = self.get_argument("overwrite", "") == "on"
         public = self.get_argument("public", "") == "on"

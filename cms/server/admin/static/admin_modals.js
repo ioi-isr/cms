@@ -428,11 +428,92 @@ AdminModals.showAddTeamDialog = function (postUrl) {
 };
 
 /**
- * Shows a SweetAlert2 dialog for adding a new task.
- * Posts via AJAX to the given URL and redirects to the new task page on success.
- * @param {string} postUrl - The URL to POST the new task to
- * @param {string} taskBaseUrl - The base URL for task pages (e.g. "/task/")
+ * Shows a SweetAlert2 input dialog to rename a dataset description inline.
+ * Posts via AJAX and reloads the page on success.
+ * @param {string} renameUrl - The URL to POST the new description to
+ * @param {string} currentDescription - The current dataset description
  */
+AdminModals.renameDataset = function (renameUrl, currentDescription) {
+    Swal.fire({
+        title: 'Rename Dataset',
+        html: '<div class="swal-custom-form">' +
+            '<div class="form-group">' +
+            '<label for="swal-dataset-desc">Description</label>' +
+            '<input id="swal-dataset-desc" class="swal2-input" placeholder="Dataset description">' +
+            '<small class="form-hint">Each dataset must have a unique description.</small>' +
+            '</div></div>' +
+            '<style>' +
+            '.swal-custom-form { text-align: left; }' +
+            '.swal-custom-form .form-group { margin-bottom: 1rem; }' +
+            '.swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }' +
+            '.swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }' +
+            '.swal-custom-form .form-hint { display: block; margin-top: 6px; font-size: 0.8em; color: #6b7280; }' +
+            '</style>',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Rename',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: function () {
+            var descInput = Swal.getPopup().querySelector('#swal-dataset-desc');
+            if (descInput) {
+                descInput.value = currentDescription;
+                descInput.focus();
+                descInput.select();
+                descInput.addEventListener('keyup', function (e) {
+                    if (e.key === 'Enter') Swal.clickConfirm();
+                });
+            }
+        },
+
+        preConfirm: function () {
+            var descInput = document.getElementById('swal-dataset-desc');
+            var description = descInput.value.trim();
+
+            if (!description) {
+                Swal.showValidationMessage('Description is required');
+                setTimeout(function () { descInput.focus(); }, 100);
+                return false;
+            }
+
+            var xsrfToken = null;
+            var xsrfInput = document.querySelector('input[name="_xsrf"]');
+            if (xsrfInput) {
+                xsrfToken = xsrfInput.value;
+            } else if (typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+
+            var formData = new FormData();
+            formData.append('description', description);
+
+            return fetch(renameUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-XSRFToken': xsrfToken || ''
+                },
+                body: formData
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to rename dataset');
+                    }
+                    return data;
+                });
+            }).catch(function (error) {
+                Swal.showValidationMessage(error.message || 'Network error occurred');
+                return false;
+            });
+        }
+    }).then(function (result) {
+        if (result.isConfirmed && result.value) {
+            window.location.reload();
+        }
+    });
+};
+
 AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
     Swal.fire({
         title: 'Add New Task',

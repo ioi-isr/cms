@@ -478,7 +478,7 @@ document.addEventListener('click', function(e) {
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <input type="text" name="submission_format" value="{{ task.submission_format|join(", ") }}" class="tp-form-input"/>
                                 {% if task.active_dataset.task_type == "OutputOnly" %}
-                                <a onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="tp-btn-secondary" style="white-space: nowrap; padding: 6px 12px;">Set Default</a>
+                                <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="tp-btn-secondary" style="white-space: nowrap; padding: 6px 12px; background: none; border: none; cursor: pointer;">Set Default</button>
                                 {% endif %}
                             </div>
                         </div>
@@ -711,19 +711,19 @@ document.addEventListener('click', function(e) {
                             <svg class="icon" width="16" height="16"><use href="#icon-clipboard-list"/></svg>
                             Clone
                         </a>
-                        <a href="{{ url("dataset", dataset.id, "rename") }}" class="tp-menu-item">
+                        <button type="button" onclick="AdminModals.renameDataset('{{ url("dataset", dataset.id, "rename") }}', '{{ dataset.description|e }}');" class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
                             <svg class="icon" width="16" height="16"><use href="#icon-edit"/></svg>
                             Rename
-                        </a>
+                        </button>
                         <a href="{{ url("dataset", dataset.id) }}" class="tp-menu-item">
                             <svg class="icon" width="16" height="16"><use href="#icon-activity"/></svg>
                             View results
                         </a>
                         {% if dataset is not sameas (task.active_dataset) %}
-                        <a onclick="CMS.AWSUtils.ajax_post('{{ url("dataset", dataset.id, "autojudge") }}');" class="tp-menu-item" style="cursor: pointer;">
+                        <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("dataset", dataset.id, "autojudge") }}');" class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
                             <svg class="icon" width="16" height="16"><use href="#icon-cpu"/></svg>
                             {% if dataset.autojudge %}Disable{% else %}Enable{% endif %} background judging
-                        </a>
+                        </button>
                         <div class="tp-menu-divider"></div>
                         <a href="{{ url("dataset", dataset.id, "delete") }}" class="tp-menu-item tp-menu-item-danger">
                             <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
@@ -975,7 +975,7 @@ document.addEventListener('click', function(e) {
                             <div class="tp-info-alert-content">
                                 <div class="tp-info-alert-message">{{ ds_ns.total_not_validated }} testcase(s) have not been validated.
                                 {% if admin.permission_all %}
-                                    <a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600;">Rerun validators</a>
+                                    <button type="button" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600; background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer;">Rerun validators</button>
                                 {% endif %}
                                 </div>
                             </div>
@@ -986,10 +986,10 @@ document.addEventListener('click', function(e) {
                         <table class="tp-tasks-table validator-table" style="margin: 0;">
                             <thead>
                                 <tr>
-                                    <th style="width: 10%;">Subtask</th>
-                                    <th style="width: 10%;">Validator</th>
-                                    <th>Test Results</th>
-                                    <th style="width: 20%;">Additional Tests Passed</th>
+                                    <th style="width: 10%; vertical-align: middle;">Subtask</th>
+                                    <th style="width: 10%; vertical-align: middle;">Validator</th>
+                                    <th class="text-center" style="vertical-align: middle;">Tests and Validation Results</th>
+                                    <th style="width: 20%; vertical-align: middle;">Additional Tests Passed</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1028,7 +1028,7 @@ document.addEventListener('click', function(e) {
                                 <tr>
                                     <td><div class="list-cell-wrapper" style="font-weight: 600;">{{ subtask.display_name }}</div></td>
                                     <td>
-                                        <div class="list-cell-wrapper" style="display: flex; align-items: center; gap: 6px;">
+                                        <div class="list-cell-wrapper validator-column" style="display: flex; align-items: center; gap: 6px;">
                                         {% if admin.permission_all %}
                                         <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
                                         {% endif %}
@@ -1040,12 +1040,12 @@ document.addEventListener('click', function(e) {
                                           {% endif %}
                                           {% if admin.permission_all %}
                                           <span style="margin-left: auto; display: flex; gap: 4px; flex-shrink: 0;">
-                                            <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px;">
+                                            <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
                                                 <svg class="icon" width="14" height="14"><use href="#icon-refresh"/></svg>
-                                            </a>
-                                            <a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px;">
+                                            </button>
+                                            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
                                                 <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg>
-                                            </a>
+                                            </button>
                                           </span>
                                           {% endif %}
                                         {% else %}
@@ -1054,15 +1054,15 @@ document.addEventListener('click', function(e) {
                                             No validator
                                           </span>
                                           {% if admin.permission_all %}
-                                          <a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" style="color: var(--tp-primary); display: inline-flex; padding: 2px; margin-left: 4px;">
+                                          <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" class="validator-add" style="color: var(--tp-primary); display: inline-flex; padding: 2px; margin-left: 4px; background: none; border: none; cursor: pointer;">
                                             <svg class="icon" width="14" height="14"><use href="#icon-file-plus"/></svg>
-                                          </a>
+                                          </button>
                                           {% endif %}
                                         {% endif %}
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="list-cell-wrapper" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <div class="list-cell-wrapper" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;">
                                         {% if validator and validator.id in running_validator_ids %}
                                           <span class="validator-status validator-running">Validating...</span>
                                         {% elif validator and validator.validation_results|length > 0 %}
@@ -1079,12 +1079,8 @@ document.addEventListener('click', function(e) {
                                           {% if ns.subtask_not_validated > 0 %}
                                           <span class="validator-badge validator-badge--muted">{{ ns.subtask_not_validated }} not validated</span>
                                           {% endif %}
-                                          <a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}" style="color: var(--tp-text-muted); font-size: 0.85rem;">[details]</a>
-                                        {% elif validator %}
-                                          <span style="color: var(--tp-text-muted);">-</span>
-                                        {% else %}
-                                          <span style="color: var(--tp-text-muted);">-</span>
                                         {% endif %}
+                                          <a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}" style="color: var(--tp-text-muted); text-align: center; font-size: 0.85rem;">[details]</a>
                                         </div>
                                     </td>
                                     <td>
@@ -1156,7 +1152,7 @@ document.addEventListener('click', function(e) {
                             {% endif %}
                             {% if admin.permission_all %}
                             <button type="button" onclick="ModelSolutionModal.openAdd({{ dataset.id }}, '{{ url("dataset", dataset.id, "model_solutions", "add") }}');" class="tp-btn-secondary" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
-                                <svg class="icon" width="14" height="14"><use href="#icon-plus"/></svg> Add
+                                <svg class="icon" width="14" height="14"><use href="#icon-file-plus"/></svg> Add
                             </button>
                             {% endif %}
                         </div>
@@ -1249,15 +1245,15 @@ document.addEventListener('click', function(e) {
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content" style="gap: 4px;">
-                                        <button type="button" class="btn-icon-only" onclick="ModelSolutionModal.openEdit({{ dataset.id }}, '{{ url("model_solution", meta.id, "edit") }}', {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});" title="Edit">
-                                            <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg>
+                                        <button type="button" class="btn-icon-only" onclick="ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});" title="Edit">
+                                            <svg class="icon" width="18" height="18"><use href="#icon-edit"/></svg>
                                         </button>
                                         {% if admin.permission_all %}
                                         <button type="button" class="btn-icon-only" onclick="window.location.href='{{ url("model_solution", meta.id, "replace") }}';" title="Replace">
-                                            <svg class="icon" width="14" height="14"><use href="#icon-replace"/></svg>
+                                            <svg class="icon" width="18" height="18"><use href="#icon-replace"/></svg>
                                         </button>
                                         <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');" title="Delete">
-                                            <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg>
+                                            <svg class="icon" width="18" height="18"><use href="#icon-trash"/></svg>
                                         </button>
                                         {% endif %}
                                         </div>
@@ -1342,10 +1338,10 @@ document.addEventListener('click', function(e) {
                         </div>
                         <h3 class="tp-card-title-modern">Generators</h3>
                         {% if admin.permission_all %}
-                        <a href="{{ url("dataset", dataset.id, "generators", "add") }}" class="tp-btn-secondary" style="margin-left: auto; padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+                        <button type="button" onclick="MicroModal.show('modal-add-generator-{{ dataset.id }}');" class="tp-btn-secondary" style="margin-left: auto; padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
                         <svg class="icon" width="16" height="16"><use href="#icon-file-plus"/></svg>
                         Add
-                    </a>
+                    </button>
                         {% endif %}
                     </div>
                     <div class="tp-card-body">
@@ -1368,14 +1364,14 @@ document.addEventListener('click', function(e) {
                                 <td>
                                     <div class="list-cell-wrapper center-content">
                                     {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
-                                    <button type="button" class="btn-icon-only" onclick="window.location.href='{{ url("dataset", dataset.id, "generator", generator.id, "edit") }}';" title="Edit generator" style="margin-left: 8px;">
+                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-edit-generator-{{ generator.id }}');" title="Edit generator" style="margin-left: 8px;">
                                         <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg>
                                     </button>
                                     </div>
                                 </td>
                                 <td>
                                     <div class="list-cell-wrapper center-content" style="gap: 8px;">
-                                    <button type="button" class="btn-icon-only" onclick="window.location.href='{{ url("dataset", dataset.id, "generator", generator.id, "generate") }}';" title="Generate testcases">
+                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-generate-tc-{{ generator.id }}');" title="Generate testcases">
                                         <svg class="icon" width="14" height="14"><use href="#icon-play-circle"/></svg>
                                     </button>
                                     {% if admin.permission_all %}
@@ -1402,12 +1398,12 @@ document.addEventListener('click', function(e) {
                         <h3 class="tp-card-title-modern">Test Cases</h3>
                         <div style="margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 0.85rem;">
                             {% if admin.permission_all %}
-                            <a href="{{ url("dataset", dataset.id, "testcases", "add") }}" class="tp-btn-secondary" style="padding: 4px 12px;">Add</a>
-                            <a href="{{ url("dataset", dataset.id, "testcases", "add_multiple") }}" class="tp-btn-secondary" style="padding: 4px 12px;">Add multiple</a>
+                            <button type="button" onclick="MicroModal.show('modal-add-testcase-{{ dataset.id }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Add</button>
+                            <button type="button" onclick="MicroModal.show('modal-add-testcases-{{ dataset.id }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Add multiple</button>
                             {% endif %}
-                            <a href="{{ url("dataset", dataset.id, "testcases", "download") }}" class="tp-btn-secondary" style="padding: 4px 12px;">Download all</a>
+                            <button type="button" onclick="showDownloadTestcasesDialog({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "download") }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Download all</button>
                             {% if admin.permission_all %}
-                            <a href="javascript:void(0);" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});" class="tp-btn-secondary" style="padding: 4px 12px; color: var(--tp-danger);">Delete multiple</a>
+                            <button type="button" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});" class="tp-btn-secondary" style="padding: 4px 12px; color: var(--tp-danger); background: none; border: none; cursor: pointer;">Delete multiple</button>
                             {% endif %}
                         </div>
                     </div>
@@ -1474,15 +1470,15 @@ document.addEventListener('click', function(e) {
                                     {% endif %}
                                     <td>
                                         <div class="list-cell-wrapper center-content">
-                                        <button type="button" class="btn-icon-only" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')" title="Show input">
-                                            <svg class="icon" width="14" height="14"><use href="#icon-eye"/></svg>
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')" title="Show input">
+                                            <svg class="icon" width="18" height="18"><use href="#icon-eye"/></svg>
                                         </button>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content">
-                                        <button type="button" class="btn-icon-only" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')" title="Show output">
-                                            <svg class="icon" width="14" height="14"><use href="#icon-eye"/></svg>
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')" title="Show output">
+                                            <svg class="icon" width="18" height="18"><use href="#icon-eye"/></svg>
                                         </button>
                                         </div>
                                     </td>
@@ -1503,8 +1499,8 @@ document.addEventListener('click', function(e) {
 
                         {% if admin.permission_all %}
                         <div class="multi_delete_actions" id="multi_delete_actions_{{ dataset.id }}" style="display:none; margin-top: 18px;">
-                            <a href="javascript:void(0);" id="cancel_multi_delete_{{ dataset.id }}" class="tp-btn-secondary" style="display:none;" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</a>
-                            <a href="javascript:void(0);" id="delete_selected_{{ dataset.id }}" class="tp-btn-secondary" style="display:none; color: var(--tp-danger); border-color: var(--tp-danger);" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete selected</a>
+                            <button type="button" id="cancel_multi_delete_{{ dataset.id }}" class="tp-btn-secondary" style="display:none; background: none; border: none; cursor: pointer;" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</button>
+                            <button type="button" id="delete_selected_{{ dataset.id }}" class="tp-btn-secondary" style="display:none; color: var(--tp-danger); background: none; border: 1px solid var(--tp-danger); cursor: pointer;" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete selected</button>
                         </div>
                         {% endif %}
                     </div>
@@ -1583,6 +1579,260 @@ document.addEventListener('click', function(e) {
     </div>
     {% endif %}
 
+    <!-- Edit Generator Modal (one per generator) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    {% for filename, generator in dataset.generators|dictsort(by="key") %}
+    <div class="modal" id="modal-edit-generator-{{ generator.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-edit-generator-{{ generator.id }}-title" style="max-width: 520px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-edit-generator-{{ generator.id }}-title">Edit Generator</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" action="{{ url("dataset", dataset.id, "generator", generator.id, "edit") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <div style="font-weight: 600; color: var(--tp-text-primary); margin-bottom: 4px;">Filename</div>
+                            <div style="padding: 6px 0; font-weight: 500; color: var(--tp-text-primary);">{{ generator.filename }}</div>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="edit-gen-{{ generator.id }}-input-tpl">Input filename template</label>
+                            <input type="text" id="edit-gen-{{ generator.id }}-input-tpl" name="input_filename_template" value="{{ generator.input_filename_template }}" pattern=".*\*.*" required title="Template must contain * placeholder" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. input.* or *.in)</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="edit-gen-{{ generator.id }}-output-tpl">Output filename template</label>
+                            <input type="text" id="edit-gen-{{ generator.id }}-output-tpl" name="output_filename_template" value="{{ generator.output_filename_template }}" pattern=".*\*.*" required title="Template must contain * placeholder" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Save</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Generate Testcases Modal (one per generator) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    {% for filename, generator in dataset.generators|dictsort(by="key") %}
+    <div class="modal" id="modal-generate-tc-{{ generator.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-generate-tc-{{ generator.id }}-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-generate-tc-{{ generator.id }}-title">Generate Testcases</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" action="{{ url("dataset", dataset.id, "generator", generator.id, "generate") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <div style="font-weight: 600; color: var(--tp-text-primary); margin-bottom: 4px;">Generator</div>
+                            <div style="padding: 6px 0; font-weight: 500; color: var(--tp-text-primary);">{{ generator.filename }}</div>
+                        </div>
+                        <div class="modal__form-group">
+                            <div style="font-weight: 600; color: var(--tp-text-primary); margin-bottom: 4px;">Templates</div>
+                            <div style="padding: 6px 0; font-size: 0.9rem; color: var(--tp-text-secondary);">
+                                Input: <code>{{ generator.input_filename_template }}</code> &nbsp;/&nbsp; Output: <code>{{ generator.output_filename_template }}</code>
+                            </div>
+                        </div>
+                        {% if generator.executable_digest is none %}
+                        <div style="padding: 12px; background: var(--tp-danger-light, #fef2f2); border: 1px solid var(--tp-danger, #ef4444); border-radius: 8px; color: var(--tp-danger); font-size: 0.9rem; margin-bottom: 12px;">
+                            This generator has not been compiled successfully. Please re-upload it.
+                        </div>
+                        {% else %}
+                        <div class="modal__form-group">
+                            <label for="gen-tc-{{ generator.id }}-output-source">Output generation</label>
+                            <select id="gen-tc-{{ generator.id }}-output-source" name="output_source">
+                                <option value="generator">Generator outputs (default)</option>
+                                <option value="empty">Empty output files</option>
+                                {% if dataset.task_type == "Batch" %}
+                                {% for meta in dataset.model_solution_metas %}
+                                {% set msr = meta.submission.get_result(dataset) %}
+                                {% if msr and msr.executables %}
+                                <option value="model_solution_{{ meta.id }}">Model solution: {{ meta.name }}{% if meta.description %} ({{ meta.description }}){% endif %}</option>
+                                {% endif %}
+                                {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="modal__form-group" style="display: flex; gap: 20px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" name="overwrite" checked />
+                                Override existing
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" name="public" checked />
+                                Public
+                            </label>
+                        </div>
+                        {% endif %}
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        {% if generator.executable_digest is not none %}
+                        <button type="submit" class="tp-btn-primary">Generate</button>
+                        {% endif %}
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Add Testcase Modal (one per dataset) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    <div class="modal" id="modal-add-testcase-{{ dataset.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-testcase-{{ dataset.id }}-title" style="max-width: 520px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-testcase-{{ dataset.id }}-title">Add Testcase</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "testcases", "add") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label for="tc-{{ dataset.id }}-codename">Codename <span style="color: var(--tp-danger);">*</span></label>
+                            <input type="text" id="tc-{{ dataset.id }}-codename" name="codename" required />
+                            <small class="modal__hint">e.g. 001, 002, etc.</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="tc-{{ dataset.id }}-input">Input file <span style="color: var(--tp-danger);">*</span></label>
+                            <input type="file" id="tc-{{ dataset.id }}-input" name="input" required />
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="tc-{{ dataset.id }}-output">Output file <span style="color: var(--tp-danger);">*</span></label>
+                            <input type="file" id="tc-{{ dataset.id }}-output" name="output" required />
+                        </div>
+                        <div class="modal__form-group">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" name="public" checked />
+                                Public
+                            </label>
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Upload Testcase</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Add Multiple Testcases Modal (one per dataset) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    <div class="modal" id="modal-add-testcases-{{ dataset.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-testcases-{{ dataset.id }}-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-testcases-{{ dataset.id }}-title">Add Multiple Testcases</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "testcases", "add_multiple") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label for="tcs-{{ dataset.id }}-archive">Archive (ZIP) <span style="color: var(--tp-danger);">*</span></label>
+                            <input type="file" id="tcs-{{ dataset.id }}-archive" name="archive" accept="application/zip,.zip" required />
+                            <small class="modal__hint">A zip file containing input/output files only.</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="tcs-{{ dataset.id }}-input-tpl">Input filename template</label>
+                            <input type="text" id="tcs-{{ dataset.id }}-input-tpl" name="input_template" value="input.*" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. input.* or *.in)</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="tcs-{{ dataset.id }}-output-tpl">Output filename template</label>
+                            <input type="text" id="tcs-{{ dataset.id }}-output-tpl" name="output_template" value="output.*" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
+                        </div>
+                        <div class="modal__form-group" style="display: flex; gap: 20px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" name="public" checked />
+                                Public
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" name="overwrite" />
+                                Overwrite existing
+                            </label>
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Upload</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Add Generator Modal (one per dataset) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    <div class="modal" id="modal-add-generator-{{ dataset.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-generator-{{ dataset.id }}-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-generator-{{ dataset.id }}-title">Add Generator</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "generators", "add") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label for="gen-{{ dataset.id }}-file">Generator source file <span style="color: var(--tp-danger);">*</span></label>
+                            <input type="file" id="gen-{{ dataset.id }}-file" name="generator" accept="{{ get_compiled_language_extensions() }}" required />
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="gen-{{ dataset.id }}-language">Language</label>
+                            <select id="gen-{{ dataset.id }}-language" name="language">
+                                {% for lang in LANGUAGES %}
+                                {% if lang|is_compiled_language %}
+                                <option value="{{ lang.name }}">{{ lang.name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="gen-{{ dataset.id }}-input-tpl">Input filename template</label>
+                            <input type="text" id="gen-{{ dataset.id }}-input-tpl" name="input_filename_template" value="input.*" pattern=".*\*.*" required title="Template must contain * placeholder" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. input.* or *.in)</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="gen-{{ dataset.id }}-output-tpl">Output filename template</label>
+                            <input type="text" id="gen-{{ dataset.id }}-output-tpl" name="output_filename_template" value="output.*" pattern=".*\*.*" required title="Template must contain * placeholder" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Upload Generator</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
     <!-- Model Solution Add/Edit Modal (one per dataset) -->
     {% if admin.permission_all %}
     {% for dataset in task.datasets %}
@@ -1644,12 +1894,18 @@ document.addEventListener('click', function(e) {
                             </div>
                             <div class="ms-subtask-cards" id="ms-{{ dataset.id }}-cards" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
                                 {% for st in ds_subtasks if st.max_score > 0 %}
-                                <div class="ms-card-subtask selected" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" onclick="ModelSolutionModal.toggleCard(this);">
+                                <div class="ms-card-subtask selected" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" role="button" tabindex="0" onclick="ModelSolutionModal.toggleCard(this);" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); ModelSolutionModal.toggleCard(this); }">
                                     <div style="font-weight: 600; font-size: 0.9rem;">{{ st.display_name }}</div>
                                     <div style="font-size: 0.8rem; color: var(--tp-text-muted);">{{ st.max_score }} points</div>
                                     <span class="ms-card-check"><svg class="icon" width="14" height="14"><use href="#icon-check"/></svg></span>
+                                    <span class="ms-card-partial-icon"><svg class="icon" width="14" height="14"><use href="#icon-partial"/></svg></span>
                                 </div>
                                 {% endfor %}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                                <label for="ms-{{ dataset.id }}-global-pct" style="font-size: 0.82rem; font-weight: 600; color: var(--tp-text-muted); white-space: nowrap;">Apply to all selected:</label>
+                                <input type="number" id="ms-{{ dataset.id }}-global-pct" min="0" max="100" step="1" value="100" data-dataset="{{ dataset.id }}" oninput="ModelSolutionModal.globalPctChanged(this);" style="width: 64px; text-align: center; padding: 3px 6px; border: 1px solid var(--tp-border); border-radius: 6px; font-size: 0.85rem;" />
+                                <span style="font-size: 0.82rem; color: var(--tp-text-muted);">%</span>
                             </div>
                             <input type="hidden" name="expected_score_min" id="ms-{{ dataset.id }}-score-min" value="0" />
                             <input type="hidden" name="expected_score_max" id="ms-{{ dataset.id }}-score-max" value="0" />
@@ -1748,5 +2004,128 @@ document.addEventListener('click', function(e) {
         </form>
     </div>
 </div>
+
+<script>
+// Download All Testcases - SweetAlert2 dialog with hidden form submit
+function showDownloadTestcasesDialog(datasetId, postUrl) {
+    Swal.fire({
+        title: 'Download All Testcases',
+        html: `
+            <div class="swal-custom-form">
+                <div class="form-group">
+                    <label for="swal-dl-zip">Zip filename</label>
+                    <input id="swal-dl-zip" class="swal2-input" value="testcases.zip">
+                </div>
+                <div class="form-group">
+                    <label for="swal-dl-input-tpl">Input filename template</label>
+                    <input id="swal-dl-input-tpl" class="swal2-input" value="input.*">
+                    <small class="form-hint">Use * as the testcase codename</small>
+                </div>
+                <div class="form-group">
+                    <label for="swal-dl-output-tpl">Output filename template</label>
+                    <input id="swal-dl-output-tpl" class="swal2-input" value="output.*">
+                    <small class="form-hint">Use * as the testcase codename</small>
+                </div>
+            </div>
+            <style>
+                .swal-custom-form { text-align: left; }
+                .swal-custom-form .form-group { margin-bottom: 1rem; }
+                .swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }
+                .swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }
+                .swal-custom-form .form-hint { display: block; margin-top: 6px; font-size: 0.8em; color: #6b7280; }
+            </style>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Download',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: () => {
+            const zipInput = Swal.getPopup().querySelector('#swal-dl-zip');
+            if (zipInput) zipInput.focus();
+        },
+
+        preConfirm: () => {
+            const zip = document.getElementById('swal-dl-zip').value.trim();
+            const inputTpl = document.getElementById('swal-dl-input-tpl').value.trim();
+            const outputTpl = document.getElementById('swal-dl-output-tpl').value.trim();
+
+            if (!zip) {
+                Swal.showValidationMessage('Zip filename is required');
+                return false;
+            }
+            if (!inputTpl || !inputTpl.includes('*')) {
+                Swal.showValidationMessage('Input template must contain *');
+                return false;
+            }
+            if (!outputTpl || !outputTpl.includes('*')) {
+                Swal.showValidationMessage('Output template must contain *');
+                return false;
+            }
+            return { zip, inputTpl, outputTpl };
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            // Submit via hidden form to trigger browser download
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = postUrl;
+            form.style.display = 'none';
+
+            let xsrfToken = document.querySelector('input[name="_xsrf"]')?.value;
+            if (!xsrfToken && typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+
+            const fields = {
+                '_xsrf': xsrfToken || '',
+                'zip_filename': result.value.zip,
+                'input_template': result.value.inputTpl,
+                'output_template': result.value.outputTpl
+            };
+
+            for (const [key, val] of Object.entries(fields)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = val;
+                form.appendChild(input);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        }
+    });
+}
+
+// Generator language auto-filtering
+document.addEventListener('DOMContentLoaded', function() {
+    const GENERATOR_LANGUAGES = {
+{% for lang in LANGUAGES %}
+{% if lang|is_compiled_language %}
+        "{{ lang.name }}": {
+{% for extension in lang.source_extensions %}
+            "{{ extension }}": true,
+{% endfor %}
+        },
+{% endif %}
+{% endfor %}
+    };
+
+{% for dataset in task.datasets %}
+    (function(dsId) {
+        const select = document.getElementById('gen-' + dsId + '-language');
+        const fileInput = document.getElementById('gen-' + dsId + '-file');
+        if (select && fileInput) {
+            fileInput.addEventListener('change', function() {
+                CMS.AWSUtils.filter_languages(select.options, [fileInput], GENERATOR_LANGUAGES);
+            });
+        }
+    })({{ dataset.id }});
+{% endfor %}
+});
+</script>
 
 {% endblock core %}

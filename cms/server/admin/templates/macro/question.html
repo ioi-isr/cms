@@ -96,7 +96,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
   {% if msg.reply_timestamp is not none %}
   <div class="question-reply-section">
     <div class="question-reply-header-row">
-      <span class="question-reply-label">REPLY FROM ADMIN</span>
+      <span class="question-reply-label">Reply from {{ msg.admin.name if msg.admin else "admin" }}</span>
       <span class="question-reply-ts">{{ msg.reply_timestamp|format_datetime }}</span>
     </div>
     <div class="question-reply-content-row">
