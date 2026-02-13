@@ -85,6 +85,58 @@ $(document).ready(function() {
     }
   });
 
+  function updateHash() {
+    var mainTab = $('.task-page-tab.active').data('tab') || 'task-info';
+    var dsBtn = $('.dataset-tab-btn.active');
+    var dsId = dsBtn.length ? dsBtn.data('dataset-id') : '';
+    var subtab = '';
+    if (dsId) {
+      var activeSubtab = $('#dataset-panel-' + dsId).find('.dataset-subtab-btn.active');
+      if (activeSubtab.length) subtab = activeSubtab.data('subtab') || '';
+    }
+    var parts = [mainTab];
+    if (dsId) parts.push(dsId);
+    if (subtab) parts.push(subtab);
+    history.replaceState(null, '', '#' + parts.join('/'));
+  }
+
+  function restoreFromHash() {
+    var hash = location.hash.replace('#', '');
+    if (!hash) return;
+    var parts = hash.split('/');
+    var mainTab = parts[0];
+    var dsId = parts[1] || '';
+    var subtab = parts[2] || '';
+    if (mainTab) {
+      var tab = $('.task-page-tab[data-tab="' + mainTab + '"]');
+      if (tab.length) {
+        $('.task-page-tab').removeClass('active');
+        tab.addClass('active');
+        $('.task-page-tab-content').removeClass('active');
+        $('#tab-' + mainTab).addClass('active');
+      }
+    }
+    if (dsId) {
+      var dsBtn = $('.dataset-tab-btn[data-dataset-id="' + dsId + '"]');
+      if (dsBtn.length) {
+        $('.dataset-tab-btn').removeClass('active');
+        dsBtn.addClass('active');
+        $('.dataset-panel').removeClass('active');
+        $('#dataset-panel-' + dsId).addClass('active');
+      }
+    }
+    if (subtab && dsId) {
+      var panel = $('#dataset-panel-' + dsId);
+      var stBtn = panel.find('.dataset-subtab-btn[data-subtab="' + subtab + '"]');
+      if (stBtn.length) {
+        panel.find('.dataset-subtab-btn').removeClass('active');
+        stBtn.addClass('active');
+        panel.find('.dataset-subtab-content').removeClass('active');
+        panel.find('#ds-' + subtab + '-' + dsId).addClass('active');
+      }
+    }
+  }
+
   // Main tab switching
   $('.task-page-tab').click(function() {
     var tabId = $(this).data('tab');
@@ -92,6 +144,7 @@ $(document).ready(function() {
     $(this).addClass('active');
     $('.task-page-tab-content').removeClass('active');
     $('#tab-' + tabId).addClass('active');
+    updateHash();
   });
 
   // Dataset tab switching
@@ -101,6 +154,7 @@ $(document).ready(function() {
     $(this).addClass('active');
     $('.dataset-panel').removeClass('active');
     $('#dataset-panel-' + datasetId).addClass('active');
+    updateHash();
   });
 
   // Dataset sub-tab switching
@@ -112,7 +166,10 @@ $(document).ready(function() {
     $(this).addClass('active');
     panel.find('.dataset-subtab-content').removeClass('active');
     panel.find('#ds-' + subtab + '-' + datasetId).addClass('active');
+    updateHash();
   });
+
+  restoreFromHash();
 });
 
 window.toggleMultipleDeleteMode = function(dataset_id) {
