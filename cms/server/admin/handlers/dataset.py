@@ -230,16 +230,19 @@ class RenameDatasetHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        description: str = self.get_argument("description", "")
+        description: str = self.get_argument("description", "").strip()
 
         if not description:
             self.set_status(400)
             self.write({"error": "Description is required."})
             return
 
-        # Ensure description is unique.
-        if any(description == d.description
-               for d in task.datasets if d is not dataset):
+        # Ensure description is unique (comparing trimmed values)
+        if any(
+            description == d.description.strip()
+            for d in task.datasets
+            if d is not dataset
+        ):
             self.set_status(400)
             self.write({"error": 'Dataset name "%s" is already taken.' % description})
             return

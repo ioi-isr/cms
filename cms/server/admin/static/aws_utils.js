@@ -1309,8 +1309,15 @@ var ModelSolutionModal = (function() {
         inp.setCustomValidity(errMsg || '');
     }
 
+    function _validateAndClampPercentage(input) {
+        var rawPct = _parse(input.value);
+        var pct = _clamp(rawPct, 0, 100);
+        input.value = pct;
+        return pct;
+    }
+
     function _validateRow(pctInp, minInp, maxInp) {
-        if (pctInp) _flagInput(pctInp, _parse(pctInp.value) < 0 || _parse(pctInp.value) > 100 ? 'Percentage must be 0-100' : '');
+        if (pctInp) _validateAndClampPercentage(pctInp);
         if (minInp) _flagInput(minInp, _parse(minInp.value) < 0 ? 'Value must be non-negative' : '');
         if (maxInp) _flagInput(maxInp, _parse(maxInp.value) < 0 ? 'Value must be non-negative' : '');
         if (minInp && maxInp && !minInp.validationMessage && !maxInp.validationMessage) {
@@ -1326,26 +1333,34 @@ var ModelSolutionModal = (function() {
         var maxScore = _parse(card.dataset.max);
         var row = ui.advRow(idx);
         var hidden = ui.stHidden(idx);
-        var minVal, maxVal;
+        var minVal, maxVal, score;
 
         if (source === 'card') {
             var isActive = card.classList.contains('selected') || card.classList.contains('partial');
             var gPct = _clamp(_parse(ui.globalPct ? ui.globalPct.value : 100, 100), 0, 100);
-            var score = isActive ? maxScore * gPct / 100 : 0;
+            score = isActive ? maxScore * gPct / 100 : 0;
             minVal = maxVal = score;
             if (row.pct) row.pct.value = isActive ? gPct : 0;
             if (row.minInp) row.minInp.value = score.toFixed(2);
             if (row.maxInp) row.maxInp.value = score.toFixed(2);
         } else if (source === 'pct') {
             var pct = _clamp(_parse(row.pct ? row.pct.value : 0), 0, 100);
-            var score = maxScore * pct / 100;
+            score = maxScore * pct / 100;
             minVal = maxVal = score;
             if (row.minInp) row.minInp.value = score.toFixed(2);
             if (row.maxInp) row.maxInp.value = score.toFixed(2);
         } else {
             minVal = _parse(row.minInp ? row.minInp.value : 0);
             maxVal = _parse(row.maxInp ? row.maxInp.value : 0);
-            if (row.pct) row.pct.value = '';
+            if (row.pct) {
+                // Show percentage when min and max are the same, hide when they differ
+                if (Math.abs(minVal - maxVal) < 0.001 && maxScore > 0) {
+                    var pct = Math.round((minVal / maxScore) * 100);
+                    row.pct.value = pct;
+                } else {
+                    row.pct.value = '';
+                }
+            }
         }
 
         if (hidden.min) hidden.min.value = minVal;
@@ -1518,7 +1533,7 @@ var ModelSolutionModal = (function() {
         },
 
         globalPctChanged: function (input) {
-            _flagInput(input, _parse(input.value) < 0 || _parse(input.value) > 100 ? 'Percentage must be 0-100' : '');
+            _validateAndClampPercentage(input);
             _recalcAllFromCards(input.dataset.dataset);
         },
 
@@ -1557,7 +1572,8 @@ var ModelSolutionModal = (function() {
             var dsId = input.dataset.dataset;
             var ui = _getUI(dsId);
             var totalScore = _parse(input.dataset.totalScore);
-            var pct = _clamp(_parse(input.value), 0, 100);
+            var pct = _validateAndClampPercentage(input);
+
             var score = totalScore * pct / 100;
 
             if (ui.advTotalMin) ui.advTotalMin.value = score.toFixed(2);

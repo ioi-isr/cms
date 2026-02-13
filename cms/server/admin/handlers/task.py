@@ -373,7 +373,7 @@ class AddStatementHandler(BaseHandler):
                 "The selected file is empty. Please select a non-empty PDF file.")
             self.redirect(fallback_page)
             return
-        if not statement["filename"].endswith(".pdf"):
+        if not statement["filename"].lower().endswith(".pdf"):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid task statement",
