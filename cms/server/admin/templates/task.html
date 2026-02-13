@@ -85,28 +85,31 @@ $(document).ready(function() {
     }
   });
 
-  function updateHash() {
+  var tabStorageKey = 'task_tabs_{{ task.id }}';
+
+  function saveTabState() {
     var mainTab = $('.task-page-tab.active').data('tab') || 'task-info';
     var dsBtn = $('.dataset-tab-btn.active');
-    var dsId = dsBtn.length ? dsBtn.data('dataset-id') : '';
+    var dsId = dsBtn.length ? String(dsBtn.data('dataset-id')) : '';
     var subtab = '';
     if (dsId) {
       var activeSubtab = $('#dataset-panel-' + dsId).find('.dataset-subtab-btn.active');
       if (activeSubtab.length) subtab = activeSubtab.data('subtab') || '';
     }
-    var parts = [mainTab];
-    if (dsId) parts.push(dsId);
-    if (subtab) parts.push(subtab);
-    history.replaceState(null, '', '#' + parts.join('/'));
+    try {
+      localStorage.setItem(tabStorageKey, JSON.stringify({t: mainTab, d: dsId, s: subtab}));
+    } catch(e) {}
   }
 
-  function restoreFromHash() {
-    var hash = location.hash.replace('#', '');
-    if (!hash) return;
-    var parts = hash.split('/');
-    var mainTab = parts[0];
-    var dsId = parts[1] || '';
-    var subtab = parts[2] || '';
+  function restoreTabState() {
+    try {
+      var raw = localStorage.getItem(tabStorageKey);
+      if (!raw) return;
+      var state = JSON.parse(raw);
+      var mainTab = state.t;
+      var dsId = state.d;
+      var subtab = state.s;
+    } catch(e) { return; }
     if (mainTab) {
       var tab = $('.task-page-tab[data-tab="' + mainTab + '"]');
       if (tab.length) {
@@ -144,7 +147,7 @@ $(document).ready(function() {
     $(this).addClass('active');
     $('.task-page-tab-content').removeClass('active');
     $('#tab-' + tabId).addClass('active');
-    updateHash();
+    saveTabState();
   });
 
   // Dataset tab switching
@@ -154,7 +157,7 @@ $(document).ready(function() {
     $(this).addClass('active');
     $('.dataset-panel').removeClass('active');
     $('#dataset-panel-' + datasetId).addClass('active');
-    updateHash();
+    saveTabState();
   });
 
   // Dataset sub-tab switching
@@ -166,10 +169,10 @@ $(document).ready(function() {
     $(this).addClass('active');
     panel.find('.dataset-subtab-content').removeClass('active');
     panel.find('#ds-' + subtab + '-' + datasetId).addClass('active');
-    updateHash();
+    saveTabState();
   });
 
-  restoreFromHash();
+  restoreTabState();
 });
 
 window.toggleMultipleDeleteMode = function(dataset_id) {
