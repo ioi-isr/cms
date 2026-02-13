@@ -1309,7 +1309,10 @@ var ModelSolutionModal = (function() {
         inp.setCustomValidity(errMsg || '');
     }
 
-    function _validateAndClampPercentage(input) {
+    function _validateAndClampPercentage(input, allowEmpty) {
+        if (allowEmpty && (input.value === '' || input.value === null)) {
+            return '';
+        }
         var rawPct = _parse(input.value);
         var pct = _clamp(rawPct, 0, 100);
         input.value = pct;
@@ -1317,7 +1320,7 @@ var ModelSolutionModal = (function() {
     }
 
     function _validateRow(pctInp, minInp, maxInp) {
-        if (pctInp) _validateAndClampPercentage(pctInp);
+        if (pctInp) _validateAndClampPercentage(pctInp, true);
         if (minInp) _flagInput(minInp, _parse(minInp.value) < 0 ? 'Value must be non-negative' : '');
         if (maxInp) _flagInput(maxInp, _parse(maxInp.value) < 0 ? 'Value must be non-negative' : '');
         if (minInp && maxInp && !minInp.validationMessage && !maxInp.validationMessage) {
@@ -1390,7 +1393,12 @@ var ModelSolutionModal = (function() {
 
             var totalScore = _parse((ui.advTotalMax || ui.advTotalMin || {}).dataset && (ui.advTotalMax || ui.advTotalMin).dataset.totalScore);
             if (ui.advTotalPct && totalScore > 0) {
-                ui.advTotalPct.value = Math.round((totalMax / totalScore) * 100);
+                // Show percentage only when min and max are the same, hide when they differ
+                if (Math.abs(totalMin - totalMax) < 0.001) {
+                    ui.advTotalPct.value = Math.round((totalMax / totalScore) * 100);
+                } else {
+                    ui.advTotalPct.value = '';
+                }
             }
 
             if (ui.scoreMin) ui.scoreMin.value = totalMin;
@@ -1496,9 +1504,14 @@ var ModelSolutionModal = (function() {
                         var stMax = _parse(stData.max);
                         if (stMax > 0) {
                             card.classList.add('selected');
-                            var pct = Math.round((stMax / maxScore) * 100);
-                            if (pct !== 100 && pct !== 0) hasPartial = true;
-                            if (row.pct) row.pct.value = pct;
+                            if (Math.abs(stMin - stMax) >= 0.001) {
+                                hasPartial = true;
+                                if (row.pct) row.pct.value = '';
+                            } else if (maxScore > 0) {
+                                var pct = Math.round((stMax / maxScore) * 100);
+                                if (pct !== 100 && pct !== 0) hasPartial = true;
+                                if (row.pct) row.pct.value = pct;
+                            }
                         }
                         if (row.minInp) row.minInp.value = stMin.toFixed(2);
                         if (row.maxInp) row.maxInp.value = stMax.toFixed(2);
