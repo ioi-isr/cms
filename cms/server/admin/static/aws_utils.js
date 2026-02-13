@@ -1243,6 +1243,15 @@ CMS.AWSUtils.initModelSolutionSubtasks = function(options) {
 var ModelSolutionModal = (function() {
     var _advancedOpen = {};
 
+    function _updateCardPartialState(card, score, max) {
+        card.classList.remove('selected', 'partial');
+        if (score > 0 && score < max) {
+            card.classList.add('partial');
+        } else if (score >= max && score > 0) {
+            card.classList.add('selected');
+        }
+    }
+
     function _resetModal(dsId) {
         var form = document.getElementById('ms-form-' + dsId);
         if (!form) return;
@@ -1260,7 +1269,10 @@ var ModelSolutionModal = (function() {
         if (descInput) descInput.value = '';
 
         var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
-        cards.forEach(function(c) { c.classList.add('selected'); });
+        cards.forEach(function (c) { c.classList.remove('partial'); c.classList.add('selected'); });
+
+        var globalPct = document.getElementById('ms-' + dsId + '-global-pct');
+        if (globalPct) globalPct.value = 100;
 
         var advPcts = document.querySelectorAll('.ms-adv-pct[data-dataset="' + dsId + '"]');
         advPcts.forEach(function(inp) { inp.value = 100; });
@@ -1281,13 +1293,17 @@ var ModelSolutionModal = (function() {
 
     function _recalcFromCards(dsId) {
         var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
+        var globalPctEl = document.getElementById('ms-' + dsId + '-global-pct');
+        var globalPct = Math.max(0, Math.min(100, Number.parseFloat(globalPctEl ? globalPctEl.value : 100) || 100));
         var total = 0;
         cards.forEach(function(c) {
             var idx = c.dataset.idx;
             var max = Number.parseFloat(c.dataset.max);
-            var selected = c.classList.contains('selected');
-            var val = selected ? max : 0;
+            var isSelected = c.classList.contains('selected') || c.classList.contains('partial');
+            var val = isSelected ? max * globalPct / 100 : 0;
             total += val;
+
+            _updateCardPartialState(c, val, max);
 
             var minHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-min');
             var maxHidden = document.getElementById('ms-' + dsId + '-st-' + idx + '-max');
@@ -1295,7 +1311,7 @@ var ModelSolutionModal = (function() {
             if (maxHidden) maxHidden.value = val;
 
             var pctInput = document.querySelector('.ms-adv-pct[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
-            if (pctInput) pctInput.value = selected ? 100 : 0;
+            if (pctInput) pctInput.value = isSelected ? globalPct : 0;
 
             var minInp = document.querySelector('.ms-adv-min-input[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
             var maxInp = document.querySelector('.ms-adv-max-input[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
@@ -1337,8 +1353,7 @@ var ModelSolutionModal = (function() {
 
             var card = document.querySelector('#ms-' + dsId + '-cards .ms-card-subtask[data-idx="' + idx + '"]');
             if (card) {
-                if (pct > 0) card.classList.add('selected');
-                else card.classList.remove('selected');
+                _updateCardPartialState(card, score, max);
             }
         });
 
@@ -1375,8 +1390,7 @@ var ModelSolutionModal = (function() {
 
             var card = document.querySelector('#ms-' + dsId + '-cards .ms-card-subtask[data-idx="' + idx + '"]');
             if (card) {
-                if (maxVal > 0) card.classList.add('selected');
-                else card.classList.remove('selected');
+                _updateCardPartialState(card, maxVal, Number.parseFloat(card.dataset.max) || 0);
             }
         });
 
@@ -1472,7 +1486,7 @@ var ModelSolutionModal = (function() {
                     var idx = c.dataset.idx;
                     var max = Number.parseFloat(c.dataset.max);
                     var stData = subtaskScores[idx] || subtaskScores[String(idx)];
-                    c.classList.remove('selected');
+                    c.classList.remove('selected', 'partial');
                     var pctInput = document.querySelector('.ms-adv-pct[data-dataset="' + dsId + '"][data-idx="' + idx + '"]');
                     if (pctInput) pctInput.value = 0;
                     if (stData) {
@@ -1497,7 +1511,8 @@ var ModelSolutionModal = (function() {
                 _recalcFromMinMax(dsId);
             } else {
                 var cards = document.querySelectorAll('#ms-' + dsId + '-cards .ms-card-subtask');
-                cards.forEach(function(c) { c.classList.remove('selected'); });
+                cards.forEach(function (c) { c.classList.remove('selected', 'partial'); });
+                _recalcFromCards(dsId);
 
                 var scoreMinEl = document.getElementById('ms-' + dsId + '-score-min');
                 var scoreMaxEl = document.getElementById('ms-' + dsId + '-score-max');
@@ -1519,7 +1534,14 @@ var ModelSolutionModal = (function() {
         toggleCard: function(cardEl) {
             var dsId = cardEl.closest('.ms-expected-results').id.replace('ms-', '').replace('-expected', '');
             if (_advancedOpen[dsId]) return;
-            cardEl.classList.toggle('selected');
+            var wasActive = cardEl.classList.contains('selected') || cardEl.classList.contains('partial');
+            cardEl.classList.remove('selected', 'partial');
+            if (!wasActive) cardEl.classList.add('selected');
+            _recalcFromCards(dsId);
+        },
+
+        globalPctChanged: function (input) {
+            var dsId = input.dataset.dataset;
             _recalcFromCards(dsId);
         },
 

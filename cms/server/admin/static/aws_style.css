@@ -2312,7 +2312,13 @@ svg.icon {
     background: #f0fdfa;
 }
 
-.ms-card-check {
+.ms-card-subtask.partial {
+    border-color: var(--tp-warning, #D97706);
+    background: var(--tp-warning-light, #FEF3C7);
+}
+
+.ms-card-check,
+.ms-card-partial-icon {
     position: absolute;
     top: 6px;
     right: 6px;
@@ -2320,12 +2326,28 @@ svg.icon {
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: #ecfdf5;
-    color: #16a34a;
     align-items: center;
     justify-content: center;
 }
 
+.ms-card-check {
+    background: #ecfdf5;
+    color: #16a34a;
+}
+
+.ms-card-partial-icon {
+    background: var(--tp-warning-light, #FEF3C7);
+    color: var(--tp-warning, #D97706);
+}
+
 .ms-card-subtask.selected .ms-card-check {
+    display: inline-flex;
+}
+
+.ms-card-subtask.partial .ms-card-check {
+    display: none;
+}
+
+.ms-card-subtask.partial .ms-card-partial-icon {
     display: inline-flex;
 }

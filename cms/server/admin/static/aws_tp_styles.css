@@ -394,12 +394,12 @@
     background: var(--tp-danger-light) !important;
 }
 
-.btn-compilation:hover {
+.btn-icon-warn:hover {
     color: var(--tp-warning) !important;
     background: var(--tp-warning-light) !important;
 }
 
-.btn-score:hover {
+.btn-icon-success:hover {
     color: var(--tp-success) !important;
     background: var(--tp-success-light) !important;
 }

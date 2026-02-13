@@ -1413,14 +1413,14 @@ document.addEventListener('click', function(e) {
                                     {% endif %}
                                     <td>
                                         <div class="list-cell-wrapper center-content">
-                                        <button type="button" class="btn-icon-only btn-score" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')" title="Show input">
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')" title="Show input">
                                             <svg class="icon" width="18" height="18"><use href="#icon-eye"/></svg>
                                         </button>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content">
-                                        <button type="button" class="btn-icon-only btn-score" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')" title="Show output">
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')" title="Show output">
                                             <svg class="icon" width="18" height="18"><use href="#icon-eye"/></svg>
                                         </button>
                                         </div>
