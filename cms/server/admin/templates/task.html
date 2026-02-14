@@ -730,7 +730,7 @@ document.addEventListener('click', function(e) {
                             {% if dataset.autojudge %}Disable{% else %}Enable{% endif %} background judging
                         </button>
                         <div class="tp-menu-divider"></div>
-                        <a href="{{ url("dataset", dataset.id, "delete") }}" class="tp-menu-item tp-menu-item-danger">
+                        <a href="javascript:void(0)" onclick="AdminModals.confirm({title: 'Delete Dataset', message: 'Are you sure you want to delete the dataset &quot;{{ dataset.description|e }}&quot; and all associated managers, test cases, and submission results?', confirmLabel: 'Yes, Delete', onConfirm: function() { document.getElementById('delete-dataset-form-{{ dataset.id }}').submit(); }});" class="tp-menu-item tp-menu-item-danger">
                             <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
                             Delete
                         </a>
@@ -1526,6 +1526,9 @@ document.addEventListener('click', function(e) {
         <input type="file" id="attachment_file" name="attachment" multiple onchange="if(this.files.length) this.form.submit();" />
     </form>
     {% for dataset in task.datasets %}
+    <form id="delete-dataset-form-{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "delete") }}" style="display: none;">
+        {{ xsrf_form_html|safe }}
+    </form>
     <form id="manager_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "managers", "add") }}" enctype="multipart/form-data" style="display: none;">
         {{ xsrf_form_html|safe }}
         <input type="file" id="manager_file_{{ dataset.id }}" name="manager" multiple onchange="if(this.files.length) this.form.submit();" />

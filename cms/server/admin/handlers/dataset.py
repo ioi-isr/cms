@@ -236,17 +236,6 @@ class DeleteDatasetHandler(BaseHandler):
 
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("delete_dataset.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
