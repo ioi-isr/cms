@@ -781,13 +781,13 @@ document.addEventListener('click', function(e) {
                 <button type="button" class="dataset-subtab-btn" data-subtab="validators" data-dataset-id="{{ dataset.id }}">Subtask Validators</button>
                 {% endif %}
                 <button type="button" class="dataset-subtab-btn" data-subtab="models" data-dataset-id="{{ dataset.id }}">Model Solutions</button>
-                <button type="button" class="dataset-subtab-btn" data-subtab="testcases" data-dataset-id="{{ dataset.id }}">Test Cases</button>
+                <button type="button" class="dataset-subtab-btn" data-subtab="testcases" data-dataset-id="{{ dataset.id }}">Test Cases & Scoring</button>
             </div>
 
             <!-- Sub-tab: Configuration -->
             <div class="dataset-subtab-content active" id="ds-config-{{ dataset.id }}">
                 <div class="tp-grid-layout">
-                    <div class="tp-card col-span-6">
+                    <div class="tp-card col-span-12">
                         <div class="tp-card-header-modern">
                             <div class="tp-card-header-icon">
                                 <svg class="icon" width="18" height="18"><use href="#icon-sliders"/></svg>
@@ -795,49 +795,24 @@ document.addEventListener('click', function(e) {
                             <h3 class="tp-card-title-modern">Limits</h3>
                         </div>
                         <div class="tp-card-body">
-                            <div class="tp-form-group">
-                                <label class="tp-form-label">
-                                    Time limit (seconds)
-                                    <span class="tp-form-info" title="Total maximum time for each evaluation, in seconds.">?</span>
-                                </label>
-                                <input type="text" name="time_limit_{{ dataset.id }}" value="{{ dataset.time_limit if dataset.time_limit is not none else "" }}" class="tp-form-input"/>
-                            </div>
-                            <div class="tp-form-group">
-                                <label class="tp-form-label">
-                                    Memory limit (MiB)
-                                    <span class="tp-form-info" title="Total maximum memory usage for each evaluation, in MiB (2^20 bytes).">?</span>
-                                </label>
-                                <input type="text" name="memory_limit_{{ dataset.id }}" value="{{ dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else "" }}" class="tp-form-input"/>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tp-card col-span-6">
-                        <div class="tp-card-header-modern">
-                            <div class="tp-card-header-icon">
-                                <svg class="icon" width="18" height="18"><use href="#icon-score-type"/></svg>
-                            </div>
-                            <h3 class="tp-card-title-modern">
-                                Score type
-                                (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Score%20types.html" target="_blank">docs</a>)
-                            </h3>
-                        </div>
-                        <div class="tp-card-body">
-                            <div class="tp-form-group">
-                                <label class="tp-form-label">Score Type</label>
-                                <select name="score_type_{{ dataset.id }}" class="tp-form-input">
-                                    {% for score_type_name, score_type in SCORE_TYPES.items() %}
-                                    <option value="{{ score_type_name }}" {% if dataset.score_type == score_type_name %}selected{% endif %}>{{ score_type_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="tp-form-group">
-                                <label class="tp-form-label">Score Parameters</label>
-                                <textarea name="score_type_parameters_{{ dataset.id }}" class="tp-form-input" rows="3" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
+                            <div class="tp-form-row">
+                                <div class="tp-form-group">
+                                    <label class="tp-form-label">
+                                        Time limit (seconds)
+                                        <span class="tp-form-info" title="Total maximum time for each evaluation, in seconds.">?</span>
+                                    </label>
+                                    <input type="text" name="time_limit_{{ dataset.id }}" value="{{ dataset.time_limit if dataset.time_limit is not none else "" }}" class="tp-form-input"/>
+                                </div>
+                                <div class="tp-form-group">
+                                    <label class="tp-form-label">
+                                        Memory limit (MiB)
+                                        <span class="tp-form-info" title="Total maximum memory usage for each evaluation, in MiB (2^20 bytes).">?</span>
+                                    </label>
+                                    <input type="text" name="memory_limit_{{ dataset.id }}" value="{{ dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else "" }}" class="tp-form-input"/>
+                                </div>
                             </div>
                         </div>
                     </div>
-
                     <div class="tp-card col-span-12">
                         <div class="tp-card-header-modern">
                             <div class="tp-card-header-icon">
@@ -1391,6 +1366,32 @@ document.addEventListener('click', function(e) {
                         </table>
                         </div>
                         {% endif %}
+                    </div>
+                </div>
+
+                <div class="tp-card" style="margin-top: 20px;">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon" width="18" height="18"><use href="#icon-score-type"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">
+                            Score type
+                            (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Score%20types.html" target="_blank">docs</a>)
+                        </h3>
+                    </div>
+                    <div class="tp-card-body">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">Score Type</label>
+                            <select name="score_type_{{ dataset.id }}" class="tp-form-input">
+                                {% for score_type_name, score_type in SCORE_TYPES.items() %}
+                                <option value="{{ score_type_name }}" {% if dataset.score_type == score_type_name %}selected{% endif %}>{{ score_type_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">Score Parameters</label>
+                            <textarea name="score_type_parameters_{{ dataset.id }}" class="tp-form-input" rows="3" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
+                        </div>
                     </div>
                 </div>
 
