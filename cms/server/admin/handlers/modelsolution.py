@@ -423,24 +423,11 @@ class ReplaceModelSolutionHandler(BaseHandler):
     from the meta and left in submission history.
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, meta_id):
-        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
-        task = meta.dataset.task
-        dataset = meta.dataset
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["meta"] = meta
-        self.render("replace_model_solution.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, meta_id):
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
         task = meta.dataset.task
         dataset = meta.dataset
-        fallback_page = self.url("model_solution", meta_id, "replace")
+        fallback_page = self.url("task", task.id)
 
         try:
             digests, language = _process_model_solution_files(self, task)

@@ -1347,8 +1347,8 @@ var ModelSolutionModal = (function() {
             if (row.minInp) row.minInp.value = score.toFixed(2);
             if (row.maxInp) row.maxInp.value = score.toFixed(2);
         } else if (source === 'pct') {
-            var pct = _clamp(_parse(row.pct ? row.pct.value : 0), 0, 100);
-            score = maxScore * pct / 100;
+            var rowPct = _clamp(_parse(row.pct ? row.pct.value : 0), 0, 100);
+            score = maxScore * rowPct / 100;
             minVal = maxVal = score;
             if (row.minInp) row.minInp.value = score.toFixed(2);
             if (row.maxInp) row.maxInp.value = score.toFixed(2);
@@ -1358,8 +1358,7 @@ var ModelSolutionModal = (function() {
             if (row.pct) {
                 // Show percentage when min and max are the same, hide when they differ
                 if (Math.abs(minVal - maxVal) < 0.001 && maxScore > 0) {
-                    var pct = Math.round((minVal / maxScore) * 100);
-                    row.pct.value = pct;
+                    row.pct.value = Math.round((minVal / maxScore) * 100);
                 } else {
                     row.pct.value = '';
                 }

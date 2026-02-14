@@ -224,7 +224,7 @@ class CloneDatasetHandler(BaseHandler):
 
 
 class RenameDatasetHandler(BaseHandler):
-    """Rename the descripton of a dataset (AJAX-only)."""
+    """Rename the description of a dataset (AJAX-only)."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)

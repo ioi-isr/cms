@@ -714,7 +714,7 @@ document.addEventListener('click', function(e) {
                             <svg class="icon" width="16" height="16"><use href="#icon-clipboard-list"/></svg>
                             Clone
                         </a>
-                        <button type="button" onclick="AdminModals.renameDataset('{{ url("dataset", dataset.id, "rename") }}', '{{ dataset.description|e }}');" class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+                        <button type="button" onclick='AdminModals.renameDataset({{ url("dataset", dataset.id, "rename")|tojson|forceescape }}, {{ dataset.description|tojson|forceescape }});' class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
                             <svg class="icon" width="16" height="16"><use href="#icon-edit"/></svg>
                             Rename
                         </button>
@@ -1252,7 +1252,7 @@ document.addEventListener('click', function(e) {
                                             <svg class="icon" width="18" height="18"><use href="#icon-edit"/></svg>
                                         </button>
                                         {% if admin.permission_all %}
-                                        <button type="button" class="btn-icon-only" onclick="window.location.href='{{ url("model_solution", meta.id, "replace") }}';" title="Replace">
+                                        <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-replace-ms-{{ meta.id }}');" title="Replace">
                                             <svg class="icon" width="18" height="18"><use href="#icon-replace"/></svg>
                                         </button>
                                         <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');" title="Delete">
@@ -1852,7 +1852,7 @@ document.addEventListener('click', function(e) {
                     <main class="modal__content">
                         <div class="modal__form-group">
                             <label for="ms-{{ dataset.id }}-name">Name <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="text" id="ms-{{ dataset.id }}-name" name="name" pattern="^[\w\-\s()^]+$" title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)." required />
+                            <input type="text" id="ms-{{ dataset.id }}-name" name="name" pattern="^[\w\-\s()\^]+$" title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)." required />
                             <small class="modal__hint">Identifier for export (e.g., 'intended', 'bruteforce')</small>
                         </div>
                         <div class="modal__form-group">
@@ -1907,7 +1907,7 @@ document.addEventListener('click', function(e) {
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
                                 <label for="ms-{{ dataset.id }}-global-pct" style="font-size: 0.82rem; font-weight: 600; color: var(--tp-text-muted); white-space: nowrap;">Apply to all selected:</label>
-                                <input type="number" id="ms-{{ dataset.id }}-global-pct" min="0" max="100" step="1" value="100" data-dataset="{{ dataset.id }}" oninput="ModelSolutionModal.globalPctChanged(this);" style="width: 64px; text-align: center; padding: 3px 6px; border: 1px solid var(--tp-border); border-radius: 6px; font-size: 0.85rem;" />
+                                <input type="number" id="ms-{{ dataset.id }}-global-pct" min="0" max="100" step="0.1" value="100" data-dataset="{{ dataset.id }}" oninput="ModelSolutionModal.globalPctChanged(this);" style="width: 64px; text-align: center; padding: 3px 6px; border: 1px solid var(--tp-border); border-radius: 6px; font-size: 0.85rem;" />
                                 <span style="font-size: 0.82rem; color: var(--tp-text-muted);">%</span>
                             </div>
                             <input type="hidden" name="expected_score_min" id="ms-{{ dataset.id }}-score-min" value="0" />
@@ -1938,7 +1938,7 @@ document.addEventListener('click', function(e) {
                                         <tr style="border-bottom: 1px solid var(--tp-border);">
                                             <td style="padding: 6px 8px; font-weight: 500;">{{ st.display_name }} <span style="color: var(--tp-text-muted); font-weight: 400;">({{ st.max_score }} pts)</span></td>
                                             <td style="text-align: center; padding: 6px 8px;">
-                                                <input type="number" min="0" max="100" step="1" value="100" class="ms-adv-pct" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.pctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                                <input type="number" min="0" max="100" step="0.1" value="100" class="ms-adv-pct" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.pctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
                                             </td>
                                             <td style="text-align: center; padding: 6px 8px;">
                                                 <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-min-input" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.minMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
@@ -1951,7 +1951,7 @@ document.addEventListener('click', function(e) {
                                         <tr style="border-top: 2px solid var(--tp-border);">
                                             <td style="padding: 6px 8px; font-weight: 700;">Full Solution</td>
                                             <td style="text-align: center; padding: 6px 8px;">
-                                                <input type="number" min="0" max="100" step="1" value="100" class="ms-adv-total-pct" id="ms-{{ dataset.id }}-adv-total-pct" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalPctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                                <input type="number" min="0" max="100" step="0.1" value="100" class="ms-adv-total-pct" id="ms-{{ dataset.id }}-adv-total-pct" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalPctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
                                             </td>
                                             <td style="text-align: center; padding: 6px 8px; font-weight: 700;">
                                                 <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-total-min-input" id="ms-{{ dataset.id }}-adv-total-min" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalMinMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px; font-weight: 700;" />
@@ -1994,17 +1994,78 @@ document.addEventListener('click', function(e) {
     {% endfor %}
     {% endif %}
 
+    <!-- Replace Model Solution Modal (one per meta) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    {% set allowed_langs = task.get_allowed_languages() or [] %}
+    {% set language_required = task.submission_format|any("endswith", ".%l") %}
+    {% set allow_partial = task.submission_format|length > 1 and not language_required %}
+    {% for meta in dataset.model_solution_metas %}
+    <div class="modal" id="modal-replace-ms-{{ meta.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-replace-ms-{{ meta.id }}-title" style="max-width: 520px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-replace-ms-{{ meta.id }}-title">Replace Model Solution</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("model_solution", meta.id, "replace") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <p style="font-size: 0.9rem; color: var(--tp-text-secondary); margin: 0 0 16px 0;">
+                            Upload a new file for <strong>{{ meta.description }}</strong> ({{ meta.name }}).
+                            The current submission will be detached and remain in history.
+                        </p>
+                        {% for filename in task.submission_format %}
+                        <div class="modal__form-group">
+                            <label for="replace-ms-{{ meta.id }}-file-{{ loop.index0 }}">{{ filename }}:</label>
+                            <input type="file" id="replace-ms-{{ meta.id }}-file-{{ loop.index0 }}" name="{{ filename }}" />
+                        </div>
+                        {% endfor %}
+                        {% if language_required %}
+                        <div class="modal__form-group">
+                            <label for="replace-ms-{{ meta.id }}-language">Language:</label>
+                            <select id="replace-ms-{{ meta.id }}-language" name="language">
+                                {% for lang in allowed_langs %}
+                                <option value="{{ lang }}" {{ "selected" if meta.submission and meta.submission.language == lang else "" }}>{{ lang }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        {% if allow_partial %}
+                        <p style="font-size: 0.85rem; color: var(--tp-text-muted); margin: 8px 0 0 0;">
+                            You may submit any subset of files. Alternatively, upload a single <code>submission.zip</code>:
+                        </p>
+                        <div class="modal__form-group" style="margin-top: 8px;">
+                            <label for="replace-ms-{{ meta.id }}-zip">submission.zip:</label>
+                            <input type="file" id="replace-ms-{{ meta.id }}-zip" name="submission" />
+                        </div>
+                        {% endif %}
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Replace</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
     <!-- Remove Task -->
     <div style="margin-top: 24px; text-align: right;">
-        <form action="{{ url("tasks") }}" method="POST" style="display:inline;">
-            {{ xsrf_form_html|safe }}
-            <input type="hidden" name="task_id" value="{{ task.id }}"/>
-            <button type="submit" name="operation" value="Remove" class="tp-btn-remove"
-                {% if not admin.permission_all %}disabled{% endif %}>
-                <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
-                Remove Task
-            </button>
-        </form>
+        <button type="button" class="tp-btn-remove"
+            {% if not admin.permission_all %}disabled{% endif %}
+            onclick="AdminModals.deleteResource({
+                title: 'Remove Task',
+                message: 'Are you sure you want to remove task &quot;{{ task.name | e }}&quot;? This will delete all related data including submissions and cannot be undone.',
+                deleteUrl: '{{ url("tasks", task.id, "remove") }}',
+                confirmLabel: 'Yes, Remove Task'
+            })">
+            <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+            Remove Task
+        </button>
     </div>
 </div>
 
@@ -2053,17 +2114,18 @@ function showDownloadTestcasesDialog(datasetId, postUrl) {
             const zip = document.getElementById('swal-dl-zip').value.trim();
             const inputTpl = document.getElementById('swal-dl-input-tpl').value.trim();
             const outputTpl = document.getElementById('swal-dl-output-tpl').value.trim();
+            const invalidTpl = (tpl) => tpl.split('*').length !== 2 || /[\/\\]/.test(tpl);
 
             if (!zip) {
                 Swal.showValidationMessage('Zip filename is required');
                 return false;
             }
-            if (!inputTpl || !inputTpl.includes('*')) {
-                Swal.showValidationMessage('Input template must contain *');
+            if (!inputTpl || invalidTpl(inputTpl)) {
+                Swal.showValidationMessage('Input template must contain exactly one * and no path separators');
                 return false;
             }
-            if (!outputTpl || !outputTpl.includes('*')) {
-                Swal.showValidationMessage('Output template must contain *');
+            if (!outputTpl || invalidTpl(outputTpl)) {
+                Swal.showValidationMessage('Output template must contain exactly one * and no path separators');
                 return false;
             }
             return { zip, inputTpl, outputTpl };
