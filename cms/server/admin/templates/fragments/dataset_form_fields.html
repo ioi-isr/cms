@@ -13,7 +13,7 @@
     </div>
     <div class="modal__form-group">
         <label for="{{ id_prefix }}-time-limit">Time limit (seconds)</label>
-        <input type="text" id="{{ id_prefix }}-time-limit" name="time_limit" value="{{ dataset.time_limit or '' if dataset else '1' }}" />
+        <input type="text" id="{{ id_prefix }}-time-limit" name="time_limit" value="{{ dataset.time_limit if dataset and dataset.time_limit is not none else ('' if dataset else '1') }}" />
     </div>
     <div class="modal__form-group">
         <label for="{{ id_prefix }}-memory-limit">Memory limit (MiB)</label>

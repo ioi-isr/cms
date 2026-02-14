@@ -23,10 +23,10 @@
   </div>
   {% endif %}
   {% if allow_partial %}
-  <p style="font-size: 0.85rem; color: var(--tp-text-muted); margin: 8px 0 0 0;">
+  <p class="modal__hint">
       You may submit any subset of files. Alternatively, upload a single <code>submission.zip</code>:
   </p>
-  <div class="modal__form-group" style="margin-top: 8px;">
+  <div class="modal__form-group">
       <label for="{{ id_prefix }}-zip">submission.zip:</label>
       <input type="file" id="{{ id_prefix }}-zip" name="submission" />
   </div>
