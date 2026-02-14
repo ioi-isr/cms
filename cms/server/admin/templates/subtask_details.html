@@ -362,15 +362,17 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% endblock js_init %}
 
 {% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) %}
-<div class="subtask-table-card">
-  <h3 class="subtask-section-title">{{ title }}</h3>
+<div class="card" style="margin-bottom: 1.5rem;">
+  <header class="card-header">
+    <p class="card-header-title">{{ title }} ({{ testcases|length }})</p>
+  </header>
+  <div class="card-content">
   {% if testcases|length == 0 %}
-  <p class="muted">No testcases in this section.</p>
+    <p class="has-text-grey">No testcases in this section.</p>
   {% else %}
-  <div>
     {% if validator %}
-    <p class="filter-row">
-      <span class="muted">Filter:</span>
+    <p class="filter-row" style="margin-bottom: 0.65em;">
+      <span class="has-text-grey">Filter:</span>
       <a href="javascript:void(0);" class="filter-btn" data-filter="all" onclick="filterTestcases('{{ table_id }}', 'all')" style="font-weight: bold; text-decoration: underline;">All</a> |
       <a href="javascript:void(0);" class="filter-btn" data-filter="passed" onclick="filterTestcases('{{ table_id }}', 'passed')">Passed</a> |
       <a href="javascript:void(0);" class="filter-btn" data-filter="failed" onclick="filterTestcases('{{ table_id }}', 'failed')">Failed</a> |
@@ -378,7 +380,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
       <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('{{ table_id }}', 'not_validated')">Not validated</a>
     </p>
     {% endif %}
-    <table id="{{ table_id }}" class="table is-bordered is-striped is-hoverable">
+    <table id="{{ table_id }}" class="table is-bordered is-striped is-hoverable is-fullwidth">
       <thead>
         <tr>
           {% if admin.permission_all %}
@@ -461,8 +463,8 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
       <a href="javascript:void(0);" onclick="batchRemoveSubstring({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }})">Remove common substring</a>
     </div>
     {% endif %}
-  </div>
   {% endif %}
+  </div>
 </div>
 {% endmacro %}
 
@@ -575,8 +577,6 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% endif %}
 
 {{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
-
-<div class="subtask-section-divider"></div>
 
 {{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
 
