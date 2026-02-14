@@ -1,6 +1,7 @@
 {% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
 {% import "fragments/model_solution_fields.html" as ms_fields with context %}
 {% import "fragments/dataset_form_fields.html" as ds_fields with context %}
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
 
 {% extends "base.html" %}
 
@@ -1039,7 +1040,7 @@ document.addEventListener('click', function(e) {
                                           </span>
                                           {% if admin.permission_all %}
                                           <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator">
-                                            <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                                            <svg class="icon" width="14" height="14"><use href="#icon-file-plus"/></svg>
                                           </button>
                                           {% endif %}
                                         {% endif %}
@@ -1571,15 +1572,12 @@ document.addEventListener('click', function(e) {
                             <small class="modal__hint">ISO language code for this statement</small>
                         </div>
                         <div class="modal__form-group">
-                            <label for="stmt-file">
-                                Statement (PDF)
-                                <span style="color: var(--tp-danger);">*</span>
-                            </label>
-                            <input type="file" id="stmt-file" name="statement" accept=".pdf" required />
+                            <label for="stmt-file">Statement (PDF) <span style="color: var(--tp-danger);">*</span></label>
+                            {{ bulma_file_input("stmt-file", "statement", ".pdf", required=true, button_text="Choose PDF file…") }}
                         </div>
                         <div class="modal__form-group">
                             <label for="stmt-source">Source file (optional, DOC/DOCX/TEX)</label>
-                            <input type="file" id="stmt-source" name="source" accept=".doc,.docx,.tex" />
+                            {{ bulma_file_input("stmt-source", "source", ".doc,.docx,.tex", button_text="Choose source file…") }}
                         </div>
                     </main>
                     <footer class="modal__footer">
@@ -1719,21 +1717,14 @@ document.addEventListener('click', function(e) {
                         <div class="modal__form-group">
                             <label for="tc-{{ dataset.id }}-codename">Codename <span style="color: var(--tp-danger);">*</span></label>
                             <input type="text" id="tc-{{ dataset.id }}-codename" name="codename" required />
-                            <small class="modal__hint">e.g. 001, 002, etc.</small>
                         </div>
                         <div class="modal__form-group">
                             <label for="tc-{{ dataset.id }}-input">Input file <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="file" id="tc-{{ dataset.id }}-input" name="input" required />
+                            {{ bulma_file_input("tc-" ~ dataset.id ~ "-input", "input", "", required=true, button_text="Choose input file…") }}
                         </div>
                         <div class="modal__form-group">
                             <label for="tc-{{ dataset.id }}-output">Output file <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="file" id="tc-{{ dataset.id }}-output" name="output" required />
-                        </div>
-                        <div class="modal__form-group">
-                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                                <input type="checkbox" name="public" checked />
-                                Public
-                            </label>
+                            {{ bulma_file_input("tc-" ~ dataset.id ~ "-output", "output", "", required=true, button_text="Choose output file…") }}
                         </div>
                     </main>
                     <footer class="modal__footer">
@@ -1762,7 +1753,7 @@ document.addEventListener('click', function(e) {
                     <main class="modal__content">
                         <div class="modal__form-group">
                             <label for="tcs-{{ dataset.id }}-archive">Archive (ZIP) <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="file" id="tcs-{{ dataset.id }}-archive" name="archive" accept="application/zip,.zip" required />
+                            {{ bulma_file_input("tcs-" ~ dataset.id ~ "-archive", "archive", "application/zip,.zip", required=true, button_text="Choose ZIP archive…") }}
                             <small class="modal__hint">A zip file containing input/output files only.</small>
                         </div>
                         <div class="modal__form-group">
@@ -1812,7 +1803,7 @@ document.addEventListener('click', function(e) {
                     <main class="modal__content">
                         <div class="modal__form-group">
                             <label for="gen-{{ dataset.id }}-file">Generator source file <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="file" id="gen-{{ dataset.id }}-file" name="generator" accept="{{ get_compiled_language_extensions() }}" required />
+                            {{ bulma_file_input("gen-" ~ dataset.id ~ "-file", "generator", get_compiled_language_extensions(), required=true) }}
                         </div>
                         <div class="modal__form-group">
                             <label for="gen-{{ dataset.id }}-language">Language</label>
@@ -1898,7 +1889,7 @@ document.addEventListener('click', function(e) {
                                 <div class="ms-card-subtask selected" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" role="button" tabindex="0" onclick="ModelSolutionModal.toggleCard(this);" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); ModelSolutionModal.toggleCard(this); }">
                                     <div style="font-weight: 600; font-size: 0.9rem;">{{ st.display_name }}</div>
                                     <div style="font-size: 0.8rem; color: var(--tp-text-muted);">{{ st.max_score }} points</div>
-                                    <span class="ms-card-check"><svg class="icon is-small"><use href="#icon-check"/></svg></span>
+                                    <span class="ms-card-check"><svg class="icon" width="14" height="14"><use href="#icon-check"/></svg></span>
                                     <span class="ms-card-partial-icon"><svg class="icon"><use href="#icon-partial"/></svg></span>
                                 </div>
                                 {% endfor %}

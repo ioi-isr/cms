@@ -2,6 +2,17 @@
     font-size: 100%;
 }
 
+/* Simply disable Bulma's base classes that interfere with custom styling */
+
+.icon {
+    all: unset !important;
+    display: inline-block !important;
+}
+
+.footer {
+    all: unset !important;
+}
+
 :root {
     --bulma-primary-h: 175deg;
     --bulma-primary-s: 77%;
@@ -47,7 +58,6 @@ body {
     font-family: "Lucida Grande", "Arial", sans-serif;
     height: 100%;
     min-width: 960px;
-    background-color: #f5f5f5;
 }
 
 h1 {
@@ -577,10 +587,6 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 .footer {
-    all: unset !important;
-}
-
-.footer {
     font-size: 0.875em;
     text-align: left;
     clear: both;
@@ -817,36 +823,9 @@ th .column-sort {
 
 /* NOTIFICATIONS */
 
-/* Simply disable Bulma's base classes that interfere with custom styling */
-.notification {
-    all: unset !important;
-    display: block !important;
-}
-
-.notification .delete {
-    all: unset !important;
-    float: right !important;
-    cursor: pointer !important;
-}
-
-.icon {
-    all: unset !important;
-    display: inline-block !important;
-}
-
 #notifications {
     margin: 0 auto;
     padding: 1em 0 0.5em;
-}
-
-#notifications .notification {
-    text-align: left;
-    margin-bottom: 0.572em;
-    font-size: 0.875em;
-    border-radius: 0.5em;
-    background-color: #FEF7CB;
-    border: 0.143em solid #FFE475;
-    box-shadow: black 0.072em 0.072em 0.144em;
 }
 
 #notifications .notification_msg {
@@ -931,23 +910,7 @@ th .column-sort {
     padding-right: 0.5em;
 }
 
-.notifications .announcement_remove {
-    float: right;
-    margin-bottom: -0.143em;
-    width: 6em;
-    text-align: center;
-    padding: 0;
-    font-weight: bold;
-}
-
-
 /* DIFFERENT COLORS... */
-
-body.admin h1,
-body.admin .hr,
-body.admin #core h2 {
-    color: #1F2937;
-}
 
 body.admin pre {
     border-left: 2px solid #0F766E;

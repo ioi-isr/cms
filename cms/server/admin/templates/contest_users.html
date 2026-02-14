@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
+
 {% block core %}
 <div class="core_title">
   <h1>Users list</h1>
@@ -9,18 +11,17 @@
 
 <form action="{{ url("contest", contest.id, "users", "bulk_add") }}" method="POST" enctype="multipart/form-data">
   {{ xsrf_form_html|safe }}
-  Add users from a list:
-  <input type="file" name="users_file" accept=".txt"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
-  <input type="submit"
+  <div class="modal__form-group">
+    <label for="users-file-input">Add users from a list:</label>
+    {{ bulma_file_input("users-file-input", "users_file", ".txt", button_text="Choose text file…") }}
+  </div>
+  <div class="modal__form-group">
+    <input type="submit"
 {% if not admin.permission_all %}
          disabled
 {% endif %}
          value="Upload and add users" />
-  <br/>
+  </div>
   <small>Upload a .txt file with whitespace-separated usernames</small>
 </form>
 

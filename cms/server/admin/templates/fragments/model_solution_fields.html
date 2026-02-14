@@ -5,11 +5,13 @@
   language_filter_script: auto-detect language from uploaded file extensions
 #}
 
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
+
 {% macro file_fields(task, allowed_langs, language_required, allow_partial, id_prefix, selected_language=None) %}
   {% for filename in task.submission_format %}
   <div class="modal__form-group">
       <label for="{{ id_prefix }}-file-{{ loop.index0 }}">{{ filename }}:</label>
-      <input type="file" id="{{ id_prefix }}-file-{{ loop.index0 }}" name="{{ filename }}" />
+      {{ bulma_file_input(id_prefix ~ "-file-" ~ loop.index0, filename, "", button_text="Choose " ~ filename ~ "…") }}
   </div>
   {% endfor %}
   {% if language_required %}
@@ -28,7 +30,7 @@
   </p>
   <div class="modal__form-group">
       <label for="{{ id_prefix }}-zip">submission.zip:</label>
-      <input type="file" id="{{ id_prefix }}-zip" name="submission" />
+      {{ bulma_file_input(id_prefix ~ "-zip", "submission", ".zip", button_text="Choose submission.zip…") }}
   </div>
   {% endif %}
 {% endmacro %}
