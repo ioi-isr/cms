@@ -185,7 +185,8 @@ class CloneDatasetHandler(BaseHandler):
             # testcases across too. If the user insists, clone all
             # evaluation information too.
             clone_results = bool(self.get_argument("clone_results", False))
-            dataset.clone_from(original_dataset, True, True, clone_results)
+            clone_managers = bool(self.get_argument("clone_managers", False))
+            dataset.clone_from(original_dataset, clone_managers, True, clone_results)
 
         # If the task does not yet have an active dataset, make this
         # one active.

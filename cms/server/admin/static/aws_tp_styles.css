@@ -1993,6 +1993,7 @@
     font-size: 0.9rem;
     cursor: pointer;
     transition: background 0.15s;
+    box-sizing: border-box;
 }
 
 .tp-menu-item:hover {
