@@ -1,4 +1,6 @@
 {% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+{% import "fragments/model_solution_fields.html" as ms_fields with context %}
+{% import "fragments/dataset_form_fields.html" as ds_fields with context %}
 
 {% extends "base.html" %}
 
@@ -47,7 +49,7 @@ function updateRealPrecOptions(dataset_id) {
     var evalSelect = table.find("select[name$='_output_eval']");
     if (evalSelect.length == 0) return;
     var val = evalSelect.val();
-    var row = table.find("tr.param_row[data-param-short='realprec_exp']");
+    var row = table.find(".param_row[data-param-short='realprec_exp']");
     if (val === 'realprecision') {
       row.show();
     } else {
@@ -314,6 +316,10 @@ document.addEventListener('click', function(e) {
 {% endblock js_init %}
 
 {% block core %}
+
+{% set allowed_langs = task.get_allowed_languages() or [] %}
+{% set language_required = task.submission_format|any("endswith", ".%l") %}
+{% set allow_partial = task.submission_format|length > 1 and not language_required %}
 
 <div class="content-constraint" style="max-width: 1100px;">
     <div class="page-title">
@@ -679,7 +685,7 @@ document.addEventListener('click', function(e) {
         <div style="text-align: center; padding: 40px 24px; background: var(--tp-bg-light); border: 1px solid var(--tp-border-light); border-radius: 12px;">
             <p style="color: var(--tp-text-muted); margin-bottom: 16px;">No datasets have been created for this task.</p>
             {% if admin.permission_all %}
-            <a href="{{ url("task", task.id, "add_dataset") }}" class="tp-btn-primary">Create a new dataset</a>
+            <a href="javascript:void(0)" class="tp-btn-primary" onclick="MicroModal.show('modal-add-dataset')">Create a new dataset</a>
             {% endif %}
         </div>
         {% else %}
@@ -710,7 +716,7 @@ document.addEventListener('click', function(e) {
                             Make Live
                         </a>
                         {% endif %}
-                        <a href="{{ url("dataset", dataset.id, "clone") }}" class="tp-menu-item">
+                        <a href="javascript:void(0)" onclick="MicroModal.show('modal-clone-dataset-{{ dataset.id }}')" class="tp-menu-item">
                             <svg class="icon" width="16" height="16"><use href="#icon-clipboard-list"/></svg>
                             Clone
                         </a>
@@ -728,7 +734,7 @@ document.addEventListener('click', function(e) {
                             {% if dataset.autojudge %}Disable{% else %}Enable{% endif %} background judging
                         </button>
                         <div class="tp-menu-divider"></div>
-                        <a href="{{ url("dataset", dataset.id, "delete") }}" class="tp-menu-item tp-menu-item-danger">
+                        <a href="javascript:void(0)" onclick='AdminModals.confirm({title: "Delete Dataset", message: "Are you sure you want to delete the dataset " + {{ dataset.description|tojson|forceescape }} + " and all associated managers, test cases, and submission results?", confirmLabel: "Yes, Delete", onConfirm: function() { document.getElementById("delete-dataset-form-{{ dataset.id }}").submit(); }});' class="tp-menu-item tp-menu-item-danger">
                             <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
                             Delete
                         </a>
@@ -739,7 +745,7 @@ document.addEventListener('click', function(e) {
             </div>
             {% endfor %}
             {% if admin.permission_all %}
-            <a href="{{ url("task", task.id, "add_dataset") }}" class="dataset-tab-add" title="Create new dataset">+</a>
+            <a href="javascript:void(0)" class="dataset-tab-add" title="Create new dataset" onclick="MicroModal.show('modal-add-dataset')">+</a>
             {% endif %}
         </div>
 
@@ -780,13 +786,13 @@ document.addEventListener('click', function(e) {
                 <button type="button" class="dataset-subtab-btn" data-subtab="validators" data-dataset-id="{{ dataset.id }}">Subtask Validators</button>
                 {% endif %}
                 <button type="button" class="dataset-subtab-btn" data-subtab="models" data-dataset-id="{{ dataset.id }}">Model Solutions</button>
-                <button type="button" class="dataset-subtab-btn" data-subtab="testcases" data-dataset-id="{{ dataset.id }}">Test Cases</button>
+                <button type="button" class="dataset-subtab-btn" data-subtab="testcases" data-dataset-id="{{ dataset.id }}">Test Cases & Scoring</button>
             </div>
 
             <!-- Sub-tab: Configuration -->
             <div class="dataset-subtab-content active" id="ds-config-{{ dataset.id }}">
                 <div class="tp-grid-layout">
-                    <div class="tp-card col-span-6">
+                    <div class="tp-card col-span-12">
                         <div class="tp-card-header-modern">
                             <div class="tp-card-header-icon">
                                 <svg class="icon" width="18" height="18"><use href="#icon-sliders"/></svg>
@@ -794,49 +800,24 @@ document.addEventListener('click', function(e) {
                             <h3 class="tp-card-title-modern">Limits</h3>
                         </div>
                         <div class="tp-card-body">
-                            <div class="tp-form-group">
-                                <label class="tp-form-label">
-                                    Time limit (seconds)
-                                    <span class="tp-form-info" title="Total maximum time for each evaluation, in seconds.">?</span>
-                                </label>
-                                <input type="text" name="time_limit_{{ dataset.id }}" value="{{ dataset.time_limit if dataset.time_limit is not none else "" }}" class="tp-form-input"/>
-                            </div>
-                            <div class="tp-form-group">
-                                <label class="tp-form-label">
-                                    Memory limit (MiB)
-                                    <span class="tp-form-info" title="Total maximum memory usage for each evaluation, in MiB (2^20 bytes).">?</span>
-                                </label>
-                                <input type="text" name="memory_limit_{{ dataset.id }}" value="{{ dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else "" }}" class="tp-form-input"/>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tp-card col-span-6">
-                        <div class="tp-card-header-modern">
-                            <div class="tp-card-header-icon">
-                                <svg class="icon" width="18" height="18"><use href="#icon-score-type"/></svg>
-                            </div>
-                            <h3 class="tp-card-title-modern">
-                                Score type
-                                (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Score%20types.html" target="_blank">docs</a>)
-                            </h3>
-                        </div>
-                        <div class="tp-card-body">
-                            <div class="tp-form-group">
-                                <label class="tp-form-label">Score Type</label>
-                                <select name="score_type_{{ dataset.id }}" class="tp-form-input">
-                                    {% for score_type_name, score_type in SCORE_TYPES.items() %}
-                                    <option value="{{ score_type_name }}" {% if dataset.score_type == score_type_name %}selected{% endif %}>{{ score_type_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="tp-form-group">
-                                <label class="tp-form-label">Score Parameters</label>
-                                <textarea name="score_type_parameters_{{ dataset.id }}" class="tp-form-input" rows="3" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
+                            <div class="tp-form-row">
+                                <div class="tp-form-group">
+                                    <label class="tp-form-label">
+                                        Time limit (seconds)
+                                        <span class="tp-form-info" title="Total maximum time for each evaluation, in seconds.">?</span>
+                                    </label>
+                                    <input type="text" name="time_limit_{{ dataset.id }}" value="{{ dataset.time_limit if dataset.time_limit is not none else "" }}" class="tp-form-input"/>
+                                </div>
+                                <div class="tp-form-group">
+                                    <label class="tp-form-label">
+                                        Memory limit (MiB)
+                                        <span class="tp-form-info" title="Total maximum memory usage for each evaluation, in MiB (2^20 bytes).">?</span>
+                                    </label>
+                                    <input type="text" name="memory_limit_{{ dataset.id }}" value="{{ dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else "" }}" class="tp-form-input"/>
+                                </div>
                             </div>
                         </div>
                     </div>
-
                     <div class="tp-card col-span-12">
                         <div class="tp-card-header-modern">
                             <div class="tp-card-header-icon">
@@ -859,18 +840,18 @@ document.addEventListener('click', function(e) {
 
                             {% set parameters = dataset.task_type_parameters %}
                             {% for task_type_name, task_type in TASK_TYPES.items() %}
-                            <table class="TaskTypeOptions TaskTypeOptions_{{ dataset.id }} bordered" id="TaskType{{ task_type_name }}Options_{{ dataset.id }}" style="display: none;">
+                            <div class="TaskTypeOptions TaskTypeOptions_{{ dataset.id }} tp-task-type-options" id="TaskType{{ task_type_name }}Options_{{ dataset.id }}" style="display: none;">
                                 {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
                                 {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
                                 {% set parameter_value = parameters[i] if dataset.task_type == task_type_name and parameters is not none and i < parameters|length else none %}
-                                <tr class="param_row" data-param-short="{{ param_def.short_name }}">
-                                    <td>{{ param_def.name }}</td>
-                                    <td>
+                                <div class="tp-form-group param_row" data-param-short="{{ param_def.short_name }}">
+                                    <label class="tp-form-label">{{ param_def.name }}</label>
+                                    <div class="tp-task-type-field">
                                         {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value)|safe }}
-                                    </td>
-                                </tr>
+                                    </div>
+                                </div>
                                 {% endfor %}
-                            </table>
+                            </div>
                             {% endfor %}
 
                             <div class="tp-form-group" style="margin-top: 16px;">
@@ -1396,6 +1377,32 @@ document.addEventListener('click', function(e) {
                 <div class="tp-card" style="margin-top: 20px;">
                     <div class="tp-card-header-modern">
                         <div class="tp-card-header-icon">
+                            <svg class="icon" width="18" height="18"><use href="#icon-score-type"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">
+                            Score type
+                            (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Score%20types.html" target="_blank">docs</a>)
+                        </h3>
+                    </div>
+                    <div class="tp-card-body">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">Score Type</label>
+                            <select name="score_type_{{ dataset.id }}" class="tp-form-input">
+                                {% for score_type_name, score_type in SCORE_TYPES.items() %}
+                                <option value="{{ score_type_name }}" {% if dataset.score_type == score_type_name %}selected{% endif %}>{{ score_type_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">Score Parameters</label>
+                            <textarea name="score_type_parameters_{{ dataset.id }}" class="tp-form-input" rows="3" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tp-card" style="margin-top: 20px;">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
                             <svg class="icon" width="18" height="18"><use href="#icon-test-cases"/></svg>
                         </div>
                         <h3 class="tp-card-title-modern">Test Cases</h3>
@@ -1523,6 +1530,9 @@ document.addEventListener('click', function(e) {
         <input type="file" id="attachment_file" name="attachment" multiple onchange="if(this.files.length) this.form.submit();" />
     </form>
     {% for dataset in task.datasets %}
+    <form id="delete-dataset-form-{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "delete") }}" style="display: none;">
+        {{ xsrf_form_html|safe }}
+    </form>
     <form id="manager_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "managers", "add") }}" enctype="multipart/form-data" style="display: none;">
         {{ xsrf_form_html|safe }}
         <input type="file" id="manager_file_{{ dataset.id }}" name="manager" multiple onchange="if(this.files.length) this.form.submit();" />
@@ -1852,7 +1862,7 @@ document.addEventListener('click', function(e) {
                     <main class="modal__content">
                         <div class="modal__form-group">
                             <label for="ms-{{ dataset.id }}-name">Name <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="text" id="ms-{{ dataset.id }}-name" name="name" pattern="^[\w\-\s()\^]+$" title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)." required />
+                            <input type="text" id="ms-{{ dataset.id }}-name" name="name" pattern="^[A-Za-z0-9_ \^\-\(\)]+$" title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)." required />
                             <small class="modal__hint">Identifier for export (e.g., 'intended', 'bruteforce')</small>
                         </div>
                         <div class="modal__form-group">
@@ -1860,21 +1870,9 @@ document.addEventListener('click', function(e) {
                             <input type="text" id="ms-{{ dataset.id }}-description" name="description" required />
                         </div>
                         <div class="modal__form-group ms-file-section" id="ms-{{ dataset.id }}-file-section">
-                            {% for filename in task.submission_format %}
-                            <label for="ms-{{ dataset.id }}-file-{{ loop.index0 }}">{{ filename }}: <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="file" id="ms-{{ dataset.id }}-file-{{ loop.index0 }}" name="{{ filename }}" />
-                            {% endfor %}
-                            {% set allowed_langs = task.get_allowed_languages() or [] %}
-                            {% set language_required = task.submission_format|any("endswith", ".%l") %}
-                            {% if language_required %}
-                            <label for="ms-{{ dataset.id }}-language">Language:</label>
-                            <select id="ms-{{ dataset.id }}-language" name="language">
-                                {% for lang in allowed_langs %}
-                                <option value="{{ lang }}">{{ lang }}</option>
-                                {% endfor %}
-                            </select>
-                            {% endif %}
+                            {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "ms-" ~ dataset.id) }}
                         </div>
+                        {{ ms_fields.language_filter_script("#modal-ms-" ~ dataset.id ~ " form", allowed_langs, language_required) }}
 
                         {% if subtask_info.get(dataset.id) %}
                         {% set ds_subtasks = subtask_info[dataset.id] %}
@@ -1997,9 +1995,6 @@ document.addEventListener('click', function(e) {
     <!-- Replace Model Solution Modal (one per meta) -->
     {% if admin.permission_all %}
     {% for dataset in task.datasets %}
-    {% set allowed_langs = task.get_allowed_languages() or [] %}
-    {% set language_required = task.submission_format|any("endswith", ".%l") %}
-    {% set allow_partial = task.submission_format|length > 1 and not language_required %}
     {% for meta in dataset.model_solution_metas %}
     <div class="modal" id="modal-replace-ms-{{ meta.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
@@ -2015,31 +2010,8 @@ document.addEventListener('click', function(e) {
                             Upload a new file for <strong>{{ meta.description }}</strong> ({{ meta.name }}).
                             The current submission will be detached and remain in history.
                         </p>
-                        {% for filename in task.submission_format %}
-                        <div class="modal__form-group">
-                            <label for="replace-ms-{{ meta.id }}-file-{{ loop.index0 }}">{{ filename }}:</label>
-                            <input type="file" id="replace-ms-{{ meta.id }}-file-{{ loop.index0 }}" name="{{ filename }}" />
-                        </div>
-                        {% endfor %}
-                        {% if language_required %}
-                        <div class="modal__form-group">
-                            <label for="replace-ms-{{ meta.id }}-language">Language:</label>
-                            <select id="replace-ms-{{ meta.id }}-language" name="language">
-                                {% for lang in allowed_langs %}
-                                <option value="{{ lang }}" {{ "selected" if meta.submission and meta.submission.language == lang else "" }}>{{ lang }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% endif %}
-                        {% if allow_partial %}
-                        <p style="font-size: 0.85rem; color: var(--tp-text-muted); margin: 8px 0 0 0;">
-                            You may submit any subset of files. Alternatively, upload a single <code>submission.zip</code>:
-                        </p>
-                        <div class="modal__form-group" style="margin-top: 8px;">
-                            <label for="replace-ms-{{ meta.id }}-zip">submission.zip:</label>
-                            <input type="file" id="replace-ms-{{ meta.id }}-zip" name="submission" />
-                        </div>
-                        {% endif %}
+                        {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "replace-ms-" ~ meta.id, meta.submission.language if meta.submission else None) }}
+                        {{ ms_fields.language_filter_script("#modal-replace-ms-" ~ meta.id ~ " form", allowed_langs, language_required) }}
                     </main>
                     <footer class="modal__footer">
                         <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
@@ -2050,6 +2022,73 @@ document.addEventListener('click', function(e) {
         </div>
     </div>
     {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Create Dataset Modal -->
+    {% if admin.permission_all %}
+    <div class="modal" id="modal-add-dataset" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-dataset-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-dataset-title">Create Dataset</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("task", task.id, "add_dataset") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        {{ ds_fields.dataset_fields("add-ds", "new", "showNewDatasetTaskType();", dataset=None, TASK_TYPES=TASK_TYPES, SCORE_TYPES=SCORE_TYPES) }}
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Create</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Clone Dataset Modals (one per dataset) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    <div class="modal" id="modal-clone-dataset-{{ dataset.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-clone-dataset-{{ dataset.id }}-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-clone-dataset-{{ dataset.id }}-title">Clone Dataset</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "clone") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <p style="font-size: 0.9rem; color: var(--tp-text-secondary); margin: 0 0 16px 0;">
+                            Cloning dataset <strong>{{ dataset.description }}</strong>.
+                        </p>
+                        <div class="modal__form-group">
+                            <label for="clone-ds-{{ dataset.id }}-clone-results">
+                                <input type="checkbox" id="clone-ds-{{ dataset.id }}-clone-results" name="clone_results" style="margin-right: 6px;" />
+                                Clone evaluation results
+                            </label>
+                        </div>
+                        {{ ds_fields.dataset_fields("clone-ds-" ~ dataset.id, "clone_" ~ dataset.id, "showCloneDatasetTaskType(" ~ dataset.id ~ ");", dataset=dataset, TASK_TYPES=TASK_TYPES, SCORE_TYPES=SCORE_TYPES) }}
+                        {% if dataset.managers|length != 0 %}
+                        <div class="modal__form-group">
+                            <label for="clone-ds-{{ dataset.id }}-clone-managers">
+                                <input type="checkbox" id="clone-ds-{{ dataset.id }}-clone-managers" name="clone_managers" checked style="margin-right: 6px;" />
+                                Clone managers
+                            </label>
+                        </div>
+                        {% endif %}
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Clone</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
     {% endfor %}
     {% endif %}
 
@@ -2164,6 +2203,26 @@ function showDownloadTestcasesDialog(datasetId, postUrl) {
         }
     });
 }
+
+// Create Dataset modal - task type toggle
+function showNewDatasetTaskType() {
+    var selector = document.getElementById('add-ds-task-type');
+    if (!selector) return;
+    $(".TaskTypeOptions_new:visible").hide("fast");
+    $("#TaskType" + selector.value + "Options_new").show("fast");
+}
+showNewDatasetTaskType();
+
+// Clone Dataset modal - task type toggle
+function showCloneDatasetTaskType(datasetId) {
+    var selector = document.getElementById('clone-ds-' + datasetId + '-task-type');
+    if (!selector) return;
+    $(".TaskTypeOptions_clone_" + datasetId + ":visible").hide("fast");
+    $("#TaskType" + selector.value + "Options_clone_" + datasetId).show("fast");
+}
+{% for dataset in task.datasets %}
+showCloneDatasetTaskType({{ dataset.id }});
+{% endfor %}
 
 // Generator language auto-filtering
 document.addEventListener('DOMContentLoaded', function() {

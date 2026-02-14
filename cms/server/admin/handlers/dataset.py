@@ -132,38 +132,13 @@ class CloneDatasetHandler(BaseHandler):
     It's equivalent to the old behavior of AddDatasetHandler when the
     dataset_id_to_copy given was the ID of an existing dataset.
 
-    If referred by GET, this handler will return a HTML form.
-    If referred by POST, this handler will create the dataset.
-
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id_to_copy):
-        dataset = self.safe_get_item(Dataset, dataset_id_to_copy)
-        task = self.safe_get_item(Task, dataset.task_id)
-        self.contest = task.contest
-
-        try:
-            original_dataset = \
-                self.safe_get_item(Dataset, dataset_id_to_copy)
-            description = "Copy of %s" % original_dataset.description
-        except ValueError:
-            raise tornado.web.HTTPError(404)
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["clone_id"] = dataset_id_to_copy
-        self.r_params["original_dataset"] = original_dataset
-        self.r_params["original_dataset_task_type_parameters"] = \
-            original_dataset.task_type_parameters
-        self.r_params["default_description"] = description
-        self.render("add_dataset.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id_to_copy):
-        fallback_page = self.url("dataset", dataset_id_to_copy, "clone")
-
         dataset = self.safe_get_item(Dataset, dataset_id_to_copy)
         task = self.safe_get_item(Task, dataset.task_id)
+        fallback_page = self.url("task", task.id)
+
         task_id = task.id
 
         try:
@@ -210,7 +185,8 @@ class CloneDatasetHandler(BaseHandler):
             # testcases across too. If the user insists, clone all
             # evaluation information too.
             clone_results = bool(self.get_argument("clone_results", False))
-            dataset.clone_from(original_dataset, True, True, clone_results)
+            clone_managers = bool(self.get_argument("clone_managers", False))
+            dataset.clone_from(original_dataset, clone_managers, True, clone_results)
 
         # If the task does not yet have an active dataset, make this
         # one active.
@@ -260,17 +236,6 @@ class DeleteDatasetHandler(BaseHandler):
     """Delete a dataset from a task.
 
     """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("delete_dataset.html", **self.r_params)
-
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)

@@ -561,29 +561,10 @@ class AddDatasetHandler(BaseHandler):
     It's equivalent to the old behavior when the dataset_id_to_copy
     given was equal to the string "-".
 
-    If referred by GET, this handler will return a HTML form.
-    If referred by POST, this handler will create the dataset.
-
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
-
-        original_dataset = None
-        description = "Default"
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["clone_id"] = "new"
-        self.r_params["original_dataset"] = original_dataset
-        self.r_params["original_dataset_task_type_parameters"] = None
-        self.r_params["default_description"] = description
-        self.render("add_dataset.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
-        fallback_page = self.url("task", task_id, "add_dataset")
+        fallback_page = self.url("task", task_id)
 
         task = self.safe_get_item(Task, task_id)
 
@@ -626,7 +607,6 @@ class AddDatasetHandler(BaseHandler):
             task.active_dataset = dataset
 
         if self.try_commit():
-            # self.service.scoring_service.reinitialize()
             self.redirect(self.url("task", task_id))
         else:
             self.redirect(fallback_page)
