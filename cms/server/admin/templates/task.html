@@ -1,5 +1,6 @@
 {% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
 {% import "fragments/model_solution_fields.html" as ms_fields with context %}
+{% import "fragments/dataset_form_fields.html" as ds_fields with context %}
 
 {% extends "base.html" %}
 
@@ -680,7 +681,7 @@ document.addEventListener('click', function(e) {
         <div style="text-align: center; padding: 40px 24px; background: var(--tp-bg-light); border: 1px solid var(--tp-border-light); border-radius: 12px;">
             <p style="color: var(--tp-text-muted); margin-bottom: 16px;">No datasets have been created for this task.</p>
             {% if admin.permission_all %}
-            <button type="button" class="tp-btn-primary" data-micromodal-trigger="modal-add-dataset">Create a new dataset</button>
+            <a href="javascript:void(0)" class="tp-btn-primary" onclick="MicroModal.show('modal-add-dataset')">Create a new dataset</a>
             {% endif %}
         </div>
         {% else %}
@@ -711,10 +712,10 @@ document.addEventListener('click', function(e) {
                             Make Live
                         </a>
                         {% endif %}
-                        <button type="button" data-micromodal-trigger="modal-clone-dataset-{{ dataset.id }}" class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+                        <a href="javascript:void(0)" onclick="MicroModal.show('modal-clone-dataset-{{ dataset.id }}')" class="tp-menu-item">
                             <svg class="icon" width="16" height="16"><use href="#icon-clipboard-list"/></svg>
                             Clone
-                        </button>
+                        </a>
                         <button type="button" onclick='AdminModals.renameDataset({{ url("dataset", dataset.id, "rename")|tojson|forceescape }}, {{ dataset.description|tojson|forceescape }});' class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
                             <svg class="icon" width="16" height="16"><use href="#icon-edit"/></svg>
                             Rename
@@ -740,7 +741,7 @@ document.addEventListener('click', function(e) {
             </div>
             {% endfor %}
             {% if admin.permission_all %}
-            <button type="button" class="dataset-tab-add" title="Create new dataset" data-micromodal-trigger="modal-add-dataset">+</button>
+            <a href="javascript:void(0)" class="dataset-tab-add" title="Create new dataset" onclick="MicroModal.show('modal-add-dataset')">+</a>
             {% endif %}
         </div>
 
@@ -2033,52 +2034,7 @@ document.addEventListener('click', function(e) {
                 <form method="POST" enctype="multipart/form-data" action="{{ url("task", task.id, "add_dataset") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
-                        <div class="modal__form-group">
-                            <label for="add-ds-description">Description <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="text" id="add-ds-description" name="description" value="Default" required />
-                            <small class="modal__hint">A unique name for this dataset</small>
-                        </div>
-                        <div class="modal__form-group">
-                            <label for="add-ds-time-limit">Time limit (seconds)</label>
-                            <input type="text" id="add-ds-time-limit" name="time_limit" value="1" />
-                        </div>
-                        <div class="modal__form-group">
-                            <label for="add-ds-memory-limit">Memory limit (MiB)</label>
-                            <input type="text" id="add-ds-memory-limit" name="memory_limit" value="512" />
-                        </div>
-                        <div class="modal__form-group">
-                            <label for="add-ds-task-type">Task type</label>
-                            <select id="add-ds-task-type" name="task_type" onchange="showNewDatasetTaskType();">
-                                {% for task_type_name, task_type in TASK_TYPES.items() %}
-                                <option value="{{ task_type_name }}">{{ task_type_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% for task_type_name, task_type in TASK_TYPES.items() %}
-                        <div class="TaskTypeOptions_new tp-task-type-options" id="TaskType{{ task_type_name }}Options_new" style="display: none;">
-                            {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
-                            {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
-                            <div class="tp-form-group param_row" data-param-short="{{ param_def.short_name }}">
-                                <label class="tp-form-label">{{ param_def.name }}</label>
-                                <div class="tp-task-type-field">
-                                    {{ param_def.render("TaskTypeOptions_%s_"|format(task_type_name), previous_value=none)|safe }}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% endfor %}
-                        <div class="modal__form-group">
-                            <label for="add-ds-score-type">Score type</label>
-                            <select id="add-ds-score-type" name="score_type">
-                                {% for score_type_name, score_type in SCORE_TYPES.items() %}
-                                <option value="{{ score_type_name }}">{{ score_type_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="modal__form-group">
-                            <label for="add-ds-score-params">Score parameters</label>
-                            <textarea id="add-ds-score-params" name="score_type_parameters" rows="2" style="font-family: monospace; font-size: 0.85rem;"></textarea>
-                        </div>
+                        {{ ds_fields.dataset_fields("add-ds", "new", "showNewDatasetTaskType();", dataset=None, TASK_TYPES=TASK_TYPES, SCORE_TYPES=SCORE_TYPES) }}
                     </main>
                     <footer class="modal__footer">
                         <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
@@ -2107,50 +2063,12 @@ document.addEventListener('click', function(e) {
                             Cloning dataset <strong>{{ dataset.description }}</strong>.
                         </p>
                         <div class="modal__form-group">
-                            <label for="clone-ds-{{ dataset.id }}-description">Description <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="text" id="clone-ds-{{ dataset.id }}-description" name="description" value="Copy of {{ dataset.description }}" required />
-                        </div>
-                        <div class="modal__form-group">
                             <label for="clone-ds-{{ dataset.id }}-clone-results">
                                 <input type="checkbox" id="clone-ds-{{ dataset.id }}-clone-results" name="clone_results" style="margin-right: 6px;" />
                                 Clone evaluation results
                             </label>
                         </div>
-                        <div class="modal__form-group">
-                            <label for="clone-ds-{{ dataset.id }}-time-limit">Time limit (seconds)</label>
-                            <input type="text" id="clone-ds-{{ dataset.id }}-time-limit" name="time_limit" value="{{ dataset.time_limit or '' }}" />
-                        </div>
-                        <div class="modal__form-group">
-                            <label for="clone-ds-{{ dataset.id }}-memory-limit">Memory limit (MiB)</label>
-                            <input type="text" id="clone-ds-{{ dataset.id }}-memory-limit" name="memory_limit" value="{{ (dataset.memory_limit // (1024 * 1024)) if dataset.memory_limit is not none else '' }}" />
-                        </div>
-                        <div class="modal__form-group">
-                            <label for="clone-ds-{{ dataset.id }}-task-type">Task type</label>
-                            <select id="clone-ds-{{ dataset.id }}-task-type" name="task_type" onchange="showCloneDatasetTaskType({{ dataset.id }});">
-                                {% for task_type_name, task_type in TASK_TYPES.items() %}
-                                <option value="{{ task_type_name }}" {% if task_type_name == dataset.task_type %}selected{% endif %}>{{ task_type_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% for task_type_name, task_type in TASK_TYPES.items() %}
-                        <div class="TaskTypeOptions_clone_{{ dataset.id }} tp-task-type-options" id="TaskType{{ task_type_name }}Options_clone_{{ dataset.id }}" style="display: none;">
-                            {% if task_type_name == dataset.task_type %}
-                                {% set values = dataset.task_type_parameters %}
-                            {% else %}
-                                {% set values = none %}
-                            {% endif %}
-                            {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
-                            {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
-                            {% set val = values[i] if values is not none and i < values|length else none %}
-                            <div class="tp-form-group param_row" data-param-short="{{ param_def.short_name }}">
-                                <label class="tp-form-label">{{ param_def.name }}</label>
-                                <div class="tp-task-type-field">
-                                    {{ param_def.render("TaskTypeOptions_%s_"|format(task_type_name), previous_value=val)|safe }}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% endfor %}
+                        {{ ds_fields.dataset_fields("clone-ds-" ~ dataset.id, "clone_" ~ dataset.id, "showCloneDatasetTaskType(" ~ dataset.id ~ ");", dataset=dataset, TASK_TYPES=TASK_TYPES, SCORE_TYPES=SCORE_TYPES) }}
                         {% if dataset.managers|length != 0 %}
                         <div class="modal__form-group">
                             <label for="clone-ds-{{ dataset.id }}-clone-managers">
@@ -2159,18 +2077,6 @@ document.addEventListener('click', function(e) {
                             </label>
                         </div>
                         {% endif %}
-                        <div class="modal__form-group">
-                            <label for="clone-ds-{{ dataset.id }}-score-type">Score type</label>
-                            <select id="clone-ds-{{ dataset.id }}-score-type" name="score_type">
-                                {% for score_type_name, score_type in SCORE_TYPES.items() %}
-                                <option value="{{ score_type_name }}" {% if score_type_name == dataset.score_type %}selected{% endif %}>{{ score_type_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="modal__form-group">
-                            <label for="clone-ds-{{ dataset.id }}-score-params">Score parameters</label>
-                            <textarea id="clone-ds-{{ dataset.id }}-score-params" name="score_type_parameters" rows="2" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
-                        </div>
                     </main>
                     <footer class="modal__footer">
                         <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
