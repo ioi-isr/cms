@@ -96,6 +96,7 @@
       <main class="modal__content">
         <form id="add-user-form" enctype="multipart/form-data" action="{{ url("users", "add") }}" method="POST">
           {{ xsrf_form_html|safe }}
+          {% set user = None %}
           {% from "macro/user_fields.html" import user_fields with context %}
           {{ user_fields(None) }}
         </form>
