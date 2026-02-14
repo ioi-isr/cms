@@ -3657,3 +3657,81 @@
 .dataset-subtab-content.active {
     display: block;
 }
+
+/* ==========================================================================
+   Task Type Options (parameter form groups)
+   ========================================================================== */
+
+.tp-task-type-options {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--tp-bg-light, #f9fafb);
+    border: 1px solid var(--tp-border);
+    border-radius: 10px;
+}
+
+.tp-task-type-options .tp-form-group {
+    margin-bottom: 12px;
+}
+
+.tp-task-type-options .tp-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.tp-task-type-field input[type="text"] {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    background: var(--tp-bg-white);
+    color: var(--tp-text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.tp-task-type-field input[type="text"]:focus {
+    outline: none;
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.tp-task-type-field select {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    background: var(--tp-bg-white);
+    color: var(--tp-text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.tp-task-type-field select:focus {
+    outline: none;
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.tp-task-type-field table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 4px;
+}
+
+.tp-task-type-field table td {
+    padding: 6px 0;
+    vertical-align: middle;
+    font-size: 0.85rem;
+    color: var(--tp-text-secondary);
+}
+
+.tp-task-type-field table td:first-child {
+    font-weight: 500;
+    padding-right: 12px;
+    white-space: nowrap;
+}
+
+.tp-task-type-field table td input[type="text"] {
+    width: 100%;
+}

@@ -1,4 +1,5 @@
 {% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+g p{% import "fragments/model_solution_fields.html" as ms_fields with context %}
 
 {% extends "base.html" %}
 
@@ -47,7 +48,7 @@ function updateRealPrecOptions(dataset_id) {
     var evalSelect = table.find("select[name$='_output_eval']");
     if (evalSelect.length == 0) return;
     var val = evalSelect.val();
-    var row = table.find("tr.param_row[data-param-short='realprec_exp']");
+    var row = table.find(".param_row[data-param-short='realprec_exp']");
     if (val === 'realprecision') {
       row.show();
     } else {
@@ -859,18 +860,18 @@ document.addEventListener('click', function(e) {
 
                             {% set parameters = dataset.task_type_parameters %}
                             {% for task_type_name, task_type in TASK_TYPES.items() %}
-                            <table class="TaskTypeOptions TaskTypeOptions_{{ dataset.id }} bordered" id="TaskType{{ task_type_name }}Options_{{ dataset.id }}" style="display: none;">
+                            <div class="TaskTypeOptions TaskTypeOptions_{{ dataset.id }} tp-task-type-options" id="TaskType{{ task_type_name }}Options_{{ dataset.id }}" style="display: none;">
                                 {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
                                 {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
                                 {% set parameter_value = parameters[i] if dataset.task_type == task_type_name and parameters is not none and i < parameters|length else none %}
-                                <tr class="param_row" data-param-short="{{ param_def.short_name }}">
-                                    <td>{{ param_def.name }}</td>
-                                    <td>
+                                <div class="tp-form-group param_row" data-param-short="{{ param_def.short_name }}">
+                                    <label class="tp-form-label">{{ param_def.name }}</label>
+                                    <div class="tp-task-type-field">
                                         {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value)|safe }}
-                                    </td>
-                                </tr>
+                                    </div>
+                                </div>
                                 {% endfor %}
-                            </table>
+                            </div>
                             {% endfor %}
 
                             <div class="tp-form-group" style="margin-top: 16px;">
@@ -1859,21 +1860,11 @@ document.addEventListener('click', function(e) {
                             <label for="ms-{{ dataset.id }}-description">Description <span style="color: var(--tp-danger);">*</span></label>
                             <input type="text" id="ms-{{ dataset.id }}-description" name="description" required />
                         </div>
+                        {% set allowed_langs = task.get_allowed_languages() or [] %}
+                        {% set language_required = task.submission_format|any("endswith", ".%l") %}
+                        {% set allow_partial = task.submission_format|length > 1 and not language_required %}
                         <div class="modal__form-group ms-file-section" id="ms-{{ dataset.id }}-file-section">
-                            {% for filename in task.submission_format %}
-                            <label for="ms-{{ dataset.id }}-file-{{ loop.index0 }}">{{ filename }}: <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="file" id="ms-{{ dataset.id }}-file-{{ loop.index0 }}" name="{{ filename }}" />
-                            {% endfor %}
-                            {% set allowed_langs = task.get_allowed_languages() or [] %}
-                            {% set language_required = task.submission_format|any("endswith", ".%l") %}
-                            {% if language_required %}
-                            <label for="ms-{{ dataset.id }}-language">Language:</label>
-                            <select id="ms-{{ dataset.id }}-language" name="language">
-                                {% for lang in allowed_langs %}
-                                <option value="{{ lang }}">{{ lang }}</option>
-                                {% endfor %}
-                            </select>
-                            {% endif %}
+                            {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "ms-" ~ dataset.id) }}
                         </div>
 
                         {% if subtask_info.get(dataset.id) %}
@@ -2015,31 +2006,7 @@ document.addEventListener('click', function(e) {
                             Upload a new file for <strong>{{ meta.description }}</strong> ({{ meta.name }}).
                             The current submission will be detached and remain in history.
                         </p>
-                        {% for filename in task.submission_format %}
-                        <div class="modal__form-group">
-                            <label for="replace-ms-{{ meta.id }}-file-{{ loop.index0 }}">{{ filename }}:</label>
-                            <input type="file" id="replace-ms-{{ meta.id }}-file-{{ loop.index0 }}" name="{{ filename }}" />
-                        </div>
-                        {% endfor %}
-                        {% if language_required %}
-                        <div class="modal__form-group">
-                            <label for="replace-ms-{{ meta.id }}-language">Language:</label>
-                            <select id="replace-ms-{{ meta.id }}-language" name="language">
-                                {% for lang in allowed_langs %}
-                                <option value="{{ lang }}" {{ "selected" if meta.submission and meta.submission.language == lang else "" }}>{{ lang }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% endif %}
-                        {% if allow_partial %}
-                        <p style="font-size: 0.85rem; color: var(--tp-text-muted); margin: 8px 0 0 0;">
-                            You may submit any subset of files. Alternatively, upload a single <code>submission.zip</code>:
-                        </p>
-                        <div class="modal__form-group" style="margin-top: 8px;">
-                            <label for="replace-ms-{{ meta.id }}-zip">submission.zip:</label>
-                            <input type="file" id="replace-ms-{{ meta.id }}-zip" name="submission" />
-                        </div>
-                        {% endif %}
+                        {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "replace-ms-" ~ meta.id, meta.submission.language if meta.submission else None) }}
                     </main>
                     <footer class="modal__footer">
                         <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
