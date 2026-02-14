@@ -259,11 +259,9 @@ CMS.AWSUtils.prototype.display_notification = function(type, timestamp,
             .prop("href", this.url("contest", contest_id, "delays_and_extra_times"));
     }
 
-    var bulmaColor = "is-info";
+    var bulmaColor = "is-danger";
     if (subject === "Operation successful.") {
         bulmaColor = "is-success";
-    } else if (subject === "Operation failed." || subject === "Manager compilation failed") {
-        bulmaColor = "is-danger";
     } else if (type === "new_question" || type === "new_delay_request") {
         bulmaColor = "is-warning";
     }

@@ -160,14 +160,14 @@
 
 
 <h2 id="title_general_info" class="toggling_on">General Information</h2>
-<div id="general_info">
+<div id="general_info" class="content-constraint">
   <form enctype="multipart/form-data" action="{{ url("user", user.id) }}" method="POST" style="display:inline;">
     {{ xsrf_form_html|safe }}
     {% from "macro/user_fields.html" import user_fields with context %}
     {{ user_fields(user) }}
     <div class="field is-grouped" style="margin-top: 1em;">
       <div class="control">
-        <button type="submit" class="button is-primary">Update</button>
+        <button type="submit" class="button is-primary is-outlined">Update</button>
       </div>
       <div class="control">
         <button type="reset" class="button is-light">Reset</button>
@@ -186,8 +186,8 @@
   {% endif %}
            >Remove</button>
   </form>
-  <div class="hr"></div>
 </div>
+<div class="hr"></div>
 
 
 {% endblock core %}

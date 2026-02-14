@@ -56,7 +56,7 @@ CMS.AWSFormUtils.initTagify({
 
 
 <h2 id="title_participation_info" class="toggling_on">Student information</h2>
-<div id="participation_info">
+<div id="participation_info" class="content-constraint">
   <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "edit") }}" method="POST">
     {{ xsrf_form_html|safe }}
 
@@ -138,7 +138,21 @@ CMS.AWSFormUtils.initTagify({
           <div class="control">
             <label class="checkbox">
               <input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %}/>
-              Unrestricted
+              Unrestricted (will apply to new training days)
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Apply to existing training days
+            <span class="info" title="If checked, the unrestricted status change will also be applied to all existing training days for this student."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="apply_unrestricted_to_existing"/>
+              Update unrestricted status in all existing training days
             </label>
           </div>
         </div>
@@ -191,16 +205,15 @@ CMS.AWSFormUtils.initTagify({
 
     <div class="field is-grouped" style="margin-top: 1em;">
       <div class="control">
-        <button type="submit" class="button is-primary">Update</button>
+        <button type="submit" class="button is-primary is-outlined">Update</button>
       </div>
       <div class="control">
         <button type="reset" class="button is-light">Reset</button>
       </div>
     </div>
   </form>
-  <div class="hr"></div>
 </div>
-
+<div class="hr"></div>
 
 <h2 id="title_questions" class="toggling_on">Questions</h2>
 <div id="questions">
