@@ -1862,7 +1862,7 @@ document.addEventListener('click', function(e) {
                     <main class="modal__content">
                         <div class="modal__form-group">
                             <label for="ms-{{ dataset.id }}-name">Name <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="text" id="ms-{{ dataset.id }}-name" name="name" pattern="^[\w\-\s()\^]+$" title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)." required />
+                            <input type="text" id="ms-{{ dataset.id }}-name" name="name" pattern="^[A-Za-z0-9_ \^\-\(\)]+$" title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)." required />
                             <small class="modal__hint">Identifier for export (e.g., 'intended', 'bruteforce')</small>
                         </div>
                         <div class="modal__form-group">
@@ -1872,6 +1872,7 @@ document.addEventListener('click', function(e) {
                         <div class="modal__form-group ms-file-section" id="ms-{{ dataset.id }}-file-section">
                             {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "ms-" ~ dataset.id) }}
                         </div>
+                        {{ ms_fields.language_filter_script("#modal-ms-" ~ dataset.id ~ " form", allowed_langs, language_required) }}
 
                         {% if subtask_info.get(dataset.id) %}
                         {% set ds_subtasks = subtask_info[dataset.id] %}
@@ -2010,6 +2011,7 @@ document.addEventListener('click', function(e) {
                             The current submission will be detached and remain in history.
                         </p>
                         {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "replace-ms-" ~ meta.id, meta.submission.language if meta.submission else None) }}
+                        {{ ms_fields.language_filter_script("#modal-replace-ms-" ~ meta.id ~ " form", allowed_langs, language_required) }}
                     </main>
                     <footer class="modal__footer">
                         <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
