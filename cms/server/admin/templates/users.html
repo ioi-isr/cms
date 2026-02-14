@@ -110,4 +110,11 @@
 </div>
 {% endif %}
 
+<script>
+if (new URLSearchParams(window.location.search).get('add') === '1') {
+  MicroModal.show('modal-add-user');
+  history.replaceState(null, '', window.location.pathname);
+}
+</script>
+
 {% endblock core %}

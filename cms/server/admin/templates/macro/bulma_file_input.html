@@ -14,7 +14,7 @@
 </div>
 {% endmacro %}
 
-{% macro form_field(name, label, value='', type='text', placeholder='', required=False, icon=None, hint=None, info_tooltip=None) %}
+{% macro form_field(name, label, value='', type='text', placeholder='', required=False, icon=None, hint=None, info_tooltip=None, autocomplete=None) %}
 <div class="field">
     <label class="label" for="{{ name }}">
         {{ label }}
@@ -30,6 +30,7 @@
                id="{{ name }}"
                value="{{ value }}"
                placeholder="{{ placeholder }}"
+               {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
                {% if required %}required{% endif %}>
         {% if icon %}
         <span class="icon is-small is-left">

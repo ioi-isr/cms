@@ -60,118 +60,132 @@ CMS.AWSFormUtils.initTagify({
   <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "edit") }}" method="POST">
     {{ xsrf_form_html|safe }}
 
-    <div class="field">
-      <label class="label">
-        Student Tags
-        <span class="info" title="Tags for this student (e.g., beginner, advanced). Used to control which training questions they see. Double-click a tag to edit it."></span>
-      </label>
-      <div class="control" style="min-width: 300px;">
-        <input class="input" type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}"/>
+    <div class="columns is-multiline">
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Student Tags
+            <span class="info" title="Tags for this student (e.g., beginner, advanced). Used to control which training questions they see. Double-click a tag to edit it."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}"/>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label">
-        Team
-        <span class="info" title="Code of the team of the contestant. Only used in the external ranking."></span>
-      </label>
-      <div class="control">
-        <input class="input" list="teams" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
-        <datalist id="teams">
-          {% for t in teams %}
-          <option value="{{ t.code }}">
-          {% endfor %}
-        </datalist>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Team
+            <span class="info" title="Code of the team of the contestant. Only used in the external ranking."></span>
+          </label>
+          <div class="control">
+            <input class="input" list="teams" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
+            <datalist id="teams">
+              {% for t in teams %}
+              <option value="{{ t.code }}">
+              {% endfor %}
+            </datalist>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label">
-        Password
-        <span class="info" title="Student password for this training program. If empty, the student's main password is used. Caution: stored in plain text."></span>
-        <strong style="color:#c00; font-weight: 700;">(only inside the training program {{ training_program.name }})</strong>
-      </label>
-      <div class="control">
-        {% set hashed_password = participation.password %}
-        {% include "fragments/hashed_password_form.html" %}
+      <div class="column is-full">
+        <div class="field">
+          <label class="label">
+            Password
+            <span class="info" title="Student password for this training program. If empty, the student's main password is used. Caution: stored in plain text."></span>
+            <strong style="color:#c00; font-weight: 700;">(only inside the training program {{ training_program.name }})</strong>
+          </label>
+          <div class="control">
+            {% set hashed_password = participation.password %}
+            {% include "fragments/hashed_password_form.html" %}
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label">
-        Hidden participation
-        <span class="info" title="Whether the student's results will be visible in the external ranking. Note: This setting will automatically apply to all new training days."></span>
-      </label>
-      <div class="control">
-        <label class="checkbox">
-          <input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/>
-          <span class="help is-inline" style="margin-left: 8px;">(will apply to new training days)</span>
-        </label>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Hidden participation
+            <span class="info" title="Whether the student's results will be visible in the external ranking. Note: This setting will automatically apply to all new training days."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/>
+              Hidden (will apply to new training days)
+            </label>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label">
-        Apply to existing training days
-        <span class="info" title="If checked, the hidden status change will also be applied to all existing training days for this student."></span>
-      </label>
-      <div class="control">
-        <label class="checkbox">
-          <input type="checkbox" name="apply_hidden_to_existing"/>
-          <span class="help is-inline" style="margin-left: 8px;">(update hidden status in all existing training days)</span>
-        </label>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Apply to existing training days
+            <span class="info" title="If checked, the hidden status change will also be applied to all existing training days for this student."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="apply_hidden_to_existing"/>
+              Update hidden status in all existing training days
+            </label>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label">
-        Unrestricted participation
-        <span class="info" title="Whether the student is unrestricted by maximum number of submissions, user tests, and minimum interval between submissions, user tests, and training program time."></span>
-      </label>
-      <div class="control">
-        <label class="checkbox">
-          <input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %}/>
-        </label>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Unrestricted participation
+            <span class="info" title="Whether the student is unrestricted by maximum number of submissions, user tests, and minimum interval between submissions, user tests, and training program time."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %}/>
+              Unrestricted
+            </label>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label">
-        IP address or subnet
-        <span class="info" title="A comma-separated list of IP addresses (or subnets) of the student for this training program. Used for IP-based login restrictions and/or for autologin (in this case, it must be a single address)."></span>
-      </label>
-      <div class="control">
-        <input class="input" type="text" name="ip" value="{{ participation.ip|map("string")|join(", ") if participation.ip is not none else "" }}"/>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            IP address or subnet
+            <span class="info" title="A comma-separated list of IP addresses (or subnets) of the student for this training program. Used for IP-based login restrictions and/or for autologin (in this case, it must be a single address)."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" name="ip" value="{{ participation.ip|map("string")|join(", ") if participation.ip is not none else "" }}"/>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label">
-        Time of first login (in UTC)
-        <span class="info" title="Time of first login during this training program, used for USACO-style contests. Example: '2015-12-31 15:00:00'."></span>
-      </label>
-      <div class="control">
-        <input class="input" type="text" name="starting_time" value="{{ participation.starting_time if participation.starting_time is not none else "" }}"/>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Time of first login (in UTC)
+            <span class="info" title="Time of first login during this training program, used for USACO-style contests. Example: '2015-12-31 15:00:00'."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" name="starting_time" value="{{ participation.starting_time if participation.starting_time is not none else "" }}"/>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label">
-        Delay
-        <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time at the beginning of the training program. If this is non-zero, all the events (token generation, end of contest) for this student will be shifted of the appropriate amount."></span>
-      </label>
-      <div class="control">
-        <input class="input" type="text" name="delay_time" value="{{ participation.delay_time.total_seconds()|int }}"/>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Delay (seconds)
+            <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time at the beginning of the training program. If this is non-zero, all the events (token generation, end of contest) for this student will be shifted of the appropriate amount."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" name="delay_time" value="{{ participation.delay_time.total_seconds()|int }}"/>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label">
-        Extra time
-        <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time during the training program. If this is non-zero, the end of the contest will be shifted of the appropriate amount for this student."></span>
-      </label>
-      <div class="control">
-        <input class="input" type="text" name="extra_time" value="{{ participation.extra_time.total_seconds()|int }}"/>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Extra time (seconds)
+            <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time during the training program. If this is non-zero, the end of the contest will be shifted of the appropriate amount for this student."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" name="extra_time" value="{{ participation.extra_time.total_seconds()|int }}"/>
+          </div>
+        </div>
       </div>
     </div>
 

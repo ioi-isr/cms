@@ -7,51 +7,67 @@
 {% from "macro/bulma_file_input.html" import form_field %}
 
 {% macro user_fields(user=None) %}
-  {{ form_field('first_name', 'First name', user.first_name if user else '', info_tooltip='First name of the contestant.') }}
-  {{ form_field('last_name', 'Last name', user.last_name if user else '', info_tooltip='Last name of the contestant.') }}
-  {{ form_field('username', 'Username', user.username if user else '', required=true, info_tooltip='Username of the contestant (used to log in).') }}
-
-  <div class="field">
-    <label class="label">
-      Password
-      {% if not user %}<span class="has-text-danger">*</span>{% endif %}
-      <span class="info" title="Contestant password. {% if not user %}Caution: stored in plain text.{% endif %}"></span>
-    </label>
-    <div class="control">
-      {% if user %}
-        {% with hashed_password = user.password %}
-          {% include "fragments/hashed_password_form.html" %}
-        {% endwith %}
-      {% else %}
-        <input class="input" type="password" name="password" id="add-user-password-field" autocomplete="new-password" style="margin-bottom: 5px;" />
-        <div class="select">
-          <select name="method">
-            <option value="plaintext">Plain text</option>
-            <option value="bcrypt" selected>Hashed (bcrypt)</option>
-          </select>
+  <div class="columns is-multiline">
+    <div class="column is-half">
+      {{ form_field('first_name', 'First name', user.first_name if user else '', info_tooltip='First name of the contestant.') }}
+    </div>
+    <div class="column is-half">
+      {{ form_field('last_name', 'Last name', user.last_name if user else '', info_tooltip='Last name of the contestant.') }}
+    </div>
+    <div class="column is-half">
+      {{ form_field('username', 'Username', user.username if user else '', required=true, autocomplete='username', info_tooltip='Username of the contestant (used to log in).') }}
+    </div>
+    <div class="column is-half">
+      <div class="field">
+        <label class="label">
+          Password
+          {% if not user %}<span class="has-text-danger">*</span>{% endif %}
+          <span class="info" title="Contestant password. {% if not user %}Caution: stored in plain text.{% endif %}"></span>
+        </label>
+        <div class="control">
+          {% if user %}
+            {% with hashed_password = user.password %}
+              {% include "fragments/hashed_password_form.html" %}
+            {% endwith %}
+          {% else %}
+            <input class="input" type="password" name="password" id="add-user-password-field" autocomplete="new-password" style="margin-bottom: 5px;" />
+            <div class="select">
+              <select name="method">
+                <option value="plaintext">Plain text</option>
+                <option value="bcrypt" selected>Hashed (bcrypt)</option>
+              </select>
+            </div>
+          {% endif %}
         </div>
-      {% endif %}
+        {% if not user %}
+        <div id="add-user-password-strength-container" style="margin-top: 5px;">
+          <div id="add-user-password-strength-bar" style="height: 5px; border-radius: 3px; transition: all 0.3s ease; display: none;"></div>
+          <span id="add-user-password-strength-text" style="font-size: 12px;"></span>
+        </div>
+        <script>
+          CMS.AWSFormUtils.initPasswordStrength(
+            "#add-user-password-field",
+            "#add-user-password-strength-bar",
+            "#add-user-password-strength-text"
+          );
+        </script>
+        {% endif %}
+      </div>
     </div>
-    {% if not user %}
-    <div id="add-user-password-strength-container" style="margin-top: 5px;">
-      <div id="add-user-password-strength-bar" style="height: 5px; border-radius: 3px; transition: all 0.3s ease; display: none;"></div>
-      <span id="add-user-password-strength-text" style="font-size: 12px;"></span>
+    <div class="column is-half">
+      {{ form_field('email', 'E-mail', user.email if user and user.email is not none else '', type='email', placeholder='user@example.com', info_tooltip='Contestant e-mail address.') }}
     </div>
-    <script>
-      CMS.AWSFormUtils.initPasswordStrength(
-        "#add-user-password-field",
-        "#add-user-password-strength-bar",
-        "#add-user-password-strength-text"
-      );
-    </script>
-    {% endif %}
+    <div class="column is-half">
+      {% include "fragments/user_date_of_birth_form.html" %}
+    </div>
+    <div class="column is-full">
+      {% include "fragments/user_picture_form.html" %}
+    </div>
+    <div class="column is-half">
+      {{ form_field('timezone', 'Timezone', user.timezone if user and user.timezone is not none else '', placeholder='Europe/Rome', info_tooltip='Timezone of the contestant, used to display start, end times and the current server time in local time. Example: Europe/Rome, America/New_York') }}
+    </div>
+    <div class="column is-half">
+      {{ form_field('preferred_languages', 'Preferred languages', user.preferred_languages|join(', ') if user and user.preferred_languages else '', placeholder='en, ja', info_tooltip='Comma-separated list of language codes, from the most to the least preferred. Example: en, ja') }}
+    </div>
   </div>
-
-  {{ form_field('email', 'E-mail', user.email if user and user.email is not none else '', type='email', placeholder='user@example.com', info_tooltip='Contestant e-mail address.') }}
-
-  {% include "fragments/user_date_of_birth_form.html" %}
-  {% include "fragments/user_picture_form.html" %}
-
-  {{ form_field('timezone', 'Timezone', user.timezone if user and user.timezone is not none else '', placeholder='Europe/Rome', info_tooltip='Timezone of the contestant, used to display start, end times and the current server time in local time. Example: Europe/Rome, America/New_York') }}
-  {{ form_field('preferred_languages', 'Preferred languages', user.preferred_languages|join(', ') if user and user.preferred_languages else '', placeholder='en, ja', info_tooltip='Comma-separated list of language codes, from the most to the least preferred. Example: en, ja') }}
 {% endmacro %}

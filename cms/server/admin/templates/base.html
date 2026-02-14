@@ -506,7 +506,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <button type="button" class="sidebar-action-link" onclick="window.location.pathname.indexOf('/users') !== -1 ? MicroModal.show('modal-add-user') : window.location.href='{{ url("users") }}';">New user</button>
+              <button type="button" class="sidebar-action-link" onclick="window.location.href='{{ url("users") }}?add=1';">New user</button>
             </div>
             {% endif %}
           </div>
