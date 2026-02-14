@@ -828,32 +828,6 @@ th .column-sort {
     padding: 1em 0 0.5em;
 }
 
-#notifications .notification_msg {
-    padding: 0.429em;
-}
-
-#notifications .notification_close {
-    float: right;
-    cursor: pointer;
-    background-color: #FFE475;
-    border-radius: 0 0 0 0.5em;
-    border-left: 0.143em solid #FFE475;
-    border-bottom: 0.143em solid #FFE475;
-    margin-bottom: -0.143em;
-    width: 2em;
-    text-align: center;
-    padding: 0;
-    font-weight: bold;
-}
-
-#notifications .notification_close:hover {
-    background-color: #FEF7CB;
-}
-
-#notifications .notification_subject {
-    font-weight: bold;
-}
-
 .preserve_line_breaks {
     white-space: pre-line;
 }
@@ -864,50 +838,9 @@ th .column-sort {
 
 /* COMMUNICATIONS */
 
-.notifications .notification {
-    text-align: left;
-    margin-bottom: 0.572em;
-    font-size: 0.875em;
-    border-radius: 0.5em;
-    background-color: #FEF7CB;
-    border: 0.143em solid #FFE475;
-    box-shadow: black 0.072em 0.072em 0.144em;
-}
-
 .notifications .communication {
     background-color: #D9E3F3;
     border: 0.143em solid #53637D;
-}
-
-.notifications .notification_msg {
-    padding: 0.429em;
-}
-
-.notifications .notification_close {
-    float: right;
-    cursor: pointer;
-    background-color: #FFE475;
-    border-radius: 0 0 0 0.5em;
-    border-left: 0.143em solid #FFE475;
-    border-bottom: 0.143em solid #FFE475;
-    margin-bottom: -0.143em;
-    width: 2em;
-    text-align: center;
-    padding: 0;
-    font-weight: bold;
-}
-
-.notifications .notification_close:hover {
-    background-color: #FEF7CB;
-}
-
-.notifications .notification_subject {
-    font-weight: bold;
-}
-
-.notifications .notification_timestamp {
-    float: right;
-    padding-right: 0.5em;
 }
 
 /* DIFFERENT COLORS... */
@@ -1291,25 +1224,6 @@ body.admin .score-cell--out-of-range {
     font-weight: 700;
 }
 
-body.admin #notifications .notification {
-    background-color: #F7CBFE;
-    border: 0.143em solid #E475FF;
-}
-
-body.admin #notifications .notification_close {
-    background-color: #E475FF;
-    border-left: 0.143em solid #E475FF;
-    border-bottom: 0.143em solid #E475FF;
-}
-
-body.admin #notifications .notification_close:hover {
-    background-color: #F7CBFE;
-}
-
-body.admin .notifications .notification {
-    background-color: #F7CBFE;
-    border: 0.143em solid #E475FF;
-}
 
 body.admin .notifications .communication {
     background-color: #DDE6F7;
@@ -1342,15 +1256,6 @@ body.admin .notifications .notification_admin_owner {
     font-style: italic;
 }
 
-body.admin .notifications .notification_close {
-    background-color: #E475FF;
-    border-left: 0.143em solid #E475FF;
-    border-bottom: 0.143em solid #E475FF;
-}
-
-body.admin .notifications .notification_close:hover {
-    background-color: #F7CBFE;
-}
 
 
 

@@ -259,37 +259,40 @@ CMS.AWSUtils.prototype.display_notification = function(type, timestamp,
             .prop("href", this.url("contest", contest_id, "delays_and_extra_times"));
     }
 
+    var bulmaColor = "is-info";
+    if (subject === "Operation successful.") {
+        bulmaColor = "is-success";
+    } else if (subject === "Operation failed." || subject === "Manager compilation failed") {
+        bulmaColor = "is-danger";
+    } else if (type === "new_question" || type === "new_delay_request") {
+        bulmaColor = "is-warning";
+    }
+
     var self = this;
     var outer = $("#notifications");
-    var timestamp_div = $("<div>")
-        .addClass("notification_timestamp")
-        .text(timestamp_int != 0 ? this.format_time_or_date(timestamp_int) : "");
-    var subject_div = $("<div>")
-        .addClass("notification_subject")
-        .append(subject_string);
-    var close_div = $('<div>').html("&times;").addClass("notification_close")
+    var close_btn = $('<button>').addClass("delete")
         .click(function() { self.close_notification(this); });
-    // Build body: default plain text; special-case manager compilation errors
-    // to render in monospace and preserve newlines.
-    var text_div = $("<div>").addClass("notification_text");
+    var subject_div = $("<strong>")
+        .append(subject_string)
+        .append($("<span>").text(subject));
+    var text_div = $("<div>").css("margin-top", "0.25em");
     if (subject === "Manager compilation failed") {
-        text_div.empty().append(
+        text_div.append(
             $('<pre>').text(text).css({ 'white-space': 'pre-wrap', 'margin': 0 })
         );
-    } else {
+    } else if (text) {
         text_div.text(text);
     }
-    var inner =
-        $('<div>').addClass("notification").addClass("notification_type_" + type)
-            .append(close_div)
-            .append($('<div>').addClass("notification_msg")
-                    .append(timestamp_div)
-                    .append(subject_div.append($("<span>").text(subject)))
-                    .append(text_div)
-                   );
+    var timestamp_span = $("<span>")
+        .css({"float": "right", "font-size": "0.85em", "opacity": "0.8"})
+        .text(timestamp_int != 0 ? this.format_time_or_date(timestamp_int) : "");
+    var inner = $('<div>').addClass("notification " + bulmaColor + " is-light notification_type_" + type)
+        .append(close_btn)
+        .append(timestamp_span)
+        .append(subject_div)
+        .append(text_div);
     outer.append(inner);
 
-    // Trigger a desktop notification as well (but only if it's needed)
     if (type !== "notification") {
         this.desktop_notification(type, timestamp, subject, text);
     }
@@ -394,7 +397,7 @@ CMS.AWSUtils.prototype.close_notification = function(item) {
                || bubble.className.indexOf("notification_type_message") != -1) {
         this.update_unread_counts(0, -1);
     }
-    bubble.parentNode.removeChild(item.parentNode);
+    bubble.parentNode.removeChild(bubble);
 };
 
 
