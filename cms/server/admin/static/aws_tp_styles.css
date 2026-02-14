@@ -411,11 +411,6 @@
     border-radius: 50%;
 }
 
-.validator-column a.validator-add:hover {
-    color: var(--tp-text-primary) !important;
-    background: var(--tp-success-light) !important;
-}
-
 /* Disabled state for both buttons and anchors */
 .btn-icon-only:disabled,
 .btn-icon-only[aria-disabled="true"],

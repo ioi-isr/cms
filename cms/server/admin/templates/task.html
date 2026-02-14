@@ -1038,8 +1038,8 @@ document.addEventListener('click', function(e) {
                                             No validator
                                           </span>
                                           {% if admin.permission_all %}
-                                          <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" class="validator-add" style="color: var(--tp-primary); display: inline-flex; padding: 2px; margin-left: 4px; background: none; border: none; cursor: pointer;">
-                                            <svg class="icon" width="14" height="14"><use href="#icon-file-plus"/></svg>
+                                          <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator">
+                                            <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                           </button>
                                           {% endif %}
                                         {% endif %}
@@ -1898,8 +1898,8 @@ document.addEventListener('click', function(e) {
                                 <div class="ms-card-subtask selected" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" role="button" tabindex="0" onclick="ModelSolutionModal.toggleCard(this);" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); ModelSolutionModal.toggleCard(this); }">
                                     <div style="font-weight: 600; font-size: 0.9rem;">{{ st.display_name }}</div>
                                     <div style="font-size: 0.8rem; color: var(--tp-text-muted);">{{ st.max_score }} points</div>
-                                    <span class="ms-card-check"><svg class="icon" width="14" height="14"><use href="#icon-check"/></svg></span>
-                                    <span class="ms-card-partial-icon"><svg class="icon" width="14" height="14"><use href="#icon-partial"/></svg></span>
+                                    <span class="ms-card-check"><svg class="icon is-small"><use href="#icon-check"/></svg></span>
+                                    <span class="ms-card-partial-icon"><svg class="icon"><use href="#icon-partial"/></svg></span>
                                 </div>
                                 {% endfor %}
                             </div>

@@ -40,7 +40,8 @@ show_training_day (bool): if true, show a column indicating which training day
 
 {{ macro_pages.selector(page_url, page, pages) }}
 
-<table class="bordered" id="submissions_table">
+<div class="table-container">
+<table class="table is-bordered is-striped is-hoverable" id="submissions_table">
   <thead>
     <tr>
       <th class="diff-only">-</th>
@@ -66,6 +67,7 @@ show_training_day (bool): if true, show a column indicating which training day
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 {%- endmacro %}
 
@@ -146,7 +148,7 @@ show_training_day (bool): if true, show a column indicating which training day
       <div id="evaluation_{{ s.id }}" style="display: none;">
         {% if sr.evaluated() %}
         <h3>Testcases</h3>
-        <table class="nested bordered">
+        <table class="nested is-bordered">
           <thead>
             <tr>
               <th>#</th>

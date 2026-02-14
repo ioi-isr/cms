@@ -378,7 +378,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
       <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('{{ table_id }}', 'not_validated')">Not validated</a>
     </p>
     {% endif %}
-    <table id="{{ table_id }}" class="bordered">
+    <table id="{{ table_id }}" class="table is-bordered is-striped is-hoverable">
       <thead>
         <tr>
           {% if admin.permission_all %}
