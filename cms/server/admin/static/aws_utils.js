@@ -175,9 +175,13 @@ CMS.AWSUtils.prototype.file_received = function(response, error) {
     content.empty();
 
     if (response.length > 100000) {
+        $('#modal-show-file-title').text(file_name);
+        $('#modal-show-file-download').attr('href', url).show();
+        $('#modal-show-file-copy').hide();
         content.append($('<p>').text('File is too large to display. Use the Download link above.'));
-        this.display_subpage([content]);
+        MicroModal.show('modal-show-file');
         return;
+    }
     }
 
     var lang_name = CMS.AWSUtils.filename_to_lang(file_name);
