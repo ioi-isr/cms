@@ -882,13 +882,15 @@ document.addEventListener('click', function(e) {
                                     {% for manager in dataset.managers.values() %}
                                     {% if (manager.filename == 'checker' and flags.checker_src) or (manager.filename == 'manager' and flags.manager_src) %}
                                     {% else %}
-                                    <div class="manager control">
-                                        <div class="tags has-addons">
-                                            <span class="tag is-link is-light is-medium has-text-black">
-                                                <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file-code"/></svg>
-                                                <a href="{{ url("file", manager.digest, manager.filename) }}" style="color: inherit;">{{ manager.filename }}</a>
-                                            </span>
-                                            <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager"></button>
+                                    <div class="manager">
+                                        <div class="control">
+                                            <div class="tags has-addons">
+                                                <span class="tag is-link is-light is-medium has-text-black">
+                                                    <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file-code"/></svg>
+                                                    <a href="{{ url("file", manager.digest, manager.filename) }}" style="color: inherit;">{{ manager.filename }}</a>
+                                                </span>
+                                                <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager"></button>
+                                            </div>
                                         </div>
                                     </div>
                                     {% endif %}
