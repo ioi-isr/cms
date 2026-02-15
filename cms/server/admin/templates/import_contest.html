@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
+
 {% block core %}
 <div class="core_title">
   <h1>Import Contest</h1>
@@ -7,45 +9,45 @@
 
 <form enctype="multipart/form-data" action="{{ url("contests", "import") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  
+
   <h2>Upload Contest Archive</h2>
   <p>Upload a zip file containing the contest data in a supported format (Italian YAML, Polygon).</p>
-  
+
   <div style="margin: 20px 0;">
     <label for="contest_file"><strong>Contest Archive (ZIP):</strong></label><br/>
-    <input type="file" name="contest_file" id="contest_file" accept=".zip" required/><br/>
+    {{ bulma_file_input("contest_file", "contest_file", ".zip", required=true, button_text="Choose ZIP archive…") }}
   </div>
-  
+
   <h2>Import Options</h2>
-  
+
   <div style="margin: 10px 0;">
     <label>
       <input type="checkbox" name="import_tasks" value="true"/>
       Import tasks if they do not exist in the database
     </label>
   </div>
-  
+
   <div style="margin: 10px 0;">
     <label>
       <input type="checkbox" name="update_contest" value="true"/>
       Update existing contest (if contest with same name exists)
     </label>
   </div>
-  
+
   <div style="margin: 10px 0;">
     <label>
       <input type="checkbox" name="update_tasks" value="true"/>
       Update existing tasks
     </label>
   </div>
-  
+
   <div style="margin: 10px 0;">
     <label>
       <input type="checkbox" name="no_statements" value="true"/>
       Do not import task statements
     </label>
   </div>
-  
+
   <div style="margin: 10px 0;">
     <label for="loader"><strong>Loader (optional, autodetect if empty):</strong></label><br/>
     <select name="loader" id="loader">
@@ -54,7 +56,7 @@
       <option value="polygon_contest">Polygon</option>
     </select>
   </div>
-  
+
   <div style="margin: 20px 0;">
     <input type="submit" value="Import Contest">
     <input type="button" value="Cancel" onclick="window.location.href='{{ url("contests") }}'">

@@ -362,15 +362,17 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% endblock js_init %}
 
 {% macro render_testcase_table(title, table_id, testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) %}
-<div class="subtask-table-card">
-  <h3 class="subtask-section-title">{{ title }}</h3>
+<div class="card" style="margin-bottom: 1.5rem;">
+  <header class="card-header">
+    <p class="card-header-title">{{ title }} ({{ testcases|length }})</p>
+  </header>
+  <div class="card-content">
   {% if testcases|length == 0 %}
-  <p class="muted">No testcases in this section.</p>
+    <p class="has-text-grey">No testcases in this section.</p>
   {% else %}
-  <div>
     {% if validator %}
-    <p class="filter-row">
-      <span class="muted">Filter:</span>
+    <p class="filter-row" style="margin-bottom: 0.65em;">
+      <span class="has-text-grey">Filter:</span>
       <a href="javascript:void(0);" class="filter-btn" data-filter="all" onclick="filterTestcases('{{ table_id }}', 'all')" style="font-weight: bold; text-decoration: underline;">All</a> |
       <a href="javascript:void(0);" class="filter-btn" data-filter="passed" onclick="filterTestcases('{{ table_id }}', 'passed')">Passed</a> |
       <a href="javascript:void(0);" class="filter-btn" data-filter="failed" onclick="filterTestcases('{{ table_id }}', 'failed')">Failed</a> |
@@ -378,7 +380,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
       <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('{{ table_id }}', 'not_validated')">Not validated</a>
     </p>
     {% endif %}
-    <table id="{{ table_id }}" class="bordered">
+    <table id="{{ table_id }}" class="table is-bordered is-striped is-hoverable mt-3">
       <thead>
         <tr>
           {% if admin.permission_all %}
@@ -418,36 +420,36 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           {% endif %}
           <td>{{ tc_info.codename }}</td>
           <td>
-            <a href="javascript:void(0);" onclick="utils.show_file('input_' + {{ tc_info.codename|tojson|forceescape }}, {{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename))|tojson|forceescape }})">Show input</a>
+            <a href="javascript:void(0);" onclick='utils.show_file("input_" + {{ tc_info.codename|tojson|forceescape }}, {{ url("file", tc_info.testcase.input, "input_%s"|format(tc_info.codename))|tojson|forceescape }})'>Show input</a>
           </td>
           <td>
-            <a href="javascript:void(0);" onclick="utils.show_file('output_' + {{ tc_info.codename|tojson|forceescape }}, {{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename))|tojson|forceescape }})">Show output</a>
+            <a href="javascript:void(0);" onclick='utils.show_file("output_" + {{ tc_info.codename|tojson|forceescape }}, {{ url("file", tc_info.testcase.output, "output_%s"|format(tc_info.codename))|tojson|forceescape }})'>Show output</a>
           </td>
           {% if validator %}
           <td>
             {% if tc_info.result %}
               {% if tc_info.result.passed %}
-                <span class="validator-status validator-pass">Passed</span>
+                <span class="validator-badge validator-badge--pass">Passed</span>
               {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
-                <span class="validator-status validator-fail">Failed</span>
+                <span class="validator-badge validator-badge--fail">Failed</span>
               {% else %}
-                <span class="validator-status validator-error">Error ({{ tc_info.result.exit_status }})</span>
+                <span class="validator-badge validator-badge--error">Error ({{ tc_info.result.exit_status }})</span>
               {% endif %}
             {% else %}
-              <span class="validator-status validator-unvalidated">Not validated</span>
+              <span class="validator-badge validator-badge--muted">Not validated</span>
             {% endif %}
           </td>
           <td>
             {% if tc_info.result and tc_info.result.stderr %}
-              <pre class="stderr-output">{{ tc_info.result.stderr | e }}</pre>
+              <pre class="is-family-monospace">{{ tc_info.result.stderr | e }}</pre>
             {% else %}
-              -
+              <span class="has-text-grey">-</span>
             {% endif %}
           </td>
           {% endif %}
           {% if admin.permission_all %}
           <td>
-            <a href="javascript:void(0);" onclick="promptRename({{ url("dataset", dataset.id, "testcase", "TESTCASE_ID", "rename")|tojson|forceescape }}, {{ tc_info.testcase.id }}, {{ tc_info.codename|tojson|forceescape }}, {{ subtask_index }})">rename</a>
+            <a href="javascript:void(0);" onclick='promptRename({{ url("dataset", dataset.id, "testcase", "TESTCASE_ID", "rename")|tojson|forceescape }}, {{ tc_info.testcase.id }}, {{ tc_info.codename|tojson|forceescape }}, {{ subtask_index }})'>rename</a>
           </td>
           {% endif %}
         </tr>
@@ -457,12 +459,12 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     {% if admin.permission_all %}
     <div id="{{ table_id }}_batch_actions" class="batch-actions">
       <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
-      <a href="javascript:void(0);" onclick="batchAddPrefix({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }}, {{ uses_regex|tojson|forceescape }}, {{ suggested_prefix|default("", true)|tojson|forceescape }})" style="margin-left: 10px;">Add prefix</a> |
-      <a href="javascript:void(0);" onclick="batchRemoveSubstring({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }})">Remove common substring</a>
+      <a href="javascript:void(0);" onclick='batchAddPrefix({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }}, {{ uses_regex|tojson|forceescape }}, {{ suggested_prefix|default("", true)|tojson|forceescape }})' style="margin-left: 10px;">Add prefix</a> |
+      <a href="javascript:void(0);" onclick='batchRemoveSubstring({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }})'>Remove common substring</a>
     </div>
     {% endif %}
-  </div>
   {% endif %}
+  </div>
 </div>
 {% endmacro %}
 
@@ -483,7 +485,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     <td>Validator:</td>
     <td>
       {% if validator %}
-        <a href="javascript:void(0);" onclick="utils.show_file({{ validator.filename|tojson|forceescape }}, {{ url("file", validator.digest, validator.filename)|tojson|forceescape }})">{{ validator.filename }}</a>
+        <a href="javascript:void(0);" onclick='utils.show_file({{ validator.filename|tojson|forceescape }}, {{ url("file", validator.digest, validator.filename)|tojson|forceescape }})'>{{ validator.filename }}</a>
         {% if validator.executable_digest %}
           <span style="color: green;">(compiled)</span>
         {% else %}
@@ -575,8 +577,6 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% endif %}
 
 {{ render_testcase_table("Subtask Testcases", "subtask_table", subtask_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
-
-<div class="subtask-section-divider"></div>
 
 {{ render_testcase_table("Additional Testcases (not in subtask)", "other_table", other_testcases, validator, dataset, admin, subtask_index, uses_regex, suggested_prefix) }}
 

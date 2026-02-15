@@ -145,7 +145,7 @@
     margin-bottom: 16px;
 }
 
-.modal__form-group label {
+.modal__form-group label:not(.file-label) {
     display: block;
     font-size: 0.85rem;
     font-weight: 600;

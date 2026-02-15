@@ -1,0 +1,61 @@
+{#
+  Shared macros for dataset modal forms (create and clone).
+
+  dataset_fields: common form fields for description, limits, task type, score type
+  task_type_options: task type parameter options block
+#}
+
+{% macro dataset_fields(id_prefix, suffix, onchange_fn, dataset=None, TASK_TYPES=None, SCORE_TYPES=None) %}
+    <div class="modal__form-group">
+        <label for="{{ id_prefix }}-description">Description <span style="color: var(--tp-danger);">*</span></label>
+        <input type="text" id="{{ id_prefix }}-description" name="description" value="{{ ('Copy of ' ~ dataset.description) if dataset else 'Default' }}" required />
+        <small class="modal__hint">A unique name for this dataset</small>
+    </div>
+    <div class="modal__form-group">
+        <label for="{{ id_prefix }}-time-limit">Time limit (seconds)</label>
+        <input type="text" id="{{ id_prefix }}-time-limit" name="time_limit" value="{{ dataset.time_limit if dataset and dataset.time_limit is not none else ('' if dataset else '1') }}" />
+    </div>
+    <div class="modal__form-group">
+        <label for="{{ id_prefix }}-memory-limit">Memory limit (MiB)</label>
+        <input type="text" id="{{ id_prefix }}-memory-limit" name="memory_limit" value="{{ (dataset.memory_limit // (1024 * 1024)) if dataset and dataset.memory_limit is not none else ('' if dataset else '512') }}" />
+    </div>
+    <div class="modal__form-group">
+        <label for="{{ id_prefix }}-task-type">Task type</label>
+        <select id="{{ id_prefix }}-task-type" name="task_type" onchange="{{ onchange_fn }}">
+            {% for task_type_name, task_type in TASK_TYPES.items() %}
+            <option value="{{ task_type_name }}" {% if dataset and task_type_name == dataset.task_type %}selected{% endif %}>{{ task_type_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% for task_type_name, task_type in TASK_TYPES.items() %}
+    <div class="TaskTypeOptions_{{ suffix }} tp-task-type-options" id="TaskType{{ task_type_name }}Options_{{ suffix }}" style="display: none;">
+        {% if dataset and task_type_name == dataset.task_type %}
+            {% set values = dataset.task_type_parameters %}
+        {% else %}
+            {% set values = none %}
+        {% endif %}
+        {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
+        {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
+        {% set val = values[i] if values is not none and i < values|length else none %}
+        <div class="tp-form-group param_row" data-param-short="{{ param_def.short_name }}">
+            <label class="tp-form-label">{{ param_def.name }}</label>
+            <div class="tp-task-type-field">
+                {{ param_def.render("TaskTypeOptions_%s_"|format(task_type_name), previous_value=val)|safe }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+    <div class="modal__form-group">
+        <label for="{{ id_prefix }}-score-type">Score type</label>
+        <select id="{{ id_prefix }}-score-type" name="score_type">
+            {% for score_type_name, score_type in SCORE_TYPES.items() %}
+            <option value="{{ score_type_name }}" {% if dataset and score_type_name == dataset.score_type %}selected{% endif %}>{{ score_type_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="modal__form-group">
+        <label for="{{ id_prefix }}-score-params">Score parameters</label>
+        <textarea id="{{ id_prefix }}-score-params" name="score_type_parameters" rows="2" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape if dataset else '' }}</textarea>
+    </div>
+{% endmacro %}

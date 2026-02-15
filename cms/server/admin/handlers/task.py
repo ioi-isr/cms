@@ -341,21 +341,10 @@ class TaskHandler(BaseHandler):
 
 
 class AddStatementHandler(BaseHandler):
-    """Add a statement to a task.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.render("add_statement.html", **self.r_params)
-
+    """Add a statement to a task."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
-        fallback_page = self.url("task", task_id, "statements", "add")
+        fallback_page = self.url("task", task_id)
 
         task = self.safe_get_item(Task, task_id)
 
@@ -384,7 +373,7 @@ class AddStatementHandler(BaseHandler):
                 "The selected file is empty. Please select a non-empty PDF file.")
             self.redirect(fallback_page)
             return
-        if not statement["filename"].endswith(".pdf"):
+        if not statement["filename"].lower().endswith(".pdf"):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid task statement",
@@ -470,21 +459,10 @@ class StatementHandler(BaseHandler):
 
 
 class AddAttachmentHandler(BaseHandler):
-    """Add an attachment to a task.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.render("add_attachment.html", **self.r_params)
-
+    """Add an attachment to a task."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
-        fallback_page = self.url("task", task_id, "attachments", "add")
+        fallback_page = self.url("task", task_id)
 
         task = self.safe_get_item(Task, task_id)
 
@@ -583,29 +561,10 @@ class AddDatasetHandler(BaseHandler):
     It's equivalent to the old behavior when the dataset_id_to_copy
     given was equal to the string "-".
 
-    If referred by GET, this handler will return a HTML form.
-    If referred by POST, this handler will create the dataset.
-
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
-
-        original_dataset = None
-        description = "Default"
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["clone_id"] = "new"
-        self.r_params["original_dataset"] = original_dataset
-        self.r_params["original_dataset_task_type_parameters"] = None
-        self.r_params["default_description"] = description
-        self.render("add_dataset.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
-        fallback_page = self.url("task", task_id, "add_dataset")
+        fallback_page = self.url("task", task_id)
 
         task = self.safe_get_item(Task, task_id)
 
@@ -648,7 +607,6 @@ class AddDatasetHandler(BaseHandler):
             task.active_dataset = dataset
 
         if self.try_commit():
-            # self.service.scoring_service.reinitialize()
             self.redirect(self.url("task", task_id))
         else:
             self.redirect(fallback_page)

@@ -235,7 +235,7 @@ class ScoreTypeGroup(ScoreTypeAlone):
 <div class="subtask undefined">
     {% endif %}
     <div class="subtask-head">
-        <span class="title">
+        <span class="title is-6">
             {% trans index=st["idx"] %}Subtask {{ index }}{% endtrans %}
         </span>
     {% if "score" in st and "max_score" in st %}

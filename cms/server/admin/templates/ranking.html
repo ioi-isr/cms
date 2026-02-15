@@ -44,16 +44,6 @@
     font-size: 0.75rem;
   }
   .export-links a:hover { background: #e5e7eb; }
-  .student-tags { font-size: 0.85em; }
-  .student-tags .badge {
-    display: inline-block;
-    padding: 2px 6px;
-    margin: 1px;
-    background: #e0f2fe;
-    color: #0369a1;
-    border-radius: 3px;
-    font-size: 0.75em;
-  }
 </style>
 <div class="core_title">
   <h1>Ranking</h1>
@@ -84,7 +74,8 @@
     </div>
   </div>
 
-  <table class="bordered td-ranking-table" id="ranking-table-{{ loop.index }}">
+  <div class="table-container">
+    <table class="table is-bordered is-striped is-hoverable td-ranking-table" id="ranking-table-{{ loop.index }}">
     <thead>
       <tr>
         <th>Username</th>
@@ -109,9 +100,9 @@
       <tr>
         <td><a href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}">{{ p.user.username }}</a> <a href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">[history]</a></td>
         <td>{{ "%s %s"|format(p.user.first_name, p.user.last_name) }}</td>
-        <td class="student-tags">
+        <td>
           {% for tag in student_tags_by_participation.get(p.id, []) %}
-            <span class="badge">{{ tag }}</span>
+            <span class="tag is-info is-light">{{ tag }}</span>
           {% endfor %}
         </td>
         {% if task_archive_progress_by_participation %}
@@ -145,6 +136,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% endfor %}
 
@@ -168,7 +160,8 @@
 {# Regular contest or training day without groups - show single table #}
 Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>, <a href="{{ url("contest", contest.id, "ranking", "txt") }}">text</a>.
 <label style="margin-left: 20px;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label>
-<table id="ranking-table" class="bordered td-ranking-table">
+<div class="table-container">
+<table id="ranking-table" class="table is-bordered is-striped is-hoverable td-ranking-table">
   <thead>
     <tr>
       <th>Username</th>
@@ -200,9 +193,9 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
       <td><a href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}">{{ p.user.username }}</a> <a href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">[history]</a></td>
       <td>{{ "%s %s"|format(p.user.first_name, p.user.last_name) }}</td>
       {% if student_tags_by_participation %}
-      <td class="student-tags">
+      <td>
         {% for tag in student_tags_by_participation.get(p.id, []) %}
-          <span class="badge">{{ tag }}</span>
+          <span class="tag is-info is-light">{{ tag }}</span>
         {% endfor %}
       </td>
       {% endif %}
@@ -236,6 +229,7 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
     {% endfor %}
   </tbody>
 </table>
+</div>
 <script>
   $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#ranking-table"), true, -1, true);

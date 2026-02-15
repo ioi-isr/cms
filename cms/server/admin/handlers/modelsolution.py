@@ -253,21 +253,7 @@ def _process_model_solution_files(handler, task):
 
 
 class AddModelSolutionHandler(BaseHandler):
-    """Handler for adding a new model solution to a dataset.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["subtasks"] = get_subtask_info(dataset)
-        self.render("add_model_solution.html", **self.r_params)
-
+    """Handler for adding a new model solution to a dataset."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -346,22 +332,7 @@ class ModelSolutionHandler(BaseHandler):
 
 
 class EditModelSolutionHandler(BaseHandler):
-    """Handler for editing a model solution's metadata.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, meta_id):
-        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
-        task = meta.dataset.task
-        dataset = meta.dataset
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["meta"] = meta
-        self.r_params["subtasks"] = get_subtask_info(dataset)
-        self.render("edit_model_solution.html", **self.r_params)
-
+    """Handler for editing a model solution's metadata."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, meta_id):
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
@@ -452,24 +423,11 @@ class ReplaceModelSolutionHandler(BaseHandler):
     from the meta and left in submission history.
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, meta_id):
-        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
-        task = meta.dataset.task
-        dataset = meta.dataset
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["meta"] = meta
-        self.render("replace_model_solution.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, meta_id):
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
         task = meta.dataset.task
         dataset = meta.dataset
-        fallback_page = self.url("model_solution", meta_id, "replace")
+        fallback_page = self.url("task", task.id)
 
         try:
             digests, language = _process_model_solution_files(self, task)

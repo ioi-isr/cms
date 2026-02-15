@@ -28,7 +28,7 @@
   {% endif %}
 </div>
 {% else %}
-<table class="bordered" style="width:100%;">
+<table class="table is-bordered is-striped is-hoverable">
   <thead>
     <tr>
       <th>Name</th>
@@ -46,12 +46,12 @@
       {% if admin.permission_all %}
       <td style="text-align:center;">
         <button type="button" class="tp-btn-remove" title="Remove task"
-          onclick="AdminModals.deleteResource({
-            title: 'Remove Task',
-            message: 'Are you sure you want to remove task &quot;{{ t.name }}&quot;?',
-            deleteUrl: '{{ url("tasks", t.id, "remove") }}',
-            confirmLabel: 'Yes, Remove'
-          })">
+          onclick='AdminModals.deleteResource({
+            title: "Remove Task",
+            message: "Are you sure you want to remove task \"" + {{ t.name|tojson }} + "\"?",
+            deleteUrl: {{ url("tasks", t.id, "remove")|tojson }},
+            confirmLabel: "Yes, Remove"
+          })'>
           <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg>
         </button>
       </td>

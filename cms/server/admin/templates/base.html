@@ -50,6 +50,10 @@
     })();
     </script>
     <link rel="shortcut icon" href="{{ url("static", "favicon.ico") }}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "bulma.min.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "reset.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_tp_styles.css") }}">
@@ -502,7 +506,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("users", "add") }}">New user</a>
+              <button type="button" class="sidebar-action-link" onclick="window.location.href='{{ url("users") }}?add=1';">New user</button>
             </div>
             {% endif %}
           </div>

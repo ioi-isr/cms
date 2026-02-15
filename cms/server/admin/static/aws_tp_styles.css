@@ -49,6 +49,7 @@
     --tp-bg-light: #f8fafc;
     --tp-bg-gray: #f3f4f6;
     --tp-bg-hover: #f9fafb;
+    --tp-bg-secondary: #f9fafb;
 
     /* Border colors */
     --tp-border: #e5e7eb;
@@ -392,6 +393,23 @@
 .btn-icon-only:hover {
     color: var(--tp-danger)  !important;
     background: var(--tp-danger-light) !important;
+}
+
+.btn-icon-warn:hover {
+    color: var(--tp-warning) !important;
+    background: var(--tp-warning-light) !important;
+}
+
+.btn-icon-success:hover {
+    color: var(--tp-success) !important;
+    background: var(--tp-success-light) !important;
+}
+
+/* Validator action links hover effects */
+.validator-column a:hover {
+    color: var(--tp-danger) !important;
+    background: var(--tp-danger-light) !important;
+    border-radius: 50%;
 }
 
 /* Disabled state for both buttons and anchors */
@@ -1581,6 +1599,26 @@
     margin: 2px 4px 2px 0;
 }
 
+/* Subtask score validation table: sticky first column within horizontal scroll */
+.subtask-score-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.subtask-score-table thead th:first-child,
+.subtask-score-table tbody td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 2;
+    background: var(--tp-bg-white);
+    border-right: 1px solid var(--tp-border);
+}
+
+.subtask-score-table thead th:first-child {
+    z-index: 3;
+    background: var(--tp-bg-secondary, #f9fafb);
+}
+
 /* Grip handle for drag and drop */
 .grip-column {
     width: 40px;
@@ -1951,6 +1989,7 @@
     font-size: 0.9rem;
     cursor: pointer;
     transition: background 0.15s;
+    box-sizing: border-box;
 }
 
 .tp-menu-item:hover {
@@ -3614,4 +3653,82 @@
 
 .dataset-subtab-content.active {
     display: block;
+}
+
+/* ==========================================================================
+   Task Type Options (parameter form groups)
+   ========================================================================== */
+
+.tp-task-type-options {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--tp-bg-light, #f9fafb);
+    border: 1px solid var(--tp-border);
+    border-radius: 10px;
+}
+
+.tp-task-type-options .tp-form-group {
+    margin-bottom: 12px;
+}
+
+.tp-task-type-options .tp-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.tp-task-type-field input[type="text"] {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    background: var(--tp-bg-white);
+    color: var(--tp-text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.tp-task-type-field input[type="text"]:focus {
+    outline: none;
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.tp-task-type-field select {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    background: var(--tp-bg-white);
+    color: var(--tp-text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.tp-task-type-field select:focus {
+    outline: none;
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.tp-task-type-field table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 4px;
+}
+
+.tp-task-type-field table td {
+    padding: 6px 0;
+    vertical-align: middle;
+    font-size: 0.85rem;
+    color: var(--tp-text-secondary);
+}
+
+.tp-task-type-field table td:first-child {
+    font-weight: 500;
+    padding-right: 12px;
+    white-space: nowrap;
+}
+
+.tp-task-type-field table td input[type="text"] {
+    width: 100%;
 }
