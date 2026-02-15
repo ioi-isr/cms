@@ -375,8 +375,10 @@ class StudentHandler(StudentBaseHandler):
             self.get_bool(attrs, "unrestricted")
 
             # Get the new hidden and unrestricted status before applying
-            new_hidden = attrs.get("hidden", False)
-            new_unrestricted = attrs.get("unrestricted", False)
+            new_hidden = attrs.get("hidden", self.participation.hidden)
+            new_unrestricted = attrs.get(
+                "unrestricted", self.participation.unrestricted
+            )
 
             self.participation.set_attrs(attrs)
 

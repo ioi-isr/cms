@@ -19,9 +19,9 @@
     --bulma-primary-l: 26%;
 
     /* Font family - Inter */
-    --bulma-family-primary: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --bulma-family-secondary: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --bulma-family-monospace: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --bulma-family-primary: 'Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', "Segoe UI", Roboto, "Helvetica Neue", Arial, 'sans-serif';
+    --bulma-family-secondary: 'Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', "Segoe UI", Roboto, "Helvetica Neue", Arial, 'sans-serif';
+    --bulma-family-monospace: 'JetBrains Mono', 'Fira Code', 'Consolas', 'monospace';
 
     --bulma-body-background-color: #f5f5f5;
 
@@ -945,66 +945,37 @@ body.admin .task_dataset table.subtask-validators th:last-child {
 }
 
 /* Subtask details */
-body.admin .subtask-table-card {
-    border: 1px solid #CBD5E1;
-    border-radius: 8px;
-    background-color: #F8FBFF;
-    padding: 0.8em 1em 1em;
-    margin: 1.2em 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-body.admin .subtask-section-title {
-    margin: 0 0 0.45em;
-    color: #1F2937;
-    font-weight: 700;
-}
-
-body.admin .subtask-table-card .filter-row {
+body.admin .filter-row {
     margin: 0 0 0.65em;
 }
 
-body.admin .subtask-table-card .filter-row .filter-btn[data-filter="passed"] {
+body.admin .filter-row .filter-btn[data-filter="passed"] {
     color: #15803d;
     font-weight: 700;
 }
 
-body.admin .subtask-table-card .filter-row .filter-btn[data-filter="failed"] {
+body.admin .filter-row .filter-btn[data-filter="failed"] {
     color: #b91c1c;
     font-weight: 700;
 }
 
-body.admin .subtask-table-card .filter-row .filter-btn[data-filter="error"] {
+body.admin .filter-row .filter-btn[data-filter="error"] {
     color: #b45309;
     font-weight: 700;
 }
 
-body.admin .subtask-table-card .filter-row .filter-btn[data-filter="not_validated"] {
+body.admin .filter-row .filter-btn[data-filter="not_validated"] {
     color: #4b5563;
     font-weight: 700;
 }
 
-body.admin .subtask-table-card .muted {
-    color: #4B5563;
-}
-
-body.admin .subtask-table-card table {
-    margin-top: 0.35em;
-}
-
-body.admin .subtask-table-card .batch-actions {
-    display: none;
+body.admin .batch-actions {
     margin-top: 10px;
     padding: 10px;
     background-color: #F3F6FB;
     border-radius: 6px;
     border: 1px solid #DBE2EB;
-}
-
-body.admin .subtask-section-divider {
-    height: 1px;
-    background: linear-gradient(to right, transparent, #CBD5E1, transparent);
-    margin: -0.4em 0 0.8em;
+    display: none;
 }
 
 /* Validator table */
@@ -1458,21 +1429,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .notice-pending a {
     color: white;
-}
-
-/* Stderr output in validator results */
-.stderr-output {
-    margin: 0;
-    padding: 4px 8px;
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    font-size: 0.85em;
-    max-width: 300px;
-    max-height: 100px;
-    overflow: auto;
-    white-space: pre-wrap;
-    word-wrap: break-word;
 }
 
 /* Table search box */

@@ -17,12 +17,16 @@
     <div class="column is-half">
       {{ form_field('username', 'Username', user.username if user else '', required=true, autocomplete='username', info_tooltip='Username of the contestant (used to log in).') }}
     </div>
-    <div class="column is-half">
+    <div class="column is-full">
       <div class="field">
         <label class="label">
           Password
           {% if not user %}<span class="has-text-danger">*</span>{% endif %}
-          <span class="info" title="Contestant password. {% if not user %}Caution: stored in plain text.{% endif %}"></span>
+          {% if not user %}
+            <span class="info" title="Contestant password. Default: hashed (bcrypt). Caution: if you choose Plain text, the password will be stored in plain text."></span>
+          {% else %}
+            <span class="info" title="Contestant password."></span>
+          {% endif %}
         </label>
         <div class="control">
           {% if user %}
@@ -30,12 +34,18 @@
               {% include "fragments/hashed_password_form.html" %}
             {% endwith %}
           {% else %}
-            <input class="input" type="password" name="password" id="add-user-password-field" autocomplete="new-password" style="margin-bottom: 5px;" />
-            <div class="select">
-              <select name="method">
-                <option value="plaintext">Plain text</option>
-                <option value="bcrypt" selected>Hashed (bcrypt)</option>
-              </select>
+            <div class="field has-addons">
+              <div class="control is-expanded">
+                <input class="input" type="password" name="password" id="add-user-password-field" autocomplete="new-password" required />
+              </div>
+              <div class="control">
+                <div class="select">
+                  <select name="method">
+                    <option value="plaintext">Plain text</option>
+                    <option value="bcrypt" selected>Hashed (bcrypt)</option>
+                  </select>
+                </div>
+              </div>
             </div>
           {% endif %}
         </div>

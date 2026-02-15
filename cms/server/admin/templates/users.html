@@ -112,7 +112,11 @@
 
 <script>
 if (new URLSearchParams(window.location.search).get('add') === '1') {
-  MicroModal.show('modal-add-user');
+  // Check if modal element exists before trying to show it
+  const modalElement = document.getElementById('modal-add-user');
+  if (modalElement) {
+    MicroModal.show('modal-add-user');
+  }
   history.replaceState(null, '', window.location.pathname);
 }
 </script>

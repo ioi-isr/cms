@@ -40,12 +40,12 @@
       {% if admin.permission_all %}
       <td style="text-align:center;">
         <button type="button" class="tp-btn-remove" title="Remove team"
-          onclick="AdminModals.deleteResource({
-            title: 'Remove Team',
-            message: 'Are you sure you want to remove team &quot;{{ t.code }}&quot;?',
-            deleteUrl: '{{ url("teams", t.id, "remove") }}',
-            confirmLabel: 'Yes, Remove'
-          })">
+          onclick='AdminModals.deleteResource({
+            title: "Remove Team",
+            message: "Are you sure you want to remove team \"" + {{ t.code|tojson }} + "\"?",
+            deleteUrl: {{ url("teams", t.id, "remove")|tojson }},
+            confirmLabel: "Yes, Remove"
+          })'>
           <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg>
         </button>
       </td>

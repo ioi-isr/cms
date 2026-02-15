@@ -63,23 +63,23 @@ CMS.AWSFormUtils.initTagify({
     <div class="columns is-multiline">
       <div class="column is-half">
         <div class="field">
-          <label class="label">
+          <label class="label" for="student_tags">
             Student Tags
             <span class="info" title="Tags for this student (e.g., beginner, advanced). Used to control which training questions they see. Double-click a tag to edit it."></span>
           </label>
           <div class="control">
-            <input class="input" type="text" name="student_tags" value="{{ student.student_tags|join(", ") }}"/>
+            <input class="input" type="text" id="student_tags" name="student_tags" value="{{ student.student_tags|join(", ") }}"/>
           </div>
         </div>
       </div>
       <div class="column is-half">
         <div class="field">
-          <label class="label">
+          <label class="label" for="team">
             Team
             <span class="info" title="Code of the team of the contestant. Only used in the external ranking."></span>
           </label>
           <div class="control">
-            <input class="input" list="teams" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
+            <input class="input" list="teams" id="team" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
             <datalist id="teams">
               {% for t in teams %}
               <option value="{{ t.code }}">
@@ -159,45 +159,45 @@ CMS.AWSFormUtils.initTagify({
       </div>
       <div class="column is-half">
         <div class="field">
-          <label class="label">
+          <label class="label" for="ip">
             IP address or subnet
             <span class="info" title="A comma-separated list of IP addresses (or subnets) of the student for this training program. Used for IP-based login restrictions and/or for autologin (in this case, it must be a single address)."></span>
           </label>
           <div class="control">
-            <input class="input" type="text" name="ip" value="{{ participation.ip|map("string")|join(", ") if participation.ip is not none else "" }}"/>
+            <input class="input" type="text" id="ip" name="ip" value="{{ participation.ip|map("string")|join(", ") if participation.ip is not none else "" }}"/>
           </div>
         </div>
       </div>
       <div class="column is-half">
         <div class="field">
-          <label class="label">
+          <label class="label" for="starting_time">
             Time of first login (in UTC)
             <span class="info" title="Time of first login during this training program, used for USACO-style contests. Example: '2015-12-31 15:00:00'."></span>
           </label>
           <div class="control">
-            <input class="input" type="text" name="starting_time" value="{{ participation.starting_time if participation.starting_time is not none else "" }}"/>
+            <input class="input" type="text" id="starting_time" name="starting_time" value="{{ participation.starting_time if participation.starting_time is not none else "" }}"/>
           </div>
         </div>
       </div>
       <div class="column is-half">
         <div class="field">
-          <label class="label">
+          <label class="label" for="delay_time">
             Delay (seconds)
             <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time at the beginning of the training program. If this is non-zero, all the events (token generation, end of contest) for this student will be shifted of the appropriate amount."></span>
           </label>
           <div class="control">
-            <input class="input" type="text" name="delay_time" value="{{ participation.delay_time.total_seconds()|int }}"/>
+            <input class="input" type="text" id="delay_time" name="delay_time" value="{{ participation.delay_time.total_seconds()|int }}"/>
           </div>
         </div>
       </div>
       <div class="column is-half">
         <div class="field">
-          <label class="label">
+          <label class="label" for="extra_time">
             Extra time (seconds)
             <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time during the training program. If this is non-zero, the end of the contest will be shifted of the appropriate amount for this student."></span>
           </label>
           <div class="control">
-            <input class="input" type="text" name="extra_time" value="{{ participation.extra_time.total_seconds()|int }}"/>
+            <input class="input" type="text" id="extra_time" name="extra_time" value="{{ participation.extra_time.total_seconds()|int }}"/>
           </div>
         </div>
       </div>

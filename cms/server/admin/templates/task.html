@@ -882,7 +882,7 @@ document.addEventListener('click', function(e) {
                                     {% for manager in dataset.managers.values() %}
                                     {% if (manager.filename == 'checker' and flags.checker_src) or (manager.filename == 'manager' and flags.manager_src) %}
                                     {% else %}
-                                    <div class="control">
+                                    <div class="manager control">
                                         <div class="tags has-addons">
                                             <span class="tag is-link is-light is-medium has-text-black">
                                                 <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file-code"/></svg>
@@ -1234,7 +1234,7 @@ document.addEventListener('click', function(e) {
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content" style="gap: 4px;">
-                                        <button type="button" class="btn-icon-only" onclick="ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});" title="Edit">
+                                        <button type="button" class="btn-icon-only" onclick='ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});' title="Edit">
                                             <svg class="icon" width="18" height="18"><use href="#icon-edit"/></svg>
                                         </button>
                                         {% if admin.permission_all %}
@@ -2091,12 +2091,12 @@ document.addEventListener('click', function(e) {
     <div style="margin-top: 24px; text-align: right;">
         <button type="button" class="tp-btn-remove"
             {% if not admin.permission_all %}disabled{% endif %}
-            onclick="AdminModals.deleteResource({
-                title: 'Remove Task',
-                message: 'Are you sure you want to remove task &quot;{{ task.name | e }}&quot;? This will delete all related data including submissions and cannot be undone.',
-                deleteUrl: '{{ url("tasks", task.id, "remove") }}',
-                confirmLabel: 'Yes, Remove Task'
-            })">
+            onclick='AdminModals.deleteResource({
+                title: "Remove Task",
+                message: {{ ('Are you sure you want to remove task "' ~ task.name ~ '"? This will delete all related data including submissions and cannot be undone.')|tojson|forceescape }},
+                deleteUrl: {{ url("tasks", task.id, "remove")|tojson|forceescape }},
+                confirmLabel: "Yes, Remove Task"
+            })'>
             <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
             Remove Task
         </button>
@@ -2149,9 +2149,10 @@ function showDownloadTestcasesDialog(datasetId, postUrl) {
             const inputTpl = document.getElementById('swal-dl-input-tpl').value.trim();
             const outputTpl = document.getElementById('swal-dl-output-tpl').value.trim();
             const invalidTpl = (tpl) => tpl.split('*').length !== 2 || /[\/\\]/.test(tpl);
+            const invalidZip = (name) => /[\/\\:*?"<>|\r\n;]/.test(name) || !/\.zip$/i.test(name);
 
-            if (!zip) {
-                Swal.showValidationMessage('Zip filename is required');
+            if (!zip || invalidZip(zip)) {
+                Swal.showValidationMessage('Zip filename must be a simple .zip name without path separators');
                 return false;
             }
             if (!inputTpl || invalidTpl(inputTpl)) {

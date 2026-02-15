@@ -1,7 +1,5 @@
 {% extends "base.html" %}
 
-{% from "macro/bulma_file_input.html" import bulma_file_input %}
-
 {% block core %}
 <div class="content-constraint" style="max-width: 900px;">
     <!-- Header -->
@@ -17,6 +15,8 @@
     <!-- Action Buttons Row -->
     <div class="action-buttons-row">
         <!-- Add Students from List Button -->
+        <form id="bulk-add-form" action="{{ url("training_program", training_program.id, "students", "bulk_add") }}" method="POST" enctype="multipart/form-data" style="display: inline;">
+            {{ xsrf_form_html|safe }}
             <input type="file" name="students_file" accept=".txt" class="file-input-hidden" id="students-file-input"
                 {% if not admin.permission_all %}disabled{% endif %}
                 onchange="if(this.files.length) this.form.submit();" />

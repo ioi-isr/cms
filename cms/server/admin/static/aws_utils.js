@@ -244,50 +244,54 @@ CMS.AWSUtils.prototype.display_notification = function(type, timestamp,
         this.last_notification = timestamp;
     }
     var timestamp_int = parseInt(timestamp);
-    var subject_string = $('<span>');
-    if (type == "message") {
-        subject_string = $("<span>").text("Private message. ");
-    } else if (type == "announcement") {
-        subject_string = $("<span>").text("Announcement. ");
-    } else if (type == "question") {
-        subject_string = $("<span>").text("Reply to your question. ");
-    } else if (type == "new_question") {
-        subject_string = $("<a>").text("New question: ")
+    var subject_element = $('<span>');
+    if (type == "message") subject_element.text("Private message. ");
+    else if (type == "announcement") subject_element.text("Announcement. ");
+    else if (type == "question") subject_element.text("Reply to your question. ");
+    else if (type == "new_question") {
+        subject_element = $("<a>").text("New question: ")
             .prop("href", this.url("contest", contest_id, "questions"));
     } else if (type == "new_delay_request") {
-        subject_string = $("<a>").text("New delay request: ")
+        subject_element = $("<a>").text("New delay request: ")
             .prop("href", this.url("contest", contest_id, "delays_and_extra_times"));
     }
 
-    var bulmaColor = "is-danger";
-    if (subject === "Operation successful.") {
-        bulmaColor = "is-success";
-    } else if (type === "new_question" || type === "new_delay_request") {
-        bulmaColor = "is-warning";
-    }
+    var colorClass = "is-danger";
+    if (subject === "Operation successful.") colorClass = "is-success";
+    else if (type === "new_question" || type === "new_delay_request") colorClass = "is-warning";
 
     var self = this;
     var outer = $("#notifications");
     var close_btn = $('<button>').addClass("delete")
         .click(function() { self.close_notification(this); });
-    var subject_div = $("<strong>")
-        .append(subject_string)
-        .append($("<span>").text(subject));
-    var text_div = $("<div>").css("margin-top", "0.25em");
+    var header_div = $('<div>')
+        .addClass("is-flex is-justify-content-space-between is-align-items-start pr-6 mb-1");
+
+    var title_container = $("<strong>")
+        .append(subject_element)
+        .append($("<span>").text(" " + subject));
+
+    var timestamp_str = timestamp_int != 0 ? this.format_time_or_date(timestamp_int) : "";
+    var timestamp_span = $("<span>")
+        .addClass("is-size-7 has-text-grey")
+        .css("white-space", "nowrap") // CSS needed here to prevent wrapping
+        .text(timestamp_str);
+
+    header_div.append(title_container).append(timestamp_span);
+
+    var text_div = $("<div>");
     if (subject === "Manager compilation failed") {
-        text_div.append(
-            $('<pre>').text(text).css({ 'white-space': 'pre-wrap', 'margin': 0 })
+        text_div.addClass("content is-small").append(
+            $('<pre>').text(text).css({ 'margin': 0 })
         );
     } else if (text) {
         text_div.text(text);
     }
-    var timestamp_span = $("<span>")
-        .css({"float": "right", "font-size": "0.85em", "opacity": "0.8"})
-        .text(timestamp_int != 0 ? this.format_time_or_date(timestamp_int) : "");
-    var inner = $('<div>').addClass("notification " + bulmaColor + " is-light notification_type_" + type)
+
+    var inner = $('<div>')
+        .addClass("notification is-light " + colorClass + " notification_type_" + type)
         .append(close_btn)
-        .append(timestamp_span)
-        .append(subject_div)
+        .append(header_div)
         .append(text_div);
     outer.append(inner);
 
@@ -1524,13 +1528,15 @@ var ModelSolutionModal = (function() {
                 _recalcAllFromValues(dsId);
             } else {
                 ui.cards.forEach(function (c) { c.classList.remove('selected', 'partial'); });
+                if (ui.calcCheckbox) ui.calcCheckbox.checked = false;
+                var sm = _parse(scoreMin, 0);
+                var sx = _parse(scoreMax, 0);
+                if (ui.advTotalMin) ui.advTotalMin.value = sm.toFixed(2);
+                if (ui.advTotalMax) ui.advTotalMax.value = sx.toFixed(2);
+                if (ui.advTotalPct) ui.advTotalPct.value = '';
                 _recalcAllFromCards(dsId);
-
-                if (ui.scoreMin) ui.scoreMin.value = scoreMin || 0;
-                if (ui.scoreMax) ui.scoreMax.value = scoreMax || 0;
-                if (ui.totalDisplay) ui.totalDisplay.textContent = Math.round(scoreMax || 0);
-                if (ui.scoreMinSimple) ui.scoreMinSimple.value = scoreMin || 0;
-                if (ui.scoreMaxSimple) ui.scoreMaxSimple.value = scoreMax || 100;
+                if (ui.scoreMinSimple) ui.scoreMinSimple.value = sm;
+                if (ui.scoreMaxSimple) ui.scoreMaxSimple.value = _parse(scoreMax, 100);
             }
 
             MicroModal.show('modal-ms-' + dsId);
