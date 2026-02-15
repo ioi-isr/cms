@@ -465,14 +465,16 @@ document.addEventListener('click', function(e) {
                         {% if task.attachments|length == 0 %}
                         <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No attachments.</div>
                         {% else %}
-                        <div style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
+                        <div class="field is-grouped is-grouped-multiline" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
                             {% for attachment in task.attachments.values() %}
-                            <div style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 20px; font-size: 0.9rem;">
-                                <svg class="icon" width="14" height="14"><use href="#icon-file"/></svg>
-                                <a href="{{ url("file", attachment.digest, attachment.filename) }}">{{ attachment.filename }}</a>
-                                <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment" style="padding: 4px;">
-                                    <svg class="icon" width="12" height="12"><use href="#icon-x"/></svg>
-                                </button>
+                            <div class="control">
+                                <div class="tags has-addons">
+                                    <span class="tag is-link is-light is-medium has-text-black">
+                                        <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
+                                        <a href="{{ url("file", attachment.digest, attachment.filename) }}" style="color: inherit;">{{ attachment.filename }}</a>
+                                    </span>
+                                    <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment"></button>
+                                </div>
                             </div>
                             {% endfor %}
                         </div>
@@ -876,16 +878,18 @@ document.addEventListener('click', function(e) {
                                     {% if m.filename.startswith('checker.') %}{% set flags.checker_src = True %}{% endif %}
                                     {% if m.filename.startswith('manager.') %}{% set flags.manager_src = True %}{% endif %}
                                 {% endfor %}
-                                <div style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
+                                <div class="field is-grouped is-grouped-multiline" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
                                     {% for manager in dataset.managers.values() %}
                                     {% if (manager.filename == 'checker' and flags.checker_src) or (manager.filename == 'manager' and flags.manager_src) %}
                                     {% else %}
-                                    <div class="manager" style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 20px; font-size: 0.9rem;">
-                                        <svg class="icon" width="14" height="14"><use href="#icon-file-code"/></svg>
-                                        <a href="{{ url("file", manager.digest, manager.filename) }}">{{ manager.filename }}</a>
-                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager" style="padding: 4px;">
-                                            <svg class="icon" width="12" height="12"><use href="#icon-x"/></svg>
-                                        </button>
+                                    <div class="control">
+                                        <div class="tags has-addons">
+                                            <span class="tag is-link is-light is-medium has-text-black">
+                                                <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file-code"/></svg>
+                                                <a href="{{ url("file", manager.digest, manager.filename) }}" style="color: inherit;">{{ manager.filename }}</a>
+                                            </span>
+                                            <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager"></button>
+                                        </div>
                                     </div>
                                     {% endif %}
                                     {% endfor %}

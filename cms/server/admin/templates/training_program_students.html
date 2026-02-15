@@ -17,15 +17,13 @@
     <!-- Action Buttons Row -->
     <div class="action-buttons-row">
         <!-- Add Students from List Button -->
-        <form id="bulk-add-form" action="{{ url("training_program", training_program.id, "students", "bulk_add") }}" method="POST" enctype="multipart/form-data" style="display: inline;">
-            {{ xsrf_form_html|safe }}
-            <div style="display: inline-block; margin-right: 10px;">
-                {{ bulma_file_input("students-file-input", "students_file", ".txt", button_text="Choose text file…") }}
-            </div>
-            <button type="submit" class="btn-outline" {% if not admin.permission_all %}disabled{% endif %}>
+            <input type="file" name="students_file" accept=".txt" class="file-input-hidden" id="students-file-input"
+                {% if not admin.permission_all %}disabled{% endif %}
+                onchange="if(this.files.length) this.form.submit();" />
+            <label for="students-file-input" class="btn-outline" style="{% if admin.permission_all %}cursor: pointer;{% else %}opacity: 0.5; cursor: not-allowed;{% endif %}">
                 <svg class="icon" width="18" height="18"><use href="#icon-upload"/></svg>
                 Add Students from List
-            </button>
+            </label>
         </form>
 
         <!-- Bulk Assign Task Button -->
@@ -35,7 +33,7 @@
         </button>
 
         <!-- Add Student Button -->
-        <button type="button" class="btn-filled-primary" onclick="document.getElementById('add-student-dialog').showModal()">
+        <button type="button" class="button is-primary has-text-white" onclick="document.getElementById('add-student-dialog').showModal()">
             <svg class="icon" width="18" height="18"><use href="#icon-plus"/></svg>
             Add Student
         </button>
