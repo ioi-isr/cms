@@ -54,7 +54,7 @@ from .trainingprogramtask import (
     AddTrainingProgramTaskHandler,
     RemoveTrainingProgramTaskHandler,
     TrainingProgramRankingHandler,
-    _shift_task_nums,
+    shift_task_nums,
 )
 
 __all__ = [
@@ -66,7 +66,7 @@ __all__ = [
     "TrainingProgramListHandler",
     "TrainingProgramRankingHandler",
     "TrainingProgramTasksHandler",
-    "_shift_task_nums",
+    "shift_task_nums",
 ]
 
 

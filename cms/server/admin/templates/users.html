@@ -11,7 +11,7 @@
 <div class="panel-warning">
   <h2>Pending Password Resets ({{ pending_users|length }})</h2>
   <p>The following users have submitted password reset requests awaiting approval:</p>
-  <table class="bordered">
+  <table class="table is-bordered is-striped is-hoverable">
     <thead>
       <tr>
         <th>Username</th>
@@ -44,8 +44,20 @@
 {% endif %}
 
 <div style="margin-bottom: 10px;">
-  <a href="{{ url("users", "export") }}" class="btn btn-primary">Export to CSV</a>
-  <a href="{{ url("users", "import") }}" class="btn btn-primary">Import from CSV</a>
+  <a href="{{ url("users", "export") }}" class="button is-medium">
+    <svg class="icon is-small"><use href="#icon-download"/></svg>
+    <span>Export to CSV</span>
+  </a>
+  <a href="{{ url("users", "import") }}" class="button is-medium">
+    <svg class="icon is-small"><use href="#icon-upload"/></svg>
+    <span>Import from CSV</span>
+  </a>
+  {% if admin.permission_all %}
+  <button type="button" class="button is-medium is-primary has-text-white" onclick="MicroModal.show('modal-add-user')">
+    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+    <span>New user</span>
+  </button>
+  {% endif %}
 </div>
 
 <form action="{{ url("users") }}" method="POST">
@@ -58,7 +70,7 @@
          disabled
 {% endif %}
          />
-  <table class="bordered">
+  <table class="table is-bordered is-striped is-hoverable">
     <thead>
       <tr>
         <th></th>
@@ -81,5 +93,44 @@
     </tbody>
   </table>
 </form>
+
+{% if admin.permission_all %}
+<div class="modal modal--medium" id="modal-add-user" aria-hidden="true">
+  <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+    <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-user-title">
+      <header class="modal__header">
+        <h2 class="modal__title" id="modal-add-user-title">New user</h2>
+        <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+      </header>
+      <main class="modal__content">
+        <form id="add-user-form" enctype="multipart/form-data" action="{{ url("users", "add") }}" method="POST">
+          {{ xsrf_form_html|safe }}
+          {% set user = None %}
+          {% from "macro/user_fields.html" import user_fields with context %}
+          {{ user_fields(None) }}
+        </form>
+      </main>
+      <footer class="modal__footer">
+        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+        <button type="submit" form="add-user-form" class="tp-btn-primary">Create user</button>
+      </footer>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+  if (new URLSearchParams(window.location.search).get('add') === '1') {
+    // Check if modal element exists before trying to show it
+    const modalElement = document.getElementById('modal-add-user');
+    if (modalElement) {
+      MicroModal.show('modal-add-user');
+    }
+    const url = new URL(window.location);
+    url.searchParams.delete('add');
+    const updatedSearch = url.searchParams.toString();
+    history.replaceState(null, '', window.location.pathname + (updatedSearch ? '?' + updatedSearch : ''));
+  }
+</script>
 
 {% endblock core %}

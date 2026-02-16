@@ -13,7 +13,7 @@
     <div class="tp-stats-row">
         <div class="tp-stat-card">
             <div class="tp-stat-icon tp-stat-icon-purple">
-                <svg class="icon" width="24" height="24"><use href="#icon-graduation-cap"/></svg>
+                <svg class="icon is-small"><use href="#icon-graduation-cap"/></svg>
             </div>
             <div class="tp-stat-content">
                 <div class="tp-stat-label">Active Programs</div>
@@ -22,7 +22,7 @@
         </div>
         <div class="tp-stat-card">
             <div class="tp-stat-icon tp-stat-icon-green">
-                <svg class="icon" width="24" height="24"><use href="#icon-users"/></svg>
+                <svg class="icon is-small"><use href="#icon-users"/></svg>
             </div>
             <div class="tp-stat-content">
                 <div class="tp-stat-label">Total Students</div>
@@ -31,7 +31,7 @@
         </div>
         <div class="tp-stat-card">
             <div class="tp-stat-icon tp-stat-icon-orange">
-                <svg class="icon" width="24" height="24"><use href="#icon-clock"/></svg>
+                <svg class="icon is-small"><use href="#icon-clock"/></svg>
             </div>
             <div class="tp-stat-content">
                 <div class="tp-stat-label">Active Training Days</div>
@@ -56,23 +56,23 @@
                 <div class="tp-card-menu">
                     <button type="button" class="tp-menu-btn" onclick="toggleMenu(this)"
                             title="More options" aria-haspopup="menu" aria-expanded="false">
-                        <svg class="icon" width="20" height="20" style="fill: currentColor; stroke: none;"><use href="#icon-more-vertical"/></svg>
+                        <svg class="icon is-small" style="fill: currentColor; stroke: none;"><use href="#icon-more-vertical"/></svg>
                     </button>
                     <div class="tp-menu-dropdown">
                         <a href="{{ url("training_program", tp.id) }}" class="tp-menu-item">
-                            <svg class="icon" width="16" height="16"><use href="#icon-edit"/></svg>
+                            <svg class="icon is-small"><use href="#icon-edit"/></svg>
                             Edit Program
                         </a>
                         <a href="{{ url("training_program", tp.id, "students") }}" class="tp-menu-item">
-                            <svg class="icon" width="16" height="16"><use href="#icon-users"/></svg>
+                            <svg class="icon is-small"><use href="#icon-users"/></svg>
                             Manage Students
                         </a>
                         <a href="{{ url("training_program", tp.id, "tasks") }}" class="tp-menu-item">
-                            <svg class="icon" width="16" height="16"><use href="#icon-clipboard-list"/></svg>
+                            <svg class="icon is-small"><use href="#icon-clipboard-list"/></svg>
                             Manage Tasks
                         </a>
                         <a href="{{ url("training_program", tp.id, "training_days") }}" class="tp-menu-item">
-                            <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
+                            <svg class="icon is-small"><use href="#icon-calendar"/></svg>
                             Training Days
                         </a>
                         {% if admin.permission_all %}
@@ -85,7 +85,7 @@
                            data-submission-count="{{ tp.managing_contest.participations|map(attribute='submissions')|map('length')|sum }}"
                            data-task-count="{{ tp.managing_contest.tasks|length }}"
                            data-training-day-count="{{ tp.training_days|length }}">
-                            <svg class="icon" width="16" height="16"><use href="#icon-trash"/></svg>
+                            <svg class="icon is-small"><use href="#icon-trash"/></svg>
                             Remove
                         </button>
                         {% endif %}
@@ -96,18 +96,18 @@
             <!-- Stats Row -->
             <div class="tp-card-stats">
                 <div class="tp-card-stat">
-                    <svg class="icon" width="16" height="16"><use href="#icon-users"/></svg>
+                    <svg class="icon is-small"><use href="#icon-users"/></svg>
                     <span>{{ tp.managing_contest.participations|length }} Students</span>
                 </div>
                 <div class="tp-card-stat">
-                    <svg class="icon" width="16" height="16"><use href="#icon-clipboard-list"/></svg>
+                    <svg class="icon is-small"><use href="#icon-clipboard-list"/></svg>
                     <span>{{ tp.managing_contest.tasks|length }} Tasks</span>
                 </div>
             </div>
 
             <!-- Date Range -->
             <div class="tp-card-dates">
-                <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
+                <svg class="icon is-small"><use href="#icon-calendar"/></svg>
                 {% if tp.managing_contest.start and tp.managing_contest.stop %}
                 <span>{{ tp.managing_contest.start.strftime('%Y-%m-%d') }} &mdash; {{ tp.managing_contest.stop.strftime('%Y-%m-%d') }}</span>
                 {% else %}
@@ -126,7 +126,7 @@
                     {% set td_notif = training_day_notifications.get(td.id, {}) %}
                     <a href="{{ url("contest", td.contest.id) }}" class="tp-training-day-item">
                         <div class="tp-training-day-icon">
-                            <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
+                            <svg class="icon is-small"><use href="#icon-calendar"/></svg>
                         </div>
                         <div class="tp-training-day-info">
                             <div class="tp-training-day-name">{{ td.contest.name }}</div>
@@ -139,13 +139,13 @@
                         <div class="tp-training-day-indicators">
                             {% if td_notif.get("unanswered_questions", 0) > 0 %}
                             <span class="tp-indicator tp-indicator-question" title="{{ td_notif.unanswered_questions }} unanswered question{{ 's' if td_notif.unanswered_questions != 1 else '' }}">
-                                <svg class="icon" width="14" height="14"><use href="#icon-help-circle"/></svg>
+                                <svg class="icon is-small"><use href="#icon-help-circle"/></svg>
                                 {{ td_notif.unanswered_questions }}
                             </span>
                             {% endif %}
                             {% if td_notif.get("pending_delay_requests", 0) > 0 %}
                             <span class="tp-indicator tp-indicator-delay" title="{{ td_notif.pending_delay_requests }} pending delay request{{ 's' if td_notif.pending_delay_requests != 1 else '' }}">
-                                <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg>
+                                <svg class="icon is-small"><use href="#icon-clock"/></svg>
                                 {{ td_notif.pending_delay_requests }}
                             </span>
                             {% endif %}
@@ -165,7 +165,7 @@
             <!-- Archived Training Days Counter -->
             <div class="tp-card-stats tp-card-stats-bottom">
                 <div class="tp-card-stat">
-                    <svg class="icon" width="16" height="16"><use href="#icon-archive-box"/></svg>
+                    <svg class="icon is-small"><use href="#icon-archive-box"/></svg>
                     <span>{{ archived_tds|length }} Archived Days</span>
                 </div>
             </div>
@@ -176,7 +176,7 @@
         {% if admin.permission_all %}
         <button type="button" class="tp-create-card" onclick="MicroModal.show('modal-add-program')">
             <div class="tp-create-icon">
-                <svg class="icon" width="32" height="32"><use href="#icon-plus"/></svg>
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
             </div>
             <div class="tp-create-title">Create New Program</div>
             <div class="tp-create-subtitle">Start a new training season</div>

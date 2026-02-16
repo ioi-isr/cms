@@ -66,25 +66,14 @@ CMS.AWSUtils.create_url_builder = function(url_root) {
 CMS.AWSUtils.prototype.display_subpage = function(elements) {
     var content = $("#subpage_content");
     content.empty();
-    // TODO: update jQuery to allow appending of arrays of elements.
     for (var i = 0; i < elements.length; ++i) {
         elements[i].appendTo(content);
     }
-    document.getElementById('subpage_popup').show();
+    $('#modal-show-file-title').text('');
+    $('#modal-show-file-download').hide();
+    $('#modal-show-file-copy').hide();
+    MicroModal.show('modal-show-file');
 };
-
-// set up some event listeners for the subpage
-window.addEventListener('DOMContentLoaded', () => {
-    $('#subpage_close').on('click', () => {
-        document.getElementById('subpage_popup').close();
-    });
-});
-
-document.addEventListener('keydown', function(event) {
-    if (event.key === "Escape") {
-        document.getElementById('subpage_popup').close();
-    }
-});
 
 CMS.AWSUtils.filename_to_lang = function(file_name) {
     // TODO: update if adding a new language to cms
@@ -173,41 +162,48 @@ CMS.AWSUtils.filter_languages = function(options, inputs, languages) {
 CMS.AWSUtils.prototype.file_received = function(response, error) {
     var file_name = this.file_asked_name;
     var url = this.file_asked_url;
-    var elements = [];
     if (error != null) {
         if (window.AdminModals && typeof AdminModals.showError === 'function') {
             AdminModals.showError('File request failed.');
         } else {
             alert('File request failed.');
         }
-    } else {
-        if (response.length > 100000) {
-            elements.push($('<h1>').text(file_name));
-            elements.push($('<a>').text("Download").prop("href", url));
-            this.display_subpage(elements);
-            return;
-        }
-        var lang_name = CMS.AWSUtils.filename_to_lang(file_name);
+        return;
+    }
 
-        elements.push($('<h1>').text(file_name));
-        elements.push($('<a>').text("Download").prop("href", url));
-        elements.push($('<span>').text(" - "))
-        elements.push($('<a>').text("copy").prop('href', '#').on('click', (event) => {
+    var content = $('#subpage_content');
+    content.empty();
+
+    if (response.length > 100000) {
+        $('#modal-show-file-title').text(file_name);
+        $('#modal-show-file-download').attr('href', url).show();
+        $('#modal-show-file-copy').hide();
+        content.append($('<p>').text('File is too large to display. Use the Download link above.'));
+        MicroModal.show('modal-show-file');
+        return;
+    }
+
+    var lang_name = CMS.AWSUtils.filename_to_lang(file_name);
+    var codearea = $('<code>').text(response).addClass('line-numbers').addClass('language-' + lang_name);
+    content.append($('<pre>').css('margin', '0').append(codearea));
+
+    $('#modal-show-file-title').text(file_name);
+    $('#modal-show-file-download').attr('href', url).show();
+    $('#modal-show-file-copy').show().off('click').on('click', function(event) {
+        var code_el = $('#subpage_content code')[0];
+        if (code_el) {
             var range = document.createRange();
-            var code_area = $('#subpage_content code')[0];
-            range.setStartBefore(code_area);
-            range.setEndAfter(code_area);
+            range.setStartBefore(code_el);
+            range.setEndAfter(code_el);
             window.getSelection().removeAllRanges();
             window.getSelection().addRange(range);
-            // execCommand is deprecated, but this seems much less annoying than the new clipboard api
             document.execCommand('copy');
-            event.preventDefault(); // prevent the <a> from navigating
-        }));
-        var codearea = $('<code>').text(response).addClass('line-numbers').addClass('language-' + lang_name);
-        elements.push($('<pre>').append(codearea));
-        this.display_subpage(elements);
-        Prism.highlightAllUnder(document.getElementById('subpage_content'));
-    }
+        }
+        event.preventDefault();
+    });
+
+    MicroModal.show('modal-show-file');
+    Prism.highlightAllUnder(document.getElementById('subpage_content'));
 };
 
 
@@ -253,52 +249,57 @@ CMS.AWSUtils.prototype.display_notification = function(type, timestamp,
         this.last_notification = timestamp;
     }
     var timestamp_int = parseInt(timestamp);
-    var subject_string = $('<span>');
-    if (type == "message") {
-        subject_string = $("<span>").text("Private message. ");
-    } else if (type == "announcement") {
-        subject_string = $("<span>").text("Announcement. ");
-    } else if (type == "question") {
-        subject_string = $("<span>").text("Reply to your question. ");
-    } else if (type == "new_question") {
-        subject_string = $("<a>").text("New question: ")
+    var subject_element = $('<span>');
+    if (type == "message") subject_element.text("Private message. ");
+    else if (type == "announcement") subject_element.text("Announcement. ");
+    else if (type == "question") subject_element.text("Reply to your question. ");
+    else if (type == "new_question") {
+        subject_element = $("<a>").text("New question: ")
             .prop("href", this.url("contest", contest_id, "questions"));
     } else if (type == "new_delay_request") {
-        subject_string = $("<a>").text("New delay request: ")
+        subject_element = $("<a>").text("New delay request: ")
             .prop("href", this.url("contest", contest_id, "delays_and_extra_times"));
     }
 
+    var colorClass = "is-danger";
+    if (subject === "Operation successful.") colorClass = "is-success";
+    else if (type === "new_question" || type === "new_delay_request") colorClass = "is-warning";
+
     var self = this;
     var outer = $("#notifications");
-    var timestamp_div = $("<div>")
-        .addClass("notification_timestamp")
-        .text(timestamp_int != 0 ? this.format_time_or_date(timestamp_int) : "");
-    var subject_div = $("<div>")
-        .addClass("notification_subject")
-        .append(subject_string);
-    var close_div = $('<div>').html("&times;").addClass("notification_close")
+    var close_btn = $('<button>').addClass("delete")
         .click(function() { self.close_notification(this); });
-    // Build body: default plain text; special-case manager compilation errors
-    // to render in monospace and preserve newlines.
-    var text_div = $("<div>").addClass("notification_text");
+    var header_div = $('<div>')
+        .addClass("is-flex is-justify-content-space-between is-align-items-start pr-6 mb-1");
+
+    var title_container = $("<strong>")
+        .append(subject_element)
+        .append($("<span>").text(" " + subject));
+
+    var timestamp_str = timestamp_int != 0 ? this.format_time_or_date(timestamp_int) : "";
+    var timestamp_span = $("<span>")
+        .addClass("is-size-7 has-text-grey")
+        .css("white-space", "nowrap") // CSS needed here to prevent wrapping
+        .text(timestamp_str);
+
+    header_div.append(title_container).append(timestamp_span);
+
+    var text_div = $("<div>");
     if (subject === "Manager compilation failed") {
-        text_div.empty().append(
-            $('<pre>').text(text).css({ 'white-space': 'pre-wrap', 'margin': 0 })
+        text_div.addClass("content is-small").append(
+            $('<pre>').text(text).css({ 'margin': 0 })
         );
-    } else {
+    } else if (text) {
         text_div.text(text);
     }
-    var inner =
-        $('<div>').addClass("notification").addClass("notification_type_" + type)
-            .append(close_div)
-            .append($('<div>').addClass("notification_msg")
-                    .append(timestamp_div)
-                    .append(subject_div.append($("<span>").text(subject)))
-                    .append(text_div)
-                   );
+
+    var inner = $('<div>')
+        .addClass("notification is-light " + colorClass + " notification_type_" + type)
+        .append(close_btn)
+        .append(header_div)
+        .append(text_div);
     outer.append(inner);
 
-    // Trigger a desktop notification as well (but only if it's needed)
     if (type !== "notification") {
         this.desktop_notification(type, timestamp, subject, text);
     }
@@ -403,7 +404,7 @@ CMS.AWSUtils.prototype.close_notification = function(item) {
                || bubble.className.indexOf("notification_type_message") != -1) {
         this.update_unread_counts(0, -1);
     }
-    bubble.parentNode.removeChild(item.parentNode);
+    bubble.parentNode.removeChild(bubble);
 };
 
 
@@ -1096,10 +1097,10 @@ CMS.AWSUtils.updateScoreRangeFromSubtasks = function(formOrSolId, options) {
     var minSum = 0;
     var maxSum = 0;
     minInputs.forEach(function(input) {
-        minSum += parseFloat(input.value) || 0;
+        minSum += Number.parseFloat(input.value) || 0;
     });
     maxInputs.forEach(function(input) {
-        maxSum += parseFloat(input.value) || 0;
+        maxSum += Number.parseFloat(input.value) || 0;
     });
 
     if (scoreMinInput) scoreMinInput.value = minSum.toFixed(2);
@@ -1147,7 +1148,7 @@ CMS.AWSUtils.initModelSolutionSubtasks = function(options) {
     // Full score button handler
     document.querySelectorAll('.btn-full-score').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var maxScore = parseFloat(this.dataset.maxScore);
+            var maxScore = Number.parseFloat(this.dataset.maxScore);
             var minInput, maxInput, formOrSolId;
 
             if (multiSolution) {
@@ -1244,6 +1245,393 @@ CMS.AWSUtils.initModelSolutionSubtasks = function(options) {
         });
     });
 };
+
+
+/**
+ * ModelSolutionModal - shared modal logic for add/edit model solutions.
+ */
+var ModelSolutionModal = (function() {
+    var _advancedOpen = {};
+
+    function _parse(val, fallback) {
+        var v = Number.parseFloat(val);
+        return Number.isNaN(v) ? (fallback || 0) : v;
+    }
+
+    function _clamp(val, lo, hi) {
+        return Math.min(Math.max(val, lo), hi);
+    }
+
+    function _getUI(dsId) {
+        var p = 'ms-' + dsId;
+        return {
+            form: document.getElementById('ms-form-' + dsId),
+            title: document.getElementById('modal-ms-' + dsId + '-title'),
+            submit: document.getElementById(p + '-submit'),
+            fileSection: document.getElementById(p + '-file-section'),
+            nameInput: document.getElementById(p + '-name'),
+            descInput: document.getElementById(p + '-description'),
+            globalPct: document.getElementById(p + '-global-pct'),
+            cards: document.querySelectorAll('#' + p + '-cards .ms-card-subtask'),
+            advSection: document.getElementById(p + '-advanced'),
+            advArrow: document.getElementById(p + '-adv-arrow'),
+            advLabel: document.getElementById(p + '-adv-label'),
+            calcCheckbox: document.getElementById(p + '-calc-total'),
+            totalDisplay: document.getElementById(p + '-total'),
+            scoreMin: document.getElementById(p + '-score-min'),
+            scoreMax: document.getElementById(p + '-score-max'),
+            scoreMinSimple: document.getElementById(p + '-score-min-simple'),
+            scoreMaxSimple: document.getElementById(p + '-score-max-simple'),
+            advTotalPct: document.getElementById(p + '-adv-total-pct'),
+            advTotalMin: document.getElementById(p + '-adv-total-min'),
+            advTotalMax: document.getElementById(p + '-adv-total-max'),
+            stHidden: function (idx) {
+                return {
+                    min: document.getElementById(p + '-st-' + idx + '-min'),
+                    max: document.getElementById(p + '-st-' + idx + '-max')
+                };
+            },
+            advRow: function (idx) {
+                var sel = '[data-dataset="' + dsId + '"][data-idx="' + idx + '"]';
+                return {
+                    pct: document.querySelector('.ms-adv-pct' + sel),
+                    minInp: document.querySelector('.ms-adv-min-input' + sel),
+                    maxInp: document.querySelector('.ms-adv-max-input' + sel)
+                };
+            }
+        };
+    }
+
+    function _setCardState(card, minScore, maxScore, fullScore) {
+        card.classList.remove('selected', 'partial');
+        if (minScore >= fullScore && fullScore > 0) {
+            card.classList.add('selected');
+        } else if (maxScore > 0) {
+            card.classList.add('partial');
+        }
+    }
+
+    var _ERR_COLOR = 'var(--tp-danger, #dc2626)';
+
+    function _flagInput(inp, errMsg) {
+        if (!inp) return;
+        inp.style.borderColor = errMsg ? _ERR_COLOR : '';
+        inp.setCustomValidity(errMsg || '');
+    }
+
+    function _validateAndClampPercentage(input, allowEmpty) {
+        if (allowEmpty && (input.value === '' || input.value === null)) {
+            return '';
+        }
+        var rawPct = _parse(input.value);
+        var pct = _clamp(rawPct, 0, 100);
+        input.value = pct;
+        return pct;
+    }
+
+    function _validateRow(pctInp, minInp, maxInp) {
+        if (pctInp) _validateAndClampPercentage(pctInp, true);
+        if (minInp) _flagInput(minInp, _parse(minInp.value) < 0 ? 'Value must be non-negative' : '');
+        if (maxInp) _flagInput(maxInp, _parse(maxInp.value) < 0 ? 'Value must be non-negative' : '');
+        if (minInp && maxInp && !minInp.validationMessage && !maxInp.validationMessage) {
+            var bad = _parse(minInp.value) > _parse(maxInp.value) ? 'Min must be ≤ Max' : '';
+            _flagInput(minInp, bad);
+            _flagInput(maxInp, bad);
+        }
+    }
+
+    function _updateSubtask(ui, dsId, idx, source) {
+        var card = document.querySelector('#ms-' + dsId + '-cards .ms-card-subtask[data-idx="' + idx + '"]');
+        if (!card) return;
+        var maxScore = _parse(card.dataset.max);
+        var row = ui.advRow(idx);
+        var hidden = ui.stHidden(idx);
+        var minVal, maxVal, score;
+
+        if (source === 'card') {
+            var isActive = card.classList.contains('selected') || card.classList.contains('partial');
+            var gPct = _clamp(_parse(ui.globalPct ? ui.globalPct.value : 100, 100), 0, 100);
+            score = isActive ? maxScore * gPct / 100 : 0;
+            minVal = maxVal = score;
+            if (row.pct) row.pct.value = isActive ? gPct : 0;
+            if (row.minInp) row.minInp.value = score.toFixed(2);
+            if (row.maxInp) row.maxInp.value = score.toFixed(2);
+        } else if (source === 'pct') {
+            var rowPct = _clamp(_parse(row.pct ? row.pct.value : 0), 0, 100);
+            score = maxScore * rowPct / 100;
+            minVal = maxVal = score;
+            if (row.minInp) row.minInp.value = score.toFixed(2);
+            if (row.maxInp) row.maxInp.value = score.toFixed(2);
+        } else {
+            minVal = _parse(row.minInp ? row.minInp.value : 0);
+            maxVal = _parse(row.maxInp ? row.maxInp.value : 0);
+            if (row.pct) {
+                // Show percentage when min and max are the same, hide when they differ
+                if (Math.abs(minVal - maxVal) < 0.001 && maxScore > 0) {
+                    row.pct.value = Math.round((minVal / maxScore) * 100);
+                } else {
+                    row.pct.value = '';
+                }
+            }
+        }
+
+        if (hidden.min) hidden.min.value = minVal;
+        if (hidden.max) hidden.max.value = maxVal;
+        _setCardState(card, minVal, maxVal, maxScore);
+        _validateRow(row.pct, row.minInp, row.maxInp);
+    }
+
+    function _updateTotals(dsId) {
+        var ui = _getUI(dsId);
+        var calcAuto = ui.calcCheckbox && ui.calcCheckbox.checked;
+
+        [ui.advTotalPct, ui.advTotalMin, ui.advTotalMax].forEach(function (el) {
+            if (el) el.readOnly = calcAuto;
+        });
+
+        if (calcAuto) {
+            var totalMin = 0, totalMax = 0;
+            ui.cards.forEach(function (card) {
+                var h = ui.stHidden(card.dataset.idx);
+                totalMin += _parse(h.min ? h.min.value : 0);
+                totalMax += _parse(h.max ? h.max.value : 0);
+            });
+
+            if (ui.advTotalMin) ui.advTotalMin.value = totalMin.toFixed(2);
+            if (ui.advTotalMax) ui.advTotalMax.value = totalMax.toFixed(2);
+
+            var el = ui.advTotalMax || ui.advTotalMin;
+            var totalScore = el ? _parse(el.dataset.totalScore) : 0;
+            if (ui.advTotalPct && totalScore > 0) {
+                // Show percentage only when min and max are the same, hide when they differ
+                if (Math.abs(totalMin - totalMax) < 0.001) {
+                    ui.advTotalPct.value = Math.round((totalMax / totalScore) * 100);
+                } else {
+                    ui.advTotalPct.value = '';
+                }
+            }
+
+            if (ui.scoreMin) ui.scoreMin.value = totalMin;
+            if (ui.scoreMax) ui.scoreMax.value = totalMax;
+            if (ui.totalDisplay) ui.totalDisplay.textContent = Math.round(totalMax);
+            _flagInput(ui.advTotalMin, '');
+            _flagInput(ui.advTotalMax, '');
+            _flagInput(ui.advTotalPct, '');
+        } else {
+            var manMin = _parse(ui.advTotalMin ? ui.advTotalMin.value : 0);
+            var manMax = _parse(ui.advTotalMax ? ui.advTotalMax.value : 0);
+            if (ui.scoreMin) ui.scoreMin.value = manMin;
+            if (ui.scoreMax) ui.scoreMax.value = manMax;
+            if (ui.totalDisplay) ui.totalDisplay.textContent = Math.round(manMax);
+            _validateRow(ui.advTotalPct, ui.advTotalMin, ui.advTotalMax);
+        }
+    }
+
+    function _recalcAllFromCards(dsId) {
+        var ui = _getUI(dsId);
+        ui.cards.forEach(function (card) {
+            _updateSubtask(ui, dsId, card.dataset.idx, 'card');
+        });
+        _updateTotals(dsId);
+    }
+
+    function _recalcAllFromPct(dsId) {
+        var ui = _getUI(dsId);
+        ui.cards.forEach(function (card) {
+            _updateSubtask(ui, dsId, card.dataset.idx, 'pct');
+        });
+        _updateTotals(dsId);
+    }
+
+    function _recalcAllFromValues(dsId) {
+        var ui = _getUI(dsId);
+        ui.cards.forEach(function (card) {
+            _updateSubtask(ui, dsId, card.dataset.idx, 'val');
+        });
+        _updateTotals(dsId);
+    }
+
+    function _resetModal(dsId) {
+        var ui = _getUI(dsId);
+        if (!ui.form) return;
+        ui.form.reset();
+        var modeInput = ui.form.querySelector('input[name="_ms_mode"]');
+        if (modeInput) modeInput.value = 'add';
+        if (ui.title) ui.title.textContent = 'Add Model Solution';
+        if (ui.submit) ui.submit.textContent = 'Add Model Solution';
+        if (ui.fileSection) ui.fileSection.style.display = '';
+        if (ui.nameInput) { ui.nameInput.value = ''; ui.nameInput.readOnly = false; }
+        if (ui.descInput) ui.descInput.value = '';
+
+        ui.cards.forEach(function (c) { c.classList.remove('partial'); c.classList.add('selected'); });
+        if (ui.globalPct) ui.globalPct.value = 100;
+
+        var advPcts = document.querySelectorAll('.ms-adv-pct[data-dataset="' + dsId + '"]');
+        advPcts.forEach(function (inp) { inp.value = 100; });
+
+        if (ui.advSection) ui.advSection.style.display = 'none';
+        _advancedOpen[dsId] = false;
+        if (ui.advArrow) ui.advArrow.style.transform = '';
+        if (ui.advLabel) ui.advLabel.textContent = 'Show Advanced Scoring';
+        if (ui.calcCheckbox) ui.calcCheckbox.checked = true;
+
+        _recalcAllFromCards(dsId);
+    }
+
+    return {
+        openAdd: function(dsId, addUrl) {
+            _resetModal(dsId);
+            var ui = _getUI(dsId);
+            if (ui.form && addUrl) ui.form.action = addUrl;
+            MicroModal.show('modal-ms-' + dsId);
+        },
+
+        openEdit: function(dsId, editUrl, name, description, scoreMin, scoreMax, subtaskScores) {
+            _resetModal(dsId);
+            var ui = _getUI(dsId);
+            if (!ui.form) return;
+
+            ui.form.action = editUrl;
+            var modeInput = ui.form.querySelector('input[name="_ms_mode"]');
+            if (modeInput) modeInput.value = 'edit';
+            if (ui.title) ui.title.textContent = 'Edit Model Solution';
+            if (ui.submit) ui.submit.textContent = 'Save Changes';
+            if (ui.fileSection) ui.fileSection.style.display = 'none';
+            if (ui.nameInput) ui.nameInput.value = name || '';
+            if (ui.descInput) ui.descInput.value = description || '';
+
+            if (subtaskScores) {
+                var hasPartial = false;
+                ui.cards.forEach(function (card) {
+                    var idx = card.dataset.idx;
+                    var maxScore = _parse(card.dataset.max);
+                    var stData = subtaskScores[idx] || subtaskScores[String(idx)];
+                    var row = ui.advRow(idx);
+
+                    card.classList.remove('selected', 'partial');
+                    if (row.pct) row.pct.value = 0;
+
+                    if (stData) {
+                        var stMin = _parse(stData.min);
+                        var stMax = _parse(stData.max);
+                        if (stMax > 0) {
+                            card.classList.add('selected');
+                            if (Math.abs(stMin - stMax) >= 0.001) {
+                                hasPartial = true;
+                                if (row.pct) row.pct.value = '';
+                            } else if (maxScore > 0) {
+                                var pct = Math.round((stMax / maxScore) * 100);
+                                if (pct !== 100 && pct !== 0) hasPartial = true;
+                                if (row.pct) row.pct.value = pct;
+                            }
+                        }
+                        if (row.minInp) row.minInp.value = stMin.toFixed(2);
+                        if (row.maxInp) row.maxInp.value = stMax.toFixed(2);
+                    } else {
+                        if (row.minInp) row.minInp.value = "0.00";
+                        if (row.maxInp) row.maxInp.value = "0.00";
+                    }
+                });
+
+                if (hasPartial) {
+                    ModelSolutionModal.toggleAdvanced(dsId);
+                }
+                _recalcAllFromValues(dsId);
+            } else {
+                ui.cards.forEach(function (c) { c.classList.remove('selected', 'partial'); });
+                if (ui.calcCheckbox) ui.calcCheckbox.checked = false;
+                var sm = _parse(scoreMin, 0);
+                var sx = _parse(scoreMax, 0);
+                if (ui.advTotalMin) ui.advTotalMin.value = sm.toFixed(2);
+                if (ui.advTotalMax) ui.advTotalMax.value = sx.toFixed(2);
+                if (ui.advTotalPct) ui.advTotalPct.value = '';
+                _recalcAllFromCards(dsId);
+                if (ui.scoreMinSimple) ui.scoreMinSimple.value = sm;
+                if (ui.scoreMaxSimple) ui.scoreMaxSimple.value = _parse(scoreMax, 100);
+            }
+
+            MicroModal.show('modal-ms-' + dsId);
+        },
+
+        toggleCard: function(cardEl) {
+            var dsId = cardEl.closest('.ms-expected-results').id.replace('ms-', '').replace('-expected', '');
+            if (_advancedOpen[dsId]) return;
+            var wasActive = cardEl.classList.contains('selected') || cardEl.classList.contains('partial');
+            cardEl.classList.remove('selected', 'partial');
+            if (!wasActive) cardEl.classList.add('selected');
+            _recalcAllFromCards(dsId);
+        },
+
+        globalPctChanged: function (input) {
+            _validateAndClampPercentage(input);
+            _recalcAllFromCards(input.dataset.dataset);
+        },
+
+        toggleAdvanced: function(dsId) {
+            var ui = _getUI(dsId);
+            if (!ui.advSection) return;
+
+            _advancedOpen[dsId] = !_advancedOpen[dsId];
+            if (_advancedOpen[dsId]) {
+                ui.advSection.style.display = '';
+                if (ui.advArrow) ui.advArrow.style.transform = 'rotate(180deg)';
+                if (ui.advLabel) ui.advLabel.textContent = 'Hide Advanced Scoring';
+            } else {
+                ui.advSection.style.display = 'none';
+                if (ui.advArrow) ui.advArrow.style.transform = '';
+                if (ui.advLabel) ui.advLabel.textContent = 'Show Advanced Scoring';
+                _recalcAllFromCards(dsId);
+            }
+        },
+
+        pctChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var ui = _getUI(dsId);
+            _updateSubtask(ui, dsId, input.dataset.idx, 'pct');
+            _updateTotals(dsId);
+        },
+
+        minMaxChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var ui = _getUI(dsId);
+            _updateSubtask(ui, dsId, input.dataset.idx, 'val');
+            _updateTotals(dsId);
+        },
+
+        totalPctChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var ui = _getUI(dsId);
+            var totalScore = _parse(input.dataset.totalScore);
+            var pct = _validateAndClampPercentage(input);
+
+            var score = totalScore * pct / 100;
+
+            if (ui.advTotalMin) ui.advTotalMin.value = score.toFixed(2);
+            if (ui.advTotalMax) ui.advTotalMax.value = score.toFixed(2);
+            if (ui.scoreMin) ui.scoreMin.value = score;
+            if (ui.scoreMax) ui.scoreMax.value = score;
+            if (ui.totalDisplay) ui.totalDisplay.textContent = Math.round(score);
+        },
+
+        totalMinMaxChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var ui = _getUI(dsId);
+            if (ui.advTotalPct) ui.advTotalPct.value = '';
+
+            var totalMin = _parse(ui.advTotalMin ? ui.advTotalMin.value : 0);
+            var totalMax = _parse(ui.advTotalMax ? ui.advTotalMax.value : 0);
+
+            if (ui.scoreMin) ui.scoreMin.value = totalMin;
+            if (ui.scoreMax) ui.scoreMax.value = totalMax;
+            if (ui.totalDisplay) ui.totalDisplay.textContent = Math.round(totalMax);
+            _validateRow(ui.advTotalPct, ui.advTotalMin, ui.advTotalMax);
+        },
+
+        calcFromSubtasksChanged: function(checkbox) {
+            _updateTotals(checkbox.dataset.dataset);
+        }
+    };
+})();
 
 
 // Form utilities (initDateTimeValidation, initRemovePage, initReadOnlyTagify, initTagify)

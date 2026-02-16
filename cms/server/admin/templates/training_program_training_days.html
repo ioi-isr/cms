@@ -131,28 +131,16 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             </div>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-            {% if admin.permission_all %}
             <button type="button" onclick="MicroModal.show('modal-import-contest')"
-               class="btn-filled-secondary">
-                <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
-                Import Contest
+              class="button is-medium" {% if not admin.permission_all %}disabled{% endif %}>
+                <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
+                <span>Import Contest</span>
             </button>
             <button type="button" onclick="MicroModal.show('modal-add-training-day')"
-               class="btn-filled-primary"
-               style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: none; cursor: pointer;">
-                <svg class="icon" width="18" height="18"><use href="#icon-plus"/></svg>
-                Add Training Day
+              class="button is-medium is-primary has-text-white" {% if not admin.permission_all %}disabled{% endif %}>
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Training Day</span>
             </button>
-            {% else %}
-            <button type="button" class="btn-filled-secondary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; opacity: 0.5; cursor: not-allowed;" disabled aria-disabled="true">
-                <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
-                Import Contest
-            </button>
-            <button type="button" class="btn-filled-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; opacity: 0.5; cursor: not-allowed;" disabled aria-disabled="true">
-                <svg class="icon" width="18" height="18"><use href="#icon-plus"/></svg>
-                Add Training Day
-            </button>
-            {% endif %}
         </div>
     </div>
 
@@ -193,7 +181,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <!-- Drag handle -->
                         <td class="grip-cell">
                             <div class="grip-handle" title="Drag to reorder">
-                                <svg class="icon" width="16" height="16" style="fill: currentColor; stroke: none;"><use href="#icon-grip"/></svg>
+                                <svg class="icon is-small" style="fill: currentColor; stroke: none;"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
 
@@ -253,7 +241,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                    {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
                                    onclick="MicroModal.show('modal-archive-td-{{ td.id }}')"
                                    title="Archive training day">
-                                    <svg class="icon" width="18" height="18"><use href="#icon-archive-down"/></svg>
+                                    <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
                                 </button>
                                 <!-- Remove button -->
                                 <button type="button" class="btn-icon-only"
@@ -265,7 +253,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                    data-task-count="{{ td.tasks|length }}"
                                    data-is-archived="false"
                                    title="Remove training day">
-                                    <svg class="icon" width="18" height="18"><use href="#icon-trash"/></svg>
+                                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                 </button>
                             </div>
                         </td>
@@ -355,7 +343,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                             onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
                                             aria-label="Show histogram for {{ task_info.get('name', 'Task ' ~ task_id_str) }}">
                                         {{ task_info.get('name', 'Task ' ~ task_id_str) }}
-                                        <span class="histogram-icon" aria-hidden="true"><svg class="icon" width="16" height="16"><use href="#icon-histogram"/></svg></span>
+                                        <span class="histogram-icon" aria-hidden="true"><svg class="icon is-small"><use href="#icon-histogram"/></svg></span>
                                     </button>
                                 {% endfor %}
                             {% else %}
@@ -370,7 +358,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                             <button type="button" class="btn-icon-only" title="Configure scoreboard sharing"
                                     onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
                                     {% if not admin.permission_all %}disabled{% endif %}>
-                                <svg class="icon" width="16" height="16"><use href="#icon-share"/></svg>
+                                <svg class="icon is-small"><use href="#icon-share"/></svg>
                             </button>
                             {% if td.scoreboard_sharing %}
                             <span class="source-badge badge-shared" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">

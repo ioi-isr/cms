@@ -1,4 +1,7 @@
 {% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+{% import "fragments/model_solution_fields.html" as ms_fields with context %}
+{% import "fragments/dataset_form_fields.html" as ds_fields with context %}
+{% from "macro/bulma_file_input.html" import bulma_file_input, form_field %}
 
 {% extends "base.html" %}
 
@@ -47,7 +50,7 @@ function updateRealPrecOptions(dataset_id) {
     var evalSelect = table.find("select[name$='_output_eval']");
     if (evalSelect.length == 0) return;
     var val = evalSelect.val();
-    var row = table.find("tr.param_row[data-param-short='realprec_exp']");
+    var row = table.find(".param_row[data-param-short='realprec_exp']");
     if (val === 'realprecision') {
       row.show();
     } else {
@@ -84,6 +87,95 @@ $(document).ready(function() {
       return;
     }
   });
+
+  var tabStorageKey = 'task_tabs_{{ task.id }}';
+
+  function saveTabState() {
+    var mainTab = $('.task-page-tab.active').data('tab') || 'task-info';
+    var dsBtn = $('.dataset-tab-btn.active');
+    var dsId = dsBtn.length ? String(dsBtn.data('dataset-id')) : '';
+    var subtab = '';
+    if (dsId) {
+      var activeSubtab = $('#dataset-panel-' + dsId).find('.dataset-subtab-btn.active');
+      if (activeSubtab.length) subtab = activeSubtab.data('subtab') || '';
+    }
+    try {
+      localStorage.setItem(tabStorageKey, JSON.stringify({t: mainTab, d: dsId, s: subtab}));
+    } catch(e) {}
+  }
+
+  function restoreTabState() {
+    try {
+      var raw = localStorage.getItem(tabStorageKey);
+      if (!raw) return;
+      var state = JSON.parse(raw);
+      var mainTab = state.t;
+      var dsId = state.d;
+      var subtab = state.s;
+    } catch(e) { return; }
+    if (mainTab) {
+      var tab = $('.task-page-tab[data-tab="' + mainTab + '"]');
+      if (tab.length) {
+        $('.task-page-tab').removeClass('active');
+        tab.addClass('active');
+        $('.task-page-tab-content').removeClass('active');
+        $('#tab-' + mainTab).addClass('active');
+      }
+    }
+    if (dsId) {
+      var dsBtn = $('.dataset-tab-btn[data-dataset-id="' + dsId + '"]');
+      if (dsBtn.length) {
+        $('.dataset-tab-btn').removeClass('active');
+        dsBtn.addClass('active');
+        $('.dataset-panel').removeClass('active');
+        $('#dataset-panel-' + dsId).addClass('active');
+      }
+    }
+    if (subtab && dsId) {
+      var panel = $('#dataset-panel-' + dsId);
+      var stBtn = panel.find('.dataset-subtab-btn[data-subtab="' + subtab + '"]');
+      if (stBtn.length) {
+        panel.find('.dataset-subtab-btn').removeClass('active');
+        stBtn.addClass('active');
+        panel.find('.dataset-subtab-content').removeClass('active');
+        panel.find('#ds-' + subtab + '-' + dsId).addClass('active');
+      }
+    }
+  }
+
+  // Main tab switching
+  $('.task-page-tab').click(function() {
+    var tabId = $(this).data('tab');
+    $('.task-page-tab').removeClass('active');
+    $(this).addClass('active');
+    $('.task-page-tab-content').removeClass('active');
+    $('#tab-' + tabId).addClass('active');
+    saveTabState();
+  });
+
+  // Dataset tab switching
+  $('.dataset-tab-btn').click(function() {
+    var datasetId = $(this).data('dataset-id');
+    $('.dataset-tab-btn').removeClass('active');
+    $(this).addClass('active');
+    $('.dataset-panel').removeClass('active');
+    $('#dataset-panel-' + datasetId).addClass('active');
+    saveTabState();
+  });
+
+  // Dataset sub-tab switching
+  $('.dataset-subtab-btn').click(function() {
+    var subtab = $(this).data('subtab');
+    var datasetId = $(this).data('dataset-id');
+    var panel = $('#dataset-panel-' + datasetId);
+    panel.find('.dataset-subtab-btn').removeClass('active');
+    $(this).addClass('active');
+    panel.find('.dataset-subtab-content').removeClass('active');
+    panel.find('#ds-' + subtab + '-' + datasetId).addClass('active');
+    saveTabState();
+  });
+
+  restoreTabState();
 });
 
 window.toggleMultipleDeleteMode = function(dataset_id) {
@@ -195,936 +287,1967 @@ window.filterTestcases = function(dataset_id) {
   window.updateMultiDeleteMaster(dataset_id);
 };
 
+function closeAllDatasetMenus() {
+  document.querySelectorAll('.dataset-tab-wrapper .tp-menu-dropdown.show').forEach(function(d) {
+    d.classList.remove('show');
+  });
+  document.querySelectorAll('.dataset-tab-wrapper .tp-menu-btn[aria-expanded="true"]').forEach(function(btn) {
+    btn.setAttribute('aria-expanded', 'false');
+  });
+}
+
+window.toggleDatasetMenu = function(btn) {
+  var dropdown = btn.nextElementSibling;
+  var isOpen = dropdown.classList.contains('show');
+  closeAllDatasetMenus();
+  if (!isOpen) {
+    dropdown.classList.add('show');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+}
+
+window.closeAllDatasetMenus = closeAllDatasetMenus;
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.dataset-tab-wrapper .tp-card-menu')) {
+    window.closeAllDatasetMenus();
+  }
+});
+
 {% endblock js_init %}
 
 {% block core %}
 
-<div class="core_title">
-  <h1>{{ task.title }} ({{ task.name }})</h1>
-</div>
+{% set allowed_langs = task.get_allowed_languages() or [] %}
+{% set language_required = task.submission_format|any("endswith", ".%l") %}
+{% set allow_partial = task.submission_format|length > 1 and not language_required %}
 
-<h2 id="title_submissions" class="toggling_on">Submissions</h2>
-<div id="submissions">
-
-  {% if submissions|length == 0 %}
-  <p>No submissions for this task yet.</p>
-  {% else %}
-    <a href="{{ url("dataset", task.active_dataset_id) }}">
-      {% if submissions|length == 1 %}
-      1 submission
-      {% else %}
-      {{ submissions|length }} submissions
-      {% endif %}
-    </a>
-  {% endif %}
-  <div class="hr"></div>
-</div>
-
-<!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
-<form enctype="multipart/form-data" action="{{ url("task", task.id) }}" method="POST" style="display:inline;">
-  {{ xsrf_form_html|safe }}
-  <h2 id="title_task_configuration" class="toggling_on">Task configuration</h2>
-  <div id="task_configuration">
-    <table>
-      <tr><td colspan=2><h2>Task information</h2></td></tr>
-      <tr>
-        <td>
-          <span class="info" title="A short name for the task, preferably using only letters, numbers and underscores."></span>
-          Name
-        </td>
-        <td><input type="text" name="name" value="{{ task.name }}"/></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The title of the task as seen by the contestants."></span>
-          Title
-        </td>
-        <td><input type="text" name="title" value="{{ task.title }}"/></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The index of the task within the contest, if the task is associated with a contest."></span>
-          Position
-        </td>
-        <td>{{ task.num }}</td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants."></span>
-          Statements
-{% if admin.permission_all %}
-          [<a href="{{ url("task", task.id, "statements", "add") }}">add</a>]
-{% endif %}
-        </td>
-        <td>
-          {% if task.statements|length == 0 %}
-          No statements uploaded yet
-          {% else %}
-          <table>
-            <tbody>
-            {% for statement in task.statements.values() %}
-              <tr>
-                <td>
-                  <a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}">Statement for language "{{ statement.language }}"</a>
-                  {% if statement.source_digest %}
-                  [<a href="{{ url("file", statement.source_digest, task.name + "_" + statement.language + (statement.source_extension or "_source")) }}">source</a>]
-                  {% endif %}
-                </td>
-                <td>
-                  <label>
-                    <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} />
-                    Primary?
-                  </label>
-                </td>
-                <td><a onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}'); ">Delete</a></td>
-              </tr>
-            {% endfor %}
-            </tbody>
-          </table>
-          {% endif %}
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Attachments for this task. Contestant can view and download attachments from the task page."></span>
-          Attachments
-{% if admin.permission_all %}
-          [<a href="{{ url("task", task.id, "attachments", "add") }}">add</a>]
-{% endif %}
-        </td>
-        <td>
-          {% if task.attachments|length == 0 %}
-            No attachments.
-          {% else %}
-            {% for attachment in task.attachments.values() %}
-              <div class="attachment">
-                <a href="{{ url("file", attachment.digest, attachment.filename) }}">{{ attachment.filename }}</a>
-                - <a onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}'); ">Delete</a>
-              </div>
-            {% endfor %}
-          {% endif %}
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="A comma-separated list with the names of the files that need to be submitted (with the language extensions changed to %l).
-                                    The task type dictates the submission format. Consult the task type documentation to know the requirements."></span>
-          Submission format
-        </td>
-        <td>
-          <input type="text" name="submission_format" value="{{ task.submission_format|join(", ") }}"/>
-        </td>
-        {% if task.active_dataset.task_type == "OutputOnly" %}
-        <td>
-          <a onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');">Default</a>
-        </td>
-        {% endif %}
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Programming languages that contestants can use to solve this task.
-                                    If none are selected, all contest languages are allowed.
-                                    Otherwise, only the selected languages are allowed."></span>
-          Allowed programming languages
-        </td>
-        <td class="wrapping-options">
-          {% for lang in LANGUAGES %}
-            <label><input type="checkbox" name="allowed_languages" value="{{ lang.name }}" {{ "checked" if task.allowed_languages is not none and lang.name in task.allowed_languages else "" }}>{{ lang.name }}</label>
-          {% endfor %}
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="With 'restricted' contestants only see limited technical information about each testcase; with 'full' they see more details, but malicious contestants might use this data to get some information about the test data."></span>
-          Feedback level
-        </td>
-        <td>
-          <select name="feedback_level">
-            <option value={{ FEEDBACK_LEVEL_OI_RESTRICTED }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_OI_RESTRICTED else "" }}>OI Restricted</option>
-            <option value={{ FEEDBACK_LEVEL_RESTRICTED }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_RESTRICTED else "" }}>Restricted</option>
-            <option value={{ FEEDBACK_LEVEL_FULL }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_FULL else "" }}>Full</option>
-          </select>
-        </td>
-      </tr>
-      <tr><td colspan=2><h2>Tokens parameters (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Configuring%20a%20contest.html#feedback-to-contestants" target="_blank">documentation</a>)</h2></td></tr>
-      <tr>
-        <td>
-          <span class="info" title="Select 'disabled' to remove tokens completely for this task, 'infinite' for allowing any number of tokens for this task, or 'finite' to specify the amount with the following parameters.
-                                    If you prefer to control tokens at the task level, select 'infinite' here."></span>
-          Token mode
-        </td>
-        <td>
-          <select name="token_mode">
-            <option value="{{ TOKEN_MODE_DISABLED }}" {{ "selected" if task.token_mode == TOKEN_MODE_DISABLED else "" }}>Disabled</option>
-            <option value="{{ TOKEN_MODE_FINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_FINITE else "" }}>Finite</option>
-            <option value="{{ TOKEN_MODE_INFINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_INFINITE else "" }}>Infinite</option>
-          </select>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The maximum number of tokens a contestant can use in this task.
-                                    It is used only if tokens are finite."></span>
-          Maximum number of tokens
-        </td>
-        <td><input type="text" name="token_max_number" value="{{ task.token_max_number if task.token_max_number is not none else "" }}" /></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The minimum amount of time (in seconds) that a contestant needs to wait for this task after using a token before being able to use another.
-                                    It is used only if tokens are finite."></span>
-          Minimum interval between tokens
-        </td>
-        <td><input type="text" name="token_min_interval" value="{{ task.token_min_interval.total_seconds()|int }}" /></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The number of tokens that a contestant has available for this task when their contest time starts.
-                                    It is used only if tokens are finite."></span>
-          Initial number of tokens
-        </td>
-        <td><input type="text" name="token_gen_initial" value="{{ task.token_gen_initial }}" /></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The number of tokens that are generated periodically for this task.
-                                    It is used only if tokens are finite."></span>
-          Token generation number
-        </td>
-        <td><input type="text" name="token_gen_number" value="{{ task.token_gen_number }}" /></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The amount of time (in minutes) between two token generation events for this task.
-                                    It is used only if tokens are finite."></span>
-          Token generation period
-        </td>
-        <td><input type="text" name="token_gen_interval" value="{{ task.token_gen_interval.total_seconds()|int // 60 }}" /></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Maximum number of tokens for this task available to a contestant at any given time during the contest.
-                                    It is used only if tokens are finite."></span>
-          Maximum accumulated tokens
-        </td>
-        <td><input type="text" name="token_gen_max" value="{{ task.token_gen_max if task.token_gen_max is not none else "" }}" /></td>
-      </tr>
-
-      <tr><td colspan=2><h2>Limits</h2></td></tr>
-      <tr>
-        <td>
-          <span class="info" title="Maximum number of submissions each contestant can submit for this task, for the whole contest.
-                                    Leave empty for no limits."></span>
-          Maximum number of submissions
-        </td>
-        <td><input type="text" name="max_submission_number" value="{{ task.max_submission_number if task.max_submission_number is not none else "" }}"></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Maximum number of user tests each contestant can submit for this task, for the whole contest.
-                                    Leave empty for no limits."></span>
-          Maximum number of user tests
-        </td>
-        <td><input type="text" name="max_user_test_number" value="{{ task.max_user_test_number if task.max_user_test_number is not none else "" }}"></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The minimum amount of time (in seconds) for this task that a contestant needs to wait after a submission before being able to submit another.
-                                    Leave empty for no limits."></span>
-          Minimum interval between submissions
-        </td>
-        <td><input type="text" name="min_submission_interval" value="{{ task.min_submission_interval.total_seconds()|int if task.min_submission_interval is not none else "" }}"></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="The minimum amount of time (in seconds) for this task that a contestant needs to wait after a user test before being able to send another.
-                                    Leave empty for no limits."></span>
-          Minimum interval between user tests
-        </td>
-        <td><input type="text" name="min_user_test_interval" value="{{ task.min_user_test_interval.total_seconds()|int if task.min_user_test_interval is not none else "" }}"></td>
-      </tr>
-
-      <tr><td colspan=2><h2>Score options</h2></td></tr>
-      <tr>
-        <td>
-          <span class="info" title="The number of decimal places the scores will be rounded to.
-                                    Example: '2' to allow 98.76."></span>
-          Score decimal places
-        </td>
-        <td><input type="text" name="score_precision" value="{{ task.score_precision }}"></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="How the score for the task is computed from the score of each submission."></span>
-          Score mode
-        </td>
-        <td>
-          <select name="score_mode">
-            <option value="{{ SCORE_MODE_MAX_TOKENED_LAST }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX_TOKENED_LAST else "" }}>Use best among tokened and last submissions (IOI 2010-2012)</option>
-            <option value="{{ SCORE_MODE_MAX }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX else "" }}>Use best among all submissions (IOI 2013-2016)</option>
-            <option value="{{ SCORE_MODE_MAX_SUBTASK }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX_SUBTASK else "" }}>Use the sum over each subtask of the best result for that subtask across all submissions (IOI 2017-)</option>
-          </select>
-        </td>
-      </tr>
-    </table>
-    <div class="hr"></div>
-  </div>
-
-<!-- Datasets -->
-
-  <h2 id="title_datasets" class="toggling_on">Datasets</h2>
-  <div id="datasets">
-    <p>
-{% if task.datasets|length == 0 %}
-    No datasets have been created for this task.<br/>
-{% endif %}
-{% if admin.permission_all %}
-    <a href="{{ url("task", task.id, "add_dataset") }}">Create a new dataset</a><br/>
-{% endif %}
-    </p>
-
-{% for dataset in task.datasets|sort(attribute="description") %}
-
-  <h3 id="title_dataset_{{ dataset.id }}" class="toggling_on">Dataset: {{ dataset.description }}{{ dataset|format_dataset_attrs }}</h3>
-  <div id="dataset_{{ dataset.id }}" class="task_dataset">
-
-    <p>
-{% if admin.permission_all %}
-      {% if dataset is sameas (task.active_dataset) %}
-      [Make Live ...]
-      {% else %}
-      <a href="{{ url("dataset", dataset.id, "activate") }}">[Make Live ...]</a>
-      {% endif %}
-      <a href="{{ url("dataset", dataset.id, "clone") }}">[Clone]</a>
-      <a href="{{ url("dataset", dataset.id, "rename") }}">[Rename]</a>
-      {% if dataset is sameas (task.active_dataset) %}
-      [Delete]
-      {% else %}
-      <a href="{{ url("dataset", dataset.id, "delete") }}">[Delete]</a>
-      {% endif %}
-      {% if dataset is not sameas (task.active_dataset) %}
-        <a onclick="CMS.AWSUtils.ajax_post('{{ url("dataset", dataset.id, "autojudge") }}');">[{% if dataset.autojudge %}Disable{% else %}Enable{% endif %} background judging]</a>
-      {% endif %}
-{% endif %}
-      <a href="{{ url("dataset", dataset.id) }}">[View results]</a>
-    </p>
-
-  <!-- Task type and score type settings -->
-
-    <h4 id="title_task_type_{{ dataset.id }}" class="toggling_on">Dataset configuration</h4>
-
-    {% if dataset.task_type not in TASK_TYPES %}
-    <script type="text/javascript">
-      $(document).ready(function() {
-      utils.display_notification("notification",
-          0,
-          "Task type `{{ dataset.task_type }}' not found.",
-          "Please select another task type, " +
-          "or make the original one available and refresh the page " +
-          "without updating the task to avoid losing the parameters.");
-      });
-    </script>
-    {% endif %}
-
-    {% if dataset.score_type not in SCORE_TYPES %}
-    <script type="text/javascript">
-      $(document).ready(function() {
-      utils.display_notification("notification",
-          0,
-          "Score type `{{ dataset.score_type }}' not found.",
-          "Please select another score type, " +
-          "or make the original one available and refresh the page " +
-          "without updating the task to avoid losing the parameters.");
-      });
-    </script>
-    {% endif %}
-
-    <div id="task_type_{{ dataset.id }}" class="task_dataset_params">
-      <table>
-
-        <tr><td colspan=2><h3>Limits</h3></td></tr>
-        <tr>
-          <td>
-            <span class="info" title="Total maximum time for each evaluation, in seconds."></span>
-            Time limit
-          </td>
-          <td><input type="text" name="time_limit_{{ dataset.id }}" value="{{ dataset.time_limit if dataset.time_limit is not none else "" }}"/> second(s)</td>
-        </tr>
-        <tr>
-          <td>
-            <span class="info" title="Total maximum memory usage for each evaluation, in MiB (2^20 bytes)."></span>
-            Memory limit
-          </td>
-          <td><input type="text" name="memory_limit_{{ dataset.id }}" value="{{ dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else "" }}"/> MiB</td>
-        </tr>
-
-        <tr><td colspan=2><h3>Task type settings (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Task%20types.html" target="_blank">documentation</a>)</h3></td></tr>
-        <tr>
-          <td>
-            <span class="info" title="Please see the task type documentation."></span>
-            Task type
-          </td>
-          <td>
-
-            <select name="task_type_{{ dataset.id }}">
-              {% for task_type_name, task_type in TASK_TYPES.items() %}
-              <option value="{{ task_type_name }}" {% if dataset.task_type == task_type_name %}selected{% endif %}>{{ task_type_name }}</option>
-              {% endfor %}
-            </select>
-          {% set parameters = dataset.task_type_parameters %}
-
-          {% for task_type_name, task_type in TASK_TYPES.items() %}
-          <table class="TaskTypeOptions TaskTypeOptions_{{ dataset.id }} bordered" id="TaskType{{ task_type_name }}Options_{{ dataset.id }}" style="display: none;">
-            {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
-              {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
-              {% set parameter_value = parameters[i] if dataset.task_type == task_type_name and parameters is not none and i < parameters|length else none %}
-              <tr class="param_row" data-param-short="{{ param_def.short_name }}">
-                <td>{{ param_def.name }}</td>
-                <td>
-                  {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value)|safe }}
-                </td>
-              </tr>
-            {% endfor %}
-          </table>
-          {% endfor %}
-
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <span class="info" title="Managers for this task. Managers are sources, headers, libraries or binaries used during the evaluation."></span>
-            Managers
-{% if admin.permission_all %}
-            [<a href="{{ url("dataset", dataset.id, "managers", "add") }}">add</a>]
-{% endif %}
-          </td>
-          <td>
-            {% if dataset.managers|length == 0 %}
-              No managers.
+<div class="content-constraint" style="max-width: 1100px;">
+    <div class="page-title">
+        <h1>{{ task.title }} ({{ task.name }})</h1>
+        <div class="page-subtitle">
+            Task Configuration
+            {% if submissions|length > 0 %}
+            &middot; <a href="{{ url("dataset", task.active_dataset_id) }}">{{ submissions|length }} submission{{ "s" if submissions|length != 1 else "" }}</a>
             {% else %}
-              {# Determine if source files for checker/manager exist; if so, hide compiled counterparts #}
-              {% set flags = namespace(checker_src=False, manager_src=False) %}
-              {% for m in dataset.managers.values() %}
-                {% if m.filename.startswith('checker.') %}{% set flags.checker_src = True %}{% endif %}
-                {% if m.filename.startswith('manager.') %}{% set flags.manager_src = True %}{% endif %}
-              {% endfor %}
-              {% for manager in dataset.managers.values() %}
-                {% if (manager.filename == 'checker' and flags.checker_src) or (manager.filename == 'manager' and flags.manager_src) %}
-                  {# hide compiled when source is present #}
-                {% else %}
-                <div class="manager">
-                  <a href="{{ url("file", manager.digest, manager.filename) }}">{{ manager.filename }}</a>
-                  - <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');">Delete</a>
+            &middot; No submissions yet
+            {% endif %}
+        </div>
+    </div>
+
+    <form enctype="multipart/form-data" action="{{ url("task", task.id) }}" method="POST" name="edit_task" style="display:inline;">
+        {{ xsrf_form_html|safe }}
+
+        <!-- Actions Bar (Floating Card) -->
+        <div class="tp-form-actions tp-form-actions-float" style="margin-bottom: 24px; margin-top: 0; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 12px; padding: 16px 24px;">
+            <div class="tp-form-submit-group">
+                 <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>Update Task</button>
+                 <input type="reset" class="tp-btn-secondary" value="Reset Changes">
+            </div>
+            <div class="tp-form-secondary-actions">
+                 <a href="{{ url("task", task.id, "export") }}" class="tp-btn-secondary">
+                     <svg class="icon is-small" style="vertical-align: text-bottom;"><use href="#icon-download"/></svg>
+                     Export Task
+                 </a>
+            </div>
+        </div>
+
+        <!-- Main Tabs -->
+        <div class="task-page-tabs">
+            <button type="button" class="task-page-tab active" data-tab="task-info">Task Information</button>
+            <button type="button" class="task-page-tab" data-tab="limits-scoring">Limits & Scoring</button>
+            <button type="button" class="task-page-tab" data-tab="tokens">Tokens</button>
+        </div>
+
+        <!-- TAB: Task Information -->
+        <div class="task-page-tab-content active" id="tab-task-info">
+            <div class="tp-card">
+                <div class="tp-card-header-modern">
+                    <div class="tp-card-header-icon">
+                        <svg class="icon"><use href="#icon-info"/></svg>
+                    </div>
+                    <h3 class="tp-card-title-modern">Task Information</h3>
+                </div>
+                <div class="tp-card-body">
+                    <div class="tp-form-row">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Name
+                                <span class="tp-form-info" title="A short name for the task, preferably using only letters, numbers and underscores.">?</span>
+                            </label>
+                            <input type="text" name="name" value="{{ task.name }}" class="tp-form-input">
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Title
+                                <span class="tp-form-info" title="The title of the task as seen by the contestants.">?</span>
+                            </label>
+                            <input type="text" name="title" value="{{ task.title }}" class="tp-form-input">
+                        </div>
+                      <div class="tp-form-group">
+                          <label class="tp-form-label">Position</label>
+                          <div style="padding: 10px 0; color: var(--tp-text-secondary);">{{ task.num }}</div>
+                      </div>
+                    </div>
+
+                    <div class="tp-form-group">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <label class="tp-form-label" style="margin-bottom: 0;">
+                                Statements
+                                <span class="tp-form-info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants.">?</span>
+                            </label>
+                            {% if admin.permission_all %}
+                            <button type="button" onclick="MicroModal.show('modal-add-statement');" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                                <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                                Add Statement
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% if task.statements|length == 0 %}
+                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No statements uploaded yet</div>
+                        {% else %}
+                        <div class="statements-table" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
+                            <table class="tp-tasks-table" style="margin: 0;">
+                                <thead>
+                                    <tr>
+                                        <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em;">Language / Source</th>
+                                        <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em; text-align: center;">Primary</th>
+                                        <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em; text-align: center;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for statement in task.statements.values() %}
+                                <tr>
+                                    <td>
+                                        <div class="list-cell-wrapper" style="gap: 10px;">
+                                            <span style="display: inline-block; padding: 2px 8px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 4px; font-size: 0.8rem; font-weight: 600; color: var(--tp-text-secondary);">{{ statement.language }}</span>
+                                            <a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                                <svg class="icon is-small"><use href="#icon-pdf-statement"/></svg>
+                                                {{ task.name }}_{{ statement.language }}.pdf
+                                            </a>
+                                            {% if statement.source_digest %}
+                                            <a href="{{ url("file", statement.source_digest, task.name + "_" + statement.language + (statement.source_extension or "_source")) }}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--tp-text-muted);">
+                                                <svg class="icon is-small"><use href="#icon-doc-statement"/></svg>
+                                                {{ task.name }}_{{ statement.language }}{{ statement.source_extension or "_source" }}
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--tp-primary);" />
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" title="Delete statement">
+                                            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="tp-form-group">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <label class="tp-form-label" style="margin-bottom: 0;">
+                                Attachments
+                                <span class="tp-form-info" title="Attachments for this task. Contestants can view and download attachments from the task page.">?</span>
+                            </label>
+                            {% if admin.permission_all %}
+                            <button type="button" onclick="document.getElementById('attachment_file').click();" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                                <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                                Add File
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% if task.attachments|length == 0 %}
+                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No attachments.</div>
+                        {% else %}
+                        <div class="field is-grouped is-grouped-multiline" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
+                            {% for attachment in task.attachments.values() %}
+                            <div class="control">
+                                <div class="tags has-addons">
+                                    <span class="tag is-link is-light is-medium has-text-black">
+                                        <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
+                                        <a href="{{ url("file", attachment.digest, attachment.filename) }}" style="color: inherit;">{{ attachment.filename }}</a>
+                                    </span>
+                                    <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment"></button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="tp-form-row">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Submission format
+                                <span class="tp-form-info" title="A comma-separated list with the names of the files that need to be submitted (with the language extensions changed to %l). The task type dictates the submission format.">?</span>
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="text" name="submission_format" value="{{ task.submission_format|join(", ") }}" class="tp-form-input"/>
+                                {% if task.active_dataset.task_type == "OutputOnly" %}
+                                <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="tp-btn-secondary" style="white-space: nowrap; padding: 6px 12px; background: none; border: none; cursor: pointer;">Set Default</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Feedback level
+                                <span class="tp-form-info" title="With 'restricted' contestants only see limited technical information about each testcase; with 'full' they see more details.">?</span>
+                            </label>
+                            <select name="feedback_level" class="tp-form-input">
+                                <option value={{ FEEDBACK_LEVEL_OI_RESTRICTED }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_OI_RESTRICTED else "" }}>OI Restricted</option>
+                                <option value={{ FEEDBACK_LEVEL_RESTRICTED }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_RESTRICTED else "" }}>Restricted</option>
+                                <option value={{ FEEDBACK_LEVEL_FULL }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_FULL else "" }}>Full</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <fieldset class="tp-form-group" style="border: none; padding: 0; margin: 0;">
+                        <legend class="tp-form-label">
+                            Allowed programming languages
+                            <span class="tp-form-info" title="Programming languages that contestants can use to solve this task. If none are selected, all contest languages are allowed.">?</span>
+                        </legend>
+                        <div style="padding: 16px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 10px;">
+                            <div class="tp-language-grid">
+                                {% for lang in LANGUAGES %}
+                                <label class="tp-checkbox-card">
+                                    <input type="checkbox" name="allowed_languages" value="{{ lang.name }}" {{ "checked" if task.allowed_languages is not none and lang.name in task.allowed_languages else "" }}>
+                                    <span>{{ lang.name }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Tokens -->
+        <div class="task-page-tab-content" id="tab-tokens">
+            <div class="tp-card">
+                <div class="tp-card-header-modern">
+                    <div class="tp-card-header-icon">
+                        <svg class="icon"><use href="#icon-piggy-bank"/></svg>
+                    </div>
+                    <h3 class="tp-card-title-modern">
+                        Tokens parameters
+                        (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Configuring%20a%20contest.html#feedback-to-contestants" target="_blank">documentation</a>)
+                    </h3>
+                </div>
+                <div class="tp-card-body">
+                    <div class="tp-form-group">
+                        <label class="tp-form-label">
+                            Token mode
+                            <span class="tp-form-info" title="Select 'disabled' to remove tokens completely for this task, 'infinite' for allowing any number, or 'finite' to specify the amount.">?</span>
+                        </label>
+                        <select name="token_mode" class="tp-form-input" style="max-width: 300px;">
+                            <option value="{{ TOKEN_MODE_DISABLED }}" {{ "selected" if task.token_mode == TOKEN_MODE_DISABLED else "" }}>Disabled</option>
+                            <option value="{{ TOKEN_MODE_FINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_FINITE else "" }}>Finite</option>
+                            <option value="{{ TOKEN_MODE_INFINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_INFINITE else "" }}>Infinite</option>
+                        </select>
+                    </div>
+
+                    <div class="tp-form-row">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Maximum number of tokens
+                                <span class="tp-form-info" title="The maximum number of tokens a contestant can use in this task. Used only if tokens are finite.">?</span>
+                            </label>
+                            <input type="text" name="token_max_number" value="{{ task.token_max_number if task.token_max_number is not none else "" }}" class="tp-form-input" />
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Minimum interval between tokens (seconds)
+                                <span class="tp-form-info" title="The minimum amount of time (in seconds) after using a token before being able to use another. Used only if finite.">?</span>
+                            </label>
+                            <input type="text" name="token_min_interval" value="{{ task.token_min_interval.total_seconds()|int }}" class="tp-form-input" />
+                        </div>
+                    </div>
+
+                    <div class="tp-form-row">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Initial number of tokens
+                                <span class="tp-form-info" title="The number of tokens available when the contest starts. Used only if finite.">?</span>
+                            </label>
+                            <input type="text" name="token_gen_initial" value="{{ task.token_gen_initial }}" class="tp-form-input" />
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Token generation number
+                                <span class="tp-form-info" title="The number of tokens generated periodically. Used only if finite.">?</span>
+                            </label>
+                            <input type="text" name="token_gen_number" value="{{ task.token_gen_number }}" class="tp-form-input" />
+                        </div>
+                    </div>
+
+                    <div class="tp-form-row">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Token generation period (minutes)
+                                <span class="tp-form-info" title="The amount of time (in minutes) between two token generation events. Used only if finite.">?</span>
+                            </label>
+                            <input type="text" name="token_gen_interval" value="{{ task.token_gen_interval.total_seconds()|int // 60 }}" class="tp-form-input" />
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Maximum accumulated tokens
+                                <span class="tp-form-info" title="Maximum number of tokens available at any given time. Used only if finite.">?</span>
+                            </label>
+                            <input type="text" name="token_gen_max" value="{{ task.token_gen_max if task.token_gen_max is not none else "" }}" class="tp-form-input" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Limits & Scoring -->
+        <div class="task-page-tab-content" id="tab-limits-scoring">
+            <div class="tp-grid-layout">
+                <div class="tp-card col-span-6">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon"><use href="#icon-sliders"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">Limits</h3>
+                    </div>
+                    <div class="tp-card-body">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Maximum number of submissions
+                                <span class="tp-form-info" title="Maximum number of submissions each contestant can submit for this task. Leave empty for no limits.">?</span>
+                            </label>
+                            <input type="text" name="max_submission_number" value="{{ task.max_submission_number if task.max_submission_number is not none else "" }}" class="tp-form-input">
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Maximum number of user tests
+                                <span class="tp-form-info" title="Maximum number of user tests each contestant can submit. Leave empty for no limits.">?</span>
+                            </label>
+                            <input type="text" name="max_user_test_number" value="{{ task.max_user_test_number if task.max_user_test_number is not none else "" }}" class="tp-form-input">
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Minimum interval between submissions (seconds)
+                                <span class="tp-form-info" title="The minimum amount of time (in seconds) that a contestant needs to wait after a submission. Leave empty for no limits.">?</span>
+                            </label>
+                            <input type="text" name="min_submission_interval" value="{{ task.min_submission_interval.total_seconds()|int if task.min_submission_interval is not none else "" }}" class="tp-form-input">
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Minimum interval between user tests (seconds)
+                                <span class="tp-form-info" title="The minimum amount of time (in seconds) that a contestant needs to wait after a user test. Leave empty for no limits.">?</span>
+                            </label>
+                            <input type="text" name="min_user_test_interval" value="{{ task.min_user_test_interval.total_seconds()|int if task.min_user_test_interval is not none else "" }}" class="tp-form-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tp-card col-span-6">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon"><use href="#icon-trophy"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">Score Options</h3>
+                    </div>
+                    <div class="tp-card-body">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Score decimal places
+                                <span class="tp-form-info" title="The number of decimal places the scores will be rounded to. Example: '2' to allow 98.76.">?</span>
+                            </label>
+                            <input type="text" name="score_precision" value="{{ task.score_precision }}" class="tp-form-input" style="max-width: 100px;">
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">
+                                Score mode
+                                <span class="tp-form-info" title="How the score for the task is computed from the score of each submission.">?</span>
+                            </label>
+                            <select name="score_mode" class="tp-form-input">
+                                <option value="{{ SCORE_MODE_MAX_TOKENED_LAST }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX_TOKENED_LAST else "" }}>Use best among tokened and last submissions (IOI 2010-2012)</option>
+                                <option value="{{ SCORE_MODE_MAX }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX else "" }}>Use best among all submissions (IOI 2013-2016)</option>
+                                <option value="{{ SCORE_MODE_MAX_SUBTASK }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX_SUBTASK else "" }}>Use the sum over each subtask of the best result (IOI 2017-)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DATASETS SECTION -->
+        <div class="tp-section-header" style="margin-top: 32px;">
+            <h2>Datasets</h2>
+        </div>
+
+        {% if task.datasets|length == 0 %}
+        <div style="text-align: center; padding: 40px 24px; background: var(--tp-bg-light); border: 1px solid var(--tp-border-light); border-radius: 12px;">
+            <p style="color: var(--tp-text-muted); margin-bottom: 16px;">No datasets have been created for this task.</p>
+            {% if admin.permission_all %}
+            <a href="javascript:void(0)" class="tp-btn-primary" onclick="MicroModal.show('modal-add-dataset')">Create a new dataset</a>
+            {% endif %}
+        </div>
+        {% else %}
+
+        <!-- Dataset Tabs Bar -->
+        <div class="dataset-tabs-bar">
+            {% for dataset in task.datasets|sort(attribute="description") %}
+            <div class="dataset-tab-wrapper">
+                <button type="button" class="dataset-tab-btn {{ 'active' if loop.first else '' }}" data-dataset-id="{{ dataset.id }}">
+                    {{ dataset.description }}
+                    {% if dataset is sameas (task.active_dataset) %}
+                    <span class="badge badge-teal" style="margin-left: 6px; font-size: 0.7em;">Live</span>
+                    {% elif dataset.autojudge %}
+                    <span class="badge badge-slate" style="margin-left: 6px; font-size: 0.7em;">Autojudge</span>
+                    {% endif %}
+                </button>
+                {% if admin.permission_all %}
+                <div class="tp-card-menu" style="display: inline-flex; margin-left: -4px;">
+                    <button type="button" class="tp-menu-btn" onclick="toggleDatasetMenu(this)"
+                            title="Dataset options" aria-haspopup="menu" aria-expanded="false"
+                            style="padding: 4px;">
+                        <svg class="icon is-small" style="fill: currentColor; stroke: none;"><use href="#icon-more-vertical"/></svg>
+                    </button>
+                    <div class="tp-menu-dropdown">
+                        {% if dataset is not sameas (task.active_dataset) %}
+                        <a href="{{ url("dataset", dataset.id, "activate") }}" class="tp-menu-item">
+                            <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
+                            Make Live
+                        </a>
+                        {% endif %}
+                        <a href="javascript:void(0)" onclick="MicroModal.show('modal-clone-dataset-{{ dataset.id }}')" class="tp-menu-item">
+                            <svg class="icon is-small"><use href="#icon-clipboard-list"/></svg>
+                            Clone
+                        </a>
+                        <button type="button" onclick='AdminModals.renameDataset({{ url("dataset", dataset.id, "rename")|tojson|forceescape }}, {{ dataset.description|tojson|forceescape }});' class="tp-menu-item">
+                            <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                            Rename
+                        </button>
+                        <a href="{{ url("dataset", dataset.id) }}" class="tp-menu-item">
+                            <svg class="icon is-small"><use href="#icon-activity"/></svg>
+                            View results
+                        </a>
+                        {% if dataset is not sameas (task.active_dataset) %}
+                        <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("dataset", dataset.id, "autojudge") }}');" class="tp-menu-item">
+                            <svg class="icon is-small"><use href="#icon-cpu"/></svg>
+                            {% if dataset.autojudge %}Disable{% else %}Enable{% endif %} background judging
+                        </button>
+                        <div class="tp-menu-divider"></div>
+                        <a href="javascript:void(0)" onclick='AdminModals.confirm({title: "Delete Dataset", message: "Are you sure you want to delete the dataset " + {{ dataset.description|tojson|forceescape }} + " and all associated managers, test cases, and submission results?", confirmLabel: "Yes, Delete", onConfirm: function() { document.getElementById("delete-dataset-form-{{ dataset.id }}").submit(); }});' class="tp-menu-item tp-menu-item-danger">
+                            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                            Delete
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
                 {% endif %}
-              {% endfor %}
+            </div>
+            {% endfor %}
+            {% if admin.permission_all %}
+            <a href="javascript:void(0)" class="dataset-tab-add" title="Create new dataset" onclick="MicroModal.show('modal-add-dataset')">+</a>
             {% endif %}
-          </td>
-        </tr>
-
-        <tr><td colspan=2><h3>Score type settings (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Score%20types.html" target="_blank">documentation</a>)</h3></td></tr>
-        <tr>
-          <td>
-            <span class="info" title="Please see the score type documentation."></span>
-            Score Type
-          </td>
-          <td>
-            <select name="score_type_{{ dataset.id }}">
-              {% for score_type_name, score_type in SCORE_TYPES.items() %}
-              <option value="{{ score_type_name }}" {% if dataset.score_type == score_type_name %}selected{% endif %}>{{ score_type_name }}</option>
-              {% endfor %}
-            </select>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <span class="info" title="Please see the score type documentation."></span>
-            Score Parameters
-          </td>
-          <td><textarea name="score_type_parameters_{{ dataset.id }}">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea></td>
-        </tr>
-      </table>
-
-      {% if subtask_info.get(dataset.id) %}
-      {% set ds_ns = namespace(total_not_validated=0,
-                               not_validated_codenames=[],
-                               any_validator_running=false) %}
-      {% for subtask in subtask_info[dataset.id] %}
-        {% set validator = dataset.subtask_validators.get(subtask.idx) %}
-        {% if validator %}
-          {% if validator.id in running_validator_ids %}
-            {% set ds_ns.any_validator_running = true %}
-          {% elif validator.validation_results %}
-            {% set results_codenames = [] %}
-            {% for r in validator.validation_results %}
-              {% set _ = results_codenames.append(r.testcase.codename) %}
-            {% endfor %}
-            {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
-              {% if tc_codename not in results_codenames and tc_codename not in ds_ns.not_validated_codenames %}
-                {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
-              {% endif %}
-            {% endfor %}
-          {% else %}
-            {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
-              {% if tc_codename not in ds_ns.not_validated_codenames %}
-                {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
-              {% endif %}
-            {% endfor %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-      {% set ds_ns.total_not_validated = ds_ns.not_validated_codenames|length %}
-      <h4>Subtask Validators<span class="info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid."></span>
-      </h4>
-      {% if ds_ns.any_validator_running %}
-      <p style="color: #2196F3;"><strong>Validating...</strong> One or more validators are currently running. Refresh the page to see updated results.</p>
-      {% elif ds_ns.total_not_validated > 0 %}
-        <p style="color: orange;"><strong>Warning:</strong> {{ ds_ns.total_not_validated }} testcase(s) have not been validated. Click "rerun validators" to validate them.</p>
-        {% if admin.permission_all %}
-          [<a href="javascript:void(0);" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();">rerun validators</a>]
-        {% endif %}
-      {% endif %}
-      <table class="bordered subtask-validators">
-        <thead>
-          <tr>
-            <th>Subtask</th>
-            <th>Validator</th>
-            <th>Tests</th>
-            <th>Additional Tests Passed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for subtask in subtask_info[dataset.id] %}
-          {% set validator = dataset.subtask_validators.get(subtask.idx) %}
-          {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, subtask_error=0, subtask_not_validated=0, other_passed=0) %}
-          {% set results_by_tc = {} %}
-          {% if validator and validator.validation_results %}
-            {% for r in validator.validation_results %}
-              {% set _ = results_by_tc.update({r.testcase.codename: r}) %}
-            {% endfor %}
-          {% endif %}
-          {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
-            {% set tc_subtasks = testcase_subtasks.get(dataset.id, {}).get(tc_codename, []) %}
-            {% set has_result = results_by_tc.get(tc_codename) %}
-            {% if subtask.idx in tc_subtasks %}
-              {% set ns.subtask_tc_count = ns.subtask_tc_count + 1 %}
-              {% if has_result %}
-                {% if has_result.passed %}
-                  {% set ns.subtask_passed = ns.subtask_passed + 1 %}
-                {% elif has_result.exit_status in ['ok', 'nonzero return', none] %}
-                  {% set ns.subtask_failed = ns.subtask_failed + 1 %}
-                {% else %}
-                  {% set ns.subtask_error = ns.subtask_error + 1 %}
-                {% endif %}
-              {% else %}
-                {% set ns.subtask_not_validated = ns.subtask_not_validated + 1 %}
-              {% endif %}
-            {% else %}
-              {% set ns.other_tc_count = ns.other_tc_count + 1 %}
-              {% if has_result and has_result.passed %}
-                {% set ns.other_passed = ns.other_passed + 1 %}
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-          <tr>
-            <td>{{ subtask.display_name }}</td>
-            <td>
-              {% if admin.permission_all %}
-              {# File input uses form attribute to associate with validator form placed outside the main task form #}
-              <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
-              {% endif %}
-              {% if validator %}
-                <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">{{ validator.filename }}</a>
-                {% if validator.executable_digest is none %}
-                  <span class="validator-status validator-error">(compilation failed)</span>
-                {% endif %}
-                {% if admin.permission_all %}
-                [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">replace</a>]
-                [<a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>]
-                {% endif %}
-              {% else %}
-                <span class="validator-status validator-missing">No validator</span>
-                {% if admin.permission_all %}
-                [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();">add</a>]
-                {% endif %}
-              {% endif %}
-            </td>
-            <td>
-              {{ ns.subtask_tc_count }}
-              {% if validator and validator.id in running_validator_ids %}
-                (<span class="validator-status validator-running">Validating...</span>)
-              {% elif validator and validator.validation_results|length > 0 %}
-                ({% if ns.subtask_failed == 0 and ns.subtask_error == 0 and ns.subtask_not_validated == 0 %}
-                  <span class="validator-status validator-pass">all {{ ns.subtask_passed }} passed</span>
-                {% else %}
-                  {% set has_prev = false %}
-                  {% if ns.subtask_passed > 0 %}<span class="validator-status validator-pass">{{ ns.subtask_passed }} passed</span>{% set has_prev = true %}{% endif %}
-                  {% if ns.subtask_failed > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-fail">{{ ns.subtask_failed }} failed</span>{% set has_prev = true %}{% endif %}
-                  {% if ns.subtask_error > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-error">{{ ns.subtask_error }} error</span>{% set has_prev = true %}{% endif %}
-                  {% if ns.subtask_not_validated > 0 %}{% if has_prev %}, {% endif %}<span class="validator-status validator-unvalidated">{{ ns.subtask_not_validated }} not validated</span>{% endif %}
-                {% endif %})
-              {% elif validator %}
-                (<span class="validator-status validator-unvalidated">not validated</span>)
-              {% endif %}
-              [<a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}">details</a>]
-            </td>
-            <td>
-              {% if validator and validator.validation_results|length > 0 %}
-                {{ ns.other_passed }} / {{ ns.other_tc_count }}
-              {% elif validator %}
-                <em>Not validated</em>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% endif %}
-
-      <div class="hr"></div>
-    </div>
-
-  <!-- Model Solutions for this dataset -->
-
-  <h4 id="title_model_solutions_{{ dataset.id }}" class="toggling_on">Model Solutions<span class="info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly."></span>
-{% if admin.permission_all %}
-    [<a href="{{ url("dataset", dataset.id, "model_solutions", "add") }}">add</a>]
-{% endif %}
-  </h4>
-    <div id="model_solutions_{{ dataset.id }}" class="task_dataset_model_solutions">
-{% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
-      <p>
-        <strong>Reevaluate all model solutions:</strong>
-        <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
-                         'EvaluationService', 0,
-                         'invalidate_model_solutions', {
-                         'dataset_id': {{ dataset.id }},
-                         'level': 'compilation'},
-                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
-                         ); }, {icon: 'question'});"
-                title="Compilation" >C</button>
-        <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
-                         'EvaluationService', 0,
-                         'invalidate_model_solutions', {
-                         'dataset_id': {{ dataset.id }},
-                         'level': 'evaluation'},
-                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
-                         ); }, {icon: 'question'});"
-                title="Evaluation" >E</button>
-        <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
-                         'ScoringService', 0,
-                         'invalidate_model_solutions', {
-                         'dataset_id': {{ dataset.id }}},
-                         function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
-                         ); }, {icon: 'question'});"
-                title="Score" >S</button>
-      </p>
-{% endif %}
-      <table class="bordered" style="text-align:center">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Description</th>
-            <th>Language</th>
-            <th>Expected Score Range</th>
-            <th>Actual Score</th>
-            <th>In Range?</th>
-            <th>Status</th>
-            <th>Comment</th>
-            <th>Reevaluate</th>
-            <th>Ops</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if dataset.model_solution_metas|length == 0 %}
-          <tr>
-            <td colspan="10">No model solutions yet</td>
-          </tr>
-          {% else %}
-          {% for meta in dataset.model_solution_metas %}
-          {% set submission = meta.submission %}
-          {% set msr = submission.get_result(dataset) %}
-          <tr id="model_solution_{{ meta.id }}">
-            <td style="font-weight:bold;">{{ loop.index }}</td>
-            <td><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></td>
-            <td>{{ submission.language if submission.language else "N/A" }}</td>
-            <td>{{ "%.2f"|format(meta.expected_score_min) }} - {{ "%.2f"|format(meta.expected_score_max) }}</td>
-            <td>
-              {% if msr and msr.score is not none %}
-              {{ "%.2f"|format(msr.score) }}
-              {% else %}
-              N/A
-              {% endif %}
-            </td>
-            <td>
-              {% set score_in_range = meta.is_score_in_range() %}
-              {% if score_in_range is none %}
-              <span style="color: gray;">Not scored</span>
-              {% elif score_in_range %}
-              <span style="color: green;">✓ Yes</span>
-              {% else %}
-              <span style="color: red;">✗ No</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if msr is none %}
-              Not evaluated
-              {% elif not msr.compiled() %}
-              Compiling...
-              {% elif msr.compilation_failed() %}
-              Compilation failed
-              {% elif not msr.evaluated() %}
-              Evaluating...
-              {% elif msr.evaluation_failed() %}
-              Evaluation system error
-              {% elif not msr.scored() %}
-              Scoring...
-              {% else %}
-              Scored
-              {% endif %}
-            </td>
-            <td>
-              {{ submission.comment if submission.comment else "" }}
-            </td>
-            <td>
-            {{ macro_reevaluation_buttons.reevaluation_buttons(
-                 admin.permission_all,
-                 url("task", task.id),
-                 submission_id=submission.id,
-                 dataset_id=dataset.id) }}
-            </td>
-            <td>
-              <a href="{{ url("model_solution", meta.id, "edit") }}">Edit</a>
-{% if admin.permission_all %}
-              | <a href="{{ url("model_solution", meta.id, "replace") }}">Replace</a>
-              | <a onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');">Delete</a>
-{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-          {% endif %}
-        </tbody>
-      </table>
-
-{% if dataset.id in subtask_info and dataset.model_solution_metas|length > 0 %}
-      <h5 style="margin-top: 20px;">Subtask Score Validation</h5>
-      <table class="bordered" style="text-align:center">
-        <thead>
-          <tr>
-            <th>Model Solution</th>
-{% for st in subtask_info[dataset.id] %}
-            <th>{{ st.display_name }}</th>
-{% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-{% for meta in dataset.model_solution_metas %}
-{% set msr = meta.submission.get_result(dataset) %}
-{% if msr and msr.scored() %}
-          <tr>
-            <td><a href="{{ url("model_solution", meta.id) }}">{{ meta.description }}</a></td>
-{% for st in subtask_info[dataset.id] %}
-{% if st.max_score == 0 %}
-{% set outcomes = meta.get_subtask_testcase_outcomes(st.idx) %}
-            <td>
-{% if outcomes %}
-              <span style="font-family: monospace;">{{ outcomes|safe }}</span>
-{% else %}
-              <span style="color: gray;">N/A</span>
-{% endif %}
-            </td>
-{% else %}
-{% set status = meta.get_subtask_score_status(st.idx) %}
-{% set actual = meta.get_subtask_actual_score(st.idx) %}
-{% set st_key = st.idx|string %}
-{% set expected_min = meta.subtask_expected_scores[st_key].min if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
-{% set expected_max = meta.subtask_expected_scores[st_key].max if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
-            <td>
-{% if status == "not_configured" %}
-              <span style="color: gray;">Not configured</span>
-{% elif status == "in_range" %}
-              <span style="color: green;">✓ {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
-{% elif status == "out_of_range" %}
-              <span style="color: red;">✗ {{ "%.1f"|format(actual) }} ({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
-{% else %}
-              <span style="color: gray;">N/A</span>
-{% endif %}
-            </td>
-{% endif %}
-{% endfor %}
-          </tr>
-{% endif %}
-{% endfor %}
-        </tbody>
-      </table>
-{% endif %}
-      <div class="hr"></div>
-    </div>
-
-  <!-- Test cases for this dataset -->
-
-  <h4 id="title_testcases_{{ dataset.id }}" class="toggling_on">Test cases</h4>
-    <div id="testcases_{{ dataset.id }}" class="task_dataset_testcases">
-
-      <!-- Generators section -->
-      <div class="generators_section" style="margin-bottom: 20px;">
-        <strong>Generators</strong>
-{% if admin.permission_all %}
-        [<a href="{{ url("dataset", dataset.id, "generators", "add") }}">add</a>]
-{% endif %}
-        <div style="margin-top: 5px;">
-        {% if dataset.generators|length == 0 %}
-          No generators.
-        {% else %}
-          <table class="bordered" style="text-align:center; margin-top: 10px;">
-            <thead>
-              <tr>
-                <th>Filename</th>
-                <th>Template</th>
-                <th>Ops</th>
-              </tr>
-            </thead>
-            <tbody>
-            {% for filename, generator in dataset.generators|dictsort(by="key") %}
-              <tr>
-                <td><a href="javascript:void(0);" onclick="utils.show_file('{{ generator.filename }}','{{ url("file", generator.digest, generator.filename) }}')">{{ generator.filename }}</a></td>
-                <td>
-                  {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
-                  [<a href="{{ url("dataset", dataset.id, "generator", generator.id, "edit") }}">edit</a>]
-                </td>
-                <td>
-                  <a href="{{ url("dataset", dataset.id, "generator", generator.id, "generate") }}">Generate testcases</a>
-{% if admin.permission_all %}
-                  | <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');">Delete</a>
-{% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-            </tbody>
-          </table>
-        {% endif %}
         </div>
-      </div>
-      <div class="hr"></div>
 
-{% if admin.permission_all %}
-      <a href="{{ url("dataset", dataset.id, "testcases", "add") }}">Add a testcase</a>
-      <a href="{{ url("dataset", dataset.id, "testcases", "add_multiple") }}">Add multiple testcases</a>
-{% endif %}
-      <a href="{{ url("dataset", dataset.id, "testcases", "download") }}">Download all testcases</a>
-{% if admin.permission_all %}
-      <a href="javascript:void(0);" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Delete multiple testcases</a>
-      <div id="testcase_search_container_{{ dataset.id }}" style="display:none; margin:10px 0;">
-        <input type="text" id="testcase_search_{{ dataset.id }}" placeholder="Filter by codename..." oninput="filterTestcases({{ dataset.id }});" style="padding:4px 8px;">
-        <div id="testcase_search_error_{{ dataset.id }}" style="color:#c00; display:none; margin-top:4px; font-size:12px;"></div>
-      </div>
-{% endif %}
-      <table id="testcases_table_{{ dataset.id }}" class="bordered" style="text-align:center">
-        <thead>
-          <tr>
-            <th class="multi_delete_col_{{ dataset.id }}" style="display:none;">
-              <input type="checkbox" id="multi_delete_master_{{ dataset.id }}" class="multi_delete_master multi_delete_master_{{ dataset.id }}" onclick="toggleSelectAllTestcases({{ dataset.id }}, this)">
-            </th>
-            <th>#</th>
-            <th>Codename</th>
-            <th>Public</th>
-            {% if dataset.id in testcase_subtasks %}
-            <th>Subtasks</th>
+        <!-- Dataset Panels -->
+        {% for dataset in task.datasets|sort(attribute="description") %}
+        <div class="dataset-panel {{ 'active' if loop.first else '' }}" id="dataset-panel-{{ dataset.id }}">
+
+            {% if dataset.task_type not in TASK_TYPES %}
+            <script type="text/javascript">
+              $(document).ready(function() {
+              utils.display_notification("notification",
+                  0,
+                  "Task type `{{ dataset.task_type }}' not found.",
+                  "Please select another task type, " +
+                  "or make the original one available and refresh the page " +
+                  "without updating the task to avoid losing the parameters.");
+              });
+            </script>
             {% endif %}
-            <th>Input</th>
-            <th>Output</th>
-            <th>Ops</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for codename, testcase in dataset.testcases|dictsort(by="key") %}
-          <tr>
-            <td class="multi_delete_col_{{ dataset.id }}" style="display:none;">
-              <input type="checkbox" class="multi_delete_checkbox_{{ dataset.id }}" value="{{ testcase.id }}">
-            </td>
-            <td style="font-weight:bold;">{{ loop.index }}</td>
-            <td class="testcase_codename">{{ codename }}</td>
-            <td style="font-weight:bold;">
-              <input type="checkbox" name="testcase_{{ testcase.id }}_public" {% if testcase.public %}checked{% endif %} />
-            </td>
-            {% if dataset.id in testcase_subtasks %}
-            <td>
-              {% if codename in testcase_subtasks[dataset.id] %}
-                {% set subtask_indices = testcase_subtasks[dataset.id][codename] %}
-                {% set display_names = [] %}
-                {% for idx in subtask_indices %}
-                  {% if dataset.id in subtask_names and idx in subtask_names[dataset.id] %}
-                    {% set _ = display_names.append(subtask_names[dataset.id][idx]) %}
-                  {% else %}
-                    {% set _ = display_names.append(idx) %}
-                  {% endif %}
-                {% endfor %}
-                {{ display_names|join(", ") }}
-              {% else %}
-                -
-              {% endif %}
-            </td>
+
+            {% if dataset.score_type not in SCORE_TYPES %}
+            <script type="text/javascript">
+              $(document).ready(function() {
+              utils.display_notification("notification",
+                  0,
+                  "Score type `{{ dataset.score_type }}' not found.",
+                  "Please select another score type, " +
+                  "or make the original one available and refresh the page " +
+                  "without updating the task to avoid losing the parameters.");
+              });
+            </script>
             {% endif %}
-            <td>
-              <a href="javascript:void(0);" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')">Show input</a>
-            </td>
-            <td>
-              <a href="javascript:void(0);" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')">Show output</a>
-            </td>
-            <td>
-              <a onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "testcase", testcase.id, "delete") }}');">Delete</a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-{% if admin.permission_all %}
-      <div class="multi_delete_actions" id="multi_delete_actions_{{ dataset.id }}" style="display:none; text-align:left; margin-top:18px;">
-        <a href="javascript:void(0);" id="cancel_multi_delete_{{ dataset.id }}" class="button-link button-link-secondary" style="display:none;" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</a>
-        <a href="javascript:void(0);" id="delete_selected_{{ dataset.id }}" class="button-link button-link-danger" style="display:none;" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete testcases</a>
-      </div>
-{% endif %}
-      <div class="hr"></div>
+
+            <!-- Sub-tabs -->
+            <div class="dataset-subtabs-bar">
+                <button type="button" class="dataset-subtab-btn active" data-subtab="config" data-dataset-id="{{ dataset.id }}">Configuration</button>
+                {% if subtask_info.get(dataset.id) %}
+                <button type="button" class="dataset-subtab-btn" data-subtab="validators" data-dataset-id="{{ dataset.id }}">Subtask Validators</button>
+                {% endif %}
+                <button type="button" class="dataset-subtab-btn" data-subtab="models" data-dataset-id="{{ dataset.id }}">Model Solutions</button>
+                <button type="button" class="dataset-subtab-btn" data-subtab="testcases" data-dataset-id="{{ dataset.id }}">Test Cases & Scoring</button>
+            </div>
+
+            <!-- Sub-tab: Configuration -->
+            <div class="dataset-subtab-content active" id="ds-config-{{ dataset.id }}">
+                <div class="tp-grid-layout">
+                    <div class="tp-card col-span-12">
+                        <div class="tp-card-header-modern">
+                            <div class="tp-card-header-icon">
+                                <svg class="icon"><use href="#icon-sliders"/></svg>
+                            </div>
+                            <h3 class="tp-card-title-modern">Limits</h3>
+                        </div>
+                        <div class="tp-card-body">
+                            <div class="tp-form-row">
+                                <div class="tp-form-group">
+                                    <label class="tp-form-label">
+                                        Time limit (seconds)
+                                        <span class="tp-form-info" title="Total maximum time for each evaluation, in seconds.">?</span>
+                                    </label>
+                                    <input type="text" name="time_limit_{{ dataset.id }}" value="{{ dataset.time_limit if dataset.time_limit is not none else "" }}" class="tp-form-input"/>
+                                </div>
+                                <div class="tp-form-group">
+                                    <label class="tp-form-label">
+                                        Memory limit (MiB)
+                                        <span class="tp-form-info" title="Total maximum memory usage for each evaluation, in MiB (2^20 bytes).">?</span>
+                                    </label>
+                                    <input type="text" name="memory_limit_{{ dataset.id }}" value="{{ dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else "" }}" class="tp-form-input"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tp-card col-span-12">
+                        <div class="tp-card-header-modern">
+                            <div class="tp-card-header-icon">
+                                <svg class="icon"><use href="#icon-settings"/></svg>
+                            </div>
+                            <h3 class="tp-card-title-modern">
+                                Task type
+                                (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Task%20types.html" target="_blank">docs</a>)
+                            </h3>
+                        </div>
+                        <div class="tp-card-body">
+                            <div class="tp-form-group">
+                                <label class="tp-form-label">Task type</label>
+                                <select name="task_type_{{ dataset.id }}" class="tp-form-input" style="max-width: 300px;">
+                                    {% for task_type_name, task_type in TASK_TYPES.items() %}
+                                    <option value="{{ task_type_name }}" {% if dataset.task_type == task_type_name %}selected{% endif %}>{{ task_type_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            {% set parameters = dataset.task_type_parameters %}
+                            {% for task_type_name, task_type in TASK_TYPES.items() %}
+                            <div class="TaskTypeOptions TaskTypeOptions_{{ dataset.id }} tp-task-type-options" id="TaskType{{ task_type_name }}Options_{{ dataset.id }}" style="display: none;">
+                                {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
+                                {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
+                                {% set parameter_value = parameters[i] if dataset.task_type == task_type_name and parameters is not none and i < parameters|length else none %}
+                                <div class="tp-form-group param_row" data-param-short="{{ param_def.short_name }}">
+                                    <label class="tp-form-label">{{ param_def.name }}</label>
+                                    <div class="tp-task-type-field">
+                                        {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value)|safe }}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+
+                            <div class="tp-form-group" style="margin-top: 16px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                    <label class="tp-form-label" style="margin-bottom: 0;">
+                                        Managers
+                                        <span class="tp-form-info" title="Managers are sources, headers, libraries or binaries used during evaluation.">?</span>
+                                    </label>
+                                    {% if admin.permission_all %}
+                                    <button type="button" onclick="document.getElementById('manager_file_{{ dataset.id }}').click();" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                                    <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                                    Add Manager
+                                </button>
+                                    {% endif %}
+                                </div>
+                                {% if dataset.managers|length == 0 %}
+                                <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No managers.</div>
+                                {% else %}
+                                {% set flags = namespace(checker_src=False, manager_src=False) %}
+                                {% for m in dataset.managers.values() %}
+                                    {% if m.filename.startswith('checker.') %}{% set flags.checker_src = True %}{% endif %}
+                                    {% if m.filename.startswith('manager.') %}{% set flags.manager_src = True %}{% endif %}
+                                {% endfor %}
+                                <div class="field is-grouped is-grouped-multiline" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
+                                    {% for manager in dataset.managers.values() %}
+                                    {% if (manager.filename == 'checker' and flags.checker_src) or (manager.filename == 'manager' and flags.manager_src) %}
+                                    {% else %}
+                                    <div class="manager">
+                                        <div class="control">
+                                            <div class="tags has-addons">
+                                                <span class="tag is-link is-light is-medium has-text-black">
+                                                    <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file-code"/></svg>
+                                                    <a href="{{ url("file", manager.digest, manager.filename) }}" style="color: inherit;">{{ manager.filename }}</a>
+                                                </span>
+                                                <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager"></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub-tab: Subtask Validators -->
+            {% if subtask_info.get(dataset.id) %}
+            <div class="dataset-subtab-content" id="ds-validators-{{ dataset.id }}">
+                <div class="tp-card">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon"><use href="#icon-subtask-validator"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">
+                            Subtask Validators
+                            <span class="tp-form-info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid.">?</span>
+                        </h3>
+                        <span style="margin-left: auto; font-size: 0.9rem; color: var(--tp-text-muted);">
+                            <strong style="color: var(--tp-text-primary);">{{ subtask_info[dataset.id]|length }}</strong> subtasks configured
+                        </span>
+                    </div>
+                    <div class="tp-card-body">
+                        {% set ds_ns = namespace(total_not_validated=0,
+                                                 not_validated_codenames=[],
+                                                 any_validator_running=false) %}
+                        {% for subtask in subtask_info[dataset.id] %}
+                          {% set validator = dataset.subtask_validators.get(subtask.idx) %}
+                          {% if validator %}
+                            {% if validator.id in running_validator_ids %}
+                              {% set ds_ns.any_validator_running = true %}
+                            {% elif validator.validation_results %}
+                              {% set results_codenames = [] %}
+                              {% for r in validator.validation_results %}
+                                {% set _ = results_codenames.append(r.testcase.codename) %}
+                              {% endfor %}
+                              {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+                                {% if tc_codename not in results_codenames and tc_codename not in ds_ns.not_validated_codenames %}
+                                  {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
+                                {% endif %}
+                              {% endfor %}
+                            {% else %}
+                              {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+                                {% if tc_codename not in ds_ns.not_validated_codenames %}
+                                  {% set _ = ds_ns.not_validated_codenames.append(tc_codename) %}
+                                {% endif %}
+                              {% endfor %}
+                            {% endif %}
+                          {% endif %}
+                        {% endfor %}
+                        {% set ds_ns.total_not_validated = ds_ns.not_validated_codenames|length %}
+
+                        {% if ds_ns.any_validator_running %}
+                        <div class="tp-info-alert tp-info-alert-info" style="margin-bottom: 16px;">
+                            <div class="tp-info-alert-icon">
+                                <svg class="icon is-small"><use href="#icon-cpu"/></svg>
+                            </div>
+                            <div class="tp-info-alert-content">
+                                <div class="tp-info-alert-message">One or more validators are currently running. Refresh the page to see updated results.</div>
+                            </div>
+                        </div>
+                        {% elif ds_ns.total_not_validated > 0 %}
+                        <div class="tp-info-alert tp-info-alert-warning" style="margin-bottom: 16px;">
+                            <div class="tp-info-alert-icon">
+                                <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+                            </div>
+                            <div class="tp-info-alert-content">
+                                <div class="tp-info-alert-message">{{ ds_ns.total_not_validated }} testcase(s) have not been validated.
+                                {% if admin.permission_all %}
+                                    <button type="button" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600; background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer;">Rerun validators</button>
+                                {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
+                        <table class="tp-tasks-table validator-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%; vertical-align: middle;">Subtask</th>
+                                    <th style="width: 10%; vertical-align: middle;">Validator</th>
+                                    <th class="has-text-centered" style="vertical-align: middle;">Tests and Validation Results</th>
+                                    <th style="width: 20%; vertical-align: middle;">Additional Tests Passed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for subtask in subtask_info[dataset.id] %}
+                                {% set validator = dataset.subtask_validators.get(subtask.idx) %}
+                                {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, subtask_error=0, subtask_not_validated=0, other_passed=0) %}
+                                {% set results_by_tc = {} %}
+                                {% if validator and validator.validation_results %}
+                                  {% for r in validator.validation_results %}
+                                    {% set _ = results_by_tc.update({r.testcase.codename: r}) %}
+                                  {% endfor %}
+                                {% endif %}
+                                {% for tc_codename, tc in dataset.testcases|dictsort(by="key") %}
+                                  {% set tc_subtasks = testcase_subtasks.get(dataset.id, {}).get(tc_codename, []) %}
+                                  {% set has_result = results_by_tc.get(tc_codename) %}
+                                  {% if subtask.idx in tc_subtasks %}
+                                    {% set ns.subtask_tc_count = ns.subtask_tc_count + 1 %}
+                                    {% if has_result %}
+                                      {% if has_result.passed %}
+                                        {% set ns.subtask_passed = ns.subtask_passed + 1 %}
+                                      {% elif has_result.exit_status in ['ok', 'nonzero return', none] %}
+                                        {% set ns.subtask_failed = ns.subtask_failed + 1 %}
+                                      {% else %}
+                                        {% set ns.subtask_error = ns.subtask_error + 1 %}
+                                      {% endif %}
+                                    {% else %}
+                                      {% set ns.subtask_not_validated = ns.subtask_not_validated + 1 %}
+                                    {% endif %}
+                                  {% else %}
+                                    {% set ns.other_tc_count = ns.other_tc_count + 1 %}
+                                    {% if has_result and has_result.passed %}
+                                      {% set ns.other_passed = ns.other_passed + 1 %}
+                                    {% endif %}
+                                  {% endif %}
+                                {% endfor %}
+                                <tr>
+                                    <td><div class="list-cell-wrapper" style="font-weight: 600;">{{ subtask.display_name }}</div></td>
+                                    <td>
+                                        <div class="list-cell-wrapper validator-column" style="display: flex; align-items: center; gap: 6px;">
+                                        {% if admin.permission_all %}
+                                        <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
+                                        {% endif %}
+                                        {% if validator %}
+                                          <svg class="icon is-small" style="color: var(--tp-primary); flex-shrink: 0;"><use href="#icon-file-code"/></svg>
+                                          <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')" style="color: var(--tp-primary); font-weight: 500;">{{ validator.filename }}</a>
+                                          {% if validator.executable_digest is none %}
+                                            <span class="validator-badge validator-badge--error">compilation failed</span>
+                                          {% endif %}
+                                          {% if admin.permission_all %}
+                                          <span style="margin-left: auto; display: flex; gap: 4px; flex-shrink: 0;">
+                                            <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
+                                                <svg class="icon is-small"><use href="#icon-refresh"/></svg>
+                                            </button>
+                                            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
+                                                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                            </button>
+                                          </span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="validator-badge validator-badge--warning">
+                                            <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+                                            No validator
+                                          </span>
+                                          {% if admin.permission_all %}
+                                          <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator">
+                                            <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                                          </button>
+                                          {% endif %}
+                                        {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="list-cell-wrapper" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                                        {% if validator and validator.id in running_validator_ids %}
+                                          <span class="validator-status validator-running">Validating...</span>
+                                        {% elif validator and validator.validation_results|length > 0 %}
+                                          <span style="font-weight: 500; color: var(--tp-text-primary);">{{ ns.subtask_tc_count }} tests:</span>
+                                          {% if ns.subtask_passed > 0 %}
+                                          <span class="validator-badge validator-badge--pass">{{ ns.subtask_passed }} passed</span>
+                                          {% endif %}
+                                          {% if ns.subtask_failed > 0 %}
+                                          <span class="validator-badge validator-badge--fail">{{ ns.subtask_failed }} failed</span>
+                                          {% endif %}
+                                          {% if ns.subtask_error > 0 %}
+                                          <span class="validator-badge validator-badge--error">{{ ns.subtask_error }} error</span>
+                                          {% endif %}
+                                          {% if ns.subtask_not_validated > 0 %}
+                                          <span class="validator-badge validator-badge--muted">{{ ns.subtask_not_validated }} not validated</span>
+                                          {% endif %}
+                                        {% endif %}
+                                          <a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}" style="color: var(--tp-text-muted); text-align: center; font-size: 0.85rem;">[details]</a>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="list-cell-wrapper" style="text-align: right; color: var(--tp-text-muted);">
+                                        {% if validator and validator.validation_results|length > 0 %}
+                                          {{ ns.other_passed }} / {{ ns.other_tc_count }}
+                                        {% elif validator %}
+                                          -
+                                        {% else %}
+                                          -
+                                        {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Sub-tab: Model Solutions -->
+            <div class="dataset-subtab-content" id="ds-models-{{ dataset.id }}">
+                <div class="tp-card">
+                    <div class="tp-card-header-modern" style="flex-wrap: wrap; gap: 12px;">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon"><use href="#icon-file-code"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">
+                            Model Solutions
+                            <span class="tp-form-info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.">?</span>
+                        </h3>
+                        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                            {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
+                            <span style="font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Reevaluate All:</span>
+                            <div class="btn-group">
+                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                                 'EvaluationService', 0,
+                                                 'invalidate_model_solutions', {
+                                                 'dataset_id': {{ dataset.id }},
+                                                 'level': 'compilation'},
+                                                 function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                                                 ); }, {icon: 'question'});"
+                                        title="Compilation">
+                                    <svg class="icon is-small"><use href="#icon-compile"/></svg> Compile
+                                </button>
+                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                                 'EvaluationService', 0,
+                                                 'invalidate_model_solutions', {
+                                                 'dataset_id': {{ dataset.id }},
+                                                 'level': 'evaluation'},
+                                                 function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                                                 ); }, {icon: 'question'});"
+                                        title="Evaluation">
+                                    <svg class="icon is-small"><use href="#icon-evaluate"/></svg> Eval
+                                </button>
+                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                                 'ScoringService', 0,
+                                                 'invalidate_model_solutions', {
+                                                 'dataset_id': {{ dataset.id }}},
+                                                 function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
+                                                 ); }, {icon: 'question'});"
+                                        title="Score">
+                                    <svg class="icon is-small"><use href="#icon-score-type"/></svg> Score
+                                </button>
+                            </div>
+                            {% endif %}
+                            {% if admin.permission_all %}
+                            <button type="button" onclick="ModelSolutionModal.openAdd({{ dataset.id }}, '{{ url("dataset", dataset.id, "model_solutions", "add") }}');" class="tp-btn-secondary" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+                                <svg class="icon is-small"><use href="#icon-file-plus"/></svg> Add
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="tp-card-body">
+                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
+                        <table class="tp-tasks-table" style="margin: 0; text-align: center;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">#</th>
+                                    <th style="text-align: left;">Description</th>
+                                    <th>Language</th>
+                                    <th style="text-align: right;">Expected Range</th>
+                                    <th style="text-align: right;">Actual</th>
+                                    <th style="width: 60px;">Valid</th>
+                                    <th>Status</th>
+                                    <th>Reevaluate</th>
+                                    <th>Ops</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if dataset.model_solution_metas|length == 0 %}
+                                <tr>
+                                    <td colspan="9"><div class="list-cell-wrapper center-content" style="color: var(--tp-text-muted); padding: 24px 0;">No model solutions yet</div></td>
+                                </tr>
+                                {% else %}
+                                {% for meta in dataset.model_solution_metas %}
+                                {% set submission = meta.submission %}
+                                {% set msr = submission.get_result(dataset) %}
+                                <tr id="model_solution_{{ meta.id }}">
+                                    <td><div class="list-cell-wrapper center-content" style="font-family: monospace; color: var(--tp-text-muted);">{{ loop.index }}</div></td>
+                                    <td>
+                                        <div class="list-cell-wrapper" style="text-align: left;">
+                                            <a href="{{ url("model_solution", meta.id) }}" style="font-weight: 500;">{{ meta.description }}</a>
+                                            {% if submission.comment %}
+                                            <span style="font-size: 0.8rem; color: var(--tp-text-muted); margin-left: 6px;">{{ submission.comment }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td><div class="list-cell-wrapper center-content" style="color: var(--tp-text-muted);">{{ submission.language if submission.language else "N/A" }}</div></td>
+                                    <td><div class="list-cell-wrapper" style="text-align: right; font-family: monospace; font-size: 0.95rem; color: var(--tp-text-secondary);">{{ "%.2f"|format(meta.expected_score_min) }} - {{ "%.2f"|format(meta.expected_score_max) }}</div></td>
+                                    <td>
+                                        <div class="list-cell-wrapper" style="text-align: right; font-family: monospace; font-size: 0.95rem; font-weight: 700;">
+                                        {% if msr and msr.score is not none %}
+                                        {{ "%.2f"|format(msr.score) }}
+                                        {% else %}
+                                        <span style="color: var(--tp-text-muted); font-weight: 400;">N/A</span>
+                                        {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="list-cell-wrapper center-content">
+                                        {% set score_in_range = meta.is_score_in_range() %}
+                                        {% if score_in_range is none %}
+                                        <span style="color: var(--tp-text-muted);">-</span>
+                                        {% elif score_in_range %}
+                                        <span class="valid-icon valid-icon--yes"><svg class="icon is-small"><use href="#icon-check"/></svg></span>
+                                        {% else %}
+                                        <span class="valid-icon valid-icon--no"><svg class="icon is-small"><use href="#icon-x"/></svg></span>
+                                        {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="list-cell-wrapper center-content">
+                                        {% if msr is none %}
+                                        <span class="status-badge status-badge--muted">Not evaluated</span>
+                                        {% elif not msr.compiled() %}
+                                        <span class="status-badge status-badge--info">Compiling...</span>
+                                        {% elif msr.compilation_failed() %}
+                                        <span class="status-badge status-badge--danger">Compilation failed</span>
+                                        {% elif not msr.evaluated() %}
+                                        <span class="status-badge status-badge--info">Evaluating...</span>
+                                        {% elif msr.evaluation_failed() %}
+                                        <span class="status-badge status-badge--danger">Evaluation error</span>
+                                        {% elif not msr.scored() %}
+                                        <span class="status-badge status-badge--warning">Scoring...</span>
+                                        {% else %}
+                                        <span class="status-badge status-badge--success">Scored</span>
+                                        {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="list-cell-wrapper center-content" style="gap: 4px;">
+                                        {{ macro_reevaluation_buttons.reevaluation_buttons(
+                                             admin.permission_all,
+                                             url("task", task.id),
+                                             submission_id=submission.id,
+                                             dataset_id=dataset.id) }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="list-cell-wrapper center-content" style="gap: 4px;">
+                                        <button type="button" class="btn-icon-only" onclick='ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});' title="Edit">
+                                            <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                                        </button>
+                                        {% if admin.permission_all %}
+                                        <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-replace-ms-{{ meta.id }}');" title="Replace">
+                                            <svg class="icon is-small"><use href="#icon-replace"/></svg>
+                                        </button>
+                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');" title="Delete">
+                                            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                        </button>
+                                        {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% endif %}
+                            </tbody>
+                        </table>
+                        </div>
+
+                        {% if dataset.id in subtask_info and dataset.model_solution_metas|length > 0 %}
+                          <div style="margin-top: 24px; border-top: 1px solid var(--tp-border); padding-top: 20px;">
+                              <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--tp-text-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Subtask Score Validation</h4>
+                              <div class="subtask-score-table-container" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
+                              <table class="tp-tasks-table subtask-score-table" style="margin: 0; text-align: center;">
+                                  <thead>
+                                      <tr>
+                                          <th style="text-align: left; position: sticky; left: 0; background: var(--tp-bg-secondary, #f9fafb); z-index: 1; border-right: 1px solid var(--tp-border); min-width: 160px;">Model Solution</th>
+                                        {% for st in subtask_info[dataset.id] %}
+                                        <th style="min-width: 120px;">{{ st.display_name }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for meta in dataset.model_solution_metas %}
+                                {% set msr = meta.submission.get_result(dataset) %}
+                                {% if msr and msr.scored() %}
+                                <tr>
+                                    <td style="text-align: left; position: sticky; left: 0; background: #fff; z-index: 1; border-right: 1px solid var(--tp-border);"><div class="list-cell-wrapper"><a href="{{ url("model_solution", meta.id) }}" style="font-weight: 500;">{{ meta.description }}</a></div></td>
+                                    {% for st in subtask_info[dataset.id] %}
+                                    {% if st.max_score == 0 %}
+                                    {% set outcomes = meta.get_subtask_testcase_outcomes(st.idx) %}
+                                    <td>
+                                        <div class="list-cell-wrapper center-content">
+                                        {% if outcomes %}
+                                        <span style="font-family: monospace; font-size: 0.85rem;">{{ outcomes|safe }}</span>
+                                        {% else %}
+                                        <span style="color: var(--tp-text-muted);">N/A</span>
+                                        {% endif %}
+                                        </div>
+                                    </td>
+                                    {% else %}
+                                    {% set status = meta.get_subtask_score_status(st.idx) %}
+                                    {% set actual = meta.get_subtask_actual_score(st.idx) %}
+                                    {% set st_key = st.idx|string %}
+                                    {% set expected_min = meta.subtask_expected_scores[st_key].min if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
+                                    {% set expected_max = meta.subtask_expected_scores[st_key].max if meta.subtask_expected_scores and st_key in meta.subtask_expected_scores else None %}
+                                    <td class="{% if status == 'in_range' %}score-cell--in-range{% elif status == 'out_of_range' %}score-cell--out-of-range{% endif %}">
+                                        <div class="list-cell-wrapper center-content" style="font-family: monospace; font-size: 0.85rem;">
+                                        {% if status == "not_configured" %}
+                                        <span style="color: var(--tp-text-muted);">-</span>
+                                        {% elif status == "in_range" %}
+                                        <svg class="icon is-small"><use href="#icon-check"/></svg> {{ "%.1f"|format(actual) }} <span style="color: var(--tp-text-muted); font-weight: 400;">({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+                                        {% elif status == "out_of_range" %}
+                                        <svg class="icon is-small"><use href="#icon-x"/></svg> {{ "%.1f"|format(actual) }} <span style="font-weight: 400;">({{ "%.1f"|format(expected_min) }}-{{ "%.1f"|format(expected_max) }})</span>
+                                        {% else %}
+                                        <span style="color: var(--tp-text-muted);">N/A</span>
+                                        {% endif %}
+                                        </div>
+                                    </td>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub-tab: Test Cases -->
+            <div class="dataset-subtab-content" id="ds-testcases-{{ dataset.id }}">
+                <div class="tp-card">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon"><use href="#icon-clipboard-list"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">Generators</h3>
+                        {% if admin.permission_all %}
+                        <button type="button" onclick="MicroModal.show('modal-add-generator-{{ dataset.id }}');" class="tp-btn-secondary" style="margin-left: auto; padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+                        <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                        Add
+                    </button>
+                        {% endif %}
+                    </div>
+                    <div class="tp-card-body">
+                        {% if dataset.generators|length == 0 %}
+                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No generators.</div>
+                        {% else %}
+                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
+                        <table class="tp-tasks-table" style="margin: 0; text-align: center;">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Template</th>
+                                    <th>Ops</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for filename, generator in dataset.generators|dictsort(by="key") %}
+                            <tr>
+                                <td><div class="list-cell-wrapper"><a href="javascript:void(0);" onclick="utils.show_file('{{ generator.filename }}','{{ url("file", generator.digest, generator.filename) }}')">{{ generator.filename }}</a></div></td>
+                                <td>
+                                    <div class="list-cell-wrapper center-content">
+                                    {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
+                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-edit-generator-{{ generator.id }}');" title="Edit generator" style="margin-left: 8px;">
+                                        <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                                    </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="list-cell-wrapper center-content" style="gap: 8px;">
+                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-generate-tc-{{ generator.id }}');" title="Generate testcases">
+                                        <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
+                                    </button>
+                                    {% if admin.permission_all %}
+                                    <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');" title="Delete generator">
+                                        <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                    </button>
+                                    {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="tp-card" style="margin-top: 20px;">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon"><use href="#icon-score-type"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">
+                            Score type
+                            (<a href="http://cms.readthedocs.org/en/{{ rtd_version }}/Score%20types.html" target="_blank">docs</a>)
+                        </h3>
+                    </div>
+                    <div class="tp-card-body">
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">Score Type</label>
+                            <select name="score_type_{{ dataset.id }}" class="tp-form-input">
+                                {% for score_type_name, score_type in SCORE_TYPES.items() %}
+                                <option value="{{ score_type_name }}" {% if dataset.score_type == score_type_name %}selected{% endif %}>{{ score_type_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="tp-form-group">
+                            <label class="tp-form-label">Score Parameters</label>
+                            <textarea name="score_type_parameters_{{ dataset.id }}" class="tp-form-input" rows="3" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tp-card" style="margin-top: 20px;">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon"><use href="#icon-test-cases"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">Test Cases</h3>
+                        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 0.85rem;">
+                            {% if admin.permission_all %}
+                            <button type="button" onclick="MicroModal.show('modal-add-testcase-{{ dataset.id }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Add</button>
+                            <button type="button" onclick="MicroModal.show('modal-add-testcases-{{ dataset.id }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Add multiple</button>
+                            {% endif %}
+                            <button type="button" onclick="showDownloadTestcasesDialog({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "download") }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Download all</button>
+                            {% if admin.permission_all %}
+                            <button type="button" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});" class="tp-btn-secondary" style="padding: 4px 12px; color: var(--tp-danger);">Delete multiple</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="tp-card-body">
+                        {% if admin.permission_all %}
+                        <div id="testcase_search_container_{{ dataset.id }}" style="display:none; margin-bottom: 12px;">
+                            <input type="text" id="testcase_search_{{ dataset.id }}" placeholder="Filter by codename..." oninput="filterTestcases({{ dataset.id }});" class="tp-form-input" style="max-width: 300px;">
+                            <div id="testcase_search_error_{{ dataset.id }}" style="color: var(--tp-danger); display:none; margin-top:4px; font-size:12px;"></div>
+                        </div>
+                        {% endif %}
+
+                        <div class="testcases-table" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
+                        <table id="testcases_table_{{ dataset.id }}" class="tp-tasks-table" style="margin: 0; text-align: center;">
+                            <thead>
+                                <tr>
+                                    <th class="multi_delete_col_{{ dataset.id }}" style="display:none;">
+                                        <input type="checkbox" id="multi_delete_master_{{ dataset.id }}" class="multi_delete_master multi_delete_master_{{ dataset.id }}" onclick="toggleSelectAllTestcases({{ dataset.id }}, this)">
+                                    </th>
+                                    <th>#</th>
+                                    <th>Codename</th>
+                                    <th>Public</th>
+                                    {% if dataset.id in testcase_subtasks %}
+                                    <th>Subtasks</th>
+                                    {% endif %}
+                                    <th>Input</th>
+                                    <th>Output</th>
+                                    <th>Ops</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for codename, testcase in dataset.testcases|dictsort(by="key") %}
+                                <tr>
+                                    <td class="multi_delete_col_{{ dataset.id }}" style="display:none;">
+                                        <div class="list-cell-wrapper center-content">
+                                        <input type="checkbox" class="multi_delete_checkbox_{{ dataset.id }}" value="{{ testcase.id }}">
+                                        </div>
+                                    </td>
+                                    <td><div class="list-cell-wrapper center-content" style="font-weight: bold;">{{ loop.index }}</div></td>
+                                    <td class="testcase_codename"><div class="list-cell-wrapper center-content">{{ codename }}</div></td>
+                                    <td>
+                                        <div class="list-cell-wrapper center-content">
+                                        <input type="checkbox" name="testcase_{{ testcase.id }}_public" {% if testcase.public %}checked{% endif %} />
+                                        </div>
+                                    </td>
+                                    {% if dataset.id in testcase_subtasks %}
+                                    <td>
+                                        <div class="list-cell-wrapper center-content">
+                                        {% if codename in testcase_subtasks[dataset.id] %}
+                                          {% set subtask_indices = testcase_subtasks[dataset.id][codename] %}
+                                          {% set display_names = [] %}
+                                          {% for idx in subtask_indices %}
+                                            {% if dataset.id in subtask_names and idx in subtask_names[dataset.id] %}
+                                              {% set _ = display_names.append(subtask_names[dataset.id][idx]) %}
+                                            {% else %}
+                                              {% set _ = display_names.append(idx) %}
+                                            {% endif %}
+                                          {% endfor %}
+                                          {{ display_names|join(", ") }}
+                                        {% else %}
+                                          -
+                                        {% endif %}
+                                        </div>
+                                    </td>
+                                    {% endif %}
+                                    <td>
+                                        <div class="list-cell-wrapper center-content">
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')" title="Show input">
+                                            <svg class="icon is-small"><use href="#icon-eye"/></svg>
+                                        </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="list-cell-wrapper center-content">
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')" title="Show output">
+                                            <svg class="icon is-small"><use href="#icon-eye"/></svg>
+                                        </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="list-cell-wrapper center-content">
+                                        <button type="button" class="btn-icon-only"
+                                            onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "testcase", testcase.id, "delete") }}');"
+                                            title="Delete testcase">
+                                            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                        </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        </div>
+
+                        {% if admin.permission_all %}
+                        <div class="multi_delete_actions" id="multi_delete_actions_{{ dataset.id }}" style="display:none; margin-top: 18px;">
+                            <button type="button" id="cancel_multi_delete_{{ dataset.id }}" class="tp-btn-secondary" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</button>
+                            <button type="button" id="delete_selected_{{ dataset.id }}" class="tp-btn-secondary" style="color: var(--tp-danger); border: 1px solid var(--tp-danger);" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete selected</button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        {% endfor %}
+
+        {% endif %}
+    </form>
+
+    {# File upload forms - placed outside the main task form to avoid nested form issues #}
+    {% if admin.permission_all %}
+    <form id="attachment_form" method="POST" action="{{ url("task", task.id, "attachments", "add") }}" enctype="multipart/form-data" style="display: none;">
+        {{ xsrf_form_html|safe }}
+        <input type="file" id="attachment_file" name="attachment" multiple onchange="if(this.files.length) this.form.submit();" />
+    </form>
+    {% for dataset in task.datasets %}
+    <form id="delete-dataset-form-{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "delete") }}" style="display: none;">
+        {{ xsrf_form_html|safe }}
+    </form>
+    <form id="manager_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "managers", "add") }}" enctype="multipart/form-data" style="display: none;">
+        {{ xsrf_form_html|safe }}
+        <input type="file" id="manager_file_{{ dataset.id }}" name="manager" multiple onchange="if(this.files.length) this.form.submit();" />
+    </form>
+    {% if subtask_info.get(dataset.id) %}
+    {% for subtask in subtask_info[dataset.id] %}
+    <form id="validator_form_{{ dataset.id }}_{{ subtask.idx }}" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx|string, "validator", "add") }}" enctype="multipart/form-data" style="display: none;">
+        {{ xsrf_form_html|safe }}
+    </form>
+    {% endfor %}
+    <form id="rerun_validators_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "validators", "rerun") }}" style="display: none;">
+        {{ xsrf_form_html|safe }}
+    </form>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Add Statement Modal -->
+    {% if admin.permission_all %}
+    <div class="modal" id="modal-add-statement" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1">
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-statement-title">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-statement-title">Add Statement</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form action="{{ url("task", task.id, "statements", "add") }}" method="POST" enctype="multipart/form-data">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label for="stmt-language">
+                                Language code
+                                <span style="color: var(--tp-danger);">*</span>
+                            </label>
+                            <input type="text" id="stmt-language" name="language" placeholder="e.g., en, he" required />
+                            <small class="modal__hint">ISO language code for this statement</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="stmt-file">Statement (PDF) <span style="color: var(--tp-danger);">*</span></label>
+                            {{ bulma_file_input("stmt-file", "statement", ".pdf", required=true, button_text="Choose PDF file…") }}
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="stmt-source">Source file (optional, DOC/DOCX/TEX)</label>
+                            {{ bulma_file_input("stmt-source", "source", ".doc,.docx,.tex", button_text="Choose source file…") }}
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Upload Statement</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
-  {% endfor %}
-  </div>
-  <input type="submit"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="Update" />
-  <input type="reset" value="Reset" />
-  <a href="{{ url("task", task.id, "export") }}"> ⇩ Export </a>
-</form>
+    {% endif %}
 
-{# Validator upload forms - placed outside the main task form to avoid nested form issues #}
-{% if admin.permission_all %}
+    <!-- Edit Generator Modal (one per generator) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    {% for filename, generator in dataset.generators|dictsort(by="key") %}
+    <div class="modal" id="modal-edit-generator-{{ generator.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-edit-generator-{{ generator.id }}-title" style="max-width: 520px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-edit-generator-{{ generator.id }}-title">Edit Generator</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" action="{{ url("dataset", dataset.id, "generator", generator.id, "edit") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <div style="font-weight: 600; color: var(--tp-text-primary); margin-bottom: 4px;">Filename</div>
+                            <div style="padding: 6px 0; font-weight: 500; color: var(--tp-text-primary);">{{ generator.filename }}</div>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="edit-gen-{{ generator.id }}-input-tpl">Input filename template</label>
+                            <input type="text" id="edit-gen-{{ generator.id }}-input-tpl" name="input_filename_template" value="{{ generator.input_filename_template }}" pattern=".*\*.*" required title="Template must contain * placeholder" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. input.* or *.in)</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="edit-gen-{{ generator.id }}-output-tpl">Output filename template</label>
+                            <input type="text" id="edit-gen-{{ generator.id }}-output-tpl" name="output_filename_template" value="{{ generator.output_filename_template }}" pattern=".*\*.*" required title="Template must contain * placeholder" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Save</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Generate Testcases Modal (one per generator) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    {% for filename, generator in dataset.generators|dictsort(by="key") %}
+    <div class="modal" id="modal-generate-tc-{{ generator.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-generate-tc-{{ generator.id }}-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-generate-tc-{{ generator.id }}-title">Generate Testcases</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" action="{{ url("dataset", dataset.id, "generator", generator.id, "generate") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <div style="font-weight: 600; color: var(--tp-text-primary); margin-bottom: 4px;">Generator</div>
+                            <div style="padding: 6px 0; font-weight: 500; color: var(--tp-text-primary);">{{ generator.filename }}</div>
+                        </div>
+                        <div class="modal__form-group">
+                            <div style="font-weight: 600; color: var(--tp-text-primary); margin-bottom: 4px;">Templates</div>
+                            <div style="padding: 6px 0; font-size: 0.9rem; color: var(--tp-text-secondary);">
+                                Input: <code>{{ generator.input_filename_template }}</code> &nbsp;/&nbsp; Output: <code>{{ generator.output_filename_template }}</code>
+                            </div>
+                        </div>
+                        {% if generator.executable_digest is none %}
+                        <div style="padding: 12px; background: var(--tp-danger-light, #fef2f2); border: 1px solid var(--tp-danger, #ef4444); border-radius: 8px; color: var(--tp-danger); font-size: 0.9rem; margin-bottom: 12px;">
+                            This generator has not been compiled successfully. Please re-upload it.
+                        </div>
+                        {% else %}
+                        <div class="modal__form-group">
+                            <label for="gen-tc-{{ generator.id }}-output-source">Output generation</label>
+                            <select id="gen-tc-{{ generator.id }}-output-source" name="output_source">
+                                <option value="generator">Generator outputs (default)</option>
+                                <option value="empty">Empty output files</option>
+                                {% if dataset.task_type == "Batch" %}
+                                {% for meta in dataset.model_solution_metas %}
+                                {% set msr = meta.submission.get_result(dataset) %}
+                                {% if msr and msr.executables %}
+                                <option value="model_solution_{{ meta.id }}">Model solution: {{ meta.name }}{% if meta.description %} ({{ meta.description }}){% endif %}</option>
+                                {% endif %}
+                                {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="modal__form-group" style="display: flex; gap: 20px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" name="overwrite" checked />
+                                Override existing
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" name="public" checked />
+                                Public
+                            </label>
+                        </div>
+                        {% endif %}
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        {% if generator.executable_digest is not none %}
+                        <button type="submit" class="tp-btn-primary">Generate</button>
+                        {% endif %}
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Add Testcase Modal (one per dataset) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    <div class="modal" id="modal-add-testcase-{{ dataset.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-testcase-{{ dataset.id }}-title" style="max-width: 520px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-testcase-{{ dataset.id }}-title">Add Testcase</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "testcases", "add") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label for="tc-{{ dataset.id }}-codename">Codename <span style="color: var(--tp-danger);">*</span></label>
+                            <input type="text" id="tc-{{ dataset.id }}-codename" name="codename" required />
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="tc-{{ dataset.id }}-input">Input file <span style="color: var(--tp-danger);">*</span></label>
+                            {{ bulma_file_input("tc-" ~ dataset.id ~ "-input", "input", "", required=true, button_text="Choose input file…") }}
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="tc-{{ dataset.id }}-output">Output file <span style="color: var(--tp-danger);">*</span></label>
+                            {{ bulma_file_input("tc-" ~ dataset.id ~ "-output", "output", "", required=true, button_text="Choose output file…") }}
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Upload Testcase</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Add Multiple Testcases Modal (one per dataset) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    <div class="modal" id="modal-add-testcases-{{ dataset.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-testcases-{{ dataset.id }}-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-testcases-{{ dataset.id }}-title">Add Multiple Testcases</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "testcases", "add_multiple") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label for="tcs-{{ dataset.id }}-archive">Archive (ZIP) <span style="color: var(--tp-danger);">*</span></label>
+                            {{ bulma_file_input("tcs-" ~ dataset.id ~ "-archive", "archive", "application/zip,.zip", required=true, button_text="Choose ZIP archive…") }}
+                            <small class="modal__hint">A zip file containing input/output files only.</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="tcs-{{ dataset.id }}-input-tpl">Input filename template</label>
+                            <input type="text" id="tcs-{{ dataset.id }}-input-tpl" name="input_template" value="input.*" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. input.* or *.in)</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="tcs-{{ dataset.id }}-output-tpl">Output filename template</label>
+                            <input type="text" id="tcs-{{ dataset.id }}-output-tpl" name="output_template" value="output.*" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
+                        </div>
+                        <div class="modal__form-group" style="display: flex; gap: 20px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" name="public" checked />
+                                Public
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" name="overwrite" />
+                                Overwrite existing
+                            </label>
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Upload</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Add Generator Modal (one per dataset) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    <div class="modal" id="modal-add-generator-{{ dataset.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-generator-{{ dataset.id }}-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-generator-{{ dataset.id }}-title">Add Generator</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "generators", "add") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label for="gen-{{ dataset.id }}-file">Generator source file <span style="color: var(--tp-danger);">*</span></label>
+                            {{ bulma_file_input("gen-" ~ dataset.id ~ "-file", "generator", get_compiled_language_extensions(), required=true) }}
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="gen-{{ dataset.id }}-language">Language</label>
+                            <select id="gen-{{ dataset.id }}-language" name="language">
+                                {% for lang in LANGUAGES %}
+                                {% if lang|is_compiled_language %}
+                                <option value="{{ lang.name }}">{{ lang.name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="gen-{{ dataset.id }}-input-tpl">Input filename template</label>
+                            <input type="text" id="gen-{{ dataset.id }}-input-tpl" name="input_filename_template" value="input.*" pattern=".*\*.*" required title="Template must contain * placeholder" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. input.* or *.in)</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="gen-{{ dataset.id }}-output-tpl">Output filename template</label>
+                            <input type="text" id="gen-{{ dataset.id }}-output-tpl" name="output_filename_template" value="output.*" pattern=".*\*.*" required title="Template must contain * placeholder" />
+                            <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Upload Generator</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Model Solution Add/Edit Modal (one per dataset) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    <div class="modal" id="modal-ms-{{ dataset.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-ms-{{ dataset.id }}-title" style="max-width: 640px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-ms-{{ dataset.id }}-title">Add Model Solution</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form id="ms-form-{{ dataset.id }}" method="POST" enctype="multipart/form-data">
+                    {{ xsrf_form_html|safe }}
+                    <input type="hidden" name="_ms_mode" value="add" />
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label for="ms-{{ dataset.id }}-name">Name <span style="color: var(--tp-danger);">*</span></label>
+                            <input type="text" id="ms-{{ dataset.id }}-name" name="name" pattern="^[A-Za-z0-9_ \^\-\(\)]+$" title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)." required />
+                            <small class="modal__hint">Identifier for export (e.g., 'intended', 'bruteforce')</small>
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="ms-{{ dataset.id }}-description">Description <span style="color: var(--tp-danger);">*</span></label>
+                            <input type="text" id="ms-{{ dataset.id }}-description" name="description" required />
+                        </div>
+                        <div class="modal__form-group ms-file-section" id="ms-{{ dataset.id }}-file-section">
+                            {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "ms-" ~ dataset.id) }}
+                        </div>
+                        {{ ms_fields.language_filter_script("#modal-ms-" ~ dataset.id ~ " form", allowed_langs, language_required) }}
+
+                        {% if subtask_info.get(dataset.id) %}
+                        {% set ds_subtasks = subtask_info[dataset.id] %}
+                        {% set total_score = ds_subtasks|map(attribute="max_score")|sum %}
+                        <div class="ms-expected-results" id="ms-{{ dataset.id }}-expected">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                <div>
+                                    <h4 style="font-size: 1rem; font-weight: 700; color: var(--tp-text-primary); margin: 0; display: flex; align-items: center; gap: 6px;">
+                                        <svg class="icon is-small" style="color: var(--tp-text-muted);"><use href="#icon-score-type"/></svg>
+                                        Expected Results
+                                    </h4>
+                                    <p style="font-size: 0.82rem; color: var(--tp-text-muted); margin: 2px 0 0 0;">Select the subtasks this solution should pass.</p>
+                                </div>
+                                <div style="text-align: center; border: 1px solid var(--tp-border); border-radius: 8px; padding: 6px 14px; background: var(--tp-bg-secondary, #f9fafb);">
+                                    <div style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tp-text-muted);">Total Score</div>
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--tp-text-primary);">
+                                        <span id="ms-{{ dataset.id }}-total">0</span><span style="font-size: 0.85rem; font-weight: 400; color: var(--tp-text-muted);"> / {{ total_score }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ms-subtask-cards" id="ms-{{ dataset.id }}-cards" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                                {% for st in ds_subtasks if st.max_score > 0 %}
+                                <div class="ms-card-subtask selected" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" role="button" tabindex="0" onclick="ModelSolutionModal.toggleCard(this);" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); ModelSolutionModal.toggleCard(this); }">
+                                    <div style="font-weight: 600; font-size: 0.9rem;">{{ st.display_name }}</div>
+                                    <div style="font-size: 0.8rem; color: var(--tp-text-muted);">{{ st.max_score }} points</div>
+                                    <span class="ms-card-check"><svg class="icon is-small"><use href="#icon-check"/></svg></span>
+                                    <span class="ms-card-partial-icon"><svg class="icon is-small"><use href="#icon-partial"/></svg></span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                                <label for="ms-{{ dataset.id }}-global-pct" style="font-size: 0.82rem; font-weight: 600; color: var(--tp-text-muted); white-space: nowrap;">Apply to all selected:</label>
+                                <input type="number" id="ms-{{ dataset.id }}-global-pct" min="0" max="100" step="0.1" value="100" data-dataset="{{ dataset.id }}" oninput="ModelSolutionModal.globalPctChanged(this);" style="width: 64px; text-align: center; padding: 3px 6px; border: 1px solid var(--tp-border); border-radius: 6px; font-size: 0.85rem;" />
+                                <span style="font-size: 0.82rem; color: var(--tp-text-muted);">%</span>
+                            </div>
+                            <input type="hidden" name="expected_score_min" id="ms-{{ dataset.id }}-score-min" value="0" />
+                            <input type="hidden" name="expected_score_max" id="ms-{{ dataset.id }}-score-max" value="0" />
+                            {% for st in ds_subtasks if st.max_score > 0 %}
+                            <input type="hidden" name="subtask_{{ st.idx }}_min" id="ms-{{ dataset.id }}-st-{{ st.idx }}-min" value="0" />
+                            <input type="hidden" name="subtask_{{ st.idx }}_max" id="ms-{{ dataset.id }}-st-{{ st.idx }}-max" value="0" />
+                            {% endfor %}
+
+                            <div style="text-align: center; margin-top: 16px;">
+                                <button type="button" class="ms-advanced-toggle" onclick="ModelSolutionModal.toggleAdvanced({{ dataset.id }});" style="background: none; border: none; cursor: pointer; font-size: 0.85rem; color: var(--tp-text-muted); display: inline-flex; align-items: center; gap: 4px;">
+                                    <svg class="icon ms-advanced-arrow" id="ms-{{ dataset.id }}-adv-arrow" width="14" height="14" style="transition: transform 0.2s;"><use href="#icon-chevron-down"/></svg>
+                                    <span id="ms-{{ dataset.id }}-adv-label">Show Advanced Scoring</span>
+                                </button>
+                            </div>
+                            <div class="ms-advanced-section" id="ms-{{ dataset.id }}-advanced" style="display: none; margin-top: 12px;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--tp-border);">
+                                            <th style="text-align: left; padding: 6px 8px; font-weight: 600; color: var(--tp-text-muted); font-size: 0.75rem; text-transform: uppercase;">Subtask</th>
+                                            <th style="text-align: center; padding: 6px 8px; font-weight: 600; color: var(--tp-text-muted); font-size: 0.75rem; text-transform: uppercase;">%</th>
+                                            <th style="text-align: center; padding: 6px 8px; font-weight: 600; color: var(--tp-text-muted); font-size: 0.75rem; text-transform: uppercase;">Expected Min</th>
+                                            <th style="text-align: center; padding: 6px 8px; font-weight: 600; color: var(--tp-text-muted); font-size: 0.75rem; text-transform: uppercase;">Expected Max</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for st in ds_subtasks if st.max_score > 0 %}
+                                        <tr style="border-bottom: 1px solid var(--tp-border);">
+                                            <td style="padding: 6px 8px; font-weight: 500;">{{ st.display_name }} <span style="color: var(--tp-text-muted); font-weight: 400;">({{ st.max_score }} pts)</span></td>
+                                            <td style="text-align: center; padding: 6px 8px;">
+                                                <input type="number" min="0" max="100" step="0.1" value="100" class="ms-adv-pct" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.pctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                            </td>
+                                            <td style="text-align: center; padding: 6px 8px;">
+                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-min-input" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.minMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                            </td>
+                                            <td style="text-align: center; padding: 6px 8px;">
+                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-max-input" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.minMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                        <tr style="border-top: 2px solid var(--tp-border);">
+                                            <td style="padding: 6px 8px; font-weight: 700;">Full Solution</td>
+                                            <td style="text-align: center; padding: 6px 8px;">
+                                                <input type="number" min="0" max="100" step="0.1" value="100" class="ms-adv-total-pct" id="ms-{{ dataset.id }}-adv-total-pct" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalPctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                            </td>
+                                            <td style="text-align: center; padding: 6px 8px; font-weight: 700;">
+                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-total-min-input" id="ms-{{ dataset.id }}-adv-total-min" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalMinMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px; font-weight: 700;" />
+                                            </td>
+                                            <td style="text-align: center; padding: 6px 8px; font-weight: 700;">
+                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-total-max-input" id="ms-{{ dataset.id }}-adv-total-max" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalMinMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px; font-weight: 700;" />
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" style="padding: 6px 8px;">
+                                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--tp-text-muted); cursor: pointer;">
+                                                    <input type="checkbox" class="ms-adv-calc-from-subtasks" id="ms-{{ dataset.id }}-calc-total" data-dataset="{{ dataset.id }}" checked onchange="ModelSolutionModal.calcFromSubtasksChanged(this);" />
+                                                    Calculate total from subtasks
+                                                </label>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="modal__form-group">
+                            <label for="ms-{{ dataset.id }}-score-min-simple">Expected Score Min:</label>
+                            <input type="number" step="0.01" min="0" id="ms-{{ dataset.id }}-score-min-simple" name="expected_score_min" value="0.0" style="width: 120px;" />
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="ms-{{ dataset.id }}-score-max-simple">Expected Score Max:</label>
+                            <input type="number" step="0.01" min="0" id="ms-{{ dataset.id }}-score-max-simple" name="expected_score_max" value="100.0" style="width: 120px;" />
+                        </div>
+                        {% endif %}
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary" id="ms-{{ dataset.id }}-submit">Add Model Solution</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Replace Model Solution Modal (one per meta) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    {% for meta in dataset.model_solution_metas %}
+    <div class="modal" id="modal-replace-ms-{{ meta.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-replace-ms-{{ meta.id }}-title" style="max-width: 520px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-replace-ms-{{ meta.id }}-title">Replace Model Solution</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("model_solution", meta.id, "replace") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <p style="font-size: 0.9rem; color: var(--tp-text-secondary); margin: 0 0 16px 0;">
+                            Upload a new file for <strong>{{ meta.description }}</strong> ({{ meta.name }}).
+                            The current submission will be detached and remain in history.
+                        </p>
+                        {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "replace-ms-" ~ meta.id, meta.submission.language if meta.submission else None) }}
+                        {{ ms_fields.language_filter_script("#modal-replace-ms-" ~ meta.id ~ " form", allowed_langs, language_required) }}
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Replace</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Create Dataset Modal -->
+    {% if admin.permission_all %}
+    <div class="modal" id="modal-add-dataset" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-dataset-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-add-dataset-title">Create Dataset</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("task", task.id, "add_dataset") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        {{ ds_fields.dataset_fields("add-ds", "new", "showNewDatasetTaskType();", dataset=None, TASK_TYPES=TASK_TYPES, SCORE_TYPES=SCORE_TYPES) }}
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Create</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Clone Dataset Modals (one per dataset) -->
+    {% if admin.permission_all %}
+    {% for dataset in task.datasets %}
+    <div class="modal" id="modal-clone-dataset-{{ dataset.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-clone-dataset-{{ dataset.id }}-title" style="max-width: 560px;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-clone-dataset-{{ dataset.id }}-title">Clone Dataset</h2>
+                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "clone") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <p style="font-size: 0.9rem; color: var(--tp-text-secondary); margin: 0 0 16px 0;">
+                            Cloning dataset <strong>{{ dataset.description }}</strong>.
+                        </p>
+                        <div class="modal__form-group">
+                            <label for="clone-ds-{{ dataset.id }}-clone-results">
+                                <input type="checkbox" id="clone-ds-{{ dataset.id }}-clone-results" name="clone_results" style="margin-right: 6px;" />
+                                Clone evaluation results
+                            </label>
+                        </div>
+                        {{ ds_fields.dataset_fields("clone-ds-" ~ dataset.id, "clone_" ~ dataset.id, "showCloneDatasetTaskType(" ~ dataset.id ~ ");", dataset=dataset, TASK_TYPES=TASK_TYPES, SCORE_TYPES=SCORE_TYPES) }}
+                        {% if dataset.managers|length != 0 %}
+                        <div class="modal__form-group">
+                            <label for="clone-ds-{{ dataset.id }}-clone-managers">
+                                <input type="checkbox" id="clone-ds-{{ dataset.id }}-clone-managers" name="clone_managers" checked style="margin-right: 6px;" />
+                                Clone managers
+                            </label>
+                        </div>
+                        {% endif %}
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="submit" class="tp-btn-primary">Clone</button>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Remove Task -->
+    <div style="margin-top: 24px; text-align: right;">
+        <button type="button" class="tp-btn-remove"
+            {% if not admin.permission_all %}disabled{% endif %}
+            onclick='AdminModals.deleteResource({
+                title: "Remove Task",
+                message: {{ ('Are you sure you want to remove task "' ~ task.name ~ '"? This will delete all related data including submissions and cannot be undone.')|tojson|forceescape }},
+                deleteUrl: {{ url("tasks", task.id, "remove")|tojson|forceescape }},
+                confirmLabel: "Yes, Remove Task"
+            })'>
+            <svg class="icon is-small" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+            Remove Task
+        </button>
+    </div>
+</div>
+
+<script>
+// Download All Testcases - SweetAlert2 dialog with hidden form submit
+function showDownloadTestcasesDialog(datasetId, postUrl) {
+    Swal.fire({
+        title: 'Download All Testcases',
+        html: `
+            <div class="swal-custom-form">
+                <div class="form-group">
+                    <label for="swal-dl-zip">Zip filename</label>
+                    <input id="swal-dl-zip" class="swal2-input" value="testcases.zip">
+                </div>
+                <div class="form-group">
+                    <label for="swal-dl-input-tpl">Input filename template</label>
+                    <input id="swal-dl-input-tpl" class="swal2-input" value="input.*">
+                    <small class="form-hint">Use * as the testcase codename</small>
+                </div>
+                <div class="form-group">
+                    <label for="swal-dl-output-tpl">Output filename template</label>
+                    <input id="swal-dl-output-tpl" class="swal2-input" value="output.*">
+                    <small class="form-hint">Use * as the testcase codename</small>
+                </div>
+            </div>
+            <style>
+                .swal-custom-form { text-align: left; }
+                .swal-custom-form .form-group { margin-bottom: 1rem; }
+                .swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }
+                .swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }
+                .swal-custom-form .form-hint { display: block; margin-top: 6px; font-size: 0.8em; color: #6b7280; }
+            </style>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Download',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: () => {
+            const zipInput = Swal.getPopup().querySelector('#swal-dl-zip');
+            if (zipInput) zipInput.focus();
+        },
+
+        preConfirm: () => {
+            const zip = document.getElementById('swal-dl-zip').value.trim();
+            const inputTpl = document.getElementById('swal-dl-input-tpl').value.trim();
+            const outputTpl = document.getElementById('swal-dl-output-tpl').value.trim();
+            const invalidTpl = (tpl) => tpl.split('*').length !== 2 || /[\/\\]/.test(tpl);
+            const invalidZip = (name) => /[\/\\:*?"<>|\r\n;]/.test(name) || !/\.zip$/i.test(name);
+
+            if (!zip || invalidZip(zip)) {
+                Swal.showValidationMessage('Zip filename must be a simple .zip name without path separators');
+                return false;
+            }
+            if (!inputTpl || invalidTpl(inputTpl)) {
+                Swal.showValidationMessage('Input template must contain exactly one * and no path separators');
+                return false;
+            }
+            if (!outputTpl || invalidTpl(outputTpl)) {
+                Swal.showValidationMessage('Output template must contain exactly one * and no path separators');
+                return false;
+            }
+            return { zip, inputTpl, outputTpl };
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            // Submit via hidden form to trigger browser download
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = postUrl;
+            form.style.display = 'none';
+
+            let xsrfToken = document.querySelector('input[name="_xsrf"]')?.value;
+            if (!xsrfToken && typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+
+            const fields = {
+                '_xsrf': xsrfToken || '',
+                'zip_filename': result.value.zip,
+                'input_template': result.value.inputTpl,
+                'output_template': result.value.outputTpl
+            };
+
+            for (const [key, val] of Object.entries(fields)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = val;
+                form.appendChild(input);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        }
+    });
+}
+
+// Create Dataset modal - task type toggle
+function showNewDatasetTaskType() {
+    var selector = document.getElementById('add-ds-task-type');
+    if (!selector) return;
+    $(".TaskTypeOptions_new:visible").hide("fast");
+    $("#TaskType" + selector.value + "Options_new").show("fast");
+}
+showNewDatasetTaskType();
+
+// Clone Dataset modal - task type toggle
+function showCloneDatasetTaskType(datasetId) {
+    var selector = document.getElementById('clone-ds-' + datasetId + '-task-type');
+    if (!selector) return;
+    $(".TaskTypeOptions_clone_" + datasetId + ":visible").hide("fast");
+    $("#TaskType" + selector.value + "Options_clone_" + datasetId).show("fast");
+}
 {% for dataset in task.datasets %}
-{% if subtask_info.get(dataset.id) %}
-{% for subtask in subtask_info[dataset.id] %}
-<form id="validator_form_{{ dataset.id }}_{{ subtask.idx }}" method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx|string, "validator", "add") }}" enctype="multipart/form-data" style="display: none;">
-  {{ xsrf_form_html|safe }}
-</form>
+showCloneDatasetTaskType({{ dataset.id }});
 {% endfor %}
-<form id="rerun_validators_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "validators", "rerun") }}" style="display: none;">
-  {{ xsrf_form_html|safe }}
-</form>
-{% endif %}
-{% endfor %}
-{% endif %}
 
-<form action="{{ url("tasks") }}" method="POST" style="display:inline;">
-    {{ xsrf_form_html|safe }}
-    <input type="hidden" name="task_id" value="{{ task.id }}"/>
-    <input type="submit"
-         name="operation"
-         value="Remove" style="float: right;"
-{% if not admin.permission_all %}
-         disabled
+// Generator language auto-filtering
+document.addEventListener('DOMContentLoaded', function() {
+    const GENERATOR_LANGUAGES = {
+{% for lang in LANGUAGES %}
+{% if lang|is_compiled_language %}
+        "{{ lang.name }}": {
+{% for extension in lang.source_extensions %}
+            "{{ extension }}": true,
+{% endfor %}
+        },
 {% endif %}
-         />
-</form>
+{% endfor %}
+    };
+
+{% for dataset in task.datasets %}
+    (function(dsId) {
+        const select = document.getElementById('gen-' + dsId + '-language');
+        const fileInput = document.getElementById('gen-' + dsId + '-file');
+        if (select && fileInput) {
+            fileInput.addEventListener('change', function() {
+                CMS.AWSUtils.filter_languages(select.options, [fileInput], GENERATOR_LANGUAGES);
+            });
+        }
+    })({{ dataset.id }});
+{% endfor %}
+});
+</script>
+
 {% endblock core %}

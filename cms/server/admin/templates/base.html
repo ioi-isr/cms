@@ -50,7 +50,10 @@
     })();
     </script>
     <link rel="shortcut icon" href="{{ url("static", "favicon.ico") }}" />
-    <link rel="stylesheet" type="text/css" href="{{ url("static", "reset.css") }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "bulma.min.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_tp_styles.css") }}">
     <script src="{{ url("static", "web_rpc.js") }}"></script>
@@ -475,7 +478,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("tasks", "add") }}">New task</a>
+              <button type="button" class="sidebar-action-link" onclick="AdminModals.showAddTaskDialog('{{ url("tasks", "add") }}', '{{ url("task", "") }}')">New task</button>
             </div>
             {% endif %}
           </div>
@@ -502,7 +505,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("users", "add") }}">New user</a>
+              <button type="button" class="sidebar-action-link" onclick="window.location.href='{{ url("users") }}?add=1';">New user</button>
             </div>
             {% endif %}
           </div>
@@ -529,7 +532,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("teams", "add") }}">New team</a>
+              <button type="button" class="sidebar-action-link" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">New team</button>
             </div>
             {% endif %}
           </div>
@@ -721,7 +724,7 @@ $(document).ready(initSidebarEvents);
             </li>
           </ul>
           <div class="hr"></div>
-          <div class="footer">
+          <div class="side_footer">
             <span id="remaining_text"></span>
             <span id="remaining_value"></span>
           </div>
@@ -733,10 +736,21 @@ $(document).ready(initSidebarEvents);
       <div id="border"></div>
       <div id="core">
         <div id="notifications" class="notifications"></div>
-        <dialog id="subpage_popup">
-          <button id="subpage_close">x</button>
-          <div id="subpage_content"></div>
-        </dialog>
+        <div class="modal modal--wide" id="modal-show-file" aria-hidden="true">
+            <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+                <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-show-file-title" style="max-width: 900px; max-height: 85vh; display: flex; flex-direction: column;">
+                    <header class="modal__header">
+                        <h2 class="modal__title" id="modal-show-file-title"></h2>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <a id="modal-show-file-download" href="#" style="font-size: 0.85rem;">Download</a>
+                            <a id="modal-show-file-copy" href="#" style="font-size: 0.85rem;">Copy</a>
+                            <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                        </div>
+                    </header>
+                    <main class="modal__content" id="subpage_content" style="overflow: auto; flex: 1;"></main>
+                </div>
+            </div>
+        </div>
         {% block core %}{% endblock core %}
       </div>
 
@@ -765,8 +779,8 @@ $(document).ready(initSidebarEvents);
                       </div>
                   </main>
                   <footer class="modal__footer">
-                      <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                      <button type="button" class="tp-btn-danger" id="modal-confirm-btn">Confirm</button>
+                      <button type="button" class="button has-text-weight-bold" data-micromodal-close>Cancel</button>
+                      <button type="button" class="button is-danger has-text-white" id="modal-confirm-btn">Confirm</button>
                   </footer>
               </div>
           </div>

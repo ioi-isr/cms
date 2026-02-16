@@ -30,7 +30,7 @@ show_training_day (bool): if true, show a column indicating which training day
   Select two submissions from the table, or enter submission IDs: <br>
   old: <input type="number" size="5" id="diff-old-input">
   new: <input type="number" size="5" id="diff-new-input">
-  <button onclick="utils.do_diff()">Diff</button>
+  <button type="button" class="button is-small" onclick="utils.do_diff()">Diff</button>
 </details>
 
 <div class="table-search">
@@ -40,7 +40,8 @@ show_training_day (bool): if true, show a column indicating which training day
 
 {{ macro_pages.selector(page_url, page, pages) }}
 
-<table class="bordered" id="submissions_table">
+<div class="table-container">
+<table class="table is-narrow is-bordered is-striped is-hoverable" id="submissions_table">
   <thead>
     <tr>
       <th class="diff-only">-</th>
@@ -66,6 +67,7 @@ show_training_day (bool): if true, show a column indicating which training day
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 {%- endmacro %}
 
@@ -125,28 +127,28 @@ show_training_day (bool): if true, show a column indicating which training day
   {% endif %}
   <td>
     {% if status == SubmissionResult.COMPILING %}
-    Compiling...
+    <span class="tag is-light is-info">Compiling...</span>
     {% else %}
     <div id="title_evaluation_{{ s.id }}" class="toggling_off">
 
       {% if status == SubmissionResult.COMPILATION_FAILED %}
-      Compilation failed
+      <span class="tag is-light is-danger">Compilation failed</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% elif status == SubmissionResult.EVALUATING %}
-      Evaluating...
+      <span class="tag is-light is-info">Evaluating...</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% elif status == SubmissionResult.EVALUATION_FAILED %}
-      Evaluation system error
+      <span class="tag is-light is-danger">Evaluation system error</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% elif status == SubmissionResult.SCORING %}
-      Scoring...
+      <span class="tag is-light is-info">Scoring...</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
         {% if sr.evaluated() %}
         <h3>Testcases</h3>
-        <table class="nested bordered">
+        <table class="table nested is-bordered">
           <thead>
             <tr>
               <th>#</th>
@@ -178,7 +180,7 @@ show_training_day (bool): if true, show a column indicating which training day
         {% else %}
           {% set max_score = "[Cannot get score type - see logs]" %}
         {% endif %}
-      Scored ({{ sr.score }} / {{ max_score }})
+      <span class="tag is-light is-success">Scored ({{ sr.score }} / {{ max_score }})</span>
       <div id="evaluation_{{ s.id }}" class="score_details" style="display: none;">
         {% if score_type is defined %}
           {{ score_type.get_html_details(sr.score_details, FEEDBACK_LEVEL_FULL)|safe }}
@@ -187,7 +189,7 @@ show_training_day (bool): if true, show a column indicating which training day
         {% endif %}
 
       {% else %}
-      [Unknown status]
+      <span class="tag is-light">[Unknown status]</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% endif %}

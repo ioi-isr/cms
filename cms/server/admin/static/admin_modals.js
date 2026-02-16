@@ -322,3 +322,292 @@ AdminModals.confirmThen = function(message, callback, options) {
         }
     });
 };
+
+/**
+ * Shows a SweetAlert2 dialog for adding a new team.
+ * Posts via AJAX to the given URL and reloads on success.
+ * @param {string} postUrl - The URL to POST the new team to
+ */
+AdminModals.showAddTeamDialog = function (postUrl) {
+    Swal.fire({
+        title: 'Add New Team',
+        html: `
+            <div class="swal-custom-form">
+                <div class="form-group">
+                    <label for="swal-team-code">Team Code</label>
+                    <input id="swal-team-code" class="swal2-input" placeholder="e.g. ISR" maxlength="3" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="swal-team-name">Team Name</label>
+                    <input id="swal-team-name" class="swal2-input" placeholder="e.g. Israel">
+                </div>
+            </div>
+            <style>
+                .swal-custom-form { text-align: left; }
+                .swal-custom-form .form-group { margin-bottom: 1rem; }
+                .swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }
+                .swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }
+            </style>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Create Team',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: () => {
+            const codeInput = Swal.getPopup().querySelector('#swal-team-code');
+            const nameInput = Swal.getPopup().querySelector('#swal-team-name');
+            if (codeInput) codeInput.focus();
+
+            [codeInput, nameInput].forEach(input => {
+                if (input) input.addEventListener('keyup', (e) => {
+                    if (e.key === 'Enter') Swal.clickConfirm();
+                });
+            });
+        },
+
+        preConfirm: async () => {
+            const codeInput = document.getElementById('swal-team-code');
+            const nameInput = document.getElementById('swal-team-name');
+            const code = codeInput.value.trim().toUpperCase();
+            const name = nameInput.value.trim();
+
+            if (!code) {
+                Swal.showValidationMessage('Team code is required');
+                setTimeout(() => codeInput.focus(), 100);
+                return false;
+            }
+            if (!name) {
+                Swal.showValidationMessage('Team name is required');
+                setTimeout(() => nameInput.focus(), 100);
+                return false;
+            }
+
+            let xsrfToken = document.querySelector('input[name="_xsrf"]')?.value;
+            if (!xsrfToken && typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+            if (!xsrfToken) {
+                AdminModals.showError('Missing XSRF token');
+                return false;
+            }
+
+            if (codeInput) codeInput.value = code;
+            const formData = new FormData();
+            formData.append('code', code);
+            formData.append('name', name);
+
+            try {
+                const response = await fetch(postUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-XSRFToken': xsrfToken
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create team');
+                }
+                return data;
+            } catch (error) {
+                Swal.showValidationMessage(error.message || 'Network error occurred');
+                return false;
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Team Created',
+                text: `Team "${result.value.code}" has been created successfully.`,
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.reload();
+            });
+        }
+    });
+};
+
+/**
+ * Shows a SweetAlert2 input dialog to rename a dataset description inline.
+ * Posts via AJAX and reloads the page on success.
+ * @param {string} renameUrl - The URL to POST the new description to
+ * @param {string} currentDescription - The current dataset description
+ */
+AdminModals.renameDataset = function (renameUrl, currentDescription) {
+    Swal.fire({
+        title: 'Rename Dataset',
+        html: '<div class="swal-custom-form">' +
+            '<div class="form-group">' +
+            '<label for="swal-dataset-desc">Description</label>' +
+            '<input id="swal-dataset-desc" class="swal2-input" placeholder="Dataset description">' +
+            '<small class="form-hint">Each dataset must have a unique description.</small>' +
+            '</div></div>' +
+            '<style>' +
+            '.swal-custom-form { text-align: left; }' +
+            '.swal-custom-form .form-group { margin-bottom: 1rem; }' +
+            '.swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }' +
+            '.swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }' +
+            '.swal-custom-form .form-hint { display: block; margin-top: 6px; font-size: 0.8em; color: #6b7280; }' +
+            '</style>',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Rename',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: function () {
+            var descInput = Swal.getPopup().querySelector('#swal-dataset-desc');
+            if (descInput) {
+                descInput.value = currentDescription;
+                descInput.focus();
+                descInput.select();
+                descInput.addEventListener('keyup', function (e) {
+                    if (e.key === 'Enter') Swal.clickConfirm();
+                });
+            }
+        },
+
+        preConfirm: function () {
+            var descInput = document.getElementById('swal-dataset-desc');
+            var description = descInput.value.trim();
+
+            if (!description) {
+                Swal.showValidationMessage('Description is required');
+                setTimeout(function () { descInput.focus(); }, 100);
+                return false;
+            }
+
+            var xsrfToken = null;
+            var xsrfInput = document.querySelector('input[name="_xsrf"]');
+            if (xsrfInput) {
+                xsrfToken = xsrfInput.value;
+            } else if (typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+
+            if (!xsrfToken) {
+                AdminModals.showError('Missing XSRF token');
+                return false;
+            }
+
+            var formData = new FormData();
+            formData.append('description', description);
+
+            return fetch(renameUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-XSRFToken': xsrfToken
+                },
+                body: formData
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to rename dataset');
+                    }
+                    return data;
+                });
+            }).catch(function (error) {
+                Swal.showValidationMessage(error.message || 'Network error occurred');
+                return false;
+            });
+        }
+    }).then(function (result) {
+        if (result.isConfirmed && result.value) {
+            window.location.reload();
+        }
+    });
+};
+
+AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
+    Swal.fire({
+        title: 'Add New Task',
+        html: `
+            <div class="swal-custom-form">
+                <div class="form-group">
+                    <label for="swal-task-name">Task Name</label>
+                    <input id="swal-task-name" class="swal2-input" placeholder="e.g. aplusb">
+                    <small class="form-hint">A short name using only letters, numbers and underscores.</small>
+                </div>
+            </div>
+            <style>
+                .swal-custom-form { text-align: left; }
+                .swal-custom-form .form-group { margin-bottom: 1rem; }
+                .swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }
+                .swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }
+                .swal-custom-form .form-hint { display: block; margin-top: 6px; font-size: 0.8em; color: #6b7280; }
+            </style>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Create Task',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: () => {
+            const nameInput = Swal.getPopup().querySelector('#swal-task-name');
+            if (nameInput) {
+                nameInput.focus();
+                nameInput.addEventListener('keyup', (e) => {
+                    if (e.key === 'Enter') Swal.clickConfirm();
+                });
+            }
+        },
+
+        preConfirm: async () => {
+            const nameInput = document.getElementById('swal-task-name');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                Swal.showValidationMessage('Task name is required');
+                setTimeout(() => nameInput.focus(), 100);
+                return false;
+            }
+            if (!/^[A-Za-z0-9_]+$/.test(name)) {
+                Swal.showValidationMessage('Task name may contain only letters, numbers, and underscores');
+                setTimeout(() => nameInput.focus(), 100);
+                return false;
+            }
+
+            let xsrfToken = document.querySelector('input[name="_xsrf"]')?.value;
+            if (!xsrfToken && typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+            if (!xsrfToken) {
+                AdminModals.showError('Missing XSRF token');
+                return false;
+            }
+
+            const formData = new FormData();
+            formData.append('name', name);
+
+            try {
+                const response = await fetch(postUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-XSRFToken': xsrfToken
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create task');
+                }
+                return data;
+            } catch (error) {
+                Swal.showValidationMessage(error.message || 'Network error occurred');
+                return false;
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            window.location.href = taskBaseUrl + result.value.id;
+        }
+    });
+};

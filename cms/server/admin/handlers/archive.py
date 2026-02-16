@@ -102,8 +102,7 @@ def compute_archive_modal_data(
 
     Returns a dict with 'network_hierarchy' and 'users_not_finished' keys.
     This is used by pages that include the modal_archive_training_day.html
-    fragment directly (training days page, delays page) as well as the
-    standalone archive page.
+    fragment directly (training days page, delays page).
     """
     ip_counts: dict[str, int] = {}
     for participation in contest.participations:
@@ -210,44 +209,6 @@ class ArchiveTrainingDayHandler(BaseHandler):
             })
         result.sort(key=lambda x: x["total_count"], reverse=True)
         return result
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, training_program_id: str, training_day_id: str):
-        """Show the archive confirmation page with IP selection."""
-        training_program = self.safe_get_item(TrainingProgram, training_program_id)
-        training_day = self.safe_get_item(TrainingDay, training_day_id)
-
-        if training_day.training_program_id != training_program.id:
-            raise tornado.web.HTTPError(404, "Training day not in this program")
-
-        if training_day.contest is None:
-            raise tornado.web.HTTPError(400, "Training day is already archived")
-
-        contest = training_day.contest
-
-        archive_data = compute_archive_modal_data(
-            self.sql_session, training_day, contest, self.timestamp
-        )
-
-        fallback_page = self.url(
-            "training_program", training_program_id, "training_days"
-        )
-        referrer = self.request.headers.get("Referer", "")
-        back_url = fallback_page
-        if referrer:
-            parsed = urlparse(referrer)
-            if parsed.netloc == self.request.host:
-                back_url = referrer
-
-        self.render_params_for_training_program(training_program)
-        self.r_params["training_day"] = training_day
-        self.r_params["contest"] = contest
-        self.r_params["network_hierarchy"] = archive_data["network_hierarchy"]
-        self.r_params["users_not_finished"] = archive_data["users_not_finished"]
-
-        self.r_params["auto_open_modal"] = True
-        self.r_params["back_url"] = back_url
-        self.render("archive_training_day.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, training_program_id: str, training_day_id: str):
