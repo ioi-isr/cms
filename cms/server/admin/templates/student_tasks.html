@@ -175,7 +175,7 @@
                         <div class="list-cell-wrapper center-content">
                             <form action="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "remove") }}" method="POST" style="margin: 0;">
                                 {{ xsrf_form_html|safe }}
-                                <button type="submit" class="btn-icon-only" {% if not admin.permission_all %}disabled{% endif %} onclick="AdminModals.confirmThen('Are you sure you want to remove this task from the student\'s archive?', function() { this.closest('form').submit(); }.bind(this)); return false;" title="Remove task">
+                                <button type="submit" class="btn-icon-only" {% if not admin.permission_all %}disabled{% endif %} onclick="AdminModals.confirmThen('Are you sure you want to remove this task from the student\'s archive?', function() { this.closest('form').submit(); }.bind(this)); return false;" title="Remove task" aria-label="Remove task">
                                     <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                 </button>
                             </form>

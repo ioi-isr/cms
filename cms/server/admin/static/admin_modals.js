@@ -489,6 +489,11 @@ AdminModals.renameDataset = function (renameUrl, currentDescription) {
                 xsrfToken = get_cookie('_xsrf');
             }
 
+            if (!xsrfToken) {
+                AdminModals.showError('Missing XSRF token');
+                return false;
+            }
+
             var formData = new FormData();
             formData.append('description', description);
 
@@ -496,7 +501,7 @@ AdminModals.renameDataset = function (renameUrl, currentDescription) {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'X-XSRFToken': xsrfToken || ''
+                    'X-XSRFToken': xsrfToken
                 },
                 body: formData
             }).then(function (response) {

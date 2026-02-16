@@ -56,6 +56,6 @@
     </div>
     <div class="modal__form-group">
         <label for="{{ id_prefix }}-score-params">Score parameters</label>
-        <textarea id="{{ id_prefix }}-score-params" name="score_type_parameters" rows="2" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape if dataset else '' }}</textarea>
+        <textarea id="{{ id_prefix }}-score-params" name="score_type_parameters" rows="2" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape if dataset and dataset.score_type_parameters is not none else '' }}</textarea>
     </div>
 {% endmacro %}

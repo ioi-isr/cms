@@ -1302,13 +1302,13 @@ var ModelSolutionModal = (function() {
         };
     }
 
-    function _setCardState(card, score, maxScore) {
+    function _setCardState(card, minScore, maxScore, fullScore) {
         card.classList.remove('selected', 'partial');
-        if (score > 0 && score < maxScore) {
-            card.classList.add('partial');
-        } else if (score >= maxScore && score > 0) {
+        if (minScore >= fullScore && fullScore > 0) {
             card.classList.add('selected');
-        }
+        } else if (maxScore > 0) {
+            card.classList.add('partial');
+        } 
     }
 
     var _ERR_COLOR = 'var(--tp-danger, #dc2626)';
@@ -1377,7 +1377,7 @@ var ModelSolutionModal = (function() {
 
         if (hidden.min) hidden.min.value = minVal;
         if (hidden.max) hidden.max.value = maxVal;
-        _setCardState(card, maxVal, maxScore);
+        _setCardState(card, minVal, maxVal, maxScore);
         _validateRow(row.pct, row.minInp, row.maxInp);
     }
 

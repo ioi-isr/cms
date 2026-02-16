@@ -3554,6 +3554,13 @@
     background: var(--tp-bg-light);
 }
 
+.task-page-tab:focus-visible {
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-light);
+    outline: 2px solid var(--tp-primary);
+    outline-offset: 2px;
+}
+
 .task-page-tab.active {
     color: var(--tp-primary);
     border-bottom-color: var(--tp-primary);
@@ -3607,6 +3614,13 @@
     background: var(--tp-bg-light);
 }
 
+.dataset-tab-btn:focus-visible {
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-light);
+    outline: 2px solid var(--tp-primary);
+    outline-offset: 2px;
+}
+
 .dataset-tab-btn.active {
     color: var(--tp-primary);
     border-bottom-color: var(--tp-primary);
@@ -3627,6 +3641,13 @@
 .dataset-tab-add:hover {
     color: var(--tp-primary);
     background: var(--tp-bg-light);
+}
+
+.dataset-tab-add:focus-visible {
+    color: var(--tp-primary);
+    background: var(--tp-bg-light);
+    outline: 2px solid var(--tp-primary);
+    outline-offset: 2px;
 }
 
 .dataset-panel {
@@ -3667,6 +3688,11 @@
 
 .dataset-subtab-btn:hover {
     color: var(--tp-text-primary);
+}
+
+.dataset-subtab-btn:focus-visible {
+    outline: 2px solid var(--tp-primary);
+    outline-offset: -2px;
 }
 
 .dataset-subtab-btn.active {
