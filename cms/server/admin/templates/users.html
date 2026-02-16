@@ -44,13 +44,13 @@
 {% endif %}
 
 <div style="margin-bottom: 10px;">
-  <a href="{{ url("users", "export") }}" class="btn-outline">
+  <a href="{{ url("users", "export") }}" class="button is-medium">
     <svg class="icon is-small"><use href="#icon-download"/></svg>
-    Export to CSV
+    <span>Export to CSV</span>
   </a>
-  <a href="{{ url("users", "import") }}" class="btn-outline">
+  <a href="{{ url("users", "import") }}" class="button is-medium">
     <svg class="icon is-small"><use href="#icon-upload"/></svg>
-    Import from CSV
+    <span>Import from CSV</span>
   </a>
   {% if admin.permission_all %}
   <button type="button" class="button is-medium is-primary has-text-white" onclick="MicroModal.show('modal-add-user')">

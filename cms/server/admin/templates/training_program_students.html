@@ -20,16 +20,16 @@
             <input type="file" name="students_file" accept=".txt" class="file-input-hidden" id="students-file-input"
                 {% if not admin.permission_all %}disabled{% endif %}
                 onchange="if(this.files.length) this.form.submit();" />
-            <label for="students-file-input" class="btn-outline" style="{% if admin.permission_all %}cursor: pointer;{% else %}opacity: 0.5; cursor: not-allowed;{% endif %}">
+            <label for="students-file-input" class="button is-medium" {% if not admin.permission_all %}disabled{% endif %}>
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
-                Add Students from List
+                <span>Add Students from List</span>
             </label>
         </form>
 
         <!-- Bulk Assign Task Button -->
-        <button type="button" class="btn-outline" onclick="openBulkAssignModal()">
-            <svg class="icon is-small"><use href="#icon-tag"/></svg>
-            Bulk Assign Task
+        <button type="button" class="button is-medium" onclick="openBulkAssignModal()">
+          <svg class="icon is-small"><use href="#icon-tag"/></svg>
+          <span>Bulk Assign Task</span>
         </button>
 
         <!-- Add Student Button -->

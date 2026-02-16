@@ -24,6 +24,12 @@
     --tp-question-answered-divider: #99F6E4;
 }
 
+.button {
+    height: auto;
+    gap: 0.3em;
+    transition: all 0.2s;
+}
+
 .searchable-select {
     width: 240px;
     display: inline-block;
@@ -1505,14 +1511,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .menu_entry:hover .menu-icon {
     color: var(--sidebar-accent-light);
-}
-
-/* SVG icon base styles for sprite usage */
-svg.icon {
-    display: inline-block;
-    vertical-align: middle;
-    fill: none;
-    stroke: currentColor;
 }
 
 /* Folder icon with SVG (for Training Days section) */

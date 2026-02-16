@@ -118,9 +118,6 @@ class AddTaskHandler(BaseHandler):
         else:
             if is_ajax:
                 self.set_status(500)
-                self.write(
-                    {"error": "Failed to save task. The name may already exist."}
-                )
                 return
             self.redirect(self.url("tasks"))
 

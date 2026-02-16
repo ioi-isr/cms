@@ -206,7 +206,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
     </select>
   </div>
   <div class="tp-filter-group" style="margin-left: 5px;">
-    <button type="submit" class="tp-btn-primary">Apply Filter</button>
+    <button type="submit" class="button is-primary has-text-white">Apply Filter</button>
     {% if start_date or end_date or training_day_types or student_tags %}
     <a href="{{ url('training_program', training_program.id, 'combined_ranking') }}" class="tp-btn-secondary">Clear</a>
     {% endif %}

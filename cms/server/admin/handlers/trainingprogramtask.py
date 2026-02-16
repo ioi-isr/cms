@@ -78,6 +78,9 @@ def reorder_tasks(
     if not isinstance(order_list, list):
         raise ValueError("Reorder data must be a list")
 
+    if len(order_list) != len(tasks):
+        raise ValueError("Reorder payload must contain exactly one entry per task")
+
     expected_ids = {t.id for t in tasks}
     received_ids = {int(item.get("task_id")) for item in order_list}
     if received_ids != expected_ids:

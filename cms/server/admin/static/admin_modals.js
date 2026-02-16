@@ -370,7 +370,7 @@ AdminModals.showAddTeamDialog = function (postUrl) {
         preConfirm: async () => {
             const codeInput = document.getElementById('swal-team-code');
             const nameInput = document.getElementById('swal-team-name');
-            const code = codeInput.value.trim();
+            const code = codeInput.value.trim().toUpperCase();
             const name = nameInput.value.trim();
 
             if (!code) {
@@ -393,6 +393,7 @@ AdminModals.showAddTeamDialog = function (postUrl) {
                 return false;
             }
 
+            if (codeInput) codeInput.value = code;
             const formData = new FormData();
             formData.append('code', code);
             formData.append('name', name);
@@ -564,6 +565,11 @@ AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
 
             if (!name) {
                 Swal.showValidationMessage('Task name is required');
+                setTimeout(() => nameInput.focus(), 100);
+                return false;
+            }
+            if (!/^[A-Za-z0-9_]+$/.test(name)) {
+                Swal.showValidationMessage('Task name may contain only letters, numbers, and underscores');
                 setTimeout(() => nameInput.focus(), 100);
                 return false;
             }

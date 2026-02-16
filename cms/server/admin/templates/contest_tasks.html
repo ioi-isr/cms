@@ -244,9 +244,12 @@ if (addTaskForm) {
         });
     }
 
-    $(document).ready(function() {
-        CMS.AWSUtils.init_table_sort($("#tasks-table"), false, -1);
-    });
+  $(document).ready(function() {
+      var table = $("#tasks-table");
+      if (table.length) {
+          CMS.AWSUtils.init_table_sort(table, false, -1);
+      }
+  });
 })();
 </script>
 {% endblock core %}

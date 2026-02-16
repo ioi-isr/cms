@@ -40,7 +40,7 @@
         <div class="tp-form-group param_row" data-param-short="{{ param_def.short_name }}">
             <label class="tp-form-label">{{ param_def.name }}</label>
             <div class="tp-task-type-field">
-                {{ param_def.render("TaskTypeOptions_%s_%s"|format(task_type_name, suffix), previous_value=val)|safe }}
+                {{ param_def.render("TaskTypeOptions_%s_%s_"|format(task_type_name, suffix), previous_value=val)|safe }}
             </div>
         </div>
         {% endfor %}
