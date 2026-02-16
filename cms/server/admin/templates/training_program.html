@@ -19,7 +19,7 @@
             </div>
 
             <a href="{{ url("training_program", training_program.id, "export") }}" class="tp-btn-secondary">
-                <svg class="icon" width="16" height="16"><use href="#icon-download"/></svg>
+                <svg class="icon is-small"><use href="#icon-download"/></svg>
                 Export all tasks
             </a>
         </div>
@@ -30,7 +30,7 @@
             <div class="tp-card col-span-12">
                 <div class="tp-card-header-modern">
                         <div class="tp-card-header-icon">
-                            <svg class="icon" width="18" height="18"><use href="#icon-graduation-cap"/></svg>
+                            <svg class="icon"><use href="#icon-graduation-cap"/></svg>
                         </div>
                         <h3 class="tp-card-title-modern">Training Program Information</h3>
                 </div>
@@ -65,12 +65,12 @@
     <div style="margin-top: 24px; text-align: right;">
         {% if admin.permission_all %}
         <button type="button" class="tp-btn-remove" onclick="MicroModal.show('modal-remove-program')">
-            <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+            <svg class="icon is-small" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
             Remove Program
         </button>
         {% else %}
         <button type="button" class="tp-btn-remove" disabled title="Read-only" aria-disabled="true">
-            <svg class="icon" width="14" height="14" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
+            <svg class="icon is-small" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
             Remove Program
         </button>
         {% endif %}

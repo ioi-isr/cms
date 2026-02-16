@@ -27,18 +27,18 @@
 
 from cms.db import Contest, Task
 from cms.server.admin.handlers.utils import get_all_student_tags, deduplicate_preserving_order
+from cms.server.admin.handlers.trainingprogramtask import (
+    reorder_tasks,
+    shift_task_nums,
+)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
 
 
 class ContestTasksHandler(BaseHandler):
-    REMOVE_FROM_CONTEST = "Remove from contest"
-    REMOVE_FROM_TRAINING_DAY = "Remove from training day"
-    MOVE_UP = "up by 1"
-    MOVE_DOWN = "down by 1"
-    MOVE_TOP = "to the top"
-    MOVE_BOTTOM = "to the bottom"
+    REORDER = "reorder"
+    REMOVE = "remove"
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
@@ -47,24 +47,18 @@ class ContestTasksHandler(BaseHandler):
         self.r_params = self.render_params()
         self.r_params["contest"] = self.contest
 
-        # Check if this contest is a training day
         training_day = self.contest.training_day
         self.r_params["is_training_day"] = training_day is not None
 
         if training_day is not None:
-            # For training days, show all tasks that are not already assigned
-            # to any training day. Tasks in the training program are shown first,
-            # followed by tasks not in the training program.
             training_program = training_day.training_program
 
-            # Tasks in the training program (not assigned to any training day)
             program_tasks = self.sql_session.query(Task)\
                 .filter(Task.contest_id == training_program.managing_contest_id)\
                 .filter(Task.training_day_id.is_(None))\
                 .order_by(Task.num)\
                 .all()
 
-            # All other tasks (not in any contest or training day)
             other_tasks = self.sql_session.query(Task)\
                 .filter(Task.contest_id.is_(None))\
                 .filter(Task.training_day_id.is_(None))\
@@ -72,15 +66,12 @@ class ContestTasksHandler(BaseHandler):
                 .all()
 
             self.r_params["unassigned_tasks"] = program_tasks + other_tasks
-            # Track which task IDs are in the training program for the template
             self.r_params["program_task_ids"] = [t.id for t in program_tasks]
 
-            # Get all student tags for autocomplete (for task visibility tags)
             self.r_params["all_student_tags"] = get_all_student_tags(
                 self.sql_session, training_program
             )
         else:
-            # For regular contests, show all unassigned tasks
             self.r_params["unassigned_tasks"] = \
                 self.sql_session.query(Task)\
                     .filter(Task.contest_id.is_(None))\
@@ -96,133 +87,91 @@ class ContestTasksHandler(BaseHandler):
         training_day = self.contest.training_day
 
         try:
-            task_id: str = self.get_argument("task_id")
             operation: str = self.get_argument("operation")
-            valid_operations = [
-                self.REMOVE_FROM_CONTEST,
-                self.REMOVE_FROM_TRAINING_DAY,
-                self.MOVE_UP,
-                self.MOVE_DOWN,
-                self.MOVE_TOP,
-                self.MOVE_BOTTOM
-            ]
-            assert operation in valid_operations, "Please select a valid operation"
+
+            if operation == self.REORDER:
+                reorder_data = self.get_argument("reorder_data", "")
+                if reorder_data:
+                    if training_day is not None:
+                        reorder_tasks(
+                            self.sql_session,
+                            list(training_day.tasks),
+                            reorder_data,
+                            "training_day_num",
+                        )
+                    else:
+                        reorder_tasks(
+                            self.sql_session,
+                            list(self.contest.tasks),
+                            reorder_data,
+                            "num",
+                        )
+                    if self.try_commit():
+                        self.service.proxy_service.reinitialize()
+                self.redirect(fallback_page)
+                return
+
+            if operation == self.REMOVE:
+                task_id: str = self.get_argument("task_id")
+                task = self.safe_get_item(Task, task_id)
+
+                if training_day is not None:
+                    if task.training_day_id != training_day.id:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Invalid task",
+                            "Task does not belong to this training day",
+                        )
+                        self.redirect(fallback_page)
+                        return
+                    task_num = task.training_day_num
+                    task.training_day = None
+                    task.training_day_num = None
+                    self.sql_session.flush()
+                    if task_num is not None:
+                        shift_task_nums(
+                            self.sql_session,
+                            Task.training_day,
+                            training_day,
+                            Task.training_day_num,
+                            task_num,
+                            -1,
+                        )
+                else:
+                    if task.contest_id != self.contest.id:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Invalid task",
+                            "Task does not belong to this contest",
+                        )
+                        self.redirect(fallback_page)
+                        return
+                    task_num = task.num
+                    task.contest = None
+                    task.num = None
+                    self.sql_session.flush()
+                    if task_num is not None:
+                        shift_task_nums(
+                            self.sql_session,
+                            Task.contest,
+                            self.contest,
+                            Task.num,
+                            task_num,
+                            -1,
+                        )
+
+                if self.try_commit():
+                    self.service.proxy_service.reinitialize()
+                self.redirect(fallback_page)
+                return
+            else:
+                raise ValueError(f"Unknown operation: {operation}")
+
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback_page)
             return
-
-        task = self.safe_get_item(Task, task_id)
-        num_key = "training_day_num" if training_day is not None else "num"
-        rel_key = "training_day" if training_day is not None else "contest"
-        scope_filter = (
-            Task.training_day == training_day
-            if training_day is not None
-            else Task.contest == self.contest
-        )
-        scope_name = "training day" if training_day is not None else "contest"
-        scope_id = training_day.id if training_day is not None else self.contest.id
-        task_scope_id = (
-            task.training_day_id if training_day is not None else task.contest_id
-        )
-        if task_scope_id != scope_id:
-            self.service.add_notification(
-                make_datetime(),
-                "Invalid task",
-                f"Task does not belong to this {scope_name}",
-            )
-            self.redirect(fallback_page)
-            return
-
-        task_num = getattr(task, num_key)
-        num_field = getattr(Task, num_key)
-        task2 = None
-
-        if operation in (self.REMOVE_FROM_CONTEST, self.REMOVE_FROM_TRAINING_DAY):
-            setattr(task, rel_key, None)
-            setattr(task, num_key, None)
-            self.sql_session.flush()
-
-            for t in (
-                self.sql_session.query(Task)
-                .filter(scope_filter)
-                .filter(num_field > task_num)
-                .order_by(num_field)
-                .all()
-            ):
-                setattr(t, num_key, getattr(t, num_key) - 1)
-                self.sql_session.flush()
-
-        elif operation == self.MOVE_UP:
-            task2 = (
-                self.sql_session.query(Task)
-                .filter(scope_filter)
-                .filter(num_field == task_num - 1)
-                .first()
-            )
-
-        elif operation == self.MOVE_DOWN:
-            task2 = (
-                self.sql_session.query(Task)
-                .filter(scope_filter)
-                .filter(num_field == task_num + 1)
-                .first()
-            )
-
-        elif operation == self.MOVE_TOP:
-            setattr(task, num_key, None)
-            self.sql_session.flush()
-
-            for t in (
-                self.sql_session.query(Task)
-                .filter(scope_filter)
-                .filter(num_field < task_num)
-                .order_by(num_field.desc())
-                .all()
-            ):
-                setattr(t, num_key, getattr(t, num_key) + 1)
-                self.sql_session.flush()
-
-            setattr(task, num_key, 0)
-
-        elif operation == self.MOVE_BOTTOM:
-            new_index = (
-                self.sql_session.query(Task)
-                .filter(scope_filter)
-                .filter(Task.id != task.id)
-                .count()
-            )
-
-            setattr(task, num_key, None)
-            self.sql_session.flush()
-
-            for t in (
-                self.sql_session.query(Task)
-                .filter(scope_filter)
-                .filter(num_field > task_num)
-                .order_by(num_field)
-                .all()
-            ):
-                setattr(t, num_key, getattr(t, num_key) - 1)
-                self.sql_session.flush()
-
-            setattr(task, num_key, new_index)
-
-        if task2 is not None:
-            tmp_a, tmp_b = getattr(task, num_key), getattr(task2, num_key)
-            setattr(task, num_key, None)
-            setattr(task2, num_key, None)
-            self.sql_session.flush()
-            setattr(task, num_key, tmp_b)
-            setattr(task2, num_key, tmp_a)
-
-        if self.try_commit():
-            # Create the user on RWS.
-            self.service.proxy_service.reinitialize()
-
-        # Maybe they'll want to do this again (for another task)
-        self.redirect(fallback_page)
 
 
 class AddContestTaskHandler(BaseHandler):

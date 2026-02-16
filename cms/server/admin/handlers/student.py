@@ -374,16 +374,24 @@ class StudentHandler(StudentBaseHandler):
             self.get_bool(attrs, "hidden")
             self.get_bool(attrs, "unrestricted")
 
-            # Get the new hidden status before applying
-            new_hidden = attrs.get("hidden", False)
+            # Get the new hidden and unrestricted status before applying
+            new_hidden = attrs.get("hidden", self.participation.hidden)
+            new_unrestricted = attrs.get(
+                "unrestricted", self.participation.unrestricted
+            )
 
             self.participation.set_attrs(attrs)
 
-            # Check if admin wants to apply hidden status to existing training days
-            apply_to_existing = self.get_argument("apply_hidden_to_existing", None) is not None
+            # Apply status changes to existing training days if requested
+            apply_hidden_to_existing = (
+                self.get_argument("apply_hidden_to_existing", None) is not None
+            )
+            apply_unrestricted_to_existing = (
+                self.get_argument("apply_unrestricted_to_existing", None) is not None
+            )
 
-            if apply_to_existing:
-                # Update hidden status in all existing training day participations
+            if apply_hidden_to_existing or apply_unrestricted_to_existing:
+                # Update status in all existing training day participations
                 user = self.participation.user
                 for training_day in self.training_program.training_days:
                     if training_day.contest is None:
@@ -393,7 +401,10 @@ class StudentHandler(StudentBaseHandler):
                         .filter(Participation.user_id == user.id)\
                         .first()
                     if td_participation:
-                        td_participation.hidden = new_hidden
+                        if apply_hidden_to_existing:
+                            td_participation.hidden = new_hidden
+                        if apply_unrestricted_to_existing:
+                            td_participation.unrestricted = new_unrestricted
 
             self.get_string(attrs, "team")
             team_code = attrs["team"]

@@ -19,7 +19,7 @@
 <h2 id="title_details" class="toggling_on">Submission details</h2>
 <div id="details">
 
-  <table class="bordered">
+  <table class="table is-bordered is-striped is-hoverable">
     <thead>
       <tr>
         <th>Property</th>
@@ -103,24 +103,24 @@
         <td>Status</td>
         <td id="submission_status">
           {% if status == SubmissionResult.COMPILING %}
-            Compiling...
+            <span class="tag is-light is-info">Compiling...</span>
           {% elif status == SubmissionResult.COMPILATION_FAILED %}
-            Compilation failed
+            <span class="tag is-light is-danger">Compilation failed</span>
           {% elif status == SubmissionResult.EVALUATING %}
-            Evaluating...
+            <span class="tag is-light is-info">Evaluating...</span>
           {% elif status == SubmissionResult.SCORING %}
-            Scoring...
+            <span class="tag is-light is-info">Scoring...</span>
           {% elif status == SubmissionResult.EVALUATION_FAILED %}
-            Evaluation system error
+            <span class="tag is-light is-danger">Evaluation system error</span>
           {% elif status == SubmissionResult.SCORED %}
             {% if st is defined %}
               {% set max_score = st.max_score %}
             {% else %}
               {% set max_score = "[Cannot get score type - see logs]" %}
             {% endif %}
-            Scored ({{ sr.score }} / {{ max_score }})
+            <span class="tag is-light is-success">Scored ({{ sr.score }} / {{ max_score }})</span>
           {% else %}
-            N/A
+            <span class="tag is-light">N/A</span>
           {% endif %}
         </td>
       </tr>
@@ -169,7 +169,7 @@
             N/A
           {% endif %}
 
-          <button onclick="cmsrpc_request(
+          <button class="button is-warning is-small is-light" onclick="cmsrpc_request(
                            'EvaluationService', 0,
                            'invalidate_submission', {
                              'submission_id': {{ s.id }},
@@ -194,7 +194,7 @@
           <div id="title_evaluation_failure_details" class="toggling_off">
             <button type="button" onclick="utils.toggle('evaluation_failure_details')">Details</button>
             <div id="evaluation_failure_details" style="display: none; margin-top: 10px;">
-              <table class="nested bordered">
+              <table class="table nested is-bordered">
                 {% if sr.last_evaluation_failure_details %}
                 <tr>
                   <td><strong>Exit status</strong></td>
@@ -257,7 +257,7 @@
                       N/A
                     {% endif %}
 
-                    <button onclick="cmsrpc_request(
+                    <button class="button is-warning is-small is-light" onclick="cmsrpc_request(
                                      'EvaluationService', 0,
                                      'invalidate_submission', {
                                        'submission_id': {{ s.id }},
@@ -345,7 +345,7 @@
 <h2 id="title_evaluation_admin" class="toggling_on">Evaluation (as seen by the admin)</h2>
 <div id="evaluation_admin">
 
-  <table class="bordered">
+  <table class="table is-bordered is-striped is-hoverable">
     <thead>
       <tr>
         <th>#</th>
@@ -395,7 +395,7 @@
               N/A
             {% endif %}
 
-            <button
+            <button class="button is-warning is-small is-light"
               onclick="cmsrpc_request(
                        'EvaluationService', 0,
                        'invalidate_submission', {

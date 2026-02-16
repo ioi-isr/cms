@@ -19,7 +19,7 @@
                 </p>
                 <div class="modal__warning" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
                     <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">
-                        <svg class="icon" width="16" height="16" style="vertical-align: middle; margin-right: 4px;"><use href="#icon-alert-triangle"/></svg>
+                        <svg class="icon is-small" style="vertical-align: middle;"><use href="#icon-alert-triangle"/></svg>
                         Warning: This action cannot be undone!
                     </p>
                     <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.9rem;" id="remove-program-stats">
@@ -71,7 +71,7 @@
             </main>
             <footer class="modal__footer">
                 <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                <button type="button" class="tp-btn-danger" id="confirm-remove-program-btn"
+                <button type="button" class="button is-danger has-text-white" id="confirm-remove-program-btn"
                         data-remove-url="{% if training_program is defined %}{{ url("training_programs", training_program.id, "remove") }}{% endif %}">Yes, Remove Program</button>
             </footer>
         </div>
