@@ -93,10 +93,10 @@ def reorder_tasks(
         raw_num = item["new_num"]
         try:
             new_num = int(raw_num)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as err:
             raise ValueError(
                 f"Invalid 'new_num' value: {raw_num!r} is not an integer"
-            )
+            ) from err
         if new_num < 0 or new_num >= num_tasks:
             raise ValueError(
                 f"'new_num' {new_num} is out of range [0, {num_tasks - 1}]"

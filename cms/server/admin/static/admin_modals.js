@@ -388,6 +388,10 @@ AdminModals.showAddTeamDialog = function (postUrl) {
             if (!xsrfToken && typeof get_cookie === 'function') {
                 xsrfToken = get_cookie('_xsrf');
             }
+            if (!xsrfToken) {
+                AdminModals.showError('Missing XSRF token');
+                return false;
+            }
 
             const formData = new FormData();
             formData.append('code', code);
@@ -398,7 +402,7 @@ AdminModals.showAddTeamDialog = function (postUrl) {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
-                        'X-XSRFToken': xsrfToken || ''
+                        'X-XSRFToken': xsrfToken
                     },
                     body: formData
                 });
@@ -563,6 +567,10 @@ AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
             if (!xsrfToken && typeof get_cookie === 'function') {
                 xsrfToken = get_cookie('_xsrf');
             }
+            if (!xsrfToken) {
+                AdminModals.showError('Missing XSRF token');
+                return false;
+            }
 
             const formData = new FormData();
             formData.append('name', name);
@@ -572,7 +580,7 @@ AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
-                        'X-XSRFToken': xsrfToken || ''
+                        'X-XSRFToken': xsrfToken
                     },
                     body: formData
                 });

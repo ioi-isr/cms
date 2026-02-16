@@ -182,12 +182,13 @@ CMS.AWSUtils.prototype.file_received = function(response, error) {
         MicroModal.show('modal-show-file');
         return;
     }
-    }
 
     var lang_name = CMS.AWSUtils.filename_to_lang(file_name);
     var codearea = $('<code>').text(response).addClass('line-numbers').addClass('language-' + lang_name);
     content.append($('<pre>').css('margin', '0').append(codearea));
 
+    $('#modal-show-file-title').text(file_name);
+    $('#modal-show-file-download').attr('href', url).show();
     $('#modal-show-file-copy').show().off('click').on('click', function(event) {
         var code_el = $('#subpage_content code')[0];
         if (code_el) {
@@ -1399,7 +1400,8 @@ var ModelSolutionModal = (function() {
             if (ui.advTotalMin) ui.advTotalMin.value = totalMin.toFixed(2);
             if (ui.advTotalMax) ui.advTotalMax.value = totalMax.toFixed(2);
 
-            var totalScore = _parse((ui.advTotalMax || ui.advTotalMin || {}).dataset && (ui.advTotalMax || ui.advTotalMin).dataset.totalScore);
+            var el = ui.advTotalMax || ui.advTotalMin;
+            var totalScore = el ? _parse(el.dataset.totalScore) : 0;
             if (ui.advTotalPct && totalScore > 0) {
                 // Show percentage only when min and max are the same, hide when they differ
                 if (Math.abs(totalMin - totalMax) < 0.001) {

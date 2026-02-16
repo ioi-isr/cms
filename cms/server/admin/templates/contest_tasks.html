@@ -63,7 +63,7 @@ if (addTaskForm) {
 {% if contest.start <= timestamp %}
     <div class="tp-info-alert tp-info-alert-warning" style="margin-bottom: 20px;">
         <div class="tp-info-alert-icon">
-            <svg class="icon" width="20" height="20"><use href="#icon-alert-triangle"/></svg>
+            <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
         </div>
         <div class="tp-info-alert-content">
             <div class="tp-info-alert-message">The contest is visible to contestants, tasks added can be seen.</div>
@@ -97,6 +97,7 @@ if (addTaskForm) {
         <h2>All Tasks ({{ contest.get_tasks()|length }})</h2>
     </div>
 
+    {% if contest.get_tasks() %}
     <form action="{{ url("contest", contest.id, "tasks") }}" method="POST" id="tasks-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
@@ -120,7 +121,7 @@ if (addTaskForm) {
                         <!-- Drag handle -->
                         <td class="grip-cell">
                             <div class="grip-handle" title="Drag to reorder">
-                                <svg class="icon" width="16" height="16"><use href="#icon-grip"/></svg>
+                                <svg class="icon is-small"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
 
@@ -153,7 +154,7 @@ if (addTaskForm) {
                                     data-task-name="{{ t.name | e }}"
                                     {% if not admin.permission_all %}disabled{% endif %}
                                     title="Remove from {% if is_training_day %}training day{% else %}contest{% endif %}">
-                                    <svg class="icon" width="18" height="18"><use href="#icon-trash"/></svg>
+                                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                 </button>
                             </div>
                         </td>
@@ -163,8 +164,7 @@ if (addTaskForm) {
             </table>
         </div>
     </form>
-
-    {% if not contest.get_tasks() %}
+    {% else %}
     <div class="empty-state-box">
         <h3>No tasks yet</h3>
         <p>Use the "Add Task" button above to add tasks.</p>

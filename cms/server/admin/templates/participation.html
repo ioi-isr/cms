@@ -75,10 +75,8 @@
             <span class="info" title="Contestant password for this contest. If empty, the contestant's main password is used. Caution: stored in plain text."></span>
             <strong style="color:#c00; font-weight: 700;">(only inside the contest {{ contest.name }})</strong>
           </label>
-          <div class="control">
-            {% set hashed_password = participation.password %}
-            {% include "fragments/hashed_password_form.html" %}
-          </div>
+          {% set hashed_password = participation.password %}
+          {% include "fragments/hashed_password_form.html" %}
         </div>
       </div>
       <div class="column is-half">

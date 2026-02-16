@@ -48,7 +48,7 @@ CMS.AWSFormUtils.initTagify({
     <div class="page-subtitle">Monitor student participation, manage delays, and track IP addresses.</div>
   </div>
   <button type="button" class="btn-filled-primary" onclick="MicroModal.show('modal-set-delay')">
-    <svg class="icon" width="16" height="16"><use href="#icon-clock"/></svg>
+    <svg class="icon is-small"><use href="#icon-clock"/></svg>
     Set Delay for User
   </button>
 </div>
@@ -62,7 +62,7 @@ CMS.AWSFormUtils.initTagify({
   <button type="button" class="tp-btn-primary delays-archive-btn"
     {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
     onclick="MicroModal.show('modal-archive-td-{{ contest.training_day.id }}')">
-    <svg class="icon" width="16" height="16"><use href="#icon-archive-down"/></svg>
+    <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
     Archive Training Day
   </button>
 </div>
@@ -98,7 +98,7 @@ CMS.AWSFormUtils.initTagify({
 <div class="delays-ineligible-section">
   <div class="delays-alert-card delays-alert-card-danger">
     <div class="delays-alert-header">
-      <span class="delays-alert-header-icon"><svg class="icon" width="18" height="18"><use href="#icon-info"/></svg></span>
+      <span class="delays-alert-header-icon"><svg class="icon is-small"><use href="#icon-info"/></svg></span>
       <span class="delays-alert-title">Ineligible Students</span>
       <span class="delays-alert-count">{{ ineligible_students|length }}</span>
     </div>
@@ -163,29 +163,29 @@ CMS.AWSFormUtils.initTagify({
   <h2>Participations</h2>
   <div class="delays-section-actions">
     <div class="delays-search-wrapper">
-      <svg class="icon delays-search-icon" width="16" height="16"><use href="#icon-search"/></svg>
+      <svg class="icon is-small delays-search-icon" width="16" height="16"><use href="#icon-search"/></svg>
       <input type="text" id="participations-search" class="delays-search-input" placeholder="Search user..." aria-label="Search user">
     </div>
     <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="tp-btn-secondary" aria-label="Export CSV">
-      <svg class="icon" width="16" height="16"><use href="#icon-download"/></svg>
+      <svg class="icon is-small"><use href="#icon-download"/></svg>
       Export CSV
     </a>
     <form action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" class="delays-inline-form" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to remove all delays and extra times for all participants?');">
       {{ xsrf_form_html|safe }}
       <button type="submit" class="delays-icon-btn" title="Remove All Delays &amp; Extra Times" aria-label="Remove All Delays & Extra Times">
-        <svg class="icon" width="16" height="16"><use href="#icon-delay-extra"/></svg>
+        <svg class="icon is-small"><use href="#icon-delay-extra"/></svg>
       </button>
     </form>
     <form action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" class="delays-inline-form" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to erase all starting times for all participants?');">
       {{ xsrf_form_html|safe }}
       <button type="submit" class="delays-icon-btn" title="Erase All Start Times" aria-label="Erase All Start Times">
-        <svg class="icon" width="16" height="16"><use href="#icon-refresh"/></svg>
+        <svg class="icon is-small"><use href="#icon-refresh"/></svg>
       </button>
     </form>
     <form action="{{ url("contest", contest.id, "delays_and_extra_times", "reset_ip_addresses") }}" method="POST" class="delays-inline-form" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to reset all IP addresses for all participants?');">
       {{ xsrf_form_html|safe }}
       <button type="submit" class="delays-icon-btn" title="Reset All IP Addresses" aria-label="Reset All IP Addresses">
-        <svg class="icon" width="16" height="16"><use href="#icon-ip-reset"/></svg>
+        <svg class="icon is-small"><use href="#icon-ip-reset"/></svg>
       </button>
     </form>
   </div>
@@ -224,15 +224,15 @@ CMS.AWSFormUtils.initTagify({
         {% if item.status_label %}
           <span class="delays-status-badge delays-status-{{ item.status_class }}">
             {% if item.status_class == "pre-contest" %}
-              <svg class="icon" width="12" height="12"><use href="#icon-clock"/></svg>
+              <svg class="icon is-small"><use href="#icon-clock"/></svg>
             {% elif item.status_class == "can-start" %}
-              <svg class="icon" width="12" height="12"><use href="#icon-play-circle"/></svg>
+              <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
             {% elif item.status_class == "in-contest" %}
-              <svg class="icon" width="12" height="12"><use href="#icon-clock"/></svg>
+              <svg class="icon is-small"><use href="#icon-clock"/></svg>
             {% elif item.status_class == "finished" %}
-              <svg class="icon" width="12" height="12"><use href="#icon-check"/></svg>
+              <svg class="icon is-small"><use href="#icon-check"/></svg>
             {% elif item.status_class == "missed" %}
-              <svg class="icon" width="12" height="12"><use href="#icon-x"/></svg>
+              <svg class="icon is-small"><use href="#icon-x"/></svg>
             {% endif %}
             {{ item.status_label }}
           </span>
@@ -299,7 +299,7 @@ CMS.AWSFormUtils.initTagify({
         <form action="{{ url("contest", contest.id, "participation", participation.id, "remove_delay_and_extra_time") }}" method="POST" class="delays-inline-form">
           {{ xsrf_form_html|safe }}
           <button type="submit" class="btn-icon-only" title="{% if participation.delay_time.total_seconds() == 0 %}Remove extra time{% elif participation.extra_time.total_seconds() == 0 %}Remove delay{% else %}Remove delay and extra time{% endif %}" aria-label="{% if participation.delay_time.total_seconds() == 0 %}Remove extra time{% elif participation.extra_time.total_seconds() == 0 %}Remove delay{% else %}Remove delay and extra time{% endif %}">
-            <svg class="icon" width="24" height="24"><use href="#icon-delay-extra"/></svg>
+            <svg class="icon is-small"><use href="#icon-delay-extra"/></svg>
           </button>
         </form>
         {% endif %}

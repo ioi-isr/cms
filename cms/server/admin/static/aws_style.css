@@ -4,15 +4,6 @@
 
 /* Simply disable Bulma's base classes that interfere with custom styling */
 
-.icon {
-    all: unset !important;
-    display: inline-block !important;
-}
-
-.footer {
-    all: unset !important;
-}
-
 :root {
     --bulma-primary-h: 175deg;
     --bulma-primary-s: 77%;
@@ -586,7 +577,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     background-color: transparent;
 }
 
-.footer {
+.side_footer {
     font-size: 0.875em;
     text-align: left;
     clear: both;
@@ -1283,9 +1274,9 @@ table.jqplot-table-legend {
 
 /* OTHERS */
 span.info {
-    color: #0F766E;
+    background: var(--tp-bg-gray);
+    color: var(--tp-text-lighter);
     font-size: smaller;
-    background-color: #F0FDFA;
     display: inline-block;
     border-radius: 10px;
     width: 16px;

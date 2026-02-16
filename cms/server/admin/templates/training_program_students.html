@@ -21,21 +21,21 @@
                 {% if not admin.permission_all %}disabled{% endif %}
                 onchange="if(this.files.length) this.form.submit();" />
             <label for="students-file-input" class="btn-outline" style="{% if admin.permission_all %}cursor: pointer;{% else %}opacity: 0.5; cursor: not-allowed;{% endif %}">
-                <svg class="icon" width="18" height="18"><use href="#icon-upload"/></svg>
+                <svg class="icon is-small"><use href="#icon-upload"/></svg>
                 Add Students from List
             </label>
         </form>
 
         <!-- Bulk Assign Task Button -->
         <button type="button" class="btn-outline" onclick="openBulkAssignModal()">
-            <svg class="icon" width="18" height="18"><use href="#icon-tag"/></svg>
+            <svg class="icon is-small"><use href="#icon-tag"/></svg>
             Bulk Assign Task
         </button>
 
         <!-- Add Student Button -->
-        <button type="button" class="button is-primary has-text-white" onclick="document.getElementById('add-student-dialog').showModal()">
-            <svg class="icon" width="18" height="18"><use href="#icon-plus"/></svg>
-            Add Student
+        <button type="button" class="button is-medium is-primary has-text-white" onclick="document.getElementById('add-student-dialog').showModal()">
+            <svg class="icon is-small"><use href="#icon-plus"/></svg>
+            <span>Add Student</span>
         </button>
     </div>
 
@@ -179,7 +179,7 @@
                                     data-full-name="{{ u.first_name }} {{ u.last_name }}"
                                     data-remove-url="{{ url('training_program', training_program.id, 'student', u.id, 'remove') }}"
                                     title="Remove from program">
-                                    <svg class="icon" width="18" height="18"><use href="#icon-trash"/></svg>
+                                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                 </button>
                             </div>
                         </td>

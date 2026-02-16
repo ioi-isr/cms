@@ -887,6 +887,32 @@
     outline: none;
 }
 
+/* Override Bulma default button styles to match tp-btn-primary */
+.button {
+    border-radius: 6px !important;
+    padding: 6px 16px !important;
+    font-size: 0.9rem !important;
+}
+
+/* Override Bulma button sizes */
+.button.is-small {
+    border-radius: 4px !important;
+    padding: 4px 12px !important;
+    font-size: 0.85rem !important;
+}
+
+.button.is-medium {
+    border-radius: 8px !important;
+    padding: 8px 20px !important;
+    font-size: 1rem !important;
+}
+
+.button.is-large {
+    border-radius: 10px !important;
+    padding: 12px 24px !important;
+    font-size: 1.1rem !important;
+}
+
 /* Buttons */
 .tp-btn,
 .tp-btn-primary,
@@ -2583,6 +2609,11 @@
 .tp-card-body {
     padding: 24px;
     flex: 1;
+}
+
+/* Remove padding for validator sections */
+.tp-card-body:has(.validator-table) {
+    padding: 0;
 }
 
 /* Grid Spans */

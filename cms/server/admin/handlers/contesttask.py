@@ -158,14 +158,14 @@ class ContestTasksHandler(BaseHandler):
                     self.service.proxy_service.reinitialize()
                 self.redirect(fallback_page)
                 return
+            else:
+                raise ValueError(f"Unknown operation: {operation}")
 
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback_page)
             return
-
-        self.redirect(fallback_page)
 
 
 class AddContestTaskHandler(BaseHandler):

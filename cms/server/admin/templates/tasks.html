@@ -7,11 +7,11 @@
   {% if admin.permission_all %}
   <div style="display:flex;gap:8px;align-items:center;">
     <a href="{{ url("tasks", "import") }}" class="tp-btn tp-btn-secondary">
-      <svg class="icon" width="16" height="16" style="margin-right:4px;vertical-align:text-bottom;"><use href="#icon-upload"/></svg>
+      <svg class="icon is-small"><use href="#icon-upload"/></svg>
       Import from ZIP
     </a>
     <button type="button" class="tp-btn tp-btn-primary" onclick="AdminModals.showAddTaskDialog('{{ url("tasks", "add") }}', '{{ url("task", "") }}')">
-      <svg class="icon" width="16" height="16" style="margin-right:4px;vertical-align:text-bottom;"><use href="#icon-plus"/></svg>
+      <svg class="icon is-small"><use href="#icon-plus"/></svg>
       Add Task
     </button>
   </div>
@@ -52,7 +52,7 @@
             deleteUrl: {{ url("tasks", t.id, "remove")|tojson }},
             confirmLabel: "Yes, Remove"
           })'>
-          <svg class="icon" width="14" height="14"><use href="#icon-trash"/></svg>
+          <svg class="icon is-small"><use href="#icon-trash"/></svg>
         </button>
       </td>
       {% endif %}

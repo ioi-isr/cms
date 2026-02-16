@@ -243,17 +243,17 @@ class ModelSolutionMeta(Base):
         return: HTML span with colored SVG icon
         """
         if outcome_str is None:
-            return '<span style="color:gray"><svg class="icon" width="16" height="16"><use href="#icon-question-mark"/></svg></span>'
+            return '<span style="color:gray"><svg class="icon is-small"><use href="#icon-question-mark"/></svg></span>'
         try:
             outcome = float(outcome_str)
         except (ValueError, TypeError):
-            return '<span style="color:gray"><svg class="icon" width="16" height="16"><use href="#icon-question-mark"/></svg></span>'
+            return '<span style="color:gray"><svg class="icon is-small"><use href="#icon-question-mark"/></svg></span>'
 
         if outcome >= 1.0:
-            return '<span style="color:green"><svg class="icon" width="16" height="16"><use href="#icon-check"/></svg></span>'
+            return '<span style="color:green"><svg class="icon is-small"><use href="#icon-check"/></svg></span>'
         if outcome <= 0.0:
-            return '<span style="color:red"><svg class="icon" width="16" height="16"><use href="#icon-x"/></svg></span>'
-        return '<span style="color:orange"><svg class="icon" width="16" height="16"><use href="#icon-partial"/></svg></span>'
+            return '<span style="color:red"><svg class="icon is-small"><use href="#icon-x"/></svg></span>'
+        return '<span style="color:orange"><svg class="icon is-small"><use href="#icon-partial"/></svg></span>'
 
 
 def create_model_solution_submission(

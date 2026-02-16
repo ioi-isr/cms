@@ -64,7 +64,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
         {% endif %}
 
         <button class="question-btn question-btn-primary" onclick="utils.question_reply_toggle(event, this);">
-          <svg class="icon" width="16" height="16"><use href="#icon-reply"/></svg> Reply
+          <svg class="icon is-small"><use href="#icon-reply"/></svg> Reply
         </button>
       </div>
       {% endif %}
@@ -73,12 +73,12 @@ user_id (int|None): if we are rendering one of the questions on a single user's
       <div class="question-card-meta question-card-meta-inline">
         {% if user_id is none %}
           <span class="question-meta-item">
-            <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
+            <svg class="icon is-small"><use href="#icon-user"/></svg>
             <a href="{{ url("contest", contest.id, "user", msg.participation.user.id, "edit") }}" title="{{ msg.participation.user.first_name }} {{ msg.participation.user.last_name }}">{{ msg.participation.user.username }}</a>
           </span>
         {% endif %}
         <span class="question-meta-item">
-          <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
+          <svg class="icon is-small"><use href="#icon-calendar"/></svg>
           {{ msg.question_timestamp|format_datetime }}
         </span>
       </div>
@@ -109,7 +109,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
     {% if admin.permission_all or admin.permission_messaging %}
     <div class="question-edit-reply-row">
       <button class="question-edit-reply-link" onclick="utils.question_reply_toggle(event, this);">
-        <svg class="icon" width="14" height="14"><use href="#icon-edit"/></svg> Edit reply
+        <svg class="icon is-small"><use href="#icon-edit"/></svg> Edit reply
       </button>
     </div>
     {% endif %}
@@ -125,7 +125,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
     <div class="reply_question">
       <div class="question-reply-form-section">
         <div class="question-reply-form-header">
-          <svg class="icon" width="18" height="18"><use href="#icon-reply"/></svg>
+          <svg class="icon is-small"><use href="#icon-reply"/></svg>
           <strong>Write a Reply</strong>
         </div>
         <form class="reply_question_form" action="{{ url("contest", contest.id, "question", msg.id, "reply") }}" method="POST">
@@ -148,14 +148,14 @@ user_id (int|None): if we are rendering one of the questions on a single user's
             <div class="question-reply-form-left">
               <span class="alternative_answer">
                 <button type="button" class="question-btn question-btn-outline question-btn-preview" onclick="utils.render_markdown_preview(this)">
-                  <svg class="icon" width="16" height="16"><use href="#icon-eye"/></svg> Preview Markdown
+                  <svg class="icon is-small"><use href="#icon-eye"/></svg> Preview Markdown
                 </button>
               </span>
             </div>
             <div class="question-reply-form-right">
               <button type="button" class="question-btn question-btn-outline" onclick="utils.question_reply_toggle(event, this);">Cancel</button>
               <button type="submit" class="question-btn question-btn-primary">
-                <svg class="icon" width="16" height="16"><use href="#icon-send"/></svg> Send Reply
+                <svg class="icon is-small"><use href="#icon-send"/></svg> Send Reply
               </button>
             </div>
           </div>
