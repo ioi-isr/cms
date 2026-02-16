@@ -7,6 +7,9 @@
 
 .modal.is-open {
     display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
 }
 
 .modal__overlay {
@@ -145,7 +148,7 @@
     margin-bottom: 16px;
 }
 
-.modal__form-group label {
+.modal__form-group label:not(.file-label) {
     display: block;
     font-size: 0.85rem;
     font-weight: 600;
@@ -216,30 +219,6 @@
 /* Ensure SweetAlert2 popups appear above MicroModal overlays */
 .swal2-container {
     z-index: 10003 !important;
-}
-
-/* Danger button for destructive actions in modals */
-.tp-btn-danger {
-    background-color: #dc2626;
-    color: white !important;
-    border: none;
-    padding: 6px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 0.9rem;
-    font-family: inherit;
-    transition: all 0.2s;
-    text-decoration: none;
-    display: inline-block;
-    line-height: 1.5;
-    box-sizing: border-box;
-    vertical-align: middle;
-}
-
-.tp-btn-danger:hover {
-    background-color: #b91c1c;
-    color: white;
 }
 
 /* Body scroll lock when modal is open */

@@ -760,8 +760,8 @@ class BaseHandler(CommonRequestHandler):
                 value = float(value)
             except ValueError as err:
                 raise ValueError("Can't cast %s to float: %s" % (value, err)) from err
-            if not 0 <= value < float("+inf"):
-                raise ValueError("Time limit out of range.")
+            if not 0 < value < float("+inf"):
+                raise ValueError("Time limit must be greater than 0.")
             dest["time_limit"] = value
 
     def get_memory_limit(self, dest: dict, field: str):

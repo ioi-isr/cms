@@ -31,12 +31,12 @@ variant (str): "pending", "history", or "auto" to pick layout.
       <div class="question-card-meta question-card-meta-inline">
         {% if user_id is none %}
         <span class="question-meta-item">
-          <svg class="icon" width="16" height="16"><use href="#icon-user"/></svg>
+          <svg class="icon is-small"><use href="#icon-user"/></svg>
           <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">{{ req.participation.user.username }}</a>
         </span>
         {% endif %}
         <span class="question-meta-item">
-          <svg class="icon" width="16" height="16"><use href="#icon-calendar"/></svg>
+          <svg class="icon is-small"><use href="#icon-calendar"/></svg>
           {{ req.request_timestamp|format_datetime }}
         </span>
       </div>
@@ -45,20 +45,20 @@ variant (str): "pending", "history", or "auto" to pick layout.
   <div class="question-card-body">
     <div class="delays-history-card-field">
       <div class="delays-history-card-field-label">
-        <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg>
+        <svg class="icon is-small"><use href="#icon-clock"/></svg>
         Requested Start
       </div>
       <div class="delays-history-card-field-value">{{ req.requested_start_time|format_datetime }}</div>
     </div>
     {% if warning and warning.group_name is defined and warning.group_start is defined %}
     <div class="delays-request-warning">
-      <svg class="icon" width="16" height="16"><use href="#icon-alert-triangle"/></svg>
+      <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
       <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
     </div>
     {% endif %}
     <div class="delays-history-card-reason">
       <div class="delays-history-card-reason-label">
-        <svg class="icon" width="14" height="14"><use href="#icon-message-circle"/></svg>
+        <svg class="icon is-small"><use href="#icon-message-circle"/></svg>
         Reason
       </div>
       <div class="delays-history-card-reason-box">{{ req.reason or '—' }}</div>
@@ -68,11 +68,11 @@ variant (str): "pending", "history", or "auto" to pick layout.
   <div class="delays-request-actions">
     <form action="{{ url("contest", contest.id, "delay_request", req.id, "approve") }}" method="POST" class="delays-inline-form">
       {{ xsrf_form_html|safe }}
-      <button type="submit" class="delays-btn-approve">Approve</button>
+      <button type="submit" class="button is-success">Approve</button>
     </form>
     <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" class="delays-inline-form delays-reject-form">
       {{ xsrf_form_html|safe }}
-      <button type="submit" class="delays-btn-reject">Reject</button>
+      <button type="submit" class="button is-danger">Reject</button>
       <input type="text" name="rejection_reason" class="delays-reject-input" placeholder="Rejection reason (optional)">
     </form>
   </div>
@@ -82,7 +82,7 @@ variant (str): "pending", "history", or "auto" to pick layout.
 <div class="delays-history-card{% if req.status == 'pending' %} question-unanswered{% endif %}">
   <div class="delays-history-card-header">
     <div class="delays-history-card-user">
-      <svg class="icon" width="20" height="20"><use href="#icon-user"/></svg>
+      <svg class="icon is-small"><use href="#icon-user"/></svg>
       <div class="student-info">
         {% if user_id is none %}
         <a class="student-name-link"
@@ -99,45 +99,45 @@ variant (str): "pending", "history", or "auto" to pick layout.
     </div>
     {% if req.status == 'approved' %}
       <span class="delays-history-badge delays-history-badge-approved">
-        <svg class="icon" width="14" height="14"><use href="#icon-check"/></svg> Approved
+        <svg class="icon is-small"><use href="#icon-check"/></svg> Approved
       </span>
     {% elif req.status == 'rejected' %}
       <span class="delays-history-badge delays-history-badge-rejected">
-        <svg class="icon" width="14" height="14"><use href="#icon-x"/></svg> Rejected
+        <svg class="icon is-small"><use href="#icon-x"/></svg> Rejected
       </span>
     {% elif req.status == 'admin_configured' %}
       <span class="delays-history-badge delays-history-badge-configured">
-        <svg class="icon" width="14" height="14"><use href="#icon-sliders"/></svg> Admin Configured
+        <svg class="icon is-small"><use href="#icon-sliders"/></svg> Admin Configured
       </span>
     {% elif req.status == 'pending' %}
       <span class="delays-history-badge delays-history-badge-pending">
-        <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> Pending
+        <svg class="icon is-small"><use href="#icon-clock"/></svg> Pending
       </span>
     {% endif %}
   </div>
   <div class="delays-history-card-body">
     <div class="delays-history-card-field">
       <div class="delays-history-card-field-label">
-        <svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> Requested Start
+        <svg class="icon is-small"><use href="#icon-clock"/></svg> Requested Start
       </div>
       <div class="delays-history-card-field-value">{{ req.requested_start_time|format_datetime }}</div>
     </div>
     {% if warning and warning.group_name is defined and warning.group_start is defined %}
     <div class="delays-request-warning">
-      <svg class="icon" width="16" height="16"><use href="#icon-alert-triangle"/></svg>
+      <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
       <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
     </div>
     {% endif %}
     <div class="delays-history-card-reason">
       <div class="delays-history-card-reason-label">
-        <svg class="icon" width="14" height="14"><use href="#icon-message-circle"/></svg> Reason
+        <svg class="icon is-small"><use href="#icon-message-circle"/></svg> Reason
       </div>
       <div class="delays-history-card-reason-box">{{ req.reason or '—' }}</div>
     </div>
     {% if req.status == 'rejected' and req.rejection_reason %}
     <div class="delays-history-card-field" style="margin-top: 8px;">
       <div class="delays-history-card-field-label">
-        <svg class="icon" width="14" height="14"><use href="#icon-x"/></svg> Rejection Reason
+        <svg class="icon is-small"><use href="#icon-x"/></svg> Rejection Reason
       </div>
       <div class="delays-history-card-reason-box">{{ req.rejection_reason }}</div>
     </div>
@@ -147,13 +147,13 @@ variant (str): "pending", "history", or "auto" to pick layout.
   <div class="delays-history-card-footer">
     {% if req.admin %}
     <div class="delays-history-card-meta-row">
-      <span><svg class="icon" width="14" height="14"><use href="#icon-users"/></svg> Processed by:</span>
+      <span><svg class="icon is-small"><use href="#icon-users"/></svg> Processed by:</span>
       <span>{{ req.admin.name }}</span>
     </div>
     {% endif %}
     {% if req.processed_timestamp %}
     <div class="delays-history-card-meta-row">
-      <span><svg class="icon" width="14" height="14"><use href="#icon-clock"/></svg> At:</span>
+      <span><svg class="icon is-small"><use href="#icon-clock"/></svg> At:</span>
       <span>{{ req.processed_timestamp|format_datetime }}</span>
     </div>
     {% endif %}

@@ -50,13 +50,87 @@ from .base import BaseHandler, require_permission
 from .contestranking import RankingCommonMixin
 
 
-def _shift_task_nums(
+def reorder_tasks(
     sql_session,
-    filter_attr,
-    filter_value,
-    num_attr,
-    threshold: int,
-    delta: int
+    tasks,
+    reorder_data: str,
+    num_attr_name: str = "num",
+) -> None:
+    """Reorder tasks based on drag-and-drop data.
+
+    Shared utility used by both training program and contest task handlers.
+
+    sql_session: The SQLAlchemy session.
+    tasks: List of Task objects in the current scope.
+    reorder_data: JSON string with list of {task_id, new_num} objects.
+    num_attr_name: Name of the num attribute ('num' or 'training_day_num').
+    """
+    try:
+        order_list = json.loads(reorder_data)
+    except json.JSONDecodeError as e:
+        logging.warning(
+            "Failed to parse reorder data: %s. Payload: %s",
+            e.msg,
+            reorder_data[:500],
+        )
+        raise ValueError(f"Invalid JSON in reorder data: {e.msg}") from e
+
+    if not isinstance(order_list, list):
+        raise ValueError("Reorder data must be a list")
+
+    if len(order_list) != len(tasks):
+        raise ValueError("Reorder payload must contain exactly one entry per task")
+
+    expected_ids = {t.id for t in tasks}
+    received_ids = {int(item.get("task_id")) for item in order_list}
+    if received_ids != expected_ids:
+        raise ValueError("Reorder data must include each task exactly once")
+
+    num_tasks = len(tasks)
+    expected_nums = set(range(0, num_tasks))
+    received_nums = set()
+
+    for item in order_list:
+        if "new_num" not in item:
+            raise ValueError("Missing 'new_num' in reorder data entry")
+        raw_num = item["new_num"]
+        try:
+            new_num = int(raw_num)
+        except (TypeError, ValueError) as err:
+            raise ValueError(
+                f"Invalid 'new_num' value: {raw_num!r} is not an integer"
+            ) from err
+        if new_num < 0 or new_num >= num_tasks:
+            raise ValueError(
+                f"'new_num' {new_num} is out of range [0, {num_tasks - 1}]"
+            )
+        received_nums.add(new_num)
+
+    if received_nums != expected_nums:
+        raise ValueError(
+            "Reorder data must include each task number exactly once "
+            f"(expected {sorted(expected_nums)}, got {sorted(received_nums)})"
+        )
+
+    task_by_id = {t.id: t for t in tasks}
+
+    task_updates = []
+    for item in order_list:
+        task_id = int(item["task_id"])
+        new_num = int(item["new_num"])
+        task = task_by_id.get(task_id)
+        if task:
+            task_updates.append((task, new_num))
+            setattr(task, num_attr_name, None)
+    sql_session.flush()
+
+    for task, new_num in task_updates:
+        setattr(task, num_attr_name, new_num)
+    sql_session.flush()
+
+
+def shift_task_nums(
+    sql_session, filter_attr, filter_value, num_attr, threshold: int, delta: int
 ) -> None:
     """Shift task numbers after insertion or removal.
 
@@ -146,69 +220,10 @@ class TrainingProgramTasksHandler(BaseHandler):
         self.redirect(fallback_page)
 
     def _reorder_tasks(self, contest: Contest, reorder_data: str) -> None:
-        """Reorder tasks based on drag-and-drop data.
-
-        reorder_data: JSON string with list of {task_id, new_num} objects.
-        """
-        try:
-            order_list = json.loads(reorder_data)
-        except json.JSONDecodeError as e:
-            logging.warning(
-                "Failed to parse reorder data: %s. Payload: %s",
-                e.msg,
-                reorder_data[:500],
-            )
-            raise ValueError(f"Invalid JSON in reorder data: {e.msg}") from e
-
-        if not isinstance(order_list, list):
-            raise ValueError("Reorder data must be a list")
-
-        expected_ids = {t.id for t in contest.tasks}
-        received_ids = {int(item.get("task_id")) for item in order_list}
-        if received_ids != expected_ids:
-            raise ValueError("Reorder data must include each task exactly once")
-
-        # Validate new_num for each entry (0-based indices)
-        num_tasks = len(contest.tasks)
-        expected_nums = set(range(0, num_tasks))
-        received_nums = set()
-
-        for item in order_list:
-            if "new_num" not in item:
-                raise ValueError("Missing 'new_num' in reorder data entry")
-            raw_num = item["new_num"]
-            try:
-                new_num = int(raw_num)
-            except (TypeError, ValueError):
-                raise ValueError(
-                    f"Invalid 'new_num' value: {raw_num!r} is not an integer"
-                )
-            if new_num < 0 or new_num >= num_tasks:
-                raise ValueError(
-                    f"'new_num' {new_num} is out of range [0, {num_tasks - 1}]"
-                )
-            received_nums.add(new_num)
-
-        if received_nums != expected_nums:
-            raise ValueError(
-                "Reorder data must include each task number exactly once "
-                f"(expected {sorted(expected_nums)}, got {sorted(received_nums)})"
-            )
-
-        # First, set all task nums to None to avoid unique constraint issues
-        task_updates = []
-        for item in order_list:
-            task = self.safe_get_item(Task, item["task_id"])
-            new_num = int(item["new_num"])
-            if task.contest == contest:
-                task_updates.append((task, new_num))
-                task.num = None
-        self.sql_session.flush()
-
-        # Then set the new nums
-        for task, new_num in task_updates:
-            task.num = new_num
-        self.sql_session.flush()
+        """Reorder tasks based on drag-and-drop data."""
+        reorder_tasks(
+            self.sql_session, list(contest.tasks), reorder_data, "num"
+        )
 
     def _detach_task_from_training_day(self, task: Task) -> None:
         """Detach a task from its training day.
@@ -232,7 +247,7 @@ class TrainingProgramTasksHandler(BaseHandler):
 
         # Reorder remaining tasks in the training day (only if there was a valid position)
         if training_day_num is not None:
-            _shift_task_nums(
+            shift_task_nums(
                 self.sql_session,
                 Task.training_day,
                 training_day,
@@ -314,7 +329,7 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
 
             # Reorder remaining tasks in the training day
             if training_day_num is not None:
-                _shift_task_nums(
+                shift_task_nums(
                     self.sql_session,
                     Task.training_day,
                     training_day,
@@ -331,7 +346,7 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
 
         # Reorder remaining tasks in the training program
         if task_num is not None:
-            _shift_task_nums(
+            shift_task_nums(
                 self.sql_session, Task.contest, managing_contest, Task.num, task_num, -1
             )
 

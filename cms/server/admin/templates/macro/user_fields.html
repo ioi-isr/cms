@@ -1,40 +1,55 @@
+{#
+  Shared macro for user form fields (first name, last name, username, password, email, etc.).
+
+  Parameters:
+  - user: User object (optional, for edit mode - if not provided, shows empty fields)
+#}
+{% from "macro/bulma_file_input.html" import form_field %}
+
 {% macro user_fields(user=None) %}
-  <tr>
-    <td>
-      <span class="info" title="First name of the contestant."></span>
-      First name
-    </td>
-    <td><input type="text" name="first_name" value="{{ user.first_name if user else '' }}"/></td>
-  </tr>
-  <tr>
-    <td>
-      <span class="info" title="Last name of the contestant."></span>
-      Last name
-    </td>
-    <td><input type="text" name="last_name" value="{{ user.last_name if user else '' }}"/></td>
-  </tr>
-  <tr>
-    <td>
-      <span class="info" title="Username of the contestant (used to log in)."></span>
-      Username
-    </td>
-    <td><input type="text" name="username" value="{{ user.username if user else '' }}"/></td>
-  </tr>
-  <tr>
-    <td>
-      <span class="info" title="Contestant password. Caution: stored in plain text."></span>      Password
-    </td>
-    <td>
-      {% if user %}
-        {% with hashed_password = user.password %}
-          {% include "fragments/hashed_password_form.html" %}
-        {% endwith %}
-      {% else %}
-        <input type="password" name="password" id="add-user-password-field" autocomplete="new-password" />
-        <select name="method">
-          <option value="plaintext">Plain text</option>
-          <option value="bcrypt" selected>Hashed (bcrypt)</option>
-        </select>
+  <div class="columns is-multiline">
+    <div class="column is-half">
+      {{ form_field('first_name', 'First name', user.first_name if user else '', info_tooltip='First name of the contestant.') }}
+    </div>
+    <div class="column is-half">
+      {{ form_field('last_name', 'Last name', user.last_name if user else '', info_tooltip='Last name of the contestant.') }}
+    </div>
+    <div class="column is-half">
+      {{ form_field('username', 'Username', user.username if user else '', required=true, autocomplete='username', info_tooltip='Username of the contestant (used to log in).') }}
+    </div>
+    <div class="column is-full">
+      <div class="field">
+        <label class="label">
+          Password
+          {% if not user %}<span class="has-text-danger">*</span>{% endif %}
+          {% if not user %}
+            <span class="info" title="Contestant password. Default: hashed (bcrypt). Caution: if you choose Plain text, the password will be stored in plain text."></span>
+          {% else %}
+            <span class="info" title="Contestant password."></span>
+          {% endif %}
+        </label>
+        <div class="control">
+          {% if user %}
+            {% with hashed_password = user.password %}
+              {% include "fragments/hashed_password_form.html" %}
+            {% endwith %}
+          {% else %}
+            <div class="field has-addons">
+              <div class="control is-expanded">
+                <input class="input" type="password" name="password" id="add-user-password-field" autocomplete="new-password" required />
+              </div>
+              <div class="control">
+                <div class="select">
+                  <select name="method">
+                    <option value="plaintext">Plain text</option>
+                    <option value="bcrypt" selected>Hashed (bcrypt)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+        {% if not user %}
         <div id="add-user-password-strength-container" style="margin-top: 5px;">
           <div id="add-user-password-strength-bar" style="height: 5px; border-radius: 3px; transition: all 0.3s ease; display: none;"></div>
           <span id="add-user-password-strength-text" style="font-size: 12px;"></span>
@@ -46,32 +61,23 @@
             "#add-user-password-strength-text"
           );
         </script>
-      {% endif %}
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <span class="info" title="Contestant e-mail address."></span>
-      E-mail
-    </td>
-    <td><input type="text" name="email" value="{{ user.email if user and user.email is not none else '' }}"/></td>
-  </tr>
-  {% include "fragments/user_date_of_birth_form.html" %}
-  {% include "fragments/user_picture_form.html" %}
-  <tr>
-    <td>
-      <span class="info" title="Timezone of the contestant, used to display start, end times and the current server time in local time.
-                                Example: 'Europe/Rome', 'America/New_York', ..."></span>
-      Timezone
-    </td>
-    <td><input type="text" name="timezone" value="{{ user.timezone if user and user.timezone is not none else '' }}"></td>
-  </tr>
-  <tr>
-    <td>
-      <span class="info" title="Comma-separated list of language codes, from the most to the least preferred.
-                                Example: 'en, ja'."></span>
-      Preferred languages
-    </td>
-    <td><input type="text" name="preferred_languages" value="{{ user.preferred_languages|join(', ') if user and user.preferred_languages else '' }}"></td>
-  </tr>
+        {% endif %}
+      </div>
+    </div>
+    <div class="column is-half">
+      {{ form_field('email', 'E-mail', user.email if user and user.email is not none else '', type='email', placeholder='user@example.com', info_tooltip='Contestant e-mail address.') }}
+    </div>
+    <div class="column is-half">
+      {% include "fragments/user_date_of_birth_form.html" %}
+    </div>
+    <div class="column is-full">
+      {% include "fragments/user_picture_form.html" %}
+    </div>
+    <div class="column is-half">
+      {{ form_field('timezone', 'Timezone', user.timezone if user and user.timezone is not none else '', placeholder='Europe/Rome', info_tooltip='Timezone of the contestant, used to display start, end times and the current server time in local time. Example: Europe/Rome, America/New_York') }}
+    </div>
+    <div class="column is-half">
+      {{ form_field('preferred_languages', 'Preferred languages', user.preferred_languages|join(', ') if user and user.preferred_languages else '', placeholder='en, ja', info_tooltip='Comma-separated list of language codes, from the most to the least preferred. Example: en, ja') }}
+    </div>
+  </div>
 {% endmacro %}

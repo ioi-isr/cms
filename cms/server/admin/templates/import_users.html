@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
+
 {% block core %}
 
 <div class="core_title">
@@ -29,7 +31,7 @@
     <tr>
       <td>CSV File:</td>
       <td>
-        <input type="file" name="csv_file" accept=".csv" required/>
+        {{ bulma_file_input("csv_file_input", "csv_file", ".csv", required=true, button_text="Choose CSV file…") }}
       </td>
     </tr>
   </table>

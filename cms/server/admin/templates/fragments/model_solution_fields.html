@@ -1,0 +1,68 @@
+{#
+  Shared macros for model solution modal forms (add and replace).
+
+  file_fields: file inputs + optional language select + submission.zip
+  language_filter_script: auto-detect language from uploaded file extensions
+#}
+
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
+
+{% macro file_fields(task, allowed_langs, language_required, allow_partial, id_prefix, selected_language=None) %}
+  {% for filename in task.submission_format %}
+  <div class="modal__form-group">
+      <label for="{{ id_prefix }}-file-{{ loop.index0 }}">{{ filename }}:</label>
+      {{ bulma_file_input(id_prefix ~ "-file-" ~ loop.index0, filename, "", button_text="Choose " ~ filename ~ "…") }}
+  </div>
+  {% endfor %}
+  {% if language_required %}
+  <div class="modal__form-group">
+      <label for="{{ id_prefix }}-language">Language:</label>
+      <select id="{{ id_prefix }}-language" name="language">
+          {% for lang in allowed_langs %}
+          <option value="{{ lang }}" {{ "selected" if selected_language is not none and selected_language == lang else "" }}>{{ lang }}</option>
+          {% endfor %}
+      </select>
+  </div>
+  {% endif %}
+  {% if allow_partial %}
+  <p class="modal__hint">
+      You may submit any subset of files. Alternatively, upload a single <code>submission.zip</code>:
+  </p>
+  <div class="modal__form-group">
+      <label for="{{ id_prefix }}-zip">submission.zip:</label>
+      {{ bulma_file_input(id_prefix ~ "-zip", "submission", ".zip", button_text="Choose submission.zip…") }}
+  </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro language_filter_script(form_selector, allowed_langs, language_required) %}
+  {% if language_required %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const TASK_LANGUAGES = {
+  {% for lang in allowed_langs %}
+        "{{ lang }}": {
+    {% for extension in (lang|to_language).source_extensions %}
+            "{{ extension }}": true,
+    {% endfor %}
+        },
+  {% endfor %}
+    };
+
+    const formSelector = {{ form_selector|tojson }};
+    document.querySelectorAll(formSelector).forEach(function(form) {
+        const select = form.querySelector('select[name="language"]');
+        if (!select) return;
+        const inputs = form.querySelectorAll('input[type="file"]');
+        const filter = function() {
+            CMS.AWSUtils.filter_languages(select.options, inputs, TASK_LANGUAGES);
+        };
+        inputs.forEach(function(input) {
+            input.addEventListener('change', filter);
+        });
+        filter();
+    });
+});
+</script>
+  {% endif %}
+{% endmacro %}

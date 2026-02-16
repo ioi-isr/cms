@@ -608,26 +608,9 @@ class ImportUsersConfirmHandler(BaseHandler):
 
 
 class TeamListHandler(SimpleHandler("teams.html")):
-    """Get returns the list of all teams, post perform operations on
-    a specific team (removing them from CMS).
+    """Get returns the list of all teams."""
 
-    """
-
-    REMOVE = "Remove"
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def post(self):
-        team_id: str = self.get_argument("team_id")
-        operation: str = self.get_argument("operation")
-
-        if operation == self.REMOVE:
-            asking_page = self.url("teams", team_id, "remove")
-            self.redirect(asking_page)
-        else:
-            self.service.add_notification(
-                make_datetime(), "Invalid operation %s" % operation, ""
-            )
-            self.redirect(self.url("contests"))
+    pass
 
 
 class RemoveUserHandler(BaseHandler):
@@ -749,10 +732,10 @@ class TeamHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
-class AddTeamHandler(SimpleHandler("add_team.html", permission_all=True)):
+class AddTeamHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("teams", "add")
+        is_ajax = "application/json" in self.request.headers.get("Accept", "")
 
         try:
             attrs = dict()
@@ -760,26 +743,43 @@ class AddTeamHandler(SimpleHandler("add_team.html", permission_all=True)):
             self.get_string(attrs, "code")
             self.get_string(attrs, "name")
 
-            if attrs.get("code") is None:
+            if not attrs.get("code"):
                 raise ValueError("No team code specified.")
+            if not attrs.get("name"):
+                raise ValueError("No team name specified.")
 
             # Create the team.
             team = Team(**attrs)
             self.sql_session.add(team)
 
         except Exception as error:
+            if is_ajax:
+                self.set_status(400)
+                self.write({"error": str(error)})
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error)
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("teams"))
             return
 
         if self.try_commit():
             # Create the team on RWS.
             self.service.proxy_service.reinitialize()
+            if is_ajax:
+                self.write(
+                    {"ok": True, "id": team.id, "code": team.code, "name": team.name}
+                )
+                return
+        else:
+            if is_ajax:
+                self.set_status(500)
+                self.write(
+                    {"error": "Failed to save team. The code may already exist."}
+                )
+                return
 
-        # In case other teams need to be added.
-        self.redirect(fallback_page)
+        self.redirect(self.url("teams"))
 
 
 class AddUserHandler(
