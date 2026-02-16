@@ -46,6 +46,7 @@
       {% if admin.permission_all %}
       <td style="text-align:center;">
         <button type="button" class="tp-btn-remove" title="Remove task"
+          aria-label="Remove task"
           onclick='AdminModals.deleteResource({
             title: "Remove Task",
             message: "Are you sure you want to remove task \"" + {{ t.name|tojson }} + "\"?",

@@ -1308,7 +1308,7 @@ var ModelSolutionModal = (function() {
             card.classList.add('selected');
         } else if (maxScore > 0) {
             card.classList.add('partial');
-        } 
+        }
     }
 
     var _ERR_COLOR = 'var(--tp-danger, #dc2626)';
@@ -1527,6 +1527,9 @@ var ModelSolutionModal = (function() {
                         }
                         if (row.minInp) row.minInp.value = stMin.toFixed(2);
                         if (row.maxInp) row.maxInp.value = stMax.toFixed(2);
+                    } else {
+                        if (row.minInp) row.minInp.value = "0.00";
+                        if (row.maxInp) row.maxInp.value = "0.00";
                     }
                 });
 

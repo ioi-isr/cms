@@ -164,7 +164,11 @@ class CloneDatasetHandler(BaseHandler):
 
             self.get_time_limit(attrs, "time_limit")
             self.get_memory_limit(attrs, "memory_limit")
-            self.get_task_type(attrs, "task_type", "TaskTypeOptions_")
+            self.get_task_type(
+                attrs,
+                "task_type",
+                "TaskTypeOptions_clone_%s_" % dataset_id_to_copy,
+            )
             self.get_score_type(attrs, "score_type", "score_type_parameters")
 
             # Create the dataset.

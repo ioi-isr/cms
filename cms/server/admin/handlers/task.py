@@ -585,7 +585,7 @@ class AddDatasetHandler(BaseHandler):
 
             self.get_time_limit(attrs, "time_limit")
             self.get_memory_limit(attrs, "memory_limit")
-            self.get_task_type(attrs, "task_type", "TaskTypeOptions_")
+            self.get_task_type(attrs, "task_type", "TaskTypeOptions_new_")
             self.get_score_type(attrs, "score_type", "score_type_parameters")
 
             # Create the dataset.

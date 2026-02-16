@@ -214,31 +214,35 @@ if (addTaskForm) {
         });
     });
 
-    AdminTableUtils.initDragDropReorder({
-        tbodyId: 'tasks-tbody',
-        rowSelector: 'tr',
-        rowIdAttr: 'task-id',
-        colSpan: colSpan,
-        confirmMessage: 'Save the new task order?',
-        onSave: function(orderedIds) {
-            var order = orderedIds.map(function(item) {
-                return { task_id: item.id, new_num: item.position };
-            });
-            var form = document.getElementById('tasks-form');
-            var reorderInput = document.getElementById('reorder-data');
-            reorderInput.value = JSON.stringify(order);
+    // Only initialize drag-drop if tasks table exists
+    var tasksTbody = document.getElementById('tasks-tbody');
+    if (tasksTbody) {
+        AdminTableUtils.initDragDropReorder({
+            tbodyId: 'tasks-tbody',
+            rowSelector: 'tr',
+            rowIdAttr: 'task-id',
+            colSpan: colSpan,
+            confirmMessage: 'Save the new task order?',
+            onSave: function(orderedIds) {
+                var order = orderedIds.map(function(item) {
+                    return { task_id: item.id, new_num: item.position };
+                });
+                var form = document.getElementById('tasks-form');
+                var reorderInput = document.getElementById('reorder-data');
+                reorderInput.value = JSON.stringify(order);
 
-            var operationInput = form.querySelector('input[name="operation"]');
-            if (!operationInput) {
-                operationInput = document.createElement('input');
-                operationInput.type = 'hidden';
-                operationInput.name = 'operation';
-                form.appendChild(operationInput);
+                var operationInput = form.querySelector('input[name="operation"]');
+                if (!operationInput) {
+                    operationInput = document.createElement('input');
+                    operationInput.type = 'hidden';
+                    operationInput.name = 'operation';
+                    form.appendChild(operationInput);
+                }
+                operationInput.value = 'reorder';
+                form.submit();
             }
-            operationInput.value = 'reorder';
-            form.submit();
-        }
-    });
+        });
+    }
 
     $(document).ready(function() {
         CMS.AWSUtils.init_table_sort($("#tasks-table"), false, -1);
