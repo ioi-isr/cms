@@ -20,7 +20,7 @@
             <input type="file" name="students_file" accept=".txt" class="file-input-hidden" id="students-file-input"
                 {% if not admin.permission_all %}disabled{% endif %}
                 onchange="if(this.files.length) this.form.submit();" />
-            <label for="students-file-input" class="button is-medium" {% if not admin.permission_all %}disabled{% endif %}>
+            <label for="students-file-input" class="button is-medium{% if not admin.permission_all %} is-disabled{% endif %}" {% if not admin.permission_all %}aria-disabled="true"{% endif %}>
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
                 <span>Add Students from List</span>
             </label>
