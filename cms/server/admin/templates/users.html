@@ -120,14 +120,17 @@
 {% endif %}
 
 <script>
-if (new URLSearchParams(window.location.search).get('add') === '1') {
-  // Check if modal element exists before trying to show it
-  const modalElement = document.getElementById('modal-add-user');
-  if (modalElement) {
-    MicroModal.show('modal-add-user');
+  if (new URLSearchParams(window.location.search).get('add') === '1') {
+    // Check if modal element exists before trying to show it
+    const modalElement = document.getElementById('modal-add-user');
+    if (modalElement) {
+      MicroModal.show('modal-add-user');
+    }
+    const url = new URL(window.location);
+    url.searchParams.delete('add');
+    const updatedSearch = url.searchParams.toString();
+    history.replaceState(null, '', window.location.pathname + (updatedSearch ? '?' + updatedSearch : ''));
   }
-  history.replaceState(null, '', window.location.pathname);
-}
 </script>
 
 {% endblock core %}

@@ -29,7 +29,7 @@ from cms.db import Contest, Task
 from cms.server.admin.handlers.utils import get_all_student_tags, deduplicate_preserving_order
 from cms.server.admin.handlers.trainingprogramtask import (
     reorder_tasks,
-    _shift_task_nums,
+    shift_task_nums,
 )
 from cmscommon.datetime import make_datetime
 
@@ -129,10 +129,13 @@ class ContestTasksHandler(BaseHandler):
                     task.training_day_num = None
                     self.sql_session.flush()
                     if task_num is not None:
-                        _shift_task_nums(
+                        shift_task_nums(
                             self.sql_session,
-                            Task.training_day, training_day,
-                            Task.training_day_num, task_num, -1,
+                            Task.training_day,
+                            training_day,
+                            Task.training_day_num,
+                            task_num,
+                            -1,
                         )
                 else:
                     if task.contest_id != self.contest.id:
@@ -148,10 +151,13 @@ class ContestTasksHandler(BaseHandler):
                     task.num = None
                     self.sql_session.flush()
                     if task_num is not None:
-                        _shift_task_nums(
+                        shift_task_nums(
                             self.sql_session,
-                            Task.contest, self.contest,
-                            Task.num, task_num, -1,
+                            Task.contest,
+                            self.contest,
+                            Task.num,
+                            task_num,
+                            -1,
                         )
 
                 if self.try_commit():

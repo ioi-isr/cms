@@ -1455,7 +1455,8 @@ var ModelSolutionModal = (function() {
         var ui = _getUI(dsId);
         if (!ui.form) return;
         ui.form.reset();
-        ui.form.querySelector('input[name="_ms_mode"]').value = 'add';
+        var modeInput = ui.form.querySelector('input[name="_ms_mode"]');
+        if (modeInput) modeInput.value = 'add';
         if (ui.title) ui.title.textContent = 'Add Model Solution';
         if (ui.submit) ui.submit.textContent = 'Add Model Solution';
         if (ui.fileSection) ui.fileSection.style.display = '';
@@ -1491,7 +1492,8 @@ var ModelSolutionModal = (function() {
             if (!ui.form) return;
 
             ui.form.action = editUrl;
-            ui.form.querySelector('input[name="_ms_mode"]').value = 'edit';
+            var modeInput = ui.form.querySelector('input[name="_ms_mode"]');
+            if (modeInput) modeInput.value = 'edit';
             if (ui.title) ui.title.textContent = 'Edit Model Solution';
             if (ui.submit) ui.submit.textContent = 'Save Changes';
             if (ui.fileSection) ui.fileSection.style.display = 'none';

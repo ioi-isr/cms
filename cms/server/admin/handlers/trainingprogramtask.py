@@ -126,13 +126,8 @@ def reorder_tasks(
     sql_session.flush()
 
 
-def _shift_task_nums(
-    sql_session,
-    filter_attr,
-    filter_value,
-    num_attr,
-    threshold: int,
-    delta: int
+def shift_task_nums(
+    sql_session, filter_attr, filter_value, num_attr, threshold: int, delta: int
 ) -> None:
     """Shift task numbers after insertion or removal.
 
@@ -249,7 +244,7 @@ class TrainingProgramTasksHandler(BaseHandler):
 
         # Reorder remaining tasks in the training day (only if there was a valid position)
         if training_day_num is not None:
-            _shift_task_nums(
+            shift_task_nums(
                 self.sql_session,
                 Task.training_day,
                 training_day,
@@ -331,7 +326,7 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
 
             # Reorder remaining tasks in the training day
             if training_day_num is not None:
-                _shift_task_nums(
+                shift_task_nums(
                     self.sql_session,
                     Task.training_day,
                     training_day,
@@ -348,7 +343,7 @@ class RemoveTrainingProgramTaskHandler(BaseHandler):
 
         # Reorder remaining tasks in the training program
         if task_num is not None:
-            _shift_task_nums(
+            shift_task_nums(
                 self.sql_session, Task.contest, managing_contest, Task.num, task_num, -1
             )
 
