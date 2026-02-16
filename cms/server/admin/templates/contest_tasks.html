@@ -153,7 +153,8 @@ if (addTaskForm) {
                                     data-task-id="{{ t.id }}"
                                     data-task-name="{{ t.name | e }}"
                                     {% if not admin.permission_all %}disabled{% endif %}
-                                    title="Remove from {% if is_training_day %}training day{% else %}contest{% endif %}">
+                                    title="Remove from {% if is_training_day %}training day{% else %}contest{% endif %}"
+                                    aria-label="Remove task {{ t.name }} from {% if is_training_day %}training day{% else %}contest{% endif %}">
                                     <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                 </button>
                             </div>
