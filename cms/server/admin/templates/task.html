@@ -720,10 +720,10 @@ document.addEventListener('click', function(e) {
                         </a>
                         {% endif %}
                         <a href="javascript:void(0)" onclick="MicroModal.show('modal-clone-dataset-{{ dataset.id }}')" class="tp-menu-item">
-                            <svg class="icon"><use href="#icon-clipboard-list"/></svg>
+                            <svg class="icon is-small"><use href="#icon-clipboard-list"/></svg>
                             Clone
                         </a>
-                        <button type="button" onclick='AdminModals.renameDataset({{ url("dataset", dataset.id, "rename")|tojson|forceescape }}, {{ dataset.description|tojson|forceescape }});' class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+                        <button type="button" onclick='AdminModals.renameDataset({{ url("dataset", dataset.id, "rename")|tojson|forceescape }}, {{ dataset.description|tojson|forceescape }});' class="tp-menu-item">
                             <svg class="icon is-small"><use href="#icon-edit"/></svg>
                             Rename
                         </button>
@@ -732,7 +732,7 @@ document.addEventListener('click', function(e) {
                             View results
                         </a>
                         {% if dataset is not sameas (task.active_dataset) %}
-                        <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("dataset", dataset.id, "autojudge") }}');" class="tp-menu-item" style="cursor: pointer; background: none; border: none; text-align: left; width: 100%; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+                        <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("dataset", dataset.id, "autojudge") }}');" class="tp-menu-item">
                             <svg class="icon is-small"><use href="#icon-cpu"/></svg>
                             {% if dataset.autojudge %}Disable{% else %}Enable{% endif %} background judging
                         </button>

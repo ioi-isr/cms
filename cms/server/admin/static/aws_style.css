@@ -13,7 +13,7 @@
     --bulma-danger-l: 45%;
 
     --bulma-body-background-color: #f5f5f5;
-    --bulma-button-weight: --bulma-weight-semibold;
+    --bulma-button-weight: var(--bulma-weight-semibold, 600);
 
     --ranking-header-top: 60px;
     --tp-question-card-bg: #ffffff;
@@ -1279,8 +1279,8 @@ table.jqplot-table-legend {
 
 /* OTHERS */
 span.info {
-    background: var(--tp-bg-gray);
-    color: var(--tp-text-lighter);
+    background: var(--tp-bg-gray, #F3F4F6);
+    color: var(--tp-text-lighter, #6B7280);
     font-size: smaller;
     display: inline-block;
     border-radius: 10px;

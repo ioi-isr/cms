@@ -2004,6 +2004,8 @@
 
 .tp-menu-item svg {
     flex-shrink: 0;
+    width: 18px;
+    height: 18px;
 }
 
 .tp-menu-item-danger {
@@ -2985,6 +2987,12 @@
     border-radius: 8px;
     font-size: 0.85rem;
     color: var(--tp-warning-dark);
+}
+
+/* Icon sizing in buttons */
+.button .icon.is-small {
+    width: 18px;
+    height: 18px;
 }
 
 .delays-request-warning .icon {
