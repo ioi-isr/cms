@@ -71,7 +71,7 @@
             </main>
             <footer class="modal__footer">
                 <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                <button type="button" class="tp-btn-danger" id="confirm-remove-program-btn"
+                <button type="button" class="button is-danger has-text-white" id="confirm-remove-program-btn"
                         data-remove-url="{% if training_program is defined %}{{ url("training_programs", training_program.id, "remove") }}{% endif %}">Yes, Remove Program</button>
             </footer>
         </div>

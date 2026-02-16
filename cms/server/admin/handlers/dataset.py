@@ -233,6 +233,7 @@ class RenameDatasetHandler(BaseHandler):
             self.write({"success": True, "description": description})
         else:
             self.set_status(500)
+            self.write({"error": "Failed to save changes."})
             return
 
 

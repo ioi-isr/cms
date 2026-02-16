@@ -8,7 +8,12 @@
     --bulma-primary-h: 175deg;
     --bulma-primary-s: 77%;
     --bulma-primary-l: 26%;
+    --bulma-danger-h: 0;
+    --bulma-danger-s: 85%;
+    --bulma-danger-l: 45%;
+
     --bulma-body-background-color: #f5f5f5;
+    --bulma-button-weight: --bulma-weight-semibold;
 
     --ranking-header-top: 60px;
     --tp-question-card-bg: #ffffff;
