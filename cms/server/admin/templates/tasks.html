@@ -2,46 +2,65 @@
 
 {% block core %}
 
-<div class="core_title">
-  <h1>Tasks list</h1>
+<div class="core_title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <h1 style="margin:0;">Tasks</h1>
+  {% if admin.permission_all %}
+  <div style="display:flex;gap:8px;align-items:center;">
+    <a href="{{ url("tasks", "import") }}" class="tp-btn tp-btn-secondary">
+      <svg class="icon is-small"><use href="#icon-upload"/></svg>
+      Import from ZIP
+    </a>
+    <button type="button" class="tp-btn tp-btn-primary" onclick="AdminModals.showAddTaskDialog('{{ url("tasks", "add") }}', '{{ url("task", "") }}')">
+      <svg class="icon is-small"><use href="#icon-plus"/></svg>
+      Add Task
+    </button>
+  </div>
+  {% endif %}
 </div>
 
-{% if admin.permission_all %}
-<div style="margin-bottom: 10px;">
-  <a href="{{ url("tasks", "import") }}" class="button">Import Task from ZIP</a>
+{% if task_list|length == 0 %}
+<div style="text-align:center;padding:48px 24px;color:#6b7280;">
+  <p style="font-size:16px;margin-bottom:12px;">No tasks have been created yet.</p>
+  {% if admin.permission_all %}
+  <button type="button" class="tp-btn tp-btn-primary" onclick="AdminModals.showAddTaskDialog('{{ url("tasks", "add") }}', '{{ url("task", "") }}')">
+    Create your first task
+  </button>
+  {% endif %}
 </div>
+{% else %}
+<table class="table is-bordered is-striped is-hoverable">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Title</th>
+      {% if admin.permission_all %}
+      <th style="width:80px;text-align:center;">Actions</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in task_list %}
+    <tr>
+      <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
+      <td>{{ t.title }}</td>
+      {% if admin.permission_all %}
+      <td style="text-align:center;">
+        <button type="button" class="tp-btn-remove" title="Remove task"
+          aria-label="Remove task"
+          onclick='AdminModals.deleteResource({
+            title: "Remove Task",
+            message: "Are you sure you want to remove task \"" + {{ t.name|tojson }} + "\"?",
+            deleteUrl: {{ url("tasks", t.id, "remove")|tojson }},
+            confirmLabel: "Yes, Remove"
+          })'>
+          <svg class="icon is-small"><use href="#icon-trash"/></svg>
+        </button>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endif %}
-
-<form action="{{ url("tasks") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Edit selected task:
-   <input type="submit"
-         name="operation"
-         value="Remove"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Title</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in task_list %}
-      <tr>
-        <td>
-          <input type="radio" name="task_id" value="{{ t.id }}"/>
-        </td>
-        <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
-        <td>{{ t.title }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
 
 {% endblock core %}

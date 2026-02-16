@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
+
 {% block core %}
 <div class="core_title">
   <h1>Import Task</h1>
@@ -7,31 +9,31 @@
 
 <form enctype="multipart/form-data" action="{{ url("tasks", "import") }}" method="POST">
   {{ xsrf_form_html|safe }}
-  
+
   <h2>Upload Task Archive</h2>
   <p>Upload a zip file containing the task data in a supported format (Italian YAML, Polygon, TPS).</p>
-  
+
   <div style="margin: 20px 0;">
     <label for="task_file"><strong>Task Archive (ZIP):</strong></label><br/>
-    <input type="file" name="task_file" id="task_file" accept=".zip" required/><br/>
+    {{ bulma_file_input("task_file", "task_file", ".zip", required=true, button_text="Choose ZIP archive…") }}
   </div>
-  
+
   <h2>Import Options</h2>
-  
+
   <div style="margin: 10px 0;">
     <label>
       <input type="checkbox" name="update" value="true"/>
       Update existing task (if task with same name exists)
     </label>
   </div>
-  
+
   <div style="margin: 10px 0;">
     <label>
       <input type="checkbox" name="no_statement" value="true"/>
       Do not import task statement
     </label>
   </div>
-  
+
   <div style="margin: 10px 0;">
     <label for="contest_id"><strong>Attach to Contest (optional):</strong></label><br/>
     <select name="contest_id" id="contest_id">
@@ -41,7 +43,7 @@
       {% endfor %}
     </select>
   </div>
-  
+
   <div style="margin: 10px 0;">
     <label for="loader"><strong>Loader (optional, autodetect if empty):</strong></label><br/>
     <select name="loader" id="loader">
@@ -51,22 +53,22 @@
       <option value="tps">TPS</option>
     </select>
   </div>
-  
+
   <h2>Testcase Templates (for tests/testcases folders)</h2>
   <p>Specify templates for matching input and output files. Use * as wildcard placeholder.</p>
-  
+
   <div style="margin: 10px 0;">
     <label for="input_template"><strong>Input file template:</strong></label><br/>
     <input type="text" name="input_template" id="input_template" placeholder="input.*" style="width: 300px;"/>
     <span style="color: #666; font-size: 0.9em;">(default: input.*)</span>
   </div>
-  
+
   <div style="margin: 10px 0;">
     <label for="output_template"><strong>Output file template:</strong></label><br/>
     <input type="text" name="output_template" id="output_template" placeholder="output.*" style="width: 300px;"/>
     <span style="color: #666; font-size: 0.9em;">(default: output.*)</span>
   </div>
-  
+
   <div style="margin: 20px 0;">
     <input type="submit" value="Import Task">
     <input type="button" value="Cancel" onclick="window.location.href='{{ url("tasks") }}'">

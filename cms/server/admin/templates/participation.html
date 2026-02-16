@@ -45,89 +45,93 @@
 
 
 <h2 id="title_participation_info" class="toggling_on">Participation information</h2>
-<div id="participation_info">
+<div id="participation_info" class="content-constraint">
   <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
   <form enctype="multipart/form-data" action="{{ url("contest", contest.id, "user", selected_user.id, "edit") }}" method="POST">
     {{ xsrf_form_html|safe }}
-    <table>
-      <tr>
-        <td>
-          <span class="info" title="Code of the team of the contestant in this contest. Only used in the external ranking."></span>
-          Team
-        </td>
-        <td>
-          <input list="teams" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
-          <datalist id="teams">
-            {% for t in teams %}
-            <option value="{{ t.code }}">
-            {% endfor %}
-          </datalist>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Contestant password for this contest. If empty, the contestant's main password is used.
-                                     Caution: stored in plain text."></span>
-          Password <strong style="color:#c00; font-weight: 700;">(only inside the contest {{ contest.name }})</strong>
-        </td>
-        <td>
+    {% from "macro/bulma_file_input.html" import form_field %}
+
+    <div class="columns is-multiline">
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Team
+            <span class="info" title="Code of the team of the contestant in this contest. Only used in the external ranking."></span>
+          </label>
+          <div class="control">
+            <input class="input" list="teams" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
+            <datalist id="teams">
+              {% for t in teams %}
+              <option value="{{ t.code }}">
+              {% endfor %}
+            </datalist>
+          </div>
+        </div>
+      </div>
+      <div class="column is-full">
+        <div class="field">
+          <label class="label">
+            Password
+            <span class="info" title="Contestant password for this contest. If empty, the contestant's main password is used. Caution: stored in plain text."></span>
+            <strong style="color:#c00; font-weight: 700;">(only inside the contest {{ contest.name }})</strong>
+          </label>
           {% set hashed_password = participation.password %}
           {% include "fragments/hashed_password_form.html" %}
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Whether the contestant's results will be visible in the external ranking."></span>
-          Hidden participation
-        </td>
-        <td><input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Whether the contestant is unrestricted by maximum number of submissions, user tests,
-                                    and minimum interval between submissions, user tests, and contest time."></span>
-          Unrestricted participation
-        </td>
-        <td><input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %}/></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="A comma-separated list of IP addresses (or subnets) of the contestant for this contest.
-                                    Used for IP-based login restrictions and/or for autologin (in this case, it must be a single address)."></span>
-          IP address or subnet
-        </td>
-        <td><input type="text" name="ip" value="{{ participation.ip|map("string")|join(", ") if participation.ip is not none else "" }}"/></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Time of first login during this contest, used for USACO-style contests.
-                                    Example: '2015-12-31 15:00:00'."></span>
-          Time of first login (in {{ timezone_name }})
-        </td>
-        <td><input type="text" name="starting_time" value="{{ participation.starting_time|format_datetime_input(timezone) }}"></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="To be set (in seconds) to acknowledge that the contestant lost that amount of time at the beginning of the contest.
-                                    If this is non-zero, all the events (token generation, end of contest) for this contestant will be shifted of the appropriate amount."></span>
-          Delay
-        </td>
-        <td><input type="text" name="delay_time" value="{{ participation.delay_time.total_seconds()|int }}"></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="To be set (in seconds) to acknowledge that the contestant lost that amount of time during the contest.
-                                    If this is non-zero, the end of the contest will be shifted of the appropriate amount for this contestant."></span>
-          Extra time
-        </td>
-        <td><input type="text" name="extra_time" value="{{ participation.extra_time.total_seconds()|int }}"></td>
-      </tr>
-    </table>
-    <input type="submit" value="Update" />
-    <input type="reset" value="Reset" />
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Hidden participation
+            <span class="info" title="Whether the contestant's results will be visible in the external ranking."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/>
+              Hidden
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Unrestricted participation
+            <span class="info" title="Whether the contestant is unrestricted by maximum number of submissions, user tests, and minimum interval between submissions, user tests, and contest time."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %}/>
+              Unrestricted
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        {{ form_field('ip', 'IP address or subnet', participation.ip|map("string")|join(", ") if participation.ip is not none else '', info_tooltip='A comma-separated list of IP addresses (or subnets) of the contestant for this contest. Used for IP-based login restrictions and/or for autologin (in this case, it must be a single address).') }}
+      </div>
+      <div class="column is-half">
+        {{ form_field('starting_time', 'Time of first login (in ' + timezone_name + ')', participation.starting_time|format_datetime_input(timezone), info_tooltip='Time of first login during this contest, used for USACO-style contests. Example: \'2015-12-31 15:00:00\'.') }}
+      </div>
+      <div class="column is-half">
+        {{ form_field('delay_time', 'Delay (seconds)', participation.delay_time.total_seconds()|int, info_tooltip='To be set (in seconds) to acknowledge that the contestant lost that amount of time at the beginning of the contest. If this is non-zero, all the events (token generation, end of contest) for this contestant will be shifted of the appropriate amount.') }}
+      </div>
+      <div class="column is-half">
+        {{ form_field('extra_time', 'Extra time (seconds)', participation.extra_time.total_seconds()|int, info_tooltip='To be set (in seconds) to acknowledge that the contestant lost that amount of time during the contest. If this is non-zero, the end of the contest will be shifted of the appropriate amount for this contestant.') }}
+      </div>
+    </div>
+
+    <div class="field is-grouped" style="margin-top: 1em;">
+      <div class="control">
+        <button type="submit" class="button is-primary is-outlined">Update</button>
+      </div>
+      <div class="control">
+        <button type="reset" class="button is-light">Reset</button>
+      </div>
+    </div>
   </form>
-  <div class="hr"></div>
 </div>
+<div class="hr"></div>
 
 
 <h2 id="title_questions" class="toggling_on">Questions</h2>

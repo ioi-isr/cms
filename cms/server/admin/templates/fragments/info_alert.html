@@ -1,6 +1,6 @@
 {#
   Modern info/warning alert component.
-  
+
   Parameters:
   - title: The alert title (e.g., "Pending Delay Requests")
   - message: The descriptive message text
@@ -11,9 +11,9 @@
 <div class="tp-info-alert tp-info-alert-{{ type }}">
     <div class="tp-info-alert-icon">
         {% if type == 'warning' %}
-        <svg class="icon" width="20" height="20"><use href="#icon-alert-triangle"/></svg>
+        <svg class="icon"><use href="#icon-alert-triangle"/></svg>
         {% else %}
-        <svg class="icon" width="20" height="20"><use href="#icon-info"/></svg>
+        <svg class="icon"><use href="#icon-info"/></svg>
         {% endif %}
     </div>
     <div class="tp-info-alert-content">

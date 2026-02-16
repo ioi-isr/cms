@@ -24,9 +24,15 @@ from typing import Callable
 
 import tornado.web
 
-from cms.db import Dataset, Submission, File, ModelSolutionMeta, \
-    get_or_create_model_solution_participation, create_model_solution, \
-    validate_model_solution_name
+from cms.db import (
+    Dataset,
+    ModelSolutionMeta,
+    Task,
+    get_or_create_model_solution_participation,
+    create_model_solution,
+    create_model_solution_submission,
+    validate_model_solution_name,
+)
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.contest.submission import UnacceptableSubmission
 from cms.server.contest.submission.workflow import _extract_and_match_files
@@ -210,63 +216,62 @@ def parse_model_solution_scores(
     return expected_score_min, expected_score_max, subtask_expected_scores
 
 
-class AddModelSolutionHandler(BaseHandler):
-    """Handler for adding a new model solution to a dataset.
+def _process_model_solution_files(handler, task):
+    """Extract uploaded files, match to submission format, and store digests.
 
+    This is the shared file processing logic used by both
+    AddModelSolutionHandler and ReplaceModelSolutionHandler.
+
+    handler: the request handler (provides get_argument, request.files, etc.)
+    task: the Task object
+
+    return: tuple of (digests dict, language object or None)
+
+    raise (ValueError): if files are invalid
     """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
+    language_name = handler.get_argument("language", None)
+    if language_name == "":
+        language_name = None
+    try:
+        _received_files, files, language = _extract_and_match_files(
+            handler.request.files, task, language_name=language_name)
+    except UnacceptableSubmission as err:
+        raise ValueError(err.formatted_text) from err
 
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["subtasks"] = get_subtask_info(dataset)
-        self.render("add_model_solution.html", **self.r_params)
+    timestamp = make_datetime()
+    digests = {}
+    for codename, content in files.items():
+        digest = handler.service.file_cacher.put_file_content(
+            content,
+            "Model solution file %s sent by %s at %s." % (
+                codename,
+                handler.current_user.username,
+                timestamp))
+        digests[codename] = digest
 
+    return digests, language
+
+
+class AddModelSolutionHandler(BaseHandler):
+    """Handler for adding a new model solution to a dataset."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         try:
             attrs = {}
             self.get_string(attrs, "name")
             self.get_string(attrs, "description")
 
-            # Validate name using centralized validation
             name = attrs.get("name", "").strip()
             validate_model_solution_name(name)
 
-            # Parse expected scores using shared helper
             expected_score_min, expected_score_max, subtask_expected_scores = \
                 parse_model_solution_scores(self.get_argument, dataset)
 
-            # Use the shared submission file processing logic from accept_submission.
-            # This handles archive extraction, file matching, language detection, etc.
-            # Read language from form if provided (for tasks with language-dependent
-            # submission formats). If not provided, auto-detect.
-            language_name = self.get_argument("language", None)
-            if language_name == "":
-                language_name = None
-            try:
-                _received_files, files, language = _extract_and_match_files(
-                    self.request.files, task, language_name=language_name)
-            except UnacceptableSubmission as err:
-                raise ValueError(err.formatted_text) from err
-
-            timestamp = make_datetime()
-            digests = {}
-            for codename, content in files.items():
-                digest = self.service.file_cacher.put_file_content(
-                    content,
-                    "Model solution file %s sent by %s at %s." % (
-                        codename,
-                        self.current_user.username,
-                        timestamp))
-                digests[codename] = digest
+            digests, language = _process_model_solution_files(self, task)
 
             participation = get_or_create_model_solution_participation(
                 self.sql_session)
@@ -288,7 +293,7 @@ class AddModelSolutionHandler(BaseHandler):
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(self.url("task", task.id))
+            self.redirect(fallback_page)
             return
 
         if self.try_commit():
@@ -304,7 +309,7 @@ class AddModelSolutionHandler(BaseHandler):
             self.service.evaluation_service.new_submission(
                 submission_id=submission.id)
 
-        self.redirect(self.url("task", task.id))
+        self.redirect(fallback_page)
 
 
 class ModelSolutionHandler(BaseHandler):
@@ -327,29 +332,13 @@ class ModelSolutionHandler(BaseHandler):
 
 
 class EditModelSolutionHandler(BaseHandler):
-    """Handler for editing a model solution's metadata.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, meta_id):
-        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
-        task = meta.dataset.task
-        dataset = meta.dataset
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["meta"] = meta
-        self.r_params["subtasks"] = get_subtask_info(dataset)
-        self.render("edit_model_solution.html", **self.r_params)
-
+    """Handler for editing a model solution's metadata."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, meta_id):
-        fallback_page = self.url("model_solution", meta_id, "edit")
-
         meta = self.safe_get_item(ModelSolutionMeta, meta_id)
         task = meta.dataset.task
         dataset = meta.dataset
+        fallback_page = self.url("task", task.id)
 
         try:
             attrs = {}
@@ -410,16 +399,7 @@ class DeleteModelSolutionHandler(BaseHandler):
         task_id = task.id
         task_name = task.name
 
-        # Capture submission before deleting meta to avoid use-after-delete.
-        submission = getattr(meta, "submission", None)
-
-        # Delete the meta first to avoid setting submission_id to NULL on update
-        # (DB has NOT NULL on submission_id).
         self.sql_session.delete(meta)
-        self.sql_session.flush()  # ensure meta row is gone before submission delete
-
-        if submission is not None:
-            self.sql_session.delete(submission)
 
         if self.try_commit():
             self.service.add_notification(
@@ -435,6 +415,58 @@ class DeleteModelSolutionHandler(BaseHandler):
         return self.post(meta_id)
 
 
+class ReplaceModelSolutionHandler(BaseHandler):
+    """Handler for replacing a model solution's file.
+
+    Keeps the same meta (name, description, expected scores) but creates
+    a new submission with the uploaded file. The old submission is detached
+    from the meta and left in submission history.
+    """
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, meta_id):
+        meta = self.safe_get_item(ModelSolutionMeta, meta_id)
+        task = meta.dataset.task
+        dataset = meta.dataset
+        fallback_page = self.url("task", task.id)
+
+        try:
+            digests, language = _process_model_solution_files(self, task)
+
+            participation = get_or_create_model_solution_participation(
+                self.sql_session)
+
+            new_submission = create_model_solution_submission(
+                self.sql_session,
+                task=task,
+                participation=participation,
+                digests=digests,
+                language_name=language.name if language is not None else None,
+            )
+
+            meta.submission = new_submission
+
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(), "Invalid field(s)", repr(error))
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            new_submission.get_result_or_create(dataset)
+            self.sql_session.commit()
+
+            self.service.add_notification(
+                make_datetime(),
+                "Model solution replaced",
+                "Model solution %s replaced for task %s" % (
+                    meta.description, task.name))
+
+            self.service.evaluation_service.new_submission(
+                submission_id=new_submission.id)
+
+        self.redirect(self.url("task", task.id))
+
+
 class ConfigureImportedModelSolutionsHandler(BaseHandler):
     """Handler for configuring model solutions after import.
 
@@ -444,7 +476,6 @@ class ConfigureImportedModelSolutionsHandler(BaseHandler):
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self, task_id):
-        from cms.db import Task
         task = self.safe_get_item(Task, task_id)
         dataset = task.active_dataset
         self.contest = task.contest
@@ -502,7 +533,6 @@ class ConfigureImportedModelSolutionsHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
-        from cms.db import Task
         task = self.safe_get_item(Task, task_id)
         dataset = task.active_dataset
         fallback_page = self.url("task", task_id, "model_solutions", "configure")

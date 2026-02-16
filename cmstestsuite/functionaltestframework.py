@@ -274,8 +274,7 @@ class FunctionalTestFramework:
 
         r = self.admin_req('contest/' + kwargs["contest_id"] + '/tasks/add',
                            args={"task_id": str(task_id)})
-        g = re.search('<input type="radio" name="task_id" value="' +
-                      str(task_id) + '"/>', r.text)
+        g = re.search(r'data-task-id="' + str(task_id) + r'"', r.text)
         if g:
             return task_id
         else:
@@ -294,7 +293,7 @@ class FunctionalTestFramework:
         resp = self.admin_req('task/%s' % task_id)
         page = resp.text
         match = re.search(
-            r'id="title_dataset_([0-9]+).* \(Live\)</',
+            r'data-dataset-id="([0-9]+)"[^>]*>[^<]*<[^>]*>Live</',
             page)
         if match is None:
             raise TestException("Unable to create contest.")

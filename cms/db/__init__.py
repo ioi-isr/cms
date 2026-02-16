@@ -70,7 +70,8 @@ __all__ = [
     "UserTest", "UserTestFile", "UserTestManager", "UserTestResult",
     "UserTestExecutable",
     "ModelSolutionMeta", "get_or_create_model_solution_participation",
-    "create_model_solution", "validate_model_solution_name",
+    "create_model_solution", "create_model_solution_submission",
+    "validate_model_solution_name",
     # printjob
     "PrintJob",
     "StatementView",
@@ -122,7 +123,7 @@ from .usertest import UserTest, UserTestFile, UserTestManager, \
     UserTestResult, UserTestExecutable
 from .modelsolution import ModelSolutionMeta, \
     get_or_create_model_solution_participation, create_model_solution, \
-    validate_model_solution_name
+    create_model_solution_submission, validate_model_solution_name
 from .printjob import PrintJob
 from .statementview import StatementView
 from .scorecache import ParticipationTaskScore, ScoreHistory
