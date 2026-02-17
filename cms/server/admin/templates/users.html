@@ -8,22 +8,20 @@
             <h1 class="title">Users</h1>
         </div>
         <div class="level-right">
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <a href="{{ url("users", "export") }}" class="button">
-                    <svg class="icon is-small"><use href="#icon-download"/></svg>
-                    <span>Export CSV</span>
-                </a>
-                <a href="{{ url("users", "import") }}" class="button">
-                    <svg class="icon is-small"><use href="#icon-upload"/></svg>
-                    <span>Import CSV</span>
-                </a>
-                {% if admin.permission_all %}
-                <button type="button" class="button is-primary has-text-white" onclick="MicroModal.show('modal-add-user')">
-                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
-                    <span>New User</span>
-                </button>
-                {% endif %}
-            </div>
+            <a href="{{ url("users", "export") }}" class="button">
+                <svg class="icon is-small"><use href="#icon-download"/></svg>
+                <span>Export CSV</span>
+            </a>
+            <a href="{{ url("users", "import") }}" class="button">
+                <svg class="icon is-small"><use href="#icon-upload"/></svg>
+                <span>Import CSV</span>
+            </a>
+            {% if admin.permission_all %}
+            <button type="button" class="button is-primary has-text-white" onclick="MicroModal.show('modal-add-user')">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>New User</span>
+            </button>
+            {% endif %}
         </div>
     </div>
 
@@ -75,6 +73,18 @@
     </div>
     {% endif %}
 
+    {% if user_list|length == 0 %}
+    <div class="empty-state-box">
+        <h3>No users yet</h3>
+        {% if admin.permission_all %}
+        <p>
+            <button type="button" class="button is-primary has-text-white" onclick="MicroModal.show('modal-add-user')">
+                Create your first user
+            </button>
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
     <!-- Search -->
     <div class="table-search" style="margin-bottom: 16px;">
         <input type="text" class="input" placeholder="Search users..." oninput="CMS.AWSUtils.filter_elements('users-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
@@ -114,18 +124,6 @@
             {% endif %}
         </div>
         {% endfor %}
-    </div>
-
-    {% if user_list|length == 0 %}
-    <div class="empty-state-box">
-        <h3>No users yet</h3>
-        {% if admin.permission_all %}
-        <p>
-            <button type="button" class="tp-btn-primary" onclick="MicroModal.show('modal-add-user')">
-                Create your first user
-            </button>
-        </p>
-        {% endif %}
     </div>
     {% endif %}
 </div>

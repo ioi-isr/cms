@@ -197,7 +197,7 @@ function update_workers_status(response)
     }
 
     total_workers_configured = Object.keys(response.data).length;
-    $("#title_workers_status").text("Workers (" + connected_count + " connected, " + total_workers_configured + " configured)");
+    $("#title_workers_status").html('<svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-cpu"/></svg> Workers (' + connected_count + ' connected, ' + total_workers_configured + ' configured)');
     table.html(strings.join(""));
 };
 

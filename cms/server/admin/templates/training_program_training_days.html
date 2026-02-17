@@ -123,21 +123,26 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 {% block core %}
 <div class="content-constraint" style="max-width: 1100px;">
     <!-- Header -->
-    <h1 class="title">Training Days</h1>
-    <p class="subtitle has-text-grey">
-        Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
-    </p>
-    <div style="display: flex; gap: 8px; align-items: center;">
-            <button type="button" onclick="MicroModal.show('modal-import-contest')"
-              class="button is-medium" {% if not admin.permission_all %}disabled{% endif %}>
-                <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
-                <span>Import Contest</span>
-            </button>
-            <button type="button" onclick="MicroModal.show('modal-add-training-day')"
-              class="button is-medium is-primary has-text-white" {% if not admin.permission_all %}disabled{% endif %}>
-                <svg class="icon is-small"><use href="#icon-plus"/></svg>
-                <span>Add Training Day</span>
-            </button>
+    <div class="level">
+        <div class="level-left">
+            <h1 class="title">Training Days</h1>
+            <p class="subtitle has-text-grey">
+                Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+            </p>
+        </div>
+        <div class="level-right">
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" onclick="MicroModal.show('modal-import-contest')"
+                  class="button is-medium" {% if not admin.permission_all %}disabled{% endif %}>
+                    <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
+                    <span>Import Contest</span>
+                </button>
+                <button type="button" onclick="MicroModal.show('modal-add-training-day')"
+                  class="button is-medium is-primary has-text-white" {% if not admin.permission_all %}disabled{% endif %}>
+                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                    <span>Add Training Day</span>
+                </button>
+            </div>
         </div>
     </div>
 
