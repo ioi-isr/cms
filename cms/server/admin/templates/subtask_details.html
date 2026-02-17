@@ -441,7 +441,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           </td>
           <td>
             {% if tc_info.result and tc_info.result.stderr %}
-              <pre class="is-family-monospace">{{ tc_info.result.stderr | e }}</pre>
+              <pre class="is-family-code">{{ tc_info.result.stderr | e }}</pre>
             {% else %}
               <span class="has-text-grey">-</span>
             {% endif %}

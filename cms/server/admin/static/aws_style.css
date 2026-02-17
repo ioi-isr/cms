@@ -52,36 +52,6 @@
 .ts-wrapper .ts-control {
     width: 240px;
 }
-body {
-    font-size: 1em;
-    line-height: 1.5em;
-    font-family: "Lucida Grande", "Arial", sans-serif;
-    height: 100%;
-    min-width: 960px;
-}
-
-h1 {
-    font-family: "Garamond", sans-serif;
-    color: #53637D;
-    text-align: left;
-    font-weight: bold;
-}
-
-h2 {
-    font-family: "Garamond", serif;
-    font-size: 1.5em;
-    line-height: 2em;
-    font-weight: bold;
-}
-
-h3 {
-    font-weight: bold;
-    margin-left: 1em;
-}
-
-p {
-    padding: 0.75em 0;
-}
 
 code {
     font-family: monospace;
@@ -703,13 +673,6 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 
 /* TOGGLING */
 
-#core h2 {
-    color: #53637D;
-    text-align: left;
-    font-size: 1.5em;
-    padding-left: 1em;
-}
-
 .toggling_on, .toggling_off {
     cursor: pointer;
 }
@@ -891,57 +854,6 @@ body.admin #subpage_border {
 
 body.admin table th {
     border-bottom: 0.072em solid #64748B;
-}
-
-body.admin div.task_dataset {
-    padding-left: 1em;
-    padding-right: 1em;
-    border: 1px solid #CBD5E1;
-}
-
-/* Task dataset subsection titles and helper text */
-body.admin .task_dataset h4 {
-    font-size: 1.15em;
-    margin: 1.2em 0 0.35em;
-    color: #1F2937;
-    font-weight: 700;
-}
-
-body.admin .task_dataset h5 {
-    font-size: 1.05em;
-    margin: 0.9em 0 0.25em;
-    color: #1F2937;
-    font-weight: 700;
-}
-
-body.admin .task_dataset h3 {
-    color: #1F2937;
-    font-weight: 700;
-}
-
-body.admin .task_dataset h4+p {
-    margin: 0.1em 0 0.7em;
-    padding: 0;
-    font-size: 0.95em;
-    color: #2f3c2c;
-}
-
-body.admin .task_dataset h4 .info {
-    color: #53637D;
-    font-size: 0.85em;
-    width: 20px;
-    height: 20px;
-    line-height: 20px;
-    vertical-align: middle;
-}
-
-body.admin .task_dataset table.subtask-validators {
-    margin-left: 0.7em;
-}
-
-body.admin .task_dataset table.subtask-validators th:last-child {
-    min-width: 160px;
-    white-space: nowrap;
 }
 
 /* Subtask details */
