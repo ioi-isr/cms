@@ -889,7 +889,7 @@ class TestGeneratePairwiseData(unittest.TestCase):
 
 class TestRunPairwiseAnalysis(unittest.TestCase):
 
-    def test_pairwise_with_none_normalization(self):
+    def _two_student_fixture(self):
         tds = [make_td(1), make_td(2)]
         info = {
             10: {
@@ -902,6 +902,10 @@ class TestRunPairwiseAnalysis(unittest.TestCase):
             },
         }
         weights = {10: {1: 1.0, 2: 1.0}, 20: {1: 1.0, 2: 1.0}}
+        return tds, info, weights
+
+    def test_pairwise_with_none_normalization(self):
+        tds, info, weights = self._two_student_fixture()
         pairs, pw, pn, pa = run_pairwise_analysis(
             info, weights, tds, "none"
         )
@@ -911,18 +915,7 @@ class TestRunPairwiseAnalysis(unittest.TestCase):
         self.assertAlmostEqual(pn[20][pid], 120.0)
 
     def test_pairwise_with_rank_normalization(self):
-        tds = [make_td(1), make_td(2)]
-        info = {
-            10: {
-                1: make_info(10, 1, score=80),
-                2: make_info(10, 2, score=60),
-            },
-            20: {
-                1: make_info(20, 1, score=70),
-                2: make_info(20, 2, score=50),
-            },
-        }
-        weights = {10: {1: 1.0, 2: 1.0}, 20: {1: 1.0, 2: 1.0}}
+        tds, info, weights = self._two_student_fixture()
         pairs, pw, pn, pa = run_pairwise_analysis(
             info, weights, tds, "rank"
         )
