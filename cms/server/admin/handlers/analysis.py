@@ -477,3 +477,192 @@ def calculate_weighted_averages(
     return result
 
 
+# ---------------------------------------------------------------------------
+# Outlier dropping
+# ---------------------------------------------------------------------------
+
+def drop_outliers(
+    student_weights: dict[int, dict[int, float]],
+    raw_scores: dict[int, dict[int, float]],
+    num_outliers: int,
+) -> dict[int, dict[int, float]]:
+    """Drop N best and N worst training days per student (by score).
+
+    Sets the weight to 0 for the dropped TDs so they do not contribute
+    to the weighted average.  Only TDs with weight > 0 and a valid score
+    are candidates for dropping.
+
+    If a student has fewer than ``2 * num_outliers + 1`` active TDs,
+    no outliers are dropped for that student (there would be nothing left).
+
+    student_weights: student_id -> td_id -> weight.
+    raw_scores: student_id -> td_id -> score  (from ``get_raw_scores``).
+    num_outliers: number of best *and* worst TDs to drop.
+
+    return: student_id -> td_id -> adjusted weight.
+    """
+    if num_outliers <= 0:
+        return student_weights
+
+    result: dict[int, dict[int, float]] = {}
+
+    for student_id, td_weights in student_weights.items():
+        adjusted = dict(td_weights)
+        scores = raw_scores.get(student_id, {})
+
+        active = [
+            (td_id, scores[td_id])
+            for td_id, w in adjusted.items()
+            if w > 0 and td_id in scores
+        ]
+
+        if len(active) > 2 * num_outliers:
+            active.sort(key=lambda x: x[1])
+            for td_id, _ in active[:num_outliers]:
+                adjusted[td_id] = 0.0
+            for td_id, _ in active[-num_outliers:]:
+                adjusted[td_id] = 0.0
+
+        result[student_id] = adjusted
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Pairwise analysis
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PairInfo:
+    """Metadata for one training-day pair."""
+    pair_id: int
+    td_a_id: int
+    td_b_id: int
+
+
+def generate_pairwise_data(
+    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
+    student_weights: dict[int, dict[int, float]],
+    training_days: list[TrainingDay],
+) -> tuple[
+    list[PairInfo],
+    dict[int, dict[int, StudentTrainingDayInfo]],
+    dict[int, dict[int, float]],
+]:
+    """Build synthetic StudentTrainingDayInfo and weights for all TD pairs.
+
+    For each ordered pair (td_a, td_b) with a < b, and each student who
+    participated in both (no justified absence in either):
+
+    * paired score  = score_a + score_b
+    * paired weight = weight_a * weight_b
+
+    Returns
+    -------
+    pairs : list[PairInfo]
+        Ordered list of pairs with synthetic integer IDs starting at 0.
+    paired_info : student_id -> pair_id -> StudentTrainingDayInfo
+        Synthetic info entries for each student/pair (score = sum,
+        status mirrors participation).
+    paired_weights : student_id -> pair_id -> float
+        Weight = product of the two individual weights.
+    """
+    pairs: list[PairInfo] = []
+    td_list = list(training_days)
+    pair_id = 0
+    for i in range(len(td_list)):
+        for j in range(i + 1, len(td_list)):
+            pairs.append(PairInfo(pair_id=pair_id,
+                                  td_a_id=td_list[i].id,
+                                  td_b_id=td_list[j].id))
+            pair_id += 1
+
+    paired_info: dict[int, dict[int, StudentTrainingDayInfo]] = {}
+    paired_weights: dict[int, dict[int, float]] = {}
+
+    for student_id, td_infos in student_info.items():
+        s_weights = student_weights.get(student_id, {})
+
+        for pair in pairs:
+            info_a = td_infos.get(pair.td_a_id)
+            info_b = td_infos.get(pair.td_b_id)
+            if info_a is None or info_b is None:
+                continue
+
+            score_a = _get_student_score_for_td(info_a)
+            score_b = _get_student_score_for_td(info_b)
+
+            if score_a is None or score_b is None:
+                continue
+
+            combined_score = score_a + score_b
+            w_a = s_weights.get(pair.td_a_id, 0.0)
+            w_b = s_weights.get(pair.td_b_id, 0.0)
+
+            paired_info.setdefault(student_id, {})[pair.pair_id] = (
+                StudentTrainingDayInfo(
+                    student_id=student_id,
+                    training_day_id=pair.pair_id,
+                    score=combined_score,
+                    location="class",
+                    recorded=False,
+                    status="participated",
+                    justified=False,
+                )
+            )
+            paired_weights.setdefault(student_id, {})[pair.pair_id] = w_a * w_b
+
+    return pairs, paired_info, paired_weights
+
+
+def run_pairwise_analysis(
+    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
+    student_weights: dict[int, dict[int, float]],
+    training_days: list[TrainingDay],
+    method: str,
+    top_x: int = 10,
+    normalize_variability: bool = False,
+) -> tuple[
+    list[PairInfo],
+    dict[int, dict[int, float]],
+    dict[int, dict[int, float]],
+    dict[int, float],
+]:
+    """Run the full pairwise analysis pipeline.
+
+    Returns
+    -------
+    pairs : list[PairInfo]
+    paired_weights : student_id -> pair_id -> weight
+    paired_norm_scores : student_id -> pair_id -> normalized score
+    paired_weighted_avgs : student_id -> weighted average
+    """
+    pairs, paired_info, paired_weights = generate_pairwise_data(
+        student_info, student_weights, training_days,
+    )
+
+    if not pairs:
+        return pairs, {}, {}, {}
+
+    fake_tds = [_make_fake_td(p.pair_id) for p in pairs]
+
+    paired_norm = normalize_scores(
+        method, paired_info, fake_tds, top_x, normalize_variability,
+    )
+    paired_avgs = calculate_weighted_averages(paired_weights, paired_norm)
+
+    return pairs, paired_weights, paired_norm, paired_avgs
+
+
+class _FakeTD:
+    """Minimal stand-in for TrainingDay used by normalization functions."""
+    __slots__ = ("id",)
+
+    def __init__(self, td_id: int):
+        self.id = td_id
+
+
+def _make_fake_td(td_id: int) -> "_FakeTD":
+    return _FakeTD(td_id)
+
+

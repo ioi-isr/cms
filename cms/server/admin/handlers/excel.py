@@ -35,12 +35,16 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from cms.db import TrainingDay, TrainingProgram, Student
 from .analysis import (
+    PairInfo,
     apply_location_weights,
     apply_training_type_correction,
     calculate_time_decay_weights,
     calculate_weighted_averages,
     collect_student_td_info,
+    drop_outliers,
+    get_raw_scores,
     normalize_scores,
+    run_pairwise_analysis,
 )
 from .base import BaseHandler, require_permission
 from .training_analytics import (
@@ -495,6 +499,143 @@ def generate_normalized_scores_sheet(
     writer.auto_size_columns(curr_col)
 
 
+def generate_paired_weights_sheet(
+    ws: Worksheet,
+    sorted_students: list[Student],
+    pairs: list[PairInfo],
+    training_days: list[TrainingDay],
+    paired_weights: dict[int, dict[int, float]],
+):
+    """Populate a worksheet with per-student per-pair weights."""
+    writer = TrainingExcelWriter(ws)
+    writer.setup_static_headers()
+
+    td_map = {td.id: td for td in training_days}
+
+    curr_col = 3
+    for i, pair in enumerate(pairs):
+        td_a = td_map.get(pair.td_a_id)
+        td_b = td_map.get(pair.td_b_id)
+        title = _pair_title(td_a, td_b)
+
+        h_color, sub_color = EXCEL_ZEBRA_COLORS[i % len(EXCEL_ZEBRA_COLORS)]
+        fill = PatternFill(start_color=h_color, end_color=h_color, fill_type="solid")
+        sub_fill = PatternFill(
+            start_color=sub_color, end_color=sub_color, fill_type="solid"
+        )
+
+        cell = ws.cell(row=1, column=curr_col, value=excel_safe(title))
+        cell.font = STYLE_HEADER_FONT_WHITE
+        cell.fill = fill
+        cell.border = STYLE_BORDER_THIN
+        cell.alignment = ALIGN_CENTER
+
+        writer.write_subheaders(curr_col, ["Weight"], sub_fill)
+        curr_col += 1
+
+    row = 3
+    for student in sorted_students:
+        writer.write_student_meta(row, student)
+        curr_col = 3
+        for pair in pairs:
+            w = paired_weights.get(student.id, {}).get(pair.pair_id)
+            cell = ws.cell(row=row, column=curr_col)
+            if w is not None:
+                cell.value = round(w, 4)
+                cell.number_format = '0.0000'
+            cell.border = STYLE_BORDER_THIN
+            curr_col += 1
+        row += 1
+
+    writer.auto_size_columns(curr_col)
+
+
+def generate_paired_scores_sheet(
+    ws: Worksheet,
+    sorted_students: list[Student],
+    pairs: list[PairInfo],
+    training_days: list[TrainingDay],
+    paired_norm_scores: dict[int, dict[int, float]],
+    paired_weighted_avgs: dict[int, float],
+    method: str,
+):
+    """Populate a worksheet with paired normalized scores and weighted averages."""
+    writer = TrainingExcelWriter(ws)
+    writer.setup_static_headers()
+
+    td_map = {td.id: td for td in training_days}
+
+    curr_col = 3
+    for i, pair in enumerate(pairs):
+        td_a = td_map.get(pair.td_a_id)
+        td_b = td_map.get(pair.td_b_id)
+        title = _pair_title(td_a, td_b)
+        label = "Rank" if method == "rank" else "Score"
+
+        h_color, sub_color = EXCEL_ZEBRA_COLORS[i % len(EXCEL_ZEBRA_COLORS)]
+        fill = PatternFill(start_color=h_color, end_color=h_color, fill_type="solid")
+        sub_fill = PatternFill(
+            start_color=sub_color, end_color=sub_color, fill_type="solid"
+        )
+
+        cell = ws.cell(row=1, column=curr_col, value=excel_safe(title))
+        cell.font = STYLE_HEADER_FONT_WHITE
+        cell.fill = fill
+        cell.border = STYLE_BORDER_THIN
+        cell.alignment = ALIGN_CENTER
+
+        writer.write_subheaders(curr_col, [label], sub_fill)
+        curr_col += 1
+
+    avg_label = "Weighted Avg Rank" if method == "rank" else "Weighted Avg"
+    cell = ws.cell(row=1, column=curr_col, value=avg_label)
+    cell.fill = STYLE_FILL_GREY
+    cell.font = STYLE_HEADER_FONT_WHITE
+    cell.border = STYLE_BORDER_THIN
+    cell.alignment = ALIGN_CENTER
+    ws.merge_cells(
+        start_row=1, start_column=curr_col, end_row=2, end_column=curr_col
+    )
+
+    fmt = '0' if method == "rank" else '0.00'
+
+    row = 3
+    for student in sorted_students:
+        writer.write_student_meta(row, student)
+        curr_col = 3
+        for pair in pairs:
+            val = paired_norm_scores.get(student.id, {}).get(pair.pair_id)
+            cell = ws.cell(row=row, column=curr_col)
+            if val is not None:
+                cell.value = round(val, 4) if method != "rank" else val
+                cell.number_format = fmt
+            cell.border = STYLE_BORDER_THIN
+            curr_col += 1
+
+        avg = paired_weighted_avgs.get(student.id)
+        cell = ws.cell(row=row, column=curr_col)
+        if avg is not None:
+            cell.value = round(avg, 4) if method != "rank" else round(avg, 2)
+            cell.number_format = '0.00'
+        cell.border = STYLE_BORDER_THIN
+        cell.font = STYLE_HEADER_FONT
+        row += 1
+
+    writer.auto_size_columns(curr_col)
+
+
+def _pair_title(td_a, td_b) -> str:
+    """Build a human-readable header for a TD pair."""
+    def _short(td):
+        if td is None:
+            return "?"
+        name = td.description or td.name or "Session"
+        if td.start_time:
+            name += f" ({td.start_time.strftime('%b %d')})"
+        return name
+    return "{" + _short(td_a) + ", " + _short(td_b) + "}"
+
+
 class ExportAnalysedRankingHandler(ExportAttendanceHandler):
     """Export analysed ranking data (weights + normalized scores) to Excel."""
 
@@ -545,6 +686,7 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
         normalize_variability = self.get_argument(
             "normalize_variability", "off"
         ) == "on"
+        num_outliers = int(self.get_argument("num_outliers", "0"))
 
         base_weights = calculate_time_decay_weights(td_list, first_weight_pct)
         student_weights = apply_location_weights(
@@ -553,6 +695,12 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
         student_weights = apply_training_type_correction(
             student_weights, td_list, type_assignments, type_percentages
         )
+
+        if num_outliers > 0:
+            raw_scores = get_raw_scores(student_info, td_list)
+            student_weights = drop_outliers(
+                student_weights, raw_scores, num_outliers
+            )
 
         norm_scores = normalize_scores(
             norm_method, student_info, td_list, top_x, normalize_variability
@@ -572,5 +720,20 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
             ws_scores, sorted_students, td_list,
             norm_scores, weighted_avgs, norm_method,
         )
+
+        if len(td_list) >= 2:
+            pairs, pw, pn, pa = run_pairwise_analysis(
+                student_info, student_weights, td_list,
+                norm_method, top_x, normalize_variability,
+            )
+            if pairs:
+                ws_pw = wb.create_sheet("Paired Weights")
+                generate_paired_weights_sheet(
+                    ws_pw, sorted_students, pairs, td_list, pw,
+                )
+                ws_pn = wb.create_sheet("Paired Normalized Scores")
+                generate_paired_scores_sheet(
+                    ws_pn, sorted_students, pairs, td_list, pn, pa, norm_method,
+                )
 
         self._serve_excel(wb, build_filename(tp.name, "analysed", ctx))
