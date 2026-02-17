@@ -29,6 +29,7 @@ Key concepts:
 
 import math
 from dataclasses import dataclass
+from typing import Callable, Optional
 
 from cms.db import TrainingDay, ArchivedAttendance, ArchivedStudentRanking
 
@@ -73,27 +74,110 @@ def collect_student_td_info(
             tasks = training_day_tasks.get(td.id, [])
             if ranking.task_scores:
                 for task in tasks:
-                    val = ranking.task_scores.get(str(task["id"]))
-                    if val is not None:
-                        total_score += val
+                    total_score += ranking.task_scores.get(str(task["id"]), 0.0)
 
             att = attendance_data.get(student_id, {}).get(td.id)
-            status = att.status if att else "participated"
-            location = att.location if att else "class"
-            recorded = att.recorded if att else False
-            justified = att.justified if att else False
 
             result[student_id][td.id] = StudentTrainingDayInfo(
                 student_id=student_id,
                 training_day_id=td.id,
                 score=total_score,
-                location=location,
-                recorded=recorded,
-                status=status,
-                justified=justified,
+                location=att.location if att else "class",
+                recorded=att.recorded if att else False,
+                status=att.status if att else "participated",
+                justified=att.justified if att else False,
             )
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Helpers: Score Extraction & Statistics
+# ---------------------------------------------------------------------------
+
+MAD_MULTIPLIER = 1.4826
+
+
+def _get_student_score_for_td(info: StudentTrainingDayInfo) -> Optional[float]:
+    """Return score to use for analysis, or None to exclude (justified)."""
+    if info.status == "missed":
+        return None if info.justified else 0.0
+    return info.score
+
+
+def get_raw_scores(
+    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
+    training_days: list[TrainingDay],
+) -> dict[int, dict[int, float]]:
+    """Extract raw scores. Justified absences are excluded from the dict."""
+    result = {}
+    for student_id, td_infos in student_info.items():
+        for td in training_days:
+            info = td_infos.get(td.id)
+            if info:
+                val = _get_student_score_for_td(info)
+                if val is not None:
+                    result.setdefault(student_id, {})[td.id] = val
+
+    return result
+
+
+def _collect_reference_scores(
+    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
+    td_id: int,
+) -> list[float]:
+    """Collect all valid scores for a training day (excludes justified)."""
+    scores = []
+    for td_infos in student_info.values():
+        info = td_infos.get(td_id)
+        if info:
+            val = _get_student_score_for_td(info)
+            if val is not None:
+                scores.append(val)
+    return scores
+
+
+def _top_x_scores(scores: list[float], top_x: int) -> list[float]:
+    return sorted(scores, reverse=True)[:top_x]
+
+
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values) if values else 0.0
+
+
+def _smoothed_median(values: list[float]) -> float:
+    n = len(values)
+    if n == 0:
+        return 0.0
+    if n == 1:
+        return values[0]
+    s = sorted(values)
+    mid = n // 2
+    if n % 2 == 0:
+        return (s[mid - 1] + s[mid]) / 2.0
+    else:
+        return (s[mid - 1] + s[mid] + s[mid + 1]) / 3.0
+
+
+def _std_dev(values: list[float], center: float) -> float:
+    if len(values) <= 1:
+        return 1.0
+    variance = sum((v - center) ** 2 for v in values) / len(values)
+    return math.sqrt(variance) if variance > 0 else 1.0
+
+
+def _mad(values: list[float], center: float) -> float:
+    """Compute Median Absolute Deviation."""
+    if len(values) <= 1:
+        return 1.0
+    abs_devs = sorted(abs(v - center) for v in values)
+    n = len(abs_devs)
+    if n % 2 == 0:
+        mad_val = (abs_devs[n // 2 - 1] + abs_devs[n // 2]) / 2.0
+    else:
+        mad_val = abs_devs[n // 2]
+    # 1.4826 makes MAD consistent with SD for normal distributions
+    return (mad_val * MAD_MULTIPLIER) if mad_val > 0 else 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -121,12 +205,8 @@ def calculate_time_decay_weights(
     if first_training_weight_pct >= 100.0:
         return {td.id: 1.0 for td in training_days}
 
-    dates = []
-    for td in training_days:
-        dates.append(td.start_time)
-
-    earliest = min(dates)
-    latest = max(dates)
+    dates = [td.start_time for td in training_days]
+    earliest, latest = min(dates), max(dates)
     total_span = (latest - earliest).total_seconds()
 
     if total_span == 0:
@@ -168,10 +248,8 @@ def apply_location_weights(
 
             if info.status == "missed" and info.justified:
                 w = 0.0
-            elif info.location == "home" and info.recorded:
-                w *= recorded_home_factor
-            elif info.location == "home" and not info.recorded:
-                w *= home_factor
+            elif info.location == "home":
+                w *= recorded_home_factor if info.recorded else home_factor
 
             result[student_id][td_id] = w
 
@@ -274,253 +352,38 @@ def apply_training_type_correction(
 # Stage 2: Score normalization
 # ---------------------------------------------------------------------------
 
-def get_raw_scores(
+def _normalize_generic(
     student_info: dict[int, dict[int, StudentTrainingDayInfo]],
     training_days: list[TrainingDay],
+    top_x: int,
+    normalize_variability: bool,
+    center_func: Callable[[list[float]], float],
+    spread_func: Callable[[list[float], float], float],
 ) -> dict[int, dict[int, float]]:
-    """Extract raw total scores per student per training day.
-
-    Unjustified absences get score 0. Justified absences are excluded
-    (not present in the returned dict for that student/td).
-
-    return: student_id -> td_id -> score.
-    """
-    result: dict[int, dict[int, float]] = {}
-
-    for student_id, td_infos in student_info.items():
-        result[student_id] = {}
-        for td in training_days:
-            info = td_infos.get(td.id)
-            if info is None:
-                continue
-
-            if info.status == "missed" and info.justified:
-                continue
-
-            if info.status == "missed" and not info.justified:
-                result[student_id][td.id] = 0.0
-            else:
-                result[student_id][td.id] = info.score
-
-        if not result[student_id]:
-            del result[student_id]
-
-    return result
-
-
-def _collect_reference_scores(
-    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
-    td_id: int,
-) -> list[float]:
-    """Collect scores for a training day, excluding justified absences.
-
-    Unjustified absences contribute 0. Justified absences are excluded entirely.
-    """
-    scores = []
-    for student_id, td_infos in student_info.items():
-        info = td_infos.get(td_id)
-        if info is None:
-            continue
-        if info.status == "missed" and info.justified:
-            continue
-        if info.status == "missed" and not info.justified:
-            scores.append(0.0)
-        else:
-            scores.append(info.score)
-    return scores
-
-
-def _top_x_scores(scores: list[float], top_x: int) -> list[float]:
-    """Return the top X scores from a list. If fewer than X, return all."""
-    sorted_desc = sorted(scores, reverse=True)
-    return sorted_desc[:min(top_x, len(sorted_desc))]
-
-
-def _smoothed_median(values: list[float]) -> float:
-    """Compute a smoothed median.
-
-    If even count: average of the two middle values.
-    If odd count: average of median, one above, and one below.
-    If 1 value: return that value.
-    If 2 values: return their average.
-    """
-    n = len(values)
-    if n == 0:
-        return 0.0
-    if n == 1:
-        return values[0]
-
-    s = sorted(values)
-    if n == 2:
-        return (s[0] + s[1]) / 2.0
-
-    if n % 2 == 0:
-        mid = n // 2
-        return (s[mid - 1] + s[mid]) / 2.0
-    else:
-        mid = n // 2
-        if n == 3:
-            return (s[0] + s[1] + s[2]) / 3.0
-        return (s[mid - 1] + s[mid] + s[mid + 1]) / 3.0
-
-
-def _mean(values: list[float]) -> float:
-    """Compute the arithmetic mean."""
-    if not values:
-        return 0.0
-    return sum(values) / len(values)
-
-
-def _std_dev(values: list[float], mean_val: float) -> float:
-    """Compute population standard deviation."""
-    if len(values) <= 1:
-        return 1.0
-    variance = sum((v - mean_val) ** 2 for v in values) / len(values)
-    return math.sqrt(variance) if variance > 0 else 1.0
-
-
-def _mad(values: list[float], median_val: float) -> float:
-    """Compute Median Absolute Deviation."""
-    if len(values) <= 1:
-        return 1.0
-    abs_devs = sorted(abs(v - median_val) for v in values)
-    n = len(abs_devs)
-    if n % 2 == 0:
-        mad_val = (abs_devs[n // 2 - 1] + abs_devs[n // 2]) / 2.0
-    else:
-        mad_val = abs_devs[n // 2]
-    return mad_val if mad_val > 0 else 1.0
-
-
-MAD_MULTIPLIER = 1.4826
-
-
-def normalize_scores_none(
-    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
-    training_days: list[TrainingDay],
-) -> dict[int, dict[int, float]]:
-    """No normalization - return raw scores."""
-    return get_raw_scores(student_info, training_days)
-
-
-def normalize_scores_rank(
-    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
-    training_days: list[TrainingDay],
-) -> dict[int, dict[int, float]]:
-    """Rank-based normalization. Ties get the same rank.
-
-    E.g. scores [100, 90, 90, 80] -> ranks [1, 2, 2, 4].
-    Justified absences are excluded from ranking.
-    """
+    """Generic normalization logic to reduce duplication."""
     raw = get_raw_scores(student_info, training_days)
-    result: dict[int, dict[int, float]] = {}
+    result = {}
 
     for td in training_days:
-        td_scores: list[tuple[int, float]] = []
+        ref_scores = _collect_reference_scores(student_info, td.id)
+        if not ref_scores:
+            continue
+
+        top_scores = _top_x_scores(ref_scores, top_x)
+
+        # Calculate stats on the Top X
+        reference = center_func(top_scores)
+        variability = (
+            spread_func(top_scores, reference) if normalize_variability else 1.0
+        )
+
         for student_id, td_map in raw.items():
             if td.id in td_map:
-                td_scores.append((student_id, td_map[td.id]))
-
-        if not td_scores:
-            continue
-
-        sorted_scores = sorted(td_scores, key=lambda x: x[1], reverse=True)
-
-        ranks: dict[int, int] = {}
-        current_rank = 1
-        i = 0
-        while i < len(sorted_scores):
-            j = i
-            while j < len(sorted_scores) and sorted_scores[j][1] == sorted_scores[i][1]:
-                j += 1
-            for k in range(i, j):
-                ranks[sorted_scores[k][0]] = current_rank
-            current_rank = j + 1
-            i = j
-
-        for student_id, rank in ranks.items():
-            if student_id not in result:
-                result[student_id] = {}
-            result[student_id][td.id] = float(rank)
-
+                normalized = (td_map[td.id] - reference) / variability
+                if student_id not in result:
+                    result[student_id] = {}
+                result[student_id][td.id] = normalized
     return result
-
-
-def normalize_scores_median(
-    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
-    training_days: list[TrainingDay],
-    top_x: int = 10,
-    normalize_variability: bool = False,
-) -> dict[int, dict[int, float]]:
-    """Median-based normalization.
-
-    Reference = smoothed median of top X scores.
-    If normalize_variability: score = (raw - reference) / (MAD * 1.4826)
-    Else: score = raw - reference
-    """
-    raw = get_raw_scores(student_info, training_days)
-    result: dict[int, dict[int, float]] = {}
-
-    for td in training_days:
-        ref_scores = _collect_reference_scores(student_info, td.id)
-        if not ref_scores:
-            continue
-
-        top_scores = _top_x_scores(ref_scores, top_x)
-        reference = _smoothed_median(top_scores)
-
-        variability = 1.0
-        if normalize_variability:
-            variability = _mad(ref_scores, _smoothed_median(ref_scores)) * MAD_MULTIPLIER
-
-        for student_id, td_map in raw.items():
-            if td.id not in td_map:
-                continue
-            normalized = (td_map[td.id] - reference) / variability
-            if student_id not in result:
-                result[student_id] = {}
-            result[student_id][td.id] = normalized
-
-    return result
-
-
-def normalize_scores_mean(
-    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
-    training_days: list[TrainingDay],
-    top_x: int = 10,
-    normalize_variability: bool = False,
-) -> dict[int, dict[int, float]]:
-    """Mean-based normalization.
-
-    Reference = mean of top X scores.
-    If normalize_variability: score = (raw - reference) / SD
-    Else: score = raw - reference
-    """
-    raw = get_raw_scores(student_info, training_days)
-    result: dict[int, dict[int, float]] = {}
-
-    for td in training_days:
-        ref_scores = _collect_reference_scores(student_info, td.id)
-        if not ref_scores:
-            continue
-
-        top_scores = _top_x_scores(ref_scores, top_x)
-        reference = _mean(top_scores)
-
-        variability = 1.0
-        if normalize_variability:
-            variability = _std_dev(ref_scores, _mean(ref_scores))
-
-        for student_id, td_map in raw.items():
-            if td.id not in td_map:
-                continue
-            normalized = (td_map[td.id] - reference) / variability
-            if student_id not in result:
-                result[student_id] = {}
-            result[student_id][td.id] = normalized
-
-    return result
-
 
 def normalize_scores(
     method: str,
@@ -529,25 +392,59 @@ def normalize_scores(
     top_x: int = 10,
     normalize_variability: bool = False,
 ) -> dict[int, dict[int, float]]:
-    """Dispatch to the appropriate normalization method.
+    """Dispatch to appropriate normalization strategy."""
 
-    method: one of "none", "rank", "median", "mean".
-    """
     if method == "rank":
-        return normalize_scores_rank(student_info, training_days)
+        # Rank-based normalization. Ties get the same rank.
+        # E.g. scores [100, 90, 90, 80] -> ranks [1, 2, 2, 4].
+        # Rank is distinct enough to keep separate logic
+        raw = get_raw_scores(student_info, training_days)
+        result = {}
+        for td in training_days:
+            # Create list of (student_id, score) pairs
+            td_scores = [
+                (sid, scores[td.id]) for sid, scores in raw.items() if td.id in scores
+            ]
+            if not td_scores:
+                continue
+
+            # Sort descending by score
+            td_scores.sort(key=lambda x: x[1], reverse=True)
+
+            # Assign ranks (handling ties)
+            rank = 1
+            for i, (sid, score) in enumerate(td_scores):
+                if i > 0 and score < td_scores[i - 1][1]:
+                    rank = i + 1
+                if sid not in result:
+                    result[sid] = {}
+                result[sid][td.id] = float(rank)
+        return result
+
     elif method == "median":
-        return normalize_scores_median(
-            student_info, training_days, top_x, normalize_variability
+        return _normalize_generic(
+            student_info,
+            training_days,
+            top_x,
+            normalize_variability,
+            center_func=_smoothed_median,
+            spread_func=_mad,
         )
+
     elif method == "mean":
-        return normalize_scores_mean(
-            student_info, training_days, top_x, normalize_variability
+        return _normalize_generic(
+            student_info,
+            training_days,
+            top_x,
+            normalize_variability,
+            center_func=_mean,
+            spread_func=_std_dev,
         )
-    else:
-        return normalize_scores_none(student_info, training_days)
 
+    else:  # "none"
+        return get_raw_scores(student_info, training_days)
 
-# ---------------------------------------------------------------------------
+#
 # Final weighted average
 # ---------------------------------------------------------------------------
 
@@ -576,26 +473,7 @@ def calculate_weighted_averages(
                 numerator += w * score
                 denominator += w
 
-        if denominator > 0:
-            result[student_id] = numerator / denominator
-        else:
-            result[student_id] = 0.0
-
+        result[student_id] = (numerator / denominator) if denominator > 0 else 0.0
     return result
 
 
-def compute_monthly_decay(first_weight_pct: float, span_days: float) -> float:
-    """Compute the monthly decay percentage for display purposes.
-
-    first_weight_pct: the % weight of the first training (e.g. 65).
-    span_days: number of days between first and last training.
-
-    return: monthly decay as a percentage (e.g. 11.67).
-    """
-    if span_days <= 0:
-        return 0.0
-    months = span_days / 30.0
-    if months <= 0:
-        return 0.0
-    total_decay = 100.0 - first_weight_pct
-    return total_decay / months
