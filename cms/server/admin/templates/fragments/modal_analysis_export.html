@@ -8,6 +8,7 @@
 {% set all_types = [] %}
 {% set type_counts = {} %}
 {% set multi_type_tds = [] %}
+{% set ns_other = namespace(count=0) %}
 {% for td in td_list %}
   {% if td.training_day_types %}
     {% for t in td.training_day_types %}
@@ -23,8 +24,14 @@
     {% if td.training_day_types | length > 1 %}
       {% set _ = multi_type_tds.append(td) %}
     {% endif %}
+  {% else %}
+    {% set ns_other.count = ns_other.count + 1 %}
   {% endif %}
 {% endfor %}
+{% if ns_other.count > 0 %}
+  {% set _ = all_types.append('other') %}
+  {% set _ = type_counts.update({'other': ns_other.count}) %}
+{% endif %}
 
 {% set ns = namespace(first_date=None, last_date=None) %}
 {% for td in td_list %}
