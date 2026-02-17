@@ -26,23 +26,23 @@
   {% endif %}
 {% endfor %}
 
-{% set first_date = None %}
-{% set last_date = None %}
+{% set ns = namespace(first_date=None, last_date=None) %}
 {% for td in td_list %}
   {% if td.start_time %}
-    {% if first_date is none or td.start_time < first_date %}
-      {% set first_date = td.start_time %}
+    {% if ns.first_date is none or td.start_time < ns.first_date %}
+      {% set ns.first_date = td.start_time %}
     {% endif %}
-    {% if last_date is none or td.start_time > last_date %}
-      {% set last_date = td.start_time %}
+    {% if ns.last_date is none or td.start_time > ns.last_date %}
+      {% set ns.last_date = td.start_time %}
     {% endif %}
   {% endif %}
 {% endfor %}
 
 {% set span_days = 0 %}
-{% if first_date and last_date %}
-  {% set span_days = ((last_date - first_date).total_seconds() / 86400) | round(1) %}
+{% if ns.first_date and ns.last_date %}
+  {% set span_days = ((ns.last_date - ns.first_date).total_seconds() / 86400) | round(1) %}
 {% endif %}
+
 
 <div class="modal" id="modal-analysis-export" aria-hidden="true">
   <div class="modal__overlay" tabindex="-1" data-micromodal-close>
