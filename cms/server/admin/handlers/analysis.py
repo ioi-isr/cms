@@ -208,6 +208,8 @@ def apply_training_type_correction(
     for td in training_days:
         if td.id in type_assignments:
             td_type_map[td.id] = type_assignments[td.id]
+        elif td.training_day_types and len(td.training_day_types) == 1:
+            td_type_map[td.id] = td.training_day_types[0]
 
     result: dict[int, dict[int, float]] = {}
 
