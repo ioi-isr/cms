@@ -40,17 +40,21 @@ CMS.AWSFormUtils.initTagify({
 {% endblock js_init %}
 
 {% block core %}
-<div class="content-constraint" style="max-width: 1500px;">
+<div class="container is-fluid">
 <!-- Page Header -->
-<div class="tp-page-header">
-  <div class="page-title">
-    <h1>Attendance</h1>
-    <div class="page-subtitle">Monitor student participation, manage delays, and track IP addresses.</div>
+<div class="level">
+  <div class="level-left">
+    <div>
+      <h1 class="title">Attendance</h1>
+      <p class="subtitle has-text-grey">Monitor student participation, manage delays, and track IP addresses.</p>
+    </div>
   </div>
-  <button type="button" class="button is-primary has-text-white is-medium" onclick="MicroModal.show('modal-set-delay')">
-    <svg class="icon is-small"><use href="#icon-clock"/></svg>
-    <span>Set Delay for User</span>
-  </button>
+  <div class="level-right">
+    <button type="button" class="button is-primary has-text-white is-medium" onclick="MicroModal.show('modal-set-delay')">
+      <svg class="icon is-small"><use href="#icon-clock"/></svg>
+      <span>Set Delay for User</span>
+    </button>
+  </div>
 </div>
 
 <!-- Archive-ready banner -->

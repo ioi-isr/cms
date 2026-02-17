@@ -1,12 +1,10 @@
 {% extends "base.html" %}
 {% block core %}
 
-<div class="core_title">
-    <h1>{{ "Error %(status_code)s"|format(status_code=status_code) }}</h1>
-</div>
+<h1 class="title">{{ "Error %(status_code)s"|format(status_code=status_code) }}</h1>
 
 <p>
-An error occured while the server was handling your request.
+An error occurred while the server was handling your request.
 </p>
 
 {% endblock core %}

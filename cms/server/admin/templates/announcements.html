@@ -32,13 +32,10 @@ inputs.forEach(function(input) {
 {% endblock js_init %}
 
 {% block core %}
+<div class="container is-fluid">
 
-<div class="tp-page-header">
-  <div class="page-title">
-    <h1>Announcements</h1>
-    <p class="page-subtitle">Post updates and manage announcements for participants.</p>
-  </div>
-</div>
+<h1 class="title">Announcements</h1>
+<p class="subtitle has-text-grey">Post updates and manage announcements for participants.</p>
 
 {% if training_program is defined %}
 {{ info_alert.alert(
@@ -134,4 +131,5 @@ inputs.forEach(function(input) {
 <p class="questions-empty">No announcements.</p>
 {% endif %}
 
+</div>
 {% endblock core %}

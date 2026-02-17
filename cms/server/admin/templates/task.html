@@ -322,18 +322,16 @@ document.addEventListener('click', function(e) {
 {% set language_required = task.submission_format|any("endswith", ".%l") %}
 {% set allow_partial = task.submission_format|length > 1 and not language_required %}
 
-<div class="content-constraint" style="max-width: 1100px;">
-    <div class="page-title">
-        <h1>{{ task.title }} ({{ task.name }})</h1>
-        <div class="page-subtitle">
-            Task Configuration
-            {% if submissions|length > 0 %}
-            &middot; <a href="{{ url("dataset", task.active_dataset_id) }}">{{ submissions|length }} submission{{ "s" if submissions|length != 1 else "" }}</a>
-            {% else %}
-            &middot; No submissions yet
-            {% endif %}
-        </div>
-    </div>
+<div class="content-constraint">
+    <h1 class="title">{{ task.title }} ({{ task.name }})</h1>
+    <p class="subtitle has-text-grey">
+        Task Configuration
+        {% if submissions|length > 0 %}
+        &middot; <a href="{{ url("dataset", task.active_dataset_id) }}">{{ submissions|length }} submission{{ "s" if submissions|length != 1 else "" }}</a>
+        {% else %}
+        &middot; No submissions yet
+        {% endif %}
+    </p>
 
     <form enctype="multipart/form-data" action="{{ url("task", task.id) }}" method="POST" name="edit_task" style="display:inline;">
         {{ xsrf_form_html|safe }}

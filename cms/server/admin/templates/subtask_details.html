@@ -441,7 +441,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           </td>
           <td>
             {% if tc_info.result and tc_info.result.stderr %}
-              <pre class="is-family-monospace">{{ tc_info.result.stderr | e }}</pre>
+              <pre class="is-family-code">{{ tc_info.result.stderr | e }}</pre>
             {% else %}
               <span class="has-text-grey">-</span>
             {% endif %}
@@ -469,9 +469,8 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% endmacro %}
 
 {% block core %}
-<div class="core_title">
-  <h1><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }}{% if subtask_name %}: {{ subtask_name }}{% endif %} Tests</h1>
-</div>
+<div class="container is-fluid">
+<h1 class="title"><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }}{% if subtask_name %}: {{ subtask_name }}{% endif %} Tests</h1>
 
 <h2>Subtask {{ subtask_index }}{% if subtask_name %} ({{ subtask_name }}){% endif %} Details</h2>
 
@@ -584,4 +583,5 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 <p>
   <a href="{{ url("task", task.id) }}">Back to task</a>
 </p>
+</div>
 {% endblock core %}

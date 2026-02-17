@@ -5,9 +5,7 @@
 {% endblock js %}
 
 {% block core %}
-<div class="core_title">
-  <h1>New contest</h1>
-</div>
+<h1 class="title">New contest</h1>
 
 <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
 <form enctype="multipart/form-data" action="{{ url("contests", "add") }}" method="POST" name="add_contest">
