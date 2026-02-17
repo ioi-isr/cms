@@ -264,6 +264,9 @@ def apply_training_type_correction(
 ) -> dict[int, dict[int, float]]:
     """Correct weights so each training type constitutes the desired % of total.
 
+    The total weight sum per student is preserved; only the distribution
+    across types changes.
+
     For multi-type training days, type_assignments maps td_id -> chosen type.
 
     type_percentages maps type_name -> desired fraction (0-1).  Only types
@@ -273,11 +276,11 @@ def apply_training_type_correction(
     * Types *not* mentioned share the leftover fraction (1 - sum of mentioned)
       proportionally to their current weight totals.
 
-    For each student:
+    For each student (with total weight ``tot``):
       For each mentioned type with target p:
-        factor = p / x   where x = current weight total for that type
+        factor = (tot * p) / x   where x = current weight total for that type
       For unmentioned types (leftover fraction shared proportionally):
-        factor = leftover / sum_of_unmentioned_weights
+        factor = (tot * leftover) / sum_of_unmentioned_weights
 
     student_weights: student_id -> td_id -> weight (modified in-place concept).
     training_days: list of training days.
