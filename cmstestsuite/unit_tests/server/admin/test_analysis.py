@@ -28,7 +28,6 @@ from cms.server.admin.handlers.analysis import (
     normalize_scores_mean,
     normalize_scores,
     calculate_weighted_averages,
-    compute_monthly_decay,
     _smoothed_median,
     _mean,
     _std_dev,
@@ -37,6 +36,23 @@ from cms.server.admin.handlers.analysis import (
     _top_x_scores,
     MAD_MULTIPLIER,
 )
+
+
+def compute_monthly_decay(first_weight_pct: float, span_days: float) -> float:
+    """Compute the monthly decay percentage for display purposes.
+
+    first_weight_pct: the % weight of the first training (e.g. 65).
+    span_days: number of days between first and last training.
+
+    return: monthly decay as a percentage (e.g. 11.67).
+    """
+    if span_days <= 0:
+        return 0.0
+    months = span_days / 30.0
+    if months <= 0:
+        return 0.0
+    total_decay = 100.0 - first_weight_pct
+    return total_decay / months
 
 
 def make_td(td_id, start_time=None, training_day_types=None):
