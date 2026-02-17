@@ -1,136 +1,168 @@
 {% extends "base.html" %}
 
 {% block core %}
+<div class="content-constraint" style="max-width: 1200px;">
+    <!-- Header -->
+    <div class="tp-page-header">
+        <div class="page-title">
+            <h1>Users</h1>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <a href="{{ url("users", "export") }}" class="tp-btn-secondary">
+                <svg class="icon is-small"><use href="#icon-download"/></svg>
+                Export CSV
+            </a>
+            <a href="{{ url("users", "import") }}" class="tp-btn-secondary">
+                <svg class="icon is-small"><use href="#icon-upload"/></svg>
+                Import CSV
+            </a>
+            {% if admin.permission_all %}
+            <button type="button" class="tp-btn-primary" onclick="MicroModal.show('modal-add-user')">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                New User
+            </button>
+            {% endif %}
+        </div>
+    </div>
 
-<div class="core_title">
-  <h1>Users list</h1>
+    {% set pending_users = user_list|selectattr("password_reset_pending")|list %}
+    {% if pending_users|length > 0 %}
+    <div class="tp-filter-card" style="margin-bottom: 24px; border-left: 3px solid var(--tp-warning);">
+        <div style="width: 100%;">
+            <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--tp-text-primary);">
+                <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 4px; color: var(--tp-warning);"><use href="#icon-alert-triangle"/></svg>
+                Pending Password Resets ({{ pending_users|length }})
+            </h3>
+            <div class="tp-table-container">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">User</th>
+                            <th class="text-center" style="width: 160px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in pending_users|sort(attribute="username") %}
+                        <tr>
+                            <td>
+                                <div class="student-name-wrapper">
+                                    <div class="student-info">
+                                        <a class="student-name-link" href="{{ url("user", u.id) }}">{{ u.first_name }} {{ u.last_name }}</a>
+                                        <span class="student-username">{{ u.username }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="list-cell-wrapper center-content" style="gap: 6px;">
+                                    <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit='return AdminModals.confirmSubmit(event, "Approve password reset for " + {{ u.username|tojson }} + "?", {icon: "question"});'>
+                                        {{ xsrf_form_html|safe }}
+                                        <button type="submit" class="button is-small is-success is-outlined">Approve</button>
+                                    </form>
+                                    <form action="{{ url("user", u.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit='return AdminModals.confirmSubmit(event, "Deny password reset for " + {{ u.username|tojson }} + "?", {icon: "question"});'>
+                                        {{ xsrf_form_html|safe }}
+                                        <button type="submit" class="button is-small is-danger is-outlined">Deny</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Search -->
+    <div class="table-search" style="margin-bottom: 16px;">
+        <input type="text" class="input" placeholder="Search users..." oninput="CMS.AWSUtils.filter_elements('users-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
+    </div>
+
+    <!-- Users Cards Grid -->
+    <div class="tp-cards-grid" id="users-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+        {% for u in user_list|sort(attribute="username") %}
+        <div class="tp-program-card" style="padding: 20px; position: relative;">
+            {% if admin.permission_all %}
+            <button type="button" class="btn-icon-only" title="Remove user" style="position: absolute; top: 12px; right: 12px;"
+                onclick='AdminModals.deleteResource({
+                    title: "Remove User",
+                    message: "Are you sure you want to remove user \"" + {{ u.username|tojson }} + "\"?",
+                    deleteUrl: {{ url("users", u.id, "remove")|tojson }},
+                    confirmLabel: "Yes, Remove"
+                })'>
+                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            </button>
+            {% endif %}
+            <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+                {% if u.picture %}
+                <img class="student-avatar" src="{{ url("file", u.picture, "picture") }}" alt="{{ u.first_name }} {{ u.last_name }}" style="width: 48px; height: 48px; border-radius: 50%;"/>
+                {% else %}
+                <div class="student-avatar-placeholder" style="width: 48px; height: 48px; font-size: 1rem;">{{ u.first_name[:1] or '?' }}{{ u.last_name[:1] }}</div>
+                {% endif %}
+                <div style="min-width: 0;">
+                    <div style="font-weight: 600; color: var(--tp-text-primary); font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ u.first_name }} {{ u.last_name }}</div>
+                    <a href="{{ url("user", u.id) }}" style="font-size: 0.85rem; color: var(--tp-primary); text-decoration: none;">{{ u.username }}</a>
+                </div>
+            </div>
+            {% if u.date_of_birth %}
+            <div style="font-size: 0.8rem; color: var(--tp-text-muted);">
+                <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 2px; width: 14px; height: 14px;"><use href="#icon-calendar"/></svg>
+                {{ u.date_of_birth.strftime('%Y-%m-%d') }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if user_list|length == 0 %}
+    <div class="empty-state-box">
+        <h3>No users yet</h3>
+        {% if admin.permission_all %}
+        <p>
+            <button type="button" class="tp-btn-primary" onclick="MicroModal.show('modal-add-user')">
+                Create your first user
+            </button>
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
-
-{% set pending_users = user_list|selectattr("password_reset_pending")|list %}
-{% if pending_users|length > 0 %}
-<div class="panel-warning">
-  <h2>Pending Password Resets ({{ pending_users|length }})</h2>
-  <p>The following users have submitted password reset requests awaiting approval:</p>
-  <table class="table is-bordered is-striped is-hoverable">
-    <thead>
-      <tr>
-        <th>Username</th>
-        <th>First name</th>
-        <th>Last name</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in pending_users|sort(attribute="username") %}
-      <tr>
-        <td><a href="{{ url("user", u.id) }}">{{ u.username }}</a></td>
-        <td>{{ u.first_name }}</td>
-        <td>{{ u.last_name }}</td>
-        <td>
-          <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit='return AdminModals.confirmSubmit(event, "Approve password reset for " + {{ u.username|tojson }} + "?", {icon: "question"});'>
-            {{ xsrf_form_html|safe }}
-            <input type="submit" value="Approve" class="btn-success" />
-          </form>
-          <form action="{{ url("user", u.id, "deny_password_reset") }}" method="POST" style="display:inline;" onsubmit='return AdminModals.confirmSubmit(event, "Deny password reset for " + {{ u.username|tojson }} + "?", {icon: "question"});'>
-            {{ xsrf_form_html|safe }}
-            <input type="submit" value="Deny" class="btn-danger" />
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
-
-<div style="margin-bottom: 10px;">
-  <a href="{{ url("users", "export") }}" class="button is-medium">
-    <svg class="icon is-small"><use href="#icon-download"/></svg>
-    <span>Export to CSV</span>
-  </a>
-  <a href="{{ url("users", "import") }}" class="button is-medium">
-    <svg class="icon is-small"><use href="#icon-upload"/></svg>
-    <span>Import from CSV</span>
-  </a>
-  {% if admin.permission_all %}
-  <button type="button" class="button is-medium is-primary has-text-white" onclick="MicroModal.show('modal-add-user')">
-    <svg class="icon is-small"><use href="#icon-plus"/></svg>
-    <span>New user</span>
-  </button>
-  {% endif %}
-</div>
-
-<form action="{{ url("users") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Edit selected user:
-   <input type="submit"
-         name="operation"
-         value="Remove"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
-  <table class="table is-bordered is-striped is-hoverable">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Username</th>
-        <th>First name</th>
-        <th>Last name</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in user_list|sort(attribute="username") %}
-      <tr>
-        <td>
-          <input type="radio" name="user_id" value="{{ u.id }}"/>
-        </td>
-        <td><a href="{{ url("user", u.id) }}">{{ u.username }}</a></td>
-        <td>{{ u.first_name }}</td>
-        <td>{{ u.last_name }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
 
 {% if admin.permission_all %}
 <div class="modal modal--medium" id="modal-add-user" aria-hidden="true">
-  <div class="modal__overlay" tabindex="-1" data-micromodal-close>
-    <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-user-title">
-      <header class="modal__header">
-        <h2 class="modal__title" id="modal-add-user-title">New user</h2>
-        <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-      </header>
-      <main class="modal__content">
-        <form id="add-user-form" enctype="multipart/form-data" action="{{ url("users", "add") }}" method="POST">
-          {{ xsrf_form_html|safe }}
-          {% set user = None %}
-          {% from "macro/user_fields.html" import user_fields with context %}
-          {{ user_fields(None) }}
-        </form>
-      </main>
-      <footer class="modal__footer">
-        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-        <button type="submit" form="add-user-form" class="tp-btn-primary">Create user</button>
-      </footer>
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-user-title">
+            <header class="modal__header">
+                <h2 class="modal__title" id="modal-add-user-title">New user</h2>
+                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+            </header>
+            <main class="modal__content">
+                <form id="add-user-form" enctype="multipart/form-data" action="{{ url("users", "add") }}" method="POST">
+                    {{ xsrf_form_html|safe }}
+                    {% set user = None %}
+                    {% from "macro/user_fields.html" import user_fields with context %}
+                    {{ user_fields(None) }}
+                </form>
+            </main>
+            <footer class="modal__footer">
+                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                <button type="submit" form="add-user-form" class="tp-btn-primary">Create user</button>
+            </footer>
+        </div>
     </div>
-  </div>
 </div>
 {% endif %}
 
 <script>
-  if (new URLSearchParams(window.location.search).get('add') === '1') {
-    // Check if modal element exists before trying to show it
-    const modalElement = document.getElementById('modal-add-user');
+if (new URLSearchParams(window.location.search).get('add') === '1') {
+    var modalElement = document.getElementById('modal-add-user');
     if (modalElement) {
-      MicroModal.show('modal-add-user');
+        MicroModal.show('modal-add-user');
     }
-    const url = new URL(window.location);
+    var url = new URL(window.location);
     url.searchParams.delete('add');
-    const updatedSearch = url.searchParams.toString();
+    var updatedSearch = url.searchParams.toString();
     history.replaceState(null, '', window.location.pathname + (updatedSearch ? '?' + updatedSearch : ''));
-  }
+}
 </script>
-
 {% endblock core %}
