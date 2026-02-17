@@ -22,10 +22,6 @@ from cms.server.admin.handlers.analysis import (
     apply_location_weights,
     apply_training_type_correction,
     get_raw_scores,
-    normalize_scores_none,
-    normalize_scores_rank,
-    normalize_scores_median,
-    normalize_scores_mean,
     normalize_scores,
     calculate_weighted_averages,
     _smoothed_median,
@@ -120,8 +116,8 @@ class TestHelpers(unittest.TestCase):
         vals = [1, 2, 3, 4, 5]
         median = 3.0
         abs_devs = sorted(abs(v - median) for v in vals)
-        expected_mad = abs_devs[len(abs_devs) // 2]
-        self.assertAlmostEqual(_mad(vals, median), expected_mad)
+        raw_mad = abs_devs[len(abs_devs) // 2]
+        self.assertAlmostEqual(_mad(vals, median), raw_mad * MAD_MULTIPLIER)
 
     def test_top_x_scores(self):
         self.assertEqual(_top_x_scores([5, 3, 8, 1, 9], 3), [9, 8, 5])
@@ -437,7 +433,7 @@ class TestNormalizationNone(unittest.TestCase):
     def test_returns_raw(self):
         tds = [make_td(1)]
         info = {10: {1: make_info(10, 1, score=90)}}
-        result = normalize_scores_none(info, tds)
+        result = normalize_scores("none", info, tds)
         self.assertAlmostEqual(result[10][1], 90.0)
 
 
@@ -450,7 +446,7 @@ class TestNormalizationRank(unittest.TestCase):
             2: {1: make_info(2, 1, score=80)},
             3: {1: make_info(3, 1, score=60)},
         }
-        result = normalize_scores_rank(info, tds)
+        result = normalize_scores("rank", info, tds)
         self.assertEqual(result[1][1], 1.0)
         self.assertEqual(result[2][1], 2.0)
         self.assertEqual(result[3][1], 3.0)
@@ -463,7 +459,7 @@ class TestNormalizationRank(unittest.TestCase):
             3: {1: make_info(3, 1, score=90)},
             4: {1: make_info(4, 1, score=80)},
         }
-        result = normalize_scores_rank(info, tds)
+        result = normalize_scores("rank", info, tds)
         self.assertEqual(result[1][1], 1.0)
         self.assertEqual(result[2][1], 2.0)
         self.assertEqual(result[3][1], 2.0)
@@ -476,7 +472,7 @@ class TestNormalizationRank(unittest.TestCase):
             2: {1: make_info(2, 1, status="missed", justified=True)},
             3: {1: make_info(3, 1, score=80)},
         }
-        result = normalize_scores_rank(info, tds)
+        result = normalize_scores("rank", info, tds)
         self.assertNotIn(1, result.get(2, {}))
         self.assertEqual(result[1][1], 1.0)
         self.assertEqual(result[3][1], 2.0)
@@ -491,7 +487,7 @@ class TestNormalizationMedian(unittest.TestCase):
             2: {1: make_info(2, 1, score=80)},
             3: {1: make_info(3, 1, score=60)},
         }
-        result = normalize_scores_median(info, tds, top_x=10)
+        result = normalize_scores("median", info, tds, top_x=10)
         ref_scores = [60, 80, 100]
         reference = _smoothed_median(ref_scores)
         self.assertAlmostEqual(result[1][1], 100 - reference, places=5)
@@ -505,11 +501,10 @@ class TestNormalizationMedian(unittest.TestCase):
             2: {1: make_info(2, 1, score=80)},
             3: {1: make_info(3, 1, score=60)},
         }
-        result = normalize_scores_median(info, tds, top_x=10, normalize_variability=True)
+        result = normalize_scores("median", info, tds, top_x=10, normalize_variability=True)
         ref_scores = [60, 80, 100]
         reference = _smoothed_median(ref_scores)
-        mad_val = _mad(ref_scores, _smoothed_median(ref_scores))
-        variability = mad_val * MAD_MULTIPLIER
+        variability = _mad(ref_scores, reference)
         self.assertAlmostEqual(result[1][1], (100 - reference) / variability, places=5)
 
     def test_top_x_limits_reference(self):
@@ -517,7 +512,7 @@ class TestNormalizationMedian(unittest.TestCase):
         info = {}
         for i in range(1, 21):
             info[i] = {1: make_info(i, 1, score=float(i * 5))}
-        result = normalize_scores_median(info, tds, top_x=5)
+        result = normalize_scores("median", info, tds, top_x=5)
         top5 = sorted([i * 5.0 for i in range(1, 21)], reverse=True)[:5]
         reference = _smoothed_median(top5)
         self.assertAlmostEqual(result[20][1], 100 - reference, places=5)
@@ -532,7 +527,7 @@ class TestNormalizationMean(unittest.TestCase):
             2: {1: make_info(2, 1, score=80)},
             3: {1: make_info(3, 1, score=60)},
         }
-        result = normalize_scores_mean(info, tds, top_x=10)
+        result = normalize_scores("mean", info, tds, top_x=10)
         reference = _mean([60, 80, 100])
         self.assertAlmostEqual(result[1][1], 100 - reference, places=5)
         self.assertAlmostEqual(result[2][1], 80 - reference, places=5)
@@ -544,10 +539,10 @@ class TestNormalizationMean(unittest.TestCase):
             2: {1: make_info(2, 1, score=80)},
             3: {1: make_info(3, 1, score=60)},
         }
-        result = normalize_scores_mean(info, tds, top_x=10, normalize_variability=True)
+        result = normalize_scores("mean", info, tds, top_x=10, normalize_variability=True)
         ref_scores = [60, 80, 100]
         reference = _mean(ref_scores)
-        sd = _std_dev(ref_scores, _mean(ref_scores))
+        sd = _std_dev(ref_scores, reference)
         self.assertAlmostEqual(result[1][1], (100 - reference) / sd, places=5)
 
     def test_justified_excluded_from_reference(self):
@@ -557,7 +552,7 @@ class TestNormalizationMean(unittest.TestCase):
             2: {1: make_info(2, 1, score=80)},
             3: {1: make_info(3, 1, status="missed", justified=True)},
         }
-        result = normalize_scores_mean(info, tds, top_x=10)
+        result = normalize_scores("mean", info, tds, top_x=10)
         reference = _mean([80, 100])
         self.assertAlmostEqual(result[1][1], 100 - reference, places=5)
         self.assertNotIn(1, result.get(3, {}))
