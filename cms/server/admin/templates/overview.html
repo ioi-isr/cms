@@ -38,7 +38,7 @@ function update_submissions_status(response)
 function build_status_card(label, count, icon, color) {
     return '<div class="overview-status-card overview-status-' + color + '">' +
            '<div class="overview-status-card-icon">' +
-           '<svg class="icon is-small"><use href="#' + icon + '"/></svg>' +
+           '<svg class="icon"><use href="#' + icon + '"/></svg>' +
            '</div>' +
            '<div class="overview-status-card-content">' +
            '<div class="overview-status-card-value">' + count + '</div>' +
@@ -230,7 +230,7 @@ function update_logs(response)
     var msg = utils.standard_response(response);
     if (msg != "")
     {
-        table.html('<tr><td style="text-align: center;" colspan="5">'+ msg + '</td></tr>');
+        table.html('<tr><td style="has-text-centered" colspan="5">'+ msg + '</td></tr>');
         return;
     }
 
@@ -260,7 +260,7 @@ function update_logs(response)
         // We inject it as HTML rather than text because we escaped it before
         // and because we need to preserve the links to the submission pages.
         row.append($('<td>').html(operation));
-        row.append($('<td>').append($('<pre class="overview-log-message">').html(message)));
+        row.append($('<td>').append($('<pre>').html(message)));
         new_table.append(row);
     }
     table.replaceWith(new_table);
@@ -318,7 +318,7 @@ update_statuses();
     <div class="overview-section">
         <div class="tp-section-header">
             <h2>
-                <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-clipboard-list"/></svg>
+                <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-clipboard-list"/></svg>
                 Submissions Status
             </h2>
         </div>
@@ -332,43 +332,18 @@ update_statuses();
 
     <!-- Queue & Workers Row -->
     <div class="overview-two-col">
-        <!-- Queue Status -->
-        <div class="overview-section">
-            <div class="tp-section-header">
-                <h2>
-                    <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-clock"/></svg>
-                    Queue Status
-                </h2>
-            </div>
-            <div class="tp-table-container" style="max-height: 400px;">
-                <table class="table is-fullwidth is-hoverable overview-table" id="queue_status_table">
-                    <thead>
-                        <tr>
-                            <th class="has-text-centered" style="width: 60px;">#</th>
-                            <th>Job</th>
-                            <th class="has-text-centered" style="width: 100px;">Priority</th>
-                            <th class="has-text-right" style="width: 140px;">Since</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td style="text-align: center;" colspan="4"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
         <!-- Workers Status -->
         <div class="overview-section">
             <div class="tp-section-header">
                 <h2 id="title_workers_status">
-                    <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-cpu"/></svg>
+                    <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-cpu"/></svg>
                     Workers
                 </h2>
             </div>
             <div class="tp-filter-card" style="margin-bottom: 16px;">
                 <label class="tp-filter-label" for="worker_count_input">Workers to enable:</label>
                 <input type="number" id="worker_count_input" min="0" class="input is-small" style="width: 80px;" />
-                <button class="button is-small is-primary" onclick="javascript:set_workers_count(); return false;"{% if not admin.permission_all %} disabled{% endif %}>Set Count</button>
+                <button class="button is-small is-primary has-text-white" onclick="javascript:set_workers_count(); return false;"{% if not admin.permission_all %} disabled{% endif %}>Set Count</button>
                 <span class="overview-hint">Workers 0 to n-1 enabled, rest disabled</span>
             </div>
             <div class="tp-table-container" style="max-height: 400px;">
@@ -388,13 +363,37 @@ update_statuses();
                 </table>
             </div>
         </div>
+        <!-- Queue Status -->
+        <div class="overview-section">
+            <div class="tp-section-header">
+                <h2>
+                    <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-clock"/></svg>
+                    Queue Status
+                </h2>
+            </div>
+            <div class="tp-table-container" style="max-height: 500px;">
+                <table class="table is-fullwidth is-hoverable overview-table" id="queue_status_table">
+                    <thead>
+                        <tr>
+                            <th class="has-text-centered" style="width: 60px;">#</th>
+                            <th>Job</th>
+                            <th class="has-text-centered" style="width: 100px;">Priority</th>
+                            <th class="has-text-right" style="width: 140px;">Since</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td style="text-align: center;" colspan="4"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- Logs -->
     <div class="overview-section">
         <div class="tp-section-header">
             <h2>
-                <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-file"/></svg>
+                <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-laptop-code"/></svg>
                 Recent Logs
             </h2>
         </div>
