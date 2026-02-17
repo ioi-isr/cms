@@ -274,12 +274,10 @@ def apply_training_type_correction(
       proportionally to their current weight totals.
 
     For each student:
-      tot = sum of all weights before correction
       For each mentioned type with target p:
-        factor = (tot * p) / x   where x = current weight total for that type
+        factor = p / x   where x = current weight total for that type
       For unmentioned types (leftover fraction shared proportionally):
-        combined target = tot * leftover
-        factor = combined_target / sum_of_unmentioned_weights
+        factor = leftover / sum_of_unmentioned_weights
 
     student_weights: student_id -> td_id -> weight (modified in-place concept).
     training_days: list of training days.
