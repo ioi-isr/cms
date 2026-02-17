@@ -322,6 +322,58 @@ class TestTrainingTypeCorrection(unittest.TestCase):
         self.assertAlmostEqual(result[10][3], tot_before * 0.6, places=5)
         self.assertAlmostEqual(result[10][4], tot_before * 0.4, places=5)
 
+    def test_untyped_td_gets_other(self):
+        tds = [
+            make_td(1, training_day_types=["onsite"]),
+            make_td(2, training_day_types=[]),
+        ]
+        weights = {10: {1: 1.0, 2: 1.0}}
+        pcts = {"onsite": 0.6, "other": 0.4}
+        result = apply_training_type_correction(weights, tds, {}, pcts)
+        tot_before = 2.0
+        self.assertAlmostEqual(result[10][1], tot_before * 0.6, places=5)
+        self.assertAlmostEqual(result[10][2], tot_before * 0.4, places=5)
+
+    def test_untyped_td_zero_percent(self):
+        tds = [
+            make_td(1, training_day_types=["onsite"]),
+            make_td(2, training_day_types=[]),
+        ]
+        weights = {10: {1: 1.0, 2: 1.0}}
+        pcts = {"other": 0.0}
+        result = apply_training_type_correction(weights, tds, {}, pcts)
+        self.assertAlmostEqual(result[10][2], 0.0)
+        self.assertGreater(result[10][1], 0)
+
+    def test_untyped_td_leftover_when_unmentioned(self):
+        tds = [
+            make_td(1, training_day_types=["onsite"]),
+            make_td(2, training_day_types=["online"]),
+            make_td(3, training_day_types=[]),
+        ]
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        pcts = {"onsite": 0.3, "online": 0.3}
+        result = apply_training_type_correction(weights, tds, {}, pcts)
+        tot_before = 3.0
+        self.assertAlmostEqual(result[10][1], tot_before * 0.3, places=5)
+        self.assertAlmostEqual(result[10][2], tot_before * 0.3, places=5)
+        self.assertAlmostEqual(result[10][3], tot_before * 0.4, places=5)
+
+    def test_mixed_typed_and_untyped(self):
+        tds = [
+            make_td(1, training_day_types=["onsite"]),
+            make_td(2, training_day_types=[]),
+            make_td(3, training_day_types=[]),
+        ]
+        weights = {10: {1: 2.0, 2: 1.0, 3: 1.0}}
+        pcts = {"onsite": 0.5, "other": 0.5}
+        result = apply_training_type_correction(weights, tds, {}, pcts)
+        tot_before = 4.0
+        self.assertAlmostEqual(result[10][1], tot_before * 0.5, places=5)
+        other_total = result[10][2] + result[10][3]
+        self.assertAlmostEqual(other_total, tot_before * 0.5, places=5)
+        self.assertAlmostEqual(result[10][2], result[10][3], places=5)
+
 
 class TestGetRawScores(unittest.TestCase):
 
