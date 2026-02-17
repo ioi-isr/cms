@@ -155,7 +155,7 @@
               <div style="flex: 1;">
                 <label for="num_outliers" style="font-size: 0.85em;">Number of outliers to drop (each side)</label>
                 <input type="number" id="num_outliers" name="num_outliers"
-                       value="0" min="0" max="{{ [(td_list | length // 2) - 1, 0] | max }}" step="1" style="width: 120px;" />
+                       value="0" min="0" max="{{ [((td_list | length) - 1) // 2, 0] | max }}" step="1" style="width: 120px;" />
                 <small class="modal__hint">E.g. setting 2 drops the 2 best and 2 worst training days per student</small>
               </div>
             </div>
