@@ -444,7 +444,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("contests", "add") }}">New contest</a>
+              <a class="sidebar-action-link" href="javascript:void(0)" onclick="AdminModals.showAddContestDialog('{{ url("contests", "add") }}', '{{ url("contest", "") }}')">New contest</a>
               <a class="sidebar-action-link" href="{{ url("folders", "add") }}">New folder</a>
               <a class="sidebar-action-link" href="{{ url("folders") }}">Manage folders</a>
             </div>
@@ -616,7 +616,7 @@ $(document).ready(initSidebarEvents);
             </li>
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-clipboard-list"/></svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-puzzle"/></svg>
               </span>
               <a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a>
             </li>
@@ -688,7 +688,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             <li class="menu_entry">
               <span class="menu-icon">
-                <svg class="icon" width="18" height="18"><use href="#icon-clipboard-list"/></svg>
+                <svg class="icon" width="18" height="18"><use href="#icon-puzzle"/></svg>
               </span>
               <a class="menu_link" href="{{ url("contest", contest.id, "tasks") }}">Tasks</a>
             </li>

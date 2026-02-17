@@ -524,57 +524,76 @@ AdminModals.renameDataset = function (renameUrl, currentDescription) {
     });
 };
 
-AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
+AdminModals._showAddResourceDialog = function (opts) {
+    var inputId = 'swal-' + opts.resourceType + '-name';
     Swal.fire({
-        title: 'Add New Task',
-        html: `
-            <div class="swal-custom-form">
-                <div class="form-group">
-                    <label for="swal-task-name">Task Name</label>
-                    <input id="swal-task-name" class="swal2-input" placeholder="e.g. aplusb">
-                    <small class="form-hint">A short name using only letters, numbers and underscores.</small>
-                </div>
-            </div>
-            <style>
-                .swal-custom-form { text-align: left; }
-                .swal-custom-form .form-group { margin-bottom: 1rem; }
-                .swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }
-                .swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }
-                .swal-custom-form .form-hint { display: block; margin-top: 6px; font-size: 0.8em; color: #6b7280; }
-            </style>
-        `,
+        title: opts.title,
+        html:
+            '<div class="swal-custom-form">' +
+                '<div class="form-group" id="swal-' + opts.resourceType + '-group"></div>' +
+            '</div>' +
+            '<style>' +
+                '.swal-custom-form { text-align: left; }' +
+                '.swal-custom-form .form-group { margin-bottom: 1rem; }' +
+                '.swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }' +
+                '.swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }' +
+                '.swal-custom-form .form-hint { display: block; margin-top: 6px; font-size: 0.8em; color: #6b7280; }' +
+            '</style>',
         focusConfirm: false,
         showCancelButton: true,
-        confirmButtonText: 'Create Task',
+        confirmButtonText: opts.confirmText,
         cancelButtonText: 'Cancel',
         reverseButtons: true,
 
-        didOpen: () => {
-            const nameInput = Swal.getPopup().querySelector('#swal-task-name');
-            if (nameInput) {
-                nameInput.focus();
-                nameInput.addEventListener('keyup', (e) => {
+        didOpen: function () {
+            var group = Swal.getPopup().querySelector('#swal-' + opts.resourceType + '-group');
+            if (group) {
+                var label = document.createElement('label');
+                label.setAttribute('for', inputId);
+                label.textContent = opts.inputLabel || 'Name';
+
+                var input = document.createElement('input');
+                input.id = inputId;
+                input.className = 'swal2-input';
+                input.placeholder = opts.placeholder || '';
+
+                group.appendChild(label);
+                group.appendChild(input);
+
+                if (opts.hint) {
+                    var hint = document.createElement('small');
+                    hint.className = 'form-hint';
+                    hint.textContent = opts.hint;
+                    group.appendChild(hint);
+                }
+
+                input.focus();
+                input.addEventListener('keyup', function (e) {
                     if (e.key === 'Enter') Swal.clickConfirm();
                 });
             }
         },
 
-        preConfirm: async () => {
-            const nameInput = document.getElementById('swal-task-name');
-            const name = nameInput.value.trim();
+        preConfirm: async function () {
+            var nameInput = document.getElementById(inputId);
+            var name = nameInput.value.trim();
 
             if (!name) {
-                Swal.showValidationMessage('Task name is required');
-                setTimeout(() => nameInput.focus(), 100);
+                Swal.showValidationMessage(opts.inputLabel + ' is required');
+                setTimeout(function () { nameInput.focus(); }, 100);
                 return false;
             }
-            if (!/^[A-Za-z0-9_]+$/.test(name)) {
-                Swal.showValidationMessage('Task name may contain only letters, numbers, and underscores');
-                setTimeout(() => nameInput.focus(), 100);
-                return false;
+            if (opts.validate) {
+                var error = opts.validate(name);
+                if (error) {
+                    Swal.showValidationMessage(error);
+                    setTimeout(function () { nameInput.focus(); }, 100);
+                    return false;
+                }
             }
 
-            let xsrfToken = document.querySelector('input[name="_xsrf"]')?.value;
+            var xsrfToken = document.querySelector('input[name="_xsrf"]');
+            xsrfToken = xsrfToken ? xsrfToken.value : null;
             if (!xsrfToken && typeof get_cookie === 'function') {
                 xsrfToken = get_cookie('_xsrf');
             }
@@ -583,11 +602,11 @@ AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
                 return false;
             }
 
-            const formData = new FormData();
-            formData.append('name', name);
+            var formData = new FormData();
+            formData.append(opts.fieldName || 'name', name);
 
             try {
-                const response = await fetch(postUrl, {
+                var response = await fetch(opts.postUrl, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -595,9 +614,9 @@ AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
                     },
                     body: formData
                 });
-                const data = await response.json();
+                var data = await response.json();
                 if (!response.ok) {
-                    throw new Error(data.error || 'Failed to create task');
+                    throw new Error(data.error || 'Failed to create ' + opts.resourceType);
                 }
                 return data;
             } catch (error) {
@@ -605,9 +624,51 @@ AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
                 return false;
             }
         }
-    }).then((result) => {
+    }).then(function (result) {
         if (result.isConfirmed && result.value) {
-            window.location.href = taskBaseUrl + result.value.id;
+            if (opts.onSuccess) {
+                opts.onSuccess(result.value);
+            } else if (opts.redirectBaseUrl) {
+                window.location.href = opts.redirectBaseUrl + result.value.id;
+            }
+        }
+    });
+};
+
+AdminModals.showAddContestDialog = function (postUrl, contestBaseUrl) {
+    AdminModals._showAddResourceDialog({
+        resourceType: 'contest',
+        title: 'Add New Contest',
+        inputLabel: 'Contest Name',
+        placeholder: 'e.g. contest1',
+        hint: 'A short name for the contest, preferably using only letters, numbers and underscores.',
+        confirmText: 'Create Contest',
+        postUrl: postUrl,
+        redirectBaseUrl: contestBaseUrl,
+        validate: function (name) {
+            if (name.startsWith('__')) {
+                return "Contest name cannot start with '__' (reserved for system contests)";
+            }
+            return null;
+        }
+    });
+};
+
+AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
+    AdminModals._showAddResourceDialog({
+        resourceType: 'task',
+        title: 'Add New Task',
+        inputLabel: 'Task Name',
+        placeholder: 'e.g. aplusb',
+        hint: 'A short name using only letters, numbers and underscores.',
+        confirmText: 'Create Task',
+        postUrl: postUrl,
+        redirectBaseUrl: taskBaseUrl,
+        validate: function (name) {
+            if (!/^[A-Za-z0-9_]+$/.test(name)) {
+                return 'Task name may contain only letters, numbers, and underscores';
+            }
+            return null;
         }
     });
 };
