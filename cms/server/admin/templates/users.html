@@ -1,27 +1,29 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="content-constraint" style="max-width: 1200px;">
+<div class="container">
     <!-- Header -->
-    <div class="tp-page-header">
-        <div class="page-title">
-            <h1>Users</h1>
+    <div class="level">
+        <div class="level-left">
+            <h1 class="title">Users</h1>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <a href="{{ url("users", "export") }}" class="tp-btn-secondary">
-                <svg class="icon is-small"><use href="#icon-download"/></svg>
-                Export CSV
-            </a>
-            <a href="{{ url("users", "import") }}" class="tp-btn-secondary">
-                <svg class="icon is-small"><use href="#icon-upload"/></svg>
-                Import CSV
-            </a>
-            {% if admin.permission_all %}
-            <button type="button" class="tp-btn-primary" onclick="MicroModal.show('modal-add-user')">
-                <svg class="icon is-small"><use href="#icon-plus"/></svg>
-                New User
-            </button>
-            {% endif %}
+        <div class="level-right">
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <a href="{{ url("users", "export") }}" class="button">
+                    <svg class="icon is-small"><use href="#icon-download"/></svg>
+                    <span>Export CSV</span>
+                </a>
+                <a href="{{ url("users", "import") }}" class="button">
+                    <svg class="icon is-small"><use href="#icon-upload"/></svg>
+                    <span>Import CSV</span>
+                </a>
+                {% if admin.permission_all %}
+                <button type="button" class="button is-primary has-text-white" onclick="MicroModal.show('modal-add-user')">
+                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                    <span>New User</span>
+                </button>
+                {% endif %}
+            </div>
         </div>
     </div>
 

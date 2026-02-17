@@ -29,6 +29,10 @@
     --tp-question-answered-divider: #99F6E4;
 }
 
+.table {
+    --bulma-table-head-background-color: var(--tp-bg-light);
+}
+
 .button {
     height: auto;
     gap: 0.3em;
@@ -1435,12 +1439,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .table-search input[type="text"] {
     padding: 0.4em 0.6em;
     min-width: 250px;
-}
-
-.core_title h1 {
-    margin: 0;
-    font-size: 1.75rem;
-    color: #111827;
 }
 
 .sidebar-badge {

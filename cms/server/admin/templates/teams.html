@@ -2,8 +2,8 @@
 
 {% block core %}
 
-<div class="core_title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-  <h1 style="margin:0;">Teams</h1>
+<h1 class="title">Teams</h1>
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
   {% if admin.permission_all %}
   <button type="button" class="tp-btn tp-btn-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
     <svg class="icon is-small"><use href="#icon-plus"/></svg>

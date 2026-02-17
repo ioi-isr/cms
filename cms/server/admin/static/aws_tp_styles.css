@@ -64,36 +64,6 @@
 }
 
 /* ==========================================================================
-   Page Layout
-   ========================================================================== */
-
-.page-title {
-    margin-bottom: 24px;
-}
-
-.page-title h1 {
-    margin: 0;
-    font-size: 1.75rem;
-    color: var(--tp-text-primary);
-}
-
-.page-subtitle {
-    margin-top: 4px;
-    font-size: 0.9rem;
-    color: var(--tp-text-muted);
-}
-
-.page-subtitle a {
-    color: #475569;
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.page-subtitle a:hover {
-    color: var(--tp-primary);
-}
-
-/* ==========================================================================
    Action Buttons Row
    ========================================================================== */
 
@@ -837,20 +807,6 @@
     max-width: 1200px;
     margin: 0 0 0 20px;
     padding-bottom: 40px;
-}
-
-/* Page Header */
-.tp-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.tp-page-header .page-title {
-    margin-bottom: 0;
 }
 
 /* Filter Bar */

@@ -123,14 +123,11 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 {% block core %}
 <div class="content-constraint" style="max-width: 1100px;">
     <!-- Header -->
-    <div class="page-title" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
-        <div>
-            <h1>Training Days</h1>
-            <div class="page-subtitle">
-                Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
-            </div>
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
+    <h1 class="title">Training Days</h1>
+    <p class="subtitle has-text-grey">
+        Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+    </p>
+    <div style="display: flex; gap: 8px; align-items: center;">
             <button type="button" onclick="MicroModal.show('modal-import-contest')"
               class="button is-medium" {% if not admin.permission_all %}disabled{% endif %}>
                 <svg class="icon is-small"><use href="#icon-archive-down"/></svg>

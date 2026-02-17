@@ -2,11 +2,8 @@
 
 {% block core %}
 <div class="content-constraint">
-
-    <div class="page-title">
-        <h1>Training Program</h1>
-        <div class="page-subtitle">Manage settings for {{ training_program.name }}</div>
-    </div>
+    <h1 class="title">Training Program</h1>
+    <p class="subtitle has-text-grey">{{ training_program.name }}</p>
 
     <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id) }}" method="POST" name="edit_training_program">
         {{ xsrf_form_html|safe }}

@@ -9,16 +9,20 @@ utils.init_questions_page();
 {% endblock js_init %}
 {% block core %}
 
-<div class="tp-page-header">
-  <div class="page-title">
-    <h1>Questions</h1>
-    <p class="page-subtitle">Manage and reply to student clarifications.</p>
+<div class="level">
+  <div class="level-left">
+    <div>
+      <h1 class="title">Questions</h1>
+      <p class="subtitle has-text-grey">Manage and reply to student clarifications.</p>
+    </div>
   </div>
-  <div class="questions-tabs">
-    <button class="questions-tab active" data-filter="all">All</button>
-    <button class="questions-tab" data-filter="unanswered">Unanswered</button>
-    <button class="questions-tab" data-filter="ignored">Ignored</button>
-    <button class="questions-tab" data-filter="claimed">Claimed</button>
+  <div class="level-right">
+    <div class="questions-tabs">
+      <button class="questions-tab active" data-filter="all">All</button>
+      <button class="questions-tab" data-filter="unanswered">Unanswered</button>
+      <button class="questions-tab" data-filter="ignored">Ignored</button>
+      <button class="questions-tab" data-filter="claimed">Claimed</button>
+    </div>
   </div>
 </div>
 

@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Folder</h1>
-</div>
+<h1 class="title">Folder</h1>
 
 <form action="{{ url("folder", folder.id) }}" method="POST" name="edit_folder" style="display:inline;">
   {{ xsrf_form_html|safe }}
