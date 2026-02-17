@@ -3788,7 +3788,7 @@
 /* Status Cards Grid */
 .overview-status-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 16px;
 }
 
@@ -3835,7 +3835,9 @@
     font-size: 0.8rem;
     color: var(--tp-text-muted);
     margin-top: 2px;
-    white-space: nowrap;
+    white-space: normal;
+    line-height: 1.2;
+    word-break: break-word;
 }
 
 /* Status card color variants */
@@ -3923,18 +3925,6 @@
     padding: 24px !important;
     color: var(--tp-text-muted) !important;
     font-style: italic;
-}
-
-.overview-log-message {
-    margin: 0;
-    padding: 4px 8px;
-    font-size: 0.8rem;
-    background: var(--tp-bg-light);
-    border-radius: 4px;
-    border: 1px solid var(--tp-border);
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-width: 500px;
 }
 
 .overview-hint {
