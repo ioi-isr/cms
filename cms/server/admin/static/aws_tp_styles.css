@@ -3776,3 +3776,169 @@
 .tp-task-type-field table td input[type="text"] {
     width: 100%;
 }
+
+/* ==========================================================================
+   Overview Page
+   ========================================================================== */
+
+.overview-section {
+    margin-bottom: 32px;
+}
+
+/* Status Cards Grid */
+.overview-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.overview-status-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: var(--tp-shadow-sm);
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.overview-status-card:hover {
+    box-shadow: var(--tp-shadow-md);
+}
+
+.overview-status-card-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.overview-status-card-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.overview-status-card-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--tp-text-primary);
+    line-height: 1.1;
+}
+
+.overview-status-card-label {
+    font-size: 0.8rem;
+    color: var(--tp-text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+}
+
+/* Status card color variants */
+.overview-status-success .overview-status-card-icon {
+    background: var(--tp-success-light);
+    color: var(--tp-success);
+}
+.overview-status-success {
+    border-left: 3px solid var(--tp-success);
+}
+
+.overview-status-info .overview-status-card-icon {
+    background: var(--tp-info-light);
+    color: var(--tp-info);
+}
+.overview-status-info {
+    border-left: 3px solid var(--tp-info);
+}
+
+.overview-status-warning .overview-status-card-icon {
+    background: var(--tp-warning-light);
+    color: var(--tp-warning);
+}
+.overview-status-warning {
+    border-left: 3px solid var(--tp-warning);
+}
+
+.overview-status-danger .overview-status-card-icon {
+    background: var(--tp-danger-light);
+    color: var(--tp-danger);
+}
+.overview-status-danger {
+    border-left: 3px solid var(--tp-danger);
+}
+
+.overview-status-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 24px;
+    color: var(--tp-text-muted);
+}
+
+/* Two-column layout for queue & workers */
+.overview-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+@media (max-width: 1100px) {
+    .overview-two-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Overview table styling (Bulma table overrides for this page) */
+.overview-table {
+    font-size: 0.9rem;
+}
+
+.overview-table thead th {
+    background-color: var(--tp-bg-light) !important;
+    color: var(--tp-text-muted) !important;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    border-bottom: 1px solid var(--tp-border) !important;
+    white-space: nowrap;
+}
+
+.overview-table td {
+    vertical-align: middle !important;
+    border-bottom: 1px solid var(--tp-border) !important;
+    color: var(--tp-text-secondary);
+}
+
+.overview-table tbody tr:hover {
+    background-color: var(--tp-bg-hover) !important;
+}
+
+.overview-empty-row {
+    text-align: center;
+    padding: 24px !important;
+    color: var(--tp-text-muted) !important;
+    font-style: italic;
+}
+
+.overview-log-message {
+    margin: 0;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    background: var(--tp-bg-light);
+    border-radius: 4px;
+    border: 1px solid var(--tp-border);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-width: 500px;
+}
+
+.overview-hint {
+    font-size: 0.8rem;
+    color: var(--tp-text-muted);
+    margin-left: 4px;
+}
