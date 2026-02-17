@@ -35,7 +35,7 @@
     </div>
 
     <!-- Teams Cards Grid -->
-    <div class="tp-cards-grid" id="teams-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+    <div class="tp-cards-grid tp-cards-grid--compact" id="teams-grid">
         {% for t in team_list|sort(attribute="code") %}
         <div class="tp-program-card" style="padding: 20px; position: relative;">
             {% if admin.permission_all %}

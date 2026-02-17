@@ -1126,7 +1126,7 @@
     color: var(--tp-text-muted);
     margin-top: 4px;
     line-height: 1.3;
-    word-break: break-word;
+    overflow-wrap: break-word;
     cursor: help;
 }
 
@@ -1840,6 +1840,10 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
     gap: 24px;
+}
+
+.tp-cards-grid--compact {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
 
 /* Program Card */
@@ -3793,7 +3797,7 @@
     margin-top: 2px;
     white-space: normal;
     line-height: 1.2;
-    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 /* Status card color variants */

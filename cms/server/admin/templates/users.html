@@ -91,7 +91,7 @@
     </div>
 
     <!-- Users Cards Grid -->
-    <div class="tp-cards-grid" id="users-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+    <div class="tp-cards-grid tp-cards-grid--compact" id="users-grid">
         {% for u in user_list|sort(attribute="username") %}
         <div class="tp-program-card" style="padding: 20px; position: relative;">
             {% if admin.permission_all %}
@@ -154,15 +154,17 @@
 {% endif %}
 
 <script>
-if (new URLSearchParams(window.location.search).get('add') === '1') {
-    var modalElement = document.getElementById('modal-add-user');
-    if (modalElement) {
-        MicroModal.show('modal-add-user');
+document.addEventListener('DOMContentLoaded', function() {
+    if (new URLSearchParams(window.location.search).get('add') === '1') {
+        var modalElement = document.getElementById('modal-add-user');
+        if (modalElement && typeof MicroModal !== 'undefined') {
+            MicroModal.show('modal-add-user');
+        }
+        var url = new URL(window.location);
+        url.searchParams.delete('add');
+        var updatedSearch = url.searchParams.toString();
+        history.replaceState(null, '', window.location.pathname + (updatedSearch ? '?' + updatedSearch : ''));
     }
-    var url = new URL(window.location);
-    url.searchParams.delete('add');
-    var updatedSearch = url.searchParams.toString();
-    history.replaceState(null, '', window.location.pathname + (updatedSearch ? '?' + updatedSearch : ''));
-}
+});
 </script>
 {% endblock core %}

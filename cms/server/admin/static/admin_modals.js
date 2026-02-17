@@ -530,11 +530,7 @@ AdminModals._showAddResourceDialog = function (opts) {
         title: opts.title,
         html:
             '<div class="swal-custom-form">' +
-                '<div class="form-group">' +
-                    '<label for="' + inputId + '">' + opts.inputLabel + '</label>' +
-                    '<input id="' + inputId + '" class="swal2-input" placeholder="' + AdminModals.escapeHtml(opts.placeholder) + '">' +
-                    (opts.hint ? '<small class="form-hint">' + opts.hint + '</small>' : '') +
-                '</div>' +
+                '<div class="form-group" id="swal-' + opts.resourceType + '-group"></div>' +
             '</div>' +
             '<style>' +
                 '.swal-custom-form { text-align: left; }' +
@@ -550,10 +546,29 @@ AdminModals._showAddResourceDialog = function (opts) {
         reverseButtons: true,
 
         didOpen: function () {
-            var nameInput = Swal.getPopup().querySelector('#' + inputId);
-            if (nameInput) {
-                nameInput.focus();
-                nameInput.addEventListener('keyup', function (e) {
+            var group = Swal.getPopup().querySelector('#swal-' + opts.resourceType + '-group');
+            if (group) {
+                var label = document.createElement('label');
+                label.setAttribute('for', inputId);
+                label.textContent = opts.inputLabel || 'Name';
+
+                var input = document.createElement('input');
+                input.id = inputId;
+                input.className = 'swal2-input';
+                input.placeholder = opts.placeholder || '';
+
+                group.appendChild(label);
+                group.appendChild(input);
+
+                if (opts.hint) {
+                    var hint = document.createElement('small');
+                    hint.className = 'form-hint';
+                    hint.textContent = opts.hint;
+                    group.appendChild(hint);
+                }
+
+                input.focus();
+                input.addEventListener('keyup', function (e) {
                     if (e.key === 'Enter') Swal.clickConfirm();
                 });
             }

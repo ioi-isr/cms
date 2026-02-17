@@ -13,7 +13,7 @@
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
                 <span>Import from ZIP</span>
             </a>
-            <button type="button" class="button is-primary has-text-white" onclick="AdminModals.showAddTaskDialog('{{ url("tasks", "add") }}', '{{ url("task", "") }}')">
+            <button type="button" class="button is-primary has-text-white" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
                 <span>Add Task</span>
             </button>
@@ -26,7 +26,7 @@
         <h3>No tasks have been created yet</h3>
         {% if admin.permission_all %}
         <p>
-            <button type="button" class="tp-btn-primary" onclick="AdminModals.showAddTaskDialog('{{ url("tasks", "add") }}', '{{ url("task", "") }}')">
+            <button type="button" class="tp-btn-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
                 Create your first task
             </button>
         </p>
@@ -39,7 +39,7 @@
     </div>
 
     <!-- Tasks Cards Grid -->
-    <div class="tp-cards-grid" id="tasks-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+    <div class="tp-cards-grid tp-cards-grid--compact" id="tasks-grid">
         {% for t in task_list %}
         <div class="tp-program-card" style="padding: 20px; position: relative;">
             {% if admin.permission_all %}

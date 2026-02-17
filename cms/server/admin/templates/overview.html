@@ -60,7 +60,7 @@ function update_queue_status(response)
     var l = response['data'].length;
     if (l == 0)
     {
-        table.html('<tr><td colspan="100" class="overview-empty-row">Queue empty.</td></tr>');
+        table.html('<tr><td colspan="4" class="overview-empty-row">Queue empty.</td></tr>');
         return;
     }
 
@@ -150,7 +150,7 @@ function update_workers_status(response)
     var l = response['data'].length;
     if (l == 0)
     {
-        table.html('<tr><td colspan="5" class="overview-empty-row">No workers found.</td>');
+        table.html('<tr><td colspan="5" class="overview-empty-row">No workers found.</td></tr>');
         return;
     }
 
@@ -237,7 +237,7 @@ function update_logs(response)
     var l = response['data'].length;
     if (l == 0)
     {
-        table.html('<tr><td colspan="5" class="overview-empty-row">No log entries.</td>');
+        table.html('<tr><td colspan="5" class="overview-empty-row">No log entries.</td></tr>');
         return;
     }
 
