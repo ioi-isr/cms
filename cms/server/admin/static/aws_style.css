@@ -2057,10 +2057,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     display: inline-flex;
 }
 
-.ms-card-subtask.partial .ms-card-check {
-    display: none;
-}
-
 .ms-card-subtask.partial .ms-card-partial-icon {
     display: inline-flex;
 }

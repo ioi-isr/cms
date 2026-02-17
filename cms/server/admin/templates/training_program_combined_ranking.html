@@ -296,7 +296,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                            href="{{ url('training_program', training_program.id, 'student', student.id, 'combined_ranking_detail') }}{% if params %}?{{ params | join('&') }}{% endif %}"
                            title="View score/rank history"
                            aria-label="View score and rank history for {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}">
-                            <svg class="icon is-small"><use href="#icon-line-chart"/></svg>
+                            <svg class="icon"><use href="#icon-line-chart"/></svg>
                         </a>
                     </div>
                     {% if student.student_tags %}
