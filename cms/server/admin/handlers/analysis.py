@@ -328,13 +328,13 @@ def apply_training_type_correction(
                     if td_type_map.get(td_id) == type_name:
                         corrected[td_id] = 0.0
             elif x > 0:
-                factor = p / x
+                factor = (tot * p) / x
                 for td_id in list(corrected):
                     if td_type_map.get(td_id) == type_name:
                         corrected[td_id] *= factor
 
         if leftover_pct > 0 and unmentioned_weight_sum > 0:
-            factor = leftover_pct / unmentioned_weight_sum
+            factor = (tot * leftover_pct) / unmentioned_weight_sum
             for td_id in list(corrected):
                 t = td_type_map.get(td_id)
                 if t in unmentioned_types:
