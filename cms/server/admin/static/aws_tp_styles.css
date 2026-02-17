@@ -3776,3 +3776,77 @@
 .tp-task-type-field table td input[type="text"] {
     width: 100%;
 }
+
+/* ==========================================================================
+   Export Dropdown
+   ========================================================================== */
+
+.export-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.export-dropdown__caret {
+    font-size: 0.7em;
+    margin-left: 2px;
+}
+
+.export-dropdown__menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    min-width: 180px;
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    box-shadow: var(--tp-shadow-md);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.export-dropdown.is-active .export-dropdown__menu {
+    display: block;
+}
+
+.export-dropdown__item {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    color: var(--tp-text-secondary);
+    text-decoration: none;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.export-dropdown__item:hover {
+    background: var(--tp-bg-hover);
+    color: var(--tp-text-primary);
+}
+
+.export-dropdown__item + .export-dropdown__item {
+    border-top: 1px solid var(--tp-border);
+}
+
+/* ==========================================================================
+   Analysis Modal Extras
+   ========================================================================== */
+
+.modal__container--wide {
+    max-width: 640px;
+}
+
+.modal__section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+    margin: 0 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--tp-primary);
+    display: inline-block;
+}
