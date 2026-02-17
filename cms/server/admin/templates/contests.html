@@ -45,12 +45,7 @@
             {% if admin.permission_all %}
             <button type="button" class="btn-icon-only" title="Remove contest" style="position: absolute; top: 12px; right: 12px;"
                 aria-label="Remove contest"
-                onclick='AdminModals.deleteResource({
-                    title: "Remove Contest",
-                    message: "Are you sure you want to remove contest \"" + {{ c.name|tojson }} + "\"?",
-                    deleteUrl: {{ url("contests", c.id, "remove")|tojson }},
-                    confirmLabel: "Yes, Remove"
-                })'>
+                onclick='window.location.href={{ url("contests", c.id, "remove")|tojson }}'>
                 <svg class="icon is-small"><use href="#icon-trash"/></svg>
             </button>
             {% endif %}
