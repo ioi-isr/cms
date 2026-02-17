@@ -234,7 +234,7 @@
     var typePcts = {};
     document.querySelectorAll('.type-pct-input').forEach(function(input) {
       var val = parseFloat(input.value);
-      if (!isNaN(val) && val > 0) {
+      if (!isNaN(val) && input.value.trim() !== '') {
         typePcts[input.dataset.type] = val;
       }
     });

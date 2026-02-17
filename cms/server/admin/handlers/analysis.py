@@ -188,16 +188,25 @@ def apply_training_type_correction(
 
     For multi-type training days, type_assignments maps td_id -> chosen type.
 
+    type_percentages maps type_name -> desired fraction (0-1).  Only types
+    explicitly mentioned by the admin are present:
+
+    * If a type is mapped to 0 its weights are zeroed out.
+    * Types *not* mentioned share the leftover fraction (1 - sum of mentioned)
+      proportionally to their current weight totals.
+
     For each student:
       tot = sum of all weights before correction
-      x   = sum of weights for trainings of a given type
-      p   = desired fraction for that type
-      correction factor = (tot * p) / x   (applied to all weights of that type)
+      For each mentioned type with target p:
+        factor = (tot * p) / x   where x = current weight total for that type
+      For unmentioned types (leftover fraction shared proportionally):
+        combined target = tot * leftover
+        factor = combined_target / sum_of_unmentioned_weights
 
     student_weights: student_id -> td_id -> weight (modified in-place concept).
     training_days: list of training days.
     type_assignments: td_id -> assigned type string for correction.
-    type_percentages: type_name -> desired fraction (0-1, should sum to 1).
+    type_percentages: type_name -> desired fraction (0-1).
 
     return: student_id -> td_id -> corrected weight.
     """
@@ -226,14 +235,33 @@ def apply_training_type_correction(
             if t is not None:
                 type_totals[t] = type_totals.get(t, 0.0) + w
 
+        mentioned_pct_sum = sum(type_percentages.values())
+        leftover_pct = max(1.0 - mentioned_pct_sum, 0.0)
+
+        unmentioned_types = set(type_totals.keys()) - set(type_percentages.keys())
+        unmentioned_weight_sum = sum(
+            type_totals[t] for t in unmentioned_types
+        )
+
         for type_name, p in type_percentages.items():
             x = type_totals.get(type_name, 0.0)
-            if x == 0:
-                continue
-            factor = (tot * p) / x
-            for td_id, w in corrected.items():
-                if td_type_map.get(td_id) == type_name:
-                    corrected[td_id] = w * factor
+            if p == 0:
+                for td_id in corrected:
+                    if td_type_map.get(td_id) == type_name:
+                        corrected[td_id] = 0.0
+            elif x > 0:
+                factor = (tot * p) / x
+                for td_id in list(corrected):
+                    if td_type_map.get(td_id) == type_name:
+                        corrected[td_id] = corrected[td_id] * factor
+
+        if leftover_pct > 0 and unmentioned_weight_sum > 0:
+            combined_target = tot * leftover_pct
+            factor = combined_target / unmentioned_weight_sum
+            for td_id in list(corrected):
+                t = td_type_map.get(td_id)
+                if t in unmentioned_types:
+                    corrected[td_id] = corrected[td_id] * factor
 
         result[student_id] = corrected
 
