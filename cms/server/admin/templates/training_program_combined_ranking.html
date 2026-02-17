@@ -213,16 +213,26 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
 
 {% if archived_training_days %}
 {% set export_query %}{% if start_date or end_date or training_day_types or student_tags %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(',') | urlencode }}&{% endif %}{% if student_tags %}student_tags={{ student_tags | join(',') | urlencode }}&{% endif %}{% if student_tags_mode %}student_tags_mode={{ student_tags_mode }}{% endif %}{% endif %}{% endset %}
-<div style="margin-bottom: 15px; display: flex; justify-content: flex-end;">
-  <div class="export-dropdown" id="export-dropdown">
-    <button type="button" class="tp-btn-secondary export-dropdown__trigger" id="export-dropdown-trigger"
-            style="display: inline-flex; align-items: center; gap: 6px;">
-      <span>&#128190;</span> Export to Excel <span class="export-dropdown__caret">&#9662;</span>
-    </button>
-    <div class="export-dropdown__menu" id="export-dropdown-menu">
-      <a href="{{ url('training_program', training_program.id, 'combined_ranking', 'export') }}{{ export_query }}"
-         class="export-dropdown__item">Raw Export</a>
-      <button type="button" class="export-dropdown__item" id="btn-analysed-export">Analysed Export</button>
+<div class="level">
+  <div class="level-left">
+    <!-- Left side empty or could add title here -->
+  </div>
+  <div class="level-right">
+    <div class="dropdown is-right" id="export-dropdown">
+      <div class="dropdown-trigger">
+        <button class="button" id="export-dropdown-trigger" aria-haspopup="true" aria-controls="export-dropdown-menu">
+          <svg class="icon is-small"><use href="#icon-download"/></svg>
+          <span>Export to Excel</span>
+          <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
+        </button>
+      </div>
+      <div class="dropdown-menu" id="export-dropdown-menu" role="menu">
+        <div class="dropdown-content">
+          <a href="{{ url('training_program', training_program.id, 'combined_ranking', 'export') }}{{ export_query }}"
+             class="dropdown-item">Raw Export</a>
+          <button type="button" class="dropdown-item" id="btn-analysed-export">Analysed Export</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -425,10 +435,17 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
     }
 
     var btnAnalysed = document.getElementById('btn-analysed-export');
-    if (btnAnalysed && typeof MicroModal !== 'undefined') {
+    if (btnAnalysed) {
       btnAnalysed.addEventListener('click', function() {
         dropdown.classList.remove('is-active');
-        MicroModal.show('modal-analysis-export');
+        if (typeof MicroModal !== 'undefined') {
+          MicroModal.show('modal-analysis-export');
+        } else {
+          btnAnalysed.setAttribute('aria-disabled', 'true');
+          btnAnalysed.setAttribute('title', 'Analysed export unavailable (modal failed to load).');
+          btnAnalysed.disabled = true;
+          alert('Analysed export unavailable. Please reload the page.');
+        }
       });
     }
   })();
@@ -445,14 +462,14 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
   });
 </script>
 
+{% include 'fragments/modal_analysis_export.html' %}
 {% else %}
-  <div class="empty-state-box">
-    <h3>No Data Available</h3>
-    <p>No archived training days found matching your current filter.</p>
-  </div>
+<div class="empty-state-box">
+  <h3>No Data Available</h3>
+  <p>No archived training days found matching your current filter.</p>
+</div>
 {% endif %}
 
 {% include 'fragments/histogram_modal.html' %}
-{% include 'fragments/modal_analysis_export.html' %}
 
 {% endblock core %}
