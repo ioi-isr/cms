@@ -1,45 +1,64 @@
 {% extends "base.html" %}
 
 {% block core %}
+<div class="container">
+    <!-- Header -->
+    <div class="level">
+        <div class="level-left">
+            <h1 class="title">Contests</h1>
+        </div>
+        <div class="level-right">
+            {% if admin.permission_all %}
+            <a href="{{ url("contests", "import") }}" class="button">
+                <svg class="icon is-small"><use href="#icon-upload"/></svg>
+                <span>Import from ZIP</span>
+            </a>
+            <button type="button" class="button is-primary has-text-white" onclick="AdminModals.showAddContestDialog('{{ url("contests", "add") }}', '{{ url("contest", "") }}')">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Contest</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
 
-<h1 class="title">Contests list</h1>
+    {% if contest_list|length == 0 %}
+    <div class="empty-state-box">
+        <h3>No contests have been created yet</h3>
+        {% if admin.permission_all %}
+        <p>
+            <button type="button" class="tp-btn-primary" onclick="AdminModals.showAddContestDialog('{{ url("contests", "add") }}', '{{ url("contest", "") }}')">
+                Create your first contest
+            </button>
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Search -->
+    <div class="table-search" style="margin-bottom: 16px;">
+        <input type="text" class="input" placeholder="Search contests..." oninput="CMS.AWSUtils.filter_elements('contests-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
+    </div>
 
-{% if admin.permission_all %}
-<div style="margin-bottom: 10px;">
-  <a href="{{ url("contests", "import") }}" class="button">Import Contest from ZIP</a>
+    <!-- Contests Cards Grid -->
+    <div class="tp-cards-grid" id="contests-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+        {% for c in contest_list %}
+        <div class="tp-program-card" style="padding: 20px; position: relative;">
+            {% if admin.permission_all %}
+            <a href="{{ url("contests", c.id, "remove") }}" class="btn-icon-only" title="Remove contest" style="position: absolute; top: 12px; right: 12px;">
+                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            </a>
+            {% endif %}
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="tp-stat-icon" style="background: var(--tp-info-light); color: var(--tp-info); width: 40px; height: 40px; border-radius: 10px;">
+                    <svg class="icon is-small"><use href="#icon-trophy"/></svg>
+                </div>
+                <div style="min-width: 0;">
+                    <a href="{{ url("contest", c.id) }}" style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ c.name }}">{{ c.name }}</a>
+                    <div style="font-size: 0.85rem; color: var(--tp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.description }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
-{% endif %}
-
-<form action="{{ url("contests") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Edit selected contest:
-   <input type="submit"
-         name="operation"
-         value="Remove"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
-  <table class="table is-bordered is-striped is-hoverable">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for c in contest_list %}
-      <tr>
-        <td>
-          <input type="radio" name="contest_id" value="{{ c.id }}"/>
-        </td>
-        <td><a href="{{ url("contest", c.id) }}">{{ c.name }}</a></td>
-        <td>{{ c.description }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
-
 {% endblock core %}

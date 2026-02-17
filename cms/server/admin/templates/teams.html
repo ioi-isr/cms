@@ -1,60 +1,67 @@
 {% extends "base.html" %}
 
 {% block core %}
+<div class="container">
+    <!-- Header -->
+    <div class="level">
+        <div class="level-left">
+            <h1 class="title">Teams</h1>
+        </div>
+        <div class="level-right">
+            {% if admin.permission_all %}
+            <button type="button" class="button is-primary has-text-white" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Team</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
 
-<h1 class="title">Teams</h1>
-<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-  {% if admin.permission_all %}
-  <button type="button" class="tp-btn tp-btn-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
-    <svg class="icon is-small"><use href="#icon-plus"/></svg>
-    Add Team
-  </button>
-  {% endif %}
+    {% if team_list|length == 0 %}
+    <div class="empty-state-box">
+        <h3>No teams have been created yet</h3>
+        {% if admin.permission_all %}
+        <p>
+            <button type="button" class="tp-btn-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
+                Create your first team
+            </button>
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Search -->
+    <div class="table-search" style="margin-bottom: 16px;">
+        <input type="text" class="input" placeholder="Search teams..." oninput="CMS.AWSUtils.filter_elements('teams-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
+    </div>
+
+    <!-- Teams Cards Grid -->
+    <div class="tp-cards-grid" id="teams-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+        {% for t in team_list|sort(attribute="code") %}
+        <div class="tp-program-card" style="padding: 20px; position: relative;">
+            {% if admin.permission_all %}
+            <button type="button" class="btn-icon-only" title="Remove team" style="position: absolute; top: 12px; right: 12px;"
+                aria-label="Remove team"
+                onclick='AdminModals.deleteResource({
+                    title: "Remove Team",
+                    message: "Are you sure you want to remove team \"" + {{ t.code|tojson }} + "\"?",
+                    deleteUrl: {{ url("teams", t.id, "remove")|tojson }},
+                    confirmLabel: "Yes, Remove"
+                })'>
+                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            </button>
+            {% endif %}
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="tp-stat-icon" style="background: var(--tp-info-light); color: var(--tp-info); width: 40px; height: 40px; border-radius: 10px;">
+                    <svg class="icon is-small"><use href="#icon-users"/></svg>
+                </div>
+                <div style="min-width: 0;">
+                    <a href="{{ url("team", t.id) }}" style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.code }}">{{ t.code }}</a>
+                    <div style="font-size: 0.85rem; color: var(--tp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.name }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
-
-{% if team_list|length == 0 %}
-<div style="text-align:center;padding:48px 24px;color:#6b7280;">
-  <p style="font-size:16px;margin-bottom:12px;">No teams have been created yet.</p>
-  {% if admin.permission_all %}
-  <button type="button" class="tp-btn tp-btn-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
-    Create your first team
-  </button>
-  {% endif %}
-</div>
-{% else %}
-<table class="table is-bordered is-striped is-hoverable">
-  <thead>
-    <tr>
-      <th>Code</th>
-      <th>Name</th>
-      {% if admin.permission_all %}
-      <th style="width:80px;text-align:center;">Actions</th>
-      {% endif %}
-    </tr>
-  </thead>
-  <tbody>
-    {% for t in team_list|sort(attribute="code") %}
-    <tr>
-      <td><a href="{{ url("team", t.id) }}">{{ t.code }}</a></td>
-      <td>{{ t.name }}</td>
-      {% if admin.permission_all %}
-      <td style="text-align:center;">
-        <button type="button" class="tp-btn-remove" title="Remove team"
-          aria-label="Remove team"
-          onclick='AdminModals.deleteResource({
-            title: "Remove Team",
-            message: "Are you sure you want to remove team \"" + {{ t.code|tojson }} + "\"?",
-            deleteUrl: {{ url("teams", t.id, "remove")|tojson }},
-            confirmLabel: "Yes, Remove"
-          })'>
-          <svg class="icon is-small"><use href="#icon-trash"/></svg>
-        </button>
-      </td>
-      {% endif %}
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endif %}
-
 {% endblock core %}

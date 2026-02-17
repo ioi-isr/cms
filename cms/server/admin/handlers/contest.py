@@ -106,23 +106,26 @@ def remove_contest_with_action(session, contest, action, target_contest=None):
     session.flush()
 
 
-class AddContestHandler(
-        SimpleHandler("add_contest.html", permission_all=True)):
+class AddContestHandler(BaseHandler):
     """Adds a new contest.
 
+    Supports both traditional form POST (redirect) and AJAX POST (JSON).
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("contests", "add")
+        is_ajax = "application/json" in self.request.headers.get("Accept", "")
 
         try:
             attrs = dict()
 
             self.get_string(attrs, "name", empty=None)
-            assert attrs.get("name") is not None, "No contest name specified."
-            assert not attrs.get("name").startswith("__"), \
-                "Contest name cannot start with '__' " \
-                "(reserved for system contests)."
+            if not attrs.get("name"):
+                raise ValueError("No contest name specified.")
+            if attrs["name"].startswith("__"):
+                raise ValueError(
+                    "Contest name cannot start with '__' "
+                    "(reserved for system contests)."
+                )
             attrs["description"] = attrs["name"]
 
             # Create the contest.
@@ -130,17 +133,28 @@ class AddContestHandler(
             self.sql_session.add(contest)
 
         except Exception as error:
+            if is_ajax:
+                self.set_status(400)
+                self.write({"error": str(error)})
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
+            self.redirect(self.url("contests"))
             return
 
         if self.try_commit():
             # Create the contest on RWS.
             self.service.proxy_service.reinitialize()
-            self.redirect(self.url("contest", contest.id))
+            if is_ajax:
+                self.write({"id": contest.id})
+            else:
+                self.redirect(self.url("contest", contest.id))
         else:
-            self.redirect(fallback_page)
+            if is_ajax:
+                self.set_status(500)
+                self.write({"error": "Failed to create contest"})
+            else:
+                self.redirect(self.url("contests"))
 
 
 class ContestHandler(SimpleContestHandler("contest.html")):

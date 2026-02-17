@@ -524,6 +524,94 @@ AdminModals.renameDataset = function (renameUrl, currentDescription) {
     });
 };
 
+AdminModals.showAddContestDialog = function (postUrl, contestBaseUrl) {
+    Swal.fire({
+        title: 'Add New Contest',
+        html: `
+            <div class="swal-custom-form">
+                <div class="form-group">
+                    <label for="swal-contest-name">Contest Name</label>
+                    <input id="swal-contest-name" class="swal2-input" placeholder="e.g. contest1">
+                    <small class="form-hint">A short name for the contest, preferably using only letters, numbers and underscores.</small>
+                </div>
+            </div>
+            <style>
+                .swal-custom-form { text-align: left; }
+                .swal-custom-form .form-group { margin-bottom: 1rem; }
+                .swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }
+                .swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }
+                .swal-custom-form .form-hint { display: block; margin-top: 6px; font-size: 0.8em; color: #6b7280; }
+            </style>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Create Contest',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: () => {
+            const nameInput = Swal.getPopup().querySelector('#swal-contest-name');
+            if (nameInput) {
+                nameInput.focus();
+                nameInput.addEventListener('keyup', (e) => {
+                    if (e.key === 'Enter') Swal.clickConfirm();
+                });
+            }
+        },
+
+        preConfirm: async () => {
+            const nameInput = document.getElementById('swal-contest-name');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                Swal.showValidationMessage('Contest name is required');
+                setTimeout(() => nameInput.focus(), 100);
+                return false;
+            }
+            if (name.startsWith('__')) {
+                Swal.showValidationMessage('Contest name cannot start with \'__\' (reserved for system contests)');
+                setTimeout(() => nameInput.focus(), 100);
+                return false;
+            }
+
+            let xsrfToken = document.querySelector('input[name="_xsrf"]')?.value;
+            if (!xsrfToken && typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+            if (!xsrfToken) {
+                AdminModals.showError('Missing XSRF token');
+                return false;
+            }
+
+            const formData = new FormData();
+            formData.append('name', name);
+
+            try {
+                const response = await fetch(postUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-XSRFToken': xsrfToken
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create contest');
+                }
+                return data;
+            } catch (error) {
+                Swal.showValidationMessage(error.message || 'Network error occurred');
+                return false;
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            window.location.href = contestBaseUrl + result.value.id;
+        }
+    });
+};
+
 AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
     Swal.fire({
         title: 'Add New Task',
