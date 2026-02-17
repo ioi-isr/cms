@@ -530,7 +530,7 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
             type_percentages = {
                 k: v / 100.0 for k, v in type_percentages.items()
             }
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, ValueError, TypeError):
             type_percentages = {}
 
         type_assigns_raw = self.get_argument("type_assignments", "{}")

@@ -251,7 +251,8 @@
     document.querySelectorAll('.type-assign-select').forEach(function(select) {
       typeAssigns[select.dataset.tdId] = select.value;
     });
-    document.getElementById('type_assignments').value = JSON.stringify(typeAssigns);
+    var typeAssignsEl = document.getElementById('type_assignments');
+    if (typeAssignsEl) typeAssignsEl.value = JSON.stringify(typeAssigns);
   });
 })();
 </script>
