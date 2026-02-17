@@ -28,9 +28,20 @@ show_training_day (bool): if true, show a column indicating which training day
 <details id="diffchooser" ontoggle="utils.update_diffchooser()">
   <summary>Diff submissions...</summary>
   Select two submissions from the table, or enter submission IDs: <br>
-  old: <input type="number" size="5" id="diff-old-input">
-  new: <input type="number" size="5" id="diff-new-input">
-  <button type="button" class="button is-small" onclick="utils.do_diff()">Diff</button>
+  <div class="field is-grouped">
+    <div class="control">
+      <label class="label">old</label>
+      <input class="input is-small" type="number" id="diff-old-input" style="width: 80px;">
+    </div>
+    <div class="control">
+      <label class="label">new</label>
+      <input class="input is-small" type="number" id="diff-new-input" style="width: 80px;">
+    </div>
+    <div class="control">
+      <label class="label">&nbsp;</label>
+      <button type="button" class="button is-small" onclick="utils.do_diff()">Diff</button>
+    </div>
+  </div>
 </details>
 
 <div class="table-search">

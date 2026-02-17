@@ -3,12 +3,10 @@
 {% block core %}
 <div class="content-constraint" style="max-width: 900px;">
     <!-- Header -->
-    <div class="page-title" style="margin-bottom: 24px;">
-        <h1>Students</h1>
-        <div class="page-subtitle">
-            Program: <a href="{{ url("training_program", training_program.id) }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
-        </div>
-    </div>
+    <h1 class="title">Students</h1>
+    <p class="subtitle has-text-grey">
+        Program: <a href="{{ url("training_program", training_program.id) }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+    </p>
 
     {% include "fragments/overload_warning.html" %}
 

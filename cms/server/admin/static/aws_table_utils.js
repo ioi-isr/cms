@@ -211,6 +211,37 @@ CMS.AWSTableUtils.filterTable = function(table_id, search_text) {
 };
 
 
+/**
+ * Filters child elements of a container based on search text.
+ * Works with any container/children (cards, list items, etc.).
+ *
+ * container_id (string): The id of the container element.
+ * child_selector (string): CSS selector for the children to filter.
+ * search_text (string): The text to search for.
+ */
+CMS.AWSTableUtils.filterElements = function(container_id, child_selector, search_text) {
+    var container = document.getElementById(container_id);
+    if (!container) {
+        return;
+    }
+    var items = container.querySelectorAll(child_selector);
+    var search_lower = search_text.toLowerCase().trim();
+
+    items.forEach(function(item) {
+        if (search_lower === "") {
+            item.style.display = "";
+            return;
+        }
+        var text = item.textContent.toLowerCase();
+        if (text.indexOf(search_lower) !== -1) {
+            item.style.display = "";
+        } else {
+            item.style.display = "none";
+        }
+    });
+};
+
+
 // Backward compatibility aliases on CMS.AWSUtils
 // These will be set up after aws_utils.js loads
 document.addEventListener('DOMContentLoaded', function () {
@@ -219,5 +250,6 @@ document.addEventListener('DOMContentLoaded', function () {
         CMS.AWSUtils.sort_table = CMS.AWSTableUtils.sortTable;
         CMS.AWSUtils.init_table_sort = CMS.AWSTableUtils.initTableSort;
         CMS.AWSUtils.filter_table = CMS.AWSTableUtils.filterTable;
+        CMS.AWSUtils.filter_elements = CMS.AWSTableUtils.filterElements;
     }
 });
