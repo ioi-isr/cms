@@ -444,7 +444,7 @@ $(document).ready(initSidebarEvents);
             {% endif %}
             {% if admin.permission_all %}
             <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("contests", "add") }}">New contest</a>
+              <a class="sidebar-action-link" href="javascript:void(0)" onclick="AdminModals.showAddContestDialog('{{ url("contests", "add") }}', '{{ url("contest", "") }}')">New contest</a>
               <a class="sidebar-action-link" href="{{ url("folders", "add") }}">New folder</a>
               <a class="sidebar-action-link" href="{{ url("folders") }}">Manage folders</a>
             </div>
