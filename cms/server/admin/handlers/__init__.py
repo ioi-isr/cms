@@ -211,7 +211,8 @@ from .archive import \
     TrainingProgramCombinedRankingDetailHandler, \
     UpdateAttendanceHandler, \
     ExportAttendanceHandler, \
-    ExportCombinedRankingHandler
+    ExportCombinedRankingHandler, \
+    ExportAnalysedRankingHandler
 from .import_contest_as_td import \
     ImportContestAsTrainingDayHandler
 
@@ -406,6 +407,7 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/attendance/([0-9]+)", UpdateAttendanceHandler),
     (r"/training_program/([0-9]+)/combined_ranking", TrainingProgramCombinedRankingHandler),
     (r"/training_program/([0-9]+)/combined_ranking/export", ExportCombinedRankingHandler),
+    (r"/training_program/([0-9]+)/combined_ranking/export_analysed", ExportAnalysedRankingHandler),
     (r"/training_program/([0-9]+)/combined_ranking/history", TrainingProgramCombinedRankingHistoryHandler),
     (r"/training_program/([0-9]+)/student/([0-9]+)/combined_ranking_detail", TrainingProgramCombinedRankingDetailHandler),
 
