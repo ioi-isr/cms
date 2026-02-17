@@ -63,8 +63,8 @@
             <label>Time Decay</label>
             {% if span_days > 0 %}
             <small class="modal__hint">
-              First training: {{ first_date.strftime('%b %d, %Y') }} &mdash;
-              Latest training: {{ last_date.strftime('%b %d, %Y') }} &mdash;
+              First training: {{ ns.first_date.strftime('%b %d, %Y') }} &mdash;
+              Latest training: {{ ns.last_date.strftime('%b %d, %Y') }} &mdash;
               Span: {{ "%.0f" | format(span_days) }} days
               ({{ "%.1f" | format(span_days / 30.0) }} months)
             </small>

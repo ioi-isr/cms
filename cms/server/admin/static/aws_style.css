@@ -29,6 +29,10 @@
     --tp-question-answered-divider: #99F6E4;
 }
 
+.table {
+  --bulma-table-head-background-color: var(--tp-bg-light);
+}
+
 .button {
     height: auto;
     gap: 0.3em;
@@ -2145,10 +2149,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .ms-card-subtask.selected .ms-card-check {
     display: inline-flex;
-}
-
-.ms-card-subtask.partial .ms-card-check {
-    display: none;
 }
 
 .ms-card-subtask.partial .ms-card-partial-icon {
