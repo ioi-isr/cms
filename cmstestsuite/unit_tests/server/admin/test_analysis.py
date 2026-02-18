@@ -18,12 +18,16 @@ from unittest.mock import MagicMock
 
 from cms.server.admin.handlers.analysis import (
     StudentTrainingDayInfo,
+    PairInfo,
     calculate_time_decay_weights,
     apply_location_weights,
     apply_training_type_correction,
     get_raw_scores,
     normalize_scores,
     calculate_weighted_averages,
+    drop_outliers,
+    generate_pairwise_data,
+    run_pairwise_analysis,
     _smoothed_median,
     _mean,
     _std_dev,
@@ -695,6 +699,244 @@ class TestIntegration(unittest.TestCase):
         norm_scores = normalize_scores("none", info, tds)
         weighted_avgs = calculate_weighted_averages(student_weights, norm_scores)
         self.assertAlmostEqual(weighted_avgs[10], 70.0)
+
+
+class TestDropOutliers(unittest.TestCase):
+
+    def test_zero_outliers_no_change(self):
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        scores = {10: {1: 50.0, 2: 70.0, 3: 90.0}}
+        result = drop_outliers(weights, scores, 0)
+        self.assertEqual(result[10], {1: 1.0, 2: 1.0, 3: 1.0})
+
+    def test_drop_one_outlier(self):
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0}}
+        scores = {10: {1: 10.0, 2: 30.0, 3: 50.0, 4: 70.0, 5: 90.0}}
+        result = drop_outliers(weights, scores, 1)
+        self.assertAlmostEqual(result[10][1], 0.0)
+        self.assertAlmostEqual(result[10][5], 0.0)
+        self.assertAlmostEqual(result[10][2], 1.0)
+        self.assertAlmostEqual(result[10][3], 1.0)
+        self.assertAlmostEqual(result[10][4], 1.0)
+
+    def test_drop_two_outliers(self):
+        weights = {10: {i: 1.0 for i in range(1, 8)}}
+        scores = {10: {i: float(i * 10) for i in range(1, 8)}}
+        result = drop_outliers(weights, scores, 2)
+        self.assertAlmostEqual(result[10][1], 0.0)
+        self.assertAlmostEqual(result[10][2], 0.0)
+        self.assertAlmostEqual(result[10][6], 0.0)
+        self.assertAlmostEqual(result[10][7], 0.0)
+        self.assertAlmostEqual(result[10][3], 1.0)
+        self.assertAlmostEqual(result[10][4], 1.0)
+        self.assertAlmostEqual(result[10][5], 1.0)
+
+    def test_too_few_active_tds_no_drop(self):
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        scores = {10: {1: 10.0, 2: 50.0, 3: 90.0}}
+        result = drop_outliers(weights, scores, 2)
+        self.assertAlmostEqual(result[10][1], 1.0)
+        self.assertAlmostEqual(result[10][2], 1.0)
+        self.assertAlmostEqual(result[10][3], 1.0)
+
+    def test_zero_weight_tds_excluded(self):
+        weights = {10: {1: 0.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0}}
+        scores = {10: {1: 5.0, 2: 20.0, 3: 40.0, 4: 60.0, 5: 80.0}}
+        result = drop_outliers(weights, scores, 1)
+        self.assertAlmostEqual(result[10][1], 0.0)
+        self.assertAlmostEqual(result[10][2], 0.0)
+        self.assertAlmostEqual(result[10][5], 0.0)
+        self.assertAlmostEqual(result[10][3], 1.0)
+        self.assertAlmostEqual(result[10][4], 1.0)
+
+    def test_multiple_students(self):
+        weights = {
+            10: {1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0},
+            20: {1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0},
+        }
+        scores = {
+            10: {1: 10.0, 2: 30.0, 3: 50.0, 4: 70.0, 5: 90.0},
+            20: {1: 90.0, 2: 70.0, 3: 50.0, 4: 30.0, 5: 10.0},
+        }
+        result = drop_outliers(weights, scores, 1)
+        self.assertAlmostEqual(result[10][1], 0.0)
+        self.assertAlmostEqual(result[10][5], 0.0)
+        self.assertAlmostEqual(result[20][5], 0.0)
+        self.assertAlmostEqual(result[20][1], 0.0)
+
+
+class TestGeneratePairwiseData(unittest.TestCase):
+
+    def test_two_tds_one_pair(self):
+        tds = [make_td(1), make_td(2)]
+        info = {
+            10: {
+                1: make_info(10, 1, score=80),
+                2: make_info(10, 2, score=60),
+            },
+        }
+        weights = {10: {1: 0.8, 2: 1.0}}
+        pairs, paired_info, paired_weights = generate_pairwise_data(info, weights, tds)
+        self.assertEqual(len(pairs), 1)
+        self.assertEqual(pairs[0].td_a_id, 1)
+        self.assertEqual(pairs[0].td_b_id, 2)
+        pid = pairs[0].pair_id
+        self.assertAlmostEqual(paired_info[10][pid].score, 140.0)
+        self.assertAlmostEqual(paired_weights[10][pid], 0.8 * 1.0)
+
+    def test_three_tds_three_pairs(self):
+        tds = [make_td(1), make_td(2), make_td(3)]
+        info = {
+            10: {
+                1: make_info(10, 1, score=50),
+                2: make_info(10, 2, score=60),
+                3: make_info(10, 3, score=70),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        pairs, paired_info, _paired_weights = generate_pairwise_data(info, weights, tds)
+        self.assertEqual(len(pairs), 3)
+        pair_map = {(p.td_a_id, p.td_b_id): p.pair_id for p in pairs}
+        self.assertIn((1, 2), pair_map)
+        self.assertIn((1, 3), pair_map)
+        self.assertIn((2, 3), pair_map)
+        self.assertAlmostEqual(
+            paired_info[10][pair_map[(1, 2)]].score, 110.0
+        )
+        self.assertAlmostEqual(
+            paired_info[10][pair_map[(2, 3)]].score, 130.0
+        )
+
+    def test_justified_absence_excludes_pair(self):
+        tds = [make_td(1), make_td(2)]
+        info = {
+            10: {
+                1: make_info(10, 1, score=80),
+                2: make_info(10, 2, status="missed", justified=True),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0}}
+        pairs, paired_info, _paired_weights = generate_pairwise_data(info, weights, tds)
+        self.assertEqual(len(pairs), 1)
+        self.assertNotIn(10, paired_info)
+
+    def test_unjustified_absence_included(self):
+        tds = [make_td(1), make_td(2)]
+        info = {
+            10: {
+                1: make_info(10, 1, score=80),
+                2: make_info(10, 2, status="missed", justified=False),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 0.5}}
+        pairs, paired_info, paired_weights = generate_pairwise_data(
+            info, weights, tds
+        )
+        pid = pairs[0].pair_id
+        self.assertAlmostEqual(paired_info[10][pid].score, 80.0)
+        self.assertAlmostEqual(paired_weights[10][pid], 0.5)
+
+    def test_multiple_students_different_participation(self):
+        tds = [make_td(1), make_td(2), make_td(3)]
+        info = {
+            10: {
+                1: make_info(10, 1, score=50),
+                2: make_info(10, 2, score=60),
+                3: make_info(10, 3, score=70),
+            },
+            20: {
+                1: make_info(20, 1, score=40),
+                3: make_info(20, 3, score=90),
+            },
+        }
+        weights = {
+            10: {1: 1.0, 2: 1.0, 3: 1.0},
+            20: {1: 0.8, 3: 1.0},
+        }
+        pairs, paired_info, _paired_weights = generate_pairwise_data(info, weights, tds)
+        self.assertEqual(len(pairs), 3)
+        self.assertEqual(len(paired_info[10]), 3)
+        pair_map = {(p.td_a_id, p.td_b_id): p.pair_id for p in pairs}
+        self.assertIn(pair_map[(1, 3)], paired_info[20])
+        self.assertNotIn(pair_map[(1, 2)], paired_info.get(20, {}))
+        self.assertAlmostEqual(
+            paired_info[20][pair_map[(1, 3)]].score, 130.0
+        )
+
+    def test_weight_is_product(self):
+        tds = [make_td(1), make_td(2)]
+        info = {
+            10: {
+                1: make_info(10, 1, score=50),
+                2: make_info(10, 2, score=60),
+            },
+        }
+        weights = {10: {1: 0.7, 2: 0.4}}
+        pairs, _, paired_weights = generate_pairwise_data(
+            info, weights, tds
+        )
+        pid = pairs[0].pair_id
+        self.assertAlmostEqual(paired_weights[10][pid], 0.28)
+
+
+class TestRunPairwiseAnalysis(unittest.TestCase):
+
+    def _two_student_fixture(self):
+        tds = [make_td(1), make_td(2)]
+        info = {
+            10: {
+                1: make_info(10, 1, score=80),
+                2: make_info(10, 2, score=60),
+            },
+            20: {
+                1: make_info(20, 1, score=70),
+                2: make_info(20, 2, score=50),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0}, 20: {1: 1.0, 2: 1.0}}
+        return tds, info, weights
+
+    def test_pairwise_with_none_normalization(self):
+        tds, info, weights = self._two_student_fixture()
+        pairs, _pw, pn, _pa = run_pairwise_analysis(info, weights, tds, "none")
+        self.assertEqual(len(pairs), 1)
+        pid = pairs[0].pair_id
+        self.assertAlmostEqual(pn[10][pid], 140.0)
+        self.assertAlmostEqual(pn[20][pid], 120.0)
+
+    def test_pairwise_with_rank_normalization(self):
+        tds, info, weights = self._two_student_fixture()
+        pairs, _pw, pn, _pa = run_pairwise_analysis(info, weights, tds, "rank")
+        pid = pairs[0].pair_id
+        self.assertAlmostEqual(pn[10][pid], 1.0)
+        self.assertAlmostEqual(pn[20][pid], 2.0)
+
+    def test_pairwise_weighted_average(self):
+        tds = [make_td(1), make_td(2), make_td(3)]
+        info = {
+            10: {
+                1: make_info(10, 1, score=100),
+                2: make_info(10, 2, score=80),
+                3: make_info(10, 3, score=60),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        pairs, _pw, _pn, pa = run_pairwise_analysis(info, weights, tds, "none")
+        self.assertEqual(len(pairs), 3)
+        self.assertIn(10, pa)
+
+    def test_empty_training_days(self):
+        pairs, _pw, _pn, pa = run_pairwise_analysis({}, {}, [], "none")
+        self.assertEqual(pairs, [])
+        self.assertEqual(pa, {})
+
+    def test_single_td_no_pairs(self):
+        tds = [make_td(1)]
+        info = {10: {1: make_info(10, 1, score=80)}}
+        weights = {10: {1: 1.0}}
+        pairs, _pw, _pn, pa = run_pairwise_analysis(info, weights, tds, "none")
+        self.assertEqual(len(pairs), 0)
+        self.assertEqual(pa, {})
 
 
 if __name__ == "__main__":
