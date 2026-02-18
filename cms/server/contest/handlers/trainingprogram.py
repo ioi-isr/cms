@@ -343,6 +343,10 @@ class TrainingDaysHandler(ContestHandler):
                 archived_task_scores = archived_ranking.task_scores
 
             for task_id_str, task_data in archived_tasks_data.items():
+                # Only show tasks that were visible to this student
+                if task_id_str not in archived_task_scores:
+                    continue
+
                 task_max_score = task_data.get("max_score", 100.0)
                 max_score += task_max_score
 
@@ -368,18 +372,6 @@ class TrainingDaysHandler(ContestHandler):
                     "title": task_data.get("name", ""),
                     "training_score": task_training_score,
                     "home_score": task_home_score,
-                    "max_score": task_max_score,
-                })
-        else:
-            for task_id_str, task_data in archived_tasks_data.items():
-                task_max_score = task_data.get("max_score", 100.0)
-                max_score += task_max_score
-                tasks_info.append({
-                    "task_id": int(task_id_str),
-                    "name": task_data.get("short_name", ""),
-                    "title": task_data.get("name", ""),
-                    "training_score": 0.0,
-                    "home_score": 0.0,
                     "max_score": task_max_score,
                 })
 
@@ -565,16 +557,18 @@ class ScoreboardDataHandler(ContestHandler):
                 if r.student_tags and tag in r.student_tags
             ]
 
-        # Get archived tasks data to filter by tag accessibility
+        # Get archived tasks data
         archived_tasks_data = training_day.archived_tasks_data or {}
 
-        # Filter tasks to those accessible to this tag during training
-        accessible_tasks = {}
-        for task_id_str, task_data in archived_tasks_data.items():
-            task_tags = task_data.get("tags", [])
-            # For "__everyone__", show all tasks; otherwise filter by tag
-            if is_everyone or not task_tags or tag in task_tags:
-                accessible_tasks[task_id_str] = task_data
+        # Filter tasks to those visible to the current student during training
+        student_visible_task_ids = set(
+            (student_archived_ranking.task_scores or {}).keys()
+        )
+        accessible_tasks = {
+            task_id_str: task_data
+            for task_id_str, task_data in archived_tasks_data.items()
+            if task_id_str in student_visible_task_ids
+        }
 
         # Build scoreboard data
         sorted_accessible_tasks = sorted(
@@ -584,12 +578,11 @@ class ScoreboardDataHandler(ContestHandler):
         scoreboard_entries = []
         for ranking in tag_rankings:
             task_scores = ranking.task_scores or {}
-            total_score = 0.0
+            total_score = sum(task_scores.values())
             task_score_list = []
 
             for task_id_str, task_data in sorted_accessible_tasks:
                 score = task_scores.get(task_id_str, 0.0)
-                total_score += score
                 task_score_list.append({
                     "task_id": task_id_str,
                     "score": score,
