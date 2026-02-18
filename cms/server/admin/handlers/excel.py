@@ -181,12 +181,7 @@ class TrainingExcelWriter:
         self, col: int, td: Any, width: int, idx: int
     ) -> tuple[int, PatternFill]:
         """Write a merged Training Day header and return the next column index."""
-        title = td.description or td.name or "Session"
-        if td.start_time:
-            title += f" ({td.start_time.strftime('%b %d')})"
-        if td.training_day_types:
-            title += f" [{'; '.join(td.training_day_types)}]"
-        return self.write_named_header(col, title, width, idx)
+        return self.write_named_header(col, _td_title(td), width, idx)
 
     def write_subheaders(self, col: int, headers: list[str], fill: PatternFill):
         """Write the second row of headers."""

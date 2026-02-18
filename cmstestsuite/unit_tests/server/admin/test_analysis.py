@@ -776,9 +776,7 @@ class TestGeneratePairwiseData(unittest.TestCase):
             },
         }
         weights = {10: {1: 0.8, 2: 1.0}}
-        pairs, paired_info, paired_weights = generate_pairwise_data(
-            info, weights, tds
-        )
+        pairs, paired_info, paired_weights = generate_pairwise_data(info, weights, tds)
         self.assertEqual(len(pairs), 1)
         self.assertEqual(pairs[0].td_a_id, 1)
         self.assertEqual(pairs[0].td_b_id, 2)
@@ -796,9 +794,7 @@ class TestGeneratePairwiseData(unittest.TestCase):
             },
         }
         weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
-        pairs, paired_info, paired_weights = generate_pairwise_data(
-            info, weights, tds
-        )
+        pairs, paired_info, _paired_weights = generate_pairwise_data(info, weights, tds)
         self.assertEqual(len(pairs), 3)
         pair_map = {(p.td_a_id, p.td_b_id): p.pair_id for p in pairs}
         self.assertIn((1, 2), pair_map)
@@ -820,9 +816,7 @@ class TestGeneratePairwiseData(unittest.TestCase):
             },
         }
         weights = {10: {1: 1.0, 2: 1.0}}
-        pairs, paired_info, paired_weights = generate_pairwise_data(
-            info, weights, tds
-        )
+        pairs, paired_info, _paired_weights = generate_pairwise_data(info, weights, tds)
         self.assertEqual(len(pairs), 1)
         self.assertNotIn(10, paired_info)
 
@@ -859,9 +853,7 @@ class TestGeneratePairwiseData(unittest.TestCase):
             10: {1: 1.0, 2: 1.0, 3: 1.0},
             20: {1: 0.8, 3: 1.0},
         }
-        pairs, paired_info, paired_weights = generate_pairwise_data(
-            info, weights, tds
-        )
+        pairs, paired_info, _paired_weights = generate_pairwise_data(info, weights, tds)
         self.assertEqual(len(pairs), 3)
         self.assertEqual(len(paired_info[10]), 3)
         pair_map = {(p.td_a_id, p.td_b_id): p.pair_id for p in pairs}
@@ -906,9 +898,7 @@ class TestRunPairwiseAnalysis(unittest.TestCase):
 
     def test_pairwise_with_none_normalization(self):
         tds, info, weights = self._two_student_fixture()
-        pairs, pw, pn, pa = run_pairwise_analysis(
-            info, weights, tds, "none"
-        )
+        pairs, _pw, pn, _pa = run_pairwise_analysis(info, weights, tds, "none")
         self.assertEqual(len(pairs), 1)
         pid = pairs[0].pair_id
         self.assertAlmostEqual(pn[10][pid], 140.0)
@@ -916,9 +906,7 @@ class TestRunPairwiseAnalysis(unittest.TestCase):
 
     def test_pairwise_with_rank_normalization(self):
         tds, info, weights = self._two_student_fixture()
-        pairs, pw, pn, pa = run_pairwise_analysis(
-            info, weights, tds, "rank"
-        )
+        pairs, _pw, pn, _pa = run_pairwise_analysis(info, weights, tds, "rank")
         pid = pairs[0].pair_id
         self.assertAlmostEqual(pn[10][pid], 1.0)
         self.assertAlmostEqual(pn[20][pid], 2.0)
@@ -933,14 +921,12 @@ class TestRunPairwiseAnalysis(unittest.TestCase):
             },
         }
         weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
-        pairs, pw, pn, pa = run_pairwise_analysis(
-            info, weights, tds, "none"
-        )
+        pairs, _pw, _pn, pa = run_pairwise_analysis(info, weights, tds, "none")
         self.assertEqual(len(pairs), 3)
         self.assertIn(10, pa)
 
     def test_empty_training_days(self):
-        pairs, pw, pn, pa = run_pairwise_analysis({}, {}, [], "none")
+        pairs, _pw, _pn, pa = run_pairwise_analysis({}, {}, [], "none")
         self.assertEqual(pairs, [])
         self.assertEqual(pa, {})
 
@@ -948,9 +934,7 @@ class TestRunPairwiseAnalysis(unittest.TestCase):
         tds = [make_td(1)]
         info = {10: {1: make_info(10, 1, score=80)}}
         weights = {10: {1: 1.0}}
-        pairs, pw, pn, pa = run_pairwise_analysis(
-            info, weights, tds, "none"
-        )
+        pairs, _pw, _pn, pa = run_pairwise_analysis(info, weights, tds, "none")
         self.assertEqual(len(pairs), 0)
         self.assertEqual(pa, {})
 
