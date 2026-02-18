@@ -60,12 +60,12 @@ def compute_effective_times(
     else:
         effective_start = main_group_start
 
-    if has_delay or main_group_end is None:
-        effective_stop = contest_stop
+    if main_group_end is not None and main_group_start is not None:
+        duration = main_group_end - main_group_start
     else:
-        effective_stop = main_group_end
+        duration = contest_stop - contest_start
 
-    return effective_start, effective_stop
+    return effective_start, effective_start + duration
 
 
 def compute_actual_phase(
