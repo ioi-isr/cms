@@ -134,35 +134,30 @@ class TrainingProgramOverviewHandler(ContestHandler):
         student = get_student_for_user_in_program(
             self.sql_session, training_program, participation.user_id
         )
+        if student is None:
+            raise tornado.web.HTTPError(403)
 
         # Calculate task archive progress using shared utility
-        if student is not None:
-            # Get submission counts for each task (batch query for efficiency)
-            student_task_ids = [st.task_id for st in student.student_tasks]
-            submission_counts = get_submission_counts_by_task(
-                self.sql_session, participation.id, student_task_ids
-            )
+        # Get submission counts for each task (batch query for efficiency)
+        student_task_ids = [st.task_id for st in student.student_tasks]
+        submission_counts = get_submission_counts_by_task(
+            self.sql_session, participation.id, student_task_ids
+        )
 
-            progress = calculate_task_archive_progress(
-                student,
-                participation,
-                contest,
-                self.sql_session,
-                include_task_details=True,
-                submission_counts=submission_counts,
-            )
-            total_score = progress["total_score"]
-            max_score = progress["max_score"]
-            percentage = progress["percentage"]
-            task_scores = progress["task_scores"]
-            # Commit to release any advisory locks taken by get_cached_score_entry
-            self.sql_session.commit()
-        else:
-            # No student record - show no tasks
-            total_score = 0.0
-            max_score = 0.0
-            percentage = 0.0
-            task_scores = []
+        progress = calculate_task_archive_progress(
+            student,
+            participation,
+            contest,
+            self.sql_session,
+            include_task_details=True,
+            submission_counts=submission_counts,
+        )
+        total_score = progress["total_score"]
+        max_score = progress["max_score"]
+        percentage = progress["percentage"]
+        task_scores = progress["task_scores"]
+        # Commit to release any advisory locks taken by get_cached_score_entry
+        self.sql_session.commit()
 
         # Get upcoming training days for this user
         upcoming_training_days = []
@@ -239,6 +234,8 @@ class TrainingDaysHandler(ContestHandler):
         student = get_student_for_user_in_program(
             self.sql_session, training_program, participation.user_id
         )
+        if student is None:
+            raise tornado.web.HTTPError(403)
 
         ongoing_upcoming_trainings = []
         past_trainings = []
@@ -250,7 +247,7 @@ class TrainingDaysHandler(ContestHandler):
 
         # Batch fetch all ArchivedStudentRanking records for the student
         archived_rankings_map = {}
-        if student is not None and past_training_day_ids:
+        if past_training_day_ids:
             archived_rankings = (
                 self.sql_session.query(ArchivedStudentRanking)
                 .filter(ArchivedStudentRanking.training_day_id.in_(past_training_day_ids))
@@ -318,7 +315,7 @@ class TrainingDaysHandler(ContestHandler):
     def _build_past_training_info(
         self,
         training_day,
-        student: Student | None,
+        student: Student,
         participation: Participation,
         archived_rankings_map: dict,
         task_by_id: dict[int, Task],
@@ -334,52 +331,48 @@ class TrainingDaysHandler(ContestHandler):
         tasks_info = []
 
         archived_tasks_data = training_day.archived_tasks_data or {}
+        archived_ranking = archived_rankings_map.get(training_day.id)
 
-        if student is not None:
-            archived_ranking = archived_rankings_map.get(training_day.id)
+        archived_task_scores = {}
+        if archived_ranking and archived_ranking.task_scores:
+            archived_task_scores = archived_ranking.task_scores
 
-            archived_task_scores = {}
-            if archived_ranking and archived_ranking.task_scores:
-                archived_task_scores = archived_ranking.task_scores
+        for task_id_str, task_data in archived_tasks_data.items():
+            # Only show tasks that were visible to this student
+            if task_id_str not in archived_task_scores:
+                continue
 
-            for task_id_str, task_data in archived_tasks_data.items():
-                # Only show tasks that were visible to this student
-                if task_id_str not in archived_task_scores:
-                    continue
+            task_max_score = task_data.get("max_score", 100.0)
+            max_score += task_max_score
 
-                task_max_score = task_data.get("max_score", 100.0)
-                max_score += task_max_score
+            task_training_score = archived_task_scores.get(task_id_str, 0.0)
+            training_score += task_training_score
 
-                task_training_score = archived_task_scores.get(task_id_str, 0.0)
-                training_score += task_training_score
+            task_id = int(task_id_str)
+            # Get fresh home score using get_cached_score_entry if task exists
+            task = task_by_id.get(task_id)
+            if task is not None:
+                cache_entry = get_cached_score_entry(
+                    self.sql_session, participation, task
+                )
+                task_home_score = cache_entry.score
+            else:
+                task_home_score = 0.0
+            home_score += task_home_score
 
-                task_id = int(task_id_str)
-                # Get fresh home score using get_cached_score_entry if task exists
-                task = task_by_id.get(task_id)
-                if task is not None:
-                    cache_entry = get_cached_score_entry(
-                        self.sql_session, participation, task
-                    )
-                    task_home_score = cache_entry.score
-                else:
-                    # Task no longer exists in managing contest
-                    task_home_score = 0.0
-                home_score += task_home_score
-
-                tasks_info.append({
-                    "task_id": task_id,
-                    "name": task_data.get("short_name", ""),
-                    "title": task_data.get("name", ""),
-                    "training_score": task_training_score,
-                    "home_score": task_home_score,
-                    "max_score": task_max_score,
-                })
+            tasks_info.append({
+                "task_id": task_id,
+                "name": task_data.get("short_name", ""),
+                "title": task_data.get("name", ""),
+                "training_score": task_training_score,
+                "home_score": task_home_score,
+                "max_score": task_max_score,
+            })
 
         # Determine eligible scoreboards based on student's tags during training
         eligible_scoreboards = []
         scoreboard_sharing = training_day.scoreboard_sharing or {}
-        if student is not None and scoreboard_sharing:
-            archived_ranking = archived_rankings_map.get(training_day.id)
+        if scoreboard_sharing:
             # Check for "__everyone__" option first - available to all students with ranking
             if "__everyone__" in scoreboard_sharing and archived_ranking:
                 settings = scoreboard_sharing["__everyone__"]
