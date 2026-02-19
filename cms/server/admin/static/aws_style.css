@@ -42,7 +42,19 @@
 }
 
 .table {
-    --bulma-table-head-background-color: var(--tp-bg-light);
+    --bulma-table-head-background-color: var(--bulma-scheme-main-ter);
+    --bulma-table-cell-border-color: var(--bulma-border-weak);
+}
+.has-text-weak { color: var(--bulma-text-weak) !important;}
+.no-underline { text-decoration: none !important;}
+
+.table td,
+.table th {
+    vertical-align: middle;
+}
+
+.admins-table tbody tr.is-disabled-admin {
+    opacity: 0.6;
 }
 
 .button {
@@ -1842,26 +1854,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     display: flex;
     justify-content: flex-end;
     padding-top: 10px;
-}
-
-.question-edit-reply-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: none;
-    border: none;
-    color: var(--tp-text-muted);
-    font-size: 0.85em;
-    font-family: inherit;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: color 0.15s, background-color 0.15s;
-}
-
-.question-edit-reply-link:hover {
-    color: var(--tp-primary);
-    background-color: var(--tp-bg-gray);
 }
 
 .question-owner-info {

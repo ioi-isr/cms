@@ -345,14 +345,14 @@ update_statuses();
                 <span class="overview-hint">Workers 0 to n-1 enabled, rest disabled</span>
             </div>
             <div class="tp-table-container" style="max-height: 400px;">
-                <table class="table is-fullwidth is-hoverable overview-table" id="workers_status_table">
+                <table class="table is-fullwidth is-hoverable" id="workers_status_table">
                     <thead>
-                        <tr>
-                            <th class="has-text-centered" style="width: 60px;">Shard</th>
-                            <th class="has-text-centered" style="width: 100px;">Connected</th>
-                            <th>Current Job</th>
-                            <th class="has-text-right" style="width: 140px;">Since</th>
-                            <th class="has-text-centered" style="width: 100px;">Action</th>
+                        <tr class="is-uppercase">
+                            <th class="has-text-centered has-text-weak" style="width: 60px;">Shard</th>
+                            <th class="has-text-centered has-text-weak" style="width: 100px;">Connected</th>
+                            <th class="has-text-weak">Current Job</th>
+                            <th class="has-text-right has-text-weak" style="width: 140px;">Since</th>
+                            <th class="has-text-centered has-text-weak" style="width: 100px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -370,13 +370,13 @@ update_statuses();
                 </h2>
             </div>
             <div class="tp-table-container" style="max-height: 500px;">
-                <table class="table is-fullwidth is-hoverable overview-table" id="queue_status_table">
-                    <thead>
+                <table class="table is-fullwidth is-hoverable" id="queue_status_table">
+                    <thead class = "is-uppercase">
                         <tr>
-                            <th class="has-text-centered" style="width: 60px;">#</th>
-                            <th>Job</th>
-                            <th class="has-text-centered" style="width: 100px;">Priority</th>
-                            <th class="has-text-right" style="width: 140px;">Since</th>
+                            <th class="has-text-centered has-text-weak" style="width: 60px;">#</th>
+                            <th class="has-text-weak">Job</th>
+                            <th class="has-text-centered has-text-weak" style="width: 100px;">Priority</th>
+                            <th class="has-text-right has-text-weak" style="width: 140px;">Since</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -396,14 +396,14 @@ update_statuses();
             </h2>
         </div>
         <div class="tp-table-container">
-            <table class="table is-fullwidth is-hoverable overview-table" id="logs_table">
-                <thead>
+            <table class="table is-fullwidth is-hoverable" id="logs_table">
+                <thead class="is-uppercase">
                     <tr>
-                        <th style="width: 160px;">Time</th>
-                        <th style="width: 100px;">Severity</th>
-                        <th style="width: 140px;">Service</th>
-                        <th style="width: 200px;">Operation</th>
-                        <th>Message</th>
+                        <th class="has-text-weak" style="width: 160px;">Time</th>
+                        <th class="has-text-weak" style="width: 100px;">Severity</th>
+                        <th class="has-text-weak" style="width: 140px;">Service</th>
+                        <th class="has-text-weak" style="width: 200px;">Operation</th>
+                        <th class="has-text-weak">Message</th>
                     </tr>
                 </thead>
                 <tbody>

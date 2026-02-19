@@ -3753,32 +3753,6 @@
     }
 }
 
-/* Overview table styling (Bulma table overrides for this page) */
-.overview-table {
-    font-size: 0.9rem;
-}
-
-.overview-table thead th {
-    background-color: var(--tp-bg-light) !important;
-    color: var(--tp-text-muted) !important;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    font-weight: 600;
-    border-bottom: 1px solid var(--tp-border) !important;
-    white-space: nowrap;
-}
-
-.overview-table td {
-    vertical-align: middle !important;
-    border-bottom: 1px solid var(--tp-border) !important;
-    color: var(--tp-text-secondary);
-}
-
-.overview-table tbody tr:hover {
-    background-color: var(--tp-bg-hover) !important;
-}
-
 .overview-empty-row {
     text-align: center;
     padding: 24px !important;

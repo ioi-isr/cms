@@ -782,12 +782,10 @@ class AddTeamHandler(BaseHandler):
         self.redirect(self.url("teams"))
 
 
-class AddUserHandler(
-    SimpleHandler("add_user.html", permission_all=True), UserValidationMixin
-):
+class AddUserHandler(BaseHandler, UserValidationMixin):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("users", "add")
+        fallback_page = self.url("users")
 
         user = self.save_user(None, fallback_page)
         if user:

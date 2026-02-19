@@ -1,40 +1,87 @@
 {% extends "base.html" %}
 
 {% block core %}
-<h1 class="title">Folders</h1>
-<div class="tools">
-  <a class="button" href="{{ url("folders", "add") }}">Add folder</a>
+<div class="container is-fluid">
+    <div class="level">
+        <div class="level-left">
+            <h1 class="title">Folders</h1>
+        </div>
+        {% if admin.permission_all %}
+        <div class="level-right">
+            <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-folder')">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>New Folder</span>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if folders|length == 0 %}
+    <div class="empty-state-box">
+        <h3>No folders yet</h3>
+        {% if admin.permission_all %}
+        <p>
+            <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-folder')">
+                Create your first folder
+            </button>
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    <table class="table is-bordered is-striped is-hoverable">
+        <thead>
+            <tr>
+                <th class="has-text-left">Name</th>
+                <th class="has-text-left">Description</th>
+                <th class="has-text-left">Parent</th>
+                <th class="has-text-left">Hidden</th>
+                {% if admin.permission_all %}
+                <th class="text-center" style="width: 100px;">Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in folders %}
+            <tr>
+                <td><a class="has-text-weight-semibold" href="{{ url("folder", f.id) }}">{{ f.name }}</a></td>
+                <td>{{ f.description }}</td>
+                <td>{{ f.parent.description if f.parent is not none else "(root)" }}</td>
+                <td class="has-text-centered">
+                    {% if f.hidden %}
+                    <svg class="icon is-small has-text-warning"><use href="#icon-check"/></svg>
+                    {% else %}
+                    <span class="has-text-grey">—</span>
+                    {% endif %}
+                </td>
+                {% if admin.permission_all %}
+                <td class="has-text-centered">
+                    <button type="button" class="btn-icon-only" title="Remove folder"
+                            onclick='AdminModals.deleteResource({
+                                title: "Remove Folder",
+                                message: {{ ("Are you sure you want to remove folder \"" ~ f.name ~ "\"? Its subfolders will be moved to its parent and its contests will be detached.")|tojson|forceescape }},
+                                deleteUrl: {{ url("folders", f.id, "remove")|tojson|forceescape }},
+                                confirmLabel: "Yes, Remove"
+                            })'>
+                        <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                    </button>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if root_contests|length > 0 %}
+    <div class="tp-filter-card mt-5">
+        <h3 class="is-size-6 has-text-weight-semibold" style="margin-bottom: 8px;">Contests at root (no folder)</h3>
+        <ul class="pl-5">
+            {% for c in root_contests %}
+            <li><a href="{{ url("contest", c.id) }}">{{ c.description }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 </div>
-<div class="clearer"></div>
-
-<table class="entities_table">
-  <tr>
-    <th>Codename</th>
-    <th>Description</th>
-    <th>Parent</th>
-    <th>Actions</th>
-  </tr>
-  {% for f in folders %}
-  <tr>
-    <td><a class="bold" href="{{ url("folder", f.id) }}">{{ f.name }}</a></td>
-    <td>{{ f.description }}</td>
-    <td>{{ f.parent.description if f.parent is not none else "(root)" }}</td>
-    <td>
-      <a href="{{ url('folders', f.id, 'remove') }}">Remove</a>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
-
-<h2>Root (no folder)</h2>
-<ul>
-  {% if root_contests|length == 0 %}
-    <li>(no contests at root)</li>
-  {% else %}
-    {% for c in root_contests %}
-      <li><a href="{{ url("contest", c.id) }}">{{ c.description }}</a></li>
-    {% endfor %}
-  {% endif %}
-</ul>
 
 {% endblock core %}

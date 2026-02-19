@@ -445,7 +445,7 @@ $(document).ready(initSidebarEvents);
             {% if admin.permission_all %}
             <div class="sidebar-actions">
               <a class="sidebar-action-link" href="javascript:void(0)" onclick="AdminModals.showAddContestDialog('{{ url("contests", "add") }}', '{{ url("contest", "") }}')">New contest</a>
-              <a class="sidebar-action-link" href="{{ url("folders", "add") }}">New folder</a>
+              <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-folder')">New folder</button>
               <a class="sidebar-action-link" href="{{ url("folders") }}">Manage folders</a>
             </div>
             {% endif %}
@@ -759,6 +759,7 @@ $(document).ready(initSidebarEvents);
       {% if training_program is defined %}
       {% include "fragments/modal_add_training_day.html" %}
       {% endif %}
+      {% include "fragments/modal_add_folder.html" %}
 
       <!-- Generic Confirm Modal -->
       <div class="modal modal--medium" id="modal-generic-confirm" aria-hidden="true">
