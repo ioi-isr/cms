@@ -11,13 +11,13 @@
         <!-- Actions (Moved to Top) -->
         <div class="tp-form-actions tp-form-actions-float" style="margin-bottom: 24px; margin-top: 0; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 12px; padding: 16px 24px;">
             <div class="tp-form-submit-group">
-                <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>Update Program</button>
-                <input type="reset" class="tp-btn-secondary" value="Reset">
+                <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}><span>Update Program</span></button>
+                <input type="reset" class="button" value="Reset">
             </div>
 
-            <a href="{{ url("training_program", training_program.id, "export") }}" class="tp-btn-secondary">
+            <a href="{{ url("training_program", training_program.id, "export") }}" class="button">
                 <svg class="icon is-small"><use href="#icon-download"/></svg>
-                Export all tasks
+                <span>Export all tasks</span>
             </a>
         </div>
 
@@ -61,14 +61,14 @@
 
     <div style="margin-top: 24px; text-align: right;">
         {% if admin.permission_all %}
-        <button type="button" class="tp-btn-remove" onclick="MicroModal.show('modal-remove-program')">
-            <svg class="icon is-small" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
-            Remove Program
+        <button type="button" class="button is-small is-danger is-light" onclick="MicroModal.show('modal-remove-program')">
+            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            <span>Remove Program</span>
         </button>
         {% else %}
-        <button type="button" class="tp-btn-remove" disabled title="Read-only" aria-disabled="true">
-            <svg class="icon is-small" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
-            Remove Program
+        <button type="button" class="button is-small is-danger is-light" disabled title="Read-only" aria-disabled="true">
+            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            <span>Remove Program</span>
         </button>
         {% endif %}
     </div>

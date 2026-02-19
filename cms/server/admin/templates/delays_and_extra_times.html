@@ -50,7 +50,7 @@ CMS.AWSFormUtils.initTagify({
     </div>
   </div>
   <div class="level-right">
-    <button type="button" class="button is-primary has-text-white is-medium" onclick="MicroModal.show('modal-set-delay')">
+    <button type="button" class="button is-primary is-medium" onclick="MicroModal.show('modal-set-delay')">
       <svg class="icon is-small"><use href="#icon-clock"/></svg>
       <span>Set Delay for User</span>
     </button>
@@ -63,11 +63,11 @@ CMS.AWSFormUtils.initTagify({
   <div>
     <p><strong>All participants have finished or missed this training day.</strong> This training day is ready to be archived.</p>
   </div>
-  <button type="button" class="tp-btn-primary delays-archive-btn"
+  <button type="button" class="button is-primary delays-archive-btn"
     {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
     onclick="MicroModal.show('modal-archive-td-{{ contest.training_day.id }}')">
     <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
-    Archive Training Day
+    <span>Archive Training Day</span>
   </button>
 </div>
 {% endif %}
@@ -170,9 +170,9 @@ CMS.AWSFormUtils.initTagify({
       <svg class="icon is-small delays-search-icon"><use href="#icon-search"/></svg>
       <input type="text" id="participations-search" class="delays-search-input" placeholder="Search user..." aria-label="Search user">
     </div>
-    <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="tp-btn-secondary" aria-label="Export CSV">
+    <a href="{{ url("contest", contest.id, "delays_and_extra_times", "export") }}" class="button" aria-label="Export CSV">
       <svg class="icon is-small"><use href="#icon-download"/></svg>
-      Export CSV
+      <span>Export CSV</span>
     </a>
     <form action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" class="delays-inline-form" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to remove all delays and extra times for all participants?');">
       {{ xsrf_form_html|safe }}
@@ -371,8 +371,8 @@ CMS.AWSFormUtils.initTagify({
           </div>
         </main>
         <footer class="modal__footer">
-          <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-          <button type="submit" class="tp-btn-primary">Set Delay</button>
+          <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
+          <button type="submit" class="button is-primary"><span>Set Delay</span></button>
         </footer>
       </form>
     </div>

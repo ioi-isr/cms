@@ -140,7 +140,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     <span>Import Contest</span>
                 </button>
                 <button type="button" onclick="MicroModal.show('modal-add-training-day')"
-                  class="button is-medium is-primary has-text-white" {% if not admin.permission_all %}disabled{% endif %}>
+                  class="button is-medium is-primary" {% if not admin.permission_all %}disabled{% endif %}>
                     <svg class="icon is-small"><use href="#icon-plus"/></svg>
                     <span>Add Training Day</span>
                 </button>
@@ -444,13 +444,14 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             <div id="scoreboardSharingEntries" style="margin-bottom: 16px;">
             </div>
 
-            <button type="button" class="tp-btn-secondary" onclick="addSharingEntry()" style="margin-bottom: 20px;">
-                + Add Tag
+            <button type="button" class="button" onclick="addSharingEntry()">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Tag</span>
             </button>
             </main>
             <footer class="modal__footer">
-                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                <button type="button" class="tp-btn-primary" id="save-scoreboard-sharing-btn">Save</button>
+                <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
+                <button type="button" class="button is-primary" id="save-scoreboard-sharing-btn"><span>Save</span></button>
             </footer>
         </div>
     </div>

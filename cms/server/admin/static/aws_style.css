@@ -50,6 +50,10 @@
     gap: 0.3em;
     transition: all 0.2s;
 }
+.button.is-primary,
+.button.is-danger:not(.is-light) {
+    color: var(--bulma-white);
+}
 
 .searchable-select {
     width: 240px;

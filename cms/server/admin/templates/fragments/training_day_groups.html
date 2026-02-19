@@ -99,7 +99,7 @@
                                 <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }} style="width: 18px; height: 18px; cursor: pointer;" form="update-groups-form"/>
                             </td>
                             <td style="text-align: right;">
-                                <button type="button" class="tp-btn-remove" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}');" {% if not admin.permission_all %} disabled{% endif %}>Remove</button>
+                                <button type="button" class="button is-small is-danger is-light" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}');" {% if not admin.permission_all %} disabled{% endif %}>Remove</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -124,8 +124,9 @@
                                 <input type="checkbox" name="alphabetical_task_order" style="width: 18px; height: 18px; cursor: pointer;" form="add-group-form"/>
                             </td>
                             <td style="text-align: right;">
-                                <button type="submit" id="add-group-submit-btn" class="tp-btn-primary" style="display: none; padding: 6px 12px; font-size: 0.9em;" form="add-group-form" {% if not admin.permission_all %} disabled{% endif %}>
-                                    + Add
+                                <button type="submit" id="add-group-submit-btn" class="button is-primary" style="display: none; padding: 6px 12px; font-size: 0.9em;" form="add-group-form" {% if not admin.permission_all %} disabled{% endif %}>
+                                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                                    <span>Add</span>
                                 </button>
                             </td>
                         </tr>
@@ -136,14 +137,14 @@
 
         {% if is_create %}
             <!-- CREATE MODE: Button to add dynamic JS rows -->
-            <button type="button" id="add-group-btn" class="tp-btn-secondary tp-btn-add-group">
+            <button type="button" id="add-group-btn" class="button">
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
-                Add Main Group
+                <span>Add Main Group</span>
             </button>
         {% else %}
             <!-- EDIT MODE: Save changes button -->
             <div style="margin-top: 16px; text-align: right;">
-                <button type="submit" class="tp-btn-primary" form="update-groups-form" {% if not admin.permission_all %} disabled{% endif %}>Save Group Changes</button>
+                <button type="submit" class="button is-primary" form="update-groups-form" {% if not admin.permission_all %} disabled{% endif %}><span>Save Group Changes</span></button>
             </div>
         {% endif %}
 
@@ -277,7 +278,7 @@ function addGroupRow() {
     actionsCell.style.textAlign = 'right';
     var removeBtn = document.createElement('button');
     removeBtn.type = 'button';
-    removeBtn.className = 'tp-btn-remove';
+    removeBtn.className = 'button is-small is-danger is-light';
     removeBtn.textContent = 'Remove';
     actionsCell.appendChild(removeBtn);
     row.appendChild(actionsCell);

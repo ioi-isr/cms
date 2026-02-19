@@ -13,7 +13,7 @@
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
                 <span>Import from ZIP</span>
             </a>
-            <button type="button" class="button is-primary has-text-white" onclick='AdminModals.showAddContestDialog("{{ url("contests", "add") }}", "{{ url("contest", "") }}")'>
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddContestDialog("{{ url("contests", "add") }}", "{{ url("contest", "") }}")'>>
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
                 <span>Add Contest</span>
             </button>
@@ -26,8 +26,8 @@
         <h3>No contests have been created yet</h3>
         {% if admin.permission_all %}
         <p>
-            <button type="button" class="tp-btn-primary" onclick='AdminModals.showAddContestDialog("{{ url("contests", "add") }}", "{{ url("contest", "") }}")'>
-                Create your first contest
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddContestDialog("{{ url("contests", "add") }}", "{{ url("contest", "") }}")'>
+                <span>Create your first contest</span>
             </button>
         </p>
         {% endif %}

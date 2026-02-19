@@ -13,7 +13,7 @@
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
                 <span>Import from ZIP</span>
             </a>
-            <button type="button" class="button is-primary has-text-white" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>>
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
                 <span>Add Task</span>
             </button>
@@ -26,8 +26,8 @@
         <h3>No tasks have been created yet</h3>
         {% if admin.permission_all %}
         <p>
-            <button type="button" class="tp-btn-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
-                Create your first task
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
+                <span>Create your first task</span>
             </button>
         </p>
         {% endif %}

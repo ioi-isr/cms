@@ -31,7 +31,7 @@
         </button>
 
         <!-- Add Student Button -->
-        <button type="button" class="button is-medium is-primary has-text-white" onclick="document.getElementById('add-student-dialog').showModal()">
+        <button type="button" class="button is-medium is-primary" onclick="document.getElementById('add-student-dialog').showModal()">
             <svg class="icon"><use href="#icon-plus"/></svg>
             <span>Add Student</span>
         </button>
@@ -57,9 +57,9 @@
                 </select>
             </div>
             <div class="tp-dialog-footer">
-                <button type="button" class="tp-btn-secondary" onclick="document.getElementById('add-student-dialog').close()">Cancel</button>
-                <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
-                    Add to Program
+                <button type="button" class="button" onclick="document.getElementById('add-student-dialog').close()"><span>Cancel</span></button>
+                <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}>
+                    <span>Add to Program</span>
                 </button>
             </div>
         </form>
@@ -311,9 +311,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </main>
                 <footer class="modal__footer">
-                    <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                    <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
-                        Assign Task to Group
+                    <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
+                    <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}>
+                        <span>Assign Task to Group</span>
                     </button>
                 </footer>
             </form>

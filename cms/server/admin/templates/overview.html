@@ -341,7 +341,7 @@ update_statuses();
             <div class="tp-filter-card" style="margin-bottom: 16px;">
                 <label class="tp-filter-label" for="worker_count_input">Workers to enable:</label>
                 <input type="number" id="worker_count_input" min="0" class="input is-small" style="width: 80px;" />
-                <button class="button is-small is-primary has-text-white" onclick="javascript:set_workers_count(); return false;"{% if not admin.permission_all %} disabled{% endif %}>Set Count</button>
+                <button class="button is-small is-primary" onclick="javascript:set_workers_count(); return false;"{% if not admin.permission_all %} disabled{% endif %}>Set Count</button>
                 <span class="overview-hint">Workers 0 to n-1 enabled, rest disabled</span>
             </div>
             <div class="tp-table-container" style="max-height: 400px;">
