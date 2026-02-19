@@ -3896,3 +3896,21 @@
     color: var(--tp-text-muted);
     margin-left: 4px;
 }
+
+/* ==========================================================================
+   Analysis Modal Extras
+   ========================================================================== */
+
+.modal__container--wide {
+    max-width: 640px;
+}
+
+.modal__section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+    margin: 0 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--tp-primary);
+    display: inline-block;
+}
