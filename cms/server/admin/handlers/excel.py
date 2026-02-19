@@ -629,7 +629,7 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
             type_assignments = {}
 
         norm_method = self.get_argument("normalization_method", "none")
-        top_x = int(self.get_argument("top_x", "10"))
+        top_x = max(1, int(self.get_argument("top_x", "10")))
         normalize_variability = self.get_argument(
             "normalize_variability", "off"
         ) == "on"
@@ -668,7 +668,8 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
             norm_scores, weighted_avgs, norm_method,
         )
 
-        if len(td_list) >= 2:
+        include_pairwise = self.get_argument("include_pairwise", "off") == "on"
+        if include_pairwise and len(td_list) >= 2:
             pairs, pw, pn, pa = run_pairwise_analysis(
                 student_info, student_weights, td_list,
                 norm_method, top_x, normalize_variability,

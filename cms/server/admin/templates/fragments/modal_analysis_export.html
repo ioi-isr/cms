@@ -200,8 +200,21 @@
             </div>
           </div>
 
+          <hr class="my-4 has-background-grey-lighter" style="height: 1px; border: none;" />
+
+          <h3 class="modal__section-title">Stage 3: Additional Sheets</h3>
+
+          <div class="modal__form-group">
+            <label style="font-weight: normal; cursor: pointer;">
+              <input type="checkbox" id="include_pairwise" name="include_pairwise" />
+              Include pairwise analysis sheets
+            </label>
+            <small class="modal__hint">Adds two extra sheets: paired weights and paired normalized scores for all training day pairs. Can be slow for large datasets.</small>
+          </div>
+
         </main>
         <footer class="modal__footer">
+          <div id="pct-error" class="has-text-danger is-size-7" style="display: none;"></div>
           <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
           <button type="submit" class="tp-btn-primary">Export Analysed</button>
         </footer>
@@ -249,12 +262,31 @@
   });
   updateNormVisibility();
 
+  var pctErrorEl = document.getElementById('pct-error');
+
+  function validateTypePcts() {
+    var total = 0;
+    document.querySelectorAll('.type-pct-input').forEach(function(input) {
+      var val = parseFloat(input.value);
+      if (!isNaN(val) && input.value.trim() !== '') {
+        total += val;
+      }
+    });
+    if (total > 100) {
+      pctErrorEl.textContent = 'Type percentages sum to ' + total.toFixed(1) + '% — must not exceed 100%.';
+      pctErrorEl.style.display = 'block';
+      return false;
+    }
+    pctErrorEl.style.display = 'none';
+    return true;
+  }
+
+  document.querySelectorAll('.type-pct-input').forEach(function(input) {
+    input.addEventListener('input', validateTypePcts);
+  });
+
   var form = document.getElementById('analysis-export-form');
-  form.addEventListener('submit', function() {
-    // This handler runs synchronously and does not call event.preventDefault().
-    // It sets #type_percentages and #type_assignments from .type-pct-input and
-    // .type-assign-select synchronously so they will be available to the submission.
-    // If any async work is later added, convert to preventDefault() and submit programmatically.
+  form.addEventListener('submit', function(e) {
     var typePcts = {};
     document.querySelectorAll('.type-pct-input').forEach(function(input) {
       var val = parseFloat(input.value);
@@ -262,6 +294,12 @@
         typePcts[input.dataset.type] = val;
       }
     });
+
+    if (!validateTypePcts()) {
+      e.preventDefault();
+      return;
+    }
+
     document.getElementById('type_percentages').value = JSON.stringify(typePcts);
 
     var typeAssigns = {};

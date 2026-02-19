@@ -202,19 +202,26 @@ def calculate_time_decay_weights(
     if not training_days:
         return {}
 
+    weights = {td.id: 1.0 for td in training_days}
     if first_training_weight_pct >= 100.0:
-        return {td.id: 1.0 for td in training_days}
+        return weights
 
-    dates = [td.start_time for td in training_days]
+    # Filter out training days without start_time
+    training_days_with_dates = [td for td in training_days if td.start_time is not None]
+
+    # If no training days have dates, return default weights for all
+    if not training_days_with_dates:
+        return weights
+
+    dates = [td.start_time for td in training_days_with_dates]
     earliest, latest = min(dates), max(dates)
     total_span = (latest - earliest).total_seconds()
 
     if total_span == 0:
-        return {td.id: 1.0 for td in training_days}
+        return weights
 
     first_weight = first_training_weight_pct / 100.0
-    weights: dict[int, float] = {}
-    for td in training_days:
+    for td in training_days_with_dates:
         elapsed = (td.start_time - earliest).total_seconds()
         fraction = elapsed / total_span
         weights[td.id] = first_weight + fraction * (1.0 - first_weight)
@@ -369,7 +376,8 @@ def _normalize_generic(
         if not ref_scores:
             continue
 
-        top_scores = _top_x_scores(ref_scores, top_x)
+        effective_top_x = max(1, min(top_x, len(ref_scores)))
+        top_scores = _top_x_scores(ref_scores, effective_top_x)
 
         # Calculate stats on the Top X
         reference = center_func(top_scores)
