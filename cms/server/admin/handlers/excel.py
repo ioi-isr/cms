@@ -23,15 +23,29 @@ attendance and combined ranking data.
 """
 
 import io
+import json
+import logging
 import re
 from typing import Any
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side, numbers
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from cms.db import TrainingProgram, Student
+from cms.db import TrainingDay, TrainingProgram, Student
+from .analysis import (
+    PairInfo,
+    apply_location_weights,
+    apply_training_type_correction,
+    calculate_time_decay_weights,
+    calculate_weighted_averages,
+    collect_student_td_info,
+    drop_outliers,
+    get_raw_scores,
+    normalize_scores,
+    run_pairwise_analysis,
+)
 from .base import BaseHandler, require_permission
 from .training_analytics import (
     TrainingProgramFilterMixin,
@@ -39,6 +53,8 @@ from .training_analytics import (
     get_ranking_view_data,
     FilterContext,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ----------------------------------------------------------------------------
@@ -140,17 +156,10 @@ class TrainingExcelWriter:
             row=row, column=2, value=excel_safe(tags)
         ).border = STYLE_BORDER_THIN
 
-    def write_td_header(
-        self, col: int, td: Any, width: int, idx: int
+    def write_named_header(
+        self, col: int, title: str, width: int, idx: int
     ) -> tuple[int, PatternFill]:
-        """Write a merged Training Day header and return the next column index."""
-        title = td.description or td.name or "Session"
-        if td.start_time:
-            title += f" ({td.start_time.strftime('%b %d')})"
-        if td.training_day_types:
-            title += f" [{'; '.join(td.training_day_types)}]"
-
-        # Colors
+        """Write a zebra-colored merged header row and return (next_col, sub_fill)."""
         h_color, sub_color = EXCEL_ZEBRA_COLORS[idx % len(EXCEL_ZEBRA_COLORS)]
         fill = PatternFill(start_color=h_color, end_color=h_color, fill_type="solid")
         sub_fill = PatternFill(
@@ -167,6 +176,12 @@ class TrainingExcelWriter:
             start_row=1, start_column=col, end_row=1, end_column=col + width - 1
         )
         return col + width, sub_fill
+
+    def write_td_header(
+        self, col: int, td: Any, width: int, idx: int
+    ) -> tuple[int, PatternFill]:
+        """Write a merged Training Day header and return the next column index."""
+        return self.write_named_header(col, _td_title(td), width, idx)
 
     def write_subheaders(self, col: int, headers: list[str], fill: PatternFill):
         """Write the second row of headers."""
@@ -392,3 +407,291 @@ class ExportCombinedRankingHandler(ExportAttendanceHandler):
         generate_ranking_sheet(ws, view_data)
 
         self._serve_excel(wb, build_filename(tp.name, "ranking", ctx))
+
+
+def _write_weights_grid(
+    ws: Worksheet,
+    sorted_students: list[Student],
+    columns: list[tuple[int, str]],
+    weights_data: dict[int, dict[int, float]],
+):
+    """Shared logic for writing a weights sheet (regular or paired)."""
+    writer = TrainingExcelWriter(ws)
+    writer.setup_static_headers()
+
+    curr_col = 3
+    for i, (_, title) in enumerate(columns):
+        _, sub_fill = writer.write_named_header(curr_col, title, 1, i)
+        writer.write_subheaders(curr_col, ["Weight"], sub_fill)
+        curr_col += 1
+
+    row = 3
+    for student in sorted_students:
+        writer.write_student_meta(row, student)
+        curr_col = 3
+        for col_id, _ in columns:
+            w = weights_data.get(student.id, {}).get(col_id)
+            cell = ws.cell(row=row, column=curr_col)
+            if w is not None:
+                cell.value = round(w, 4)
+                cell.number_format = '0.0000'
+            cell.border = STYLE_BORDER_THIN
+            curr_col += 1
+        row += 1
+
+    writer.auto_size_columns(curr_col)
+
+
+def _write_scores_grid(
+    ws: Worksheet,
+    sorted_students: list[Student],
+    columns: list[tuple[int, str]],
+    scores_data: dict[int, dict[int, float]],
+    weighted_averages: dict[int, float],
+    method: str,
+):
+    """Shared logic for writing a normalized-scores sheet (regular or paired)."""
+    writer = TrainingExcelWriter(ws)
+    writer.setup_static_headers()
+
+    label = "Rank" if method == "rank" else "Score"
+    curr_col = 3
+    for i, (_, title) in enumerate(columns):
+        _, sub_fill = writer.write_named_header(curr_col, title, 1, i)
+        writer.write_subheaders(curr_col, [label], sub_fill)
+        curr_col += 1
+
+    avg_label = "Weighted Avg Rank" if method == "rank" else "Weighted Avg"
+    cell = ws.cell(row=1, column=curr_col, value=avg_label)
+    cell.fill = STYLE_FILL_GREY
+    cell.font = STYLE_HEADER_FONT_WHITE
+    cell.border = STYLE_BORDER_THIN
+    cell.alignment = ALIGN_CENTER
+    ws.merge_cells(
+        start_row=1, start_column=curr_col, end_row=2, end_column=curr_col
+    )
+
+    fmt = '0' if method == "rank" else '0.00'
+
+    row = 3
+    for student in sorted_students:
+        writer.write_student_meta(row, student)
+        curr_col = 3
+        for col_id, _ in columns:
+            val = scores_data.get(student.id, {}).get(col_id)
+            cell = ws.cell(row=row, column=curr_col)
+            if val is not None:
+                cell.value = round(val, 4) if method != "rank" else val
+                cell.number_format = fmt
+            cell.border = STYLE_BORDER_THIN
+            curr_col += 1
+
+        avg = weighted_averages.get(student.id)
+        cell = ws.cell(row=row, column=curr_col)
+        if avg is not None:
+            cell.value = round(avg, 4) if method != "rank" else round(avg, 2)
+            cell.number_format = '0.00'
+        cell.border = STYLE_BORDER_THIN
+        cell.font = STYLE_HEADER_FONT
+        row += 1
+
+    writer.auto_size_columns(curr_col)
+
+
+def _td_title(td: TrainingDay) -> str:
+    """Build a human-readable header for a single training day."""
+    title = td.description or td.name or "Session"
+    if td.start_time:
+        title += f" ({td.start_time.strftime('%b %d')})"
+    if td.training_day_types:
+        title += f" [{'; '.join(td.training_day_types)}]"
+    return title
+
+
+def generate_weights_sheet(
+    ws: Worksheet,
+    sorted_students: list[Student],
+    training_days: list[TrainingDay],
+    student_weights: dict[int, dict[int, float]],
+):
+    """Populate a worksheet with per-student per-training-day weights."""
+    columns = [(td.id, _td_title(td)) for td in training_days]
+    _write_weights_grid(ws, sorted_students, columns, student_weights)
+
+
+def generate_normalized_scores_sheet(
+    ws: Worksheet,
+    sorted_students: list[Student],
+    training_days: list[TrainingDay],
+    normalized_scores: dict[int, dict[int, float]],
+    weighted_averages: dict[int, float],
+    method: str,
+):
+    """Populate a worksheet with normalized scores and weighted averages."""
+    columns = [(td.id, _td_title(td)) for td in training_days]
+    _write_scores_grid(
+        ws, sorted_students, columns, normalized_scores, weighted_averages, method,
+    )
+
+
+def generate_paired_weights_sheet(
+    ws: Worksheet,
+    sorted_students: list[Student],
+    pairs: list[PairInfo],
+    training_days: list[TrainingDay],
+    paired_weights: dict[int, dict[int, float]],
+):
+    """Populate a worksheet with per-student per-pair weights."""
+    td_map = {td.id: td for td in training_days}
+    columns = [
+        (p.pair_id, _pair_title(td_map.get(p.td_a_id), td_map.get(p.td_b_id)))
+        for p in pairs
+    ]
+    _write_weights_grid(ws, sorted_students, columns, paired_weights)
+
+
+def generate_paired_scores_sheet(
+    ws: Worksheet,
+    sorted_students: list[Student],
+    pairs: list[PairInfo],
+    training_days: list[TrainingDay],
+    paired_norm_scores: dict[int, dict[int, float]],
+    paired_weighted_avgs: dict[int, float],
+    method: str,
+):
+    """Populate a worksheet with paired normalized scores and weighted averages."""
+    td_map = {td.id: td for td in training_days}
+    columns = [
+        (p.pair_id, _pair_title(td_map.get(p.td_a_id), td_map.get(p.td_b_id)))
+        for p in pairs
+    ]
+    _write_scores_grid(
+        ws, sorted_students, columns, paired_norm_scores,
+        paired_weighted_avgs, method,
+    )
+
+
+def _pair_title(td_a, td_b) -> str:
+    """Build a human-readable header for a TD pair."""
+    def _short(td):
+        if td is None:
+            return "?"
+        name = td.description or td.name or "Session"
+        if td.start_time:
+            name += f" ({td.start_time.strftime('%b %d')})"
+        return name
+    return "{" + _short(td_a) + ", " + _short(td_b) + "}"
+
+
+class ExportAnalysedRankingHandler(ExportAttendanceHandler):
+    """Export analysed ranking data (weights + normalized scores) to Excel."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def post(self, training_program_id: str):
+        tp = self.safe_get_item(TrainingProgram, training_program_id)
+        ctx = self.get_filter_context(tp)
+
+        ranking_view = get_ranking_view_data(ctx)
+        attendance_view = get_attendance_view_data(ctx)
+
+        td_list: list[TrainingDay] = ranking_view["filtered_training_days"]
+        if not td_list:
+            self.redirect(self.url("training_program", tp.id, "combined_ranking"))
+            return
+
+        student_info = collect_student_td_info(
+            ranking_view["ranking_data"],
+            attendance_view["attendance_data"],
+            ranking_view["training_day_tasks"],
+            td_list,
+        )
+
+        def safe_float(arg_name, default_value):
+            try:
+                return float(self.get_argument(arg_name, str(default_value)))
+            except (ValueError, TypeError):
+                return default_value
+
+        def safe_int(arg_name, default_value):
+            try:
+                return int(self.get_argument(arg_name, str(default_value)))
+            except (ValueError, TypeError):
+                return default_value
+
+        first_weight_pct = safe_float("first_training_weight", 100)
+        home_factor = safe_float("home_factor", 1.0)
+        recorded_home_factor = safe_float("recorded_home_factor", 1.0)
+
+        type_pcts_raw = self.get_argument("type_percentages", "{}")
+        try:
+            type_percentages: dict[str, float] = json.loads(type_pcts_raw)
+            type_percentages = {
+                k: v / 100.0 for k, v in type_percentages.items()
+            }
+        except (json.JSONDecodeError, ValueError, TypeError):
+            type_percentages = {}
+
+        type_assigns_raw = self.get_argument("type_assignments", "{}")
+        try:
+            type_assignments: dict[str, str] = json.loads(type_assigns_raw)
+            type_assignments = {int(k): v for k, v in type_assignments.items()}
+        except (json.JSONDecodeError, ValueError):
+            type_assignments = {}
+
+        norm_method = self.get_argument("normalization_method", "none")
+        top_x = max(1, safe_int("top_x", 10))
+        normalize_variability = self.get_argument(
+            "normalize_variability", "off"
+        ) == "on"
+        num_outliers = max(0, safe_int("num_outliers", 0))
+
+        base_weights = calculate_time_decay_weights(td_list, first_weight_pct)
+        student_weights = apply_location_weights(
+            base_weights, student_info, home_factor, recorded_home_factor
+        )
+        student_weights = apply_training_type_correction(
+            student_weights, td_list, type_assignments, type_percentages
+        )
+
+        if num_outliers > 0:
+            raw_scores = get_raw_scores(student_info, td_list)
+            student_weights = drop_outliers(
+                student_weights, raw_scores, num_outliers
+            )
+
+        norm_scores = normalize_scores(
+            norm_method, student_info, td_list, top_x, normalize_variability
+        )
+        weighted_avgs = calculate_weighted_averages(student_weights, norm_scores)
+
+        sorted_students = ranking_view["sorted_students"]
+
+        wb = Workbook()
+
+        ws_weights = wb.active
+        ws_weights.title = "Weights"
+        generate_weights_sheet(ws_weights, sorted_students, td_list, student_weights)
+
+        ws_scores = wb.create_sheet("Normalized Scores")
+        generate_normalized_scores_sheet(
+            ws_scores, sorted_students, td_list,
+            norm_scores, weighted_avgs, norm_method,
+        )
+
+        include_pairwise = self.get_argument("include_pairwise", "off") == "on"
+        if include_pairwise and len(td_list) >= 2:
+            pairs, pw, pn, pa = run_pairwise_analysis(
+                student_info, student_weights, td_list,
+                norm_method, top_x, normalize_variability,
+            )
+            if pairs:
+                ws_pw = wb.create_sheet("Paired Weights")
+                generate_paired_weights_sheet(
+                    ws_pw, sorted_students, pairs, td_list, pw,
+                )
+                ws_pn = wb.create_sheet("Paired Normalized Scores")
+                generate_paired_scores_sheet(
+                    ws_pn, sorted_students, pairs, td_list, pn, pa, norm_method,
+                )
+
+        self._serve_excel(wb, build_filename(tp.name, "analysed", ctx))

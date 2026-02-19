@@ -93,12 +93,20 @@ def get_attendance_view_data(ctx: FilterContext):
     all_students: dict[int, Student] = {}
 
     for td in ctx.archived_training_days:
-        for att in td.archived_attendances:
-            if ctx.student_tags and att.student_id not in ctx.current_tag_student_ids:
-                continue
+        td_rank_tags: dict[int, list[str] | None] = {}
+        if ctx.student_tags and ctx.student_tags_mode == "historical":
+            for rank in td.archived_student_rankings:
+                if rank.student.participation and rank.student.participation.hidden:
+                    continue
+                td_rank_tags[rank.student_id] = rank.student_tags
 
+        for att in td.archived_attendances:
             if att.student.participation and att.student.participation.hidden:
                 continue
+
+            if ctx.student_tags:
+                if not ctx.is_visible(att.student_id, td_rank_tags.get(att.student_id)):
+                    continue
 
             if att.student_id not in attendance_data:
                 attendance_data[att.student_id] = {}

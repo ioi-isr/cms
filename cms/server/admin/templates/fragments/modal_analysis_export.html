@@ -1,0 +1,313 @@
+<!-- Analysis Export Modal Fragment -->
+<!-- Required context: training_program, archived_training_days, sorted_students,
+     url, xsrf_form_html, filter query params -->
+
+{% set td_list = archived_training_days %}
+{% set num_students = sorted_students | length %}
+
+{% set all_types = [] %}
+{% set type_counts = {} %}
+{% set multi_type_tds = [] %}
+{% set ns_other = namespace(count=0) %}
+{% for td in td_list %}
+  {% if td.training_day_types %}
+    {% for t in td.training_day_types %}
+      {% if t not in all_types %}
+        {% set _ = all_types.append(t) %}
+      {% endif %}
+      {% if t in type_counts %}
+        {% set _ = type_counts.update({t: type_counts[t] + 1}) %}
+      {% else %}
+        {% set _ = type_counts.update({t: 1}) %}
+      {% endif %}
+    {% endfor %}
+    {% if td.training_day_types | length > 1 %}
+      {% set _ = multi_type_tds.append(td) %}
+    {% endif %}
+  {% else %}
+    {% set ns_other.count = ns_other.count + 1 %}
+  {% endif %}
+{% endfor %}
+{% if ns_other.count > 0 %}
+  {% set _ = all_types.append('other') %}
+  {% set _ = type_counts.update({'other': ns_other.count}) %}
+{% endif %}
+
+{% set ns = namespace(first_date=None, last_date=None) %}
+{% for td in td_list %}
+  {% if td.start_time %}
+    {% if ns.first_date is none or td.start_time < ns.first_date %}
+      {% set ns.first_date = td.start_time %}
+    {% endif %}
+    {% if ns.last_date is none or td.start_time > ns.last_date %}
+      {% set ns.last_date = td.start_time %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% set span_days = 0 %}
+{% if ns.first_date and ns.last_date %}
+  {% set span_days = ((ns.last_date - ns.first_date).total_seconds() / 86400) | round(1) %}
+{% endif %}
+
+
+<div class="modal" id="modal-analysis-export" aria-hidden="true">
+  <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+    <div class="modal__container modal__container--wide" role="dialog" aria-modal="true" aria-labelledby="modal-analysis-title">
+      <header class="modal__header">
+        <h2 class="modal__title" id="modal-analysis-title">Analysed Export Settings</h2>
+        <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+      </header>
+      <form id="analysis-export-form"
+            action="{{ url('training_program', training_program.id, 'combined_ranking', 'export_analysed') }}{{ export_query|default('') }}"
+            method="POST">
+        {{ xsrf_form_html|safe }}
+        <main class="modal__content" id="modal-analysis-content">
+
+          <h3 class="modal__section-title">Stage 1: Training Day Weights</h3>
+
+          <div class="modal__form-group">
+            <label>Time Decay</label>
+            {% if span_days > 0 %}
+            <small class="modal__hint">
+              First training: {{ ns.first_date.strftime('%b %d, %Y') }} &mdash;
+              Latest training: {{ ns.last_date.strftime('%b %d, %Y') }} &mdash;
+              Span: {{ "%.0f" | format(span_days) }} days
+              ({{ "%.1f" | format(span_days / 30.0) }} months)
+            </small>
+            {% else %}
+            <small class="modal__hint">All training days are on the same date; time decay has no effect.</small>
+            {% endif %}
+            <div style="display: flex; gap: 16px; align-items: center; margin-top: 4px;">
+              <div style="flex: 1;">
+                <label for="first_training_weight" style="font-size: 0.85em;">Weight of first training (%)</label>
+                <input type="number" id="first_training_weight" name="first_training_weight"
+                       value="100" min="1" max="100" step="1" style="width: 100%;" />
+              </div>
+              <div style="flex: 1;">
+                <label style="font-size: 0.85em;">Monthly decay</label>
+                <span id="monthly-decay-display" style="font-weight: bold;">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal__form-group">
+            <label>Location Weight Modification</label>
+            <div style="display: flex; gap: 16px; margin-top: 4px;">
+              <div style="flex: 1;">
+                <label for="home_factor" style="font-size: 0.85em;">Home factor</label>
+                <input type="number" id="home_factor" name="home_factor"
+                       value="1.0" min="0" max="2" step="0.05" style="width: 100%;" />
+                <small class="modal__hint">Multiplier for students attending from home (not recorded)</small>
+              </div>
+              <div style="flex: 1;">
+                <label for="recorded_home_factor" style="font-size: 0.85em;">Recorded from home factor</label>
+                <input type="number" id="recorded_home_factor" name="recorded_home_factor"
+                       value="1.0" min="0" max="2" step="0.05" style="width: 100%;" />
+                <small class="modal__hint">Multiplier for students attending from home (recorded)</small>
+              </div>
+            </div>
+          </div>
+
+          {% if all_types %}
+          <div class="modal__form-group">
+            <label>Training Type Weight Correction</label>
+            <small class="modal__hint">Set % of total weight each type should constitute. Leave empty or set all to 0 to skip correction.</small>
+            <div style="margin-top: 8px;">
+              {% for t in all_types %}
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span class="badge badge-slate badge-pill">{{ t }}</span>
+                <span style="font-size: 0.85em; color: #6b7280;">({{ type_counts.get(t, 0) }} training day{{ 's' if type_counts.get(t, 0) != 1 else '' }})</span>
+                <input type="number" class="type-pct-input" data-type="{{ t }}"
+                       min="0" max="100" step="1" placeholder="%" style="width: 80px;" />
+                <span style="font-size: 0.85em;">%</span>
+              </div>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="type_percentages" id="type_percentages" value="{}" />
+          </div>
+
+          {% if multi_type_tds %}
+          <div class="modal__form-group">
+            <label>Multi-Type Training Day Assignments</label>
+            <small class="modal__hint">For training days with multiple types, select which type to use for weight correction.</small>
+            <div style="margin-top: 8px;">
+              {% for td in multi_type_tds %}
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-size: 0.85em; min-width: 200px;">{{ td.description or td.name or "Session" }}{% if td.start_time %} ({{ td.start_time.strftime('%b %d') }}){% endif %}</span>
+                <select class="type-assign-select" data-td-id="{{ td.id }}" style="min-width: 120px;">
+                  {% for t in td.training_day_types %}
+                  <option value="{{ t }}">{{ t }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="type_assignments" id="type_assignments" value="{}" />
+          </div>
+          {% endif %}
+          {% endif %}
+
+          <div class="modal__form-group">
+            <label>Outlier Dropping</label>
+            <small class="modal__hint">Drop N best and N worst training days per student from the weighted average.</small>
+            <div style="display: flex; gap: 16px; align-items: center; margin-top: 4px;">
+              <div style="flex: 1;">
+                <label for="num_outliers" style="font-size: 0.85em;">Number of outliers to drop (each side)</label>
+                <input type="number" id="num_outliers" name="num_outliers"
+                       value="0" min="0" max="{{ [((td_list | length) - 1) // 2, 0] | max }}" step="1" style="width: 120px;" />
+                <small class="modal__hint">E.g. setting 2 drops the 2 best and 2 worst training days per student</small>
+              </div>
+            </div>
+          </div>
+
+          <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;" />
+
+          <h3 class="modal__section-title">Stage 2: Score Normalization</h3>
+
+          <div class="modal__form-group">
+            <label>Normalization Method</label>
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+              <label style="font-weight: normal; cursor: pointer;">
+                <input type="radio" name="normalization_method" value="none" checked /> No normalization (raw scores)
+              </label>
+              <label style="font-weight: normal; cursor: pointer;">
+                <input type="radio" name="normalization_method" value="rank" /> Rank-based
+              </label>
+              <label style="font-weight: normal; cursor: pointer;">
+                <input type="radio" name="normalization_method" value="median" /> Median-based
+              </label>
+              <label style="font-weight: normal; cursor: pointer;">
+                <input type="radio" name="normalization_method" value="mean" /> Mean-based
+              </label>
+            </div>
+          </div>
+
+          <div id="normalization-options" style="display: none;">
+            <div class="modal__form-group">
+              <label for="top_x">Normalize by top X</label>
+              <input type="number" id="top_x" name="top_x"
+                     value="10" min="3" max="{{ [num_students, 3] | max }}" step="1" style="width: 120px;" />
+              <small class="modal__hint">Reference is calculated from top X scores in each training day (default: 10)</small>
+            </div>
+
+            <div class="modal__form-group">
+              <label style="font-weight: normal; cursor: pointer;">
+                <input type="checkbox" id="normalize_variability" name="normalize_variability" />
+                Normalize by variability
+              </label>
+              <small class="modal__hint">Divide by SD (mean) or MAD&times;1.4826 (median) to account for score spread</small>
+            </div>
+          </div>
+
+          <hr class="my-4 has-background-grey-lighter" style="height: 1px; border: none;" />
+
+          <h3 class="modal__section-title">Stage 3: Additional Sheets</h3>
+
+          <div class="modal__form-group">
+            <label style="font-weight: normal; cursor: pointer;">
+              <input type="checkbox" id="include_pairwise" name="include_pairwise" />
+              Include pairwise analysis sheets
+            </label>
+            <small class="modal__hint">Adds two extra sheets: paired weights and paired normalized scores for all training day pairs. Can be slow for large datasets.</small>
+          </div>
+
+        </main>
+        <footer class="modal__footer">
+          <div id="pct-error" class="has-text-danger is-size-7" style="display: none;"></div>
+          <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+          <button type="submit" class="tp-btn-primary">Export Analysed</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var spanDays = {{ span_days }};
+
+  var firstWeightInput = document.getElementById('first_training_weight');
+  var decayDisplay = document.getElementById('monthly-decay-display');
+
+  function updateDecayDisplay() {
+    var pct = parseFloat(firstWeightInput.value) || 100;
+    if (spanDays <= 0 || pct >= 100) {
+      decayDisplay.textContent = '0%';
+      return;
+    }
+    var months = spanDays / 30.0;
+    var totalDecay = 100.0 - pct;
+    var monthlyDecay = totalDecay / months;
+    decayDisplay.textContent = monthlyDecay.toFixed(2) + '%';
+  }
+
+  firstWeightInput.addEventListener('input', updateDecayDisplay);
+  updateDecayDisplay();
+
+  var normRadios = document.querySelectorAll('input[name="normalization_method"]');
+  var normOptions = document.getElementById('normalization-options');
+
+  function updateNormVisibility() {
+    var selected = document.querySelector('input[name="normalization_method"]:checked');
+    if (selected && (selected.value === 'median' || selected.value === 'mean')) {
+      normOptions.style.display = 'block';
+    } else {
+      normOptions.style.display = 'none';
+    }
+  }
+
+  normRadios.forEach(function(radio) {
+    radio.addEventListener('change', updateNormVisibility);
+  });
+  updateNormVisibility();
+
+  var pctErrorEl = document.getElementById('pct-error');
+
+  function validateTypePcts() {
+    var total = 0;
+    document.querySelectorAll('.type-pct-input').forEach(function(input) {
+      var val = parseFloat(input.value);
+      if (!isNaN(val) && input.value.trim() !== '') {
+        total += val;
+      }
+    });
+    if (total > 100) {
+      pctErrorEl.textContent = 'Type percentages sum to ' + total.toFixed(1) + '% — must not exceed 100%.';
+      pctErrorEl.style.display = 'block';
+      return false;
+    }
+    pctErrorEl.style.display = 'none';
+    return true;
+  }
+
+  document.querySelectorAll('.type-pct-input').forEach(function(input) {
+    input.addEventListener('input', validateTypePcts);
+  });
+
+  var form = document.getElementById('analysis-export-form');
+  form.addEventListener('submit', function(e) {
+    var typePcts = {};
+    document.querySelectorAll('.type-pct-input').forEach(function(input) {
+      var val = parseFloat(input.value);
+      if (!isNaN(val) && input.value.trim() !== '') {
+        typePcts[input.dataset.type] = val;
+      }
+    });
+
+    if (!validateTypePcts()) {
+      e.preventDefault();
+      return;
+    }
+
+    document.getElementById('type_percentages').value = JSON.stringify(typePcts);
+
+    var typeAssigns = {};
+    document.querySelectorAll('.type-assign-select').forEach(function(select) {
+      typeAssigns[select.dataset.tdId] = select.value;
+    });
+    var typeAssignsEl = document.getElementById('type_assignments');
+    if (typeAssignsEl) typeAssignsEl.value = JSON.stringify(typeAssigns);
+  });
+})();
+</script>
