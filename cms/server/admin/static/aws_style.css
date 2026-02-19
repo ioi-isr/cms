@@ -2073,50 +2073,49 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
    Top Navbar
    ========================================================================== */
 
-#admin-navbar {
-    z-index: 40;
-    border-bottom: 1px solid var(--bulma-border-weak);
-}
+#admin-navbar { z-index: 40; border-bottom: 1px solid var(--bulma-border-weak); }
 
-#sidebar-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: 30;
-}
+#sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 30; }
 
 body.has-navbar #sidebar { top: 3.25rem; height: calc(100% - 3.25rem); }
 body.has-navbar #core { padding-top: 3.25rem; }
 body.has-navbar #border { top: 3.25rem; height: calc(100% - 3.25rem); }
 
+/* Navbar nested dropdown (expandable sub-items) */
+.navbar-dropdown .navbar-sub-toggle { cursor: pointer; }
+.navbar-dropdown .navbar-sub-items { display: none; }
+.navbar-dropdown .navbar-sub-toggle.is-expanded + .navbar-sub-items { display: block; }
+.navbar-dropdown .navbar-sub-items .navbar-item { padding-left: 2rem; font-size: 0.85em; }
+.navbar-dropdown .navbar-sub-toggle .navbar-sub-caret {
+    display: inline-block; width: 6px; height: 6px;
+    border: solid var(--bulma-text-weak); border-width: 0 1.5px 1.5px 0;
+    transform: rotate(-45deg); transition: transform 0.2s; margin-left: auto;
+}
+.navbar-dropdown .navbar-sub-toggle.is-expanded .navbar-sub-caret { transform: rotate(45deg); }
+
 /* ==========================================================================
    Sidebar Toggle Buttons
    ========================================================================== */
 
-.sidebar-toggle-btn {
-    cursor: pointer;
-    color: var(--sidebar-slate);
-    padding: 4px;
-    border-radius: 4px;
-}
+.sidebar-toggle-btn { cursor: pointer; color: var(--sidebar-slate); padding: 4px; border-radius: 4px; }
 .sidebar-toggle-btn:hover { color: var(--sidebar-accent-light); }
-
 .sidebar-expand-only { display: none; margin: 8px auto; }
 
 .sidebar-section-icon {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    color: var(--sidebar-slate);
+    display: none; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 6px; color: var(--sidebar-slate);
 }
-.sidebar-section-icon:hover {
-    color: var(--sidebar-accent-light);
-    background: var(--sidebar-hover-bg);
+.sidebar-section-icon:hover { color: var(--sidebar-accent-light); background: var(--sidebar-hover-bg); }
+
+/* Notification dot on icon in collapsed mode */
+.menu-icon { position: relative; }
+.menu-icon .icon-badge {
+    display: none; position: absolute; top: -2px; right: -2px;
+    width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--sidebar-bg-dark);
 }
+.menu-icon .icon-badge.is-red { background: var(--bulma-danger); }
+.menu-icon .icon-badge.is-amber { background: var(--bulma-warning); }
+body.sidebar-collapsed .menu-icon .icon-badge { display: block; }
 
 /* ==========================================================================
    Sidebar Collapsed (desktop icon-only)
@@ -2136,7 +2135,11 @@ body.sidebar-collapsed #sidebar .notice-pending,
 body.sidebar-collapsed #sidebar .hr,
 body.sidebar-collapsed #sidebar .side_footer,
 body.sidebar-collapsed #sidebar .menu_link,
-body.sidebar-collapsed #sidebar .sidebar-badge-container { display: none; }
+body.sidebar-collapsed #sidebar .sidebar-badge-container,
+body.sidebar-collapsed #sidebar .sidebar-menu,
+body.sidebar-collapsed #sidebar .folder-contents,
+body.sidebar-collapsed #sidebar .sidebar-actions,
+body.sidebar-collapsed #sidebar .sidebar-empty { display: none; }
 
 body.sidebar-collapsed .sidebar-section-icon { display: inline-flex; }
 body.sidebar-collapsed .sidebar-section-title {
@@ -2150,30 +2153,57 @@ body.sidebar-collapsed #core { margin-left: 60px; }
 body.sidebar-collapsed #border { margin-left: 58px; }
 
 /* ==========================================================================
-   Mobile (<1024px)
+   Mobile (<1024px): sidebar collapsed by default, slide-in full on open
    ========================================================================== */
 
 @media screen and (max-width: 1023px) {
-    #sidebar { transform: translateX(-100%); z-index: 35; transition: transform 0.3s ease; }
-    body.sidebar-mobile-open #sidebar { transform: translateX(0); }
-    body.sidebar-mobile-open #sidebar-backdrop { display: block; }
-    #core { margin-left: 0 !important; }
+    #sidebar { width: 48px; padding: 0 4px; overflow-x: hidden; z-index: 35; }
+    #sidebar_header,
+    #sidebar .sidebar-section-body, #sidebar .sidebar-link-group,
+    #sidebar .cr_notice, #sidebar .secret_notice, #sidebar .notice-pending,
+    #sidebar .hr, #sidebar .side_footer, #sidebar .menu_link,
+    #sidebar .sidebar-badge-container, #sidebar .sidebar-menu,
+    #sidebar .folder-contents, #sidebar .sidebar-actions,
+    #sidebar .sidebar-empty { display: none; }
+    .sidebar-section-icon { display: inline-flex; }
+    .sidebar-section-title {
+        justify-content: center; padding: 6px;
+        background: transparent; border: none; box-shadow: none; margin: 4px 0;
+    }
+    .sidebar-section { border-top: none; margin-bottom: 4px; padding-top: 0; }
+    .menu_entry { justify-content: center; padding: 8px 4px; }
+    .menu { display: flex; flex-direction: column; align-items: center; }
+    .sidebar-expand-only { display: block; }
+    .menu-icon .icon-badge { display: block; }
+    #core { margin-left: 60px; }
     #border { display: none; }
-    /* On mobile, always show full sidebar (override collapsed state) */
-    body.sidebar-collapsed #sidebar { width: 234px; padding: 0 1em; }
-    body.sidebar-collapsed #sidebar_header,
-    body.sidebar-collapsed #sidebar .sidebar-section-body,
-    body.sidebar-collapsed #sidebar .sidebar-link-group,
-    body.sidebar-collapsed #sidebar .menu_link,
-    body.sidebar-collapsed #sidebar .sidebar-badge-container { display: revert; }
-    body.sidebar-collapsed .sidebar-section-icon { display: none; }
-    body.sidebar-collapsed .sidebar-expand-only { display: none; }
-    body.sidebar-collapsed .sidebar-section-title,
-    body.sidebar-collapsed .sidebar-section,
-    body.sidebar-collapsed .menu_entry,
-    body.sidebar-collapsed .menu { all: revert; }
-    body.sidebar-collapsed #core { margin-left: 0 !important; }
-    body.sidebar-collapsed #border { display: none; }
+
+    /* Expanded mobile sidebar (slide-in full panel) */
+    body.sidebar-mobile-open #sidebar {
+        width: 234px; padding: 0 1em; overflow-x: visible;
+    }
+    body.sidebar-mobile-open #sidebar-backdrop { display: block; }
+    body.sidebar-mobile-open #sidebar_header,
+    body.sidebar-mobile-open #sidebar .sidebar-section-body,
+    body.sidebar-mobile-open #sidebar .sidebar-link-group,
+    body.sidebar-mobile-open #sidebar .menu_link,
+    body.sidebar-mobile-open #sidebar .sidebar-badge-container,
+    body.sidebar-mobile-open #sidebar .sidebar-menu,
+    body.sidebar-mobile-open #sidebar .folder-contents,
+    body.sidebar-mobile-open #sidebar .sidebar-actions,
+    body.sidebar-mobile-open #sidebar .hr,
+    body.sidebar-mobile-open #sidebar .cr_notice { display: revert; }
+    body.sidebar-mobile-open .sidebar-section-icon { display: none; }
+    body.sidebar-mobile-open .sidebar-expand-only { display: none; }
+    body.sidebar-mobile-open .sidebar-section-title {
+        justify-content: space-between; padding: 7px 12px 6px;
+        background: rgba(15,23,42,0.8); border: 1px solid rgba(148,163,184,0.12); margin: 12px 0 6px 0;
+    }
+    body.sidebar-mobile-open .sidebar-section { border-top: 1px solid rgba(148,163,184,0.08); margin-bottom: 12px; padding-top: 6px; }
+    body.sidebar-mobile-open .menu_entry { justify-content: flex-start; padding: 8px 12px; }
+    body.sidebar-mobile-open .menu { display: block; }
+    body.sidebar-mobile-open .menu-icon .icon-badge { display: none; }
+    body.sidebar-mobile-open #core { margin-left: 60px; }
 }
 
 @media screen and (min-width: 1024px) {
