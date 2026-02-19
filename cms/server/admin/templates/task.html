@@ -712,10 +712,10 @@ document.addEventListener('click', function(e) {
                     </button>
                     <div class="tp-menu-dropdown">
                         {% if dataset is not sameas (task.active_dataset) %}
-                        <a href="{{ url("dataset", dataset.id, "activate") }}" class="tp-menu-item">
+                        <button type="button" onclick="MicroModal.show('modal-activate-dataset-{{ dataset.id }}')" class="tp-menu-item">
                             <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
                             Make Live
-                        </a>
+                        </button>
                         {% endif %}
                         <a href="javascript:void(0)" onclick="MicroModal.show('modal-clone-dataset-{{ dataset.id }}')" class="tp-menu-item">
                             <svg class="icon is-small"><use href="#icon-clipboard-list"/></svg>
@@ -2086,6 +2086,9 @@ document.addEventListener('click', function(e) {
     </div>
     {% endfor %}
     {% endif %}
+
+    <!-- Activate Dataset Modals -->
+    {% include "fragments/modal_activate_dataset.html" %}
 
     <!-- Remove Task -->
     <div style="margin-top: 24px; text-align: right;">

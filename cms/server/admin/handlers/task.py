@@ -41,6 +41,7 @@ except:
 import tornado.web
 
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
+from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.admin.handlers.utils import parse_tags
 from cmscommon.datetime import make_datetime
@@ -200,6 +201,33 @@ class TaskHandler(BaseHandler):
         self.r_params["subtask_names"] = subtask_names
         self.r_params["subtask_info"] = subtask_info
         self.r_params["running_validator_ids"] = get_running_validator_ids()
+
+        activate_data = {}
+        for dataset in task.datasets:
+            if dataset is task.active_dataset:
+                continue
+            try:
+                changes = compute_changes_for_dataset(task.active_dataset, dataset)
+                notify_participations = set()
+                for c in changes:
+                    score_changed = c.old_score is not None or c.new_score is not None
+                    public_score_changed = (
+                        c.old_public_score is not None or c.new_public_score is not None
+                    )
+                    if public_score_changed or (
+                        c.submission.tokened() and score_changed
+                    ):
+                        notify_participations.add(c.submission.participation.id)
+                activate_data[dataset.id] = {
+                    "changes": changes,
+                    "default_notify_participations": notify_participations,
+                }
+            except Exception:
+                activate_data[dataset.id] = {
+                    "changes": [],
+                    "default_notify_participations": set(),
+                }
+        self.r_params["activate_data"] = activate_data
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
