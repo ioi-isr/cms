@@ -4,6 +4,13 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script>
+    (function() {
+      var theme = null;
+      try { theme = localStorage.getItem('cms_theme'); } catch(e) {}
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
+    </script>
+    <script>
     // Pre-paint CSS injection to prevent flash of expanded menus
     // Uses a hydration class on <html> so these rules only apply during initial render
     (function() {
@@ -57,6 +64,7 @@
     <link rel="stylesheet" type="text/css" href="{{ url("static", "bulma.min.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_tp_styles.css") }}">
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_themes.css") }}">
     <script src="{{ url("static", "web_rpc.js") }}"></script>
     <script src="{{ url("static", "aws_utils.js") }}"></script>
     <script src="{{ url("static", "aws_table_utils.js") }}"></script>
@@ -304,11 +312,79 @@ function initSidebarToggle() {
     }
 }
 
+// Theme selector
+var ThemeManager = {
+    dotClasses: {
+        '': 'theme-dot-original',
+        'granny-smith': 'theme-dot-granny-smith',
+        'pink-lady': 'theme-dot-pink-lady',
+        'dark': 'theme-dot-dark',
+        'adon-hermon': 'theme-dot-adon-hermon',
+        'retro': 'theme-dot-retro'
+    },
+    current: function() {
+        try { return localStorage.getItem('cms_theme') || ''; } catch(e) { return ''; }
+    },
+    apply: function(theme) {
+        if (theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+        try { localStorage.setItem('cms_theme', theme); } catch(e) {}
+        this.updateUI(theme);
+    },
+    updateUI: function(theme) {
+        var dot = document.getElementById('theme-dot');
+        if (dot) {
+            dot.className = 'theme-dot ' + (this.dotClasses[theme] || 'theme-dot-original');
+        }
+        var options = document.querySelectorAll('.theme-option');
+        for (var i = 0; i < options.length; i++) {
+            var opt = options[i];
+            if (opt.getAttribute('data-theme') === theme) {
+                opt.classList.add('is-active');
+            } else {
+                opt.classList.remove('is-active');
+            }
+        }
+    }
+};
+
+function initThemeSelector() {
+    var selector = document.getElementById('theme-selector');
+    if (!selector) return;
+    var btn = selector.querySelector('.theme-selector-btn');
+    var menu = document.getElementById('theme-menu');
+
+    ThemeManager.updateUI(ThemeManager.current());
+
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        selector.classList.toggle('is-active');
+    });
+
+    menu.addEventListener('click', function(e) {
+        var option = e.target.closest('.theme-option');
+        if (!option) return;
+        var theme = option.getAttribute('data-theme');
+        ThemeManager.apply(theme);
+        selector.classList.remove('is-active');
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!selector.contains(e.target)) {
+            selector.classList.remove('is-active');
+        }
+    });
+}
+
 $(document).ready(init);
 $(document).ready(applySidebarState);
 $(document).ready(initSidebarEvents);
 $(document).ready(initNavbarBurger);
 $(document).ready(initSidebarToggle);
+$(document).ready(initThemeSelector);
 
 // Close mobile navbar dropdown on item click
 $(document).ready(function() {
@@ -471,6 +547,46 @@ $(document).ready(function() {
           </div>
         </div>
         <div class="navbar-end">
+          <div class="navbar-item">
+            <div class="theme-selector-dropdown" id="theme-selector">
+              <button class="theme-selector-btn" type="button" title="Change theme">
+                <span class="theme-dot" id="theme-dot"></span>
+                <span class="theme-label-text">Theme</span>
+              </button>
+              <div class="theme-selector-menu" id="theme-menu">
+                <button class="theme-option" data-theme="" type="button">
+                  <span class="theme-swatch theme-swatch-original"></span>
+                  Original IL
+                  <span class="theme-check">&#10003;</span>
+                </button>
+                <button class="theme-option" data-theme="granny-smith" type="button">
+                  <span class="theme-swatch theme-swatch-granny-smith"></span>
+                  Granny Smith
+                  <span class="theme-check">&#10003;</span>
+                </button>
+                <button class="theme-option" data-theme="pink-lady" type="button">
+                  <span class="theme-swatch theme-swatch-pink-lady"></span>
+                  Pink Lady
+                  <span class="theme-check">&#10003;</span>
+                </button>
+                <button class="theme-option" data-theme="dark" type="button">
+                  <span class="theme-swatch theme-swatch-dark"></span>
+                  Dark
+                  <span class="theme-check">&#10003;</span>
+                </button>
+                <button class="theme-option" data-theme="adon-hermon" type="button">
+                  <span class="theme-swatch theme-swatch-adon-hermon"></span>
+                  Adon Hermon
+                  <span class="theme-check">&#10003;</span>
+                </button>
+                <button class="theme-option" data-theme="retro" type="button">
+                  <span class="theme-swatch theme-swatch-retro"></span>
+                  Retro
+                  <span class="theme-check">&#10003;</span>
+                </button>
+              </div>
+            </div>
+          </div>
           <div class="navbar-item">
             <a href="{{ url("admins") }}" class="mr-2">{{ admin.name }}</a>
             <form class="inline" action="{{ url("logout") }}" method="POST">
