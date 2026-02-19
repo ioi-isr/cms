@@ -50,8 +50,8 @@
     gap: 0.3em;
     transition: all 0.2s;
 }
-.button.is-primary,
-.button.is-danger:not(.is-light) {
+.button.is-primary:not(.is-outlined),
+.button.is-danger:not(.is-light):not(.is-outlined) {
     color: var(--bulma-white);
 }
 

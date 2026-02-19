@@ -1126,7 +1126,7 @@ document.addEventListener('click', function(e) {
                                                  function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
                                                  ); }, {icon: 'question'});"
                                         title="Evaluation">
-                                    <svg class="icon is-small"><use href="#icon-evaluate"/></svg> Eval
+                                    <svg class="icon is-small"><use href="#icon-evaluate"/></svg> Evaluate
                                 </button>
                                 <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                                                  'ScoringService', 0,
