@@ -11,55 +11,107 @@
    ========================================================================== */
 
 [data-theme="granny-smith"] {
-    --bulma-primary-h: 95deg;
+    --bulma-primary-h: 101deg;
     --bulma-primary-s: 55%;
-    --bulma-primary-l: 38%;
-    --bulma-link-h: 95;
+    --bulma-primary-l: 42%;
+    --bulma-link-h: 101;
     --bulma-link-s: 55%;
-    --bulma-link-l: 35%;
-    --bulma-info-h: 160;
-    --bulma-info-s: 50%;
-    --bulma-info-l: 45%;
+    --bulma-link-l: 38%;
+    --bulma-info-h: 101;
+    --bulma-info-s: 55%;
+    --bulma-info-l: 42%;
+
+    --bulma-body-background-color: #ffffff;
+    --bulma-scheme-main: #ffffff;
+    --bulma-scheme-main-bis: #fafcf9;
+    --bulma-scheme-main-ter: #f5f8f3;
 }
 
 [data-theme="granny-smith"] #sidebar {
-    --sidebar-bg-dark: #2e5a1e;
-    --sidebar-bg-light: #36681f;
-    --sidebar-border: #4a8a30;
-    --sidebar-text: #d4e8c8;
-    --sidebar-text-light: #e0f0d6;
-    --sidebar-text-bright: #f2f9ee;
-    --sidebar-text-muted: #8ab574;
-    --sidebar-accent: #a0d88a;
-    --sidebar-accent-light: #b8e6a5;
-    --sidebar-slate: #9cc48a;
-    --sidebar-hover-bg: rgba(160, 216, 138, 0.14);
-    --sidebar-hover-border: rgba(160, 216, 138, 0.3);
-    --sidebar-title-hover-bg: rgba(160, 216, 138, 0.18);
-    --sidebar-focus-glow: rgba(120, 190, 90, 0.35);
-    --sidebar-teal: #3d7a24;
+    --sidebar-bg-dark: #EEF3EA;
+    --sidebar-bg-light: #E5EBE0;
+    --sidebar-border: #E5E8E4;
+    --sidebar-text: #3a5a2a;
+    --sidebar-text-light: #2d4a1f;
+    --sidebar-text-bright: #1a3010;
+    --sidebar-text-muted: #8aaa78;
+    --sidebar-accent: #6DC942;
+    --sidebar-accent-light: #5cb835;
+    --sidebar-slate: #6b8a5a;
+    --sidebar-hover-bg: rgba(109, 201, 66, 0.1);
+    --sidebar-hover-border: rgba(109, 201, 66, 0.25);
+    --sidebar-title-hover-bg: rgba(109, 201, 66, 0.12);
+    --sidebar-focus-glow: rgba(109, 201, 66, 0.3);
+    --sidebar-teal: #4a9030;
+}
+
+[data-theme="granny-smith"] #sidebar {
+    background: linear-gradient(180deg, #EEF3EA 0%, #E5EBE0 100%);
+    border-right: 1px solid #E5E8E4;
+}
+
+[data-theme="granny-smith"] #sidebar .sidebar-section-title {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="granny-smith"] #sidebar .sidebar-section-title:hover {
+    background: rgba(109, 201, 66, 0.1);
+    border-color: rgba(109, 201, 66, 0.25);
+}
+
+[data-theme="granny-smith"] #sidebar .sidebar-action-link {
+    background-color: #fff;
+    border-color: #E5E8E4;
+    color: #3a5a2a;
+}
+
+[data-theme="granny-smith"] #sidebar .sidebar-action-link:hover {
+    background-color: #E5EBE0;
+    color: #1a3010;
+    border-color: #8aaa78;
+}
+
+[data-theme="granny-smith"] #sidebar .unread {
+    color: #fff;
+}
+
+[data-theme="granny-smith"] #sidebar .sidebar-badge {
+    color: #fff;
+}
+
+[data-theme="granny-smith"] #sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(109, 201, 66, 0.3);
+}
+
+[data-theme="granny-smith"] #sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(109, 201, 66, 0.5);
+}
+
+[data-theme="granny-smith"] #sidebar {
+    scrollbar-color: rgba(109, 201, 66, 0.3) transparent;
 }
 
 [data-theme="granny-smith"] #admin-navbar {
-    background: linear-gradient(90deg, #3a7024 0%, #4a8a30 100%);
-    border-bottom-color: #4a8a30;
+    background: #EEF3EA;
+    border-bottom-color: #E5E8E4;
 }
 
 [data-theme="granny-smith"] #admin-navbar .navbar-item,
 [data-theme="granny-smith"] #admin-navbar .navbar-link,
 [data-theme="granny-smith"] #admin-navbar .navbar-burger span {
-    color: #e8f5e0;
+    color: #3a5a2a;
 }
 
 [data-theme="granny-smith"] #admin-navbar .navbar-item:hover,
 [data-theme="granny-smith"] #admin-navbar .navbar-link:hover {
-    background-color: rgba(255,255,255,0.12);
-    color: #fff;
+    background-color: rgba(109, 201, 66, 0.12);
+    color: #1a3010;
 }
 
 [data-theme="granny-smith"] #admin-navbar .navbar-dropdown {
     background: #fff;
-    border-top: 2px solid #5a9a3a;
+    border-top: 2px solid #6DC942;
 }
 
 [data-theme="granny-smith"] #admin-navbar .navbar-dropdown .navbar-item {
@@ -67,7 +119,7 @@
 }
 
 [data-theme="granny-smith"] #admin-navbar .navbar-dropdown .navbar-item:hover {
-    background-color: #eaf5e4;
+    background-color: #EEF3EA;
     color: #2e5a1e;
 }
 
