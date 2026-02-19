@@ -264,10 +264,11 @@ class TrainingDaysHandler(ContestHandler):
             td_contest = training_day.contest
 
             if td_contest is None:
-                past_trainings.append(self._build_past_training_info(
-                    training_day, student, participation, archived_rankings_map,
-                    task_by_id
-                ))
+                past_trainings.append(
+                    self._build_past_training_info(
+                        training_day, participation, archived_rankings_map, task_by_id
+                    )
+                )
                 continue
 
             timing_info = get_training_day_timing_info(
@@ -315,7 +316,6 @@ class TrainingDaysHandler(ContestHandler):
     def _build_past_training_info(
         self,
         training_day,
-        student: Student,
         participation: Participation,
         archived_rankings_map: dict,
         task_by_id: dict[int, Task],
@@ -571,6 +571,9 @@ class ScoreboardDataHandler(ContestHandler):
         scoreboard_entries = []
         for ranking in tag_rankings:
             task_scores = ranking.task_scores or {}
+            # Note: accessible_tasks contains only viewer-visible tasks, but total_score
+            # sums ALL task_scores from ranking.task_scores, so "Total" may not equal
+            # sum of visible columns (tag_rankings may have scores for hidden tasks)
             total_score = sum(task_scores.values())
             task_score_list = []
 
