@@ -380,7 +380,7 @@
 
 @font-face {
     font-family: 'RetroPixel';
-    src: url('https://fonts.gstatic.com/s/pressstart2p/v15/e3t4euO8T-267oIAQAu6jDQyK0nSgPJE4580w.woff2') format('woff2');
+    src: url('https://fonts.gstatic.com/s/pressstart2p/v16/e3t4euO8T-267oIAQAu6jDQyK0nS.ttf') format('truetype');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -426,7 +426,7 @@
 
 [data-theme="retro"] body {
     background-color: #008080;
-    image-rendering: pixelated;
+    image-rendering: pixelated !important;
 }
 
 [data-theme="retro"] #sidebar {
@@ -685,8 +685,51 @@
     font-family: 'Courier New', monospace !important;
 }
 
-[data-theme="retro"] img {
-    image-rendering: pixelated;
+[data-theme="retro"] img,
+[data-theme="retro"] .icon,
+[data-theme="retro"] .fa,
+[data-theme="retro"] .fas,
+[data-theme="retro"] .far,
+[data-theme="retro"] .fab,
+[data-theme="retro"] .material-icons,
+[data-theme="retro"] .glyphicon,
+[data-theme="retro"] svg {
+    image-rendering: pixelated !important;
+    image-rendering: -moz-crisp-edges !important;
+    image-rendering: crisp-edges !important;
+    border-radius: 0 !important;
+}
+
+[data-theme="retro"] .student-avatar,
+[data-theme="retro"] img[alt*="avatar"],
+[data-theme="retro"] img[alt*="picture"],
+[data-theme="retro"] img[alt*="profile"] {
+    border-radius: 0 !important;
+    border: 2px inset #808080;
+}
+
+/* Retro icon styling */
+[data-theme="retro"] .icon,
+[data-theme="retro"] .fa,
+[data-theme="retro"] .fas,
+[data-theme="retro"] .far,
+[data-theme="retro"] .fab,
+[data-theme="retro"] .material-icons,
+[data-theme="retro"] .glyphicon {
+    font-family: 'Courier New', monospace !important;
+    font-style: normal !important;
+    font-weight: bold !important;
+    text-shadow: none !important;
+    transform: none !important;
+    transition: none !important;
+}
+
+[data-theme="retro"] svg {
+    shape-rendering: crispEdges !important;
+}
+
+[data-theme="retro"] svg * {
+    shape-rendering: crispEdges !important;
 }
 
 /* ==========================================================================
