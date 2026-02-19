@@ -1012,6 +1012,7 @@ class GenerateTestcasesHandler(BaseHandler):
 
         input_template = generator.input_filename_template
         output_template = generator.output_filename_template
+        task_time_limit = dataset.time_limit
 
         # Check if we're using a model solution for output generation
         # (only allowed for Batch tasks)
@@ -1094,6 +1095,12 @@ class GenerateTestcasesHandler(BaseHandler):
 
             # Apply resource limits to prevent runaway generators
             set_sandbox_resource_limits(sandbox)
+
+            if task_time_limit is not None:
+                effective_timeout = max(
+                    sandbox.timeout, task_time_limit)
+                sandbox.timeout = effective_timeout
+                sandbox.wallclock_timeout = effective_timeout * 2
 
             # Set stdout/stderr files so they are created during execution
             sandbox.stdout_file = "stdout.txt"

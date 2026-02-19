@@ -193,7 +193,7 @@ CMS.AWSTableUtils.filterTable = function(table_id, search_text) {
     if (!table) {
         return;
     }
-    var rows = table.querySelectorAll("tbody > tr");
+    var rows = table.querySelectorAll(":scope > tbody > tr");
     var search_lower = search_text.toLowerCase().trim();
 
     rows.forEach(function(row) {
@@ -204,11 +204,11 @@ CMS.AWSTableUtils.filterTable = function(table_id, search_text) {
         var text = "";
         var cells = row.querySelectorAll(":scope > td");
         cells.forEach(function (td) {
-            var nested = td.querySelectorAll("table");
-            if (nested.length > 0) {
+            if (td.querySelector("table")) {
                 var clone = td.cloneNode(true);
-                clone.querySelectorAll("table").forEach(function (t) {
-                    t.remove();
+                var nestedTables = clone.querySelectorAll("table");
+                nestedTables.forEach(function (nested) {
+                    nested.remove();
                 });
                 text += clone.textContent + " ";
             } else {
