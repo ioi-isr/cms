@@ -37,6 +37,9 @@ from cms.server.util import (
 )
 from .contest import ContestHandler
 
+# Constant for universal scoreboard access
+EVERYONE_TAG = "__everyone__"
+
 
 def get_training_day_timing_info(
     sql_session,
@@ -373,29 +376,32 @@ class TrainingDaysHandler(ContestHandler):
         eligible_scoreboards = []
         scoreboard_sharing = training_day.scoreboard_sharing or {}
         if scoreboard_sharing:
-            # Check for "__everyone__" option first - available to all students with ranking
-            if "__everyone__" in scoreboard_sharing and archived_ranking:
-                settings = scoreboard_sharing["__everyone__"]
-                eligible_scoreboards.append({
-                    "tag": "__everyone__",
-                    "display_name": "Everyone",
-                    "top_names": settings.get("top_names", 5),
-                    "top_to_show": settings.get("top_to_show", "all"),
-                })
+            # Check for universal access first - available to all students with ranking
+            if EVERYONE_TAG in scoreboard_sharing and archived_ranking:
+                settings = scoreboard_sharing[EVERYONE_TAG]
+                eligible_scoreboards.append(
+                    {
+                        "tag": EVERYONE_TAG,
+                        "display_name": "Everyone",
+                        "top_names": settings.get("top_names", 5),
+                        "top_to_show": settings.get("top_to_show", "all"),
+                    }
+                )
             # Then check tag-specific scoreboards
             if archived_ranking and archived_ranking.student_tags:
-                student_tags_during_training = set(archived_ranking.student_tags)
-                for tag in scoreboard_sharing.keys():
-                    if tag == "__everyone__":
-                        continue
-                    if tag in student_tags_during_training:
-                        settings = scoreboard_sharing[tag]
-                        eligible_scoreboards.append({
+                available_tags = (
+                    set(archived_ranking.student_tags) - {EVERYONE_TAG}
+                ) & set(scoreboard_sharing.keys())
+                for tag in available_tags:
+                    settings = scoreboard_sharing[tag]
+                    eligible_scoreboards.append(
+                        {
                             "tag": tag,
                             "display_name": tag,
                             "top_names": settings.get("top_names", 5),
                             "top_to_show": settings.get("top_to_show", "all"),
-                        })
+                        }
+                    )
 
         return {
             "training_day": training_day,
@@ -417,7 +423,7 @@ class ScoreboardDataHandler(ContestHandler):
     appropriate anonymization based on the top_names setting.
 
     Supports:
-    - "__everyone__" tag for sharing with all students
+    - EVERYONE_TAG constant for sharing with all students
     - "top_to_show" to limit how many students are displayed
     - "top_names" to control how many show full names (others show "#rank")
     - Tie handling: students with same score get same rank
@@ -515,10 +521,10 @@ class ScoreboardDataHandler(ContestHandler):
         )
 
         # Check eligibility based on tag
-        is_everyone = tag == "__everyone__"
+        is_everyone = tag == EVERYONE_TAG
 
         if is_everyone:
-            # For "__everyone__", any student with a ranking can view
+            # For universal access, any student with a ranking can view
             student_archived_ranking = next(
                 (r for r in all_rankings if r.student_id == student.id), None
             )
@@ -658,14 +664,16 @@ class ScoreboardDataHandler(ContestHandler):
             for task_id_str, task_data in sorted_accessible_tasks
         ]
 
-        self.write({
-            "success": True,
-            "training_day_name": training_day.name,
-            "tag": tag if tag != "__everyone__" else "Everyone",
-            "top_names": top_names,
-            "top_to_show": top_to_show,
-            "total_students": total_students,
-            "tasks": tasks_list,
-            "scoreboard": entries_to_show,
-            "current_student_id": student.id,
-        })
+        self.write(
+            {
+                "success": True,
+                "training_day_name": training_day.name,
+                "tag": tag if tag != EVERYONE_TAG else "Everyone",
+                "top_names": top_names,
+                "top_to_show": top_to_show,
+                "total_students": total_students,
+                "tasks": tasks_list,
+                "scoreboard": entries_to_show,
+                "current_student_id": student.id,
+            }
+        )
