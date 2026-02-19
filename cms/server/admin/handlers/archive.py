@@ -253,6 +253,11 @@ class ArchiveTrainingDayHandler(BaseHandler):
             # Archive ranking data for each student
             self._archive_ranking_data(training_day, contest)
 
+            # Reset submission limits on all tasks assigned to this training day
+            for task in training_day.tasks:
+                task.max_submission_number = None
+                task.min_submission_interval = None
+
             # Delete the contest (this will cascade delete participations)
             self.sql_session.delete(contest)
 
