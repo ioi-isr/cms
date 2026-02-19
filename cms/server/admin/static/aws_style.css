@@ -2070,6 +2070,311 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* ==========================================================================
+   Top Navbar
+   ========================================================================== */
+
+#admin-navbar {
+    z-index: 40;
+    background: var(--bulma-scheme-main) !important;
+    border-bottom: 1px solid var(--bulma-border-weak);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+#admin-navbar .navbar-item,
+#admin-navbar .navbar-link {
+    color: var(--bulma-text);
+    font-size: 0.88rem;
+    gap: 0;
+}
+
+#admin-navbar .navbar-item:hover,
+#admin-navbar .navbar-link:hover {
+    background-color: var(--bulma-scheme-main-bis) !important;
+    color: var(--bulma-primary);
+}
+
+#admin-navbar .navbar-item svg.icon {
+    color: var(--bulma-text-weak);
+    flex-shrink: 0;
+}
+
+#admin-navbar .navbar-item:hover svg.icon {
+    color: var(--bulma-primary);
+}
+
+#admin-navbar .navbar-context {
+    font-size: 0.95rem;
+    color: var(--bulma-text-strong) !important;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#sidebar-toggle {
+    cursor: pointer;
+}
+
+#sidebar-toggle svg {
+    transition: color 0.2s;
+}
+
+#sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 30;
+}
+
+/* Layout adjustments for navbar */
+body.has-navbar #sidebar {
+    top: 3.25rem;
+    height: calc(100% - 3.25rem);
+}
+
+body.has-navbar #core {
+    padding-top: 3.25rem;
+}
+
+body.has-navbar #border {
+    top: 3.25rem;
+    height: calc(100% - 3.25rem);
+}
+
+/* ==========================================================================
+   Sidebar Collapsed State (icon-only mode)
+   ========================================================================== */
+
+#sidebar {
+    transition: width 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar-section-icon {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    color: var(--sidebar-slate);
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.sidebar-section-icon:hover {
+    color: var(--sidebar-accent-light) !important;
+    background-color: var(--sidebar-hover-bg);
+}
+
+body.sidebar-collapsed #sidebar {
+    width: 48px;
+    padding: 0 4px;
+    overflow-x: hidden;
+}
+
+body.sidebar-collapsed #sidebar_header {
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .sidebar-section-body {
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .sidebar-link-group {
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .sidebar-breadcrumb {
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .cr_notice {
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .secret_notice,
+body.sidebar-collapsed #sidebar .notice-pending {
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .hr {
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .side_footer {
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .menu_link {
+    display: none;
+}
+
+body.sidebar-collapsed #sidebar .sidebar-badge-container {
+    display: none;
+}
+
+body.sidebar-collapsed .sidebar-section-icon {
+    display: inline-flex;
+}
+
+body.sidebar-collapsed .sidebar-section-title {
+    justify-content: center;
+    padding: 6px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    margin: 4px 0;
+}
+
+body.sidebar-collapsed .sidebar-section-title:hover {
+    background: var(--sidebar-hover-bg);
+    border: none;
+    box-shadow: none;
+}
+
+body.sidebar-collapsed .sidebar-section {
+    border-top: none;
+    margin-bottom: 4px;
+    padding-top: 0;
+}
+
+body.sidebar-collapsed .menu_entry {
+    justify-content: center;
+    padding: 8px 4px;
+}
+
+body.sidebar-collapsed .menu-icon {
+    margin: 0;
+}
+
+body.sidebar-collapsed .menu-icon + .menu_link {
+    margin-left: 0;
+}
+
+body.sidebar-collapsed .menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+body.sidebar-collapsed #core {
+    margin-left: 60px;
+}
+
+body.sidebar-collapsed #border {
+    margin-left: 58px;
+}
+
+/* ==========================================================================
+   Mobile Responsive
+   ========================================================================== */
+
+@media screen and (max-width: 1023px) {
+    #sidebar {
+        transform: translateX(-100%);
+        z-index: 35;
+        transition: transform 0.3s ease;
+    }
+
+    body.sidebar-mobile-open #sidebar {
+        transform: translateX(0);
+    }
+
+    body.sidebar-mobile-open #sidebar-backdrop {
+        display: block;
+    }
+
+    body.sidebar-collapsed #sidebar,
+    body:not(.sidebar-collapsed) #sidebar {
+        width: 234px;
+        padding: 0 1em;
+    }
+
+    body.sidebar-collapsed #sidebar_header,
+    body.sidebar-collapsed #sidebar .sidebar-section-body,
+    body.sidebar-collapsed #sidebar .sidebar-link-group,
+    body.sidebar-collapsed #sidebar .sidebar-breadcrumb,
+    body.sidebar-collapsed #sidebar .cr_notice,
+    body.sidebar-collapsed #sidebar .secret_notice,
+    body.sidebar-collapsed #sidebar .notice-pending,
+    body.sidebar-collapsed #sidebar .hr,
+    body.sidebar-collapsed #sidebar .side_footer,
+    body.sidebar-collapsed #sidebar .menu_link,
+    body.sidebar-collapsed #sidebar .sidebar-badge-container {
+        display: revert;
+    }
+
+    body.sidebar-collapsed .sidebar-section-icon {
+        display: none;
+    }
+
+    body.sidebar-collapsed .sidebar-section-title {
+        justify-content: space-between;
+        padding: 7px 12px 6px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        margin: 12px 0 6px 0;
+    }
+
+    body.sidebar-collapsed .sidebar-link-group {
+        display: flex;
+    }
+
+    body.sidebar-collapsed .sidebar-section-body {
+        display: block;
+    }
+
+    body.sidebar-collapsed .sidebar-section {
+        border-top: 1px solid rgba(148, 163, 184, 0.08);
+        margin-bottom: 12px;
+        padding-top: 6px;
+    }
+
+    body.sidebar-collapsed .menu_entry {
+        justify-content: flex-start;
+        padding: 8px 12px;
+    }
+
+    body.sidebar-collapsed .menu_link {
+        display: block;
+    }
+
+    body.sidebar-collapsed .menu-icon + .menu_link {
+        margin-left: 12px;
+    }
+
+    body.sidebar-collapsed .menu {
+        display: block;
+    }
+
+    #core {
+        margin-left: 0 !important;
+    }
+
+    #border {
+        display: none;
+    }
+
+    body.sidebar-collapsed #core {
+        margin-left: 0 !important;
+    }
+
+    body.sidebar-collapsed #border {
+        display: none;
+    }
+}
+
+@media screen and (min-width: 1024px) {
+    #sidebar-backdrop {
+        display: none !important;
+    }
+}
+
+/* ==========================================================================
    Dark Mode Overrides
    ========================================================================== */
 
