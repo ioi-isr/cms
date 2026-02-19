@@ -606,11 +606,21 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
             td_list,
         )
 
-        first_weight_pct = float(self.get_argument("first_training_weight", "100"))
-        home_factor = float(self.get_argument("home_factor", "1.0"))
-        recorded_home_factor = float(
-            self.get_argument("recorded_home_factor", "1.0")
-        )
+        def safe_float(arg_name, default_value):
+            try:
+                return float(self.get_argument(arg_name, str(default_value)))
+            except (ValueError, TypeError):
+                return default_value
+
+        def safe_int(arg_name, default_value):
+            try:
+                return int(self.get_argument(arg_name, str(default_value)))
+            except (ValueError, TypeError):
+                return default_value
+
+        first_weight_pct = safe_float("first_training_weight", 100)
+        home_factor = safe_float("home_factor", 1.0)
+        recorded_home_factor = safe_float("recorded_home_factor", 1.0)
 
         type_pcts_raw = self.get_argument("type_percentages", "{}")
         try:
@@ -629,11 +639,11 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
             type_assignments = {}
 
         norm_method = self.get_argument("normalization_method", "none")
-        top_x = max(1, int(self.get_argument("top_x", "10")))
+        top_x = max(1, safe_int("top_x", 10))
         normalize_variability = self.get_argument(
             "normalize_variability", "off"
         ) == "on"
-        num_outliers = int(self.get_argument("num_outliers", "0"))
+        num_outliers = max(0, safe_int("num_outliers", 0))
 
         base_weights = calculate_time_decay_weights(td_list, first_weight_pct)
         student_weights = apply_location_weights(
