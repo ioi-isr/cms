@@ -1,3 +1,4 @@
+{% from "macro/modal.html" import modal_header %}
 {% extends "base.html" %}
 
 {% block core %}
@@ -90,7 +91,7 @@
                                 {% elif result.status == "already_exists" %}
                                 <span class="source-badge badge-archived">Already in program</span>
                                 {% else %}
-                                <span class="source-badge" style="background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;">Not found</span>
+                                <span class="source-badge badge-danger">Not found</span>
                                 {% endif %}
                             </div>
                         </td>
@@ -283,10 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal" id="modal-bulk-assign" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1">
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="bulkAssignTitle">
-            <header class="modal__header">
-                <h2 class="modal__title" id="bulkAssignTitle">Bulk Assign Task</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
+            {{ modal_header("Bulk Assign Task", "bulkAssignTitle") }}
             <form action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
                 {{ xsrf_form_html|safe }}
                 <main class="modal__content">
@@ -294,20 +292,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         Assign a task to all students who have the specified tag.
                         Students who already have the task assigned will be skipped.
                     </p>
-                    <div class="bulk-assign-row">
-                        <div class="modal__form-group">
-                            <label for="bulkAssignTaskSelect">Task</label>
-                            <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
-                                <option value="" selected disabled hidden>Select a task...</option>
-                                {% for task in (all_tasks or []) %}
-                                <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="modal__form-group">
-                            <label for="bulkAssignTagInput">Student Tag</label>
-                            <input type="text" name="tag" id="bulkAssignTagInput" placeholder="Select a student tag..." />
-                        </div>
+                    <div class="modal__form-group">
+                        <label for="bulkAssignTaskSelect">Task</label>
+                        <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
+                            <option value="" selected disabled hidden>Select a task...</option>
+                            {% for task in (all_tasks or []) %}
+                            <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="modal__form-group">
+                        <label for="bulkAssignTagInput">Student Tag</label>
+                        <input type="text" name="tag" id="bulkAssignTagInput" placeholder="Select a student tag..." />
                     </div>
                 </main>
                 <footer class="modal__footer">

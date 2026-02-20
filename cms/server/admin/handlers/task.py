@@ -686,7 +686,7 @@ class RemoveTaskHandler(BaseHandler):
             self.service.proxy_service.reinitialize()
 
         # Maybe they'll want to do this again (for another task)
-        self.write("../../tasks")
+        self.redirect(self.url("tasks"))
 
 
 class DefaultSubmissionFormatHandler(BaseHandler):

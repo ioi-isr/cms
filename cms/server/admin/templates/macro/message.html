@@ -42,7 +42,7 @@ redirect_url (str): optional URL to redirect to after editing (passed as hidden 
   </div>
 
   <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
-  <textarea class="announcement_raw_text" style="display:none;">{{ msg.text|e }}</textarea>
+  <textarea class="announcement_raw_text textarea" style="display:none;">{{ msg.text|e }}</textarea>
 
   {{ card.card_footer(msg.admin.name if msg.admin is not none else "<unknown>") }}
 

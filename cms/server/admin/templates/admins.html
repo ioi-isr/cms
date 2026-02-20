@@ -1,3 +1,4 @@
+{% from "macro/modal.html" import modal_header, modal_footer %}
 {% extends "base.html" %}
 
 {% block core %}
@@ -17,7 +18,7 @@
     </div>
 
     <div class="table-container">
-        <table class="table is-bordered is-striped is-hoverable admins-table">
+        <table class="table is-bordered is-striped is-hoverable">
             <thead>
                 <tr>
                     <th class="has-text-left">Username</th>
@@ -32,7 +33,7 @@
             </thead>
             <tbody>
                 {% for a in admins %}
-                <tr {% if not a.enabled %}class="is-disabled-admin"{% endif %}>
+                <tr {% if not a.enabled %}style="opacity: 0.6"{% endif %}>
                     <td>
                         <span class="has-text-weight-semibold is-size-6">{{ a.username }}</span>
                         {% if a.id == admin.id %}
@@ -100,10 +101,7 @@
 <div class="modal modal--medium" id="modal-add-admin" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1" data-micromodal-close>
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-admin-title">
-            <header class="modal__header">
-                <h2 class="modal__title" id="modal-add-admin-title">New Admin</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
+            {{ modal_header("New Admin", "modal-add-admin-title") }}
             <form id="add-admin-form" enctype="multipart/form-data"
                   action="{{ url("admins", "add") }}" method="POST">
                 {{ xsrf_form_html|safe }}
@@ -112,12 +110,7 @@
                     {% include "fragments/admin_form.html" %}
                     {% endwith %}
                 </main>
-                <footer class="modal__footer">
-                    <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                    <button type="submit" class="button is-primary">
-                        <span>Create Admin</span>
-                    </button>
-                </footer>
+                {{ modal_footer("Create Admin") }}
             </form>
         </div>
     </div>
@@ -129,10 +122,7 @@
     <div class="modal__overlay" tabindex="-1" data-micromodal-close>
         <div class="modal__container" role="dialog" aria-modal="true"
              aria-labelledby="modal-edit-admin-title-{{ a.id }}">
-            <header class="modal__header">
-                <h2 class="modal__title" id="modal-edit-admin-title-{{ a.id }}">Edit Admin: {{ a.username }}</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
+            {{ modal_header("Edit Admin: " ~ a.username, "modal-edit-admin-title-" ~ a.id) }}
             <form enctype="multipart/form-data"
                   action="{{ url("admin", a.id) }}" method="POST">
                 {{ xsrf_form_html|safe }}
@@ -141,13 +131,7 @@
                     {% include "fragments/admin_form.html" %}
                     {% endwith %}
                 </main>
-                <footer class="modal__footer">
-                    <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                    <button type="submit" class="button is-primary">
-                        <svg class="icon is-small"><use href="#icon-check"/></svg>
-                        <span>Save Changes</span>
-                    </button>
-                </footer>
+                {{ modal_footer("Save Changes", submit_icon="#icon-check") }}
             </form>
         </div>
     </div>

@@ -3,13 +3,11 @@
 
 {% if admin is defined and admin.permission_all %}
 {% from "macro/bulma_file_input.html" import form_field %}
+{% from "macro/modal.html" import modal_header, modal_footer %}
 <div class="modal modal--medium" id="modal-add-folder" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1" data-micromodal-close>
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-folder-title">
-            <header class="modal__header">
-                <h2 class="modal__title" id="modal-add-folder-title">New Folder</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
+            {{ modal_header("New Folder", "modal-add-folder-title") }}
             <form id="add-folder-form" action="{{ url("folders", "add") }}" method="POST">
                 {{ xsrf_form_html|safe }}
                 <main class="modal__content">
@@ -48,10 +46,7 @@
                         </div>
                     </div>
                 </main>
-                <footer class="modal__footer">
-                    <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                    <button type="submit" class="button is-primary"><span>Create Folder</span></button>
-                </footer>
+                {{ modal_footer("Create Folder") }}
             </form>
         </div>
     </div>

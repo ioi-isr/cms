@@ -2,14 +2,12 @@
 <!-- Include this fragment in pages where the "Import Contest" modal is needed -->
 <!-- Required context: admin, url, xsrf_form_html, training_program, available_contests -->
 
+{% from "macro/modal.html" import modal_header %}
 {% if admin is defined and admin.permission_all and training_program is defined %}
 <div class="modal" id="modal-import-contest" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1">
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-import-contest-title">
-            <header class="modal__header">
-                <h2 class="modal__title" id="modal-import-contest-title">Import Contest as Training Day</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
+            {{ modal_header("Import Contest as Training Day", "modal-import-contest-title") }}
             <form action="{{ url("training_program", training_program.id, "import_contest_as_training_day") }}" method="POST" name="import_contest_as_td" id="import-contest-form">
                 {{ xsrf_form_html|safe }}
                 <main class="modal__content">

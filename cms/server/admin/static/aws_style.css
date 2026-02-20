@@ -53,10 +53,6 @@
     vertical-align: middle;
 }
 
-.admins-table tbody tr.is-disabled-admin {
-    opacity: 0.6;
-}
-
 .button {
     height: auto;
     gap: 0.3em;
@@ -72,72 +68,11 @@
     display: inline-block;
 }
 
-.ts-wrapper {
-    width: 240px;
-    display: inline-block;
-}
-
-.ts-wrapper .ts-control {
-    width: 240px;
-}
-
-code {
-    font-family: monospace;
-}
-
 pre {
     border-left: 2px solid var(--bulma-border);
     padding-left: 0.25em;
     font-family: monospace;
     min-height: 1.5em;
-}
-
-a {
-    cursor: pointer;
-}
-
-strong, .bold {
-    font-weight: bold;
-}
-
-em {
-    font-style: italic;
-}
-
-.login_error {
-    color: var(--bulma-danger);
-}
-
-a, a:visited {
-    color: var(--bulma-link);
-}
-
-hr {
-    height: 0;
-    border: none;
-    border-top: 1px dashed grey;
-}
-
-.hr {
-    height: 1px;
-    background: linear-gradient(to right, hsl(var(--bulma-scheme-h), var(--bulma-scheme-s), var(--bulma-border-l), 0.5), hsl(var(--bulma-scheme-h), var(--bulma-scheme-s), var(--bulma-border-l), 0.2), transparent);
-    margin: 0.75em 0;
-    border: none;
-    clear: both;
-}
-
-input, textarea {
-    border: 1px solid var(--bulma-border);
-    border-radius: 4px;
-}
-
-table input[type=text], table textarea {
-    min-width: 25em;
-    width: 100%;
-}
-
-input:focus, textarea:focus {
-    border: 1px solid var(--bulma-warning-75);
 }
 
 .inline {
@@ -803,15 +738,6 @@ th .column-sort {
   text-decoration: underline;
 }
 
-.markdown_input {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-
-
-
-
 /* NOTIFICATIONS */
 
 #notifications {
@@ -992,79 +918,6 @@ body.admin .validator-badge--warning {
 }
 body.admin .validator-badge--warning::before {
     display: none;
-}
-
-/* Button group (connected buttons) */
-body.admin .btn-group {
-    display: inline-flex;
-    border-radius: 6px;
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-body.admin .btn-group > button,
-body.admin .btn-group > a {
-    padding: 4px 10px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    background: var(--tp-bg-white);
-    border: 1px solid var(--tp-border);
-    color: var(--tp-text-secondary);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: background 0.15s, color 0.15s;
-    margin-left: -1px;
-    line-height: 1.4;
-}
-
-body.admin .btn-group > button:first-child,
-body.admin .btn-group > a:first-child {
-    border-radius: 6px 0 0 6px;
-    margin-left: 0;
-}
-
-body.admin .btn-group > button:last-child,
-body.admin .btn-group > a:last-child {
-    border-radius: 0 6px 6px 0;
-}
-
-body.admin .btn-group > button:hover,
-body.admin .btn-group > a:hover {
-    background: var(--tp-bg-secondary);
-    color: var(--tp-primary);
-    z-index: 1;
-}
-
-body.admin .btn-group > .btn-icon-only {
-    background: var(--tp-bg-white);
-    border: 1px solid var(--tp-border);
-    border-radius: 0;
-    padding: 4px 8px;
-    color: var(--tp-text-secondary) !important;
-    width: auto;
-    height: auto;
-    margin-left: -1px;
-}
-
-body.admin .btn-group > .btn-icon-only:first-child {
-    border-radius: 6px 0 0 6px;
-    margin-left: 0;
-}
-
-body.admin .btn-group > .btn-icon-only:last-child {
-    border-radius: 0 6px 6px 0;
-}
-
-body.admin .btn-group > .btn-icon-only:hover {
-    background: var(--tp-bg-secondary) !important;
-    color: var(--tp-primary) !important;
-}
-
-body.admin .btn-group > .btn-icon-only:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 
 /* Status badge (pill) */
@@ -1679,47 +1532,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     flex-shrink: 0;
 }
 
-.question-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 16px;
-    border-radius: 8px;
-    font-size: 0.88em;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
-    white-space: nowrap;
-    line-height: 1.4;
-}
-
-.question-btn-outline {
-    background: var(--bulma-scheme-main);
-    border: 1px solid var(--tp-border-dark);
-    color: var(--tp-text-secondary);
-}
-
-.question-btn-outline:hover {
-    background-color: var(--tp-bg-gray);
-    border-color: var(--bulma-border);
-}
-
-.question-btn-primary {
-    background-color: var(--tp-primary);
-    border: 1px solid var(--tp-primary);
-    color: #fff;
-}
-
-.question-btn-primary:hover {
-    background-color: var(--tp-primary-hover);
-    border-color: var(--tp-primary-hover);
-}
-
-.question-btn .icon {
-    flex-shrink: 0;
-}
-
 .question-status-badge {
     display: inline-block;
     padding: 3px 12px;
@@ -1931,53 +1743,10 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     font-size: 0.92em;
 }
 
-.question-card .reply_question_form .markdown_input,
-.tp-card .markdown_input {
-    min-height: 120px;
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--tp-border);
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 1em;
-    resize: vertical;
-    box-sizing: border-box;
-}
-
-.question-card .reply_question_form .markdown_input:focus,
-.tp-card .markdown_input:focus {
-    border-color: var(--tp-primary);
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.15);
-}
-
 /* Announcement visibility tags - make them twice as wide */
 .announcement-visibility-tags {
     width: 240px !important;
     box-sizing: border-box;
-}
-.question-reply-form-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 14px;
-    gap: 12px;
-}
-
-.question-reply-form-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.question-reply-form-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.question-btn-preview {
-    font-size: 0.88em;
 }
 
 /* ANNOUNCEMENTS PAGE */

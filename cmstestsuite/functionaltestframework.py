@@ -169,7 +169,7 @@ class FunctionalTestFramework:
         resp = self.admin_req('folders/add', args=args)
         if not resp.url or not resp.url.endswith('/folders'):
             raise TestException("Unable to create folder.")
-        m = re.search(r'<a class="bold" href="[^"]*/folder/(\d+)">\s*' + re.escape(name) + r'\s*</a>', resp.text)
+        m = re.search(r'<a class="has-text-weight-semibold" href="[^"]*/folder/(\d+)">\s*' + re.escape(name) + r'\s*</a>', resp.text)
         if not m:
             raise TestException("Unable to find created folder ID.")
         return int(m.group(1))

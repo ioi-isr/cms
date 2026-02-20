@@ -2,6 +2,7 @@
 {% import "fragments/model_solution_fields.html" as ms_fields with context %}
 {% import "fragments/dataset_form_fields.html" as ds_fields with context %}
 {% from "macro/bulma_file_input.html" import bulma_file_input, form_field %}
+{% from "macro/modal.html" import modal_header, modal_footer %}
 
 {% extends "base.html" %}
 
@@ -1096,7 +1097,7 @@ document.addEventListener('click', function(e) {
             <!-- Sub-tab: Model Solutions -->
             <div class="dataset-subtab-content" id="ds-models-{{ dataset.id }}">
                 <div class="tp-card">
-                    <div class="tp-card-header-modern" style="flex-wrap: wrap; gap: 12px;">
+                    <div class="tp-card-header-modern is-flex-wrap-wrap">
                         <div class="tp-card-header-icon">
                             <svg class="icon"><use href="#icon-file-code"/></svg>
                         </div>
@@ -1104,11 +1105,11 @@ document.addEventListener('click', function(e) {
                             Model Solutions
                             <span class="tp-form-info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.">?</span>
                         </h3>
-                        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                        <div class="ml-auto is-flex is-align-items-center is-flex-wrap-wrap">
                             {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
-                            <span style="font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Reevaluate All:</span>
-                            <div class="btn-group">
-                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                            <span class="is-size-7 has-text-weight-semibold is-uppercase has-text-weak mr-2">Reevaluate All:</span>
+                            <div class="buttons has-addons mb-0 mr-2">
+                                <button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                                                  'EvaluationService', 0,
                                                  'invalidate_model_solutions', {
                                                  'dataset_id': {{ dataset.id }},
@@ -1116,9 +1117,9 @@ document.addEventListener('click', function(e) {
                                                  function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
                                                  ); }, {icon: 'question'});"
                                         title="Compilation">
-                                    <svg class="icon is-small"><use href="#icon-compile"/></svg> Compile
+                                    <svg class="icon is-small"><use href="#icon-compile"/></svg> <span>Compile</span>
                                 </button>
-                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                <button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                                                  'EvaluationService', 0,
                                                  'invalidate_model_solutions', {
                                                  'dataset_id': {{ dataset.id }},
@@ -1126,16 +1127,16 @@ document.addEventListener('click', function(e) {
                                                  function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
                                                  ); }, {icon: 'question'});"
                                         title="Evaluation">
-                                    <svg class="icon is-small"><use href="#icon-evaluate"/></svg> Evaluate
+                                    <svg class="icon is-small"><use href="#icon-evaluate"/></svg> <span>Evaluate</span>
                                 </button>
-                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                <button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                                                  'ScoringService', 0,
                                                  'invalidate_model_solutions', {
                                                  'dataset_id': {{ dataset.id }}},
                                                  function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
                                                  ); }, {icon: 'question'});"
                                         title="Score">
-                                    <svg class="icon is-small"><use href="#icon-score-type"/></svg> Score
+                                    <svg class="icon is-small"><use href="#icon-score-type"/></svg> <span>Score</span>
                                 </button>
                             </div>
                             {% endif %}
@@ -1560,10 +1561,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-statement" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1">
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-statement-title">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-statement-title">Add Statement</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Statement", "modal-add-statement-title") }}
                 <form action="{{ url("task", task.id, "statements", "add") }}" method="POST" enctype="multipart/form-data">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1584,10 +1582,7 @@ document.addEventListener('click', function(e) {
                             {{ bulma_file_input("stmt-source", "source", ".doc,.docx,.tex", button_text="Choose source file…") }}
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                        <button type="submit" class="button is-primary"><span>Upload Statement</span></button>
-                    </footer>
+                    {{ modal_footer("Upload Statement") }}
                 </form>
             </div>
         </div>
@@ -1601,10 +1596,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-edit-generator-{{ generator.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-edit-generator-{{ generator.id }}-title" style="max-width: 520px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-edit-generator-{{ generator.id }}-title">Edit Generator</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Edit Generator", "modal-edit-generator-" ~ generator.id ~ "-title") }}
                 <form method="POST" action="{{ url("dataset", dataset.id, "generator", generator.id, "edit") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1623,10 +1615,7 @@ document.addEventListener('click', function(e) {
                             <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                        <button type="submit" class="button is-primary"><span>Save</span></button>
-                    </footer>
+                    {{ modal_footer("Save") }}
                 </form>
             </div>
         </div>
@@ -1642,10 +1631,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-generate-tc-{{ generator.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-generate-tc-{{ generator.id }}-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-generate-tc-{{ generator.id }}-title">Generate Testcases</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Generate Testcases", "modal-generate-tc-" ~ generator.id ~ "-title") }}
                 <form method="POST" action="{{ url("dataset", dataset.id, "generator", generator.id, "generate") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1711,10 +1697,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-testcase-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-testcase-{{ dataset.id }}-title" style="max-width: 520px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-testcase-{{ dataset.id }}-title">Add Testcase</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Testcase", "modal-add-testcase-" ~ dataset.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "testcases", "add") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1731,10 +1714,7 @@ document.addEventListener('click', function(e) {
                             {{ bulma_file_input("tc-" ~ dataset.id ~ "-output", "output", "", required=true, button_text="Choose output file…") }}
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                        <button type="submit" class="button is-primary"><span>Upload Testcase</span></button>
-                    </footer>
+                    {{ modal_footer("Upload Testcase") }}
                 </form>
             </div>
         </div>
@@ -1748,10 +1728,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-testcases-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-testcases-{{ dataset.id }}-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-testcases-{{ dataset.id }}-title">Add Multiple Testcases</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Multiple Testcases", "modal-add-testcases-" ~ dataset.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "testcases", "add_multiple") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1781,10 +1758,7 @@ document.addEventListener('click', function(e) {
                             </label>
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                        <button type="submit" class="button is-primary"><span>Upload</span></button>
-                    </footer>
+                    {{ modal_footer("Upload") }}
                 </form>
             </div>
         </div>
@@ -1798,10 +1772,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-generator-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-generator-{{ dataset.id }}-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-generator-{{ dataset.id }}-title">Add Generator</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Generator", "modal-add-generator-" ~ dataset.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "generators", "add") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1830,10 +1801,7 @@ document.addEventListener('click', function(e) {
                             <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                        <button type="submit" class="button is-primary"><span>Upload Generator</span></button>
-                    </footer>
+                    {{ modal_footer("Upload Generator") }}
                 </form>
             </div>
         </div>
@@ -1847,10 +1815,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-ms-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-ms-{{ dataset.id }}-title" style="max-width: 640px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-ms-{{ dataset.id }}-title">Add Model Solution</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Model Solution", "modal-ms-" ~ dataset.id ~ "-title") }}
                 <form id="ms-form-{{ dataset.id }}" method="POST" enctype="multipart/form-data">
                     {{ xsrf_form_html|safe }}
                     <input type="hidden" name="_ms_mode" value="add" />
@@ -1976,10 +1941,7 @@ document.addEventListener('click', function(e) {
                         </div>
                         {% endif %}
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                        <button type="submit" class="button is-primary" id="ms-{{ dataset.id }}-submit"><span>Add Model Solution</span></button>
-                    </footer>
+                    {{ modal_footer("Add Model Solution", submit_id="ms-" ~ dataset.id ~ "-submit") }}
                 </form>
             </div>
         </div>
@@ -1994,10 +1956,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-replace-ms-{{ meta.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-replace-ms-{{ meta.id }}-title" style="max-width: 520px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-replace-ms-{{ meta.id }}-title">Replace Model Solution</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Replace Model Solution", "modal-replace-ms-" ~ meta.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("model_solution", meta.id, "replace") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -2008,10 +1967,7 @@ document.addEventListener('click', function(e) {
                         {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "replace-ms-" ~ meta.id, meta.submission.language if meta.submission else None) }}
                         {{ ms_fields.language_filter_script("#modal-replace-ms-" ~ meta.id ~ " form", allowed_langs, language_required) }}
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                        <button type="submit" class="button is-primary"><span>Replace</span></button>
-                    </footer>
+                    {{ modal_footer("Replace") }}
                 </form>
             </div>
         </div>
@@ -2025,19 +1981,13 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-dataset" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-dataset-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-dataset-title">Create Dataset</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Create Dataset", "modal-add-dataset-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("task", task.id, "add_dataset") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
                         {{ ds_fields.dataset_fields("add-ds", "new", "showNewDatasetTaskType();", dataset=None, TASK_TYPES=TASK_TYPES, SCORE_TYPES=SCORE_TYPES) }}
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                        <button type="submit" class="button is-primary"><span>Create</span></button>
-                    </footer>
+                    {{ modal_footer("Create") }}
                 </form>
             </div>
         </div>
@@ -2050,10 +2000,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-clone-dataset-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-clone-dataset-{{ dataset.id }}-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-clone-dataset-{{ dataset.id }}-title">Clone Dataset</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Clone Dataset", "modal-clone-dataset-" ~ dataset.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "clone") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -2076,10 +2023,7 @@ document.addEventListener('click', function(e) {
                         </div>
                         {% endif %}
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                        <button type="submit" class="button is-primary"><span>Clone</span></button>
-                    </footer>
+                    {{ modal_footer("Clone") }}
                 </form>
             </div>
         </div>

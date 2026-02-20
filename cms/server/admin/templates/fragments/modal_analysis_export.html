@@ -51,13 +51,11 @@
 {% endif %}
 
 
+{% from "macro/modal.html" import modal_header %}
 <div class="modal" id="modal-analysis-export" aria-hidden="true">
   <div class="modal__overlay" tabindex="-1" data-micromodal-close>
     <div class="modal__container modal__container--wide" role="dialog" aria-modal="true" aria-labelledby="modal-analysis-title">
-      <header class="modal__header">
-        <h2 class="modal__title" id="modal-analysis-title">Analysed Export Settings</h2>
-        <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-      </header>
+      {{ modal_header("Analysed Export Settings", "modal-analysis-title") }}
       <form id="analysis-export-form"
             action="{{ url('training_program', training_program.id, 'combined_ranking', 'export_analysed') }}{{ export_query|default('') }}"
             method="POST">

@@ -2,14 +2,12 @@
 <!-- Include this fragment in pages where the "Add Training Program" modal is needed -->
 <!-- Required context: admin, url, xsrf_form_html -->
 
+{% from "macro/modal.html" import modal_header %}
 {% if admin is defined and admin.permission_all %}
 <div class="modal" id="modal-add-program" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1">
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-program-title">
-            <header class="modal__header">
-                <h2 class="modal__title" id="modal-add-program-title">Create Training Program</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
+            {{ modal_header("Create Training Program", "modal-add-program-title") }}
             <form action="{{ url("training_programs", "add") }}" method="POST" name="add_training_program" id="add-program-form">
                 {{ xsrf_form_html|safe }}
                 <main class="modal__content">

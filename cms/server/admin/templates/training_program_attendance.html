@@ -1,3 +1,4 @@
+{% from "macro/modal.html" import modal_header %}
 {% extends "base.html" %}
 {% import 'fragments/info_alert.html' as info_alert %}
 
@@ -219,10 +220,7 @@ AdminTableUtils.initFilterTagify({
 <div class="modal" id="modal-attendance" aria-hidden="true">
   <div class="modal__overlay" tabindex="-1">
     <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-attendance-title">
-      <header class="modal__header">
-        <h2 class="modal__title" id="modal-attendance-title">Edit Attendance</h2>
-        <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-      </header>
+      {{ modal_header("Edit Attendance", "modal-attendance-title") }}
       <main class="modal__content">
         <div class="modal__checkbox-row" id="justified-row">
           <label for="modal-justified">

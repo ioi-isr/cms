@@ -4,25 +4,23 @@
 <!-- Static mode (single program page): training_program, participation_count, submission_count, task_count, training_day_count, training_day_participation_count, training_day_submission_count, other_contests -->
 <!-- Dynamic mode (listing page): other_contests; caller JS populates modal via element IDs before showing -->
 
+{% from "macro/modal.html" import modal_header %}
 {% if admin is defined and admin.permission_all %}
 <div class="modal modal--medium" id="modal-remove-program" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1">
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-remove-program-title">
-            <header class="modal__header modal__header--danger">
-                <h2 class="modal__title" id="modal-remove-program-title">Remove Training Program</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
+            {{ modal_header("Remove Training Program", "modal-remove-program-title", "modal__header--danger") }}
             <main class="modal__content">
                 {{ xsrf_form_html|safe }}
                 <p style="margin-bottom: 16px;">
                     Are you sure you want to remove the training program <strong id="remove-program-name">{% if training_program is defined %}{{ training_program.name }}{% endif %}</strong>?
                 </p>
-                <div class="modal__warning" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
-                    <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">
+                <div class="modal__warning--danger" id="remove-program-stats-box">
+                    <p class="modal__warning-title">
                         <svg class="icon is-small" style="vertical-align: middle;"><use href="#icon-alert-triangle"/></svg>
                         Warning: This action cannot be undone!
                     </p>
-                    <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 0.9rem;" id="remove-program-stats">
+                    <ul id="remove-program-stats">
                         {% if training_program is defined %}
                         <li>{{ participation_count|default(0) }} participation(s) will be deleted</li>
                         <li>{{ submission_count|default(0) }} submission(s) will be deleted</li>
@@ -59,11 +57,11 @@
                                 <span style="display: block; font-size: 0.85rem; color: var(--tp-text-muted);">Tasks will remain in the system but won't belong to any contest</span>
                             </div>
                         </label>
-                        <label style="display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid #fecaca; border-radius: 6px; cursor: pointer; background: #fef2f2;">
+                        <label class="modal__danger-option">
                             <input type="radio" name="action" value="delete_all" style="margin-top: 3px;">
                             <div>
-                                <span style="font-weight: 600; color: #991b1b;">Delete all tasks</span>
-                                <span style="display: block; font-size: 0.85rem; color: #7f1d1d;">Tasks will be permanently deleted from the system</span>
+                                <span class="modal__danger-option-title">Delete all tasks</span>
+                                <span class="modal__danger-option-desc">Tasks will be permanently deleted from the system</span>
                             </div>
                         </label>
                     </div>

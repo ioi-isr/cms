@@ -1,3 +1,4 @@
+{% from "macro/modal.html" import modal_header, modal_footer %}
 {% extends "base.html" %}
 {% import 'macro/delay_request.html' as macro_delay_request with context %}
 
@@ -342,10 +343,7 @@ CMS.AWSFormUtils.initTagify({
 <div class="modal" id="modal-set-delay" aria-hidden="true">
   <div class="modal__overlay" tabindex="-1" data-micromodal-close>
     <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-set-delay-title">
-      <header class="modal__header">
-        <h2 class="modal__title" id="modal-set-delay-title">Set Delay for User</h2>
-        <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-      </header>
+      {{ modal_header("Set Delay for User", "modal-set-delay-title") }}
       <form action="{{ url("contest", contest.id, "delays_and_extra_times", "admin_configure") }}" method="POST">
         {{ xsrf_form_html|safe }}
         <main class="modal__content">
@@ -370,10 +368,7 @@ CMS.AWSFormUtils.initTagify({
             <textarea name="reason" id="reason" rows="2" class="tp-form-input delays-modal-textarea" required placeholder="Brief reason for the delay"></textarea>
           </div>
         </main>
-        <footer class="modal__footer">
-          <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-          <button type="submit" class="button is-primary"><span>Set Delay</span></button>
-        </footer>
+        {{ modal_footer("Set Delay") }}
       </form>
     </div>
   </div>
