@@ -160,7 +160,7 @@ input:focus, textarea:focus {
 /* SIDEBAR LAYOUT */
 
 .sidebar-container {
-    width: 260px;
+    width: 234px !important;
     background: var(--theme-shell-bg);
     border-right: 1px solid var(--theme-shell-border);
     color: var(--sidebar-text);
@@ -177,14 +177,14 @@ input:focus, textarea:focus {
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
 
-/* Keep top navbar and sidebar shell visually in sync. */
-body.admin #admin-navbar {
+/* Keep top navbar and sidebar shell visually in sync (except Retro theme). */
+html:not([data-theme="retro"]) body.admin #admin-navbar {
     background: var(--theme-shell-bg) !important;
     border-bottom: 1px solid var(--theme-shell-border) !important;
 }
 
-body.admin .sidebar-container,
-body.admin #sidebar {
+html:not([data-theme="retro"]) body.admin .sidebar-container,
+html:not([data-theme="retro"]) body.admin #sidebar {
     background: var(--theme-shell-bg) !important;
     border-right: 1px solid var(--theme-shell-border) !important;
 }
