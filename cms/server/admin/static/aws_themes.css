@@ -1,0 +1,759 @@
+/**
+ * CMS Theme System (aws_themes.css)
+ *
+ * Themes are applied via [data-theme="..."] on <html>.
+ * Each theme overrides Bulma CSS variables and sidebar custom properties.
+ * Default (no attribute) = Original IL theme.
+ */
+
+/* ==========================================================================
+   Global Sidebar Section Title Background Styling
+   ========================================================================== */
+
+/* Make sidebar section title cards more subtle across all themes */
+[data-theme] #sidebar .sidebar-section-title,
+[data-theme] .sidebar-container .sidebar-section-title {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Only override specific backgrounds in individual themes below */
+
+/* ==========================================================================
+   1. Granny Smith (green apple theme)
+   ========================================================================== */
+
+[data-theme="granny-smith"] {
+    --bulma-primary-h: 101deg;
+    --bulma-primary-s: 55%;
+    --bulma-primary-l: 42%;
+    --bulma-link-h: 101;
+    --bulma-link-s: 55%;
+    --bulma-link-l: 38%;
+    --bulma-info-h: 101;
+    --bulma-info-s: 55%;
+    --bulma-info-l: 42%;
+
+    --bulma-body-background-color: #ffffff;
+    --bulma-scheme-main: #ffffff;
+    --bulma-scheme-main-bis: #fafcf9;
+    --bulma-scheme-main-ter: #f5f8f3;
+} [data-theme="granny-smith"] #sidebar {
+    --sidebar-bg-dark: #E5E8E4;
+    --sidebar-bg-light: #EEF3EA;
+    --sidebar-border: #E5E8E4;
+    --sidebar-text: #3a5a2a;
+    --sidebar-text-light: #2d4a1f;
+    --sidebar-text-bright: #1a3010;
+    --sidebar-text-muted: #8aaa78;
+    --sidebar-accent: #6DC942;
+    --sidebar-accent-light: #5cb835;
+    --sidebar-slate: #6b8a5a;
+    --sidebar-hover-bg: rgba(109, 201, 66, 0.12);
+    --sidebar-hover-border: rgba(109, 201, 66, 0.25);
+    --sidebar-title-hover-bg: rgba(109, 201, 66, 0.12);
+    --sidebar-focus-glow: rgba(109, 201, 66, 0.3);
+    --sidebar-teal: #4a9030;
+} [data-theme="granny-smith"] #sidebar {
+    background: linear-gradient(180deg, #EEF3EA 0%, #E5EBE0 100%);
+    border-right: 1px solid #E5E8E4;
+    scrollbar-color: rgba(109, 201, 66, 0.3) transparent;
+} [data-theme="granny-smith"] #sidebar .sidebar-section-title:hover {
+    background: rgba(109, 201, 66, 0.1);
+    border-color: rgba(109, 201, 66, 0.25);
+} [data-theme="granny-smith"] #sidebar .sidebar-action-link {
+    background-color: #fff;
+    border-color: #E5E8E4;
+    color: #3a5a2a;
+} [data-theme="granny-smith"] #sidebar .sidebar-action-link:hover {
+    background-color: #E5EBE0;
+    color: #1a3010;
+    border-color: #8aaa78;
+} [data-theme="granny-smith"] #sidebar .unread {
+    color: #fff;
+} [data-theme="granny-smith"] #sidebar .sidebar-badge {
+    color: #fff;
+} [data-theme="granny-smith"] #sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(109, 201, 66, 0.3);
+} [data-theme="granny-smith"] #sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(109, 201, 66, 0.5);
+} [data-theme="granny-smith"] #admin-navbar {
+    border-bottom-color: #E5E8E4;
+} [data-theme="granny-smith"] #admin-navbar .navbar-item, [data-theme="granny-smith"] #admin-navbar .navbar-link, [data-theme="granny-smith"] #admin-navbar .navbar-burger span {
+    color: #3a5a2a;
+} [data-theme="granny-smith"] #admin-navbar .navbar-item:hover, [data-theme="granny-smith"] #admin-navbar .navbar-link:hover {
+    background-color: rgba(109, 201, 66, 0.12);
+    color: #1a3010;
+} [data-theme="granny-smith"] #admin-navbar .navbar-dropdown {
+    background: #fff;
+    border-top: 2px solid #6DC942;
+} [data-theme="granny-smith"] #admin-navbar .navbar-dropdown .navbar-item {
+    color: #333;
+} [data-theme="granny-smith"] #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: #EEF3EA;
+    color: #2d4a1f;
+} [data-theme="granny-smith"] h1, [data-theme="granny-smith"] h2, [data-theme="granny-smith"] .title, [data-theme="granny-smith"] .subtitle, [data-theme="granny-smith"] .is-title-1, [data-theme="granny-smith"] .is-title-2, [data-theme="granny-smith"] #core h1, [data-theme="granny-smith"] #core h2 {
+    color: #637D53 !important;
+} [data-theme="granny-smith"] #sidebar .sidebar-section-title, [data-theme="granny-smith"] #sidebar .section-title, [data-theme="granny-smith"] #sidebar .sidebar-title, [data-theme="granny-smith"] .sidebar-section-title, [data-theme="granny-smith"] .sidebar-title, [data-theme="granny-smith"] #sidebar .sidebar-section-title a, [data-theme="granny-smith"] .sidebar-section-title a, [data-theme="granny-smith"] .sidebar-title a, [data-theme="granny-smith"] #sidebar .sidebar-link-group a, [data-theme="granny-smith"] .sidebar-link-group a, [data-theme="granny-smith"] #sidebar .sidebar-menu a, [data-theme="granny-smith"] .sidebar-menu a, [data-theme="granny-smith"] #sidebar .sidebar-action a, [data-theme="granny-smith"] .sidebar-action a, [data-theme="granny-smith"] #sidebar .sidebar-action-link, [data-theme="granny-smith"] .sidebar-action-link, [data-theme="granny-smith"] #sidebar .sidebar-item a, [data-theme="granny-smith"] .sidebar-item a, [data-theme="granny-smith"] #sidebar .menu a, [data-theme="granny-smith"] .menu a, [data-theme="granny-smith"] #sidebar .menu_entry a, [data-theme="granny-smith"] .menu_entry a, [data-theme="granny-smith"] #sidebar .menu_icon, [data-theme="granny-smith"] .menu_icon, [data-theme="granny-smith"] #sidebar .menu_link, [data-theme="granny-smith"] .menu_link {
+    color: #6DC942 !important;
+}
+
+/* Main Administration title should be darker */ [data-theme="granny-smith"] #sidebar .sidebar-title, [data-theme="granny-smith"] .sidebar-title, [data-theme="granny-smith"] #sidebar .sidebar-title a, [data-theme="granny-smith"] .sidebar-title a {
+    color: #637D53 !important;
+}
+
+/* ==========================================================================
+   2. Pink Lady (pink/girly theme)
+   ========================================================================== */
+
+[data-theme="pink-lady"] {
+    --bulma-primary-h: 340deg;
+    --bulma-primary-s: 65%;
+    --bulma-primary-l: 48%;
+    --bulma-link-h: 340;
+    --bulma-link-s: 65%;
+    --bulma-link-l: 45%;
+    --bulma-info-h: 300;
+    --bulma-info-s: 45%;
+    --bulma-info-l: 55%;
+    --bulma-success-h: 150;
+    --bulma-success-s: 55%;
+    --bulma-success-l: 38%;
+} [data-theme="pink-lady"] #sidebar {
+    --sidebar-bg-dark: #d63384;
+    --sidebar-bg-light: #e91e63;
+    --sidebar-border: #c2185b;
+    --sidebar-text: #2c1f2f;
+    --sidebar-text-light: #3d2f3f;
+    --sidebar-text-bright: #f5f5f5;
+    --sidebar-text-muted: #8b6b7b;
+    --sidebar-accent: #ff4081;
+    --sidebar-accent-light: #ff80ab;
+    --sidebar-slate: #ad5382;
+    --sidebar-hover-bg: rgba(255,255,255,0.15);
+    --sidebar-hover-border: rgba(255,255,255,0.3);
+    --sidebar-title-hover-bg: rgba(255,255,255,0.15);
+    --sidebar-focus-glow: rgba(255, 64, 129, 0.4);
+    --sidebar-teal: #a03570;
+} [data-theme="pink-lady"] #admin-navbar {
+    background: linear-gradient(90deg, #d63384 0%, #e91e63 100%);
+    border-bottom-color: #e91e63;
+} [data-theme="pink-lady"] #admin-navbar .navbar-item, [data-theme="pink-lady"] #admin-navbar .navbar-link, [data-theme="pink-lady"] #admin-navbar .navbar-burger span {
+    color: #f8f5f2;
+} [data-theme="pink-lady"] #admin-navbar .navbar-item:hover, [data-theme="pink-lady"] #admin-navbar .navbar-link:hover {
+    background-color: rgba(255,255,255,0.15);
+    color: #fff;
+} [data-theme="pink-lady"] #admin-navbar .navbar-dropdown {
+    background: #fff;
+    border-top: 2px solid #e91e63;
+} [data-theme="pink-lady"] #admin-navbar .navbar-dropdown .navbar-item {
+    color: #2c1f2f;
+} [data-theme="pink-lady"] #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: #fce4ec;
+    color: #d63384;
+}
+
+/* ==========================================================================
+   3. Dark Theme
+   ========================================================================== */
+
+[data-theme="dark"] {
+    color-scheme: dark;
+    --bulma-scheme-h: 221;
+    --bulma-scheme-s: 14%;
+    --bulma-scheme-main-l: 11%;
+    --bulma-scheme-main-bis-l: 14%;
+    --bulma-scheme-main-ter-l: 17%;
+    --bulma-text-l: 85%;
+    --bulma-text-strong-l: 95%;
+    --bulma-text-weak-l: 55%;
+    --bulma-border-l: 30%;
+    --bulma-border-weak-l: 24%;
+
+    --bulma-primary-h: 175deg;
+    --bulma-primary-s: 60%;
+    --bulma-primary-l: 45%;
+    --bulma-link-h: 217;
+    --bulma-link-s: 70%;
+    --bulma-link-l: 65%;
+    --bulma-info-h: 217;
+    --bulma-info-s: 70%;
+    --bulma-info-l: 60%;
+    --bulma-success-h: 160;
+    --bulma-success-s: 70%;
+    --bulma-success-l: 40%;
+    --bulma-warning-h: 40;
+    --bulma-warning-s: 90%;
+    --bulma-warning-l: 50%;
+    --bulma-danger-h: 0;
+    --bulma-danger-s: 75%;
+    --bulma-danger-l: 55%;
+
+    --bulma-body-background-color: hsl(221, 14%, 11%);
+    --bulma-scheme-main: hsl(221, 14%, 11%);
+    --bulma-scheme-main-bis: hsl(221, 14%, 14%);
+    --bulma-scheme-main-ter: hsl(221, 14%, 17%);
+    --bulma-text: hsl(221, 14%, 85%);
+    --bulma-text-strong: hsl(221, 14%, 95%);
+    --bulma-text-weak: hsl(221, 14%, 55%);
+    --bulma-border: hsl(221, 14%, 30%);
+    --bulma-border-weak: hsl(221, 14%, 24%);
+    --bulma-white: #e8edf4;
+
+    --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+} [data-theme="dark"] #sidebar {
+    --sidebar-bg-dark: hsl(221, 14%, 22%);
+    --sidebar-bg-light: hsl(221, 20%, 14%);
+    --sidebar-border: hsl(221, 14%, 30%);
+    --sidebar-text: #c5d0df;
+    --sidebar-text-light: #e8edf4;
+    --sidebar-text-bright: #f8fafc;
+    --sidebar-text-muted: #4e6282;
+    --sidebar-accent: #5a9af5;
+    --sidebar-accent-light: #83b3f7;
+    --sidebar-slate: #7a8da5;
+    --sidebar-hover-bg: rgba(255,255,255,0.06);
+    --sidebar-hover-border: rgba(255,255,255,0.12);
+    --sidebar-title-hover-bg: rgba(255,255,255,0.06);
+    --sidebar-focus-glow: rgba(80, 115, 170, 0.35);
+    --sidebar-teal: #0F766E;
+} [data-theme="dark"] #admin-navbar {
+    background: hsl(221, 20%, 14%);
+    border-bottom-color: hsl(221, 14%, 22%);
+} [data-theme="dark"] #admin-navbar .navbar-item, [data-theme="dark"] #admin-navbar .navbar-link, [data-theme="dark"] #admin-navbar .navbar-burger span {
+    color: #c5d0df;
+} [data-theme="dark"] #admin-navbar .navbar-item:hover, [data-theme="dark"] #admin-navbar .navbar-link:hover {
+    background-color: rgba(255,255,255,0.06);
+    color: #e8edf4;
+} [data-theme="dark"] #admin-navbar .navbar-dropdown {
+    background: hsl(221, 14%, 14%);
+    border-top: 2px solid hsl(221, 14%, 30%);
+} [data-theme="dark"] #admin-navbar .navbar-dropdown .navbar-item {
+    color: #c5d0df;
+} [data-theme="dark"] #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: hsl(221, 14%, 18%);
+    color: #e8edf4;
+} [data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select {
+    background-color: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
+    border-color: hsl(221, 14%, 30%);
+} [data-theme="dark"] .button.is-light {
+    background-color: hsl(221, 14%, 20%);
+    color: hsl(221, 14%, 85%);
+    border-color: hsl(221, 14%, 28%);
+} [data-theme="dark"] .modal__container {
+    background: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
+} [data-theme="dark"] .modal__header {
+    border-bottom-color: hsl(221, 14%, 24%);
+} [data-theme="dark"] .modal__footer {
+    border-top-color: hsl(221, 14%, 24%);
+    background: hsl(221, 14%, 12%);
+} [data-theme="dark"] .modal__warning {
+    background: hsl(0, 30%, 15%) !important;
+    border-color: hsl(0, 40%, 25%) !important;
+} [data-theme="dark"] .modal__warning p {
+    color: hsl(0, 70%, 70%) !important;
+} [data-theme="dark"] .modal__warning div {
+    color: hsl(0, 60%, 65%) !important;
+} [data-theme="dark"] .swal2-popup {
+    background: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
+} [data-theme="dark"] table {
+    color: hsl(221, 14%, 85%);
+} [data-theme="dark"] .question-card, [data-theme="dark"] .tp-card {
+    background: hsl(221, 14%, 14%);
+    border-color: hsl(221, 14%, 24%);
+}
+
+/* ==========================================================================
+   4. Original IL Theme (default - no overrides needed, just explicit)
+   ========================================================================== */
+
+/* Original IL is the default, no attribute needed */
+
+/* Ensure perfect coordination between navbar and sidebar for original theme */
+:not([data-theme]) #admin-navbar {
+    background: var(--sidebar-bg-light);
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+:not([data-theme]) #admin-navbar .navbar-item,
+:not([data-theme]) #admin-navbar .navbar-link,
+:not([data-theme]) #admin-navbar .navbar-burger span {
+    color: var(--sidebar-text-light);
+}
+
+:not([data-theme]) #admin-navbar .navbar-item:hover,
+:not([data-theme]) #admin-navbar .navbar-link:hover {
+    background-color: var(--sidebar-hover-bg);
+    color: var(--sidebar-text-bright);
+}
+
+:not([data-theme]) #admin-navbar .navbar-dropdown {
+    background: var(--sidebar-bg-dark);
+    border-top: 2px solid var(--sidebar-accent);
+}
+
+:not([data-theme]) #admin-navbar .navbar-dropdown .navbar-item {
+    color: var(--sidebar-text-light);
+}
+
+:not([data-theme]) #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: var(--sidebar-bg-light);
+    color: var(--sidebar-text-bright);
+}
+
+/* ==========================================================================
+   5. Adon Hermon (light grayish sidebar)
+   ========================================================================== */
+
+[data-theme="adon-hermon"] {
+    --sidebar-bg-dark: #f0f2f5;
+    --sidebar-bg-light: #e8ebef;
+    --sidebar-border: #d0d5dc;
+    --sidebar-text: #4a5568;
+    --sidebar-text-light: #374151;
+    --sidebar-text-bright: #1f2937;
+    --sidebar-text-muted: #9ca3af;
+    --sidebar-accent: #3b82f6;
+    --sidebar-accent-light: #60a5fa;
+    --sidebar-slate: #6b7280;
+    --sidebar-hover-bg: rgba(59, 130, 246, 0.08);
+    --sidebar-hover-border: rgba(59, 130, 246, 0.2);
+    --sidebar-title-hover-bg: rgba(59, 130, 246, 0.1);
+    --sidebar-focus-glow: rgba(59, 130, 246, 0.25);
+    --sidebar-teal: #0F766E;
+} .sidebar-container {
+    background: linear-gradient(180deg, #f0f2f5 0%, #e8ebef 100%);
+    border-right: 1px solid #d0d5dc;
+} .sidebar-container .sidebar-section-title:hover {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.2);
+} .sidebar-container .sidebar-action-link {
+    background-color: #fff;
+    border-color: #d0d5dc;
+    color: #4a5568;
+} .sidebar-container .sidebar-action-link:hover {
+    background-color: #e8ebef;
+    color: #1f2937;
+    border-color: #9ca3af;
+} .sidebar-container .unread {
+    color: #fff;
+} .sidebar-container .sidebar-badge {
+    color: #fff;
+} .sidebar-container::-webkit-scrollbar-thumb {
+    background-color: rgba(107, 114, 128, 0.3);
+} .sidebar-container::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(107, 114, 128, 0.5);
+} .sidebar-container {
+    scrollbar-color: rgba(107, 114, 128, 0.3) transparent;
+}
+
+/* Keep navbar aligned with page background on themed variants (retro is intentionally custom). */
+[data-theme]:not([data-theme="retro"]) #admin-navbar {
+    background: var(--bulma-body-background-color) !important;
+}
+
+/* ==========================================================================
+   6. Retro Theme (90s website easter egg)
+   ========================================================================== */
+
+@font-face {
+    font-family: 'RetroPixel';
+    src: url('https://fonts.gstatic.com/s/pressstart2p/v16/e3t4euO8T-267oIAQAu6jDQyK0nS.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+[data-theme="retro"] {
+    --bulma-primary-h: 240deg;
+    --bulma-primary-s: 100%;
+    --bulma-primary-l: 50%;
+    --bulma-link-h: 240;
+    --bulma-link-s: 100%;
+    --bulma-link-l: 50%;
+    --bulma-danger-h: 0;
+    --bulma-danger-s: 100%;
+    --bulma-danger-l: 50%;
+    --bulma-success-h: 120;
+    --bulma-success-s: 100%;
+    --bulma-success-l: 30%;
+    --bulma-warning-h: 60;
+    --bulma-warning-s: 100%;
+    --bulma-warning-l: 50%;
+    --bulma-info-h: 180;
+    --bulma-info-s: 100%;
+    --bulma-info-l: 35%;
+
+    --bulma-body-background-color: #c0c0c0;
+    --bulma-scheme-main: #c0c0c0;
+    --bulma-scheme-main-bis: #d4d0c8;
+    --bulma-scheme-main-ter: #bfbfbf;
+    --bulma-border: #808080;
+    --bulma-border-weak: #a0a0a0;
+    --bulma-text: #000000;
+    --bulma-text-strong: #000000;
+    --bulma-text-weak: #404040;
+
+} [data-theme="retro"] * {
+    font-family: 'RetroPixel', 'Courier New', monospace !important;
+    border-radius: 0 !important;
+} [data-theme="retro"] body {
+    background-color: #008080;
+    image-rendering: pixelated !important;
+} [data-theme="retro"] .sidebar-container {
+    --sidebar-bg-dark: #000080;
+    --sidebar-bg-light: #000080;
+    --sidebar-border: #c0c0c0;
+    --sidebar-text: #ffffff;
+    --sidebar-text-light: #ffffff;
+    --sidebar-text-bright: #ffff00;
+    --sidebar-text-muted: #c0c0c0;
+    --sidebar-accent: #ffff00;
+    --sidebar-accent-light: #ffff00;
+    --sidebar-slate: #c0c0c0;
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.15);
+    --sidebar-hover-border: #ffffff;
+    --sidebar-title-hover-bg: rgba(255, 255, 255, 0.2);
+    --sidebar-focus-glow: rgba(255, 255, 0, 0.5);
+    --sidebar-teal: #000080;
+} [data-theme="retro"] .sidebar-container {
+    background: #000080 !important;
+    border-right: 3px outset #c0c0c0;
+    font-size: 0.7rem;
+} [data-theme="retro"] .sidebar-container .sidebar-section-title {
+    background: #000080;
+    border: 2px outset #c0c0c0;
+} [data-theme="retro"] .sidebar-container a {
+    color: #ffff00 !important;
+    text-decoration: underline;
+} [data-theme="retro"] .sidebar-container a:hover {
+    color: #ff00ff !important;
+} [data-theme="retro"] #admin-navbar {
+    background: #c0c0c0;
+    border-bottom: 3px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+} [data-theme="retro"] #admin-navbar .navbar-item, [data-theme="retro"] #admin-navbar .navbar-link {
+    color: #000;
+    font-size: 0.7rem;
+} [data-theme="retro"] #admin-navbar .navbar-item:hover, [data-theme="retro"] #admin-navbar .navbar-link:hover {
+    background-color: #000080;
+    color: #fff;
+} [data-theme="retro"] #admin-navbar .navbar-dropdown {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+} [data-theme="retro"] #admin-navbar .navbar-dropdown .navbar-item {
+    color: #000;
+} [data-theme="retro"] #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: #000080;
+    color: #fff;
+} [data-theme="retro"] #core {
+    background: #c0c0c0;
+} [data-theme="retro"] #core h1 {
+    color: #000080;
+    text-shadow: 2px 2px #c0c0c0;
+    font-size: 1.5em;
+} [data-theme="retro"] a, [data-theme="retro"] a:visited {
+    color: #0000ff !important;
+} [data-theme="retro"] a:hover {
+    color: #ff00ff !important;
+} [data-theme="retro"] table {
+    border: 2px inset #808080;
+    background: #fff;
+} [data-theme="retro"] table th {
+    background: #000080;
+    color: #fff;
+    border: 1px outset #c0c0c0;
+    padding: 4px 8px;
+} [data-theme="retro"] table td {
+    border: 1px inset #c0c0c0;
+    background: #fff;
+    color: #000;
+    padding: 2px 6px;
+} [data-theme="retro"] .button, [data-theme="retro"] button, [data-theme="retro"] input[type="submit"], [data-theme="retro"] input[type="button"] {
+    background: #c0c0c0;
+    color: #000;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    text-shadow: none;
+} [data-theme="retro"] .button:hover, [data-theme="retro"] button:hover {
+    background: #d4d0c8;
+} [data-theme="retro"] .button:active, [data-theme="retro"] button:active {
+    border-style: inset;
+    box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #808080;
+} [data-theme="retro"] .button.is-primary, [data-theme="retro"] .button.is-success {
+    background: #c0c0c0;
+    color: #000;
+} [data-theme="retro"] .button.is-danger {
+    background: #c0c0c0;
+    color: #ff0000;
+    font-weight: bold;
+} [data-theme="retro"] input[type="text"], [data-theme="retro"] input[type="password"], [data-theme="retro"] input[type="number"], [data-theme="retro"] input[type="email"], [data-theme="retro"] textarea, [data-theme="retro"] select {
+    background: #fff;
+    color: #000;
+    border: 2px inset #808080;
+    padding: 2px 4px;
+    font-size: 0.7rem;
+} [data-theme="retro"] .card, [data-theme="retro"] .tp-card, [data-theme="retro"] .question-card, [data-theme="retro"] .modal__container {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+} [data-theme="retro"] .modal__header {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff;
+    padding: 4px 8px;
+    border-bottom: none;
+} [data-theme="retro"] .modal__header .modal__title {
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.8rem;
+} [data-theme="retro"] .modal__header .modal__close {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    color: #000;
+    font-size: 1rem;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+} [data-theme="retro"] .modal__footer {
+    background: #c0c0c0;
+    border-top: 1px solid #808080;
+} [data-theme="retro"] .notification, [data-theme="retro"] .notifications .communication {
+    background: #ffffcc;
+    border: 2px inset #808080;
+    color: #000;
+} [data-theme="retro"] .sidebar-section-title, [data-theme="retro"] .folder-header {
+    border: 2px outset #c0c0c0 !important;
+} [data-theme="retro"] .hr {
+    background: #808080;
+    height: 2px;
+} [data-theme="retro"] .sidebar-badge {
+    font-size: 0.55rem;
+} [data-theme="retro"] .status-badge, [data-theme="retro"] .validator-badge, [data-theme="retro"] .question-status-badge {
+    border: 1px solid #808080;
+} [data-theme="retro"] .swal2-popup {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    color: #000;
+} [data-theme="retro"] .swal2-title {
+    color: #000;
+} [data-theme="retro"] .swal2-html-container {
+    color: #000;
+} [data-theme="retro"] ::selection {
+    background: #000080;
+    color: #fff;
+} [data-theme="retro"] .toggling_on:before, [data-theme="retro"] .toggling_off:before {
+    font-family: 'Courier New', monospace !important;
+} [data-theme="retro"] img, [data-theme="retro"] .icon, [data-theme="retro"] .fa, [data-theme="retro"] .fas, [data-theme="retro"] .far, [data-theme="retro"] .fab, [data-theme="retro"] .material-icons, [data-theme="retro"] .glyphicon, [data-theme="retro"] svg {
+    image-rendering: pixelated !important;
+    image-rendering: -moz-crisp-edges !important;
+    image-rendering: crisp-edges !important;
+    border-radius: 0 !important;
+} [data-theme="retro"] .student-avatar, [data-theme="retro"] img[alt*="avatar"], [data-theme="retro"] img[alt*="picture"], [data-theme="retro"] img[alt*="profile"] {
+    border-radius: 0 !important;
+    border: 2px inset #808080;
+}
+
+/* Retro icon styling */ [data-theme="retro"] .icon, [data-theme="retro"] .fa, [data-theme="retro"] .fas, [data-theme="retro"] .far, [data-theme="retro"] .fab, [data-theme="retro"] .material-icons, [data-theme="retro"] .glyphicon {
+    font-family: 'Courier New', monospace !important;
+    font-style: normal !important;
+    font-weight: bold !important;
+    text-shadow: none !important;
+    transform: none !important;
+    transition: none !important;
+} [data-theme="retro"] svg {
+    shape-rendering: crispEdges !important;
+} [data-theme="retro"] svg * {
+    shape-rendering: crispEdges !important;
+}
+
+/* ==========================================================================
+   Theme Selector UI
+   ========================================================================== */
+
+.theme-selector-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.theme-selector-btn {
+    background: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    color: inherit;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.theme-selector-btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+}
+
+.theme-selector-btn .theme-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
+    flex-shrink: 0;
+}
+
+.theme-selector-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--bulma-scheme-main, #fff);
+    border: 1px solid var(--bulma-border, #ddd);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    min-width: 200px;
+    z-index: 100;
+    padding: 6px 0;
+} .theme-selector-menu {
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+}
+
+.theme-selector-dropdown.is-active .theme-selector-menu {
+    display: block;
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--bulma-text, #333);
+    transition: background 0.12s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+
+.theme-option:hover {
+    background: var(--bulma-scheme-main-bis, #f5f5f5);
+}
+
+.theme-option.is-active {
+    font-weight: 700;
+}
+
+.theme-option .theme-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--bulma-border, #ccc);
+    flex-shrink: 0;
+} .theme-option .theme-swatch {
+    border-radius: 0 !important;
+}
+
+.theme-option.is-active .theme-swatch {
+    box-shadow: 0 0 0 2px var(--bulma-primary, #0F766E);
+}
+
+.theme-option .theme-check {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--bulma-primary, #0F766E);
+    display: none;
+}
+
+.theme-option.is-active .theme-check {
+    display: inline;
+}
+
+/* Swatch colors */
+.theme-swatch-original { background: linear-gradient(135deg, #0F172A, #0F766E); }
+.theme-swatch-granny-smith { background: linear-gradient(135deg, #2e5a1e, #6abf4b); }
+.theme-swatch-pink-lady { background: linear-gradient(135deg, #6b1a42, #e880b0); }
+.theme-swatch-dark { background: linear-gradient(135deg, #0a0f1a, #2d3748); }
+.theme-swatch-adon-hermon { background: linear-gradient(135deg, #e8ebef, #0F766E); }
+.theme-swatch-retro { background: linear-gradient(135deg, #000080, #c0c0c0); }
+
+/* Active dot color for the button */
+.theme-dot-original { background: #0F766E; }
+.theme-dot-granny-smith { background: #4a8a30; }
+.theme-dot-pink-lady { background: #a83070; }
+.theme-dot-dark { background: #2d3748; }
+.theme-dot-adon-hermon { background: #9ca3af; }
+.theme-dot-retro { background: #000080; }
+
+/* ==========================================================================
+   Final Theme Overrides (layout/color sync)
+   ========================================================================== */
+
+/* Non-retro themes: keep sidebar and navbar visually consistent. */
+[data-theme]:not([data-theme="retro"]) {
+    --theme-shell-bg: var(--bulma-body-background-color);
+    --theme-shell-border: var(--bulma-border-weak);
+}
+
+[data-theme]:not([data-theme="retro"]) #admin-navbar,
+[data-theme]:not([data-theme="retro"]) #sidebar,
+[data-theme]:not([data-theme="retro"]) .sidebar-container {
+    background: var(--theme-shell-bg) !important;
+    border-color: var(--theme-shell-border) !important;
+}
+
+[data-theme]:not([data-theme="retro"]) #sidebar .sidebar-section-title,
+[data-theme]:not([data-theme="retro"]) .sidebar-container .sidebar-section-title {
+    background: transparent !important;
+    border: 1px solid var(--theme-shell-border) !important;
+}
+
+/* Pink Lady: enforce pinkish navbar + matching sidebar. */
+[data-theme="pink-lady"] {
+    --theme-shell-bg: linear-gradient(90deg, #d63384 0%, #e91e63 100%);
+    --theme-shell-border: #c2185b;
+}
+
+[data-theme="pink-lady"] #admin-navbar .navbar-item,
+[data-theme="pink-lady"] #admin-navbar .navbar-link,
+[data-theme="pink-lady"] #admin-navbar .navbar-burger span,
+[data-theme="pink-lady"] #sidebar a,
+[data-theme="pink-lady"] .sidebar-container a {
+    color: #f8f5f2 !important;
+}
+
+/* Granny Smith: requested green palette. */
+[data-theme="granny-smith"] {
+    --bulma-primary-h: 101deg;
+    --bulma-primary-s: 55%;
+    --bulma-primary-l: 52%;
+    --bulma-link-h: 101;
+    --bulma-link-s: 55%;
+    --bulma-link-l: 52%;
+    --theme-shell-bg: #EEF3EA;
+    --theme-shell-border: #E5E8E4;
+}
+
+[data-theme="granny-smith"] #admin-navbar .navbar-item,
+[data-theme="granny-smith"] #admin-navbar .navbar-link,
+[data-theme="granny-smith"] #admin-navbar .navbar-burger span,
+[data-theme="granny-smith"] #sidebar a,
+[data-theme="granny-smith"] .sidebar-container a {
+    color: #6DC942 !important;
+}

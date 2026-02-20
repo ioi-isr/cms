@@ -3636,10 +3636,6 @@
    Overview Page
    ========================================================================== */
 
-.overview-section {
-    margin-bottom: 32px;
-}
-
 /* Status Cards Grid */
 .overview-status-grid {
     display: grid;
