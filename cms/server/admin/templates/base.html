@@ -12,38 +12,42 @@
     </script>
     <script>
     // Pre-paint CSS injection to prevent flash of expanded menus
-    // Uses a hydration class on <html> so these rules only apply during initial render
     (function() {
       var validSectionKeys = ['training-programs', 'contests', 'tasks', 'users', 'teams', 'training-days'];
       var folderKeyPattern = /^(folder|subfolder|training-program)-\d+$/;
       var css = '';
 
-      // Add hydration class to gate these styles
       document.documentElement.classList.add('sidebar-hydrating');
 
-      // Apply collapsed state for sections
+      try {
+        var mode = localStorage.getItem('cms_sidebar_mode');
+        if (mode === 'minimized' && window.innerWidth >= 1024) {
+          css += '.sidebar-container { width: 60px !important; }\n';
+          css += '.sidebar-container .menu-text, .sidebar-container .section-caret, .sidebar-container .sidebar-section-body, .sidebar-container .sidebar-badge-container, .sidebar-container .sidebar-actions, .sidebar-container .sidebar-empty { display: none !important; }\n';
+        }
+      } catch(e) {}
+
       try {
         var sections = localStorage.getItem('cms_sidebar_collapsed');
         if (sections) {
           JSON.parse(sections).forEach(function(key) {
             if (validSectionKeys.indexOf(key) !== -1) {
-              css += 'html.sidebar-hydrating .sidebar-section[data-section-key="' + key + '"] .sidebar-section-body { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
-              css += 'html.sidebar-hydrating .sidebar-section[data-section-key="' + key + '"] .section-caret { transform: rotate(-45deg); }\n';
+              css += 'html.sidebar-hydrating .sidebar-section .sidebar-section-body { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += 'html.sidebar-hydrating .sidebar-section .section-caret { transform: rotate(-90deg); }\n';
             }
           });
         }
       } catch (e) {}
 
-      // Apply collapsed state for folders
       try {
         var folders = localStorage.getItem('cms_sidebar_folders_collapsed');
         if (folders) {
           JSON.parse(folders).forEach(function(key) {
             if (folderKeyPattern.test(key)) {
-              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-contents,\n';
-              css += 'html.sidebar-hydrating .sidebar-subfolder[data-folder-key="' + key + '"] > .folder-contents { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
-              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before,\n';
-              css += 'html.sidebar-hydrating .sidebar-subfolder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before { transform: rotate(0deg); margin-top: 4px; margin-left: 4px; }\n';
+              css += 'html.sidebar-hydrating .sidebar-folder > .sidebar-section-body,\n';
+              css += 'html.sidebar-hydrating .sidebar-subfolder > .sidebar-section-body { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += 'html.sidebar-hydrating .sidebar-folder > .sidebar-section-title .section-caret,\n';
+              css += 'html.sidebar-hydrating .sidebar-subfolder > .sidebar-section-title .section-caret { transform: rotate(-90deg); }\n';
             }
           });
         }
@@ -126,8 +130,6 @@ function init()
 
     $(document).click(utils.hide_subpage);
 
-    // delegate() ensures that the event is fired even for elements
-    // that are added in the future.
     $(document).delegate('.toggling_on', 'click', utils.toggle_visibility);
     $(document).delegate('.toggling_off', 'click', utils.toggle_visibility);
 
@@ -135,7 +137,6 @@ function init()
 
     {% block js_init %}{% endblock js_init %}
 
-    // Initialize Tom Select on searchable select elements
     $('.searchable-select').each(function() {
         new TomSelect(this, {
             allowEmptyOption: true,
@@ -147,7 +148,6 @@ function init()
 
 {% block js %}{% endblock js %}
 
-// Generic localStorage helpers for collapsed state
 var SidebarState = {
     load: function(storageKey) {
         try {
@@ -155,7 +155,7 @@ var SidebarState = {
             if (!stored) return {};
             var arr = JSON.parse(stored);
             var set = {};
-            (Array.isArray(arr) ? arr : []).forEach(function(k) { set[k] = true; });
+            (Array.isArray(arr) ? arr : []).forEach(function(k) { set = true; });
             return set;
         } catch (e) {
             return {};
@@ -169,38 +169,34 @@ var SidebarState = {
     toggle: function(storageKey, key, isCollapsed) {
         var set = this.load(storageKey);
         if (isCollapsed) {
-            set[key] = true;
+            set = true;
         } else {
-            delete set[key];
+            delete set;
         }
         this.save(storageKey, set);
     }
 };
 
-// Apply collapsed classes from storage, then end hydration phase
 function applySidebarState() {
     var sectionState = SidebarState.load('cms_sidebar_collapsed');
-    document.querySelectorAll('.sidebar-section[data-section-key]').forEach(function(el) {
+    document.querySelectorAll('.sidebar-section').forEach(function(el) {
         var key = el.getAttribute('data-section-key');
-        if (sectionState[key]) el.classList.add('collapsed');
+        if (sectionState) el.classList.add('collapsed');
     });
 
     var folderState = SidebarState.load('cms_sidebar_folders_collapsed');
-    document.querySelectorAll('.sidebar-folder[data-folder-key], .sidebar-subfolder[data-folder-key]').forEach(function(el) {
+    document.querySelectorAll('.sidebar-folder, .sidebar-subfolder').forEach(function(el) {
         var key = el.getAttribute('data-folder-key');
-        if (folderState[key]) el.classList.add('collapsed');
+        if (folderState) el.classList.add('collapsed');
     });
 
-    // End hydration phase - pre-paint CSS no longer applies, class-based CSS takes over
     document.documentElement.classList.remove('sidebar-hydrating');
 }
 
-// Event delegation for sidebar interactions
 function initSidebarEvents() {
     var sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
 
-    // Helper to toggle section
     function toggleSection(sectionTitle) {
         var section = sectionTitle.closest('.sidebar-section');
         if (section) {
@@ -210,7 +206,6 @@ function initSidebarEvents() {
         }
     }
 
-    // Helper to toggle folder
     function toggleFolder(folderHeader) {
         var folder = folderHeader.closest('.sidebar-folder, .sidebar-subfolder');
         if (folder) {
@@ -221,31 +216,26 @@ function initSidebarEvents() {
     }
 
     sidebar.addEventListener('click', function(e) {
-        // Handle section title clicks (but not link clicks)
         var sectionTitle = e.target.closest('.sidebar-section-title');
         if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
             toggleSection(sectionTitle);
             return;
         }
 
-        // Handle folder header clicks (but not link clicks)
         var folderHeader = e.target.closest('.folder-header');
         if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
             toggleFolder(folderHeader);
         }
     });
 
-    // Keyboard support for accessibility (Enter/Space to toggle)
     sidebar.addEventListener('keydown', function(e) {
         if (e.key !== 'Enter' && e.key !== ' ') return;
-
         var sectionTitle = e.target.closest('.sidebar-section-title');
         if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
             e.preventDefault();
             toggleSection(sectionTitle);
             return;
         }
-
         var folderHeader = e.target.closest('.folder-header');
         if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
             e.preventDefault();
@@ -254,7 +244,6 @@ function initSidebarEvents() {
     });
 }
 
-// Navbar burger toggle (Bulma mobile menu)
 function initNavbarBurger() {
     var burger = document.querySelector('.navbar-burger');
     if (!burger) return;
@@ -264,55 +253,51 @@ function initNavbarBurger() {
     burger.addEventListener('click', function() {
         burger.classList.toggle('is-active');
         menu.classList.toggle('is-active');
+        syncNavbarHeightVar();
     });
 }
 
-// Sidebar drawer toggle
 function initSidebarToggle() {
-    var collapseBtn = document.getElementById('sidebar-collapse-btn');
-    var expandBtn = document.getElementById('sidebar-expand-btn');
+    var toggleBtn = document.getElementById('global-sidebar-toggle');
+    var sidebar = document.getElementById('sidebar');
     var backdrop = document.getElementById('sidebar-backdrop');
     var isMobile = function() { return window.innerWidth < 1024; };
 
-    function setCollapsed(collapsed) {
-        if (collapsed) {
-            document.body.classList.add('sidebar-collapsed');
-        } else {
-            document.body.classList.remove('sidebar-collapsed');
-        }
-        try { localStorage.setItem('cms_sidebar_mode', collapsed ? 'collapsed' : 'expanded'); } catch(ex) {}
-    }
-
-    if (collapseBtn) {
-        collapseBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (isMobile()) {
-                document.body.classList.remove('sidebar-mobile-open');
-            } else {
-                setCollapsed(true);
+    if (sidebar) {
+        try {
+            if (localStorage.getItem('cms_sidebar_mode') === 'minimized' && !isMobile()) {
+                sidebar.classList.add('is-minimized');
             }
-        });
+        } catch(e) {}
     }
 
-    if (expandBtn) {
-        expandBtn.addEventListener('click', function(e) {
+    if (toggleBtn && sidebar) {
+        toggleBtn.addEventListener('click', function(e) {
             e.preventDefault();
             if (isMobile()) {
-                document.body.classList.toggle('sidebar-mobile-open');
+                sidebar.classList.toggle('is-mobile-active');
+                if (backdrop) backdrop.classList.toggle('is-active');
             } else {
-                setCollapsed(false);
+                var isMin = sidebar.classList.toggle('is-minimized');
+                try { localStorage.setItem('cms_sidebar_mode', isMin ? 'minimized' : 'expanded'); } catch(ex) {}
             }
         });
     }
 
     if (backdrop) {
         backdrop.addEventListener('click', function() {
-            document.body.classList.remove('sidebar-mobile-open');
+            sidebar.classList.remove('is-mobile-active');
+            backdrop.classList.remove('is-active');
         });
     }
 }
 
-// Theme selector
+function syncNavbarHeightVar() {
+    var navbar = document.getElementById('admin-navbar');
+    if (!navbar) return;
+    document.documentElement.style.setProperty('--admin-navbar-height', navbar.offsetHeight + 'px');
+}
+
 var ThemeManager = {
     dotClasses: {
         '': 'theme-dot-original',
@@ -337,7 +322,7 @@ var ThemeManager = {
     updateUI: function(theme) {
         var dot = document.getElementById('theme-dot');
         if (dot) {
-            dot.className = 'theme-dot ' + (this.dotClasses[theme] || 'theme-dot-original');
+            dot.className = 'theme-dot ' + (this.dotClasses || 'theme-dot-original');
         }
         var options = document.querySelectorAll('.theme-option');
         for (var i = 0; i < options.length; i++) {
@@ -385,34 +370,41 @@ $(document).ready(initSidebarEvents);
 $(document).ready(initNavbarBurger);
 $(document).ready(initSidebarToggle);
 $(document).ready(initThemeSelector);
+$(document).ready(syncNavbarHeightVar);
+window.addEventListener('resize', syncNavbarHeightVar);
 
-// Close mobile navbar dropdown on item click
 $(document).ready(function() {
     $('.navbar-menu .navbar-item:not(.has-dropdown)').on('click', function() {
         $('.navbar-burger').removeClass('is-active');
         $('.navbar-menu').removeClass('is-active');
     });
 });
-
 //-->
     </script>
   </head>
-  <body class="admin{% if admin is defined %} has-navbar{% endif %}">
-    <script>try{if(localStorage.getItem('cms_sidebar_mode')==='collapsed')document.body.classList.add('sidebar-collapsed');}catch(e){}</script>
+  <body class="admin{% if admin is defined %} has-navbar-fixed-top{% endif %}">
     {% include 'fragments/svg_icons.html' %}
 
     {% if admin is defined %}
-    <nav id="admin-navbar" class="navbar is-fixed-top is-size-7" role="navigation" aria-label="main navigation">
+    <nav id="admin-navbar" class="navbar is-fixed-top has-shadow" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
-        <a class="navbar-item brand-logo" href="{{ url() }}">
-          <img src="{{ url("static", "ioi-logo.png") }}" alt="Israel Olympiad in Informatics">
+        <!-- Unified Sidebar Toggle -->
+        <a class="navbar-item is-clickable" id="global-sidebar-toggle" title="Toggle Sidebar">
+          <svg class="icon"><use href="#icon-menu"/></svg>
         </a>
+
+        <a class="navbar-item" href="{{ url() }}">
+          <img src="{{ url("static", "ioi-logo.png") }}" alt="IOI" style="max-height: 2rem;">
+          <span class="ml-2 has-text-weight-bold is-hidden-mobile" style="font-size: 1.1rem; color: var(--bulma-text);">CMS Admin</span>
+        </a>
+
         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbar-global-menu">
           <span aria-hidden="true"></span>
           <span aria-hidden="true"></span>
           <span aria-hidden="true"></span>
         </a>
       </div>
+
       <div id="navbar-global-menu" class="navbar-menu">
         <div class="navbar-start">
           <a class="navbar-item" href="{{ url() }}">
@@ -426,7 +418,7 @@ $(document).ready(function() {
             </a>
             <div class="navbar-dropdown">
               {% if training_program_list is defined %}
-              {% for tp in training_program_list[:8] %}
+              {% for tp in training_program_list %}
               <div class="navbar-sub-toggle navbar-item is-flex is-justify-content-space-between" onclick="this.classList.toggle('is-expanded')">
                 <a href="{{ url("training_program", tp.id) }}" onclick="event.stopPropagation()">{{ tp.name }}</a>
                 <span class="navbar-sub-caret"></span>
@@ -476,7 +468,7 @@ $(document).ready(function() {
               {% endfor %}
               {% endif %}
               {% if root_contests is defined %}
-              {% for c in root_contests[:5] %}
+              {% for c in root_contests %}
               <a class="navbar-item" href="{{ url("contest", c.id) }}">{{ c.name }}</a>
               {% endfor %}
               {% if root_contests|length > 5 %}
@@ -499,7 +491,7 @@ $(document).ready(function() {
             </a>
             <div class="navbar-dropdown">
               {% if task_list is defined %}
-              {% for t in task_list[:8] %}
+              {% for t in task_list %}
               <a class="navbar-item" href="{{ url("task", t.id) }}">{{ t.name }}</a>
               {% endfor %}
               {% if task_list|length > 8 %}
@@ -587,9 +579,9 @@ $(document).ready(function() {
               </div>
             </div>
           </div>
-          <div class="navbar-item">
-            <a href="{{ url("admins") }}" class="mr-2">{{ admin.name }}</a>
-            <form class="inline" action="{{ url("logout") }}" method="POST">
+          <div class="navbar-item is-flex is-align-items-center">
+            <a href="{{ url("admins") }}" class="mr-3 has-text-weight-medium">{{ admin.name }}</a>
+            <form action="{{ url("logout") }}" method="POST" class="m-0 p-0">
               {{ xsrf_form_html|safe }}
               <button type="submit" class="button is-small is-light">Logout</button>
             </form>
@@ -597,506 +589,504 @@ $(document).ready(function() {
         </div>
       </div>
     </nav>
-    <div id="sidebar-backdrop"></div>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
     {% endif %}
 
-    <div id="global" class="columns is-gapless">
-      <aside id="sidebar" class="column is-narrow">
-        <a id="sidebar-expand-btn" class="sidebar-toggle-btn sidebar-expand-only" title="Expand sidebar">
-          <svg class="icon" width="18" height="18"><use href="#icon-chevrons-right"/></svg>
-        </a>
-        <div id="sidebar_header">
-{% if admin is undefined %}
-          <h1 class="sidebar-title">Administration</h1>
-{% else %}
-          <div class="is-flex is-justify-content-space-between is-align-items-center">
-          {% if contest is none and training_program is not defined %}
-          <h1 class="sidebar-title">Administration</h1>
-          {% elif training_program is defined %}
-          <h1 class="sidebar-title"><a href="{{ url() }}">Administration</a></h1>
-          {% else %}
-          <h1 class="sidebar-title"><a href="{{ url() }}">Administration</a></h1>
-          {% endif %}
-          <a id="sidebar-collapse-btn" class="sidebar-toggle-btn" title="Collapse sidebar">
-            <svg class="icon" width="18" height="18"><use href="#icon-chevrons-left"/></svg>
-          </a>
-          </div>
-          {% if training_program is defined %}
-          <nav class="breadcrumb is-small mb-2" aria-label="breadcrumbs">
-            <ul>
-              <li><a href="{{ url() }}">Administration</a></li>
-              <li class="is-active"><a href="{{ url("training_program", training_program.id) }}" aria-current="page">{{ training_program.name }}</a></li>
-            </ul>
-          </nav>
-          {% elif contest is not none %}
-          <nav class="breadcrumb is-small mb-2" aria-label="breadcrumbs">
-            <ul>
-              <li><a href="{{ url() }}">Administration</a></li>
-              {% if contest.folder %}
-              <li><a href="{{ url("folder", contest.folder.id) }}">{{ contest.folder.name }}</a></li>
-              {% elif contest.training_day %}
-              <li><a href="{{ url("training_program", contest.training_day.training_program.id) }}">{{ contest.training_day.training_program.name }}</a></li>
-              {% endif %}
-              <li class="is-active"><a href="{{ url("contest", contest.id) }}" aria-current="page">{{ contest.name }}</a></li>
-            </ul>
-          </nav>
-          {% endif %}
-          {% endif %}
-        </div>
-        {% if config.web_server.secret_key == config.web_server.DEFAULT_SECRET_KEY %}
-        <div class="secret_notice">
-          Change secret_key in cms.toml!<br/>
-          For example,<br/>
-          {{ get_hex_random_key() }}
-        </div>
-        {% endif %}
-        {% if pending_password_resets > 0 %}
-        <div class="secret_notice notice-pending">
-          <a href="{{ url("users") }}">
-            {{ pending_password_resets }} pending password reset{% if pending_password_resets > 1 %}s{% endif %}
-          </a>
-        </div>
-        {% endif %}
-        <ul class="menu">
-        {% if contest is none and training_program is not defined %}
-          <li class="menu_entry">
-            <a class="menu-icon" href="{{ url() }}" title="Overview">
-              <svg class="icon" width="18" height="18"><use href="#icon-activity"/></svg>
-            </a>
-            <a class="menu_link" href="{{ url() }}">Overview</a>
-          </li>
-          <li class="menu_entry">
-            <a class="menu-icon" href="{{ url("resourceslist") }}" title="Resource usage">
-              <svg class="icon" width="18" height="18"><use href="#icon-cpu"/></svg>
-            </a>
-            <a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a>
-          </li>
-        {% elif training_program is defined %}
-          <li class="menu_entry">
-            <a class="menu-icon" href="{{ url("contest", training_program.managing_contest.id, "overview") }}" title="Overview">
-              <svg class="icon" width="18" height="18"><use href="#icon-activity"/></svg>
-            </a>
-            <a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "overview") }}">Overview</a>
-          </li>
-          <li class="menu_entry">
-            <a class="menu-icon" href="{{ url("contest", training_program.managing_contest.id, "resourceslist") }}" title="Resource usage">
-              <svg class="icon" width="18" height="18"><use href="#icon-cpu"/></svg>
-            </a>
-            <a class="menu_link" href="{{ url("contest", training_program.managing_contest.id, "resourceslist") }}">Resource usage</a>
-          </li>
-        {% else %}
-          <li class="menu_entry">
-            <a class="menu-icon" href="{{ url("contest", contest.id, "overview") }}" title="Overview">
-              <svg class="icon" width="18" height="18"><use href="#icon-activity"/></svg>
-            </a>
-            <a class="menu_link" href="{{ url("contest", contest.id, "overview") }}">Overview</a>
-          </li>
-          <li class="menu_entry">
-            <a class="menu-icon" href="{{ url("contest", contest.id, "resourceslist") }}" title="Resource usage">
-              <svg class="icon" width="18" height="18"><use href="#icon-cpu"/></svg>
-            </a>
-            <a class="menu_link" href="{{ url("contest", contest.id, "resourceslist") }}">Resource usage</a>
-          </li>
-        {% endif %}
-        </ul>
-        <div class="hr"></div>
+    <div id="global" class="columns is-gapless mb-0">
 
-        {% if contest is none and training_program is not defined %}
-        <div class="sidebar-section" data-section-key="training-programs">
-          <h2 class="sidebar-section-title" title="Training Programs">
-            <a class="sidebar-section-icon" href="{{ url("training_programs") }}">
-              <svg class="icon" width="18" height="18"><use href="#icon-calendar"/></svg>
-            </a>
-            <div class="sidebar-link-group">
-                <span class="section-caret"></span>
-                <a href="{{ url("training_programs") }}">Training Programs</a>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if training_program_list|length > 0 %}
-            <ul class="sidebar-menu">
-            {% for tp in training_program_list %}
-            <li class="sidebar-folder" data-folder-key="training-program-{{ tp.id }}">
-              <div class="folder-header">
-                <span class="folder-icon"></span>
-                <a href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">{{ tp.name }}</a>
-              </div>
-              <ul class="folder-contents">
-                {% for td in tp.training_days if td.contest %}
-                <li class="sidebar-contest">
-                  <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
-                </li>
-                {% endfor %}
-              </ul>
-            </li>
-            {% endfor %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No training programs available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-program')">New training program</button>
-            </div>
-            {% endif %}
-          </div>
-        </div>
+      <!-- Native Bulma Column used for Sidebar -->
+      <aside id="sidebar" class="column is-narrow sidebar-container">
+        <div class="sidebar-inner py-4 px-3">
 
-        <div class="sidebar-section" data-section-key="contests">
-          <h2 class="sidebar-section-title" title="Contests">
-            <a class="sidebar-section-icon" href="{{ url("contests") }}">
-              <svg class="icon" width="18" height="18"><use href="#icon-trophy"/></svg>
-            </a>
-            <div class="sidebar-link-group">
-                <span class="section-caret"></span>
-                <a href="{{ url("contests") }}">Contests</a>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if folder_list|length > 0 or root_contests|length > 0 %}
-            <ul class="sidebar-menu">
-            {% for folder in folder_list if folder.parent is none %}
-            <li class="sidebar-folder" data-folder-key="folder-{{ folder.id }}">
-              <div class="folder-header">
-                <span class="folder-icon"></span>
-                <a href="{{ url("folder", folder.id) }}">{{ folder.name }}</a>
-              </div>
-              <ul class="folder-contents">
-                {% for c in folder.contests if c.training_day is none %}
-                  <li class="sidebar-contest">
-                    <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
-                  </li>
-                  {% endfor %}
-                {% for subfolder in folder.children %}
-                <li class="sidebar-subfolder" data-folder-key="subfolder-{{ subfolder.id }}">
-                  <div class="folder-header">
-                    <span class="folder-icon"></span>
-                    <a href="{{ url("folder", subfolder.id) }}">{{ subfolder.name }}</a>
-                  </div>
-                  <ul class="folder-contents">
-                      {% for c in subfolder.contests if c.training_day is none %}
-                      <li class="sidebar-contest">
-                        <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
-                      </li>
-                      {% endfor %}
-                    </ul>
-                  </li>
-                  {% endfor %}
-                </ul>
-              </li>
-              {% endfor %}
-              {% for c in root_contests[:5] %}
-              <li class="sidebar-contest root-contest">
-                <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
-              </li>
-              {% endfor %}
-              {% if root_contests|length > 5 %}
-              <li class="sidebar-action">
-                <a href="{{ url("contests") }}">Show more...</a>
-              </li>
-              {% endif %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No contests available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="javascript:void(0)" onclick="AdminModals.showAddContestDialog('{{ url("contests", "add") }}', '{{ url("contest", "") }}')">New contest</a>
-              <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-folder')">New folder</button>
-              <a class="sidebar-action-link" href="{{ url("folders") }}">Manage folders</a>
+            {% if config.web_server.secret_key == config.web_server.DEFAULT_SECRET_KEY %}
+            <div class="notification is-danger is-light is-size-7 p-2 mb-3">
+              Change secret_key in cms.toml!<br/>
+              For example,<br/>
+              {{ get_hex_random_key() }}
             </div>
             {% endif %}
-          </div>
-        </div>
+            {% if pending_password_resets > 0 %}
+            <div class="notification is-warning is-light is-size-7 p-2 mb-3">
+              <a href="{{ url("users") }}" class="has-text-warning-dark">
+                {{ pending_password_resets }} pending password reset{% if pending_password_resets > 1 %}s{% endif %}
+              </a>
+            </div>
+            {% endif %}
 
-        <div class="sidebar-section" data-section-key="tasks">
-          <h2 class="sidebar-section-title" title="Tasks">
-            <a class="sidebar-section-icon" href="{{ url("tasks") }}">
-              <svg class="icon" width="18" height="18"><use href="#icon-puzzle"/></svg>
-            </a>
-            <div class="sidebar-link-group">
-                <span class="section-caret"></span>
-                <a href="{{ url("tasks") }}">Tasks</a>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if task_list|length > 0 %}
-            <ul class="sidebar-menu">
-              {% for t in task_list[:5] %}
-              <li class="sidebar-item">
-                <a href="{{ url("task", t.id) }}" title="{{ t.title }}">{{ t.name }}</a>
-              </li>
-              {% endfor %}
-              {% if task_list|length > 5 %}
-              <li class="sidebar-action">
-                <a href="{{ url("tasks") }}">Show more...</a>
-              </li>
-              {% endif %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No tasks available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <button type="button" class="sidebar-action-link" onclick="AdminModals.showAddTaskDialog('{{ url("tasks", "add") }}', '{{ url("task", "") }}')">New task</button>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="sidebar-section" data-section-key="users">
-          <h2 class="sidebar-section-title" title="Users">
-            <a class="sidebar-section-icon" href="{{ url("users") }}">
-              <svg class="icon" width="18" height="18"><use href="#icon-users"/></svg>
-            </a>
-            <div class="sidebar-link-group">
-                <span class="section-caret"></span>
-                <a href="{{ url("users") }}">Users</a>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if user_list|length > 0 %}
-            <ul class="sidebar-menu">
-              <li class="sidebar-action">
-                <a href="{{ url("users") }}">
-                  {% if user_list|length == 1 %}Show the only user{% else %}Show {{ user_list|length }} users{% endif %}
+            <ul class="menu-list">
+            {% if contest is none and training_program is not defined %}
+              <li>
+                <a href="{{ url() }}" class="is-flex is-align-items-center px-3 py-2">
+                  <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-activity"/></svg></span>
+                  <span class="menu-text">Overview</span>
                 </a>
               </li>
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No users available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-user')">New user</button>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="sidebar-section" data-section-key="teams">
-          <h2 class="sidebar-section-title" title="Teams">
-            <a class="sidebar-section-icon" href="{{ url("teams") }}">
-              <svg class="icon" width="18" height="18"><use href="#icon-flag"/></svg>
-            </a>
-            <div class="sidebar-link-group">
-                <span class="section-caret"></span>
-                <a href="{{ url("teams") }}">Teams</a>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if team_list|length > 0 %}
-            <ul class="sidebar-menu">
-              <li class="sidebar-action">
-                <a href="{{ url("teams") }}">
-                  {% if team_list|length == 1 %}Show the only team{% else %}Show {{ team_list|length }} teams{% endif %}
+              <li>
+                <a href="{{ url("resourceslist") }}" class="is-flex is-align-items-center px-3 py-2">
+                  <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-cpu"/></svg></span>
+                  <span class="menu-text">Resource usage</span>
                 </a>
               </li>
-            </ul>
+            {% elif training_program is defined %}
+              <li>
+                <a href="{{ url("contest", training_program.managing_contest.id, "overview") }}" class="is-flex is-align-items-center px-3 py-2">
+                  <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-activity"/></svg></span>
+                  <span class="menu-text">Overview</span>
+                </a>
+              </li>
+              <li>
+                <a href="{{ url("contest", training_program.managing_contest.id, "resourceslist") }}" class="is-flex is-align-items-center px-3 py-2">
+                  <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-cpu"/></svg></span>
+                  <span class="menu-text">Resource usage</span>
+                </a>
+              </li>
             {% else %}
-            <p class="sidebar-empty">No teams available</p>
+              <li>
+                <a href="{{ url("contest", contest.id, "overview") }}" class="is-flex is-align-items-center px-3 py-2">
+                  <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-activity"/></svg></span>
+                  <span class="menu-text">Overview</span>
+                </a>
+              </li>
+              <li>
+                <a href="{{ url("contest", contest.id, "resourceslist") }}" class="is-flex is-align-items-center px-3 py-2">
+                  <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-cpu"/></svg></span>
+                  <span class="menu-text">Resource usage</span>
+                </a>
+              </li>
             {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <button type="button" class="sidebar-action-link" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">New team</button>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-        {% elif training_program is defined %}
-          <ul class="menu">
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id) }}" title="General">
-                <svg class="icon" width="18" height="18"><use href="#icon-settings"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id) }}">General</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id, "students") }}" title="Students">
-                <svg class="icon" width="18" height="18"><use href="#icon-users"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "students") }}">Students</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id, "training_days") }}" title="Training Days">
-                <svg class="icon" width="18" height="18"><use href="#icon-laptop-code"/></svg>
-                {% if total_td_unanswered_questions|default(0) > 0 %}<span class="icon-badge is-red"></span>{% endif %}
-                {% if total_td_pending_delay_requests|default(0) > 0 %}<span class="icon-badge is-amber"></span>{% endif %}
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "training_days") }}">Training Days</a>
-              <div class="sidebar-badge-container">
-                  <span class="sidebar-badge is-red" style="{% if total_td_unanswered_questions|default(0) == 0 %} display: none;{% endif %}">
-                    {{ total_td_unanswered_questions|default(0) }}
-                  </span>
-                  <span class="sidebar-badge is-amber" style="{% if total_td_pending_delay_requests|default(0) == 0 %} display: none;{% endif %}">
-                    {{ total_td_pending_delay_requests|default(0) }}
-                  </span>
-              </div>
-            </li>
-          </ul>
-          <ul class="sidebar-menu">
-            {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
-            {% if active_training_days|length > 0 %}
-              {% for td in active_training_days %}
-              <li class="sidebar-contest">
-                <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
-                {% set td_notifs = training_day_notifications.get(td.id, {}) if training_day_notifications is defined else {} %}
-                {% set td_unanswered = td_notifs.get("unanswered_questions", 0) %}
-                {% set td_delays = td_notifs.get("pending_delay_requests", 0) %}
-                <div class="sidebar-badge-container">
-                    <span class="sidebar-badge is-red" style="{% if td_unanswered == 0 %} display: none;{% endif %}">{{ td_unanswered }}</span>
-                    <span class="sidebar-badge is-amber" style="{% if td_delays == 0 %} display: none;{% endif %}">{{ td_delays }}</span>
+            </ul>
+
+            <hr class="navbar-divider my-3" style="background-color: var(--sidebar-border);">
+
+            {% if contest is none and training_program is not defined %}
+            <ul class="menu-list">
+              <li class="sidebar-section" data-section-key="training-programs">
+                <div class="sidebar-section-title is-flex is-justify-content-space-between is-align-items-center is-clickable px-3 py-2">
+                  <a href="{{ url("training_programs") }}" class="is-flex is-align-items-center has-text-inherit is-flex-grow-1" onclick="event.stopPropagation();">
+                      <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-calendar"/></svg></span>
+                      <span class="menu-text has-text-weight-semibold">Training Programs</span>
+                  </a>
+                  <span class="icon is-small section-caret has-text-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+                </div>
+                <div class="sidebar-section-body">
+                  <ul class="ml-4 pl-2" style="border-left: 1px solid var(--sidebar-border);">
+                  {% if training_program_list|length > 0 %}
+                    {% for tp in training_program_list %}
+                    <li class="sidebar-folder" data-folder-key="training-program-{{ tp.id }}">
+                      <div class="folder-header is-flex is-justify-content-space-between is-align-items-center is-clickable px-3 py-1 mt-1">
+                        <a href="{{ url("training_program", tp.id) }}" class="is-flex is-align-items-center has-text-inherit is-flex-grow-1" title="{{ tp.description }}" onclick="event.stopPropagation();">
+                            <span class="menu-text">{{ tp.name }}</span>
+                        </a>
+                        <span class="icon is-small section-caret has-text-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+                      </div>
+                      <div class="sidebar-section-body">
+                          <ul class="ml-3 pl-2" style="border-left: 1px solid var(--sidebar-border);">
+                            {% for td in tp.training_days if td.contest %}
+                            <li>
+                              <a href="{{ url("contest", td.contest_id) }}" class="px-3 py-1" title="{{ td.contest.description }}"><span class="menu-text">{{ td.contest.name }}</span></a>
+                            </li>
+                            {% endfor %}
+                          </ul>
+                      </div>
+                    </li>
+                    {% endfor %}
+                  {% else %}
+                    <li><span class="px-3 py-1 sidebar-empty menu-text">No programs available</span></li>
+                  {% endif %}
+                  {% if admin.permission_all %}
+                    <li class="sidebar-actions mt-2 px-3">
+                      <button type="button" class="sidebar-action-link w-100" onclick="MicroModal.show('modal-add-program')">New program</button>
+                    </li>
+                  {% endif %}
+                  </ul>
                 </div>
               </li>
-              {% endfor %}
-            {% else %}
-              <li class="sidebar-action">
-                <span class="sidebar-empty">No active training days</span>
+            </ul>
+
+            <ul class="menu-list mt-2">
+              <li class="sidebar-section" data-section-key="contests">
+                <div class="sidebar-section-title is-flex is-justify-content-space-between is-align-items-center is-clickable px-3 py-2">
+                  <a href="{{ url("contests") }}" class="is-flex is-align-items-center has-text-inherit is-flex-grow-1" onclick="event.stopPropagation();">
+                      <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-trophy"/></svg></span>
+                      <span class="menu-text has-text-weight-semibold">Contests</span>
+                  </a>
+                  <span class="icon is-small section-caret has-text-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+                </div>
+                <div class="sidebar-section-body">
+                  <ul class="ml-4 pl-2" style="border-left: 1px solid var(--sidebar-border);">
+                    {% if folder_list|length > 0 or root_contests|length > 0 %}
+                      {% for folder in folder_list if folder.parent is none %}
+                      <li class="sidebar-folder" data-folder-key="folder-{{ folder.id }}">
+                        <div class="folder-header is-flex is-justify-content-space-between is-align-items-center is-clickable px-3 py-1 mt-1">
+                          <a href="{{ url("folder", folder.id) }}" class="is-flex is-align-items-center has-text-inherit is-flex-grow-1" onclick="event.stopPropagation();">
+                              <span class="menu-text">{{ folder.name }}</span>
+                          </a>
+                          <span class="icon is-small section-caret has-text-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+                        </div>
+                        <div class="sidebar-section-body">
+                            <ul class="ml-3 pl-2" style="border-left: 1px solid var(--sidebar-border);">
+                              {% for c in folder.contests if c.training_day is none %}
+                                <li>
+                                  <a href="{{ url("contest", c.id) }}" class="px-3 py-1" title="{{ c.description }}"><span class="menu-text">{{ c.name }}</span></a>
+                                </li>
+                              {% endfor %}
+                              {% for subfolder in folder.children %}
+                              <li class="sidebar-subfolder" data-folder-key="subfolder-{{ subfolder.id }}">
+                                <div class="folder-header is-flex is-justify-content-space-between is-align-items-center is-clickable px-3 py-1 mt-1">
+                                  <a href="{{ url("folder", subfolder.id) }}" class="is-flex is-align-items-center has-text-inherit is-flex-grow-1" onclick="event.stopPropagation();">
+                                      <span class="menu-text">{{ subfolder.name }}</span>
+                                  </a>
+                                  <span class="icon is-small section-caret has-text-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+                                </div>
+                                <div class="sidebar-section-body">
+                                    <ul class="ml-3 pl-2" style="border-left: 1px solid var(--sidebar-border);">
+                                        {% for c in subfolder.contests if c.training_day is none %}
+                                        <li>
+                                          <a href="{{ url("contest", c.id) }}" class="px-3 py-1" title="{{ c.description }}"><span class="menu-text">{{ c.name }}</span></a>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                              </li>
+                              {% endfor %}
+                            </ul>
+                        </div>
+                      </li>
+                      {% endfor %}
+                      {% for c in root_contests %}
+                      <li>
+                        <a href="{{ url("contest", c.id) }}" class="px-3 py-1" title="{{ c.description }}"><span class="menu-text">{{ c.name }}</span></a>
+                      </li>
+                      {% endfor %}
+                      {% if root_contests|length > 5 %}
+                      <li><a href="{{ url("contests") }}" class="px-3 py-1 has-text-grey"><i class="menu-text">Show more...</i></a></li>
+                      {% endif %}
+                    {% else %}
+                      <li><span class="px-3 py-1 sidebar-empty menu-text">No contests available</span></li>
+                    {% endif %}
+                    {% if admin.permission_all %}
+                      <li class="sidebar-actions mt-2 px-3 is-flex is-flex-wrap-wrap is-gap-1">
+                        <button type="button" class="sidebar-action-link" onclick="AdminModals.showAddContestDialog('{{ url("contests", "add") }}', '{{ url("contest", "") }}')">New contest</button>
+                        <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-folder')">New folder</button>
+                      </li>
+                    {% endif %}
+                  </ul>
+                </div>
               </li>
+            </ul>
+
+            <ul class="menu-list mt-2">
+              <li class="sidebar-section" data-section-key="tasks">
+                <div class="sidebar-section-title is-flex is-justify-content-space-between is-align-items-center is-clickable px-3 py-2">
+                  <a href="{{ url("tasks") }}" class="is-flex is-align-items-center has-text-inherit is-flex-grow-1" onclick="event.stopPropagation();">
+                      <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-puzzle"/></svg></span>
+                      <span class="menu-text has-text-weight-semibold">Tasks</span>
+                  </a>
+                  <span class="icon is-small section-caret has-text-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+                </div>
+                <div class="sidebar-section-body">
+                  <ul class="ml-4 pl-2" style="border-left: 1px solid var(--sidebar-border);">
+                    {% if task_list|length > 0 %}
+                      {% for t in task_list %}
+                      <li><a href="{{ url("task", t.id) }}" class="px-3 py-1" title="{{ t.title }}"><span class="menu-text">{{ t.name }}</span></a></li>
+                      {% endfor %}
+                      {% if task_list|length > 5 %}
+                      <li><a href="{{ url("tasks") }}" class="px-3 py-1 has-text-grey"><i class="menu-text">Show more...</i></a></li>
+                      {% endif %}
+                    {% else %}
+                      <li><span class="px-3 py-1 sidebar-empty menu-text">No tasks available</span></li>
+                    {% endif %}
+                    {% if admin.permission_all %}
+                      <li class="sidebar-actions mt-2 px-3">
+                        <button type="button" class="sidebar-action-link w-100" onclick="AdminModals.showAddTaskDialog('{{ url("tasks", "add") }}', '{{ url("task", "") }}')">New task</button>
+                      </li>
+                    {% endif %}
+                  </ul>
+                </div>
+              </li>
+            </ul>
+
+            <ul class="menu-list mt-2">
+              <li class="sidebar-section" data-section-key="users">
+                <div class="sidebar-section-title is-flex is-justify-content-space-between is-align-items-center is-clickable px-3 py-2">
+                  <a href="{{ url("users") }}" class="is-flex is-align-items-center has-text-inherit is-flex-grow-1" onclick="event.stopPropagation();">
+                      <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-users"/></svg></span>
+                      <span class="menu-text has-text-weight-semibold">Users</span>
+                  </a>
+                  <span class="icon is-small section-caret has-text-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+                </div>
+                <div class="sidebar-section-body">
+                  <ul class="ml-4 pl-2" style="border-left: 1px solid var(--sidebar-border);">
+                    {% if user_list|length > 0 %}
+                      <li><a href="{{ url("users") }}" class="px-3 py-1 has-text-grey"><i class="menu-text">Show all {{ user_list|length }} users</i></a></li>
+                    {% else %}
+                      <li><span class="px-3 py-1 sidebar-empty menu-text">No users available</span></li>
+                    {% endif %}
+                    {% if admin.permission_all %}
+                      <li class="sidebar-actions mt-2 px-3">
+                        <button type="button" class="sidebar-action-link w-100" onclick="MicroModal.show('modal-add-user')">New user</button>
+                      </li>
+                    {% endif %}
+                  </ul>
+                </div>
+              </li>
+            </ul>
+
+            <ul class="menu-list mt-2">
+              <li class="sidebar-section" data-section-key="teams">
+                <div class="sidebar-section-title is-flex is-justify-content-space-between is-align-items-center is-clickable px-3 py-2">
+                  <a href="{{ url("teams") }}" class="is-flex is-align-items-center has-text-inherit is-flex-grow-1" onclick="event.stopPropagation();">
+                      <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-flag"/></svg></span>
+                      <span class="menu-text has-text-weight-semibold">Teams</span>
+                  </a>
+                  <span class="icon is-small section-caret has-text-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+                </div>
+                <div class="sidebar-section-body">
+                  <ul class="ml-4 pl-2" style="border-left: 1px solid var(--sidebar-border);">
+                    {% if team_list|length > 0 %}
+                      <li><a href="{{ url("teams") }}" class="px-3 py-1 has-text-grey"><i class="menu-text">Show all {{ team_list|length }} teams</i></a></li>
+                    {% else %}
+                      <li><span class="px-3 py-1 sidebar-empty menu-text">No teams available</span></li>
+                    {% endif %}
+                    {% if admin.permission_all %}
+                      <li class="sidebar-actions mt-2 px-3">
+                        <button type="button" class="sidebar-action-link w-100" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">New team</button>
+                      </li>
+                    {% endif %}
+                  </ul>
+                </div>
+              </li>
+            </ul>
+
+            {% elif training_program is defined %}
+              <ul class="menu-list">
+                <li>
+                  <a href="{{ url("training_program", training_program.id) }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-settings"/></svg></span>
+                    <span class="menu-text">General</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("training_program", training_program.id, "students") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-users"/></svg></span>
+                    <span class="menu-text">Students</span>
+                  </a>
+                </li>
+                <li class="sidebar-section" data-section-key="td-section">
+                  <div class="sidebar-section-title is-flex is-justify-content-space-between is-align-items-center is-clickable px-3 py-2">
+                    <a href="{{ url("training_program", training_program.id, "training_days") }}" class="is-flex is-align-items-center has-text-inherit is-flex-grow-1" onclick="event.stopPropagation();">
+                        <div style="position: relative;" class="icon mr-3">
+                          <svg width="18" height="18"><use href="#icon-laptop-code"/></svg>
+                          {% if total_td_unanswered_questions|default(0) > 0 %}<span class="icon-badge is-red"></span>{% endif %}
+                          {% if total_td_pending_delay_requests|default(0) > 0 %}<span class="icon-badge is-amber"></span>{% endif %}
+                        </div>
+                        <span class="menu-text has-text-weight-semibold">Training Days</span>
+                    </a>
+                    <span class="icon is-small section-caret has-text-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+                  </div>
+                  <div class="sidebar-section-body">
+                    <ul class="ml-4 pl-2" style="border-left: 1px solid var(--sidebar-border);">
+                      {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
+                      {% if active_training_days|length > 0 %}
+                        {% for td in active_training_days %}
+                        <li>
+                          <a href="{{ url("contest", td.contest_id) }}" class="is-flex is-justify-content-space-between is-align-items-center px-3 py-1" title="{{ td.contest.description }}">
+                            <span class="menu-text text-truncate">{{ td.contest.name }}</span>
+                            {% set td_notifs = training_day_notifications.get(td.id, {}) if training_day_notifications is defined else {} %}
+                            {% set td_unanswered = td_notifs.get("unanswered_questions", 0) %}
+                            {% set td_delays = td_notifs.get("pending_delay_requests", 0) %}
+                            <div class="sidebar-badge-container">
+                                <span class="sidebar-badge is-red" style="{% if td_unanswered == 0 %} display: none;{% endif %}">{{ td_unanswered }}</span>
+                                <span class="sidebar-badge is-amber" style="{% if td_delays == 0 %} display: none;{% endif %}">{{ td_delays }}</span>
+                            </div>
+                          </a>
+                        </li>
+                        {% endfor %}
+                      {% else %}
+                        <li><span class="px-3 py-1 sidebar-empty menu-text">No active training days</span></li>
+                      {% endif %}
+                      {% if admin.permission_all %}
+                        <li class="sidebar-actions mt-2 px-3">
+                          <button type="button" class="sidebar-action-link w-100" onclick="MicroModal.show('modal-add-training-day')">Add training day</button>
+                        </li>
+                      {% endif %}
+                    </ul>
+                  </div>
+                </li>
+                <li>
+                  <a href="{{ url("training_program", training_program.id, "ranking") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-home-chart"/></svg></span>
+                    <span class="menu-text">Home Task Scores</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("training_program", training_program.id, "submissions") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-file-code"/></svg></span>
+                    <span class="menu-text">Submissions</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("training_program", training_program.id, "tasks") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-puzzle"/></svg></span>
+                    <span class="menu-text">Tasks</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("training_program", training_program.id, "attendance") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-calendar-check"/></svg></span>
+                    <span class="menu-text">Attendance</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("training_program", training_program.id, "combined_ranking") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-trophy"/></svg></span>
+                    <span class="menu-text">Ranking</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("training_program", training_program.id, "announcements") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-megaphone"/></svg></span>
+                    <span class="menu-text">Announcements</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("training_program", training_program.id, "questions") }}" class="is-flex is-justify-content-space-between is-align-items-center px-3 py-2">
+                    <div class="is-flex is-align-items-center">
+                        <div style="position: relative;" class="icon mr-3">
+                          <svg width="18" height="18"><use href="#icon-message-circle"/></svg>
+                          {% if unanswered > 0 %}<span class="icon-badge is-red"></span>{% endif %}
+                        </div>
+                        <span class="menu-text">Questions</span>
+                    </div>
+                    <div class="sidebar-badge-container">
+                        <span id="unanswered_questions_tp" class="sidebar-badge is-red" {% if unanswered == 0 %} style="display: none;" {% endif %}>
+                          {{ unanswered }}
+                        </span>
+                    </div>
+                  </a>
+                </li>
+              </ul>
+            {% else %}
+              <ul class="menu-list">
+                <li>
+                  <a href="{{ url("contest", contest.id) }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-settings"/></svg></span>
+                    <span class="menu-text">General</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("contest", contest.id, "ranking") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-trophy"/></svg></span>
+                    <span class="menu-text">Ranking</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("contest", contest.id, "submissions") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-file-code"/></svg></span>
+                    <span class="menu-text">Submissions</span>
+                  </a>
+                </li>
+                {% if contest.allow_user_tests %}
+                <li>
+                  <a href="{{ url("contest", contest.id, "user_tests") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-play-circle"/></svg></span>
+                    <span class="menu-text">User tests</span>
+                  </a>
+                </li>
+                {% endif %}
+                {% if contest.training_day is none %}
+                <li>
+                  <a href="{{ url("contest", contest.id, "users") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-users"/></svg></span>
+                    <span class="menu-text">Users</span>
+                  </a>
+                </li>
+                {% endif %}
+                <li>
+                  <a href="{{ url("contest", contest.id, "tasks") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-puzzle"/></svg></span>
+                    <span class="menu-text">Tasks</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("contest", contest.id, "announcements") }}" class="is-flex is-align-items-center px-3 py-2">
+                    <span class="icon mr-3"><svg width="18" height="18"><use href="#icon-megaphone"/></svg></span>
+                    <span class="menu-text">Announcements</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("contest", contest.id, "questions") }}" class="is-flex is-justify-content-space-between is-align-items-center px-3 py-2">
+                    <div class="is-flex is-align-items-center">
+                        <div style="position: relative;" class="icon mr-3">
+                          <svg width="18" height="18"><use href="#icon-message-circle"/></svg>
+                          {% if unanswered > 0 %}<span class="icon-badge is-red"></span>{% endif %}
+                        </div>
+                        <span class="menu-text">Questions</span>
+                    </div>
+                    <div class="sidebar-badge-container">
+                        <span id="unanswered_questions" class="sidebar-badge is-red" {% if unanswered == 0 %} style="display: none;" {% endif %}>
+                          {{ unanswered }}
+                        </span>
+                    </div>
+                  </a>
+                </li>
+                <li>
+                  <a href="{{ url("contest", contest.id, "delays_and_extra_times") }}" class="is-flex is-justify-content-space-between is-align-items-center px-3 py-2">
+                    <div class="is-flex is-align-items-center">
+                        <div style="position: relative;" class="icon mr-3">
+                          <svg width="18" height="18"><use href="#icon-calendar-check"/></svg>
+                          {% if unanswered_delay_requests > 0 %}<span class="icon-badge is-amber"></span>{% endif %}
+                        </div>
+                        <span class="menu-text">Attendance</span>
+                    </div>
+                    <div class="sidebar-badge-container">
+                        <span id="unanswered_delay_requests" class="sidebar-badge is-amber" {% if unanswered_delay_requests == 0 %} style="display: none;" {% endif %}>
+                          {{ unanswered_delay_requests }}
+                        </span>
+                    </div>
+                  </a>
+                </li>
+              </ul>
             {% endif %}
-            {% if admin.permission_all %}
-              <div class="sidebar-actions">
-                <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-training-day')">Add a training day</button>
-              </div>
-            {% endif %}
-          </ul>
-          <ul class="menu">
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id, "ranking") }}" title="Home Task Scores">
-                <svg class="icon" width="18" height="18"><use href="#icon-home-chart"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "ranking") }}">Home Task Scores</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id, "submissions") }}" title="Submissions">
-                <svg class="icon" width="18" height="18"><use href="#icon-file-code"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "submissions") }}">Submissions</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id, "tasks") }}" title="Tasks">
-                <svg class="icon" width="18" height="18"><use href="#icon-puzzle"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "tasks") }}">Tasks</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id, "attendance") }}" title="Attendance">
-                <svg class="icon" width="18" height="18"><use href="#icon-calendar-check"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "attendance") }}">Attendance</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id, "combined_ranking") }}" title="Ranking">
-                <svg class="icon" width="18" height="18"><use href="#icon-trophy"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "combined_ranking") }}">Ranking</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id, "announcements") }}" title="Announcements">
-                <svg class="icon" width="18" height="18"><use href="#icon-megaphone"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "announcements") }}">Announcements</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("training_program", training_program.id, "questions") }}" title="Questions">
-                <svg class="icon" width="18" height="18"><use href="#icon-message-circle"/></svg>
-                {% if unanswered > 0 %}<span class="icon-badge is-red"></span>{% endif %}
-              </a>
-              <a class="menu_link" href="{{ url("training_program", training_program.id, "questions") }}">Questions</a>
-              <div class="sidebar-badge-container">
-                  <span id="unanswered_questions_tp" class="sidebar-badge is-red" {% if unanswered == 0 %} style="display: none;" {% endif %}>
-                    {{ unanswered }}
-                  </span>
-              </div>
-            </li>
-          </ul>
-        {% else %}
-          <ul class="menu">
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("contest", contest.id) }}" title="General">
-                <svg class="icon" width="18" height="18"><use href="#icon-settings"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("contest", contest.id) }}">General</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("contest", contest.id, "ranking") }}" title="Ranking">
-                <svg class="icon" width="18" height="18"><use href="#icon-trophy"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("contest", contest.id, "ranking") }}">Ranking</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("contest", contest.id, "submissions") }}" title="Submissions">
-                <svg class="icon" width="18" height="18"><use href="#icon-file-code"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("contest", contest.id, "submissions") }}">Submissions</a>
-            </li>
-            {% if contest.allow_user_tests %}
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("contest", contest.id, "user_tests") }}" title="User tests">
-                <svg class="icon" width="18" height="18"><use href="#icon-play-circle"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("contest", contest.id, "user_tests") }}">User tests</a>
-            </li>
-            {% endif %}
-            {% if contest.training_day is none %}
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("contest", contest.id, "users") }}" title="Users">
-                <svg class="icon" width="18" height="18"><use href="#icon-users"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("contest", contest.id, "users") }}">Users</a>
-            </li>
-            {% endif %}
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("contest", contest.id, "tasks") }}" title="Tasks">
-                <svg class="icon" width="18" height="18"><use href="#icon-puzzle"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("contest", contest.id, "tasks") }}">Tasks</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("contest", contest.id, "announcements") }}" title="Announcements">
-                <svg class="icon" width="18" height="18"><use href="#icon-megaphone"/></svg>
-              </a>
-              <a class="menu_link" href="{{ url("contest", contest.id, "announcements") }}">Announcements</a>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("contest", contest.id, "questions") }}" title="Questions">
-                <svg class="icon" width="18" height="18"><use href="#icon-message-circle"/></svg>
-                {% if unanswered > 0 %}<span class="icon-badge is-red"></span>{% endif %}
-              </a>
-              <a class="menu_link" href="{{ url("contest", contest.id, "questions") }}">Questions</a>
-              <div class="sidebar-badge-container">
-                  <span id="unanswered_questions" class="sidebar-badge is-red"
-                    {% if unanswered == 0 %} style="display: none;" {% endif %}>
-                    {{ unanswered }}
-                  </span>
-              </div>
-            </li>
-            <li class="menu_entry">
-              <a class="menu-icon" href="{{ url("contest", contest.id, "delays_and_extra_times") }}" title="Attendance">
-                <svg class="icon" width="18" height="18"><use href="#icon-calendar-check"/></svg>
-                {% if unanswered_delay_requests > 0 %}<span class="icon-badge is-amber"></span>{% endif %}
-              </a>
-              <a class="menu_link" href="{{ url("contest", contest.id, "delays_and_extra_times") }}">Attendance</a>
-              <div class="sidebar-badge-container">
-                  <span id="unanswered_delay_requests" class="sidebar-badge is-amber"
-                    {% if unanswered_delay_requests == 0 %} style="display: none;" {% endif %}>
-                    {{ unanswered_delay_requests }}
-                  </span>
-              </div>
-            </li>
-          </ul>
-          <div class="hr"></div>
-          <div class="side_footer">
-            <span id="remaining_text"></span>
-            <span id="remaining_value"></span>
-          </div>
-        {% endif %}
-        <div class="cr_notice">CMS <a href="http://github.com/cms-dev/cms/">codebase</a> is released under the<br/><a href="http://www.gnu.org/licenses/agpl.txt">GNU Affero General Public License</a>.</div>
+
+            <div class="mt-auto pt-4 px-3 sidebar-footer menu-text">
+                <div class="is-size-7 has-text-grey mb-2">
+                  <span id="remaining_text"></span>
+                  <span id="remaining_value"></span>
+                </div>
+                <div class="is-size-7 has-text-grey" style="line-height: 1.3;">
+                    CMS <a href="http://github.com/cms-dev/cms/" class="has-text-grey-light">codebase</a> is released under the <a href="http://www.gnu.org/licenses/agpl.txt" class="has-text-grey-light">GNU Affero General Public License</a>.
+                </div>
+            </div>
+        </div>
       </aside>
 
-      <div id="border"></div>
-      <main id="core" class="column">
-        <div id="notifications" class="notifications"></div>
+      <main id="core" class="column p-5 is-overflow-x-hidden" style="min-width: 0;">
+
+        {% if admin is defined %}
+            {% if training_program is defined %}
+            <nav class="breadcrumb is-small mb-4" aria-label="breadcrumbs">
+              <ul>
+                <li><a href="{{ url() }}">Home</a></li>
+                <li class="is-active"><a href="{{ url("training_program", training_program.id) }}" aria-current="page">{{ training_program.name }}</a></li>
+              </ul>
+            </nav>
+            {% elif contest is not none %}
+            <nav class="breadcrumb is-small mb-4" aria-label="breadcrumbs">
+              <ul>
+                <li><a href="{{ url() }}">Home</a></li>
+                {% if contest.folder %}
+                <li><a href="{{ url("folder", contest.folder.id) }}">{{ contest.folder.name }}</a></li>
+                {% elif contest.training_day %}
+                <li><a href="{{ url("training_program", contest.training_day.training_program.id) }}">{{ contest.training_day.training_program.name }}</a></li>
+                {% endif %}
+                <li class="is-active"><a href="{{ url("contest", contest.id) }}" aria-current="page">{{ contest.name }}</a></li>
+              </ul>
+            </nav>
+            {% endif %}
+        {% endif %}
+
+        <div id="notifications" class="notifications mb-4"></div>
         <div class="modal modal--wide" id="modal-show-file" aria-hidden="true">
             <div class="modal__overlay" tabindex="-1" data-micromodal-close>
                 <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-show-file-title" style="max-width: 900px; max-height: 85vh; display: flex; flex-direction: column;">
