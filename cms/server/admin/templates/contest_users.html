@@ -92,8 +92,8 @@
         <button type="button" class="button is-small is-danger is-outlined"
             onclick='AdminModals.deleteResource({
                 title: "Remove Participation",
-                message: "Are you sure you want to remove user " + {{ p.user.username|tojson }} + " from contest {{ contest.name|e }}?",
-                warnings: ["{{ p.submissions|length }} submission(s) will be deleted."],
+                message: "Are you sure you want to remove user " + {{ p.user.username|tojson }} + " from contest " + {{ contest.name|tojson }} + "?",
+                warnings: [{{ (p.submissions|length|string + " submission(s) will be deleted.")|tojson }}],
                 deleteUrl: {{ url("contest", contest.id, "user", p.user.id, "remove")|tojson }},
                 confirmLabel: "Yes, Remove"
             })'>

@@ -52,6 +52,15 @@
 .table th {
     vertical-align: middle;
 }
+.table.is-header-muted thead th {
+    color: var(--tp-text-muted);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--tp-border-light);
+    text-align: left;
+}
 
 .button {
     height: auto;
@@ -59,7 +68,7 @@
     transition: all 0.2s;
 }
 .button.is-primary:not(.is-outlined),
-.button.is-danger:not(.is-light):not(.is-outlined) {
+.button.is-danger:not(.is-light, .is-outlined) {
     color: var(--bulma-white);
 }
 
@@ -102,16 +111,27 @@ pre {
     --sidebar-teal: #0F766E;
 }
 
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+#core {
+  flex: 1;
+  overflow-x: auto;
+}
+
 #sidebar {
     text-align: left;
-    position: fixed;
+    position: sticky;
+    top: 0;
     padding: 0 1em;
     width: 234px;
     box-sizing: content-box;
     background: linear-gradient(180deg, var(--sidebar-bg-dark) 0%, var(--sidebar-bg-light) 100%);
     color: var(--sidebar-text);
     text-shadow: none;
-    height: 100%;
+    height: 100vh;
     border-right: 1px solid var(--sidebar-border);
     overflow-y: auto;
     padding-bottom: 4em;
@@ -468,12 +488,6 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     color: var(--sidebar-text);
 }
 
-.menu {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
 .menu_entry {
     display: flex;
     align-items: center;
@@ -596,12 +610,6 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 
 
 /* RIGHT */
-
-#core {
-    margin-left: 270px;
-    margin-bottom: 1em;
-    padding: 0 1em;
-}
 
 #core h1 {
     font-size: 2.5em;

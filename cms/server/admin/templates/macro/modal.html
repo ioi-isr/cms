@@ -7,13 +7,14 @@
     - title_id:    The id attribute for the <h2> (must match aria-labelledby on the container).
     - extra_class: Optional additional CSS class on the header element (e.g. "modal__header--danger").
 
-  modal_footer(submit_label, submit_id="", submit_icon="", submit_class="is-primary", cancel_label="Cancel")
+  modal_footer(submit_label, submit_id="", submit_icon="", submit_class="is-primary", cancel_label="Cancel", disabled=false)
     Renders the <footer class="modal__footer"> block with a Cancel button and one primary submit button.
     - submit_label: Text inside the submit button's <span>.
     - submit_id:    Optional id attribute for the submit button.
     - submit_icon:  Optional SVG icon href (e.g. "#icon-check"); renders an <svg> before the label.
     - submit_class: CSS modifier class(es) for the submit button (default: "is-primary").
     - cancel_label: Label for the cancel button (default: "Cancel").
+    - disabled:     Whether to disable the submit button (default: false).
 #}
 
 {% macro modal_header(title, title_id, extra_class="") %}
@@ -23,10 +24,10 @@
 </header>
 {% endmacro %}
 
-{% macro modal_footer(submit_label, submit_id="", submit_icon="", submit_class="is-primary", cancel_label="Cancel") %}
+{% macro modal_footer(submit_label, submit_id="", submit_icon="", submit_class="is-primary", cancel_label="Cancel", disabled=false) %}
 <footer class="modal__footer">
     <button type="button" class="button" data-micromodal-close><span>{{ cancel_label }}</span></button>
-    <button type="submit" class="button {{ submit_class }}"{{ (' id="' ~ submit_id ~ '"') | safe if submit_id else '' }}>
+    <button type="submit" class="button {{ submit_class }}"{{ (' id="' ~ submit_id ~ '"') | safe if submit_id else '' }}{{ ' disabled aria-disabled="true"' | safe if disabled else '' }}>
         {% if submit_icon %}<svg class="icon is-small"><use href="{{ submit_icon }}"/></svg>{% endif %}
         <span>{{ submit_label }}</span>
     </button>

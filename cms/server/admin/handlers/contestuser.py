@@ -89,6 +89,10 @@ class RemoveParticipationHandler(BaseHandler):
             .first()
         )
 
+        # Check if participation exists before deleting
+        if participation is None:
+            raise tornado.web.HTTPError(404)
+
         # Unassign the user from the contest.
         self.sql_session.delete(participation)
 
@@ -97,7 +101,7 @@ class RemoveParticipationHandler(BaseHandler):
             self.service.proxy_service.reinitialize()
 
         # Maybe they'll want to do this again (for another participation)
-        self.write("../../users")
+        self.write(self.url("users"))
 
 
 class AddContestUserHandler(BaseHandler):

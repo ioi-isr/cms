@@ -1,4 +1,4 @@
-{% from "macro/modal.html" import modal_header %}
+{% from "macro/modal.html" import modal_header, modal_footer %}
 {% extends "base.html" %}
 
 {% block core %}
@@ -306,12 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <input type="text" name="tag" id="bulkAssignTagInput" placeholder="Select a student tag..." />
                     </div>
                 </main>
-                <footer class="modal__footer">
-                    <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                    <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}>
-                        <span>Assign Task to Group</span>
-                    </button>
-                </footer>
+                {{ modal_footer("Assign Task to Group", disabled=(not admin.permission_all)) }}
             </form>
         </div>
     </div>

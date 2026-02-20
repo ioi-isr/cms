@@ -1167,9 +1167,9 @@
 }
 
 .badge-danger {
-    background: #fef2f2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
+    background: var(--bulma-danger-90);
+    color: var(--bulma-danger-dark);
+    border: 1px solid var(--bulma-danger-75);
 }
 
 /* ==========================================================================
@@ -2740,47 +2740,6 @@
     border-color: var(--tp-border-dark);
 }
 
-.delays-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 0.88rem;
-    background-color: var(--tp-bg-white);
-}
-
-.delays-table thead th {
-    background: var(--tp-bg-light);
-    color: var(--tp-text-muted);
-    font-weight: 600;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--tp-border-light);
-    text-align: left;
-    white-space: nowrap;
-}
-
-.delays-table tbody tr {
-    background: var(--tp-bg-white);
-    transition: background 0.15s;
-}
-
-.delays-table tbody tr:hover td {
-    background-color: var(--tp-bg-hover);
-}
-
-.delays-table tbody td {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--tp-border-light);
-    vertical-align: middle;
-    background-color: transparent;
-}
-
-.delays-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
 .delays-timing-label {
     font-size: 0.7rem;
     font-weight: 600;
@@ -2795,10 +2754,6 @@
 .delays-timing-value {
     font-size: 0.85rem;
     color: var(--tp-text-primary);
-}
-
-.delays-timing-value-actual {
-    font-weight: 700;
 }
 
 .delays-timing-none {
@@ -3615,10 +3570,6 @@
 /* ==========================================================================
    Overview Page
    ========================================================================== */
-
-.overview-section {
-    margin-bottom: 32px;
-}
 
 /* Status Cards Grid */
 .overview-status-grid {

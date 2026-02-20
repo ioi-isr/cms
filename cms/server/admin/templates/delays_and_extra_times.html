@@ -47,7 +47,6 @@ CMS.AWSFormUtils.initTagify({
   <div class="level-left">
     <div>
       <h1 class="title">Attendance</h1>
-      <p class="subtitle has-text-grey">Monitor student participation, manage delays, and track IP addresses.</p>
     </div>
   </div>
   <div class="level-right">
@@ -57,6 +56,7 @@ CMS.AWSFormUtils.initTagify({
     </button>
   </div>
 </div>
+<p class="subtitle has-text-grey">Monitor student participation, manage delays, and track IP addresses.</p>
 
 <!-- Archive-ready banner -->
 {% if contest.training_day and all_finished_or_missed and participation_statuses|length > 0 %}
@@ -109,7 +109,7 @@ CMS.AWSFormUtils.initTagify({
     </div>
     <div class="delays-alert-description">Students missing a main group tag cannot participate. Edit their tags below to fix this.</div>
     <div class="delays-alert-content">
-      <table class="delays-table">
+      <table class="table is-fullwidth is-hoverable is-header-muted">
         <thead>
           <tr>
             <th>Student</th>
@@ -197,7 +197,7 @@ CMS.AWSFormUtils.initTagify({
 </div>
 
 <div class="tp-table-container">
-<table class="delays-table" id="participations-table">
+<table class="table is-fullwidth is-hoverable is-header-muted" id="participations-table">
   <thead>
     <tr>
       <th>User</th>
@@ -261,7 +261,7 @@ CMS.AWSFormUtils.initTagify({
         <div>
           <span class="delays-timing-label">ACTUAL START</span>
           {% if participation.starting_time %}
-            <span class="delays-timing-value delays-timing-value-actual">{{ participation.starting_time|format_datetime }}</span>
+            <span class="delays-timing-value has-text-weight-bold">{{ participation.starting_time|format_datetime }}</span>
 
           {% else %}
             <span class="delays-timing-none">--:--:--</span>

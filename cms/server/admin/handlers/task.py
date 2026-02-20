@@ -222,7 +222,12 @@ class TaskHandler(BaseHandler):
                     "changes": changes,
                     "default_notify_participations": notify_participations,
                 }
-            except Exception:
+            except Exception as error:
+                logger.exception(
+                    "Failed to compute activation changes for dataset %s",
+                    dataset.id,
+                    exc_info=error,
+                )
                 activate_data[dataset.id] = {
                     "changes": [],
                     "default_notify_participations": set(),

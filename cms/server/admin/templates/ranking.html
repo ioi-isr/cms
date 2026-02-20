@@ -16,6 +16,7 @@
 {%- endmacro %}
 
 {% block core %}
+<div class="container is-fluid">
 <style>
   .td-ranking-table .score-only { display: none; }
   .td-ranking-table.hide-indicators .indicator { display: none; }
@@ -242,4 +243,5 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
   })
 </script>
 {% endif %}
+</div>
 {% endblock core %}

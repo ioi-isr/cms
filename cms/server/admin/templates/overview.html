@@ -313,7 +313,7 @@ update_statuses();
 
     {% if contest is not none %}
     <!-- Submissions Status Cards -->
-    <div class="overview-section">
+    <div class="mb-5">
         <div class="tp-section-header">
             <h2>
                 <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-file-code"/></svg>
@@ -331,7 +331,7 @@ update_statuses();
     <!-- Queue & Workers Row -->
     <div class="overview-two-col">
         <!-- Workers Status -->
-        <div class="overview-section">
+        <div class="mb-5">
             <div class="tp-section-header">
                 <h2 id="title_workers_status">
                     <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-cpu"/></svg>
@@ -345,14 +345,14 @@ update_statuses();
                 <span class="overview-hint">Workers 0 to n-1 enabled, rest disabled</span>
             </div>
             <div class="tp-table-container" style="max-height: 400px;">
-                <table class="table is-fullwidth is-hoverable" id="workers_status_table">
+                <table class="table is-fullwidth is-hoverable is-header-muted" id="workers_status_table">
                     <thead>
-                        <tr class="is-uppercase">
-                            <th class="has-text-centered has-text-weak" style="width: 60px;">Shard</th>
-                            <th class="has-text-centered has-text-weak" style="width: 100px;">Connected</th>
-                            <th class="has-text-weak">Current Job</th>
-                            <th class="has-text-right has-text-weak" style="width: 140px;">Since</th>
-                            <th class="has-text-centered has-text-weak" style="width: 100px;">Action</th>
+                        <tr>
+                            <th class="has-text-centered" style="width: 60px;">Shard</th>
+                            <th class="has-text-centered" style="width: 100px;">Connected</th>
+                            <th>Current Job</th>
+                            <th class="has-text-right" style="width: 140px;">Since</th>
+                            <th class="has-text-centered" style="width: 100px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -362,7 +362,7 @@ update_statuses();
             </div>
         </div>
         <!-- Queue Status -->
-        <div class="overview-section">
+        <div class="mb-5">
             <div class="tp-section-header">
                 <h2>
                     <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-clock"/></svg>
@@ -370,13 +370,13 @@ update_statuses();
                 </h2>
             </div>
             <div class="tp-table-container" style="max-height: 500px;">
-                <table class="table is-fullwidth is-hoverable" id="queue_status_table">
-                    <thead class = "is-uppercase">
+                <table class="table is-fullwidth is-hoverable is-header-muted" id="queue_status_table">
+                    <thead>
                         <tr>
-                            <th class="has-text-centered has-text-weak" style="width: 60px;">#</th>
-                            <th class="has-text-weak">Job</th>
-                            <th class="has-text-centered has-text-weak" style="width: 100px;">Priority</th>
-                            <th class="has-text-right has-text-weak" style="width: 140px;">Since</th>
+                            <th class="has-text-centered" style="width: 60px;">#</th>
+                            <th>Job</th>
+                            <th class="has-text-centered" style="width: 100px;">Priority</th>
+                            <th class="has-text-right" style="width: 140px;">Since</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -388,7 +388,7 @@ update_statuses();
     </div>
 
     <!-- Logs -->
-    <div class="overview-section">
+    <div class="mb-5">
         <div class="tp-section-header">
             <h2>
                 <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-laptop-code"/></svg>
@@ -396,14 +396,14 @@ update_statuses();
             </h2>
         </div>
         <div class="tp-table-container">
-            <table class="table is-fullwidth is-hoverable" id="logs_table">
-                <thead class="is-uppercase">
+            <table class="table is-fullwidth is-hoverable is-header-muted" id="logs_table">
+                <thead>
                     <tr>
-                        <th class="has-text-weak" style="width: 160px;">Time</th>
-                        <th class="has-text-weak" style="width: 100px;">Severity</th>
-                        <th class="has-text-weak" style="width: 140px;">Service</th>
-                        <th class="has-text-weak" style="width: 200px;">Operation</th>
-                        <th class="has-text-weak">Message</th>
+                        <th style="width: 160px;">Time</th>
+                        <th style="width: 100px;">Severity</th>
+                        <th style="width: 140px;">Service</th>
+                        <th style="width: 200px;">Operation</th>
+                        <th>Message</th>
                     </tr>
                 </thead>
                 <tbody>
