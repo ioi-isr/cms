@@ -43,7 +43,10 @@
                 aria-label="Remove team"
                 onclick='AdminModals.deleteResource({
                     title: "Remove Team",
-                    message: "Are you sure you want to remove team \"" + {{ t.code|tojson }} + "\"?",
+                    message: "Are you sure you want to remove team " + {{ t.code|tojson }} + " ({{ t.name|e }})?",
+                    warnings: [
+                        {% if t.participations|length > 0 %}"{{ t.participations|length }} participation(s) will lose their team association."{% else %}"This team has no associated participations."{% endif %}
+                    ],
                     deleteUrl: {{ url("teams", t.id, "remove")|tojson }},
                     confirmLabel: "Yes, Remove"
                 })'>

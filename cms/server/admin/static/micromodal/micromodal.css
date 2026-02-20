@@ -143,6 +143,61 @@
     color: var(--tp-warning-dark, #92400e);
 }
 
+/* Danger (destructive action) warning box */
+.modal__warning--danger {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.modal__warning--danger .modal__warning-title {
+    margin: 0 0 8px 0;
+    color: #991b1b;
+    font-weight: 600;
+}
+
+.modal__warning--danger .modal__warning-body {
+    margin: 0;
+    color: #7f1d1d;
+    font-size: 0.9rem;
+}
+
+.modal__warning--danger ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #7f1d1d;
+    font-size: 0.9rem;
+}
+
+.modal__warning--danger ul li strong {
+    color: #7f1d1d;
+}
+
+/* Danger radio/checkbox option row */
+.modal__danger-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #fef2f2;
+}
+
+.modal__danger-option .modal__danger-option-title {
+    font-weight: 600;
+    color: #991b1b;
+}
+
+.modal__danger-option .modal__danger-option-desc {
+    display: block;
+    font-size: 0.85rem;
+    color: #7f1d1d;
+}
+
 /* Form elements inside modal */
 .modal__form-group {
     margin-bottom: 16px;

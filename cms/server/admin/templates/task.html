@@ -2040,7 +2040,8 @@ document.addEventListener('click', function(e) {
             {% if not admin.permission_all %}disabled{% endif %}
             onclick='AdminModals.deleteResource({
                 title: "Remove Task",
-                message: {{ ('Are you sure you want to remove task "' ~ task.name ~ '"? This will delete all related data including submissions and cannot be undone.')|tojson|forceescape }},
+                message: {{ ('Are you sure you want to remove task "' ~ task.name ~ '", including all related data?')|tojson|forceescape }},
+                warnings: [{{ (task.submissions|length ~ " submission(s) will be deleted.")|tojson|forceescape }}],
                 deleteUrl: {{ url("tasks", task.id, "remove")|tojson|forceescape }},
                 confirmLabel: "Yes, Remove Task"
             })'>

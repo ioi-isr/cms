@@ -55,23 +55,19 @@
 
     <!-- Remove Action -->
     <div style="margin-top: 24px; text-align: right;">
-        {% if admin.permission_all %}
-            {% if contest.training_day is none %}
-                <!-- Regular Contest: Use contest removal confirmation -->
-                <button type="button" class="button is-small is-danger is-light" onclick="AdminModals.confirmThen('Are you sure you want to remove this contest? This action cannot be undone.', function() { window.location.href = '{{ url("contests", contest.id, "remove") }}'; }, {icon: 'warning', confirmButtonText: 'Yes, Remove Contest'})">
-                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
-                    <span>Remove Contest</span>
-                </button>
-            {% endif %}
-        {% else %}
-            {% if contest.training_day is none %}
-            <button class="button is-small is-danger is-light" disabled>
-                <svg class="icon is-small"><use href="#icon-trash"/></svg>
-                <span>Remove Contest</span>
-            </button>
-            {% endif %}
+        {% if contest.training_day is none %}
+        <button type="button" class="button is-small is-danger is-light"
+            {% if not admin.permission_all %}disabled{% endif %}
+            onclick="MicroModal.show('modal-remove-contest')">
+            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            <span>Remove Contest</span>
+        </button>
         {% endif %}
     </div>
 </div>
+
+{% if contest.training_day is none %}
+{% include "fragments/modal_remove_contest.html" %}
+{% endif %}
 
 {% endblock core %}

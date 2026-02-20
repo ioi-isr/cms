@@ -41,11 +41,18 @@
     <!-- Contests Cards Grid -->
     <div class="tp-cards-grid tp-cards-grid--compact" id="contests-grid">
         {% for c in contest_list %}
+        {% set ns = namespace(sub_count=0) %}
+        {% for p in c.participations %}{% set ns.sub_count = ns.sub_count + p.submissions|length %}{% endfor %}
         <div class="tp-program-card" style="padding: 20px; position: relative;">
             {% if admin.permission_all %}
             <button type="button" class="btn-icon-only" title="Remove contest" style="position: absolute; top: 12px; right: 12px;"
                 aria-label="Remove contest"
-                onclick='window.location.href={{ url("contests", c.id, "remove")|tojson }}'>
+                onclick="openContestRemoveModal(this)"
+                data-contest-name="{{ c.name|e }}"
+                data-remove-url="{{ url("contests", c.id, "remove") }}"
+                data-participation-count="{{ c.participations|length }}"
+                data-submission-count="{{ ns.sub_count }}"
+                data-task-count="{{ c.tasks|length }}">
                 <svg class="icon is-small"><use href="#icon-trash"/></svg>
             </button>
             {% endif %}
@@ -63,4 +70,41 @@
     </div>
     {% endif %}
 </div>
+
+{% include "fragments/modal_remove_contest.html" %}
+
+<script>
+function openContestRemoveModal(btn) {
+    var name = btn.getAttribute('data-contest-name');
+    var removeUrl = btn.getAttribute('data-remove-url');
+    var participationCount = parseInt(btn.getAttribute('data-participation-count')) || 0;
+    var submissionCount = parseInt(btn.getAttribute('data-submission-count')) || 0;
+    var taskCount = parseInt(btn.getAttribute('data-task-count')) || 0;
+
+    document.getElementById('remove-contest-name').textContent = name;
+
+    var statsHtml = '<li>' + participationCount + ' participation(s) will be deleted.</li>';
+    statsHtml += '<li>' + submissionCount + ' submission(s) will be deleted.</li>';
+    if (taskCount > 0) {
+        statsHtml += '<li>' + taskCount + ' task(s) will be affected (see options below).</li>';
+    }
+    document.getElementById('remove-contest-stats').innerHTML = statsHtml;
+
+    var taskOptionsDiv = document.getElementById('remove-contest-task-options');
+    if (taskCount > 0) {
+        taskOptionsDiv.style.display = 'block';
+        document.getElementById('remove-contest-task-count').textContent = taskCount;
+    } else {
+        taskOptionsDiv.style.display = 'none';
+    }
+
+    document.querySelectorAll('#modal-remove-contest input[name="contest_remove_action"]').forEach(function(r) {
+        r.checked = false;
+    });
+
+    document.getElementById('confirm-remove-contest-btn').setAttribute('data-remove-url', removeUrl);
+
+    MicroModal.show('modal-remove-contest');
+}
+</script>
 {% endblock core %}

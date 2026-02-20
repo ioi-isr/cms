@@ -129,8 +129,9 @@ document.addEventListener('DOMContentLoaded', function() {
  * @param {string} opts.title - Modal title
  * @param {string} [opts.message] - Main question text (safe, set via textContent)
  * @param {string} [opts.messageHtml] - Main question HTML (set via innerHTML, opt-in)
- * @param {string} [opts.warning] - Warning details text (safe, set via textContent)
- * @param {string} [opts.warningHtml] - Warning details HTML (set via innerHTML, opt-in)
+ * @param {string} [opts.warning] - Single warning text (safe, set via textContent)
+ * @param {string} [opts.warningHtml] - Single warning HTML (set via innerHTML, opt-in)
+ * @param {string[]} [opts.warnings] - Array of warning strings rendered as a list
  * @param {string} [opts.confirmLabel] - Confirm button label (default "Confirm")
  * @param {function} opts.onConfirm - Callback when confirmed
  */
@@ -145,15 +146,33 @@ AdminModals.confirm = function(opts) {
 
     var warningBox = document.getElementById('modal-confirm-warning-box');
     var warningText = document.getElementById('modal-confirm-warning-text');
+    var warningList = document.getElementById('modal-confirm-warning-list');
 
-    if (opts.warningHtml) {
+    var hasWarning = opts.warningHtml || opts.warning || (opts.warnings && opts.warnings.length > 0);
+
+    if (hasWarning) {
         warningBox.style.display = 'block';
-        warningText.innerHTML = opts.warningHtml;
-    } else if (opts.warning) {
-        warningBox.style.display = 'block';
-        warningText.textContent = opts.warning;
+
+        if (opts.warningHtml) {
+            warningText.innerHTML = opts.warningHtml;
+        } else if (opts.warning) {
+            warningText.textContent = opts.warning;
+        } else {
+            warningText.textContent = '';
+        }
+
+        warningList.innerHTML = '';
+        if (opts.warnings && opts.warnings.length > 0) {
+            opts.warnings.forEach(function (w) {
+                var li = document.createElement('li');
+                li.textContent = w;
+                warningList.appendChild(li);
+            });
+        }
     } else {
         warningBox.style.display = 'none';
+        warningText.textContent = '';
+        warningList.innerHTML = '';
     }
 
     var btn = document.getElementById('modal-confirm-btn');
@@ -176,8 +195,9 @@ AdminModals.confirm = function(opts) {
  * @param {string} opts.title - Modal title
  * @param {string} [opts.message] - Main question text (safe, set via textContent)
  * @param {string} [opts.messageHtml] - Main question HTML (set via innerHTML, opt-in)
- * @param {string} [opts.warning] - Warning details text (safe, set via textContent)
- * @param {string} [opts.warningHtml] - Warning details HTML (set via innerHTML, opt-in)
+ * @param {string} [opts.warning] - Single warning text (safe, set via textContent)
+ * @param {string} [opts.warningHtml] - Single warning HTML (set via innerHTML, opt-in)
+ * @param {string[]} [opts.warnings] - Array of warning strings rendered as a list
  * @param {string} opts.deleteUrl - URL to send DELETE request to
  * @param {string} [opts.confirmLabel] - Confirm button label (default "Yes, Remove")
  * @param {function} [opts.onSuccess] - Optional callback on success (default: reload page)
@@ -189,6 +209,7 @@ AdminModals.deleteResource = function(opts) {
         messageHtml: opts.messageHtml,
         warning: opts.warning,
         warningHtml: opts.warningHtml || null,
+        warnings: opts.warnings || null,
         confirmLabel: opts.confirmLabel || 'Yes, Remove',
         onConfirm: function() {
             var xsrfToken = null;

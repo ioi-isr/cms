@@ -54,8 +54,6 @@ logger = logging.getLogger(__name__)
 
 
 class ContestUsersHandler(BaseHandler):
-    REMOVE_FROM_CONTEST = "Remove from contest"
-
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
         self.contest = self.safe_get_item(Contest, contest_id)
@@ -75,59 +73,9 @@ class ContestUsersHandler(BaseHandler):
                 .all()
         self.render("contest_users.html", **self.r_params)
 
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def post(self, contest_id):
-        fallback_page = self.url("contest", contest_id, "users")
-
-        try:
-            user_id = self.get_argument("user_id")
-            operation = self.get_argument("operation")
-            assert operation in (
-                self.REMOVE_FROM_CONTEST,
-            ), "Please select a valid operation"
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
-            return
-
-        if operation == self.REMOVE_FROM_CONTEST:
-            asking_page = \
-                self.url("contest", contest_id, "user", user_id, "remove")
-            # Open asking for remove page
-            self.redirect(asking_page)
-            return
-
-        self.redirect(fallback_page)
-
 
 class RemoveParticipationHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the participation from the contest.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, contest_id, user_id):
-        self.contest = self.safe_get_item(Contest, contest_id)
-        user = self.safe_get_item(User, user_id)
-        participation: Participation = (
-            self.sql_session.query(Participation)
-            .filter(Participation.contest_id == contest_id)
-            .filter(Participation.user_id == user_id)
-            .first()
-        )
-        # Check that the participation is valid.
-        if participation is None:
-            raise tornado.web.HTTPError(404)
-
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.participation == participation)
-        self.render_params_for_remove_confirmation(submission_query)
-
-        self.r_params["user"] = user
-        self.r_params["contest"] = self.contest
-        self.render("participation_remove.html", **self.r_params)
+    """Delete removes the participation from the contest."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, contest_id, user_id):

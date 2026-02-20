@@ -47,7 +47,10 @@
                 aria-label="Remove task"
                 onclick='AdminModals.deleteResource({
                     title: "Remove Task",
-                    message: "Are you sure you want to remove task \"" + {{ t.name|tojson }} + "\"?",
+                    message: "Are you sure you want to remove task " + {{ t.name|tojson }} + ", including all related data?",
+                    warnings: [
+                        "{{ t.submissions|length }} submission(s) will be deleted."
+                    ],
                     deleteUrl: {{ url("tasks", t.id, "remove")|tojson }},
                     confirmLabel: "Yes, Remove"
                 })'>

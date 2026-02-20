@@ -95,10 +95,16 @@
         {% for u in user_list|sort(attribute="username") %}
         <div class="tp-program-card" style="padding: 20px; position: relative;">
             {% if admin.permission_all %}
+            {% set ns = namespace(sub_count=0) %}
+            {% for p in u.participations %}{% set ns.sub_count = ns.sub_count + p.submissions|length %}{% endfor %}
             <button type="button" class="btn-icon-only" title="Remove user" style="position: absolute; top: 12px; right: 12px;"
                 onclick='AdminModals.deleteResource({
                     title: "Remove User",
-                    message: "Are you sure you want to remove user \"" + {{ u.username|tojson }} + "\"?",
+                    message: "Are you sure you want to remove user " + {{ u.username|tojson }} + ", including all related data?",
+                    warnings: [
+                        "{{ u.participations|length }} participation(s) will be deleted.",
+                        "{{ ns.sub_count }} submission(s) will be deleted."
+                    ],
                     deleteUrl: {{ url("users", u.id, "remove")|tojson }},
                     confirmLabel: "Yes, Remove"
                 })'>

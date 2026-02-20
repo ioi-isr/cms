@@ -1634,6 +1634,6 @@ var ModelSolutionModal = (function() {
 })();
 
 
-// Form utilities (initDateTimeValidation, initRemovePage, initReadOnlyTagify, initTagify)
+// Form utilities (initDateTimeValidation, initReadOnlyTagify, initTagify)
 // have been moved to aws_form_utils.js for better code organization.
 // Backward compatibility aliases are set up in aws_form_utils.js.

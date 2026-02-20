@@ -34,7 +34,7 @@ import re
 from datetime import date
 
 from sqlalchemy import and_, exists
-from cms.db import Contest, Participation, Submission, Team, User, TrainingDay, TrainingProgram
+from cms.db import Contest, Participation, Team, User, TrainingDay, TrainingProgram
 from cms.server.picture_utils import (
     process_picture_upload, PictureValidationError
 )
@@ -614,27 +614,7 @@ class TeamListHandler(SimpleHandler("teams.html")):
 
 
 class RemoveUserHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the user from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, user_id):
-        user = self.safe_get_item(User, user_id)
-        submission_query = (
-            self.sql_session.query(Submission)
-            .join(Submission.participation)
-            .filter(Participation.user == user)
-        )
-        participation_query = self.sql_session.query(Participation).filter(
-            Participation.user == user
-        )
-
-        self.render_params_for_remove_confirmation(submission_query)
-        self.r_params["user"] = user
-        self.r_params["participation_count"] = participation_query.count()
-        self.render("user_remove.html", **self.r_params)
+    """Delete removes the user from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, user_id):
@@ -649,22 +629,7 @@ class RemoveUserHandler(BaseHandler):
 
 
 class RemoveTeamHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the team from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, team_id):
-        team = self.safe_get_item(Team, team_id)
-        participation_query = self.sql_session.query(Participation).filter(
-            Participation.team == team
-        )
-
-        self.r_params = self.render_params()
-        self.r_params["team"] = team
-        self.r_params["participation_count"] = participation_query.count()
-        self.render("team_remove.html", **self.r_params)
+    """Delete removes the team from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, team_id):

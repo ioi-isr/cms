@@ -647,20 +647,7 @@ class TaskListHandler(SimpleHandler("tasks.html")):
 
 
 class RemoveTaskHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the task from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.task == task)
-
-        self.render_params_for_remove_confirmation(submission_query)
-        self.r_params["task"] = task
-        self.render("task_remove.html", **self.r_params)
+    """Delete removes the task from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, task_id):
