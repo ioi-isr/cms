@@ -17,7 +17,7 @@
     </div>
 
     <div class="table-container">
-        <table class="table is-bordered is-striped is-hoverable admins-table">
+        <table class="table is-bordered is-striped is-hoverable">
             <thead>
                 <tr>
                     <th class="has-text-left">Username</th>
@@ -32,7 +32,7 @@
             </thead>
             <tbody>
                 {% for a in admins %}
-                <tr {% if not a.enabled %}class="is-disabled-admin"{% endif %}>
+                <tr {% if not a.enabled %}style="opacity: 0.6"{% endif %}>
                     <td>
                         <span class="has-text-weight-semibold is-size-6">{{ a.username }}</span>
                         {% if a.id == admin.id %}
