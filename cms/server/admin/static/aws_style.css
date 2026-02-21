@@ -168,6 +168,43 @@ pre {
     cursor: pointer;
 }
 
+#admin-navbar .navbar-link {
+    color: var(--sidebar-text);
+    background: transparent;
+}
+
+#admin-navbar .navbar-link:hover {
+    background: var(--sidebar-hover-bg);
+    color: var(--sidebar-text-bright);
+}
+
+#admin-navbar .navbar-link::after {
+    display: none;
+}
+
+#theme-dropdown .navbar-dropdown {
+    display: none;
+    background: var(--sidebar-bg-dark);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 4px;
+    padding: 0.25rem 0;
+}
+
+#theme-dropdown.is-active .navbar-dropdown {
+    display: block;
+}
+
+#theme-dropdown .navbar-dropdown .navbar-item {
+    color: var(--sidebar-text);
+    font-size: 0.85rem;
+    padding: 0.4rem 1rem;
+}
+
+#theme-dropdown .navbar-dropdown .navbar-item:hover {
+    background: var(--sidebar-hover-bg);
+    color: var(--sidebar-text-bright);
+}
+
 /* LEFT */
 
 /* Sidebar color palette - CSS custom properties for maintainability */
@@ -250,12 +287,6 @@ pre {
     color: var(--sidebar-text-light);
 }
 
-#sidebar h1.sidebar-title {
-    font-size: 1.6em;
-    margin-top: 0;
-    margin-bottom: 5px;
-    color: var(--sidebar-text-bright);
-}
 
 .sidebar-breadcrumb {
     font-size: 0.9em;
@@ -638,16 +669,6 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     color: var(--bulma-danger);
 }
 
-.login_notice {
-    font-size: 0.8em;
-    line-height: 1.125em;
-    text-align: left;
-    width: 200px;
-    margin-left: 15px;
-    margin-top: 15px;
-    margin-bottom: 12px;
-    color: var(--sidebar-slate);
-}
 
 .cr_notice {
     font-size: 0.6em;
