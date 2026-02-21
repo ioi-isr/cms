@@ -332,7 +332,7 @@ $(document).ready(initThemeToggle);
     </nav>
 
     <div id="global" class="layout">
-{% if contest is not none and training_program is not defined %}
+{% if contest is defined and contest is not none and training_program is not defined %}
   {% set nav_menu_items = [
     {"icon": "icon-settings", "text": "General", "url": url("contest", contest.id)},
     {"icon": "icon-trophy", "text": "Ranking", "url": url("contest", contest.id, "ranking")},
