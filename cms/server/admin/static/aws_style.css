@@ -106,6 +106,68 @@ pre {
     background-color: rgba(148, 163, 184, 0.38);
 }
 
+/* ==========================================================================
+   Top Navbar
+   ========================================================================== */
+
+:root {
+    --navbar-height: 3.25rem;
+}
+
+#top-navbar {
+    --sidebar-bg-dark: #0F172A;
+    --sidebar-bg-light: #111827;
+    --sidebar-border: #1F2937;
+    --sidebar-text: #CBD5E1;
+    --sidebar-text-bright: #F8FAFC;
+    --sidebar-accent: #60A5FA;
+    --sidebar-hover-bg: rgba(148, 163, 184, 0.12);
+
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--sidebar-bg-dark);
+    border-bottom: 1px solid var(--sidebar-border);
+    min-height: var(--navbar-height);
+    --bulma-navbar-height: var(--navbar-height);
+}
+
+#top-navbar .navbar-brand .navbar-item:hover,
+#top-navbar .navbar-brand .navbar-item:focus {
+    background: var(--sidebar-hover-bg);
+}
+
+#top-navbar .navbar-menu {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+#top-navbar .navbar-item {
+    color: var(--sidebar-text);
+    gap: 0.4em;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+#top-navbar .navbar-item:hover,
+#top-navbar .navbar-item:focus {
+    background: var(--sidebar-hover-bg);
+    color: var(--sidebar-text-bright);
+}
+
+#top-navbar .navbar-item .icon {
+    color: var(--sidebar-text);
+}
+
+#top-navbar .navbar-item:hover .icon {
+    color: var(--sidebar-text-bright);
+}
+
+#top-navbar #theme-toggle {
+    cursor: pointer;
+}
+
 /* LEFT */
 
 /* Sidebar color palette - CSS custom properties for maintainability */
@@ -128,7 +190,7 @@ pre {
 
 .layout {
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--navbar-height));
 }
 
 #core {
@@ -139,7 +201,7 @@ pre {
 #sidebar {
     text-align: left;
     position: sticky;
-    top: 0;
+    top: var(--navbar-height);
     padding: 0 1em 4em;
     width: 234px;
     flex: 0 0 234px;
@@ -147,7 +209,7 @@ pre {
     background: linear-gradient(180deg, var(--sidebar-bg-dark) 0%, var(--sidebar-bg-light) 100%);
     color: var(--sidebar-text);
     text-shadow: none;
-    height: 100vh;
+    height: calc(100vh - var(--navbar-height));
     border-inline-end: 1px solid var(--sidebar-border);
     overflow-y: auto;
     scrollbar-width: thin;
@@ -1854,6 +1916,14 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
    ========================================================================== */
 
 @media (prefers-color-scheme: dark) {
+    #top-navbar {
+        --sidebar-bg-dark: #0a0f1a;
+        --sidebar-border: #1a2332;
+        --sidebar-text: #a8b8cf;
+        --sidebar-text-bright: #e8edf4;
+        --sidebar-accent: #5a9af5;
+        --sidebar-hover-bg: rgba(120, 140, 170, 0.12);
+    }
     #sidebar {
         --sidebar-bg-dark: #0a0f1a;
         --sidebar-bg-light: #0d1321;
@@ -1870,4 +1940,38 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
         --sidebar-title-hover-bg: rgba(120, 140, 170, 0.16);
         --sidebar-focus-glow: rgba(80, 115, 170, 0.35);
     }
+}
+
+/* Manual theme overrides (via theme toggle) */
+html[data-theme="dark"] #top-navbar {
+    --sidebar-bg-dark: #0a0f1a;
+    --sidebar-border: #1a2332;
+    --sidebar-text: #a8b8cf;
+    --sidebar-text-bright: #e8edf4;
+    --sidebar-accent: #5a9af5;
+    --sidebar-hover-bg: rgba(120, 140, 170, 0.12);
+}
+html[data-theme="dark"] #sidebar {
+    --sidebar-bg-dark: #0a0f1a;
+    --sidebar-bg-light: #0d1321;
+    --sidebar-border: #1a2332;
+    --sidebar-text: #a8b8cf;
+    --sidebar-text-light: #c5d0df;
+    --sidebar-text-bright: #e8edf4;
+    --sidebar-text-muted: #4e6282;
+    --sidebar-accent: #5a9af5;
+    --sidebar-accent-light: #83b3f7;
+    --sidebar-slate: #7a8da5;
+    --sidebar-hover-bg: rgba(120, 140, 170, 0.12);
+    --sidebar-hover-border: rgba(120, 140, 170, 0.25);
+    --sidebar-title-hover-bg: rgba(120, 140, 170, 0.16);
+    --sidebar-focus-glow: rgba(80, 115, 170, 0.35);
+}
+html[data-theme="light"] #top-navbar {
+    --sidebar-bg-dark: #0F172A;
+    --sidebar-border: #1F2937;
+    --sidebar-text: #CBD5E1;
+    --sidebar-text-bright: #F8FAFC;
+    --sidebar-accent: #60A5FA;
+    --sidebar-hover-bg: rgba(148, 163, 184, 0.12);
 }

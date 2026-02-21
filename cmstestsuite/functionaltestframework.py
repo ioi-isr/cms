@@ -332,8 +332,7 @@ class FunctionalTestFramework:
         kwargs["user_id"] = user_id
         r = self.admin_req('contest/%s/users/add' % kwargs["contest_id"],
                            args=kwargs)
-        g = re.search('<input type="radio" name="user_id" value="' +
-                      str(user_id) + '"/>', r.text)
+        g = re.search(r'/user/' + str(user_id) + r'/edit">', r.text)
         if g:
             return user_id
         else:

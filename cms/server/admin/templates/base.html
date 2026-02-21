@@ -250,11 +250,56 @@ $(document).ready(init);
 $(document).ready(applySidebarState);
 $(document).ready(initSidebarEvents);
 
+function initThemeToggle() {
+    var saved = localStorage.getItem('cms_theme');
+    if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+    }
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+        btn.addEventListener('click', function() {
+            var current = document.documentElement.getAttribute('data-theme');
+            var next;
+            if (!current) {
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                next = prefersDark ? 'light' : 'dark';
+            } else {
+                next = current === 'dark' ? 'light' : 'dark';
+            }
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('cms_theme', next);
+        });
+    }
+}
+$(document).ready(initThemeToggle);
+
 //-->
     </script>
   </head>
   <body class="admin">
     {% include 'fragments/svg_icons.html' %}
+
+    <nav id="top-navbar" class="navbar" role="navigation" aria-label="main navigation">
+      <div class="navbar-brand">
+        <a class="navbar-item" href="{{ url() }}">
+          <img src="{{ url("static", "ioi-logo.png") }}" alt="IOI Logo" style="max-height: 2.25rem;">
+        </a>
+      </div>
+      <div class="navbar-menu is-active">
+        <div class="navbar-end">
+{% if admin is defined %}
+          <a class="navbar-item" href="{{ url("admins") }}">
+            <svg class="icon" width="18" height="18"><use href="#icon-users"/></svg>
+            <span>{{ admin.name }}</span>
+          </a>
+{% endif %}
+          <a class="navbar-item" id="theme-toggle" title="Toggle color theme">
+            <svg class="icon" width="20" height="20"><use href="#icon-palette"/></svg>
+          </a>
+        </div>
+      </div>
+    </nav>
+
     <div id="global" class="layout">
       <aside id="sidebar" class="menu">
         <div id="sidebar_header">
