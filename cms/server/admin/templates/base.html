@@ -56,6 +56,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "bulma.min.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_themes.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_tp_styles.css") }}">
     <script src="{{ url("static", "web_rpc.js") }}"></script>
     <script src="{{ url("static", "aws_utils.js") }}"></script>
@@ -251,6 +252,7 @@ $(document).ready(applySidebarState);
 $(document).ready(initSidebarEvents);
 
 function initThemeToggle() {
+    var themes = ['original', 'granny-smith', 'pink-lady', 'dark', 'adon-hermon', 'retro'];
     var saved = localStorage.getItem('cms_theme');
     if (saved) {
         document.documentElement.setAttribute('data-theme', saved);
@@ -258,14 +260,9 @@ function initThemeToggle() {
     var btn = document.getElementById('theme-toggle');
     if (btn) {
         btn.addEventListener('click', function() {
-            var current = document.documentElement.getAttribute('data-theme');
-            var next;
-            if (!current) {
-                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                next = prefersDark ? 'light' : 'dark';
-            } else {
-                next = current === 'dark' ? 'light' : 'dark';
-            }
+            var current = document.documentElement.getAttribute('data-theme') || 'original';
+            var idx = themes.indexOf(current);
+            var next = themes[(idx + 1) % themes.length];
             document.documentElement.setAttribute('data-theme', next);
             localStorage.setItem('cms_theme', next);
         });
@@ -279,7 +276,7 @@ $(document).ready(initThemeToggle);
   <body class="admin">
     {% include 'fragments/svg_icons.html' %}
 
-    <nav id="top-navbar" class="navbar" role="navigation" aria-label="main navigation">
+    <nav id="admin-navbar" class="navbar" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
         <a class="navbar-item" href="{{ url() }}">
           <img src="{{ url("static", "ioi-logo.png") }}" alt="IOI Logo" style="max-height: 2.25rem;">
@@ -294,7 +291,7 @@ $(document).ready(initThemeToggle);
           </a>
 {% endif %}
           <a class="navbar-item" id="theme-toggle" title="Toggle color theme">
-            <svg class="icon" width="20" height="20"><use href="#icon-palette"/></svg>
+            <svg class="icon" width="20" height="20"><use href="#icon-color-palette"/></svg>
           </a>
         </div>
       </div>
