@@ -2,98 +2,96 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="container is-fluid">
-    <div class="level">
-        <div class="level-left">
-            <h1 class="title">Admins</h1>
-        </div>
-        {% if admin.permission_all %}
-        <div class="level-right">
-            <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-admin')">
-                <svg class="icon is-small"><use href="#icon-plus"/></svg>
-                <span>New Admin</span>
-            </button>
-        </div>
-        {% endif %}
+<div class="level">
+    <div class="level-left">
+        <h1 class="title">Admins</h1>
     </div>
+    {% if admin.permission_all %}
+    <div class="level-right">
+        <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-admin')">
+            <svg class="icon is-small"><use href="#icon-plus"/></svg>
+            <span>New Admin</span>
+        </button>
+    </div>
+    {% endif %}
+</div>
 
-    <div class="table-container">
-        <table class="table is-bordered is-striped is-hoverable">
-            <thead>
-                <tr>
-                    <th class="has-text-left">Username</th>
-                    <th class="has-text-left">Name</th>
-                    <th class="has-text-centered" style="width: 100px;">All perms</th>
-                    <th class="has-text-centered">Messaging</th>
-                    <th class="has-text-centered">Enabled</th>
-                    {% if admin.permission_all %}
-                    <th class="has-text-centered">Actions</th>
+<div class="table-container">
+    <table class="table is-bordered is-striped is-hoverable">
+        <thead>
+            <tr>
+                <th class="has-text-left">Username</th>
+                <th class="has-text-left">Name</th>
+                <th class="has-text-centered" style="width: 100px;">All perms</th>
+                <th class="has-text-centered">Messaging</th>
+                <th class="has-text-centered">Enabled</th>
+                {% if admin.permission_all %}
+                <th class="has-text-centered">Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in admins %}
+            <tr {% if not a.enabled %}style="opacity: 0.6"{% endif %}>
+                <td>
+                    <span class="has-text-weight-semibold is-size-6">{{ a.username }}</span>
+                    {% if a.id == admin.id %}
+                    <span class="tag is-info is-light is-small ml-2">you</span>
                     {% endif %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for a in admins %}
-                <tr {% if not a.enabled %}style="opacity: 0.6"{% endif %}>
-                    <td>
-                        <span class="has-text-weight-semibold is-size-6">{{ a.username }}</span>
-                        {% if a.id == admin.id %}
-                        <span class="tag is-info is-light is-small ml-2">you</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ a.name }}</td>
-                    <td class="has-text-centered">
-                        {% if a.permission_all %}
-                        <svg class="icon is-small has-text-success"><use href="#icon-check"/></svg>
-                        {% else %}
-                        <span class="has-text-grey">-</span>
-                        {% endif %}
-                    </td>
-                    <td class="has-text-centered">
-                        {% if a.permission_messaging %}
-                        <svg class="icon is-small has-text-success"><use href="#icon-check"/></svg>
-                        {% else %}
-                        <span class="has-text-grey">-</span>
-                        {% endif %}
-                    </td>
-                    <td class="has-text-centered">
-                        {% if a.enabled %}
-                        <svg class="icon is-small has-text-success"><use href="#icon-check"/></svg>
-                        {% else %}
-                        <svg class="icon is-small has-text-danger"><use href="#icon-x"/></svg>
-                        {% endif %}
-                    </td>
-                    {% if admin.permission_all %}
-                    <td class="has-text-centered">
-                        <button type="button" class="btn-icon-only" title="Edit admin"
-                                onclick="MicroModal.show('modal-edit-admin-{{ a.id }}')">
-                            <svg class="icon is-small"><use href="#icon-edit"/></svg>
-                        </button>
-                        {% if a.id != admin.id %}
-                        <button type="button" class="btn-icon-only" title="Delete admin"
-                                onclick='AdminModals.deleteResource({
-                                    title: "Remove Admin",
-                                    message: {{ ("Are you sure you want to remove admin \"" ~ a.username ~ "\"?")|tojson|forceescape }},
-                                    deleteUrl: {{ url("admin", a.id)|tojson|forceescape }},
-                                    confirmLabel: "Yes, Remove"
-                                })'>
-                            <svg class="icon is-small"><use href="#icon-trash"/></svg>
-                        </button>
-                        {% endif %}
-                    </td>
+                </td>
+                <td>{{ a.name }}</td>
+                <td class="has-text-centered">
+                    {% if a.permission_all %}
+                    <svg class="icon is-small has-text-success"><use href="#icon-check"/></svg>
+                    {% else %}
+                    <span class="has-text-grey">-</span>
                     {% endif %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                </td>
+                <td class="has-text-centered">
+                    {% if a.permission_messaging %}
+                    <svg class="icon is-small has-text-success"><use href="#icon-check"/></svg>
+                    {% else %}
+                    <span class="has-text-grey">-</span>
+                    {% endif %}
+                </td>
+                <td class="has-text-centered">
+                    {% if a.enabled %}
+                    <svg class="icon is-small has-text-success"><use href="#icon-check"/></svg>
+                    {% else %}
+                    <svg class="icon is-small has-text-danger"><use href="#icon-x"/></svg>
+                    {% endif %}
+                </td>
+                {% if admin.permission_all %}
+                <td class="has-text-centered">
+                    <button type="button" class="btn-icon-only" title="Edit admin"
+                            onclick="MicroModal.show('modal-edit-admin-{{ a.id }}')">
+                        <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                    </button>
+                    {% if a.id != admin.id %}
+                    <button type="button" class="btn-icon-only" title="Delete admin"
+                            onclick='AdminModals.deleteResource({
+                                title: "Remove Admin",
+                                message: {{ ("Are you sure you want to remove admin \"" ~ a.username ~ "\"?")|tojson|forceescape }},
+                                deleteUrl: {{ url("admin", a.id)|tojson|forceescape }},
+                                confirmLabel: "Yes, Remove"
+                            })'>
+                        <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                    </button>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-    <div class="tp-filter-card mt-6 is-size-7 has-text-grey">
-        <ul class="ml-0 pl-5">
-            <li>Disabled admins cannot log in.</li>
-            <li>Admins with <strong>All permissions</strong> can do any operation, regardless of other permission bits.</li>
-            <li><strong>Messaging</strong> permissions allow the admin to answer questions, send private messages and announcements.</li>
-        </ul>
-    </div>
+<div class="tp-filter-card mt-6 is-size-7 has-text-grey">
+    <ul class="ml-0 pl-5">
+        <li>Disabled admins cannot log in.</li>
+        <li>Admins with <strong>All permissions</strong> can do any operation, regardless of other permission bits.</li>
+        <li><strong>Messaging</strong> permissions allow the admin to answer questions, send private messages and announcements.</li>
+    </ul>
 </div>
 
 {# Add Admin Modal #}

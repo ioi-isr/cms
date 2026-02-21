@@ -10,12 +10,6 @@
    ========================================================================== */
 
 :root {
-    /* Primary colors (teal theme) */
-    --tp-primary: var(--bulma-primary);
-    --tp-primary-hover: var(--bulma-primary-35);
-    --tp-primary-light: var(--bulma-primary-55);
-    --tp-primary-gradient: linear-gradient(135deg, var(--bulma-primary) 0%, var(--bulma-primary-55) 100%);
-
     /* Status colors */
     --tp-success: var(--bulma-success);
     --tp-success-light: var(--bulma-success-90);
@@ -40,9 +34,9 @@
     /* Neutral colors */
     --tp-text-primary: var(--bulma-text-strong);
     --tp-text-secondary: var(--bulma-text);
-    --tp-text-muted: var(--bulma-text-weak);
-    --tp-text-light: var(--bulma-text-weak);
-    --tp-text-lighter: var(--bulma-text-weak);
+    --tp-text-muted: var(--bulma-text-75, var(--bulma-text-weak));
+    --tp-text-light: var(--bulma-text-65, var(--bulma-text-weak));
+    --tp-text-lighter: var(--bulma-text-55, var(--bulma-text-weak));
 
     /* Background colors */
     --tp-bg-white: var(--bulma-scheme-main);
@@ -445,33 +439,10 @@
    Text Utilities
    ========================================================================== */
 
-.text-center {
-    text-align: center;
-}
-
-.text-left {
-    text-align: left;
-}
-
-.text-right {
-    text-align: right;
-}
-
 .text-muted {
     color: var(--tp-text-muted);
 }
 
-.text-success {
-    color: var(--tp-success);
-}
-
-.text-warning {
-    color: var(--tp-warning);
-}
-
-.text-danger {
-    color: var(--tp-danger);
-}
 
 /* ==========================================================================
    Table Styles
@@ -858,32 +829,6 @@
     font-size: 1.1rem !important;
 }
 
-/* Data Table Wrapper */
-.tp-table-container {
-    overflow-x: auto;
-    max-height: 75vh;
-    border: 1px solid var(--tp-border-light);
-    border-radius: 8px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.22) transparent;
-}
-
-.tp-table-container::-webkit-scrollbar {
-    width: 6px;
-}
-
-.tp-table-container::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.tp-table-container::-webkit-scrollbar-thumb {
-    background-color: rgba(148, 163, 184, 0.22);
-    border-radius: 3px;
-}
-
-.tp-table-container::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(148, 163, 184, 0.38);
-}
 
 /* ==========================================================================
    Training Day & Ranking Table Styles
@@ -1708,14 +1653,6 @@
    Training Programs Page - Card Layout
    ========================================================================== */
 
-/* Stats Row */
-.tp-stats-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    margin-bottom: 32px;
-}
-
 .tp-stat-card {
     display: flex;
     align-items: center;
@@ -1755,12 +1692,6 @@
 .tp-stat-content {
     display: flex;
     flex-direction: column;
-}
-
-.tp-stat-label {
-    font-size: 0.85rem;
-    color: var(--tp-text-muted);
-    margin-bottom: 4px;
 }
 
 .tp-stat-value {
@@ -1826,7 +1757,7 @@
 
 .tp-card-description {
     font-size: 0.9rem;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-weak);
     line-height: 1.4;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1929,12 +1860,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-weak);
     font-size: 0.9rem;
 }
 
 .tp-card-stat svg {
-    color: var(--tp-text-light);
+    color: var(--bulma-text-weak);
 }
 
 /* Card Dates */
@@ -1942,7 +1873,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-weak);
     font-size: 0.9rem;
     margin-bottom: 20px;
 }
@@ -2041,11 +1972,6 @@
     text-overflow: ellipsis;
 }
 
-.tp-training-day-date {
-    font-size: 0.8rem;
-    color: var(--tp-text-muted);
-}
-
 .tp-training-day-tasks-badge {
     background: var(--tp-danger);
     color: white;
@@ -2126,10 +2052,6 @@
 
 /* Responsive adjustments */
 @media (max-width: 900px) {
-    .tp-stats-row {
-        grid-template-columns: 1fr;
-    }
-
     .tp-cards-grid {
         grid-template-columns: 1fr;
     }

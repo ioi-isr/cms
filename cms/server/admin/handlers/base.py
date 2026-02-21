@@ -54,7 +54,6 @@ from cms.db import (
     ContestFolder,
     DelayRequest,
     Participation,
-    Question,
     Student,
     Submission,
     SubmissionResult,

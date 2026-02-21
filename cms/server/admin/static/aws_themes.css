@@ -1,0 +1,816 @@
+/**
+ * CMS Theme System (aws_themes.css)
+ *
+ * Themes are applied via [data-theme="..."] on <html>.
+ * Each theme overrides Bulma CSS variables and sidebar custom properties.
+ * Default (no attribute) = Original IL theme.
+ */
+
+/* ==========================================================================
+   1. Granny Smith (green apple theme)
+   ========================================================================== */
+
+[data-theme="granny-smith"] {
+    --bulma-primary-h: 95deg;
+    --bulma-primary-s: 55%;
+    --bulma-primary-l: 38%;
+    --bulma-link-h: 95;
+    --bulma-link-s: 55%;
+    --bulma-link-l: 35%;
+    --bulma-info-h: 160;
+    --bulma-info-s: 50%;
+    --bulma-info-l: 45%;
+}
+
+[data-theme="granny-smith"] #sidebar {
+    --sidebar-bg-dark: #2e5a1e;
+    --sidebar-bg-light: #36681f;
+    --sidebar-border: #4a8a30;
+    --sidebar-text: #d4e8c8;
+    --sidebar-text-light: #e0f0d6;
+    --sidebar-text-bright: #f2f9ee;
+    --sidebar-text-muted: #8ab574;
+    --sidebar-accent: #a0d88a;
+    --sidebar-accent-light: #b8e6a5;
+    --sidebar-slate: #9cc48a;
+    --sidebar-hover-bg: rgba(160, 216, 138, 0.14);
+    --sidebar-hover-border: rgba(160, 216, 138, 0.3);
+    --sidebar-title-hover-bg: rgba(160, 216, 138, 0.18);
+    --sidebar-focus-glow: rgba(120, 190, 90, 0.35);
+    --sidebar-teal: #3d7a24;
+}
+
+[data-theme="granny-smith"] #admin-navbar {
+    background: linear-gradient(90deg, #3a7024 0%, #4a8a30 100%);
+    border-bottom-color: #4a8a30;
+}
+
+[data-theme="granny-smith"] #admin-navbar .navbar-item,
+[data-theme="granny-smith"] #admin-navbar .navbar-link,
+[data-theme="granny-smith"] #admin-navbar .navbar-burger span {
+    color: #e8f5e0;
+}
+
+[data-theme="granny-smith"] #admin-navbar .navbar-item:hover,
+[data-theme="granny-smith"] #admin-navbar .navbar-link:hover {
+    background-color: rgba(255,255,255,0.12);
+    color: #fff;
+}
+
+[data-theme="granny-smith"] #admin-navbar .navbar-dropdown {
+    background: #fff;
+    border-top: 2px solid #5a9a3a;
+}
+
+[data-theme="granny-smith"] #admin-navbar .navbar-dropdown .navbar-item {
+    color: #333;
+}
+
+[data-theme="granny-smith"] #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: #eaf5e4;
+    color: #2e5a1e;
+}
+
+/* ==========================================================================
+   2. Pink Lady (pink/girly theme)
+   ========================================================================== */
+
+[data-theme="pink-lady"] {
+    --bulma-primary-h: 340deg;
+    --bulma-primary-s: 65%;
+    --bulma-primary-l: 48%;
+    --bulma-link-h: 340;
+    --bulma-link-s: 65%;
+    --bulma-link-l: 45%;
+    --bulma-info-h: 300;
+    --bulma-info-s: 45%;
+    --bulma-info-l: 55%;
+    --bulma-success-h: 150;
+    --bulma-success-s: 55%;
+    --bulma-success-l: 38%;
+}
+
+[data-theme="pink-lady"] #sidebar {
+    --sidebar-bg-dark: #6b1a42;
+    --sidebar-bg-light: #7a2050;
+    --sidebar-border: #9c3068;
+    --sidebar-text: #f0d0e0;
+    --sidebar-text-light: #f5dce8;
+    --sidebar-text-bright: #fdf0f5;
+    --sidebar-text-muted: #c07898;
+    --sidebar-accent: #f0a0c8;
+    --sidebar-accent-light: #f5b8d8;
+    --sidebar-slate: #d890b0;
+    --sidebar-hover-bg: rgba(240, 160, 200, 0.14);
+    --sidebar-hover-border: rgba(240, 160, 200, 0.3);
+    --sidebar-title-hover-bg: rgba(240, 160, 200, 0.18);
+    --sidebar-focus-glow: rgba(220, 120, 170, 0.35);
+    --sidebar-teal: #a03570;
+}
+
+[data-theme="pink-lady"] #admin-navbar {
+    background: linear-gradient(90deg, #8a2058 0%, #a83070 100%);
+    border-bottom-color: #a83070;
+}
+
+[data-theme="pink-lady"] #admin-navbar .navbar-item,
+[data-theme="pink-lady"] #admin-navbar .navbar-link,
+[data-theme="pink-lady"] #admin-navbar .navbar-burger span {
+    color: #fce8f0;
+}
+
+[data-theme="pink-lady"] #admin-navbar .navbar-item:hover,
+[data-theme="pink-lady"] #admin-navbar .navbar-link:hover {
+    background-color: rgba(255,255,255,0.12);
+    color: #fff;
+}
+
+[data-theme="pink-lady"] #admin-navbar .navbar-dropdown {
+    background: #fff;
+    border-top: 2px solid #c04888;
+}
+
+[data-theme="pink-lady"] #admin-navbar .navbar-dropdown .navbar-item {
+    color: #333;
+}
+
+[data-theme="pink-lady"] #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: #fdf0f5;
+    color: #6b1a42;
+}
+
+/* ==========================================================================
+   3. Dark Theme
+   ========================================================================== */
+
+[data-theme="dark"] {
+    color-scheme: dark;
+    --bulma-scheme-h: 221;
+    --bulma-scheme-s: 14%;
+    --bulma-scheme-main-l: 11%;
+    --bulma-scheme-main-bis-l: 14%;
+    --bulma-scheme-main-ter-l: 17%;
+    --bulma-text-l: 85%;
+    --bulma-text-strong-l: 95%;
+    --bulma-text-weak-l: 55%;
+    --bulma-border-l: 30%;
+    --bulma-border-weak-l: 24%;
+
+    --bulma-primary-h: 175deg;
+    --bulma-primary-s: 60%;
+    --bulma-primary-l: 45%;
+    --bulma-link-h: 217;
+    --bulma-link-s: 70%;
+    --bulma-link-l: 65%;
+    --bulma-info-h: 217;
+    --bulma-info-s: 70%;
+    --bulma-info-l: 60%;
+    --bulma-success-h: 160;
+    --bulma-success-s: 70%;
+    --bulma-success-l: 40%;
+    --bulma-warning-h: 40;
+    --bulma-warning-s: 90%;
+    --bulma-warning-l: 50%;
+    --bulma-danger-h: 0;
+    --bulma-danger-s: 75%;
+    --bulma-danger-l: 55%;
+
+    --bulma-body-background-color: hsl(221, 14%, 11%);
+    --bulma-scheme-main: hsl(221, 14%, 11%);
+    --bulma-scheme-main-bis: hsl(221, 14%, 14%);
+    --bulma-scheme-main-ter: hsl(221, 14%, 17%);
+    --bulma-text: hsl(221, 14%, 85%);
+    --bulma-text-strong: hsl(221, 14%, 95%);
+    --bulma-text-weak: hsl(221, 14%, 55%);
+    --bulma-border: hsl(221, 14%, 30%);
+    --bulma-border-weak: hsl(221, 14%, 24%);
+    --bulma-white: #e8edf4;
+
+    --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] #sidebar {
+    --sidebar-bg-dark: #0a0f1a;
+    --sidebar-bg-light: #0d1321;
+    --sidebar-border: #1a2332;
+    --sidebar-text: #a8b8cf;
+    --sidebar-text-light: #c5d0df;
+    --sidebar-text-bright: #e8edf4;
+    --sidebar-text-muted: #4e6282;
+    --sidebar-accent: #5a9af5;
+    --sidebar-accent-light: #83b3f7;
+    --sidebar-slate: #7a8da5;
+    --sidebar-hover-bg: rgba(120, 140, 170, 0.12);
+    --sidebar-hover-border: rgba(120, 140, 170, 0.25);
+    --sidebar-title-hover-bg: rgba(120, 140, 170, 0.16);
+    --sidebar-focus-glow: rgba(80, 115, 170, 0.35);
+}
+
+[data-theme="dark"] #admin-navbar {
+    background: hsl(221, 20%, 14%);
+    border-bottom-color: hsl(221, 14%, 22%);
+}
+
+[data-theme="dark"] #admin-navbar .navbar-item,
+[data-theme="dark"] #admin-navbar .navbar-link,
+[data-theme="dark"] #admin-navbar .navbar-burger span {
+    color: #c5d0df;
+}
+
+[data-theme="dark"] #admin-navbar .navbar-item:hover,
+[data-theme="dark"] #admin-navbar .navbar-link:hover {
+    background-color: rgba(255,255,255,0.06);
+    color: #e8edf4;
+}
+
+[data-theme="dark"] #admin-navbar .navbar-dropdown {
+    background: hsl(221, 14%, 14%);
+    border-top: 2px solid hsl(221, 14%, 30%);
+}
+
+[data-theme="dark"] #admin-navbar .navbar-dropdown .navbar-item {
+    color: #c5d0df;
+}
+
+[data-theme="dark"] #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: hsl(221, 14%, 18%);
+    color: #e8edf4;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+    background-color: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
+    border-color: hsl(221, 14%, 30%);
+}
+
+[data-theme="dark"] .button.is-light {
+    background-color: hsl(221, 14%, 20%);
+    color: hsl(221, 14%, 85%);
+    border-color: hsl(221, 14%, 28%);
+}
+
+[data-theme="dark"] .modal__container {
+    background: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
+}
+
+[data-theme="dark"] .modal__header {
+    border-bottom-color: hsl(221, 14%, 24%);
+}
+
+[data-theme="dark"] .modal__footer {
+    border-top-color: hsl(221, 14%, 24%);
+    background: hsl(221, 14%, 12%);
+}
+
+[data-theme="dark"] .modal__warning {
+    background: hsl(0, 30%, 15%) !important;
+    border-color: hsl(0, 40%, 25%) !important;
+}
+
+[data-theme="dark"] .modal__warning p {
+    color: hsl(0, 70%, 70%) !important;
+}
+
+[data-theme="dark"] .modal__warning div {
+    color: hsl(0, 60%, 65%) !important;
+}
+
+[data-theme="dark"] .swal2-popup {
+    background: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
+}
+
+[data-theme="dark"] table {
+    color: hsl(221, 14%, 85%);
+}
+
+[data-theme="dark"] .question-card,
+[data-theme="dark"] .tp-card {
+    background: hsl(221, 14%, 14%);
+    border-color: hsl(221, 14%, 24%);
+}
+
+[data-theme="dark"] #border {
+    border-color: hsl(221, 14%, 22%);
+}
+
+/* ==========================================================================
+   4. Original IL Theme (default - no overrides needed, just explicit)
+   ========================================================================== */
+
+/* Original IL is the default, no [data-theme] attribute needed */
+
+/* ==========================================================================
+   5. Adon Hermon (light grayish sidebar)
+   ========================================================================== */
+
+[data-theme="adon-hermon"] #sidebar {
+    --sidebar-bg-dark: #f0f2f5;
+    --sidebar-bg-light: #e8ebef;
+    --sidebar-border: #d0d5dc;
+    --sidebar-text: #4a5568;
+    --sidebar-text-light: #374151;
+    --sidebar-text-bright: #1f2937;
+    --sidebar-text-muted: #9ca3af;
+    --sidebar-accent: #3b82f6;
+    --sidebar-accent-light: #60a5fa;
+    --sidebar-slate: #6b7280;
+    --sidebar-hover-bg: rgba(59, 130, 246, 0.08);
+    --sidebar-hover-border: rgba(59, 130, 246, 0.2);
+    --sidebar-title-hover-bg: rgba(59, 130, 246, 0.1);
+    --sidebar-focus-glow: rgba(59, 130, 246, 0.25);
+    --sidebar-teal: #0F766E;
+}
+
+[data-theme="adon-hermon"] #sidebar {
+    background: linear-gradient(180deg, #f0f2f5 0%, #e8ebef 100%);
+    border-right: 1px solid #d0d5dc;
+}
+
+[data-theme="adon-hermon"] #sidebar .sidebar-section-title {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="adon-hermon"] #sidebar .sidebar-section-title:hover {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="adon-hermon"] #sidebar .sidebar-action-link {
+    background-color: #fff;
+    border-color: #d0d5dc;
+    color: #4a5568;
+}
+
+[data-theme="adon-hermon"] #sidebar .sidebar-action-link:hover {
+    background-color: #e8ebef;
+    color: #1f2937;
+    border-color: #9ca3af;
+}
+
+[data-theme="adon-hermon"] #sidebar .unread {
+    color: #fff;
+}
+
+[data-theme="adon-hermon"] #sidebar .sidebar-badge {
+    color: #fff;
+}
+
+[data-theme="adon-hermon"] #sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(107, 114, 128, 0.3);
+}
+
+[data-theme="adon-hermon"] #sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(107, 114, 128, 0.5);
+}
+
+[data-theme="adon-hermon"] #sidebar {
+    scrollbar-color: rgba(107, 114, 128, 0.3) transparent;
+}
+
+/* ==========================================================================
+   6. Retro Theme (90s website easter egg)
+   ========================================================================== */
+
+@font-face {
+    font-family: 'RetroPixel';
+    src: url('https://fonts.gstatic.com/s/pressstart2p/v15/e3t4euO8T-267oIAQAu6jDQyK0nSgPJE4580w.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+[data-theme="retro"] {
+    --bulma-primary-h: 240deg;
+    --bulma-primary-s: 100%;
+    --bulma-primary-l: 50%;
+    --bulma-link-h: 240;
+    --bulma-link-s: 100%;
+    --bulma-link-l: 50%;
+    --bulma-danger-h: 0;
+    --bulma-danger-s: 100%;
+    --bulma-danger-l: 50%;
+    --bulma-success-h: 120;
+    --bulma-success-s: 100%;
+    --bulma-success-l: 30%;
+    --bulma-warning-h: 60;
+    --bulma-warning-s: 100%;
+    --bulma-warning-l: 50%;
+    --bulma-info-h: 180;
+    --bulma-info-s: 100%;
+    --bulma-info-l: 35%;
+
+    --bulma-body-background-color: #c0c0c0;
+    --bulma-scheme-main: #c0c0c0;
+    --bulma-scheme-main-bis: #d4d0c8;
+    --bulma-scheme-main-ter: #bfbfbf;
+    --bulma-border: #808080;
+    --bulma-border-weak: #a0a0a0;
+    --bulma-text: #000000;
+    --bulma-text-strong: #000000;
+    --bulma-text-weak: #404040;
+
+    font-family: 'RetroPixel', 'Courier New', monospace !important;
+}
+
+[data-theme="retro"] * {
+    font-family: 'RetroPixel', 'Courier New', monospace !important;
+    border-radius: 0 !important;
+}
+
+[data-theme="retro"] body {
+    background-color: #008080;
+    image-rendering: pixelated;
+}
+
+[data-theme="retro"] #sidebar {
+    --sidebar-bg-dark: #000080;
+    --sidebar-bg-light: #000080;
+    --sidebar-border: #c0c0c0;
+    --sidebar-text: #ffffff;
+    --sidebar-text-light: #ffffff;
+    --sidebar-text-bright: #ffff00;
+    --sidebar-text-muted: #c0c0c0;
+    --sidebar-accent: #ffff00;
+    --sidebar-accent-light: #ffff00;
+    --sidebar-slate: #c0c0c0;
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.15);
+    --sidebar-hover-border: #ffffff;
+    --sidebar-title-hover-bg: rgba(255, 255, 255, 0.2);
+    --sidebar-focus-glow: rgba(255, 255, 0, 0.5);
+    --sidebar-teal: #000080;
+}
+
+[data-theme="retro"] #sidebar {
+    background: #000080 !important;
+    border-right: 3px outset #c0c0c0;
+    font-size: 0.7rem;
+}
+
+[data-theme="retro"] #sidebar .sidebar-section-title {
+    background: #000080;
+    border: 2px outset #c0c0c0;
+}
+
+[data-theme="retro"] #sidebar a {
+    color: #ffff00 !important;
+    text-decoration: underline;
+}
+
+[data-theme="retro"] #sidebar a:hover {
+    color: #ff00ff !important;
+}
+
+[data-theme="retro"] #admin-navbar {
+    background: #c0c0c0;
+    border-bottom: 3px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+}
+
+[data-theme="retro"] #admin-navbar .navbar-item,
+[data-theme="retro"] #admin-navbar .navbar-link {
+    color: #000;
+    font-size: 0.7rem;
+}
+
+[data-theme="retro"] #admin-navbar .navbar-item:hover,
+[data-theme="retro"] #admin-navbar .navbar-link:hover {
+    background-color: #000080;
+    color: #fff;
+}
+
+[data-theme="retro"] #admin-navbar .navbar-dropdown {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+}
+
+[data-theme="retro"] #admin-navbar .navbar-dropdown .navbar-item {
+    color: #000;
+}
+
+[data-theme="retro"] #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: #000080;
+    color: #fff;
+}
+
+[data-theme="retro"] #core {
+    background: #c0c0c0;
+}
+
+[data-theme="retro"] #core h1 {
+    color: #000080;
+    text-shadow: 2px 2px #c0c0c0;
+    font-size: 1.5em;
+}
+
+[data-theme="retro"] a,
+[data-theme="retro"] a:visited {
+    color: #0000ff !important;
+}
+
+[data-theme="retro"] a:hover {
+    color: #ff00ff !important;
+}
+
+[data-theme="retro"] table {
+    border: 2px inset #808080;
+    background: #fff;
+}
+
+[data-theme="retro"] table th {
+    background: #000080;
+    color: #fff;
+    border: 1px outset #c0c0c0;
+    padding: 4px 8px;
+}
+
+[data-theme="retro"] table td {
+    border: 1px inset #c0c0c0;
+    background: #fff;
+    color: #000;
+    padding: 2px 6px;
+}
+
+[data-theme="retro"] .button,
+[data-theme="retro"] button,
+[data-theme="retro"] input[type="submit"],
+[data-theme="retro"] input[type="button"] {
+    background: #c0c0c0;
+    color: #000;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    text-shadow: none;
+}
+
+[data-theme="retro"] .button:hover,
+[data-theme="retro"] button:hover {
+    background: #d4d0c8;
+}
+
+[data-theme="retro"] .button:active,
+[data-theme="retro"] button:active {
+    border-style: inset;
+    box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #808080;
+}
+
+[data-theme="retro"] .button.is-primary,
+[data-theme="retro"] .button.is-success {
+    background: #c0c0c0;
+    color: #000;
+}
+
+[data-theme="retro"] .button.is-danger {
+    background: #c0c0c0;
+    color: #ff0000;
+    font-weight: bold;
+}
+
+[data-theme="retro"] input[type="text"],
+[data-theme="retro"] input[type="password"],
+[data-theme="retro"] input[type="number"],
+[data-theme="retro"] input[type="email"],
+[data-theme="retro"] textarea,
+[data-theme="retro"] select {
+    background: #fff;
+    color: #000;
+    border: 2px inset #808080;
+    padding: 2px 4px;
+    font-size: 0.7rem;
+}
+
+[data-theme="retro"] .card,
+[data-theme="retro"] .tp-card,
+[data-theme="retro"] .question-card,
+[data-theme="retro"] .modal__container {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+}
+
+[data-theme="retro"] .modal__header {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff;
+    padding: 4px 8px;
+    border-bottom: none;
+}
+
+[data-theme="retro"] .modal__header .modal__title {
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+[data-theme="retro"] .modal__header .modal__close {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    color: #000;
+    font-size: 1rem;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+[data-theme="retro"] .modal__footer {
+    background: #c0c0c0;
+    border-top: 1px solid #808080;
+}
+
+[data-theme="retro"] .notification,
+[data-theme="retro"] .notifications .communication {
+    background: #ffffcc;
+    border: 2px inset #808080;
+    color: #000;
+}
+
+[data-theme="retro"] #border {
+    border-color: #808080;
+}
+
+[data-theme="retro"] .sidebar-section-title,
+[data-theme="retro"] .folder-header {
+    border: 2px outset #c0c0c0 !important;
+}
+
+[data-theme="retro"] .hr {
+    background: #808080;
+    height: 2px;
+}
+
+[data-theme="retro"] .sidebar-badge {
+    font-size: 0.55rem;
+}
+
+[data-theme="retro"] .status-badge,
+[data-theme="retro"] .validator-badge,
+[data-theme="retro"] .question-status-badge {
+    border: 1px solid #808080;
+}
+
+[data-theme="retro"] .swal2-popup {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    color: #000;
+}
+
+[data-theme="retro"] .swal2-title {
+    color: #000;
+}
+
+[data-theme="retro"] .swal2-html-container {
+    color: #000;
+}
+
+[data-theme="retro"] ::selection {
+    background: #000080;
+    color: #fff;
+}
+
+[data-theme="retro"] .toggling_on:before,
+[data-theme="retro"] .toggling_off:before {
+    font-family: 'Courier New', monospace !important;
+}
+
+[data-theme="retro"] img {
+    image-rendering: pixelated;
+}
+
+/* ==========================================================================
+   Theme Selector UI
+   ========================================================================== */
+
+.theme-selector-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.theme-selector-btn {
+    background: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    color: inherit;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.theme-selector-btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+}
+
+.theme-selector-btn .theme-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
+    flex-shrink: 0;
+}
+
+.theme-selector-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--bulma-scheme-main, #fff);
+    border: 1px solid var(--bulma-border, #ddd);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    min-width: 200px;
+    z-index: 100;
+    padding: 6px 0;
+}
+
+[data-theme="retro"] .theme-selector-menu {
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+}
+
+.theme-selector-dropdown.is-active .theme-selector-menu {
+    display: block;
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--bulma-text, #333);
+    transition: background 0.12s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+
+.theme-option:hover {
+    background: var(--bulma-scheme-main-bis, #f5f5f5);
+}
+
+.theme-option.is-active {
+    font-weight: 700;
+}
+
+.theme-option .theme-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--bulma-border, #ccc);
+    flex-shrink: 0;
+}
+
+[data-theme="retro"] .theme-option .theme-swatch {
+    border-radius: 0 !important;
+}
+
+.theme-option.is-active .theme-swatch {
+    box-shadow: 0 0 0 2px var(--bulma-primary, #0F766E);
+}
+
+.theme-option .theme-check {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--bulma-primary, #0F766E);
+    display: none;
+}
+
+.theme-option.is-active .theme-check {
+    display: inline;
+}
+
+/* Swatch colors */
+.theme-swatch-original { background: linear-gradient(135deg, #0F172A, #0F766E); }
+.theme-swatch-granny-smith { background: linear-gradient(135deg, #2e5a1e, #6abf4b); }
+.theme-swatch-pink-lady { background: linear-gradient(135deg, #6b1a42, #e880b0); }
+.theme-swatch-dark { background: linear-gradient(135deg, #0a0f1a, #2d3748); }
+.theme-swatch-adon-hermon { background: linear-gradient(135deg, #e8ebef, #0F766E); }
+.theme-swatch-retro { background: linear-gradient(135deg, #000080, #c0c0c0); }
+
+/* Active dot color for the button */
+.theme-dot-original { background: #0F766E; }
+.theme-dot-granny-smith { background: #4a8a30; }
+.theme-dot-pink-lady { background: #a83070; }
+.theme-dot-dark { background: #2d3748; }
+.theme-dot-adon-hermon { background: #9ca3af; }
+.theme-dot-retro { background: #000080; }

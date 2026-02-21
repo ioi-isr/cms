@@ -163,7 +163,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     <form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST" id="training-days-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
-        <div class="tp-table-container">
+        <div class="table-container">
             <table class="ranking-table tp-tasks-table" id="training-days-table">
                 <thead>
                     <tr>
@@ -173,7 +173,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
                         <th data-sort-settings="numeric" style="text-align: left;">Start</th>
                         <th class="no-sort" style="text-align: left;">Tasks</th>
-                        <th class="text-center no-sort" style="width: 100px;">Actions</th>
+                        <th class="has-text-centered no-sort" style="width: 100px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="training-days-tbody">
@@ -238,7 +238,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         </td>
 
                         <!-- Actions -->
-                        <td class="text-center">
+                        <td class="has-text-centered">
                             <div class="list-cell-wrapper center-content" style="gap: 4px;">
                                 <!-- Archive button -->
                                 <button type="button"
@@ -288,7 +288,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         type="info"
     ) }}
 
-    <div class="tp-table-container">
+    <div class="table-container">
         <table class="ranking-table tp-tasks-table" id="archived-training-days-table">
             <thead>
                 <tr>

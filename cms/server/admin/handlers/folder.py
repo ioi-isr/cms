@@ -128,5 +128,8 @@ class RemoveFolderHandler(BaseHandler):
             c.folder = parent
         # Delete the folder itself; contests will be detached via FK SET NULL
         self.sql_session.delete(folder)
-        self.try_commit()
+        if not self.try_commit():
+            self.set_status(500)
+            self.write("Failed to remove folder")
+            return
         self.write("../../folders")

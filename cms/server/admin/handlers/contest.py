@@ -367,25 +367,31 @@ class RemoveContestHandler(BaseHandler):
 
         try:
             action = self.get_argument("action", "detach")
-            assert action in ["move", "detach", "delete_all"], \
-                "Invalid action specified"
+            if action not in ["move", "detach", "delete_all"]:
+                raise ValueError("Invalid action specified")
 
             target_contest_id = None
             if action == "move":
                 target_contest_id = self.get_argument("target_contest_id", None)
-                assert target_contest_id, (
-                    "Target contest must be specified when moving tasks"
-                )
-                assert target_contest_id != str(contest_id), (
-                    "Target contest cannot be the same as the contest being deleted"
-                )
+                if not target_contest_id:
+                    raise ValueError(
+                        "Target contest must be specified when moving tasks"
+                    )
+                if target_contest_id == str(contest_id):
+                    raise ValueError(
+                        "Target contest cannot be the same as the contest being deleted"
+                    )
 
-            self._remove_contest_with_action(contest, action, target_contest_id)
+            if not self._remove_contest_with_action(contest, action, target_contest_id):
+                self.set_status(500)
+                self.write("error")
+                return
 
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Error removing contest", repr(error)
             )
+            self.set_status(500)
             self.write("error")
             return
 
@@ -414,3 +420,5 @@ class RemoveContestHandler(BaseHandler):
                 "Contest removed successfully",
                 f"Contest removed with action: {action}",
             )
+            return True
+        return False

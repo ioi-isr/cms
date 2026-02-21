@@ -1,18 +1,17 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="container is-fluid">
     <!-- Header -->
     <h1 class="title">Training Programs</h1>
 
     <!-- Stats Cards Row -->
-    <div class="tp-stats-row">
+    <div class="tp-cards-grid mb-6">
         <div class="tp-stat-card">
             <div class="tp-stat-icon tp-stat-icon-purple">
                 <svg class="icon"><use href="#icon-graduation-cap"/></svg>
             </div>
             <div class="tp-stat-content">
-                <div class="tp-stat-label">Active Programs</div>
+                <div class="has-text-weak">Active Programs</div>
                 <div class="tp-stat-value">{{ active_programs }}</div>
             </div>
         </div>
@@ -21,7 +20,7 @@
                 <svg class="icon"><use href="#icon-users"/></svg>
             </div>
             <div class="tp-stat-content">
-                <div class="tp-stat-label">Total Students</div>
+                <div class="has-text-weak">Total Students</div>
                 <div class="tp-stat-value">{{ total_students }}</div>
             </div>
         </div>
@@ -30,7 +29,7 @@
                 <svg class="icon"><use href="#icon-clock"/></svg>
             </div>
             <div class="tp-stat-content">
-                <div class="tp-stat-label">Active Training Days</div>
+                <div class="has-text-weak">Active Training Days</div>
                 <div class="tp-stat-value">{{ active_training_days }}</div>
             </div>
         </div>
@@ -127,9 +126,9 @@
                         <div class="tp-training-day-info">
                             <div class="tp-training-day-name">{{ td.contest.name }}</div>
                             {% if td.contest.start and td.contest.start.year <= tp.managing_contest.stop.year %}
-                            <div class="tp-training-day-date">{{ td.contest.start.strftime('%b %d') }}</div>
+                            <div class="text-muted is-size-7">{{ td.contest.start.strftime('%b %d') }}</div>
                             {% else %}
-                            <div class="tp-training-day-date">Unscheduled</div>
+                            <div class="text-muted is-size-7">Unscheduled</div>
                             {% endif %}
                         </div>
                         <div class="tp-training-day-indicators">
@@ -179,7 +178,6 @@
         </button>
         {% endif %}
     </div>
-</div>
 
 {% include "fragments/modal_remove_training_program.html" %}
 

@@ -99,7 +99,7 @@ if (addTaskForm) {
     <form action="{{ url("contest", contest.id, "tasks") }}" method="POST" id="tasks-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
-        <div class="tp-table-container">
+        <div class="table-container">
             <table class="ranking-table tp-tasks-table" id="tasks-table">
                 <thead>
                     <tr>
@@ -108,7 +108,7 @@ if (addTaskForm) {
 {% if is_training_day %}
                         <th class="no-sort" style="text-align: left; min-width: 200px;">Visible to</th>
 {% endif %}
-                        <th class="text-center no-sort" style="width: 80px;">Actions</th>
+                        <th class="has-text-centered no-sort" style="width: 80px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="tasks-tbody">
@@ -145,7 +145,7 @@ if (addTaskForm) {
 {% endif %}
 
                         <!-- Actions -->
-                        <td class="text-center">
+                        <td class="has-text-centered">
                             <div class="list-cell-wrapper center-content">
                                 <button type="button" class="btn-icon-only remove-task-btn"
                                     data-task-id="{{ t.id }}"

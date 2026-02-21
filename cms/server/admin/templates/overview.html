@@ -308,7 +308,6 @@ update_statuses();
 
 {% block core %}
 
-<div class="container is-fluid">
     <h1 class="title">Overview</h1>
 
     {% if contest is not none %}
@@ -344,7 +343,7 @@ update_statuses();
                 <button class="button is-small is-primary" onclick="javascript:set_workers_count(); return false;"{% if not admin.permission_all %} disabled{% endif %}>Set Count</button>
                 <span class="overview-hint">Workers 0 to n-1 enabled, rest disabled</span>
             </div>
-            <div class="tp-table-container" style="max-height: 400px;">
+            <div class="table-container" style="width: 100%; max-height: 400px; overflow-y: auto;">
                 <table class="table is-fullwidth is-hoverable is-header-muted" id="workers_status_table">
                     <thead>
                         <tr>
@@ -369,7 +368,7 @@ update_statuses();
                     Queue Status
                 </h2>
             </div>
-            <div class="tp-table-container" style="max-height: 500px;">
+            <div class="table-container" style="width: 100%; max-height: 500px; overflow-y: auto;">
                 <table class="table is-fullwidth is-hoverable is-header-muted" id="queue_status_table">
                     <thead>
                         <tr>
@@ -395,7 +394,7 @@ update_statuses();
                 Recent Logs
             </h2>
         </div>
-        <div class="tp-table-container">
+        <div class="table-container" style="width: 100%; overflow-y: auto;">
             <table class="table is-fullwidth is-hoverable is-header-muted" id="logs_table">
                 <thead>
                     <tr>
@@ -412,5 +411,4 @@ update_statuses();
             </table>
         </div>
     </div>
-</div>
 {% endblock core %}
