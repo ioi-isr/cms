@@ -205,6 +205,65 @@ pre {
     color: var(--sidebar-text-bright);
 }
 
+/* ==========================================================================
+   Mobile Bottom Navbar
+   ========================================================================== */
+
+#mobile-bottom-nav {
+    --sidebar-bg-dark: #0F172A;
+    --sidebar-border: #1F2937;
+    --sidebar-text: #CBD5E1;
+    --sidebar-text-bright: #F8FAFC;
+    --sidebar-hover-bg: rgba(148, 163, 184, 0.12);
+
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: var(--sidebar-bg-dark);
+    border-top: 1px solid var(--sidebar-border);
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+#mobile-bottom-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1 0 auto;
+    min-width: 60px;
+    padding: 6px 8px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-size: 0.65rem;
+    gap: 2px;
+    white-space: nowrap;
+}
+
+.mobile-nav-item:hover,
+.mobile-nav-item:active {
+    background: var(--sidebar-hover-bg);
+    color: var(--sidebar-text-bright);
+}
+
+.mobile-nav-item .icon {
+    color: inherit;
+}
+
+@media screen and (max-width: 1023px) {
+    body:has(#mobile-bottom-nav) #core {
+        padding-bottom: 56px;
+    }
+}
+
 /* LEFT */
 
 /* Sidebar color palette - CSS custom properties for maintainability */

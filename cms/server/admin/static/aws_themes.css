@@ -22,7 +22,8 @@
     --bulma-info-l: 45%;
 }
 
-[data-theme="granny-smith"] #sidebar {
+[data-theme="granny-smith"] #sidebar,
+[data-theme="granny-smith"] #mobile-bottom-nav {
     --sidebar-bg-dark: #2e5a1e;
     --sidebar-bg-light: #36681f;
     --sidebar-border: #4a8a30;
@@ -90,7 +91,8 @@
     --bulma-success-l: 38%;
 }
 
-[data-theme="pink-lady"] #sidebar {
+[data-theme="pink-lady"] #sidebar,
+[data-theme="pink-lady"] #mobile-bottom-nav {
     --sidebar-bg-dark: #6b1a42;
     --sidebar-bg-light: #7a2050;
     --sidebar-border: #9c3068;
@@ -191,7 +193,8 @@
     --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
-[data-theme="dark"] #sidebar {
+[data-theme="dark"] #sidebar,
+[data-theme="dark"] #mobile-bottom-nav {
     --sidebar-bg-dark: #0a0f1a;
     --sidebar-bg-light: #0d1321;
     --sidebar-border: #1a2332;
@@ -309,7 +312,8 @@
    5. Adon Hermon (light grayish sidebar)
    ========================================================================== */
 
-[data-theme="adon-hermon"] #sidebar {
+[data-theme="adon-hermon"] #sidebar,
+[data-theme="adon-hermon"] #mobile-bottom-nav {
     --sidebar-bg-dark: #f0f2f5;
     --sidebar-bg-light: #e8ebef;
     --sidebar-border: #d0d5dc;
@@ -429,7 +433,8 @@
     image-rendering: pixelated;
 }
 
-[data-theme="retro"] #sidebar {
+[data-theme="retro"] #sidebar,
+[data-theme="retro"] #mobile-bottom-nav {
     --sidebar-bg-dark: #000080;
     --sidebar-bg-light: #000080;
     --sidebar-border: #c0c0c0;
@@ -451,6 +456,20 @@
     background: #000080 !important;
     border-right: 3px outset #c0c0c0;
     font-size: 0.7rem;
+}
+
+[data-theme="retro"] #mobile-bottom-nav {
+    background: #000080 !important;
+    border-top: 3px outset #c0c0c0;
+    font-size: 0.55rem;
+}
+
+[data-theme="retro"] #mobile-bottom-nav a {
+    color: #ffff00 !important;
+}
+
+[data-theme="retro"] #mobile-bottom-nav a:hover {
+    color: #ff00ff !important;
 }
 
 [data-theme="retro"] #sidebar .sidebar-section-title {
