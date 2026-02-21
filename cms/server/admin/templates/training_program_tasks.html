@@ -37,14 +37,14 @@
     <form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST" id="tasks-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
-        <div class="tp-table-container">
+        <div class="table-container">
             <table class="ranking-table tp-tasks-table" id="tasks-table">
                 <thead>
                     <tr>
                         <th class="grip-column no-sort"></th>
                         <th style="text-align: left;">Task</th>
                         <th style="text-align: left;">Training Day</th>
-                        <th class="text-center no-sort" style="width: 120px;">Actions</th>
+                        <th class="has-text-centered no-sort" style="width: 120px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="tasks-tbody">
@@ -92,7 +92,7 @@
                         </td>
 
                         <!-- Actions -->
-                        <td class="text-center">
+                        <td class="has-text-centered">
                             <div class="list-cell-wrapper center-content" style="gap: 8px;">
                                 {% if is_archived %}
                                 <!-- Detach button for archived training day tasks -->

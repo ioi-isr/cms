@@ -68,7 +68,7 @@
     </div>
 
     <!-- Table -->
-    <div class="tp-table-container">
+    <div class="table-container">
         {% if student_tasks %}
         <table class="ranking-table" id="student-tasks-table" style="width: 100%;">
             <thead>
@@ -76,10 +76,10 @@
                     <th style="width: 30%;">Task</th>
                     <th class="no-sort" style="width: 15%;">Source</th>
                     <th data-sort-settings="numeric" style="width: 15%;">Assigned At</th>
-                    <th data-sort-settings="numeric reversed" class="text-center" style="width: 10%;">Training</th>
-                    <th data-sort-settings="numeric reversed" class="text-center" style="width: 10%;">Home</th>
-                    <th data-sort-settings="numeric reversed" class="text-center" style="width: 10%;">Submissions</th>
-                    <th class="text-center no-sort" style="width: 10%;">Actions</th>
+                    <th data-sort-settings="numeric reversed" class="has-text-centered" style="width: 10%;">Training</th>
+                    <th data-sort-settings="numeric reversed" class="has-text-centered" style="width: 10%;">Home</th>
+                    <th data-sort-settings="numeric reversed" class="has-text-centered" style="width: 10%;">Submissions</th>
+                    <th class="has-text-centered no-sort" style="width: 10%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -123,7 +123,7 @@
                     </td>
 
                     <!-- Training Score -->
-                    <td class="text-center" data-value="{{ training_scores.get(st.task.id, -1) }}">
+                    <td class="has-text-centered" data-value="{{ training_scores.get(st.task.id, -1) }}">
                         <div class="list-cell-wrapper center-content">
                             {% if st.task.id in training_scores %}
                                 {% set score = training_scores[st.task.id] %}
@@ -139,7 +139,7 @@
                     </td>
 
                     <!-- Home Score -->
-                    <td class="text-center" data-value="{{ home_scores.get(st.task.id, -1) }}">
+                    <td class="has-text-centered" data-value="{{ home_scores.get(st.task.id, -1) }}">
                         <div class="list-cell-wrapper center-content">
                             {% if st.task.id in home_scores %}
                                 {% set score = home_scores[st.task.id] %}
@@ -155,7 +155,7 @@
                     </td>
 
                     <!-- Submissions -->
-                    <td class="text-center" data-value="{{ submission_counts.get(st.task.id, 0) }}">
+                    <td class="has-text-centered" data-value="{{ submission_counts.get(st.task.id, 0) }}">
                         <div class="list-cell-wrapper center-content">
                             {% set sub_count = submission_counts.get(st.task.id, 0) %}
                             {% if sub_count > 0 %}
@@ -169,7 +169,7 @@
                     </td>
 
                     <!-- Actions -->
-                    <td class="text-center">
+                    <td class="has-text-centered">
                         <div class="list-cell-wrapper center-content">
                             <form action="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "remove") }}" method="POST" style="margin: 0;">
                                 {{ xsrf_form_html|safe }}

@@ -101,7 +101,7 @@ class RemoveParticipationHandler(BaseHandler):
             self.service.proxy_service.reinitialize()
 
         # Maybe they'll want to do this again (for another participation)
-        self.write(self.url("users"))
+        self.write(self.url("contest", contest_id, "users"))
 
 
 class AddContestUserHandler(BaseHandler):

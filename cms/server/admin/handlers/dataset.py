@@ -259,7 +259,7 @@ class ActivateDatasetHandler(BaseHandler):
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
-
+        fallback_url = self.url("task", task.id)
         task.active_dataset = dataset
 
         if dataset.task_type == 'OutputOnly':
@@ -280,6 +280,10 @@ class ActivateDatasetHandler(BaseHandler):
                 .evaluation_service.search_operations_not_done()
             self.service\
                 .scoring_service.search_operations_not_done()
+
+        else:
+            self.redirect(fallback_url)
+            return
 
         # Now send notifications to contestants.
         datetime = make_datetime()
@@ -303,7 +307,7 @@ class ActivateDatasetHandler(BaseHandler):
                 make_datetime(),
                 "Messages sent to %d users." % count, "")
 
-        self.redirect(self.url("task", task.id))
+        self.redirect(fallback_url)
 
 
 class ToggleAutojudgeDatasetHandler(BaseHandler):

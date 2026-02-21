@@ -621,8 +621,11 @@ class RemoveUserHandler(BaseHandler):
         user = self.safe_get_item(User, user_id)
 
         self.sql_session.delete(user)
-        if self.try_commit():
-            self.service.proxy_service.reinitialize()
+        if not self.try_commit():
+            self.set_status(500)
+            self.write("error")
+            return
+        self.service.proxy_service.reinitialize()
 
         # Maybe they'll want to do this again (for another user)
         self.write("../../users")
@@ -644,10 +647,17 @@ class RemoveTeamHandler(BaseHandler):
             self.sql_session.delete(team)
             if self.try_commit():
                 self.service.proxy_service.reinitialize()
+            else:
+                self.set_status(500)
+                self.write("error")
+                return
         except Exception as fallback_error:
             self.service.add_notification(
                 make_datetime(), "Error removing team", repr(fallback_error)
             )
+            self.set_status(500)
+            self.write("error")
+            return
 
         # Maybe they'll want to do this again (for another team)
         self.write("../../teams")

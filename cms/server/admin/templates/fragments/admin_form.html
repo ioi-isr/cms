@@ -30,7 +30,7 @@
     {{ form_field('name', 'Name', admin_name, required=true, icon='user') }}
   </div>
   <div class="column is-full">
-    {{ form_field('password', 'Password', '', type='password', required=(not is_edit), icon='lock', autocomplete='new-password', input_id=pw_field_id) }}
+    {{ form_field('password', 'Password', '', type='password', required=(not is_edit), icon='key', autocomplete='new-password', input_id=pw_field_id) }}
     <div class="mt-1">
       <div id="{{ pw_bar_id }}" class="is-3" style="height: 5px; border-radius: 3px; transition: all 0.3s ease; display: none;"></div>
       <span id="{{ pw_text_id }}" class="is-size-7"></span>

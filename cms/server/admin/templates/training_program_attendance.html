@@ -13,7 +13,6 @@ AdminTableUtils.initFilterTagify({
 {% endblock js_init %}
 
 {% block core %}
-<div class="container is-fluid">
 <h1 class="title">Attendance: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
 
 {{ info_alert.alert(
@@ -81,7 +80,7 @@ AdminTableUtils.initFilterTagify({
 {% endif %}
 
 {% if archived_training_days %}
-<div class="tp-table-container">
+<div class="table-container">
   <table class="attendance-table" id="attendance_table">
     <thead>
       <tr>
@@ -430,5 +429,4 @@ if (saveAttendanceBtn) {
 }
 </script>
 
-</div>
 {% endblock core %}

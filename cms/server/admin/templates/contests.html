@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="container is-fluid">
     <!-- Header -->
     <div class="level">
         <div class="level-left">
@@ -69,7 +68,6 @@
         {% endfor %}
     </div>
     {% endif %}
-</div>
 
 {% include "fragments/modal_remove_contest.html" %}
 
@@ -83,12 +81,30 @@ function openContestRemoveModal(btn) {
 
     document.getElementById('remove-contest-name').textContent = name;
 
-    var statsHtml = '<li>' + participationCount + ' participation(s) will be deleted.</li>';
-    statsHtml += '<li>' + submissionCount + ' submission(s) will be deleted.</li>';
-    if (taskCount > 0) {
-        statsHtml += '<li>' + taskCount + ' task(s) will be affected (see options below).</li>';
+    var statsTarget = document.getElementById('remove-contest-stats');
+    var statsList = document.createElement('ul');
+    if (statsTarget) {
+        statsList.id = 'remove-contest-stats';
+        statsList.setAttribute('style', statsTarget.getAttribute('style') || '');
     }
-    document.getElementById('remove-contest-stats').innerHTML = statsHtml;
+
+    var participationLi = document.createElement('li');
+    participationLi.textContent = participationCount + ' participation(s) will be deleted.';
+    statsList.appendChild(participationLi);
+
+    var submissionLi = document.createElement('li');
+    submissionLi.textContent = submissionCount + ' submission(s) will be deleted.';
+    statsList.appendChild(submissionLi);
+
+    if (taskCount > 0) {
+        var taskLi = document.createElement('li');
+        taskLi.textContent = taskCount + ' task(s) will be affected (see options below).';
+        statsList.appendChild(taskLi);
+    }
+
+    if (statsTarget) {
+        statsTarget.replaceWith(statsList);
+    }
 
     var taskOptionsDiv = document.getElementById('remove-contest-task-options');
     if (taskCount > 0) {

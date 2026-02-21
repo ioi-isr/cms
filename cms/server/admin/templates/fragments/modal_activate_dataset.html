@@ -70,6 +70,7 @@ Required context: admin, task, activate_data, url, xsrf_form_html
                                         {% if loop.first %}
                                         <input type="checkbox"
                                                class="notify_user_box_{{ dataset.id }} default_notify_{{ "on" if c.submission.participation.id in ds_activate.default_notify_participations else "off" }}_{{ dataset.id }}"
+                                               {% if c.submission.participation.id in ds_activate.default_notify_participations %}checked{% endif %}
                                                name="notify_{{ c.submission.participation.id }}" />
                                         {% endif %}
                                     </td>

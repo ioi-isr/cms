@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="container is-fluid">
     <div class="level">
         <div class="level-left">
             <h1 class="title">Folders</h1>
@@ -36,7 +35,7 @@
                 <th class="has-text-left">Parent</th>
                 <th class="has-text-left">Hidden</th>
                 {% if admin.permission_all %}
-                <th class="text-center" style="width: 100px;">Actions</th>
+                <th class="has-text-centered" style="width: 100px;">Actions</th>
                 {% endif %}
             </tr>
         </thead>
@@ -56,12 +55,12 @@
                 {% if admin.permission_all %}
                 <td class="has-text-centered">
                     <button type="button" class="btn-icon-only" title="Remove folder"
-                            onclick='AdminModals.deleteResource({
-                                title: "Remove Folder",
-                                message: {{ ("Are you sure you want to remove folder \"" ~ f.name ~ "\"? Its subfolders will be moved to its parent and its contests will be detached.")|tojson }},
-                                deleteUrl: {{ url("folders", f.id, "remove")|tojson }},
-                                confirmLabel: "Yes, Remove"
-                            })'>
+                                onclick='AdminModals.deleteResource({
+                                    title: "Remove Folder",
+                                    message: {{ ("Are you sure you want to remove folder \"" ~ f.name ~ "\"? Its subfolders will be moved to its parent and its contests will be detached.")|tojson|forceescape }},
+                                    deleteUrl: {{ url("folders", f.id, "remove")|tojson|forceescape }},
+                                    confirmLabel: "Yes, Remove"
+                                })'>
                         <svg class="icon is-small"><use href="#icon-trash"/></svg>
                     </button>
                 </td>
@@ -82,6 +81,5 @@
         </ul>
     </div>
     {% endif %}
-</div>
 
 {% endblock core %}

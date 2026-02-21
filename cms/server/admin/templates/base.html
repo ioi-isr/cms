@@ -255,7 +255,7 @@ $(document).ready(initSidebarEvents);
   </head>
   <body class="admin">
     {% include 'fragments/svg_icons.html' %}
-    <div id="global" class = "layout">
+    <div id="global" class="layout">
       <aside id="sidebar" class="menu">
         <div id="sidebar_header">
 {% if admin is undefined %}
@@ -734,7 +734,6 @@ $(document).ready(initSidebarEvents);
         <div class="cr_notice">CMS <a href="http://github.com/cms-dev/cms/">codebase</a> is released under the<br/><a href="http://www.gnu.org/licenses/agpl.txt">GNU Affero General Public License</a>.</div>
       </aside>
 
-      <div id="border"></div>
       <main id="core">
         <div id="notifications" class="notifications"></div>
         <div class="modal modal--wide" id="modal-show-file" aria-hidden="true">
@@ -752,7 +751,7 @@ $(document).ready(initSidebarEvents);
                 </div>
             </div>
         </div>
-        {% block core %}{% endblock core %}
+        <div class="container is-fluid">{% block core %}{% endblock core %}</div>
       </main>
 
       <!-- Global modals for sidebar actions -->

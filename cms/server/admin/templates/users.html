@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="container is-fluid">
     <!-- Header -->
     <div class="level">
         <div class="level-left">
@@ -33,12 +32,12 @@
                 <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 4px; color: var(--tp-warning);"><use href="#icon-alert-triangle"/></svg>
                 Pending Password Resets ({{ pending_users|length }})
             </h3>
-            <div class="tp-table-container">
+            <div class="table-container">
                 <table class="ranking-table">
                     <thead>
                         <tr>
                             <th style="text-align: left;">User</th>
-                            <th class="text-center" style="width: 160px;">Actions</th>
+                            <th class="has-text-centered" style="width: 160px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -52,7 +51,7 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="text-center">
+                            <td class="has-text-centered">
                                 <div class="list-cell-wrapper center-content" style="gap: 6px;">
                                     <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit='return AdminModals.confirmSubmit(event, "Approve password reset for " + {{ u.username|tojson }} + "?", {icon: "question"});'>
                                         {{ xsrf_form_html|safe }}
@@ -132,7 +131,6 @@
         {% endfor %}
     </div>
     {% endif %}
-</div>
 
 
 <script>
