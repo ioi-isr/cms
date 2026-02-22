@@ -87,11 +87,11 @@
                         <td>
                             <div class="list-cell-wrapper">
                                 {% if result.status == "success" %}
-                                <span class="source-badge badge-training">Success</span>
+                                <span class="tag is-bordered has-text-primary">Success</span>
                                 {% elif result.status == "already_exists" %}
-                                <span class="source-badge badge-archived">Already in program</span>
+                                <span class="tag is-bordered has-text-warning">Already in program</span>
                                 {% else %}
-                                <span class="source-badge badge-danger">Not found</span>
+                                <span class="tag is-bordered has-text-danger">Not found</span>
                                 {% endif %}
                             </div>
                         </td>

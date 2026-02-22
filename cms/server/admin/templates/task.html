@@ -1026,7 +1026,7 @@ document.addEventListener('click', function(e) {
                                           <svg class="icon is-small" style="color: var(--tp-primary); flex-shrink: 0;"><use href="#icon-file-code"/></svg>
                                           <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')" style="color: var(--tp-primary); font-weight: 500;">{{ validator.filename }}</a>
                                           {% if validator.executable_digest is none %}
-                                            <span class="validator-badge validator-badge--error">compilation failed</span>
+                                            <span class="tag is-rounded is-opaque has-text-warning-25 has-text-weight-semibold">compilation failed</span>
                                           {% endif %}
                                           {% if admin.permission_all %}
                                           <span style="margin-left: auto; display: flex; gap: 4px; flex-shrink: 0;">
@@ -1039,9 +1039,9 @@ document.addEventListener('click', function(e) {
                                           </span>
                                           {% endif %}
                                         {% else %}
-                                          <span class="validator-badge validator-badge--warning">
+                                          <span class="tag is-rounded is-bordered has-text-danger has-text-weight-bold">
                                             <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
-                                            No validator
+                                            <span>No validator</span>
                                           </span>
                                           {% if admin.permission_all %}
                                           <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator">
@@ -1058,16 +1058,16 @@ document.addEventListener('click', function(e) {
                                         {% elif validator and validator.validation_results|length > 0 %}
                                           <span style="font-weight: 500; color: var(--tp-text-primary);">{{ ns.subtask_tc_count }} tests:</span>
                                           {% if ns.subtask_passed > 0 %}
-                                          <span class="validator-badge validator-badge--pass">{{ ns.subtask_passed }} passed</span>
+                                          <span class="tag has-text-success is-opaque is-rounded has-text-weight-semibold">{{ ns.subtask_passed }} passed</span>
                                           {% endif %}
                                           {% if ns.subtask_failed > 0 %}
-                                          <span class="validator-badge validator-badge--fail">{{ ns.subtask_failed }} failed</span>
+                                          <span class="tag has-text-danger is-opaque is-rounded has-text-weight-semibold">{{ ns.subtask_failed }} failed</span>
                                           {% endif %}
                                           {% if ns.subtask_error > 0 %}
-                                          <span class="validator-badge validator-badge--error">{{ ns.subtask_error }} error</span>
+                                          <span class="tag has-text-warning-25 is-opaque is-rounded has-text-weight-semibold">{{ ns.subtask_error }} error</span>
                                           {% endif %}
                                           {% if ns.subtask_not_validated > 0 %}
-                                          <span class="validator-badge validator-badge--muted">{{ ns.subtask_not_validated }} not validated</span>
+                                          <span class="tag has-text-dark is-opaque is-rounded has-text-weight-semibold">{{ ns.subtask_not_validated }} not validated</span>
                                           {% endif %}
                                         {% endif %}
                                           <a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}" style="color: var(--tp-text-muted); text-align: center; font-size: 0.85rem;">[details]</a>

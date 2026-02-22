@@ -229,7 +229,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                 {% set tasks = td.contest.get_tasks() %}
                                 {% if tasks %}
                                     {% for task in tasks %}
-                                        <a href="{{ url("task", task.id) }}" class="source-badge badge-training" title="{{ task.title }}">{{ task.name }}</a>
+                                        <a href="{{ url("task", task.id) }}" class="tag is-bordered has-text-primary" title="{{ task.title }}">{{ task.name }}</a>
                                     {% endfor %}
                                 {% else %}
                                     <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
@@ -342,7 +342,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
                             {% if td.archived_tasks_data %}
                                 {% for task_id_str, task_info in td.archived_tasks_data.items() %}
-                                    <button class="source-badge badge-archived"
+                                    <button class="tag is-bordered has-text-warning"
                                             type="button"
                                             title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
                                             onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
@@ -366,7 +366,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                 <svg class="icon is-small"><use href="#icon-share"/></svg>
                             </button>
                             {% if td.scoreboard_sharing %}
-                            <span class="source-badge badge-shared" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
+                            <span class="tag is-bordered has-text-link" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
                                 {{ td.scoreboard_sharing | length }}
                             </span>
                             {% endif %}

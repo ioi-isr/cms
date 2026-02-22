@@ -100,16 +100,16 @@
                         <div class="list-cell-wrapper">
                             {% if st.source_training_day %}
                                 {% if st.source_training_day.contest %}
-                                    <a href="{{ url("contest", st.source_training_day.contest.id) }}" class="source-badge badge-training">
+                                    <a href="{{ url("contest", st.source_training_day.contest.id) }}" class="tag is-bordered has-text-primary">
                                         {{ st.source_training_day.contest.description }}
                                     </a>
                                 {% else %}
-                                    <span class="source-badge badge-archived">
+                                    <span class="tag is-bordered has-text-warning">
                                         {{ st.source_training_day.description or st.source_training_day.name or "Archived Training" }}
                                     </span>
                                 {% endif %}
                             {% else %}
-                                <span class="source-badge badge-manual">Manual Assignment</span>
+                                <span class="tag is-bordered has-text-grey">Manual Assignment</span>
                             {% endif %}
                         </div>
                     </td>

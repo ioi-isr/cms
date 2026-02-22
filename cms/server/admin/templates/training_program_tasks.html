@@ -78,11 +78,11 @@
                         <td data-value="{{ t.training_day.contest.name if (t.training_day and t.training_day.contest) else ('zzz_archived_' + (t.training_day.name or '') if (t.training_day and is_archived) else ('zzz_none' if not t.training_day else t.training_day.name)) }}">
                             <div class="list-cell-wrapper">
                                 {% if t.training_day is not none and t.training_day.contest is not none %}
-                                <a href="{{ url("contest", t.training_day.contest.id) }}" class="source-badge badge-training">
+                                <a href="{{ url("contest", t.training_day.contest.id) }}" class="tag is-bordered has-text-primary">
                                     {{ t.training_day.contest.name }}
                                 </a>
                                 {% elif t.training_day is not none %}
-                                <span class="source-badge badge-archived">
+                                <span class="tag is-bordered has-text-warning">
                                     {{ t.training_day.name or "(archived)" }}
                                 </span>
                                 {% else %}

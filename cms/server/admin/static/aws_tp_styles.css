@@ -1068,56 +1068,6 @@
 }
 
 /* ==========================================================================
-   Source Badges
-   ========================================================================== */
-
-.source-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 1em;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    width: fit-content;
-    text-decoration: none;
-}
-
-.badge-training {
-    background: var(--tp-success-light);
-    color: var(--tp-success-dark);
-    border: 1px solid var(--bulma-success-80);
-}
-
-.badge-training:hover {
-    background: var(--bulma-success-85);
-}
-
-.badge-archived {
-    background: var(--tp-warning-light);
-    color: var(--tp-warning-dark);
-    border: 1px solid var(--bulma-warning-70);
-}
-
-.badge-shared {
-    background: var(--tp-info-light);
-    color: var(--tp-info-dark);
-    border: 1px solid var(--tp-info-border);
-}
-
-.badge-manual {
-    background: var(--tp-bg-light);
-    color: var(--tp-text-muted);
-    border: 1px solid var(--tp-border);
-}
-
-.badge-danger {
-    background: var(--bulma-danger-90);
-    color: var(--bulma-danger-dark);
-    border: 1px solid var(--bulma-danger-75);
-}
-
-/* ==========================================================================
    Histogram Content Styles
    ========================================================================== */
 
@@ -1798,7 +1748,7 @@
     border-radius: 8px;
     box-shadow: var(--tp-shadow-lg);
     min-width: 180px;
-    z-index: 100;
+    z-index: 50;
     padding: 8px 0;
 }
 
@@ -2479,8 +2429,8 @@
 /* Floating Actions Panel - Only when .tp-form-actions-float class is applied */
 .tp-form-actions.tp-form-actions-float {
     position: sticky;
-    top: 20px;
-    z-index: 100;
+    top: calc(var(--bulma-navbar-height) + 12px);
+    z-index: 40;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transition: box-shadow 0.3s ease;
 }
@@ -2792,28 +2742,23 @@
 }
 
 .delays-status-pre-contest {
-    background: var(--bulma-link-95);
-    color: var(--bulma-link-25);
+    color: var(--bulma-link);
 }
 
 .delays-status-can-start {
-    background: var(--tp-warning-light);
-    color: var(--tp-warning-dark);
+    color: var(--tp-warning);
 }
 
 .delays-status-in-contest {
-    background: var(--bulma-primary-90);
     color: var(--tp-primary);
 }
 
 .delays-status-finished {
-    background: var(--tp-success-light);
-    color: var(--tp-success-dark);
+    color: var(--tp-success);
 }
 
 .delays-status-missed {
-    background: var(--tp-danger-light);
-    color: var(--tp-danger-dark);
+    color: var(--tp-danger);
 }
 
 .delays-archive-banner {
@@ -2957,42 +2902,6 @@
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.delays-history-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-.delays-history-badge-approved {
-    background: var(--tp-success-light);
-    color: var(--tp-success-dark);
-    border: 1px solid var(--bulma-success-75);
-}
-
-.delays-history-badge-rejected {
-    background: var(--tp-danger-light);
-    color: var(--tp-danger-dark);
-    border: 1px solid var(--tp-danger-border);
-}
-
-.delays-history-badge-configured {
-    background: var(--bulma-primary-95);
-    color: var(--tp-primary);
-    border: 1px solid var(--bulma-primary-80);
-}
-
-.delays-history-badge-pending {
-    background: var(--tp-warning-light);
-    color: var(--tp-warning-dark);
-    border: 1px solid var(--bulma-warning-70);
 }
 
 .delays-history-card-body {

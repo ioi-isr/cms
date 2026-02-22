@@ -20,6 +20,8 @@
     --bulma-info-h: 160;
     --bulma-info-s: 50%;
     --bulma-info-l: 45%;
+
+    --login-gradient: linear-gradient(135deg, #2e5a1e 0%, #36681f 50%, #6abf4b 100%);
 }
 
 [data-theme="granny-smith"] #sidebar,
@@ -89,6 +91,8 @@
     --bulma-success-h: 150;
     --bulma-success-s: 55%;
     --bulma-success-l: 38%;
+
+    --login-gradient: linear-gradient(135deg, #6b1a42 0%, #7a2050 50%, #e880b0 100%);
 }
 
 [data-theme="pink-lady"] #sidebar,
@@ -191,6 +195,8 @@
     --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
     --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+
+    --login-gradient: linear-gradient(135deg, #0a0f1a 0%, #1a2332 50%, #2d3748 100%);
 }
 
 [data-theme="dark"] #sidebar,
@@ -307,6 +313,16 @@
    ========================================================================== */
 
 /* Original IL is the default, no [data-theme] attribute needed */
+:root {
+    --login-gradient: linear-gradient( 140deg, #0b1220 0%, #111827 35%, #0f2a2a 70%, #134e4a 100% );
+}
+
+/* OS-level dark mode fallback for login page */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        --login-gradient: linear-gradient( 160deg, #020617 0%, #020617 40%, #052e2b 100% );
+    }
+}
 
 /* ==========================================================================
    5. Adon Hermon (light grayish sidebar)
@@ -329,6 +345,10 @@
     --sidebar-title-hover-bg: rgba(59, 130, 246, 0.1);
     --sidebar-focus-glow: rgba(59, 130, 246, 0.25);
     --sidebar-teal: #0F766E;
+}
+
+[data-theme="adon-hermon"] {
+    --login-gradient: linear-gradient(135deg, #e8ebef 0%, #d0d5dc 50%, #0F766E 100%);
 }
 
 [data-theme="adon-hermon"] #sidebar {
@@ -421,6 +441,8 @@
     --bulma-text-weak: #404040;
 
     font-family: 'RetroPixel', 'Courier New', monospace !important;
+
+    --login-gradient: linear-gradient(135deg, #000080 0%, #008080 50%, #c0c0c0 100%);
 }
 
 [data-theme="retro"] * {
@@ -674,7 +696,7 @@
 }
 
 [data-theme="retro"] .status-badge,
-[data-theme="retro"] .validator-badge,
+[data-theme="retro"] .tag,
 [data-theme="retro"] .question-status-badge {
     border: 1px solid #808080;
 }

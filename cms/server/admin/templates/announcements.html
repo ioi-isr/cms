@@ -86,7 +86,7 @@ inputs.forEach(function(input) {
       <svg class="icon is-small"><use href="#icon-tag"/></svg>
       Visible to:
       {% for tag in msg.visible_to_tags %}
-        <span class="announcement-tag-badge">{{ tag }}</span>
+        <span class="tag is-bordered is-rounded has-text-info">{{ tag }}</span>
       {% endfor %}
     </span>
     {% endif %}

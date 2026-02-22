@@ -33,17 +33,6 @@
     font-weight: 600;
     color: #111827;
   }
-  .export-links { display: flex; gap: 6px; }
-  .export-links a {
-    padding: 2px 6px;
-    background: #f3f4f6;
-    color: #374151;
-    border: 1px solid #d1d5db;
-    border-radius: 3px;
-    text-decoration: none;
-    font-size: 0.75rem;
-  }
-  .export-links a:hover { background: #e5e7eb; }
 </style>
 <h1 class="title">Ranking</h1>
 
@@ -100,7 +89,7 @@
         <td>{{ "%s %s"|format(p.user.first_name, p.user.last_name) }}</td>
         <td>
           {% for tag in student_tags_by_participation.get(p.id, []) %}
-            <span class="tag is-info is-light">{{ tag }}</span>
+            <span class="tag has-text-link is-opaque">{{ tag }}</span>
           {% endfor %}
         </td>
         {% if task_archive_progress_by_participation %}
@@ -156,8 +145,8 @@
 
 {% else %}
 {# Regular contest or training day without groups - show single table #}
-Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>, <a href="{{ url("contest", contest.id, "ranking", "txt") }}">text</a>.
-<label style="margin-left: 20px;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label>
+<p>Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>, <a href="{{ url("contest", contest.id, "ranking", "txt") }}">text</a>.
+<label style="margin-left: 20px;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label></p>
 <div class="table-container">
 <table id="ranking-table" class="table is-bordered is-striped is-hoverable td-ranking-table">
   <thead>
@@ -193,7 +182,7 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
       {% if student_tags_by_participation %}
       <td>
         {% for tag in student_tags_by_participation.get(p.id, []) %}
-          <span class="tag is-info is-light">{{ tag }}</span>
+          <span class="tag has-text-link is-opaque">{{ tag }}</span>
         {% endfor %}
       </td>
       {% endif %}

@@ -170,10 +170,10 @@ function update_workers_status(response)
         var start_time = utils.repr_time_ago(response['data'][i]['start_time']);
         var connected_html;
         if (response['data'][i]['connected'] == true) {
-            connected_html = '<span class="tag is-success is-light">Yes</span>';
+            connected_html = '<span class="tag is-opaque has-text-success">Yes</span>';
             connected_count += 1;
         } else {
-            connected_html = '<span class="tag is-danger is-light">No</span>';
+            connected_html = '<span class="tag is-opaque has-text-danger">No</span>';
         }
         strings.push('<tr>');
         strings.push('<td class="has-text-centered">' + i + '</td>');
@@ -216,11 +216,11 @@ function escape_html(s)
 
 function get_severity_tag_class(severity) {
     switch(severity) {
-        case 'CRITICAL': return 'is-danger';
-        case 'ERROR': return 'is-danger is-light';
-        case 'WARNING': return 'is-warning';
-        case 'INFO': return 'is-info is-light';
-        default: return 'is-light';
+        case 'CRITICAL': return 'has-text-danger';
+        case 'ERROR': return 'has-text-danger';
+        case 'WARNING': return 'has-text-warning';
+        case 'INFO': return 'has-text-info';
+        default: return 'has-text-light';
     }
 }
 
@@ -255,7 +255,7 @@ function update_logs(response)
 
         var row = $('<tr>');
         row.append($('<td>').text(timestamp));
-        row.append($('<td>').html('<span class="tag ' + tag_class + '">' + severity + '</span>'));
+        row.append($('<td>').html('<span class="tag is-opaque ' + tag_class + '">' + severity + '</span>'));
         row.append($('<td>').text(coord));
         // We inject it as HTML rather than text because we escaped it before
         // and because we need to preserve the links to the submission pages.

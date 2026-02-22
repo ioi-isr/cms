@@ -227,7 +227,7 @@ CMS.AWSFormUtils.initTagify({
       </td>
       <td>
         {% if item.status_label %}
-          <span class="delays-status-badge delays-status-{{ item.status_class }}">
+          <span class="tag is-bordered is-rounded delays-status-{{ item.status_class }}">
             {% if item.status_class == "pre-contest" %}
               <svg class="icon is-small"><use href="#icon-clock"/></svg>
             {% elif item.status_class == "can-start" %}
@@ -239,7 +239,7 @@ CMS.AWSFormUtils.initTagify({
             {% elif item.status_class == "missed" %}
               <svg class="icon is-small"><use href="#icon-x"/></svg>
             {% endif %}
-            {{ item.status_label }}
+            <span>{{ item.status_label }}</span>
           </span>
         {% else %}
           -
