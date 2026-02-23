@@ -34,7 +34,7 @@ inputs.forEach(function(input) {
 {% block core %}
 
 <h1 class="title">Announcements</h1>
-<p class="subtitle has-text-grey">Post updates and manage announcements for participants.</p>
+<h2 class="subtitle has-text-grey">Post updates and manage announcements for participants.</h2>
 
 {% if training_program is defined %}
 {{ info_alert.alert(
@@ -71,11 +71,11 @@ inputs.forEach(function(input) {
   {% for msg in contest.announcements|reverse %}
   {% set delete_btn %}
     {% if training_program is defined %}
-    <button type="button" class="button is-text has-text-weak is-small no-underline" onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}');">
+    <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="CMS.AWSUtils.ajax_delete('{{ url("training_program", training_program.id, "announcement", msg.id) }}');">
       <svg class="icon is-small"><use href="#icon-trash"/></svg> <span>Remove</span>
     </button>
     {% else %}
-    <button type="button" class="button is-text has-text-weak is-small no-underline" onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}');">
+    <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "announcement", msg.id) }}');">
       <svg class="icon is-small"><use href="#icon-trash"/></svg> <span>Remove</span>
     </button>
     {% endif %}

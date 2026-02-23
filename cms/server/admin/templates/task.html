@@ -1107,7 +1107,7 @@ document.addEventListener('click', function(e) {
                         </h3>
                         <div class="ml-auto is-flex is-align-items-center is-flex-wrap-wrap">
                             {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
-                            <span class="is-size-7 has-text-weight-semibold is-uppercase has-text-weak mr-2">Reevaluate All:</span>
+                            <span class="is-size-7 has-text-weight-semibold is-uppercase has-text-grey mr-2">Reevaluate All:</span>
                             <div class="buttons has-addons mb-0 mr-2">
                                 <button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                                                  'EvaluationService', 0,

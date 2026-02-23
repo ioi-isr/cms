@@ -27,7 +27,7 @@ edit_url (str): the URL to POST the edited message.
 redirect_url (str): optional URL to redirect to after editing (passed as hidden 'next' field).
 #}
 {% set delete_btn %}
-  <button type="button" class="button is-text has-text-weak is-small no-underline" onclick="CMS.AWSUtils.ajax_delete_reload('{{ delete_url }}');">
+  <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="CMS.AWSUtils.ajax_delete_reload('{{ delete_url }}');">
     <svg class="icon is-small"><use href="#icon-trash"/></svg> <span>Remove</span>
   </button>
 {% endset %}

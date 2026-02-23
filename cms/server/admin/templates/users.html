@@ -7,20 +7,22 @@
             <h1 class="title">Users</h1>
         </div>
         <div class="level-right">
-            <a href="{{ url("users", "export") }}" class="button">
-                <svg class="icon is-small"><use href="#icon-download"/></svg>
-                <span>Export CSV</span>
-            </a>
-            <a href="{{ url("users", "import") }}" class="button">
-                <svg class="icon is-small"><use href="#icon-upload"/></svg>
-                <span>Import CSV</span>
-            </a>
-            {% if admin.permission_all %}
-            <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-user')">
-                <svg class="icon is-small"><use href="#icon-plus"/></svg>
-                <span>New User</span>
-            </button>
-            {% endif %}
+            <div class="buttons">
+                <a href="{{ url("users", "export") }}" class="button">
+                    <svg class="icon is-small"><use href="#icon-download"/></svg>
+                    <span>Export CSV</span>
+                </a>
+                <a href="{{ url("users", "import") }}" class="button">
+                    <svg class="icon is-small"><use href="#icon-upload"/></svg>
+                    <span>Import CSV</span>
+                </a>
+                {% if admin.permission_all %}
+                <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-user')">
+                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                    <span>New User</span>
+                </button>
+                {% endif %}
+            </div>
         </div>
     </div>
 
@@ -90,7 +92,7 @@
     </div>
 
     <!-- Users Cards Grid -->
-    <div class="tp-cards-grid tp-cards-grid--compact" id="users-grid">
+    <div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="users-grid">
         {% for u in user_list|sort(attribute="username") %}
         <div class="tp-program-card" style="padding: 20px; position: relative;">
             {% if admin.permission_all %}

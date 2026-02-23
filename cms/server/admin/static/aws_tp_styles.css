@@ -10,6 +10,11 @@
    ========================================================================== */
 
 :root {
+    /* Primary colors (Bulma theme) */
+    --tp-primary: var(--bulma-primary);
+    --tp-primary-hover: var(--bulma-primary-dark);
+    --tp-primary-gradient: linear-gradient(135deg, var(--bulma-primary) 0%, var(--bulma-primary-70) 100%);
+
     /* Status colors */
     --tp-success: var(--bulma-success);
     --tp-success-light: var(--bulma-success-90);
@@ -69,15 +74,6 @@
 /* ==========================================================================
    Action Buttons Row
    ========================================================================== */
-
-.action-buttons-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    padding: 24px 0;
-    margin-bottom: 16px;
-}
 
 /* Outline button style */
 .btn-outline {
@@ -264,25 +260,6 @@
    Student Table Styles
    ========================================================================== */
 
-/* Page-specific table overrides */
-#students-table thead th {
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    z-index: auto !important;
-    box-shadow: none !important;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--tp-text-muted);
-    background: var(--tp-bg-light);
-    padding: 14px 16px !important;
-}
-
-#students-table td {
-    padding: 0;
-}
-
 .student-name-wrapper {
     display: flex;
     flex-direction: row;
@@ -436,15 +413,6 @@
 }
 
 /* ==========================================================================
-   Text Utilities
-   ========================================================================== */
-
-.text-muted {
-    color: var(--tp-text-muted);
-}
-
-
-/* ==========================================================================
    Table Styles
    ========================================================================== */
 
@@ -502,7 +470,7 @@
     vertical-align: middle;
 }
 
-/* 2. First Column (Students) */
+/* 2. First Column (Students) - Sticky on desktop only */
 .attendance-table tbody th,
 .ranking-table tbody th {
     position: sticky;
@@ -623,17 +591,16 @@
     align-items: center;
     justify-content: center;
     padding: 12px 8px;
-    font-size: 1.25rem; /* Much smaller than 1.5em */
+    font-size: 1.25rem;
     font-weight: 600;
-    border-radius: 6px; /* Soften the blockiness */
-    margin: 4px; /* Give the cell breathing room inside the grid */
+    border-radius: 6px;
+    margin: 4px;
     height: calc(100% - 8px);
     width: calc(100% - 8px);
-    color: var(--tp-text-primary); /* Dark Slate, not black */
-    background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3));
+    color: var(--tp-text-primary);
 }
 
-/* Score cell coloring using CSS custom properties
+/* Score cell coloring using CSS custom properties with transparency for dark mode
    Uses --score (0-100) to calculate hue: 0 (Red) -> 60 (Yellow) -> 120 (Green)
    The hue is clamped between 0 and 120 using min/max */
 .cell-content.score-cell {
@@ -1651,17 +1618,6 @@
     line-height: 1;
 }
 
-/* Cards Grid */
-.tp-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 24px;
-}
-
-.tp-cards-grid--compact {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-}
-
 /* Program Card */
 .tp-program-card {
     background: var(--tp-bg-white);
@@ -1998,13 +1954,6 @@
 .tp-create-subtitle {
     font-size: 0.9rem;
     color: var(--tp-text-muted);
-}
-
-/* Responsive adjustments */
-@media (max-width: 900px) {
-    .tp-cards-grid {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* Training Day Indicators */
@@ -3402,13 +3351,6 @@
    Overview Page
    ========================================================================== */
 
-/* Status Cards Grid */
-.overview-status-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 16px;
-}
-
 .overview-status-card {
     display: flex;
     align-items: center;
@@ -3426,35 +3368,13 @@
 }
 
 .overview-status-card-icon {
-    width: 42px;
-    height: 42px;
+    width: 54px;
+    height: 54px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-}
-
-.overview-status-card-content {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.overview-status-card-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--tp-text-primary);
-    line-height: 1.1;
-}
-
-.overview-status-card-label {
-    font-size: 0.8rem;
-    color: var(--tp-text-muted);
-    margin-top: 2px;
-    white-space: normal;
-    line-height: 1.2;
-    overflow-wrap: break-word;
 }
 
 /* Status card color variants */
@@ -3488,13 +3408,6 @@
 }
 .overview-status-danger {
     border-left: 3px solid var(--tp-danger);
-}
-
-.overview-status-message {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 24px;
-    color: var(--tp-text-muted);
 }
 
 /* Two-column layout for queue & workers */

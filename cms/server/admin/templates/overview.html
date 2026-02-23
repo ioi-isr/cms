@@ -38,11 +38,11 @@ function update_submissions_status(response)
 function build_status_card(label, count, icon, color) {
     return '<div class="overview-status-card overview-status-' + color + '">' +
            '<div class="overview-status-card-icon">' +
-           '<svg class="icon"><use href="#' + icon + '"/></svg>' +
+           '<svg class="icon is-medium"><use href="#' + icon + '"/></svg>' +
            '</div>' +
-           '<div class="overview-status-card-content">' +
-           '<div class="overview-status-card-value">' + count + '</div>' +
-           '<div class="overview-status-card-label">' + label + '</div>' +
+           '<div class="is-flex is-flex-direction-column">' +
+           '<div class="is-size-4 has-text-weight-bold">' + count + '</div>' +
+           '<div class="has-text-grey is-size-6">' + label + '</div>' +
            '</div>' +
            '</div>';
 }
@@ -319,7 +319,7 @@ update_statuses();
                 Submissions Status
             </h2>
         </div>
-        <div id="submissions_status_cards" class="overview-status-grid">
+        <div id="submissions_status_cards" class="grid is-auto-fill is-col-min-10 is-gap-2">
             <div class="overview-status-message">
                 <img src="{{ url("static", "loading.gif") }}" alt="loading..." />
             </div>

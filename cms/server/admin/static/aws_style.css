@@ -45,7 +45,6 @@
     --bulma-table-head-background-color: var(--bulma-scheme-main-ter);
     --bulma-table-cell-border-color: var(--bulma-border-weak);
 }
-.has-text-weak { color: var(--bulma-text-weak) !important;}
 .no-underline { text-decoration: none !important;}
 
 .table td,
@@ -114,6 +113,13 @@ pre {
 
 .table-container::-webkit-scrollbar-thumb:hover {
     background-color: rgba(148, 163, 184, 0.38);
+}
+
+@media (max-width: 1023px) {
+    .container.is-fluid {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
 }
 
 /* ==========================================================================
@@ -282,6 +288,7 @@ pre {
 
 #core {
   flex: 1;
+  min-width: 0;
 }
 
 #sidebar {

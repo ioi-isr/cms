@@ -232,7 +232,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                         <a href="{{ url("task", task.id) }}" class="tag is-bordered has-text-primary" title="{{ task.title }}">{{ task.name }}</a>
                                     {% endfor %}
                                 {% else %}
-                                    <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
+                                    <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
                                 {% endif %}
                             </div>
                         </td>
@@ -352,7 +352,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                     </button>
                                 {% endfor %}
                             {% else %}
-                                <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
+                                <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
                             {% endif %}
                         </div>
                     </td>

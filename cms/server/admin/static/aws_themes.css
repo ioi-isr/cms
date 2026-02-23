@@ -273,7 +273,6 @@
 
 [data-theme="dark"] .modal__footer {
     border-top-color: hsl(221, 14%, 24%);
-    background: hsl(221, 14%, 12%);
 }
 
 [data-theme="dark"] .modal__warning {
@@ -439,6 +438,7 @@
     --bulma-text: #000000;
     --bulma-text-strong: #000000;
     --bulma-text-weak: #404040;
+    --tp-primary-gradient: var(--bulma-primary);
 
     font-family: 'RetroPixel', 'Courier New', monospace !important;
 

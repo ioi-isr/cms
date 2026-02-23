@@ -38,7 +38,7 @@
     </div>
 
     <!-- Contests Cards Grid -->
-    <div class="tp-cards-grid tp-cards-grid--compact" id="contests-grid">
+    <div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="contests-grid">
         {% for c in contest_list %}
         {% set ns = namespace(sub_count=0) %}
         {% for p in c.participations %}{% set ns.sub_count = ns.sub_count + p.submissions|length %}{% endfor %}
