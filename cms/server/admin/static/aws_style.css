@@ -352,8 +352,7 @@ pre {
     padding-top: 0;
 }
 
-.sidebar-section-title,
-#sidebar .menu-label {
+.sidebar-section-title {
     font-size: 1.25em;
     font-weight: 600;
     margin: 12px 0 6px 0;
@@ -370,35 +369,29 @@ pre {
     transition: border-color 0.2s, background-color 0.2s;
 }
 
-.sidebar-section-title a,
-#sidebar .menu-label a {
+.sidebar-section-title a {
     color: var(--sidebar-text-light);
     text-decoration: none;
 }
 
-.sidebar-section-title a:hover,
-#sidebar .menu-label a:hover {
+.sidebar-section-title a:hover {
     color: var(--sidebar-text-bright);
 }
 
 .sidebar-section-title:hover,
-.sidebar-section-title:focus,
-#sidebar .menu-label:hover,
-#sidebar .menu-label:focus {
+.sidebar-section-title:focus {
     border-color: var(--sidebar-hover-border);
     background: var(--sidebar-title-hover-bg);
     box-shadow: inset 0 0 0 1px var(--sidebar-focus-glow);
 }
 
-.sidebar-section-title:focus-within,
-#sidebar .menu-label:focus-within {
+.sidebar-section-title:focus-within {
     outline: none;
     box-shadow: inset 0 0 0 1px var(--sidebar-focus-glow);
     border-color: var(--sidebar-hover-border);
 }
 
-.sidebar-menu,
-#sidebar .menu-list {
+.sidebar-menu {
     list-style: none;
     margin: 4px 0 0 0;
     padding: 0;
@@ -438,13 +431,12 @@ pre {
     transform: rotate(-45deg);
 }
 
-.sidebar-section-title:hover .section-caret,
-#sidebar .menu-label:hover .section-caret {
+.sidebar-section-title:hover .section-caret {
     border-color: var(--sidebar-text);
 }
 
-/* Icon inside menu-label section titles */
-.menu-label-icon {
+/* Icon inside sidebar section titles */
+.sidebar-section-icon {
     width: 20px;
     height: 20px;
     flex-shrink: 0;
@@ -452,7 +444,7 @@ pre {
     transition: color 0.2s;
 }
 
-#sidebar .menu-label:hover .menu-label-icon {
+.sidebar-section-title:hover .sidebar-section-icon {
     color: var(--sidebar-accent-light);
 }
 .folder-header {
@@ -538,8 +530,7 @@ pre {
     margin: 2px 0;
 }
 
-.sidebar-contest, .sidebar-item,
-#sidebar .menu-list > li {
+.sidebar-contest, .sidebar-item, .sidebar-menu > li {
     padding: 0;
     margin: 2px 0;
     display: flex;
@@ -551,8 +542,7 @@ pre {
     flex-shrink: 0;
 }
 
-.sidebar-contest a, .sidebar-item a,
-#sidebar .menu-list > li > a {
+.sidebar-contest a, .sidebar-item a, .sidebar-menu > li > a {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -566,13 +556,11 @@ pre {
     min-width: 0;
 }
 
-body.admin .sidebar-contest a, body.admin .sidebar-item a,
-body.admin #sidebar .menu-list > li > a {
+body.admin .sidebar-contest a, body.admin .sidebar-item a, body.admin .sidebar-menu > li > a {
     color: var(--sidebar-text-light);
 }
 
-.sidebar-contest a:hover, .sidebar-item a:hover,
-#sidebar .menu-list > li > a:hover {
+.sidebar-contest a:hover, .sidebar-item a:hover, .sidebar-menu > li > a:hover {
     background-color: var(--sidebar-hover-bg);
     color: var(--sidebar-text-bright);
     text-decoration: none;
@@ -1382,10 +1370,9 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .sidebar-section-title:hover .sidebar-badge,
-#sidebar .menu-label:hover .sidebar-badge,
 .sidebar-contest:hover .sidebar-badge,
 .menu_entry:hover .sidebar-badge,
-#sidebar .menu-list > li:hover .sidebar-badge {
+.sidebar-menu > li:hover .sidebar-badge {
     transform: translateY(-1px);
     box-shadow: 0 3px 8px rgba(2, 6, 23, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
@@ -1446,8 +1433,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 /* 4. Sidebar Element overrides for Flexbox alignment */
 
 /* Section Titles (Training Days, Contests) */
-.sidebar-section-title,
-#sidebar .menu-label {
+.sidebar-section-title {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1455,8 +1441,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* Sub-items (Active Training Days inside folder) */
-.sidebar-contest, .sidebar-item,
-#sidebar .menu-list > li {
+.sidebar-contest, .sidebar-item, .sidebar-menu > li {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1464,9 +1449,133 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* Override existing link widths to work with flex */
-.sidebar-contest a, .sidebar-item a,
-#sidebar .menu-list > li > a {
+.sidebar-contest a, .sidebar-item a, .sidebar-menu > li > a {
     flex: 1;
+}
+
+
+/* Sidebar collapse button - circle with chevrons, half inside half outside */
+#sidebar {
+    position: relative;
+    transition: width 0.25s ease, min-width 0.25s ease;
+}
+
+.sidebar-collapse-btn {
+    position: absolute;
+    top: 12px;
+    right: -14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--sidebar-bg-dark);
+    border: 1px solid var(--sidebar-border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: background-color 0.2s, border-color 0.2s;
+    color: var(--sidebar-text);
+    padding: 0;
+}
+
+.sidebar-collapse-btn:hover {
+    background: var(--sidebar-hover-bg);
+    color: var(--sidebar-text-bright);
+    border-color: var(--sidebar-hover-border);
+}
+
+.sidebar-collapse-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Show left chevron when expanded, right when collapsed */
+#sidebar .sidebar-collapse-icon-right { display: none; }
+#sidebar .sidebar-collapse-icon-left { display: block; }
+#sidebar.sidebar-collapsed .sidebar-collapse-icon-right { display: block; }
+#sidebar.sidebar-collapsed .sidebar-collapse-icon-left { display: none; }
+
+/* Full content hidden when collapsed */
+#sidebar.sidebar-collapsed .sidebar-full-content {
+    display: none;
+}
+
+/* Collapsed icons hidden by default, shown when collapsed */
+.sidebar-collapsed-icons {
+    display: none;
+}
+
+#sidebar.sidebar-collapsed .sidebar-collapsed-icons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+}
+
+#sidebar.sidebar-collapsed {
+    width: 60px !important;
+    min-width: 60px !important;
+}
+
+#sidebar.sidebar-collapsed .cr_notice {
+    display: none;
+}
+
+/* Collapsed icon links */
+.sidebar-collapsed-icons a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    color: var(--sidebar-text-light);
+    transition: background-color 0.2s, color 0.2s;
+    text-decoration: none;
+}
+
+.sidebar-collapsed-icons a:hover {
+    background: var(--sidebar-hover-bg);
+    color: var(--sidebar-text-bright);
+}
+
+.sidebar-collapsed-icons .icon.is-medium {
+    width: 24px;
+    height: 24px;
+}
+
+.sidebar-collapsed-divider {
+    width: 28px;
+    height: 1px;
+    background: var(--sidebar-border);
+    margin: 4px 0;
+}
+
+.sidebar-collapsed-badge {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    height: 16px;
+    min-width: 16px;
+    padding: 0 3px;
+    font-size: 0.65rem;
+    font-weight: bold;
+    border-radius: 8px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.sidebar-collapsed-badge.is-danger {
+    background-color: var(--bulma-danger);
+}
+
+.sidebar-collapsed-badge.is-warning {
+    background-color: var(--bulma-warning);
 }
 
 /* Topbar dropdown styles */

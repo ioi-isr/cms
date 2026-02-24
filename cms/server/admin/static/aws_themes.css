@@ -55,14 +55,12 @@
     border-right: none;
 }
 
-[data-theme="granny-smith"] #sidebar .sidebar-section-title,
-[data-theme="granny-smith"] #sidebar .menu-label {
+[data-theme="granny-smith"] #sidebar .sidebar-section-title {
     background: var(--sidebar-bg-dark);
     border: 1px solid color-mix(in srgb, var(--sidebar-slate) 12%, transparent);
 }
 
-[data-theme="granny-smith"] #sidebar .sidebar-section-title:hover,
-[data-theme="granny-smith"] #sidebar .menu-label:hover {
+[data-theme="granny-smith"] #sidebar .sidebar-section-title:hover {
     background: rgba(109, 201, 66, 0.1);
     border-color: rgba(109, 201, 66, 0.25);
 }
@@ -387,14 +385,12 @@
     border-right: none;
 }
 
-[data-theme="adon-hermon"] #sidebar .sidebar-section-title,
-[data-theme="adon-hermon"] #sidebar .menu-label {
+[data-theme="adon-hermon"] #sidebar .sidebar-section-title {
     background: var(--sidebar-bg-dark);
     border: 1px solid color-mix(in srgb, var(--sidebar-slate) 12%, transparent);
 }
 
-[data-theme="adon-hermon"] #sidebar .sidebar-section-title:hover,
-[data-theme="adon-hermon"] #sidebar .menu-label:hover {
+[data-theme="adon-hermon"] #sidebar .sidebar-section-title:hover {
     background: rgba(59, 130, 246, 0.08);
     border-color: rgba(59, 130, 246, 0.2);
 }
@@ -527,8 +523,7 @@
     color: #ff00ff !important;
 }
 
-[data-theme="retro"] #sidebar .sidebar-section-title,
-[data-theme="retro"] #sidebar .menu-label {
+[data-theme="retro"] #sidebar .sidebar-section-title {
     background: var(--sidebar-bg-dark);
     border: 2px outset #c0c0c0;
 }
@@ -740,7 +735,6 @@
 }
 
 [data-theme="retro"] .sidebar-section-title,
-[data-theme="retro"] .menu-label,
 [data-theme="retro"] .folder-header {
     border: 2px outset #c0c0c0 !important;
 }

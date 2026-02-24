@@ -215,10 +215,10 @@ function initSidebarEvents() {
     }
 
     sidebar.addEventListener('click', function(e) {
-        // Handle menu-label clicks (section headers) -- but not link clicks
-        var menuLabel = e.target.closest('.menu-label');
-        if (menuLabel && e.target.tagName.toLowerCase() !== 'a') {
-            toggleSection(menuLabel);
+        // Handle section title clicks (but not link clicks)
+        var sectionTitle = e.target.closest('.sidebar-section-title');
+        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+            toggleSection(sectionTitle);
             return;
         }
 
@@ -233,10 +233,10 @@ function initSidebarEvents() {
     sidebar.addEventListener('keydown', function(e) {
         if (e.key !== 'Enter' && e.key !== ' ') return;
 
-        var menuLabel = e.target.closest('.menu-label');
-        if (menuLabel && e.target.tagName.toLowerCase() !== 'a') {
+        var sectionTitle = e.target.closest('.sidebar-section-title');
+        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
             e.preventDefault();
-            toggleSection(menuLabel);
+            toggleSection(sectionTitle);
             return;
         }
 
@@ -251,6 +251,26 @@ function initSidebarEvents() {
 $(document).ready(init);
 $(document).ready(applySidebarState);
 $(document).ready(initSidebarEvents);
+
+function initSidebarCollapse() {
+    var sidebar = document.getElementById('sidebar');
+    var btn = document.getElementById('sidebar-collapse-btn');
+    if (!sidebar || !btn) return;
+
+    // Restore state from localStorage
+    var collapsed = localStorage.getItem('cms_sidebar_collapsed_mode') === 'true';
+    if (collapsed) {
+        sidebar.classList.add('sidebar-collapsed');
+        btn.title = 'Expand sidebar';
+    }
+
+    btn.addEventListener('click', function() {
+        var isCollapsed = sidebar.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('cms_sidebar_collapsed_mode', isCollapsed ? 'true' : 'false');
+        btn.title = isCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    });
+}
+$(document).ready(initSidebarCollapse);
 
 function initThemeToggle() {
     var saved = localStorage.getItem('cms_theme');
@@ -313,6 +333,19 @@ function initMobileMoreDropdown() {
 }
 $(document).ready(initThemeToggle);
 $(document).ready(initMobileMoreDropdown);
+
+function initHamburgerMenu() {
+    var burgers = document.querySelectorAll('.navbar-burger');
+    burgers.forEach(function(burger) {
+        burger.addEventListener('click', function() {
+            var targetId = burger.dataset.target;
+            var target = document.getElementById(targetId);
+            burger.classList.toggle('is-active');
+            if (target) target.classList.toggle('is-active');
+        });
+    });
+}
+$(document).ready(initHamburgerMenu);
 
 //-->
     </script>
@@ -385,16 +418,22 @@ $(document).ready(initMobileMoreDropdown);
    TOPBAR -- driven by global_menu_items with Bulma dropdowns
    ===================================================================== #}
     <nav id="admin-navbar" class="navbar is-fixed-top" role="navigation" aria-label="main navigation">
-      <div class="navbar-brand is-flex-grow-1">
-
+      <div class="navbar-brand">
         <!-- Logo -->
         <a class="navbar-item" href="{{ url() }}">
           <img src="{{ url("static", "ioi-logo.png") }}" alt="IOI Logo" style="max-height: 2.25rem;">
           <span class="ml-2 has-text-weight-bold is-hidden-touch is-5">CMS Admin</span>
         </a>
-
-        <!-- Global navigation with dropdowns -->
-        <div class="is-flex is-align-items-center is-flex-grow-1 is-justify-content-center">
+        <!-- Hamburger for mobile -->
+        <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="admin-navbar-menu">
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </a>
+      </div>
+      <div id="admin-navbar-menu" class="navbar-menu">
+        <div class="navbar-start">
           {% for item in global_menu_items %}
           <div class="navbar-item dropdown is-hoverable topbar-dropdown" style="padding: 0;">
             <div class="dropdown-trigger">
@@ -452,9 +491,7 @@ $(document).ready(initMobileMoreDropdown);
           </div>
           {% endfor %}
         </div>
-
-        <!-- Right side: theme, admin, logout -->
-        <div class="is-flex is-align-items-center ml-auto">
+        <div class="navbar-end">
           <!-- Theme Dropdown -->
           <div class="navbar-item dropdown is-right is-hoverable" id="theme-dropdown">
             <div class="dropdown-trigger is-flex is-align-items-center is-clickable" id="theme-toggle">
@@ -496,10 +533,43 @@ $(document).ready(initMobileMoreDropdown);
     </nav>
 
 {# =====================================================================
-   LAYOUT + SIDEBAR -- uses Bulma .menu / .menu-label / .menu-list
+   LAYOUT + SIDEBAR
    ===================================================================== #}
     <div id="global" class="layout">
-      <aside id="sidebar" class="menu is-hidden-touch">
+      <aside id="sidebar" class="is-hidden-touch">
+        <!-- Collapse/expand toggle button (circle with chevrons, half inside half outside) -->
+        <button id="sidebar-collapse-btn" class="sidebar-collapse-btn" title="Collapse sidebar">
+          <svg class="icon sidebar-collapse-icon-left"><use href="#icon-chevrons-left"/></svg>
+          <svg class="icon sidebar-collapse-icon-right"><use href="#icon-chevrons-right"/></svg>
+        </button>
+
+        <!-- === COLLAPSED VIEW: icon-only links === -->
+        <div class="sidebar-collapsed-icons">
+          {% if contest is none and training_program is not defined %}
+            <a href="{{ url() }}" title="Overview"><svg class="icon is-medium"><use href="#icon-activity"/></svg></a>
+            <a href="{{ url("resourceslist") }}" title="Resource usage"><svg class="icon is-medium"><use href="#icon-cpu"/></svg></a>
+            <div class="sidebar-collapsed-divider"></div>
+            {% for item in global_menu_items %}
+            <a href="{{ item.url }}" title="{{ item.text }}"><svg class="icon is-medium"><use href="#{{ item.icon }}"/></svg></a>
+            {% endfor %}
+          {% elif context_menu_items|length > 0 %}
+            {% for item in context_menu_items | sort(attribute='pos') %}
+            <a href="{{ item.url }}" title="{{ item.text }}">
+              <div style="position: relative;">
+                <svg class="icon is-medium"><use href="#{{ item.icon }}"/></svg>
+                {% set ns = namespace(shown=false) %}
+                {% for badge in item.badges if badge.count > 0 and not ns.shown %}
+                  {% set ns.shown = true %}
+                  <span class="sidebar-collapsed-badge is-{{ badge.color }}">{{ badge.count }}</span>
+                {% endfor %}
+              </div>
+            </a>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <!-- === FULL VIEW: normal sidebar content === -->
+        <div class="sidebar-full-content">
         <div id="mb-4">
 {% if admin is defined %}
           {% if training_program is defined %}
@@ -544,7 +614,7 @@ $(document).ready(initMobileMoreDropdown);
 
         {# -- GLOBAL VIEW: collapsible sections driven by global_menu_items -- #}
         {% if contest is none and training_program is not defined %}
-        <ul class="menu-list">
+        <ul class="sidebar-menu">
           <li>
             <a href="{{ url() }}">
               <span class="menu-icon"><svg class="icon"><use href="#icon-activity"/></svg></span>
@@ -562,23 +632,23 @@ $(document).ready(initMobileMoreDropdown);
 
         {% for item in global_menu_items %}
         <div class="sidebar-section" data-section-key="{{ item.key }}">
-          <p class="menu-label">
-            <svg class="icon menu-label-icon"><use href="#{{ item.icon }}"/></svg>
+          <h2 class="sidebar-section-title">
+            <svg class="icon sidebar-section-icon"><use href="#{{ item.icon }}"/></svg>
             <a href="{{ item.url }}">{{ item.text }}</a>
             <span class="section-caret"></span>
-          </p>
+          </h2>
           <div class="sidebar-section-body">
 
             {% if item.key == "training-programs" %}
               {% if training_program_list|length > 0 %}
-              <ul class="menu-list">
+              <ul class="sidebar-menu">
                 {% for tp in training_program_list %}
                 <li class="sidebar-folder" data-folder-key="training-program-{{ tp.id }}">
                   <div class="folder-header">
                     <span class="folder-icon"></span>
                     <a href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">{{ tp.name }}</a>
                   </div>
-                  <ul class="menu-list folder-contents">
+                  <ul class="folder-contents">
                     {% for td in tp.training_days if td.contest %}
                     <li><a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a></li>
                     {% endfor %}
@@ -597,14 +667,14 @@ $(document).ready(initMobileMoreDropdown);
 
             {% elif item.key == "contests" %}
               {% if folder_list|length > 0 or root_contests|length > 0 %}
-              <ul class="menu-list">
+              <ul class="sidebar-menu">
                 {% for folder in folder_list if folder.parent is none %}
                 <li class="sidebar-folder" data-folder-key="folder-{{ folder.id }}">
                   <div class="folder-header">
                     <span class="folder-icon"></span>
                     <a href="{{ url("folder", folder.id) }}">{{ folder.name }}</a>
                   </div>
-                  <ul class="menu-list folder-contents">
+                  <ul class="folder-contents">
                     {% for c in folder.contests if c.training_day is none %}
                     <li><a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a></li>
                     {% endfor %}
@@ -614,7 +684,7 @@ $(document).ready(initMobileMoreDropdown);
                         <span class="folder-icon"></span>
                         <a href="{{ url("folder", subfolder.id) }}">{{ subfolder.name }}</a>
                       </div>
-                      <ul class="menu-list folder-contents">
+                      <ul class="folder-contents">
                         {% for c in subfolder.contests if c.training_day is none %}
                         <li><a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a></li>
                         {% endfor %}
@@ -644,7 +714,7 @@ $(document).ready(initMobileMoreDropdown);
 
             {% elif item.key == "tasks" %}
               {% if task_list|length > 0 %}
-              <ul class="menu-list">
+              <ul class="sidebar-menu">
                 {% for t in task_list[:5] %}
                 <li><a href="{{ url("task", t.id) }}" title="{{ t.title }}">{{ t.name }}</a></li>
                 {% endfor %}
@@ -663,7 +733,7 @@ $(document).ready(initMobileMoreDropdown);
 
             {% elif item.key == "users" %}
               {% if user_list|length > 0 %}
-              <ul class="menu-list">
+              <ul class="sidebar-menu">
                 <li><a href="{{ url("users") }}">{% if user_list|length == 1 %}Show the only user{% else %}Show {{ user_list|length }} users{% endif %}</a></li>
               </ul>
               {% else %}
@@ -677,7 +747,7 @@ $(document).ready(initMobileMoreDropdown);
 
             {% elif item.key == "teams" %}
               {% if team_list|length > 0 %}
-              <ul class="menu-list">
+              <ul class="sidebar-menu">
                 <li><a href="{{ url("teams") }}">{% if team_list|length == 1 %}Show the only team{% else %}Show {{ team_list|length }} teams{% endif %}</a></li>
               </ul>
               {% else %}
@@ -701,7 +771,7 @@ $(document).ready(initMobileMoreDropdown);
           {# Items before the divider (pos < 3) #}
           {% set header_items = sorted_items | selectattr('pos', 'lt', 3) | list %}
           {% if header_items|length > 0 %}
-          <ul class="menu-list">
+          <ul class="sidebar-menu">
             {% for item in header_items %}
             <li>
               <a href="{{ item.url }}">
@@ -715,7 +785,7 @@ $(document).ready(initMobileMoreDropdown);
           {% endif %}
 
           {# Main items (pos >= 3) #}
-          <ul class="menu-list">
+          <ul class="sidebar-menu">
           {% for item in sorted_items if item.pos >= 3 %}
             {% if item.expandable is defined and item.expandable %}
             {# -- Expandable folder (Training Days with child contests) -- #}
@@ -731,7 +801,7 @@ $(document).ready(initMobileMoreDropdown);
                   {% endfor %}
                 </div>
               </div>
-              <ul class="menu-list folder-contents">
+              <ul class="folder-contents">
                 {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
                 {% if active_training_days|length > 0 %}
                   {% for td in active_training_days %}
@@ -778,6 +848,7 @@ $(document).ready(initMobileMoreDropdown);
             <span id="remaining_value"></span>
           </div>
         {% endif %}
+        </div><!-- /.sidebar-full-content -->
         <div class="cr_notice">CMS <a href="http://github.com/cms-dev/cms/">codebase</a> is released under the<br/><a href="http://www.gnu.org/licenses/agpl.txt">GNU Affero General Public License</a>.</div>
       </aside>
 
@@ -794,7 +865,6 @@ $(document).ready(initMobileMoreDropdown);
     <a href="{{ item.url }}" class="is-flex is-align-items-center is-justify-content-center has-text-grey" title="{{ item.text }}" style="flex: 1;">
       <div style="position: relative;">
         <svg class="icon is-medium"><use href="#{{ item.icon }}"/></svg>
-        {# Show first non-zero badge #}
         {% set ns = namespace(shown=false) %}
         {% for badge in item.badges if badge.count > 0 and not ns.shown %}
           {% set ns.shown = true %}
@@ -822,6 +892,34 @@ $(document).ready(initMobileMoreDropdown);
     </div>
     {% endif %}
 
+  </div>
+</nav>
+{% else %}
+{# Global view mobile nav: show global menu item icons + Overview/Resource usage in more #}
+<nav id="mobile-bottom-nav" class="navbar is-fixed-bottom-touch is-hidden-desktop has-shadow" style="border-top: 1px solid var(--bulma-border-weak); background: var(--bulma-scheme-main); z-index: 30;" role="navigation">
+  <div class="is-flex is-justify-content-space-evenly is-align-items-stretch is-flex-grow-1" style="width: 100%; height: 3.5rem;">
+    {% for item in global_menu_items %}
+    <a href="{{ item.url }}" class="is-flex is-align-items-center is-justify-content-center has-text-grey" title="{{ item.text }}" style="flex: 1;">
+      <svg class="icon is-medium"><use href="#{{ item.icon }}"/></svg>
+    </a>
+    {% endfor %}
+    <div class="dropdown is-up is-right" id="mobile-more-dropdown" style="flex: 1; display: flex;">
+      <a id="mobile-more-trigger" class="dropdown-trigger is-flex is-align-items-center is-justify-content-center has-text-grey" style="width: 100%; height: 100%; text-decoration: none; cursor: pointer;">
+        <svg class="icon is-medium"><use href="#icon-more"/></svg>
+      </a>
+      <div class="dropdown-menu" role="menu" style="min-width: 220px; padding-bottom: 0.5rem; z-index: 100;">
+        <div class="dropdown-content">
+          <a href="{{ url() }}" class="dropdown-item is-flex is-align-items-center py-3">
+            <svg class="icon mr-3 has-text-grey"><use href="#icon-activity"/></svg>
+            <span>Overview</span>
+          </a>
+          <a href="{{ url("resourceslist") }}" class="dropdown-item is-flex is-align-items-center py-3">
+            <svg class="icon mr-3 has-text-grey"><use href="#icon-cpu"/></svg>
+            <span>Resource usage</span>
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
 </nav>
 {% endif %}
