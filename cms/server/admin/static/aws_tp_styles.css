@@ -10,6 +10,7 @@
    ========================================================================== */
 
 :root {
+    color-scheme: light;
     /* Primary colors (Bulma theme) */
     --tp-primary: var(--bulma-primary);
     --tp-primary-hover: var(--bulma-primary-dark);
@@ -60,15 +61,6 @@
     --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
     --tp-shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-        --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-        --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
-        --tp-shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.6);
-    }
 }
 
 /* ==========================================================================
