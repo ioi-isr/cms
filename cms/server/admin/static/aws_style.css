@@ -178,31 +178,45 @@ pre {
     color: var(--sidebar-text-bright);
 }
 
+/* Hide Bulma's default navbar-link arrow; we use our own icons */
 #admin-navbar .navbar-link::after {
     display: none;
 }
 
-#theme-dropdown .navbar-dropdown {
-    display: none;
-    background: var(--sidebar-bg-dark);
-    border: 1px solid var(--sidebar-border);
-    border-radius: 4px;
-    padding: 0.25rem 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+/* Mobile navbar-brand-end: theme/admin/logout icons in brand area */
+.navbar-brand-end {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 0;
 }
 
-#theme-dropdown.is-active .navbar-dropdown {
-    display: block;
+.navbar-brand-end .navbar-item {
+    padding: 0 0.5rem;
 }
 
-#theme-dropdown .navbar-dropdown .navbar-item {
+/* On touch, ensure the has-dropdown in brand-end still works */
+.navbar-brand-end .navbar-item.has-dropdown {
+    position: relative;
+}
+
+.navbar-brand-end .navbar-item.has-dropdown .navbar-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    min-width: 160px;
+}
+
+/* Theme dropdown uses Bulma navbar-dropdown (styled by #admin-navbar .navbar-dropdown rules) */
+
+/* Ensure Bulma navbar-link in our dark navbar has proper styling */
+#admin-navbar .navbar-item.has-dropdown .navbar-link {
     color: var(--sidebar-text);
-    font-size: 0.85rem;
-    padding: 0.4rem 1rem;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    background: transparent;
+    padding-right: 0.75em;
 }
 
-#theme-dropdown .navbar-dropdown .navbar-item:hover {
+#admin-navbar .navbar-item.has-dropdown .navbar-link:hover {
     background: var(--sidebar-hover-bg);
     color: var(--sidebar-text-bright);
 }
@@ -265,9 +279,16 @@ pre {
     --sidebar-focus-glow: color-mix(in srgb, color-mix(in srgb, color-mix(in srgb, var(--sidebar-accent) 39%, var(--sidebar-text-muted) 61%) 95%, var(--sidebar-bg-dark) 5%) 35%, transparent);
 }
 
+/* Eliminate any gap between navbar and layout */
+body.admin.has-navbar-fixed-top {
+    padding-top: var(--bulma-navbar-height);
+}
+
 .layout {
   display: flex;
   min-height: calc(100vh - var(--bulma-navbar-height));
+  margin-top: 0;
+  padding-top: 0;
 }
 
 #core {
@@ -536,6 +557,16 @@ pre {
     display: flex;
     align-items: center;
     padding-left: 10px;
+}
+
+/* Folder items need column layout so contents appear below header */
+.sidebar-menu > li.sidebar-folder,
+.sidebar-menu > li.sidebar-subfolder,
+li.sidebar-folder,
+li.sidebar-subfolder {
+    flex-direction: column;
+    align-items: stretch;
+    padding-left: 0;
 }
 
 .sidebar-contest .unread {
@@ -1448,6 +1479,17 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     padding-right: 10px;
 }
 
+/* Override for folder items: column layout for proper hierarchy */
+.sidebar-menu > li.sidebar-folder,
+.sidebar-menu > li.sidebar-subfolder,
+li.sidebar-folder,
+li.sidebar-subfolder {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding-right: 0;
+}
+
 /* Override existing link widths to work with flex */
 .sidebar-contest a, .sidebar-item a, .sidebar-menu > li > a {
     flex: 1;
@@ -1578,38 +1620,35 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     background-color: var(--bulma-warning);
 }
 
-/* Topbar dropdown styles */
-.topbar-dropdown .dropdown-menu {
-    display: none;
-}
-
-.topbar-dropdown:hover .dropdown-menu,
-.topbar-dropdown.is-active .dropdown-menu {
-    display: block;
-}
-
-.topbar-dropdown .dropdown-content {
+/* Topbar navbar-dropdown styles (Bulma native has-dropdown) */
+#admin-navbar .navbar-dropdown {
     background: var(--sidebar-bg-dark);
     border: 1px solid var(--sidebar-border);
-    border-radius: 4px;
+    border-top: 2px solid var(--sidebar-accent, var(--sidebar-border));
+    border-radius: 0 0 6px 6px;
     padding: 0.25rem 0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.topbar-dropdown .dropdown-item {
+#admin-navbar .navbar-dropdown .navbar-item {
     color: var(--sidebar-text);
     font-size: 0.85rem;
     padding: 0.4rem 1rem;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.topbar-dropdown .dropdown-item:hover {
+#admin-navbar .navbar-dropdown .navbar-item:hover {
     background: var(--sidebar-hover-bg);
     color: var(--sidebar-text-bright);
 }
 
-.topbar-dropdown .dropdown-divider {
+#admin-navbar .navbar-dropdown .navbar-divider {
     background-color: var(--sidebar-border);
+}
+
+#admin-navbar .navbar-dropdown .navbar-item.has-text-grey {
+    color: var(--sidebar-text-muted);
+    font-style: italic;
 }
 
 

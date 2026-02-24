@@ -279,30 +279,17 @@ function initThemeToggle() {
     } else {
         document.documentElement.setAttribute('data-theme', 'original');
     }
-    var dropdown = document.getElementById('theme-dropdown');
-    if (dropdown) {
-        var toggle = dropdown.querySelector('.navbar-link');
-        if (toggle) {
-            toggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                dropdown.classList.toggle('is-active');
-            });
-        }
-        var options = dropdown.querySelectorAll('.theme-option');
-        for (var i = 0; i < options.length; i++) {
-            options[i].addEventListener('click', function(e) {
-                e.preventDefault();
-                var theme = this.getAttribute('data-theme');
-                document.documentElement.setAttribute('data-theme', theme);
-                localStorage.setItem('cms_theme', theme);
-                dropdown.classList.remove('is-active');
-            });
-        }
-        document.addEventListener('click', function(e) {
-            if (!dropdown.contains(e.target)) {
-                dropdown.classList.remove('is-active');
-            }
+    // Bind theme-option clicks on all theme dropdowns (desktop + mobile)
+    var options = document.querySelectorAll('.theme-option');
+    for (var i = 0; i < options.length; i++) {
+        options[i].addEventListener('click', function(e) {
+            e.preventDefault();
+            var theme = this.getAttribute('data-theme');
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('cms_theme', theme);
+            // Close any parent dropdown that's active
+            var parent = this.closest('.has-dropdown');
+            if (parent) parent.classList.remove('is-active');
         });
     }
 }
@@ -419,102 +406,124 @@ $(document).ready(initHamburgerMenu);
    ===================================================================== #}
     <nav id="admin-navbar" class="navbar is-fixed-top" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
-        <!-- Logo -->
-        <a class="navbar-item" href="{{ url() }}">
-          <img src="{{ url("static", "ioi-logo.png") }}" alt="IOI Logo" style="max-height: 2.25rem;">
-          <span class="ml-2 has-text-weight-bold is-hidden-touch is-5">CMS Admin</span>
-        </a>
-        <!-- Hamburger for mobile -->
+        <!-- Hamburger on LEFT side before logo -->
         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="admin-navbar-menu">
           <span aria-hidden="true"></span>
           <span aria-hidden="true"></span>
           <span aria-hidden="true"></span>
           <span aria-hidden="true"></span>
         </a>
+        <!-- Logo -->
+        <a class="navbar-item" href="{{ url() }}">
+          <img src="{{ url("static", "ioi-logo.png") }}" alt="IOI Logo" style="max-height: 2.25rem;">
+          <span class="ml-2 has-text-weight-bold is-hidden-touch">CMS Admin</span>
+        </a>
+        <!-- Navbar-end items visible on mobile (before hamburger menu opens) -->
+{% if admin is defined %}
+        <div class="navbar-brand-end is-hidden-desktop">
+          <!-- Theme toggle -->
+          <div class="navbar-item has-dropdown is-hoverable" id="theme-dropdown-mobile">
+            <a class="navbar-link" id="theme-toggle-mobile" title="Change color theme">
+              <svg class="icon"><use href="#icon-color-palette"/></svg>
+            </a>
+            <div class="navbar-dropdown is-right">
+              <a class="navbar-item theme-option" data-theme="original">Original</a>
+              <a class="navbar-item theme-option" data-theme="granny-smith">Granny Smith</a>
+              <a class="navbar-item theme-option" data-theme="pink-lady">Pink Lady</a>
+              <a class="navbar-item theme-option" data-theme="dark">Dark</a>
+              <a class="navbar-item theme-option" data-theme="adon-hermon">Adon Hermon</a>
+              <a class="navbar-item theme-option" data-theme="retro">Retro</a>
+            </div>
+          </div>
+          <a class="navbar-item" href="{{ url("admins") }}" title="{{ admin.name }}">
+            <svg class="icon" width="18" height="18"><use href="#icon-admin"/></svg>
+          </a>
+          <div class="navbar-item">
+            <form action="{{ url("logout") }}" method="POST" class="m-0">
+              {{ xsrf_form_html|safe }}
+              <button type="submit" class="is-clickable is-flex is-align-items-center has-text-inherit" style="border:none; background:none; padding:0;" title="Logout">
+                <svg class="icon" width="18" height="18"><use href="#icon-logout"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
+{% endif %}
       </div>
       <div id="admin-navbar-menu" class="navbar-menu">
         <div class="navbar-start">
           {% for item in global_menu_items %}
-          <div class="navbar-item dropdown is-hoverable topbar-dropdown" style="padding: 0;">
-            <div class="dropdown-trigger">
-              <a class="navbar-item is-flex is-align-items-center" href="{{ item.url }}" title="{{ item.text }}">
-                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
-                <span class="is-hidden-touch">{{ item.text }}</span>
-              </a>
-            </div>
-            <div class="dropdown-menu" role="menu" style="min-width: 220px;">
-              <div class="dropdown-content">
-                {% if item.key == "training-programs" %}
-                  {% for tp in training_program_list[:10] %}
-                  <a class="dropdown-item" href="{{ url("training_program", tp.id) }}">{{ tp.name }}</a>
-                  {% endfor %}
-                  {% if training_program_list|length > 10 %}
-                  <hr class="dropdown-divider">
-                  <a class="dropdown-item" href="{{ item.url }}">Show all...</a>
-                  {% endif %}
-                  {% if training_program_list|length == 0 %}
-                  <span class="dropdown-item has-text-grey is-italic">No training programs</span>
-                  {% endif %}
-                {% elif item.key == "contests" %}
-                  {% for c in (contest_list|default([]))[:10] %}
-                  <a class="dropdown-item" href="{{ url("contest", c.id) }}">{{ c.name }}</a>
-                  {% endfor %}
-                  {% if (contest_list|default([]))|length > 10 %}
-                  <hr class="dropdown-divider">
-                  <a class="dropdown-item" href="{{ item.url }}">Show all...</a>
-                  {% endif %}
-                  {% if (contest_list|default([]))|length == 0 %}
-                  <span class="dropdown-item has-text-grey is-italic">No contests</span>
-                  {% endif %}
-                {% elif item.key == "tasks" %}
-                  {% for t in task_list[:10] %}
-                  <a class="dropdown-item" href="{{ url("task", t.id) }}">{{ t.name }}</a>
-                  {% endfor %}
-                  {% if task_list|length > 10 %}
-                  <hr class="dropdown-divider">
-                  <a class="dropdown-item" href="{{ item.url }}">Show all...</a>
-                  {% endif %}
-                  {% if task_list|length == 0 %}
-                  <span class="dropdown-item has-text-grey is-italic">No tasks</span>
-                  {% endif %}
-                {% elif item.key == "users" %}
-                  <a class="dropdown-item" href="{{ item.url }}">
-                    {% if user_list|length == 1 %}Show the only user{% else %}Show {{ user_list|length }} users{% endif %}
-                  </a>
-                {% elif item.key == "teams" %}
-                  <a class="dropdown-item" href="{{ item.url }}">
-                    {% if team_list|length == 1 %}Show the only team{% else %}Show {{ team_list|length }} teams{% endif %}
-                  </a>
+          <div class="navbar-item has-dropdown is-hoverable">
+            <a class="navbar-link" href="{{ item.url }}" title="{{ item.text }}">
+              <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+              <span class="is-hidden-touch">{{ item.text }}</span>
+            </a>
+            <div class="navbar-dropdown">
+              {% if item.key == "training-programs" %}
+                {% for tp in training_program_list[:10] %}
+                <a class="navbar-item" href="{{ url("training_program", tp.id) }}">{{ tp.name }}</a>
+                {% endfor %}
+                {% if training_program_list|length > 10 %}
+                <hr class="navbar-divider">
+                <a class="navbar-item" href="{{ item.url }}">Show all...</a>
                 {% endif %}
-              </div>
+                {% if training_program_list|length == 0 %}
+                <span class="navbar-item has-text-grey is-italic">No training programs</span>
+                {% endif %}
+              {% elif item.key == "contests" %}
+                {% for c in (contest_list|default([]))[:10] %}
+                <a class="navbar-item" href="{{ url("contest", c.id) }}">{{ c.name }}</a>
+                {% endfor %}
+                {% if (contest_list|default([]))|length > 10 %}
+                <hr class="navbar-divider">
+                <a class="navbar-item" href="{{ item.url }}">Show all...</a>
+                {% endif %}
+                {% if (contest_list|default([]))|length == 0 %}
+                <span class="navbar-item has-text-grey is-italic">No contests</span>
+                {% endif %}
+              {% elif item.key == "tasks" %}
+                {% for t in task_list[:10] %}
+                <a class="navbar-item" href="{{ url("task", t.id) }}">{{ t.name }}</a>
+                {% endfor %}
+                {% if task_list|length > 10 %}
+                <hr class="navbar-divider">
+                <a class="navbar-item" href="{{ item.url }}">Show all...</a>
+                {% endif %}
+                {% if task_list|length == 0 %}
+                <span class="navbar-item has-text-grey is-italic">No tasks</span>
+                {% endif %}
+              {% elif item.key == "users" %}
+                <a class="navbar-item" href="{{ item.url }}">
+                  {% if user_list|length == 1 %}Show the only user{% else %}Show {{ user_list|length }} users{% endif %}
+                </a>
+              {% elif item.key == "teams" %}
+                <a class="navbar-item" href="{{ item.url }}">
+                  {% if team_list|length == 1 %}Show the only team{% else %}Show {{ team_list|length }} teams{% endif %}
+                </a>
+              {% endif %}
             </div>
           </div>
           {% endfor %}
         </div>
-        <div class="navbar-end">
-          <!-- Theme Dropdown -->
-          <div class="navbar-item dropdown is-right is-hoverable" id="theme-dropdown">
-            <div class="dropdown-trigger is-flex is-align-items-center is-clickable" id="theme-toggle">
-              <a class="has-text-inherit is-flex is-align-items-center" aria-haspopup="true" aria-controls="dropdown-menu" title="Change color theme">
-                <svg class="icon"><use href="#icon-color-palette"/></svg>
-              </a>
-            </div>
-            <div class="dropdown-menu" id="dropdown-menu" role="menu">
-              <div class="dropdown-content">
-                <a class="dropdown-item theme-option" data-theme="original">Original</a>
-                <a class="dropdown-item theme-option" data-theme="granny-smith">Granny Smith</a>
-                <a class="dropdown-item theme-option" data-theme="pink-lady">Pink Lady</a>
-                <a class="dropdown-item theme-option" data-theme="dark">Dark</a>
-                <a class="dropdown-item theme-option" data-theme="adon-hermon">Adon Hermon</a>
-                <a class="dropdown-item theme-option" data-theme="retro">Retro</a>
-              </div>
+        <div class="navbar-end is-hidden-touch">
+          <!-- Theme Dropdown (desktop) -->
+          <div class="navbar-item has-dropdown is-hoverable" id="theme-dropdown">
+            <a class="navbar-link" id="theme-toggle" title="Change color theme">
+              <svg class="icon"><use href="#icon-color-palette"/></svg>
+            </a>
+            <div class="navbar-dropdown is-right">
+              <a class="navbar-item theme-option" data-theme="original">Original</a>
+              <a class="navbar-item theme-option" data-theme="granny-smith">Granny Smith</a>
+              <a class="navbar-item theme-option" data-theme="pink-lady">Pink Lady</a>
+              <a class="navbar-item theme-option" data-theme="dark">Dark</a>
+              <a class="navbar-item theme-option" data-theme="adon-hermon">Adon Hermon</a>
+              <a class="navbar-item theme-option" data-theme="retro">Retro</a>
             </div>
           </div>
 
 {% if admin is defined %}
           <a class="navbar-item is-flex is-align-items-center" href="{{ url("admins") }}">
             <svg class="icon" width="18" height="18"><use href="#icon-admin"/></svg>
-            <span class="ml-1 is-hidden-mobile">{{ admin.name }}</span>
+            <span class="ml-1">{{ admin.name }}</span>
           </a>
 
           <!-- Logout -->
@@ -523,7 +532,7 @@ $(document).ready(initHamburgerMenu);
               {{ xsrf_form_html|safe }}
               <button type="submit" class="is-clickable is-flex is-align-items-center has-text-inherit" style="border:none; background:none; padding:0; gap:0.4em;">
                 <svg class="icon" width="18" height="18"><use href="#icon-logout"/></svg>
-                <span class="is-hidden-touch">Logout</span>
+                <span>Logout</span>
               </button>
             </form>
           </div>
@@ -570,7 +579,7 @@ $(document).ready(initHamburgerMenu);
 
         <!-- === FULL VIEW: normal sidebar content === -->
         <div class="sidebar-full-content">
-        <div id="mb-4">
+        <div class="mb-4">
 {% if admin is defined %}
           {% if training_program is defined %}
           <div class="sidebar-breadcrumb">
