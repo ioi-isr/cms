@@ -352,7 +352,8 @@ pre {
     padding-top: 0;
 }
 
-.sidebar-section-title {
+.sidebar-section-title,
+#sidebar .menu-label {
     font-size: 1.25em;
     font-weight: 600;
     margin: 12px 0 6px 0;
@@ -369,29 +370,35 @@ pre {
     transition: border-color 0.2s, background-color 0.2s;
 }
 
-.sidebar-section-title a {
+.sidebar-section-title a,
+#sidebar .menu-label a {
     color: var(--sidebar-text-light);
     text-decoration: none;
 }
 
-.sidebar-section-title a:hover {
+.sidebar-section-title a:hover,
+#sidebar .menu-label a:hover {
     color: var(--sidebar-text-bright);
 }
 
 .sidebar-section-title:hover,
-.sidebar-section-title:focus {
+.sidebar-section-title:focus,
+#sidebar .menu-label:hover,
+#sidebar .menu-label:focus {
     border-color: var(--sidebar-hover-border);
     background: var(--sidebar-title-hover-bg);
     box-shadow: inset 0 0 0 1px var(--sidebar-focus-glow);
 }
 
-.sidebar-section-title:focus-within {
+.sidebar-section-title:focus-within,
+#sidebar .menu-label:focus-within {
     outline: none;
     box-shadow: inset 0 0 0 1px var(--sidebar-focus-glow);
     border-color: var(--sidebar-hover-border);
 }
 
-.sidebar-menu {
+.sidebar-menu,
+#sidebar .menu-list {
     list-style: none;
     margin: 4px 0 0 0;
     padding: 0;
@@ -414,7 +421,9 @@ pre {
     padding-bottom: 0;
 }
 
+/* Caret is positioned on the right via flex + margin-left: auto */
 .section-caret {
+    margin-left: auto;
     display: inline-block;
     width: 8px;
     height: 8px;
@@ -429,8 +438,22 @@ pre {
     transform: rotate(-45deg);
 }
 
-.sidebar-section-title:hover .section-caret {
+.sidebar-section-title:hover .section-caret,
+#sidebar .menu-label:hover .section-caret {
     border-color: var(--sidebar-text);
+}
+
+/* Icon inside menu-label section titles */
+.menu-label-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--sidebar-slate);
+    transition: color 0.2s;
+}
+
+#sidebar .menu-label:hover .menu-label-icon {
+    color: var(--sidebar-accent-light);
 }
 .folder-header {
     display: flex;
@@ -515,7 +538,8 @@ pre {
     margin: 2px 0;
 }
 
-.sidebar-contest, .sidebar-item {
+.sidebar-contest, .sidebar-item,
+#sidebar .menu-list > li {
     padding: 0;
     margin: 2px 0;
     display: flex;
@@ -527,8 +551,11 @@ pre {
     flex-shrink: 0;
 }
 
-.sidebar-contest a, .sidebar-item a {
-    display: block;
+.sidebar-contest a, .sidebar-item a,
+#sidebar .menu-list > li > a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: var(--sidebar-text-light);
     text-decoration: none;
     font-size: 0.95em;
@@ -539,11 +566,13 @@ pre {
     min-width: 0;
 }
 
-body.admin .sidebar-contest a, body.admin .sidebar-item a {
+body.admin .sidebar-contest a, body.admin .sidebar-item a,
+body.admin #sidebar .menu-list > li > a {
     color: var(--sidebar-text-light);
 }
 
-.sidebar-contest a:hover, .sidebar-item a:hover {
+.sidebar-contest a:hover, .sidebar-item a:hover,
+#sidebar .menu-list > li > a:hover {
     background-color: var(--sidebar-hover-bg);
     color: var(--sidebar-text-bright);
     text-decoration: none;
@@ -1353,8 +1382,10 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .sidebar-section-title:hover .sidebar-badge,
+#sidebar .menu-label:hover .sidebar-badge,
 .sidebar-contest:hover .sidebar-badge,
-.menu_entry:hover .sidebar-badge {
+.menu_entry:hover .sidebar-badge,
+#sidebar .menu-list > li:hover .sidebar-badge {
     transform: translateY(-1px);
     box-shadow: 0 3px 8px rgba(2, 6, 23, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
@@ -1384,6 +1415,17 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     color: var(--sidebar-accent-light);
 }
 
+/* Badge color aliases (Bulma naming convention used in context_menu_items) */
+.sidebar-badge.is-danger {
+    background-color: var(--bulma-danger);
+    border: 1px solid var(--bulma-danger-35);
+}
+
+.sidebar-badge.is-warning {
+    background-color: var(--bulma-warning);
+    border: 1px solid var(--bulma-warning-35);
+}
+
 /* Folder icon with SVG (for Training Days section) */
 .folder-icon-svg {
     display: inline-flex;
@@ -1404,7 +1446,8 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 /* 4. Sidebar Element overrides for Flexbox alignment */
 
 /* Section Titles (Training Days, Contests) */
-.sidebar-section-title {
+.sidebar-section-title,
+#sidebar .menu-label {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1412,7 +1455,8 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* Sub-items (Active Training Days inside folder) */
-.sidebar-contest, .sidebar-item {
+.sidebar-contest, .sidebar-item,
+#sidebar .menu-list > li {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1420,8 +1464,43 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 /* Override existing link widths to work with flex */
-.sidebar-contest a, .sidebar-item a {
+.sidebar-contest a, .sidebar-item a,
+#sidebar .menu-list > li > a {
     flex: 1;
+}
+
+/* Topbar dropdown styles */
+.topbar-dropdown .dropdown-menu {
+    display: none;
+}
+
+.topbar-dropdown:hover .dropdown-menu,
+.topbar-dropdown.is-active .dropdown-menu {
+    display: block;
+}
+
+.topbar-dropdown .dropdown-content {
+    background: var(--sidebar-bg-dark);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 4px;
+    padding: 0.25rem 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.topbar-dropdown .dropdown-item {
+    color: var(--sidebar-text);
+    font-size: 0.85rem;
+    padding: 0.4rem 1rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.topbar-dropdown .dropdown-item:hover {
+    background: var(--sidebar-hover-bg);
+    color: var(--sidebar-text-bright);
+}
+
+.topbar-dropdown .dropdown-divider {
+    background-color: var(--sidebar-border);
 }
 
 
