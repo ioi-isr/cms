@@ -601,8 +601,8 @@ $(document).ready(initHamburgerMenu);
 {% endif %}
         </div>
       </div>
-      <!-- Mobile hamburger menu -->
-      <div id="admin-navbar-menu" class="navbar-menu">
+      <!-- Mobile hamburger menu (hidden on desktop, toggled by burger) -->
+      <div id="admin-navbar-menu" class="navbar-menu is-hidden-desktop">
         <div class="navbar-start">
           {% for item in global_menu_items | sort(attribute='pos') %}
 {{ render_mobile_menu_item(item, 0) }}

@@ -139,9 +139,11 @@ pre {
 }
 
 #admin-navbar .navbar-menu {
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
+    background: var(--sidebar-bg-dark);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    border-top: 1px solid var(--sidebar-border);
+    max-height: 70vh;
+    overflow-y: auto;
 }
 
 #admin-navbar .navbar-item {
@@ -198,6 +200,40 @@ pre {
 #theme-dropdown .navbar-dropdown .navbar-item:hover {
     background: var(--sidebar-hover-bg);
     color: var(--sidebar-text-bright);
+}
+
+/* ==========================================================================
+   Collapsible Menu Items (details/summary in dropdowns & mobile menu)
+   ========================================================================== */
+
+.menu-collapsible {
+    display: block;
+}
+
+.menu-collapsible > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.menu-collapsible > summary::-webkit-details-marker {
+    display: none;
+}
+
+.menu-collapsible > summary::after {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: auto;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid currentColor;
+    opacity: 0.5;
+    transition: transform 0.2s ease;
+}
+
+.menu-collapsible[open] > summary::after {
+    transform: rotate(180deg);
 }
 
 /* ==========================================================================

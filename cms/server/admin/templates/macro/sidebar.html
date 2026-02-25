@@ -125,22 +125,48 @@
 
 
 {# ══════════════════════════════════════════════════════════════ #}
-{# ── Navbar macros ─────────────────────────────────────────── #}
+{# ── Navbar / mobile shared macros ────────────────────────── #}
 {# ══════════════════════════════════════════════════════════════ #}
 
-{# ── Recursive dropdown item renderer ────────────────────────── #}
-{% macro render_navbar_dropdown_item(item, depth) %}
-{% set indent = ' style="padding-left: ' ~ (1.5 + depth * 0.75) ~ 'rem;"' if depth > 0 else '' %}
+{# ── Recursive menu item for both desktop dropdown and mobile hamburger ── #}
+{#   mode: "dropdown" (desktop) or "mobile" (hamburger)                    #}
+{#   Bulma pl-* classes: pl-1=0.25rem pl-2=0.5rem pl-3=0.75rem            #}
+{#                       pl-4=1rem pl-5=1.5rem pl-6=3rem                   #}
+{% macro render_menu_item(item, depth, mode) %}
+{% set cls = "dropdown-item" if mode == "dropdown" else "navbar-item" %}
+{% set pl = "pl-" ~ ([depth * 2, 6] | min) if depth > 0 else "" %}
 {% set title_attr = ' title="' ~ item.title ~ '"' if item.title is defined else '' %}
-{% if item.children is defined %}
-              <a class="dropdown-item has-text-weight-semibold" href="{{ item.url }}"{{ title_attr }}{{ indent }}>{{ item.text }}</a>
+{% if item.children is defined and item.children|length > 0 %}
+              <details class="menu-collapsible {{ pl }}">
+                <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center">
+{% if depth == 0 and mode == "mobile" and item.icon is defined %}
+                  <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}
+                  {{ item.text }}
+                </summary>
+                <div class="is-flex is-flex-direction-column">
+                  <a class="{{ cls }} pl-{{ [((depth + 1) * 2), 6] | min }}" href="{{ item.url }}"{{ title_attr }}>&#8599; {{ item.text }}</a>
 {% for child in item.children %}
-{{ render_navbar_dropdown_item(child, depth + 1) }}
+{{ render_menu_item(child, depth + 1, mode) }}
 {% endfor %}
+                </div>
+              </details>
+{% elif item.children is defined %}
+              <a class="{{ cls }} has-text-weight-semibold {{ pl }}" href="{{ item.url }}"{{ title_attr }}>
+{% if depth == 0 and mode == "mobile" and item.icon is defined %}
+                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}
+                {{ item.text }}
+              </a>
 {% elif item.type is defined and item.type == "action" %}
-              <a class="dropdown-item has-text-grey-light is-size-7" href="{{ item.url }}"{{ indent }}>{{ item.text }}</a>
+              <a class="{{ cls }} has-text-grey is-size-7 {{ pl }}" href="{{ item.url }}">{{ item.text }}</a>
 {% else %}
-              <a class="dropdown-item" href="{{ item.url }}"{{ title_attr }}{{ indent }}>{{ item.text }}</a>
+              <a class="{{ cls }} {{ pl }}" href="{{ item.url }}"{{ title_attr }}>
+{% if depth == 0 and mode == "mobile" and item.icon is defined %}
+                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}
+                {{ item.text }}
+              </a>
 {% endif %}
 {% endmacro %}
 
@@ -157,7 +183,7 @@
             <div class="dropdown-menu" role="menu" style="min-width: 220px;">
               <div class="dropdown-content" style="max-height: 400px; overflow-y: auto;">
 {% for child in item.children %}
-{{ render_navbar_dropdown_item(child, 0) }}
+{{ render_menu_item(child, 0, "dropdown") }}
 {% endfor %}
               </div>
             </div>
@@ -170,28 +196,7 @@
 {% endif %}
 {% endmacro %}
 
-{# ── Recursive mobile menu item renderer ─────────────────────── #}
+{# ── Mobile hamburger menu item (delegates to shared renderer) ── #}
 {% macro render_mobile_menu_item(item, depth) %}
-{% set indent = ' style="padding-left: ' ~ (1.5 + depth * 1.0) ~ 'rem;"' if depth > 0 else '' %}
-{% set title_attr = ' title="' ~ item.title ~ '"' if item.title is defined else '' %}
-{% if item.children is defined %}
-              <a class="navbar-item has-text-weight-semibold" href="{{ item.url }}"{{ title_attr }}{{ indent }}>
-{% if depth == 0 and item.icon is defined %}
-                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}
-                {{ item.text }}
-              </a>
-{% for child in item.children %}
-{{ render_mobile_menu_item(child, depth + 1) }}
-{% endfor %}
-{% elif item.type is defined and item.type == "action" %}
-              <a class="navbar-item has-text-grey is-size-7" href="{{ item.url }}"{{ indent }}>{{ item.text }}</a>
-{% else %}
-              <a class="navbar-item" href="{{ item.url }}"{{ title_attr }}{{ indent }}>
-{% if depth == 0 and item.icon is defined %}
-                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}
-                {{ item.text }}
-              </a>
-{% endif %}
+{{ render_menu_item(item, depth, "mobile") }}
 {% endmacro %}
