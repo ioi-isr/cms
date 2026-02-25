@@ -152,14 +152,7 @@ pre {
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-#admin-navbar .navbar-item .icon {
-    color: var(--sidebar-text);
-    transition: color 0.15s ease;
-}
 
-#admin-navbar .navbar-item:hover .icon {
-    color: var(--sidebar-text-bright);
-}
 
 #admin-navbar #theme-toggle {
     cursor: pointer;
@@ -265,6 +258,18 @@ pre {
     --sidebar-focus-glow: color-mix(in srgb, color-mix(in srgb, color-mix(in srgb, var(--sidebar-accent) 39%, var(--sidebar-text-muted) 61%) 95%, var(--sidebar-bg-dark) 5%) 35%, transparent);
 }
 
+#sidebar .svg .icon,
+#admin-navbar .navbar-item .icon {
+    color: var(--sidebar-slate);
+    transition: color 0.15s ease;
+}
+
+#sidebar .menu_entry:hover .icon,
+#sidebar .folder-header:hover .icon,
+#admin-navbar .navbar-item:hover .icon {
+    color: var(--sidebar-accent-light);
+}
+
 .layout {
   display: flex;
   min-height: calc(100vh - var(--bulma-navbar-height));
@@ -321,14 +326,14 @@ pre {
 }
 
 .sidebar-section {
-    margin-bottom: 12px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(148, 163, 184, 0.08);
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
 }
 
-.sidebar-section:first-child {
-    border-top: none;
-    padding-top: 0;
+#sidebar .hr {
+    height: 0;
+    margin: 10px 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.08);
 }
 
 .sidebar-section-title {
@@ -1349,23 +1354,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     color: var(--sidebar-accent-light);
 }
 
-/* Folder icon with SVG (for Training Days section) */
-.folder-icon-svg {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    margin-right: 0;
-    flex-shrink: 0;
-    color: var(--sidebar-slate);
-    transition: color 0.2s;
-}
-
-.folder-header:hover .folder-icon-svg {
-    color: var(--sidebar-accent-light);
-}
-
 /* 4. Sidebar Element overrides for Flexbox alignment */
 
 /* Section Titles (Training Days, Contests) */
@@ -1866,4 +1854,3 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .ms-card-subtask.partial .ms-card-partial-icon {
     display: inline-flex;
 }
-

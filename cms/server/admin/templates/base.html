@@ -1,5 +1,5 @@
 {% from "macro/modal.html" import modal_header %}
-{% from "macro/sidebar.html" import render_sidebar_section, render_sidebar_item, render_badges, render_navbar_item %}
+{% from 'macro/sidebar.html' import render_badges, render_navbar_item, render_sidebar_item, render_sidebar_section with context %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -492,6 +492,7 @@ $(document).ready(initMobileMoreDropdown);
       "text": td.contest.name,
       "url": url("contest", td.contest_id),
       "title": td.contest.description,
+      "css_class": "sidebar-contest",
       "badges": [{"count": td_unanswered, "color": "danger"}, {"count": td_delays, "color": "warning"}]
     }) %}
   {% endfor %}
@@ -499,9 +500,10 @@ $(document).ready(initMobileMoreDropdown);
     {"icon": "icon-activity",       "text": "Overview",         "url": url("contest", training_program.managing_contest.id, "overview"),      "pos": 1,  "mobile": false, "badges": []},
     {"icon": "icon-cpu",            "text": "Resource usage",   "url": url("contest", training_program.managing_contest.id, "resourceslist"), "pos": 2,  "mobile": false, "badges": []},
     {"icon": "icon-users",          "text": "Students",         "url": url("training_program", training_program.id, "students"),              "pos": 3,  "mobile": true,  "badges": []},
-    {"icon": "icon-laptop-code",    "text": "Training Days",    "url": url("training_program", training_program.id, "training_days"),         "pos": 4,  "mobile": true,  "expandable": true,
+    {"icon": "icon-laptop-code",    "text": "Training Days",    "url": url("training_program", training_program.id, "training_days"),         "pos": 4,  "mobile": true,
      "badges": [{"count": total_td_unanswered_questions|default(0), "color": "danger"}, {"count": total_td_pending_delay_requests|default(0), "color": "warning"}],
-     "children": td_children},
+     "children": td_children, "folder_key": "training-days-section", "empty_text": "No active training days",
+     "actions": [{"type": "button", "text": "Add a training day", "onclick": "MicroModal.show('modal-add-training-day')"}]},
     {"icon": "icon-settings",       "text": "General",          "url": url("training_program", training_program.id),                          "pos": 5,  "mobile": false, "badges": []},
     {"icon": "icon-home-chart",     "text": "Home Task Scores", "url": url("training_program", training_program.id, "ranking"),               "pos": 6,  "mobile": false, "badges": []},
     {"icon": "icon-file-code",      "text": "Submissions",      "url": url("training_program", training_program.id, "submissions"),           "pos": 7,  "mobile": false, "badges": []},
@@ -606,101 +608,45 @@ $(document).ready(initMobileMoreDropdown);
         {% endif %}
         {% if contest is none and training_program is not defined %}
         {# ── Global view: render sidebar from global_menu_items ── #}
-        {% set simple_items = global_menu_items | rejectattr("children", "defined") | list %}
-        {% set section_items = global_menu_items | selectattr("children", "defined") | list %}
-        {% if simple_items|length > 0 %}
-        <ul class="menu">
-          {% for item in simple_items %}
-          <li class="menu_entry">
-            <span class="menu-icon">
-              <svg class="icon"><use href="#{{ item.icon }}"/></svg>
-            </span>
-            <a class="menu_link" href="{{ item.url }}">{{ item.text }}</a>
-          </li>
-          {% endfor %}
-        </ul>
-        <div class="hr"></div>
-        {% endif %}
-        {% for item in section_items %}
-{{ render_sidebar_section(item, admin.permission_all) }}
-        {% endfor %}
-        {% elif training_program is defined %}
-          {% set all_menu_items = context_menu_items | sort(attribute='pos') %}
+        {% set all_items = global_menu_items | sort(attribute='pos') %}
           <ul class="menu">
-          {% for item in all_menu_items %}
+          {% for item in all_items %}
             {% if item.pos == 3 %}
             </ul>
             <div class="hr"></div>
             <ul class="menu">
             {% endif %}
-            {% if item.children is defined and item.children|length > 0 %}
-            <li class="sidebar-folder" data-folder-key="training-days-section">
-              <div class="folder-header">
-                <span class="folder-icon-svg">
-                  <svg class="icon"><use href="#{{ item.icon }}"/></svg>
-                </span>
-                <a href="{{ item.url }}">{{ item.text }}</a>
-                <div class="sidebar-badge-container">
-                  {{ render_badges(item.badges) }}
-                </div>
-              </div>
-              <ul class="folder-contents">
-                {% if item.children|length > 0 %}
-                  {% for child in item.children %}
-                  <li class="sidebar-contest">
-                    <a href="{{ child.url }}" {% if child.title %}title="{{ child.title }}"{% endif %}>{{ child.text }}</a>
-                    <div class="sidebar-badge-container">
-                      {{ render_badges(child.badges) }}
-                    </div>
-                  </li>
-                  {% endfor %}
-                {% else %}
-                  <li class="sidebar-action">
-                    <span class="sidebar-empty">No active training days</span>
-                  </li>
-                {% endif %}
-                {% if admin.permission_all %}
-                  <div class="sidebar-actions">
-                    <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-training-day')">Add a training day</button>
-                  </div>
-                {% endif %}
-              </ul>
-            </li>
+            {% if item.children is defined %}
+            </ul>
+{{ render_sidebar_section(item, admin.permission_all) }}
+            <ul class="menu">
             {% else %}
-            <li class="menu_entry">
-              <span class="menu-icon">
-                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
-              </span>
-              <a class="menu_link" href="{{ item.url }}">{{ item.text }}</a>
-              {% if item.badges|length > 0 %}
-              <div class="sidebar-badge-container">
-                {{ render_badges(item.badges) }}
-              </div>
-              {% endif %}
-            </li>
+{{ render_sidebar_item(item, is_top_level=true) }}
             {% endif %}
           {% endfor %}
           </ul>
-        {% else %}
-          {% set all_menu_items = context_menu_items | sort(attribute='pos') %}
+        {% elif training_program is defined %}
+          {% set all_items = context_menu_items | sort(attribute='pos') %}
           <ul class="menu">
-          {% for item in all_menu_items %}
+          {% for item in all_items %}
             {% if item.pos == 3 %}
             </ul>
             <div class="hr"></div>
             <ul class="menu">
             {% endif %}
-            <li class="menu_entry">
-              <span class="menu-icon">
-                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
-              </span>
-              <a class="menu_link" href="{{ item.url }}">{{ item.text }}</a>
-              {% if item.badges|length > 0 %}
-              <div class="sidebar-badge-container">
-                {{ render_badges(item.badges) }}
-              </div>
-              {% endif %}
-            </li>
+{{ render_sidebar_item(item, is_top_level=true) }}
+          {% endfor %}
+          </ul>
+        {% else %}
+          {% set all_items = context_menu_items | sort(attribute='pos') %}
+          <ul class="menu">
+          {% for item in all_items %}
+            {% if item.pos == 3 %}
+            </ul>
+            <div class="hr"></div>
+            <ul class="menu">
+            {% endif %}
+{{ render_sidebar_item(item, is_top_level=true) }}
           {% endfor %}
           </ul>
           <div class="hr"></div>
