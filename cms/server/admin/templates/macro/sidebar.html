@@ -153,10 +153,9 @@
               <details class="menu-collapsible {{ pl }}">
                 <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center">
 {% if show_icon %}                  <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}                  {{ item.text }}
+{% endif %}                  <a href="{{ item.url }}"{{ title_attr }} class="has-text-current" onclick="event.stopPropagation()"><svg class="icon is-small mr-1" style="opacity:0.5;"><use href="#icon-eye"/></svg></a>{{ item.text }}
                 </summary>
                 <div class="is-flex is-flex-direction-column">
-                  <a class="{{ cls }} pl-{{ [((depth + 1) * 2), 6] | min }}" href="{{ item.url }}"{{ title_attr }}>&#8599; {{ item.text }}</a>
 {% for child in item.children %}
 {{ render_menu_item(child, depth + 1, mode) }}
 {% endfor %}
