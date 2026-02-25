@@ -1,0 +1,93 @@
+{#
+  Sidebar rendering macros.
+  Builds the entire sidebar from global_menu_items hierarchy.
+
+  Top-level items:
+    - No children  → regular menu_entry inside <ul class="menu">
+    - Has children  → sidebar-section (collapsible, with title/caret)
+
+  Nested items (recursive):
+    - Has children  → sidebar-folder (collapsible folder)
+    - type "action" → sidebar-action link (e.g. "Show more...")
+    - Otherwise     → leaf item (<li> with configurable css_class)
+#}
+
+
+{# ── Badge rendering (shared) ────────────────────────────────── #}
+{% macro render_badges(badges) %}
+{% for badge in badges %}
+<span class="tag is-bordered has-text-{{badge.color}}" {% if badge.count == 0 %}style="display: none;"{% endif %}>{{ badge.count }}</span>
+{% endfor %}
+{% endmacro %}
+
+
+{# ── Recursive item renderer (level 2+) ─────────────────────── #}
+{% macro render_sidebar_item(item) %}
+{% if item.children is defined and item.children|length > 0 %}
+            <li class="sidebar-folder" {% if item.folder_key is defined %}data-folder-key="{{ item.folder_key }}"{% endif %}>
+              <div class="folder-header">
+                <span class="folder-icon"></span>
+                <a href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
+{% if item.badges is defined and item.badges|length > 0 %}
+                <div class="sidebar-badge-container">
+                  {{ render_badges(item.badges) }}
+                </div>
+{% endif %}
+              </div>
+              <ul class="folder-contents">
+{% for child in item.children %}
+{{ render_sidebar_item(child) }}
+{% endfor %}
+              </ul>
+            </li>
+{% elif item.type is defined and item.type == "action" %}
+              <li class="sidebar-action">
+                <a href="{{ item.url }}">{{ item.text }}</a>
+              </li>
+{% else %}
+              <li class="{{ item.css_class|default('sidebar-item') }}">
+                <a href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
+{% if item.badges is defined and item.badges|length > 0 %}
+                <div class="sidebar-badge-container">
+                  {{ render_badges(item.badges) }}
+                </div>
+{% endif %}
+              </li>
+{% endif %}
+{% endmacro %}
+
+
+{# ── Top-level section renderer ──────────────────────────────── #}
+{% macro render_sidebar_section(item, is_admin) %}
+        <div class="sidebar-section" data-section-key="{{ item.key }}">
+          <h2 class="sidebar-section-title">
+            <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
+                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+                <a href="{{ item.url }}">{{ item.text }}</a>
+                <span class="section-caret"></span>
+            </div>
+          </h2>
+          <div class="sidebar-section-body">
+{% if item.children|length > 0 %}
+            <ul class="sidebar-menu">
+{% for child in item.children %}
+{{ render_sidebar_item(child) }}
+{% endfor %}
+            </ul>
+{% else %}
+            <p class="sidebar-empty">{{ item.empty_text|default("No items available") }}</p>
+{% endif %}
+{% if is_admin and item.actions is defined and item.actions|length > 0 %}
+            <div class="sidebar-actions">
+{% for action in item.actions %}
+{% if action.type == "button" %}
+              <button type="button" class="sidebar-action-link" onclick="{{ action.onclick }}">{{ action.text }}</button>
+{% else %}
+              <a class="sidebar-action-link" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>{{ action.text }}</a>
+{% endif %}
+{% endfor %}
+            </div>
+{% endif %}
+          </div>
+        </div>
+{% endmacro %}

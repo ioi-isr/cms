@@ -1,4 +1,5 @@
 {% from "macro/modal.html" import modal_header %}
+{% from "macro/sidebar.html" import render_sidebar_section, render_sidebar_item, render_badges %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -318,14 +319,140 @@ $(document).ready(initMobileMoreDropdown);
 
 //-->
     </script>
+{# ── Build training-programs children ─────────────────────────── #}
+{% set tp_children = [] %}
+{% for tp in training_program_list|default([]) %}
+  {% set td_items = [] %}
+  {% for td in tp.training_days if td.contest %}
+    {% set _ = td_items.append({
+      "text": td.contest.name,
+      "url": url("contest", td.contest_id),
+      "title": td.contest.description,
+      "css_class": "sidebar-contest"
+    }) %}
+  {% endfor %}
+  {% set _ = tp_children.append({
+    "text": tp.name,
+    "url": url("training_program", tp.id),
+    "title": tp.description,
+    "folder_key": "training-program-" ~ tp.id,
+    "children": td_items
+  }) %}
+{% endfor %}
+
+{# ── Build contests children ─────────────────────────────────── #}
+{% set contest_children = [] %}
+{% for folder in folder_list|default([]) if folder.parent is none %}
+  {% set folder_items = [] %}
+  {% for c in folder.contests if c.training_day is none %}
+    {% set _ = folder_items.append({
+      "text": c.name,
+      "url": url("contest", c.id),
+      "title": c.description,
+      "css_class": "sidebar-contest"
+    }) %}
+  {% endfor %}
+  {% for subfolder in folder.children %}
+    {% set subfolder_items = [] %}
+    {% for c in subfolder.contests if c.training_day is none %}
+      {% set _ = subfolder_items.append({
+        "text": c.name,
+        "url": url("contest", c.id),
+        "title": c.description,
+        "css_class": "sidebar-contest"
+      }) %}
+    {% endfor %}
+    {% set _ = folder_items.append({
+      "text": subfolder.name,
+      "url": url("folder", subfolder.id),
+      "folder_key": "subfolder-" ~ subfolder.id,
+      "children": subfolder_items
+    }) %}
+  {% endfor %}
+  {% set _ = contest_children.append({
+    "text": folder.name,
+    "url": url("folder", folder.id),
+    "folder_key": "folder-" ~ folder.id,
+    "children": folder_items
+  }) %}
+{% endfor %}
+{% for c in (root_contests|default([]))[:5] %}
+  {% set _ = contest_children.append({
+    "text": c.name,
+    "url": url("contest", c.id),
+    "title": c.description,
+    "css_class": "sidebar-contest root-contest"
+  }) %}
+{% endfor %}
+{% if (root_contests|default([]))|length > 5 %}
+  {% set _ = contest_children.append({
+    "type": "action",
+    "text": "Show more...",
+    "url": url("contests")
+  }) %}
+{% endif %}
+
+{# ── Build tasks children ────────────────────────────────────── #}
+{% set task_children = [] %}
+{% for t in (task_list|default([]))[:5] %}
+  {% set _ = task_children.append({
+    "text": t.name,
+    "url": url("task", t.id),
+    "title": t.title,
+    "css_class": "sidebar-item"
+  }) %}
+{% endfor %}
+{% if (task_list|default([]))|length > 5 %}
+  {% set _ = task_children.append({
+    "type": "action",
+    "text": "Show more...",
+    "url": url("tasks")
+  }) %}
+{% endif %}
+
+{# ── Build users children ────────────────────────────────────── #}
+{% set user_children = [] %}
+{% if (user_list|default([]))|length > 0 %}
+  {% if user_list|length == 1 %}
+    {% set _ = user_children.append({"type": "action", "text": "Show the only user", "url": url("users")}) %}
+  {% else %}
+    {% set _ = user_children.append({"type": "action", "text": "Show " ~ user_list|length ~ " users", "url": url("users")}) %}
+  {% endif %}
+{% endif %}
+
+{# ── Build teams children ────────────────────────────────────── #}
+{% set team_children = [] %}
+{% if (team_list|default([]))|length > 0 %}
+  {% if team_list|length == 1 %}
+    {% set _ = team_children.append({"type": "action", "text": "Show the only team", "url": url("teams")}) %}
+  {% else %}
+    {% set _ = team_children.append({"type": "action", "text": "Show " ~ team_list|length ~ " teams", "url": url("teams")}) %}
+  {% endif %}
+{% endif %}
+
+{# ── Assemble global_menu_items with full hierarchy ──────────── #}
 {% set global_menu_items = [
   {"key": "overview",          "icon": "icon-activity",       "text": "Overview",           "url": url(),                     "pos": 1, "mobile": false, "badges": []},
   {"key": "resource-list",     "icon": "icon-cpu",            "text": "Resource usage",     "url": url("resourceslist"),      "pos": 2, "mobile": false, "badges": []},
-  {"key": "training-programs", "icon": "icon-graduation-cap", "text": "Training Programs",  "url": url("training_programs"),  "pos": 3, "mobile": true, "badges": []},
-  {"key": "contests",          "icon": "icon-stopwatch",      "text": "Contests",           "url": url("contests"),           "pos": 4, "mobile": true, "badges": []},
-  {"key": "tasks",             "icon": "icon-puzzle",         "text": "Tasks",              "url": url("tasks"),              "pos": 5, "mobile": true, "badges": []},
-  {"key": "users",             "icon": "icon-users",          "text": "Users",              "url": url("users"),              "pos": 6, "mobile": true, "badges": []},
-  {"key": "teams",             "icon": "icon-flag",           "text": "Teams",              "url": url("teams"),              "pos": 7, "mobile": true, "badges": []},
+  {"key": "training-programs", "icon": "icon-graduation-cap", "text": "Training Programs",  "url": url("training_programs"),  "pos": 3, "mobile": true, "badges": [],
+   "children": tp_children, "empty_text": "No training programs available",
+   "actions": [{"type": "button", "text": "New training program", "onclick": "MicroModal.show('modal-add-program')"}]},
+  {"key": "contests",          "icon": "icon-stopwatch",      "text": "Contests",           "url": url("contests"),           "pos": 4, "mobile": true, "badges": [],
+   "children": contest_children, "empty_text": "No contests available",
+   "actions": [
+     {"type": "link", "text": "New contest", "url": "javascript:void(0)", "onclick": "AdminModals.showAddContestDialog('" ~ url("contests", "add") ~ "', '" ~ url("contest", "") ~ "')"},
+     {"type": "button", "text": "New folder", "onclick": "MicroModal.show('modal-add-folder')"},
+     {"type": "link", "text": "Manage folders", "url": url("folders")}
+   ]},
+  {"key": "tasks",             "icon": "icon-puzzle",         "text": "Tasks",              "url": url("tasks"),              "pos": 5, "mobile": true, "badges": [],
+   "children": task_children, "empty_text": "No tasks available",
+   "actions": [{"type": "button", "text": "New task", "onclick": "AdminModals.showAddTaskDialog('" ~ url("tasks", "add") ~ "', '" ~ url("task", "") ~ "')"}]},
+  {"key": "users",             "icon": "icon-users",          "text": "Users",              "url": url("users"),              "pos": 6, "mobile": true, "badges": [],
+   "children": user_children, "empty_text": "No users available",
+   "actions": [{"type": "button", "text": "New user", "onclick": "MicroModal.show('modal-add-user')"}]},
+  {"key": "teams",             "icon": "icon-flag",           "text": "Teams",              "url": url("teams"),              "pos": 7, "mobile": true, "badges": [],
+   "children": team_children, "empty_text": "No teams available",
+   "actions": [{"type": "button", "text": "New team", "onclick": "AdminModals.showAddTeamDialog('" ~ url("teams", "add") ~ "')"}]},
 ] %}
 
 {% if contest is defined and contest is not none and training_program is not defined %}
@@ -479,216 +606,26 @@ $(document).ready(initMobileMoreDropdown);
           </a>
         </div>
         {% endif %}
-        <ul class="menu">
         {% if contest is none and training_program is not defined %}
+        {# ── Global view: render sidebar from global_menu_items ── #}
+        {% set simple_items = global_menu_items | rejectattr("children", "defined") | list %}
+        {% set section_items = global_menu_items | selectattr("children", "defined") | list %}
+        {% if simple_items|length > 0 %}
+        <ul class="menu">
+          {% for item in simple_items %}
           <li class="menu_entry">
             <span class="menu-icon">
-              <svg class="icon"><use href="#icon-activity"/></svg>
+              <svg class="icon"><use href="#{{ item.icon }}"/></svg>
             </span>
-            <a class="menu_link" href="{{ url() }}">Overview</a>
+            <a class="menu_link" href="{{ item.url }}">{{ item.text }}</a>
           </li>
-          <li class="menu_entry">
-            <span class="menu-icon">
-              <svg class="icon"><use href="#icon-cpu"/></svg>
-            </span>
-            <a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a>
-          </li>
-        {% endif %}
+          {% endfor %}
         </ul>
         <div class="hr"></div>
-
-        {% if contest is none and training_program is not defined %}
-        <div class="sidebar-section" data-section-key="training-programs">
-          <h2 class="sidebar-section-title">
-            <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
-                <svg class="icon"><use href="#icon-graduation-cap"/></svg>
-                <a href="{{ url("training_programs") }}">Training Programs</a>
-                <span class="section-caret"></span>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if training_program_list|length > 0 %}
-            <ul class="sidebar-menu">
-            {% for tp in training_program_list %}
-            <li class="sidebar-folder" data-folder-key="training-program-{{ tp.id }}">
-              <div class="folder-header">
-                <span class="folder-icon"></span>
-                <a href="{{ url("training_program", tp.id) }}" title="{{ tp.description }}">{{ tp.name }}</a>
-              </div>
-              <ul class="folder-contents">
-                {% for td in tp.training_days if td.contest %}
-                <li class="sidebar-contest">
-                  <a href="{{ url("contest", td.contest_id) }}" title="{{ td.contest.description }}">{{ td.contest.name }}</a>
-                </li>
-                {% endfor %}
-              </ul>
-            </li>
-            {% endfor %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No training programs available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-program')">New training program</button>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="sidebar-section" data-section-key="contests">
-          <h2 class="sidebar-section-title">
-            <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
-                <svg class="icon"><use href="#icon-stopwatch"/></svg>
-                <a href="{{ url("contests") }}">Contests</a>
-                <span class="section-caret"></span>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if folder_list|length > 0 or root_contests|length > 0 %}
-            <ul class="sidebar-menu">
-            {% for folder in folder_list if folder.parent is none %}
-            <li class="sidebar-folder" data-folder-key="folder-{{ folder.id }}">
-              <div class="folder-header">
-                <span class="folder-icon"></span>
-                <a href="{{ url("folder", folder.id) }}">{{ folder.name }}</a>
-              </div>
-              <ul class="folder-contents">
-                {% for c in folder.contests if c.training_day is none %}
-                  <li class="sidebar-contest">
-                    <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
-                  </li>
-                  {% endfor %}
-                {% for subfolder in folder.children %}
-                <li class="sidebar-folder" data-folder-key="subfolder-{{ subfolder.id }}">
-                  <div class="folder-header">
-                    <span class="folder-icon"></span>
-                    <a href="{{ url("folder", subfolder.id) }}">{{ subfolder.name }}</a>
-                  </div>
-                  <ul class="folder-contents">
-                      {% for c in subfolder.contests if c.training_day is none %}
-                      <li class="sidebar-contest">
-                        <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
-                      </li>
-                      {% endfor %}
-                    </ul>
-                  </li>
-                  {% endfor %}
-                </ul>
-              </li>
-              {% endfor %}
-              {% for c in root_contests[:5] %}
-              <li class="sidebar-contest root-contest">
-                <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
-              </li>
-              {% endfor %}
-              {% if root_contests|length > 5 %}
-              <li class="sidebar-action">
-                <a href="{{ url("contests") }}">Show more...</a>
-              </li>
-              {% endif %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No contests available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="javascript:void(0)" onclick="AdminModals.showAddContestDialog('{{ url("contests", "add") }}', '{{ url("contest", "") }}')">New contest</a>
-              <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-folder')">New folder</button>
-              <a class="sidebar-action-link" href="{{ url("folders") }}">Manage folders</a>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="sidebar-section" data-section-key="tasks">
-          <h2 class="sidebar-section-title">
-            <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
-                <svg class="icon"><use href="#icon-puzzle"/></svg>
-                <a href="{{ url("tasks") }}">Tasks</a>
-                <span class="section-caret"></span>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if task_list|length > 0 %}
-            <ul class="sidebar-menu">
-              {% for t in task_list[:5] %}
-              <li class="sidebar-item">
-                <a href="{{ url("task", t.id) }}" title="{{ t.title }}">{{ t.name }}</a>
-              </li>
-              {% endfor %}
-              {% if task_list|length > 5 %}
-              <li class="sidebar-action">
-                <a href="{{ url("tasks") }}">Show more...</a>
-              </li>
-              {% endif %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No tasks available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <button type="button" class="sidebar-action-link" onclick="AdminModals.showAddTaskDialog('{{ url("tasks", "add") }}', '{{ url("task", "") }}')">New task</button>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="sidebar-section" data-section-key="users">
-          <h2 class="sidebar-section-title">
-            <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
-                <svg class="icon"><use href="#icon-users"/></svg>
-                <a href="{{ url("users") }}">Users</a>
-                <span class="section-caret"></span>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if user_list|length > 0 %}
-            <ul class="sidebar-menu">
-              <li class="sidebar-action">
-                <a href="{{ url("users") }}">
-                  {% if user_list|length == 1 %}Show the only user{% else %}Show {{ user_list|length }} users{% endif %}
-                </a>
-              </li>
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No users available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <button type="button" class="sidebar-action-link" onclick="MicroModal.show('modal-add-user')">New user</button>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="sidebar-section" data-section-key="teams">
-          <h2 class="sidebar-section-title">
-            <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
-                <svg class="icon"><use href="#icon-flag"/></svg>
-                <a href="{{ url("teams") }}">Teams</a>
-                <span class="section-caret"></span>
-            </div>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if team_list|length > 0 %}
-            <ul class="sidebar-menu">
-              <li class="sidebar-action">
-                <a href="{{ url("teams") }}">
-                  {% if team_list|length == 1 %}Show the only team{% else %}Show {{ team_list|length }} teams{% endif %}
-                </a>
-              </li>
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No teams available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <button type="button" class="sidebar-action-link" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">New team</button>
-            </div>
-            {% endif %}
-          </div>
-        </div>
+        {% endif %}
+        {% for item in section_items %}
+{{ render_sidebar_section(item, admin.permission_all) }}
+        {% endfor %}
         {% elif training_program is defined %}
           {% set all_menu_items = context_menu_items | sort(attribute='pos') %}
           <ul class="menu">
@@ -706,9 +643,7 @@ $(document).ready(initMobileMoreDropdown);
                 </span>
                 <a href="{{ item.url }}">{{ item.text }}</a>
                 <div class="sidebar-badge-container">
-                  {% for badge in item.badges %}
-                      <span class="tag is-bordered has-text-{{badge.color}}" style="{% if badge.count == 0 %} display: none;{% endif %}">{{ badge.count }}</span>
-                  {% endfor %}
+                  {{ render_badges(item.badges) }}
                 </div>
               </div>
               <ul class="folder-contents">
@@ -717,9 +652,7 @@ $(document).ready(initMobileMoreDropdown);
                   <li class="sidebar-contest">
                     <a href="{{ child.url }}" {% if child.title %}title="{{ child.title }}"{% endif %}>{{ child.text }}</a>
                     <div class="sidebar-badge-container">
-                      {% for badge in child.badges %}
-                          <span class="tag is-bordered has-text-{{badge.color}}" style="{% if badge.count == 0 %} display: none;{% endif %}">{{ badge.count }}</span>
-                      {% endfor %}
+                      {{ render_badges(child.badges) }}
                     </div>
                   </li>
                   {% endfor %}
@@ -743,9 +676,7 @@ $(document).ready(initMobileMoreDropdown);
               <a class="menu_link" href="{{ item.url }}">{{ item.text }}</a>
               {% if item.badges|length > 0 %}
               <div class="sidebar-badge-container">
-                {% for badge in item.badges %}
-                  <span class="tag is-bordered has-text-{{badge.color}}" {% if badge.count == 0 %} style="display: none;" {% endif %}>{{ badge.count }}</span>
-                {% endfor %}
+                {{ render_badges(item.badges) }}
               </div>
               {% endif %}
             </li>
@@ -768,9 +699,7 @@ $(document).ready(initMobileMoreDropdown);
               <a class="menu_link" href="{{ item.url }}">{{ item.text }}</a>
               {% if item.badges|length > 0 %}
               <div class="sidebar-badge-container">
-                {% for badge in item.badges %}
-                  <span class="tag is-bordered has-text-{{badge.color}}" {% if badge.count == 0 %} style="display: none;" {% endif %}>{{ badge.count }}</span>
-                {% endfor %}
+                {{ render_badges(item.badges) }}
               </div>
               {% endif %}
             </li>
