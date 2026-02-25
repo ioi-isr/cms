@@ -1,5 +1,5 @@
 {% from "macro/modal.html" import modal_header %}
-{% from 'macro/sidebar.html' import render_badges, render_navbar_item, render_sidebar_item, render_sidebar_section with context %}
+{% from 'macro/sidebar.html' import render_badges, render_mobile_menu_item, render_navbar_item, render_sidebar_item, render_sidebar_section with context %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -318,6 +318,19 @@ function initMobileMoreDropdown() {
 $(document).ready(initThemeToggle);
 $(document).ready(initMobileMoreDropdown);
 
+function initHamburgerMenu() {
+    var burgers = document.querySelectorAll('.navbar-burger');
+    for (var i = 0; i < burgers.length; i++) {
+        burgers[i].addEventListener('click', function() {
+            var targetId = this.dataset.target;
+            var target = document.getElementById(targetId);
+            this.classList.toggle('is-active');
+            if (target) target.classList.toggle('is-active');
+        });
+    }
+}
+$(document).ready(initHamburgerMenu);
+
 //-->
     </script>
 {# ── Build training-programs children ─────────────────────────── #}
@@ -586,6 +599,17 @@ $(document).ready(initMobileMoreDropdown);
             </form>
           </div>
 {% endif %}
+        </div>
+      </div>
+      <!-- Mobile hamburger menu -->
+      <div id="admin-navbar-menu" class="navbar-menu">
+        <div class="navbar-start">
+          {% for item in global_menu_items | sort(attribute='pos') %}
+{{ render_mobile_menu_item(item, 0) }}
+            {% if not loop.last %}
+            <hr class="navbar-divider">
+            {% endif %}
+          {% endfor %}
         </div>
       </div>
     </nav>

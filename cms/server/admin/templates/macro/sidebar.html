@@ -169,3 +169,29 @@
               </a>
 {% endif %}
 {% endmacro %}
+
+{# ── Recursive mobile menu item renderer ─────────────────────── #}
+{% macro render_mobile_menu_item(item, depth) %}
+{% set indent = ' style="padding-left: ' ~ (1.5 + depth * 1.0) ~ 'rem;"' if depth > 0 else '' %}
+{% set title_attr = ' title="' ~ item.title ~ '"' if item.title is defined else '' %}
+{% if item.children is defined %}
+              <a class="navbar-item has-text-weight-semibold" href="{{ item.url }}"{{ title_attr }}{{ indent }}>
+{% if depth == 0 and item.icon is defined %}
+                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}
+                {{ item.text }}
+              </a>
+{% for child in item.children %}
+{{ render_mobile_menu_item(child, depth + 1) }}
+{% endfor %}
+{% elif item.type is defined and item.type == "action" %}
+              <a class="navbar-item has-text-grey is-size-7" href="{{ item.url }}"{{ indent }}>{{ item.text }}</a>
+{% else %}
+              <a class="navbar-item" href="{{ item.url }}"{{ title_attr }}{{ indent }}>
+{% if depth == 0 and item.icon is defined %}
+                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}
+                {{ item.text }}
+              </a>
+{% endif %}
+{% endmacro %}
