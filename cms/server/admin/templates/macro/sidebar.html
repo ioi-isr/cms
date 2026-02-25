@@ -126,15 +126,35 @@
 {# ── Navbar / mobile shared macros ────────────────────────── #}
 {# ══════════════════════════════════════════════════════════════ #}
 
+{# ── Menu item content with icons (shared helper) ────────────── #}
+{% macro render_menu_content(item, show_icon, show_eye=false) %}
+<div class="icon-text is-flex is-align-items-center">
+{% if show_icon %}
+  <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}
+  <span>{{ item.text }}</span>
+{% if show_eye %}
+    <svg class="icon is-small ml-2" style="opacity: 0.5;"><use href="#icon-eye"/></svg>
+{% endif %}
+</div>
+{% endmacro %}
+
 {# ── Menu actions for dropdown/mobile (buttons and links) ────── #}
 {% macro render_menu_actions(actions, cls, pl) %}
 {% if actions is defined and actions|length > 0 %}
               <hr class="{{ 'dropdown-divider' if cls == 'dropdown-item' else 'navbar-divider' }} my-1">
 {% for action in actions %}
+{% set show_plus = (action.text|lower).startswith("new") %}
 {% if action.type == "button" %}
-              <a class="{{ cls }} has-text-link is-size-7 {{ pl }}" href="javascript:void(0)" onclick="{{ action.onclick }}">+ {{ action.text }}</a>
+              <a class="{{ cls }} has-text-link is-size-7 {{ pl }} is-flex is-align-items-center" href="javascript:void(0)" onclick="{{ action.onclick }}">
+                {% if show_plus %}<svg class="icon is-small mr-1"><use href="#icon-plus"/></svg>{% endif %}
+                <span>{{ action.text }}</span>
+              </a>
 {% else %}
-              <a class="{{ cls }} has-text-link is-size-7 {{ pl }}" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>+ {{ action.text }}</a>
+              <a class="{{ cls }} has-text-link is-size-7 {{ pl }} is-flex is-align-items-center" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>
+                {% if show_plus %}<svg class="icon is-small mr-1"><use href="#icon-plus"/></svg>{% endif %}
+                <span>{{ action.text }}</span>
+              </a>
 {% endif %}
 {% endfor %}
 {% endif %}
@@ -150,10 +170,12 @@
 {% set title_attr = ' title="' ~ item.title ~ '"' if item.title is defined else '' %}
 {% set show_icon = depth == 0 and mode == "mobile" and item.icon is defined %}
 {% if item.children is defined and item.children|length > 0 %}
-              <details class="menu-collapsible {{ pl }}">
-                <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center">
-{% if show_icon %}                  <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}                  <a href="{{ item.url }}"{{ title_attr }} class="has-text-current" onclick="event.stopPropagation()"><svg class="icon is-small mr-1" style="opacity:0.5;"><use href="#icon-eye"/></svg></a>{{ item.text }}
+              <details class="menu-collapsible">
+                <summary class="{{ cls }} {{ pl }} has-text-weight-semibold is-flex is-align-items-center">
+{{ render_menu_content(item, show_icon, true) }}
+                  <button type="button" class="btn-icon-only is-small" style="margin-left: 8px;" onclick="event.stopPropagation(); this.closest('details').open = !this.closest('details').open;">
+                      <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
+                  </button>
                 </summary>
                 <div class="is-flex is-flex-direction-column">
 {% for child in item.children %}
@@ -163,16 +185,14 @@
                 </div>
               </details>
 {% elif item.children is defined %}
-              <a class="{{ cls }} has-text-weight-semibold {{ pl }}" href="{{ item.url }}"{{ title_attr }}>
-{% if show_icon %}                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}                {{ item.text }}
+              <a class="{{ cls }} {{ pl }} has-text-weight-semibold is-flex is-align-items-center" href="{{ item.url }}"{{ title_attr }}>
+{{ render_menu_content(item, show_icon, true) }}
               </a>
 {% elif item.type is defined and item.type == "action" %}
               <a class="{{ cls }} has-text-grey is-size-7 {{ pl }}" href="{{ item.url }}">{{ item.text }}</a>
 {% else %}
               <a class="{{ cls }} {{ pl }}" href="{{ item.url }}"{{ title_attr }}>
-{% if show_icon %}                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}                {{ item.text }}
+{{ render_menu_content(item, show_icon) }}
               </a>
 {% endif %}
 {% endmacro %}

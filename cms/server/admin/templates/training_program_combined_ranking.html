@@ -266,13 +266,17 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
         {% for td in archived_training_days %}
           {% for task in training_day_tasks.get(td.id, []) %}
           <th class="task-header" title="{{ task.title }}" data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-sort-settings="numeric" scope="col">
-              <span class="header-text">{{ task.name }}</span>
-              <button class="histogram-icon" title="View histogram" aria-label="View histogram for {{ task.name }}" type="button" onclick='event.stopPropagation(); showTaskHistogram({{ task.id }}, {{ task.name|tojson }}, {{ td.id }})'><svg class="icon is-small"><use href="#icon-histogram"/></svg></button>
+              <button class="button is-ghost has-text-inherit no-underline" title="View histogram" aria-label="View histogram for {{ task.name }}" type="button" onclick='event.stopPropagation(); showTaskHistogram({{ task.id }}, {{ task.name|tojson }}, {{ td.id }})'>
+                <span>{{ task.name }}</span>
+                <svg class="icon is-small"><use href="#icon-histogram"/></svg>
+              </button>
           </th>
           {% endfor %}
-          <th class="total-col total-col-header" title="Daily Total" data-training-day-id="{{ td.id }}" data-sort-settings="numeric" scope="col">
-              <span class="header-text">Total</span>
-              <button class="histogram-icon" title="View histogram" aria-label="View histogram for {{ td.description or td.name or "Session" }}" type="button" onclick='event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, {{ (td.description or td.name or "Session")|tojson }})'><svg class="icon is-small"><use href="#icon-histogram"/></svg></button>
+          <th class="total-col total-col-header is-vcentered" title="Daily Total" data-training-day-id="{{ td.id }}" data-sort-settings="numeric" scope="col">
+              <button class="button is-ghost has-text-inherit no-underline" title="View histogram" aria-label="View histogram for {{ td.description or td.name or "Session" }}" type="button" onclick='event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, {{ (td.description or td.name or "Session")|tojson }})'>
+                <span>Total</span>
+                <svg class="icon is-small"><use href="#icon-histogram"/></svg>
+              </button>
           </th>
         {% endfor %}
       </tr>

@@ -1144,37 +1144,6 @@
     background: var(--tp-bg-white);
 }
 
-.histogram-icon {
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    font-size: inherit;
-    line-height: inherit;
-    color: inherit;
-    font-family: inherit;
-    display: inline;
-    cursor: pointer;
-    margin-left: 4px;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-    vertical-align: middle;
-}
-
-.histogram-icon:hover {
-    opacity: 1;
-}
-
-.histogram-icon:focus {
-    outline: 2px solid var(--bulma-info);
-    outline-offset: 1px;
-}
-
-
-.task-header .header-text,
-.total-col-header .header-text {
-    vertical-align: middle;
-}
 
 /* ==========================================================================
    Combined Ranking Page Specific Styles

@@ -202,6 +202,23 @@ pre {
     color: var(--sidebar-text-bright);
 }
 
+#admin-navbar .dropdown-content .dropdown-item,
+#admin-navbar .dropdown-content .menu-collapsible
+#mobile-more-dropdown .dropdown-content .dropdown-item,
+#mobile-more-dropdown .dropdown-content .dropdown-item {
+    color: var(--bulma-text);
+}
+
+#admin-navbar .dropdown-content .dropdown-item:hover,
+#admin-navbar .dropdown-content .dropdown-item:focus,
+#admin-navbar .dropdown-content .menu-collapsible > summary:hover,
+#admin-navbar .dropdown-content .menu-collapsible > summary:focus,
+#mobile-more-dropdown .dropdown-content .dropdown-item:hover,
+#mobile-more-dropdown .dropdown-content .dropdown-item:focus {
+    background: var(--sidebar-hover-bg);
+    color: var(--bulma-text-weak);
+}
+
 /* ==========================================================================
    Collapsible Menu Items (details/summary in dropdowns & mobile menu)
    ========================================================================== */
@@ -213,27 +230,28 @@ pre {
 .menu-collapsible > summary {
     list-style: none;
     cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .menu-collapsible > summary::-webkit-details-marker {
     display: none;
 }
 
-.menu-collapsible > summary::after {
-    content: '';
-    display: inline-block;
-    width: 0;
-    height: 0;
-    margin-left: auto;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid currentColor;
-    opacity: 0.5;
+.menu-collapsible[open] > summary .btn-icon-only svg {
+    transform: rotate(180deg);
+}
+
+.menu-collapsible > summary .btn-icon-only svg {
     transition: transform 0.2s ease;
 }
 
-.menu-collapsible[open] > summary::after {
-    transform: rotate(180deg);
+.menu-collapsible > summary .btn-icon-only {
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.menu-collapsible > summary .btn-icon-only:hover {
+    background: rgba(0, 0, 0, 0.05);
 }
 
 /* ==========================================================================
@@ -297,13 +315,23 @@ pre {
 #sidebar .svg .icon,
 #admin-navbar .navbar-item .icon {
     color: var(--sidebar-slate);
-    transition: color 0.15s ease;
+    transition: color 0.15s ease, transform 0.2s ease;
 }
 
 #sidebar .menu_entry:hover .icon,
 #sidebar .folder-header:hover .icon,
 #admin-navbar .navbar-item:hover .icon {
     color: var(--sidebar-accent-light);
+}
+
+/* Allow chevron rotation in mobile navbar */
+#admin-navbar .navbar-item .btn-icon-only svg {
+    color: currentColor;
+    transition: transform 0.2s ease;
+}
+
+#admin-navbar .menu-collapsible[open] > summary .btn-icon-only svg {
+    transform: rotate(180deg);
 }
 
 .layout {

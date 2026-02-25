@@ -592,7 +592,7 @@ $(document).ready(initHamburgerMenu);
           <div class="navbar-item">
             <form action="{{ url("logout") }}" method="POST" class="m-0">
               {{ xsrf_form_html|safe }}
-              <button type="submit" class="is-clickable is-flex is-align-items-center has-text-inherit" style="border:none; background:none; padding:0; gap:0.4em;">
+              <button type="submit" class="is-clickable is-flex is-align-items-center has-text-inherit">
                 <svg class="icon"><use href="#icon-logout"/></svg>
                 <span class="is-hidden-touch">Logout</span>
               </button>

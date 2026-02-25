@@ -347,8 +347,8 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                             title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
                                             onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
                                             aria-label="Show histogram for {{ task_info.get('name', 'Task ' ~ task_id_str) }}">
-                                        {{ task_info.get('name', 'Task ' ~ task_id_str) }}
-                                        <span class="histogram-icon" aria-hidden="true"><svg class="icon is-small"><use href="#icon-histogram"/></svg></span>
+                                        <span>{{ task_info.get('name', 'Task ' ~ task_id_str) }}</span>
+                                        <svg class="icon is-small"><use href="#icon-histogram"/></svg>
                                     </button>
                                 {% endfor %}
                             {% else %}
