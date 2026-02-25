@@ -810,8 +810,11 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     transition: background-color 0.2s, color 0.2s;
 }
 
-#sidebar.is-minimized .sidebar-icon-link:hover {
+#sidebar.is-minimized .sidebar-icon-link:hover,
+#sidebar.is-minimized .sidebar-icon-link:focus-visible {
     background-color: var(--sidebar-hover-bg);
+    outline: 2px solid var(--sidebar-accent-light);
+    outline-offset: 2px;
 }
 
 #sidebar.is-minimized .folder-header {

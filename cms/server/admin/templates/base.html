@@ -46,8 +46,9 @@
       // Apply minimized sidebar state (prevent flash)
       try {
         if (localStorage.getItem('cms_sidebar_minimized') === 'true') {
-          css += '#sidebar.is-minimized .sidebar-minimize-hide { display: none !important; }\n';
-          css += '#sidebar.is-minimized { width: 60px !important; flex: 0 0 60px !important; padding: 0 !important; }\n';
+          document.documentElement.classList.add('sidebar-minimized-prepaint');
+          css += 'html.sidebar-minimized-prepaint #sidebar .sidebar-minimize-hide { display: none !important; }\n';
+          css += 'html.sidebar-minimized-prepaint #sidebar { width: 60px !important; flex: 0 0 60px !important; padding: 0 !important; overflow-x: hidden !important; }\n';
         }
       } catch (e) {}
 
@@ -225,14 +226,14 @@ function initSidebarEvents() {
     sidebar.addEventListener('click', function(e) {
         // Handle section title clicks (but not link clicks)
         var sectionTitle = e.target.closest('.sidebar-section-title');
-        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+        if (sectionTitle && !e.target.closest('a')) {
             toggleSection(sectionTitle);
             return;
         }
 
         // Handle folder header clicks (but not link clicks)
         var folderHeader = e.target.closest('.folder-header');
-        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+        if (folderHeader && !e.target.closest('a')) {
             toggleFolder(folderHeader);
         }
     });
@@ -242,14 +243,14 @@ function initSidebarEvents() {
         if (e.key !== 'Enter' && e.key !== ' ') return;
 
         var sectionTitle = e.target.closest('.sidebar-section-title');
-        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+        if (sectionTitle && !e.target.closest('a')) {
             e.preventDefault();
             toggleSection(sectionTitle);
             return;
         }
 
         var folderHeader = e.target.closest('.folder-header');
-        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+        if (folderHeader && !e.target.closest('a')) {
             e.preventDefault();
             toggleFolder(folderHeader);
         }
@@ -345,15 +346,24 @@ function initSidebarToggle() {
     var toggleBtn = document.getElementById('sidebar-toggle');
     if (!sidebar || !toggleBtn) return;
 
+    function syncToggleA11y(isMin) {
+        toggleBtn.setAttribute('aria-pressed', isMin ? 'true' : 'false');
+        toggleBtn.setAttribute('title', isMin ? 'Expand sidebar' : 'Minimize sidebar');
+        toggleBtn.setAttribute('aria-label', isMin ? 'Expand sidebar' : 'Minimize sidebar');
+    }
+
     // Restore persisted state
     var minimized = false;
     try { minimized = localStorage.getItem('cms_sidebar_minimized') === 'true'; } catch (e) {}
     if (minimized) sidebar.classList.add('is-minimized');
+    syncToggleA11y(minimized);
+    document.documentElement.classList.remove('sidebar-minimized-prepaint');
 
     toggleBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         sidebar.classList.toggle('is-minimized');
         var isMin = sidebar.classList.contains('is-minimized');
+        syncToggleA11y(isMin);
         try { localStorage.setItem('cms_sidebar_minimized', isMin ? 'true' : 'false'); } catch (e) {}
     });
 }
@@ -645,7 +655,7 @@ $(document).ready(initSidebarToggle);
     <div id="global" class="layout">
       <aside id="sidebar" class="menu is-hidden-touch">
         <!-- Sidebar minimize/expand toggle -->
-        <button id="sidebar-toggle" type="button" class="button is-small is-rounded p-0 sidebar-toggle-btn" title="Toggle sidebar" aria-label="Toggle sidebar">
+        <button id="sidebar-toggle" type="button" class="button is-small is-rounded p-0 sidebar-toggle-btn" title="Toggle sidebar" aria-label="Toggle sidebar" aria-pressed="false">
           <svg class="icon sidebar-toggle-expand"><use href="#icon-chevron-left"/></svg>
           <svg class="icon sidebar-toggle-collapse"><use href="#icon-chevron-right"/></svg>
         </button>
