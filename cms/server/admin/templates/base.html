@@ -10,7 +10,7 @@
     // Uses a hydration class on <html> so these rules only apply during initial render
     (function() {
       var validSectionKeys = ['training-programs', 'contests', 'tasks', 'users', 'teams', 'training-days'];
-      var folderKeyPattern = /^(folder|subfolder|training-program)-\d+$/;
+      var folderKeyPattern = /^(folder|subfolder|training-program)-\d+$|^training-days-section$/;
       var css = '';
 
       // Add hydration class to gate these styles
@@ -35,8 +35,9 @@
         if (folders) {
           JSON.parse(folders).forEach(function(key) {
             if (folderKeyPattern.test(key)) {
-              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-contents { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
-              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before { transform: rotate(0deg); margin-top: 4px; margin-left: 4px; }\n';
+              var sel = 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"]';
+              css += sel + ' > .folder-contents { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += sel + ' > .folder-header .folder-icon::before { transform: rotate(0deg); margin-top: 4px; margin-left: 4px; }\n';
             }
           });
         }
