@@ -26,6 +26,28 @@
 {% endfor %}
 {% endmacro %}
 
+{# ── Badge container (shared between folder and leaf) ────────── #}
+{% macro render_badge_container(badges) %}
+{% if badges is defined and badges|length > 0 %}
+                <div class="sidebar-badge-container">
+                  {{ render_badges(badges) }}
+                </div>
+{% endif %}
+{% endmacro %}
+
+{# ── Actions block (shared between section and folder) ────────── #}
+{% macro render_actions(actions) %}
+                <div class="sidebar-actions">
+{% for action in actions %}
+{% if action.type == "button" %}
+                  <button type="button" class="sidebar-action-link" onclick="{{ action.onclick }}">{{ action.text }}</button>
+{% else %}
+                  <a class="sidebar-action-link" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>{{ action.text }}</a>
+{% endif %}
+{% endfor %}
+                </div>
+{% endmacro %}
+
 
 
 
@@ -40,11 +62,7 @@
                 <span class="folder-icon"></span>
 {% endif %}
                 <a href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
-{% if item.badges is defined and item.badges|length > 0 %}
-                <div class="sidebar-badge-container">
-                  {{ render_badges(item.badges) }}
-                </div>
-{% endif %}
+{{ render_badge_container(item.badges) }}
               </div>
               <ul class="folder-contents">
 {% for child in item.children %}
@@ -56,15 +74,7 @@
                 </li>
 {% endif %}
 {% if item.actions is defined and item.actions|length > 0 %}
-                <div class="sidebar-actions">
-{% for action in item.actions %}
-{% if action.type == "button" %}
-                  <button type="button" class="sidebar-action-link" onclick="{{ action.onclick }}">{{ action.text }}</button>
-{% else %}
-                  <a class="sidebar-action-link" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>{{ action.text }}</a>
-{% endif %}
-{% endfor %}
-                </div>
+{{ render_actions(item.actions) }}
 {% endif %}
               </ul>
             </li>
@@ -78,11 +88,7 @@
                 <svg class="icon"><use href="#{{ item.icon }}"/></svg>
 {% endif %}
                 <a class="{{ 'menu_link' if is_top_level else '' }}" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
-{% if item.badges is defined and item.badges|length > 0 %}
-                <div class="sidebar-badge-container">
-                  {{ render_badges(item.badges) }}
-                </div>
-{% endif %}
+{{ render_badge_container(item.badges) }}
               </li>
 {% endif %}
 {% endmacro %}
@@ -109,15 +115,7 @@
             <p class="sidebar-empty">{{ item.empty_text|default("No items available") }}</p>
 {% endif %}
 {% if is_admin and item.actions is defined and item.actions|length > 0 %}
-            <div class="sidebar-actions">
-{% for action in item.actions %}
-{% if action.type == "button" %}
-              <button type="button" class="sidebar-action-link" onclick="{{ action.onclick }}">{{ action.text }}</button>
-{% else %}
-              <a class="sidebar-action-link" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>{{ action.text }}</a>
-{% endif %}
-{% endfor %}
-            </div>
+{{ render_actions(item.actions) }}
 {% endif %}
           </div>
         </div>
@@ -136,13 +134,12 @@
 {% set cls = "dropdown-item" if mode == "dropdown" else "navbar-item" %}
 {% set pl = "pl-" ~ ([depth * 2, 6] | min) if depth > 0 else "" %}
 {% set title_attr = ' title="' ~ item.title ~ '"' if item.title is defined else '' %}
+{% set show_icon = depth == 0 and mode == "mobile" and item.icon is defined %}
 {% if item.children is defined and item.children|length > 0 %}
               <details class="menu-collapsible {{ pl }}">
                 <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center">
-{% if depth == 0 and mode == "mobile" and item.icon is defined %}
-                  <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}
-                  {{ item.text }}
+{% if show_icon %}                  <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}                  {{ item.text }}
                 </summary>
                 <div class="is-flex is-flex-direction-column">
                   <a class="{{ cls }} pl-{{ [((depth + 1) * 2), 6] | min }}" href="{{ item.url }}"{{ title_attr }}>&#8599; {{ item.text }}</a>
@@ -153,21 +150,25 @@
               </details>
 {% elif item.children is defined %}
               <a class="{{ cls }} has-text-weight-semibold {{ pl }}" href="{{ item.url }}"{{ title_attr }}>
-{% if depth == 0 and mode == "mobile" and item.icon is defined %}
-                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}
-                {{ item.text }}
+{% if show_icon %}                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}                {{ item.text }}
               </a>
 {% elif item.type is defined and item.type == "action" %}
               <a class="{{ cls }} has-text-grey is-size-7 {{ pl }}" href="{{ item.url }}">{{ item.text }}</a>
 {% else %}
               <a class="{{ cls }} {{ pl }}" href="{{ item.url }}"{{ title_attr }}>
-{% if depth == 0 and mode == "mobile" and item.icon is defined %}
-                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}
-                {{ item.text }}
+{% if show_icon %}                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}                {{ item.text }}
               </a>
 {% endif %}
+{% endmacro %}
+
+{# ── Navbar link with icon (shared helper) ───────────────────── #}
+{% macro navbar_link(item) %}
+              <a href="{{ item.url }}" class="navbar-item is-flex is-align-items-center" title="{{ item.text }}">
+                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+                <span>{{ item.text }}</span>
+              </a>
 {% endmacro %}
 
 {# ── Top-level navbar item (plain link or dropdown) ──────────── #}
@@ -175,10 +176,7 @@
 {% if item.children is defined %}
           <div class="dropdown is-hoverable navbar-dropdown-section">
             <div class="dropdown-trigger">
-              <a href="{{ item.url }}" class="navbar-item is-flex is-align-items-center" title="{{ item.text }}">
-                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
-                <span>{{ item.text }}</span>
-              </a>
+{{ navbar_link(item) }}
             </div>
             <div class="dropdown-menu" role="menu" style="min-width: 220px;">
               <div class="dropdown-content" style="max-height: 400px; overflow-y: auto;">
@@ -189,10 +187,7 @@
             </div>
           </div>
 {% else %}
-              <a href="{{ item.url }}" class="navbar-item is-flex is-align-items-center" title="{{ item.text }}">
-                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
-                <span>{{ item.text }}</span>
-              </a>
+{{ navbar_link(item) }}
 {% endif %}
 {% endmacro %}
 
