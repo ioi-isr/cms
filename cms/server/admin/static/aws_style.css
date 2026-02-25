@@ -1,4 +1,4 @@
-html {
+﻿html {
     font-size: 100%;
 }
 
@@ -320,27 +320,6 @@ pre {
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent; /* Thumb Track */
 }
 
-.sidebar-breadcrumb {
-    font-size: 0.9em;
-    margin-bottom: 10px;
-    padding-left: 5px;
-    border-left: 3px solid var(--sidebar-accent);
-}
-
-.sidebar-breadcrumb a {
-    color: var(--sidebar-accent);
-}
-
-.breadcrumb-separator::before {
-    content: " / ";
-    color: var(--sidebar-text-muted);
-}
-
-.breadcrumb-current {
-    font-weight: bold;
-    color: var(--sidebar-accent-light);
-}
-
 .sidebar-section {
     margin-bottom: 12px;
     padding-top: 6px;
@@ -415,6 +394,7 @@ pre {
 }
 
 .section-caret {
+    margin-left: auto;
     display: inline-block;
     width: 8px;
     height: 8px;
@@ -476,8 +456,7 @@ pre {
     margin-left: 4px;
 }
 
-.sidebar-folder:not(.collapsed) > .folder-header .folder-icon::before,
-.sidebar-subfolder:not(.collapsed) > .folder-header .folder-icon::before {
+.sidebar-folder:not(.collapsed) > .folder-header .folder-icon::before {
     transform: rotate(90deg);
     margin-top: 2px;
     margin-left: 6px;
@@ -504,15 +483,10 @@ pre {
     transition: max-height 0.3s ease-out;
 }
 
-.sidebar-folder.collapsed > .folder-contents,
-.sidebar-subfolder.collapsed > .folder-contents {
+.sidebar-folder.collapsed > .folder-contents {
     max-height: 0;
     padding-top: 0;
     padding-bottom: 0;
-}
-
-.sidebar-subfolder {
-    margin: 2px 0;
 }
 
 .sidebar-contest, .sidebar-item {
@@ -1334,15 +1308,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 /* 3. Layout Containers */
 
-/* Container to group text on the left (caret + link) */
-.sidebar-link-group {
-    display: flex;
-    align-items: center;
-    flex: 1; /* Takes up remaining space */
-    min-width: 0; /* Allows text truncation */
-    gap: 10px;
-}
-
 /* Container to group badges on the right */
 .sidebar-badge-container {
     display: flex;
@@ -1352,9 +1317,9 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     flex-shrink: 0; /* Prevent squishing */
 }
 
-.sidebar-section-title:hover .sidebar-badge,
-.sidebar-contest:hover .sidebar-badge,
-.menu_entry:hover .sidebar-badge {
+.sidebar-section-title:hover .tag,
+.sidebar-contest:hover .tag,
+.menu_entry:hover .tag {
     transform: translateY(-1px);
     box-shadow: 0 3px 8px rgba(2, 6, 23, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }

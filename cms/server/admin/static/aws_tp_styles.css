@@ -973,11 +973,6 @@
    Navigation & Header Components
    ========================================================================== */
 
-/* Breadcrumb Navigation */
-.nav-breadcrumb {
-    margin-bottom: 12px;
-}
-
 .nav-back-link {
     display: inline-flex;
     align-items: center;
