@@ -43,6 +43,14 @@
         }
       } catch (e) {}
 
+      // Apply minimized sidebar state (prevent flash)
+      try {
+        if (localStorage.getItem('cms_sidebar_minimized') === 'true') {
+          css += '#sidebar.is-minimized .sidebar-text-el, #sidebar.is-minimized .sidebar-text-link, #sidebar.is-minimized .sidebar-badge-container, #sidebar.is-minimized .sidebar-section-body, #sidebar.is-minimized .folder-contents, #sidebar.is-minimized .folder-icon, #sidebar.is-minimized .sidebar-actions, #sidebar.is-minimized .sidebar-empty, #sidebar.is-minimized .sidebar-action, #sidebar.is-minimized .cr_notice, #sidebar.is-minimized .secret_notice, #sidebar.is-minimized .side_footer, #sidebar.is-minimized .hr { display: none !important; }\n';
+          css += '#sidebar.is-minimized { width: 60px !important; flex: 0 0 60px !important; padding: 0 !important; }\n';
+        }
+      } catch (e) {}
+
       if (css) {
         var style = document.createElement('style');
         style.id = 'sidebar-prepaint-collapsed';
@@ -331,6 +339,26 @@ function initHamburgerMenu() {
 }
 $(document).ready(initHamburgerMenu);
 
+// Sidebar minimize / expand toggle
+function initSidebarToggle() {
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle');
+    if (!sidebar || !toggleBtn) return;
+
+    // Restore persisted state
+    var minimized = false;
+    try { minimized = localStorage.getItem('cms_sidebar_minimized') === 'true'; } catch (e) {}
+    if (minimized) sidebar.classList.add('is-minimized');
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        sidebar.classList.toggle('is-minimized');
+        var isMin = sidebar.classList.contains('is-minimized');
+        try { localStorage.setItem('cms_sidebar_minimized', isMin ? 'true' : 'false'); } catch (e) {}
+    });
+}
+$(document).ready(initSidebarToggle);
+
 //-->
     </script>
 {# ── Build training-programs children ─────────────────────────── #}
@@ -616,6 +644,11 @@ $(document).ready(initHamburgerMenu);
 
     <div id="global" class="layout">
       <aside id="sidebar" class="menu is-hidden-touch">
+        <!-- Sidebar minimize/expand toggle -->
+        <button id="sidebar-toggle" class="sidebar-toggle-btn" title="Toggle sidebar" aria-label="Toggle sidebar">
+          <svg class="icon sidebar-toggle-expand"><use href="#icon-chevron-left"/></svg>
+          <svg class="icon sidebar-toggle-collapse"><use href="#icon-chevron-right"/></svg>
+        </button>
         {% if config.web_server.secret_key == config.web_server.DEFAULT_SECRET_KEY %}
         <div class="secret_notice">
           Change secret_key in cms.toml!<br/>

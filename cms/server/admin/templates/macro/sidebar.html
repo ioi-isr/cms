@@ -35,6 +35,20 @@
 {% endif %}
 {% endmacro %}
 
+{# ── Minimized-mode badge (shown only when sidebar is collapsed) ── #}
+{# Uses same absolute-positioning technique as mobile bottom nav     #}
+{% macro render_minimized_badge(item) %}
+{% if item.badges is defined and item.badges|length > 0 %}
+          <div class="minimized-badge-container">
+{% for badge in item.badges if badge.count > 0 %}
+{% if loop.first %}
+            <span class="tag is-{{ badge.color }} is-rounded minimized-badge">{{ badge.count }}</span>
+{% endif %}
+{% endfor %}
+          </div>
+{% endif %}
+{% endmacro %}
+
 {# ── Actions block (shared between section and folder) ────────── #}
 {% macro render_actions(actions) %}
                 <div class="sidebar-actions">
@@ -57,11 +71,11 @@
             <li class="sidebar-folder" {% if item.folder_key is defined %}data-folder-key="{{ item.folder_key }}"{% endif %}>
               <div class="folder-header">
 {% if item.icon is defined %}
-                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+                <a href="{{ item.url }}" class="sidebar-icon-link"><svg class="icon"><use href="#{{ item.icon }}"/></svg></a>
 {% else %}
                 <span class="folder-icon"></span>
 {% endif %}
-                <a href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
+                <a href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %} class="sidebar-text-link">{{ item.text }}</a>
 {{ render_badge_container(item.badges) }}
               </div>
               <ul class="folder-contents">
@@ -83,12 +97,15 @@
                 <a href="{{ item.url }}">{{ item.text }}</a>
               </li>
 {% else %}
-              <li class="is-gap-2 {{ 'menu_entry' if is_top_level else item.css_class|default('sidebar-item') }}">
+              <li class="is-gap-2 {{ 'menu_entry' if is_top_level else item.css_class|default('sidebar-item') }}{% if is_top_level %} sidebar-top-item{% endif %}">
 {% if is_top_level and item.icon is defined %}
-                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+                <a href="{{ item.url }}" class="sidebar-icon-link"><svg class="icon"><use href="#{{ item.icon }}"/></svg></a>
 {% endif %}
-                <a class="{{ 'menu_link' if is_top_level else '' }}" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
+                <a class="{{ 'menu_link' if is_top_level else '' }} sidebar-text-link" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
 {{ render_badge_container(item.badges) }}
+{% if is_top_level %}
+{{ render_minimized_badge(item) }}
+{% endif %}
               </li>
 {% endif %}
 {% endmacro %}
@@ -99,12 +116,12 @@
         <div class="sidebar-section" data-section-key="{{ item.key }}">
           <h2 class="sidebar-section-title">
             <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
-                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
-                <a href="{{ item.url }}">{{ item.text }}</a>
-                <span class="section-caret"></span>
+                <a href="{{ item.url }}" class="sidebar-icon-link"><svg class="icon"><use href="#{{ item.icon }}"/></svg></a>
+                <a href="{{ item.url }}" class="sidebar-text-link">{{ item.text }}</a>
+                <span class="section-caret sidebar-text-el"></span>
             </div>
           </h2>
-          <div class="sidebar-section-body">
+          <div class="sidebar-section-body sidebar-text-el">
 {% if item.children|length > 0 %}
             <ul class="sidebar-menu">
 {% for child in item.children %}
@@ -118,6 +135,7 @@
 {{ render_actions(item.actions) }}
 {% endif %}
           </div>
+{{ render_minimized_badge(item) }}
         </div>
 {% endmacro %}
 
