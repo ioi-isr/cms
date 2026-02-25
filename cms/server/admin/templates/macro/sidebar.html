@@ -126,6 +126,20 @@
 {# ── Navbar / mobile shared macros ────────────────────────── #}
 {# ══════════════════════════════════════════════════════════════ #}
 
+{# ── Menu actions for dropdown/mobile (buttons and links) ────── #}
+{% macro render_menu_actions(actions, cls, pl) %}
+{% if actions is defined and actions|length > 0 %}
+              <hr class="{{ 'dropdown-divider' if cls == 'dropdown-item' else 'navbar-divider' }} my-1">
+{% for action in actions %}
+{% if action.type == "button" %}
+              <a class="{{ cls }} has-text-link is-size-7 {{ pl }}" href="javascript:void(0)" onclick="{{ action.onclick }}">+ {{ action.text }}</a>
+{% else %}
+              <a class="{{ cls }} has-text-link is-size-7 {{ pl }}" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>+ {{ action.text }}</a>
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endmacro %}
+
 {# ── Recursive menu item for both desktop dropdown and mobile hamburger ── #}
 {#   mode: "dropdown" (desktop) or "mobile" (hamburger)                    #}
 {#   Bulma pl-* classes: pl-1=0.25rem pl-2=0.5rem pl-3=0.75rem            #}
@@ -146,6 +160,7 @@
 {% for child in item.children %}
 {{ render_menu_item(child, depth + 1, mode) }}
 {% endfor %}
+{{ render_menu_actions(item.actions, cls, "pl-" ~ [((depth + 1) * 2), 6] | min) }}
                 </div>
               </details>
 {% elif item.children is defined %}
@@ -183,6 +198,7 @@
 {% for child in item.children %}
 {{ render_menu_item(child, 0, "dropdown") }}
 {% endfor %}
+{{ render_menu_actions(item.actions, "dropdown-item", "") }}
               </div>
             </div>
           </div>
