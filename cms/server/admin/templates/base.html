@@ -625,19 +625,8 @@ $(document).ready(initMobileMoreDropdown);
             {% endif %}
           {% endfor %}
           </ul>
-        {% elif training_program is defined %}
-          {% set all_items = context_menu_items | sort(attribute='pos') %}
-          <ul class="menu">
-          {% for item in all_items %}
-            {% if item.pos == 3 %}
-            </ul>
-            <div class="hr"></div>
-            <ul class="menu">
-            {% endif %}
-{{ render_sidebar_item(item, is_top_level=true) }}
-          {% endfor %}
-          </ul>
         {% else %}
+          {# Context view (training program or contest): render from context_menu_items #}
           {% set all_items = context_menu_items | sort(attribute='pos') %}
           <ul class="menu">
           {% for item in all_items %}
@@ -649,11 +638,13 @@ $(document).ready(initMobileMoreDropdown);
 {{ render_sidebar_item(item, is_top_level=true) }}
           {% endfor %}
           </ul>
+          {% if training_program is not defined %}
           <div class="hr"></div>
           <div class="side_footer">
             <span id="remaining_text"></span>
             <span id="remaining_value"></span>
           </div>
+          {% endif %}
         {% endif %}
         <div class="cr_notice">CMS <a href="http://github.com/cms-dev/cms/">codebase</a> is released under the<br/><a href="http://www.gnu.org/licenses/agpl.txt">GNU Affero General Public License</a>.</div>
       </aside>

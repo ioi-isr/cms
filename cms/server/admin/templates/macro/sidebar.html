@@ -130,17 +130,17 @@
 
 {# ── Recursive dropdown item renderer ────────────────────────── #}
 {% macro render_navbar_dropdown_item(item, depth) %}
-{% if item.children is defined and item.children|length > 0 %}
-              <a class="dropdown-item has-text-weight-semibold" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}{% if depth > 0 %} style="padding-left: {{ 1.5 + depth * 0.75 }}rem;"{% endif %}>{{ item.text }}</a>
+{% set indent = ' style="padding-left: ' ~ (1.5 + depth * 0.75) ~ 'rem;"' if depth > 0 else '' %}
+{% set title_attr = ' title="' ~ item.title ~ '"' if item.title is defined else '' %}
+{% if item.children is defined %}
+              <a class="dropdown-item has-text-weight-semibold" href="{{ item.url }}"{{ title_attr }}{{ indent }}>{{ item.text }}</a>
 {% for child in item.children %}
 {{ render_navbar_dropdown_item(child, depth + 1) }}
 {% endfor %}
-{% elif item.children is defined %}
-              <a class="dropdown-item has-text-weight-semibold" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}{% if depth > 0 %} style="padding-left: {{ 1.5 + depth * 0.75 }}rem;"{% endif %}>{{ item.text }}</a>
 {% elif item.type is defined and item.type == "action" %}
-              <a class="dropdown-item has-text-grey-light is-size-7" href="{{ item.url }}"{% if depth > 0 %} style="padding-left: {{ 1.5 + depth * 0.75 }}rem;"{% endif %}>{{ item.text }}</a>
+              <a class="dropdown-item has-text-grey-light is-size-7" href="{{ item.url }}"{{ indent }}>{{ item.text }}</a>
 {% else %}
-              <a class="dropdown-item" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}{% if depth > 0 %} style="padding-left: {{ 1.5 + depth * 0.75 }}rem;"{% endif %}>{{ item.text }}</a>
+              <a class="dropdown-item" href="{{ item.url }}"{{ title_attr }}{{ indent }}>{{ item.text }}</a>
 {% endif %}
 {% endmacro %}
 
