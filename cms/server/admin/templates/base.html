@@ -46,7 +46,7 @@
       // Apply minimized sidebar state (prevent flash)
       try {
         if (localStorage.getItem('cms_sidebar_minimized') === 'true') {
-          css += '#sidebar.is-minimized .sidebar-text-el, #sidebar.is-minimized .sidebar-text-link, #sidebar.is-minimized .sidebar-badge-container, #sidebar.is-minimized .sidebar-section-body, #sidebar.is-minimized .folder-contents, #sidebar.is-minimized .folder-icon, #sidebar.is-minimized .sidebar-actions, #sidebar.is-minimized .sidebar-empty, #sidebar.is-minimized .sidebar-action, #sidebar.is-minimized .cr_notice, #sidebar.is-minimized .secret_notice, #sidebar.is-minimized .side_footer, #sidebar.is-minimized .hr { display: none !important; }\n';
+          css += '#sidebar.is-minimized .sidebar-minimize-hide { display: none !important; }\n';
           css += '#sidebar.is-minimized { width: 60px !important; flex: 0 0 60px !important; padding: 0 !important; }\n';
         }
       } catch (e) {}
@@ -645,19 +645,19 @@ $(document).ready(initSidebarToggle);
     <div id="global" class="layout">
       <aside id="sidebar" class="menu is-hidden-touch">
         <!-- Sidebar minimize/expand toggle -->
-        <button id="sidebar-toggle" class="sidebar-toggle-btn" title="Toggle sidebar" aria-label="Toggle sidebar">
+        <button id="sidebar-toggle" type="button" class="button is-small is-rounded p-0 sidebar-toggle-btn" title="Toggle sidebar" aria-label="Toggle sidebar">
           <svg class="icon sidebar-toggle-expand"><use href="#icon-chevron-left"/></svg>
           <svg class="icon sidebar-toggle-collapse"><use href="#icon-chevron-right"/></svg>
         </button>
         {% if config.web_server.secret_key == config.web_server.DEFAULT_SECRET_KEY %}
-        <div class="secret_notice">
+        <div class="secret_notice sidebar-minimize-hide">
           Change secret_key in cms.toml!<br/>
           For example,<br/>
           {{ get_hex_random_key() }}
         </div>
         {% endif %}
         {% if pending_password_resets > 0 %}
-        <div class="secret_notice notice-pending">
+        <div class="secret_notice notice-pending sidebar-minimize-hide">
           <a href="{{ url("users") }}">
             {{ pending_password_resets }} pending password reset{% if pending_password_resets > 1 %}s{% endif %}
           </a>
@@ -670,7 +670,7 @@ $(document).ready(initSidebarToggle);
           {% for item in all_items %}
             {% if item.pos == 3 %}
             </ul>
-            <div class="hr"></div>
+            <div class="hr sidebar-minimize-hide"></div>
             <ul class="menu">
             {% endif %}
             {% if item.children is defined %}
@@ -689,21 +689,21 @@ $(document).ready(initSidebarToggle);
           {% for item in all_items %}
             {% if item.pos == 3 %}
             </ul>
-            <div class="hr"></div>
+            <div class="hr sidebar-minimize-hide"></div>
             <ul class="menu">
             {% endif %}
 {{ render_sidebar_item(item, is_top_level=true) }}
           {% endfor %}
           </ul>
           {% if training_program is not defined %}
-          <div class="hr"></div>
-          <div class="side_footer">
+          <div class="hr sidebar-minimize-hide"></div>
+          <div class="side_footer sidebar-minimize-hide">
             <span id="remaining_text"></span>
             <span id="remaining_value"></span>
           </div>
           {% endif %}
         {% endif %}
-        <div class="cr_notice">CMS <a href="http://github.com/cms-dev/cms/">codebase</a> is released under the<br/><a href="http://www.gnu.org/licenses/agpl.txt">GNU Affero General Public License</a>.</div>
+        <div class="cr_notice sidebar-minimize-hide">CMS <a href="http://github.com/cms-dev/cms/">codebase</a> is released under the<br/><a href="http://www.gnu.org/licenses/agpl.txt">GNU Affero General Public License</a>.</div>
       </aside>
 
 {% if context_menu_items|length > 0 %}

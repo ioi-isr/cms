@@ -507,6 +507,9 @@ pre {
     color: var(--sidebar-text);
     font-weight: 500;
     text-decoration: none;
+}
+
+.folder-header a.sidebar-text-link {
     margin-left: 12px;
 }
 
@@ -729,24 +732,8 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 /* ==========================================================================
-   Sidebar icon links (always clickable)
-   ========================================================================== */
-
-.sidebar-icon-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: inherit;
-    text-decoration: none;
-}
-
-.sidebar-icon-link:hover {
-    color: var(--sidebar-accent-light);
-}
-
-/* ==========================================================================
-   Sidebar Toggle Button (half-floating circle)
+   Sidebar minimize toggle + minimized mode
+   Keep custom CSS minimal; prefer Bulma utilities in templates.
    ========================================================================== */
 
 .sidebar-toggle-btn {
@@ -756,23 +743,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     z-index: 61;
     width: 28px;
     height: 28px;
-    border-radius: 50%;
-    border: 1px solid var(--sidebar-border);
-    background: var(--sidebar-bg-dark);
-    color: var(--sidebar-slate);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     padding: 0;
-    transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
-    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.2);
-}
-
-.sidebar-toggle-btn:hover {
-    background: var(--sidebar-hover-bg);
-    color: var(--sidebar-text-bright);
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.35);
 }
 
 .sidebar-toggle-btn .icon {
@@ -781,29 +752,10 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 }
 
 /* Show << (collapse) when expanded, >> (expand) when minimized */
-.sidebar-toggle-collapse {
-    display: none;
-}
-
-#sidebar:not(.is-minimized) .sidebar-toggle-expand {
-    display: block;
-}
-
+#sidebar.is-minimized .sidebar-toggle-expand,
 #sidebar:not(.is-minimized) .sidebar-toggle-collapse {
     display: none;
 }
-
-#sidebar.is-minimized .sidebar-toggle-expand {
-    display: none;
-}
-
-#sidebar.is-minimized .sidebar-toggle-collapse {
-    display: block;
-}
-
-/* ==========================================================================
-   Minimized Sidebar
-   ========================================================================== */
 
 #sidebar {
     position: relative;
@@ -815,84 +767,14 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     flex: 0 0 60px;
     padding: 0;
     overflow-x: hidden;
-    overflow-y: auto;
 }
 
-/* Hide text elements, section bodies, folders, actions etc. in minimized mode */
-#sidebar.is-minimized .sidebar-text-el,
-#sidebar.is-minimized .sidebar-text-link,
-#sidebar.is-minimized .sidebar-badge-container,
-#sidebar.is-minimized .sidebar-section-body,
-#sidebar.is-minimized .folder-contents,
-#sidebar.is-minimized .folder-icon,
-#sidebar.is-minimized .sidebar-actions,
-#sidebar.is-minimized .sidebar-empty,
-#sidebar.is-minimized .sidebar-action,
-#sidebar.is-minimized .cr_notice,
-#sidebar.is-minimized .secret_notice,
-#sidebar.is-minimized .side_footer,
-#sidebar.is-minimized .hr {
+/* Hide all sidebar elements marked as hideable in minimized mode */
+#sidebar.is-minimized .sidebar-minimize-hide {
     display: none !important;
 }
 
-/* Toggle button repositioning in minimized mode */
-#sidebar.is-minimized .sidebar-toggle-btn {
-    position: relative;
-    top: auto;
-    right: auto;
-    margin: 8px auto;
-    box-shadow: none;
-    border-color: transparent;
-}
-
-#sidebar.is-minimized .sidebar-toggle-btn:hover {
-    border-color: var(--sidebar-border);
-}
-
-/* Section titles become icon-only centered links */
-#sidebar.is-minimized .sidebar-section-title {
-    background: none;
-    border: none;
-    box-shadow: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    justify-content: center;
-}
-
-#sidebar.is-minimized .sidebar-section-title > div {
-    justify-content: center;
-    gap: 0;
-}
-
-#sidebar.is-minimized .sidebar-section-title:hover,
-#sidebar.is-minimized .sidebar-section-title:focus {
-    background: none;
-    border: none;
-    box-shadow: none;
-}
-
-/* Sections become icon-only rows */
-#sidebar.is-minimized .sidebar-section {
-    padding: 0;
-    border: none;
-    position: relative;
-    display: flex;
-    justify-content: center;
-}
-
-/* Menu entries become icon-only centered links */
-#sidebar.is-minimized .menu_entry {
-    padding: 0;
-    justify-content: center;
-    margin: 0;
-}
-
-#sidebar.is-minimized .menu_entry:hover {
-    background: none;
-}
-
-/* All menu ULs in minimized mode */
+/* In minimized mode, render as centered icon column */
 #sidebar.is-minimized .menu {
     display: flex;
     flex-direction: column;
@@ -901,22 +783,46 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     margin: 0;
 }
 
-/* Icon links in minimized mode: enlarged, centered, equally spaced */
-#sidebar.is-minimized .sidebar-icon-link {
-    display: flex;
-    align-items: center;
+#sidebar.is-minimized .sidebar-section-title {
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+#sidebar.is-minimized .sidebar-section-title > div {
     justify-content: center;
+    gap: 0;
+}
+
+#sidebar.is-minimized .menu_entry {
+    padding: 0;
+    margin: 0;
+    justify-content: center;
+}
+
+#sidebar.is-minimized .sidebar-icon-link {
     width: 44px;
     height: 44px;
-    margin: 4px auto;
+    margin: 4px 0;
     border-radius: 10px;
     transition: background-color 0.2s, color 0.2s;
-    color: var(--sidebar-slate);
 }
 
 #sidebar.is-minimized .sidebar-icon-link:hover {
-    background: var(--sidebar-hover-bg);
-    color: var(--sidebar-accent-light);
+    background-color: var(--sidebar-hover-bg);
+}
+
+#sidebar.is-minimized .folder-header {
+    padding: 0;
+    justify-content: center;
+}
+
+#sidebar.is-minimized .folder-header:hover,
+#sidebar.is-minimized .folder-header:focus-within {
+    background-color: transparent;
+    box-shadow: none;
 }
 
 #sidebar.is-minimized .sidebar-icon-link .icon {
@@ -924,7 +830,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     height: 24px;
 }
 
-/* Minimized-mode badge overlay (absolute positioned like mobile bottom nav) */
+/* Badge overlay (similar positioning to mobile bottom nav) */
 .minimized-badge-container {
     display: none;
 }
@@ -945,11 +851,13 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     font-weight: bold;
 }
 
-/* Top-level items in minimized mode need position:relative for badge overlay */
-#sidebar.is-minimized .sidebar-top-item {
+/* Toggle button repositioning in minimized mode */
+#sidebar.is-minimized .sidebar-toggle-btn {
     position: relative;
+    top: auto;
+    right: auto;
     display: flex;
-    justify-content: center;
+    margin: 8px auto;
 }
 
 /* BORDER */

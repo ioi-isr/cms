@@ -29,7 +29,7 @@
 {# ── Badge container (shared between folder and leaf) ────────── #}
 {% macro render_badge_container(badges) %}
 {% if badges is defined and badges|length > 0 %}
-                <div class="sidebar-badge-container">
+                <div class="sidebar-badge-container sidebar-minimize-hide">
                   {{ render_badges(badges) }}
                 </div>
 {% endif %}
@@ -51,7 +51,7 @@
 
 {# ── Actions block (shared between section and folder) ────────── #}
 {% macro render_actions(actions) %}
-                <div class="sidebar-actions">
+                <div class="sidebar-actions sidebar-minimize-hide">
 {% for action in actions %}
 {% if action.type == "button" %}
                   <button type="button" class="sidebar-action-link" onclick="{{ action.onclick }}">{{ action.text }}</button>
@@ -71,19 +71,19 @@
             <li class="sidebar-folder" {% if item.folder_key is defined %}data-folder-key="{{ item.folder_key }}"{% endif %}>
               <div class="folder-header">
 {% if item.icon is defined %}
-                <a href="{{ item.url }}" class="sidebar-icon-link"><svg class="icon"><use href="#{{ item.icon }}"/></svg></a>
+                <a href="{{ item.url }}" class="sidebar-icon-link is-inline-flex is-align-items-center is-justify-content-center is-flex-shrink-0"><svg class="icon"><use href="#{{ item.icon }}"/></svg></a>
 {% else %}
-                <span class="folder-icon"></span>
+                <span class="folder-icon sidebar-minimize-hide"></span>
 {% endif %}
-                <a href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %} class="sidebar-text-link">{{ item.text }}</a>
+                <a href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %} class="sidebar-text-link sidebar-minimize-hide">{{ item.text }}</a>
 {{ render_badge_container(item.badges) }}
               </div>
-              <ul class="folder-contents">
+              <ul class="folder-contents sidebar-minimize-hide">
 {% for child in item.children %}
 {{ render_sidebar_item(child) }}
 {% endfor %}
 {% if item.empty_text is defined and item.children|length == 0 %}
-                <li class="sidebar-action">
+                <li class="sidebar-action sidebar-minimize-hide">
                   <span class="sidebar-empty">{{ item.empty_text }}</span>
                 </li>
 {% endif %}
@@ -93,13 +93,13 @@
               </ul>
             </li>
 {% elif item.type is defined and item.type == "action" %}
-              <li class="sidebar-action">
+              <li class="sidebar-action sidebar-minimize-hide">
                 <a href="{{ item.url }}">{{ item.text }}</a>
               </li>
 {% else %}
-              <li class="is-gap-2 {{ 'menu_entry' if is_top_level else item.css_class|default('sidebar-item') }}{% if is_top_level %} sidebar-top-item{% endif %}">
+              <li class="is-gap-2 {{ 'menu_entry' if is_top_level else item.css_class|default('sidebar-item') }}{% if is_top_level %} sidebar-top-item is-relative{% endif %}">
 {% if is_top_level and item.icon is defined %}
-                <a href="{{ item.url }}" class="sidebar-icon-link"><svg class="icon"><use href="#{{ item.icon }}"/></svg></a>
+                <a href="{{ item.url }}" class="sidebar-icon-link is-inline-flex is-align-items-center is-justify-content-center is-flex-shrink-0"><svg class="icon"><use href="#{{ item.icon }}"/></svg></a>
 {% endif %}
                 <a class="{{ 'menu_link' if is_top_level else '' }} sidebar-text-link" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
 {{ render_badge_container(item.badges) }}
@@ -113,15 +113,15 @@
 
 {# ── Top-level section renderer ──────────────────────────────── #}
 {% macro render_sidebar_section(item, is_admin) %}
-        <div class="sidebar-section" data-section-key="{{ item.key }}">
+        <div class="sidebar-section is-relative" data-section-key="{{ item.key }}">
           <h2 class="sidebar-section-title">
             <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
-                <a href="{{ item.url }}" class="sidebar-icon-link"><svg class="icon"><use href="#{{ item.icon }}"/></svg></a>
-                <a href="{{ item.url }}" class="sidebar-text-link">{{ item.text }}</a>
-                <span class="section-caret sidebar-text-el"></span>
+                <a href="{{ item.url }}" class="sidebar-icon-link is-inline-flex is-align-items-center is-justify-content-center is-flex-shrink-0"><svg class="icon"><use href="#{{ item.icon }}"/></svg></a>
+                <a href="{{ item.url }}" class="sidebar-text-link sidebar-minimize-hide">{{ item.text }}</a>
+                <span class="section-caret sidebar-text-el sidebar-minimize-hide"></span>
             </div>
           </h2>
-          <div class="sidebar-section-body sidebar-text-el">
+          <div class="sidebar-section-body sidebar-text-el sidebar-minimize-hide">
 {% if item.children|length > 0 %}
             <ul class="sidebar-menu">
 {% for child in item.children %}
