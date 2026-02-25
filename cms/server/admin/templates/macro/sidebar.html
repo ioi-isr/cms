@@ -23,7 +23,7 @@
 
 {# ── Recursive item renderer (level 2+) ─────────────────────── #}
 {% macro render_sidebar_item(item) %}
-{% if item.children is defined and item.children|length > 0 %}
+{% if item.children is defined %}
             <li class="sidebar-folder" {% if item.folder_key is defined %}data-folder-key="{{ item.folder_key }}"{% endif %}>
               <div class="folder-header">
                 <span class="folder-icon"></span>
