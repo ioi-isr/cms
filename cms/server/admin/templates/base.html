@@ -1,5 +1,5 @@
 {% from "macro/modal.html" import modal_header %}
-{% from "macro/sidebar.html" import render_sidebar_section, render_sidebar_item, render_badges %}
+{% from "macro/sidebar.html" import render_sidebar_section, render_sidebar_item, render_badges, render_navbar_item %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -539,10 +539,7 @@ $(document).ready(initMobileMoreDropdown);
         <div class="is-flex is-align-items-center is-flex-grow-1 is-justify-content-center is-hidden-touch">
           {% for item in global_menu_items %}
             {% if item.mobile %}
-              <a href="{{ item.url }}" class="navbar-item is-flex is-align-items-center" title="{{ item.text }}">
-                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
-                <span>{{ item.text }}</span>
-              </a>
+{{ render_navbar_item(item) }}
             {% endif %}
           {% endfor %}
         </div>

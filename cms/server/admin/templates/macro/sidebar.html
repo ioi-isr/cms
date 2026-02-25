@@ -1,7 +1,8 @@
 {#
-  Sidebar rendering macros.
-  Builds the entire sidebar from global_menu_items hierarchy.
+  Menu rendering macros for global_menu_items.
+  Builds both the sidebar and navbar dropdowns from the same hierarchy.
 
+  === Sidebar ===
   Top-level items:
     - No children  → regular menu_entry inside <ul class="menu">
     - Has children  → sidebar-section (collapsible, with title/caret)
@@ -10,6 +11,11 @@
     - Has children  → sidebar-folder (collapsible folder)
     - type "action" → sidebar-action link (e.g. "Show more...")
     - Otherwise     → leaf item (<li> with configurable css_class)
+
+  === Navbar ===
+  Top-level items with mobile=true:
+    - No children  → plain navbar-item link
+    - Has children → hoverable dropdown with nested hierarchy
 #}
 
 
@@ -90,4 +96,51 @@
 {% endif %}
           </div>
         </div>
+{% endmacro %}
+
+
+{# ══════════════════════════════════════════════════════════════ #}
+{# ── Navbar macros ─────────────────────────────────────────── #}
+{# ══════════════════════════════════════════════════════════════ #}
+
+{# ── Recursive dropdown item renderer ────────────────────────── #}
+{% macro render_navbar_dropdown_item(item, depth) %}
+{% if item.children is defined and item.children|length > 0 %}
+              <a class="dropdown-item has-text-weight-semibold" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}{% if depth > 0 %} style="padding-left: {{ 1.5 + depth * 0.75 }}rem;"{% endif %}>{{ item.text }}</a>
+{% for child in item.children %}
+{{ render_navbar_dropdown_item(child, depth + 1) }}
+{% endfor %}
+{% elif item.children is defined %}
+              <a class="dropdown-item has-text-weight-semibold" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}{% if depth > 0 %} style="padding-left: {{ 1.5 + depth * 0.75 }}rem;"{% endif %}>{{ item.text }}</a>
+{% elif item.type is defined and item.type == "action" %}
+              <a class="dropdown-item has-text-grey-light is-size-7" href="{{ item.url }}"{% if depth > 0 %} style="padding-left: {{ 1.5 + depth * 0.75 }}rem;"{% endif %}>{{ item.text }}</a>
+{% else %}
+              <a class="dropdown-item" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}{% if depth > 0 %} style="padding-left: {{ 1.5 + depth * 0.75 }}rem;"{% endif %}>{{ item.text }}</a>
+{% endif %}
+{% endmacro %}
+
+{# ── Top-level navbar item (plain link or dropdown) ──────────── #}
+{% macro render_navbar_item(item) %}
+{% if item.children is defined %}
+          <div class="dropdown is-hoverable navbar-dropdown-section">
+            <div class="dropdown-trigger">
+              <a href="{{ item.url }}" class="navbar-item is-flex is-align-items-center" title="{{ item.text }}">
+                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+                <span>{{ item.text }}</span>
+              </a>
+            </div>
+            <div class="dropdown-menu" role="menu" style="min-width: 220px;">
+              <div class="dropdown-content" style="max-height: 400px; overflow-y: auto;">
+{% for child in item.children %}
+{{ render_navbar_dropdown_item(child, 0) }}
+{% endfor %}
+              </div>
+            </div>
+          </div>
+{% else %}
+              <a href="{{ item.url }}" class="navbar-item is-flex is-align-items-center" title="{{ item.text }}">
+                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+                <span>{{ item.text }}</span>
+              </a>
+{% endif %}
 {% endmacro %}
