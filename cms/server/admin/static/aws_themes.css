@@ -181,6 +181,47 @@
     border-color: hsl(221, 14%, 24%);
 }
 
+/* Force dark text on the tinted (light) header backgrounds in dark mode */
+[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header,
+[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header,
+[data-theme="arkansas-black"] .question-card.question-answered .question-card-header {
+    color: hsl(221, 14%, 15%);
+}
+
+[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-subject,
+[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-subject,
+[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-subject {
+    color: hsl(221, 14%, 15%);
+}
+
+[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-status-badge,
+[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-status-badge,
+[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-status-badge {
+    color: hsl(221, 14%, 15%);
+}
+
+[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-meta,
+[data-theme="arkansas-black"] .question-card.question-claimed .question-card-meta,
+[data-theme="arkansas-black"] .question-card.question-answered .question-card-meta {
+    color: hsl(221, 14%, 30%);
+}
+
+[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-meta-item,
+[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-meta-item,
+[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-meta-item,
+[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-meta-item a,
+[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-meta-item a,
+[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-meta-item a {
+    color: hsl(221, 14%, 30%);
+}
+
+[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-header-actions .button,
+[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-header-actions .button,
+[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-header-actions .button {
+    color: hsl(221, 14%, 15%);
+    border-color: hsl(221, 14%, 50%);
+}
+
 [data-theme="arkansas-black"] #border {
     border-color: hsl(221, 14%, 22%);
 }
@@ -484,6 +525,81 @@
     box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
 }
 
+/* Question card header gets the classic blue title bar look */
+[data-theme="mcintosh"] .question-card .question-card-header {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%) !important;
+    color: #fff;
+    border-bottom: 2px outset #c0c0c0;
+}
+
+[data-theme="mcintosh"] .question-card .question-card-header .question-subject {
+    color: #fff;
+}
+
+[data-theme="mcintosh"] .question-card .question-card-header .question-meta-item,
+[data-theme="mcintosh"] .question-card .question-card-header .question-meta-item a,
+[data-theme="mcintosh"] .question-card .question-card-header .question-meta-item .icon {
+    color: #c0c0c0;
+}
+
+[data-theme="mcintosh"] .question-card .question-card-header .question-meta-item a:hover {
+    color: #ffff00;
+}
+
+[data-theme="mcintosh"] .question-card .question-card-header .question-status-badge {
+    background: #c0c0c0;
+    color: #000;
+    border: 1px outset #fff;
+}
+
+[data-theme="mcintosh"] .question-card .question-card-header .question-header-actions .button {
+    background: #c0c0c0;
+    color: #000;
+    border: 2px outset #fff;
+}
+
+[data-theme="mcintosh"] .question-card .question-card-body,
+[data-theme="mcintosh"] .question-card .question-reply-section,
+[data-theme="mcintosh"] .question-card .question-owner-info,
+[data-theme="mcintosh"] .question-card .question-actions {
+    background: #fff;
+    color: #000;
+}
+
+[data-theme="mcintosh"] .question-card .question-text,
+[data-theme="mcintosh"] .question-card .question-reply-text,
+[data-theme="mcintosh"] .question-card .question-reply-label,
+[data-theme="mcintosh"] .question-card .question-reply-ts,
+[data-theme="mcintosh"] .question-card .question-form-label,
+[data-theme="mcintosh"] .question-card .question-reply-form-header strong {
+    color: #000;
+}
+
+[data-theme="mcintosh"] .question-card .question-reply-accent {
+    background-color: #000080;
+}
+
+[data-theme="mcintosh"] .question-card .question-reply-form-section {
+    background: #c0c0c0;
+    border: 2px inset #808080;
+}
+
+[data-theme="mcintosh"] .question-card .question-reply-form-header {
+    color: #000080;
+}
+
+[data-theme="mcintosh"] .announcement-card-footer {
+    background: #c0c0c0;
+    color: #000;
+    border-top: 2px groove #808080;
+}
+
+[data-theme="mcintosh"] .question-card .question-form-select {
+    background: #fff;
+    color: #000;
+    border: 2px inset #808080;
+}
+
 [data-theme="mcintosh"] .modal__header {
     background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
     color: #fff;
@@ -618,31 +734,51 @@
 [data-theme="mcintosh"] svg * {
     shape-rendering: crispedges !important;
 }
+
+/* ---------- McIntosh retro scrollbars (sidebar + table containers) ---------- */
+
+[data-theme="mcintosh"] #sidebar,
+[data-theme="mcintosh"] .table-container {
+    scrollbar-width: auto;
+    scrollbar-color: #c0c0c0 #c0c0c0;
+}
+
 /* Width */
-#sidebar::-webkit-scrollbar {
-  width: 16px;
-  background: #c0c0c0; /* classic grey */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+    background: #c0c0c0;
 }
 
 /* Track */
-#sidebar::-webkit-scrollbar-track {
-  background: #c0c0c0;
-  border-left: 2px solid #808080;
-  border-top: 2px solid #808080;
-  border-right: 2px solid #ffffff;
-  border-bottom: 2px solid #ffffff;
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-track,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-track {
+    background: #c0c0c0;
+    border-left: 2px solid #808080;
+    border-top: 2px solid #808080;
+    border-right: 2px solid #ffffff;
+    border-bottom: 2px solid #ffffff;
 }
 
 /* Thumb */
-#sidebar::-webkit-scrollbar-thumb {
-  background: #c0c0c0;
-  border-left: 2px solid #ffffff;
-  border-top: 2px solid #ffffff;
-  border-right: 2px solid #808080;
-  border-bottom: 2px solid #808080;
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-thumb,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+    border-left: 2px solid #ffffff;
+    border-top: 2px solid #ffffff;
+    border-right: 2px solid #808080;
+    border-bottom: 2px solid #808080;
 }
 
 /* Thumb hover */
-#sidebar::-webkit-scrollbar-thumb:hover {
-  background: #d4d0c8;
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-thumb:hover,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-thumb:hover {
+    background: #d4d0c8;
+}
+
+/* Scrollbar corner (where horizontal and vertical scrollbars meet) */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-corner,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-corner {
+    background: #c0c0c0;
 }
