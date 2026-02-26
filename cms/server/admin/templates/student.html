@@ -21,41 +21,18 @@ CMS.AWSFormUtils.initTagify({
 {% endblock js_init %}
 
 {% block core %}
-<h1>
-  Student <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+<h1 class="title">
+  Student: <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
 </h1>
-
-<p>
-  <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks") }}">View/Manage Task Archive ({{ student.student_tasks|length }} tasks)</a>
+<p class="subtitle has-text-grey">
+  Training Program: <a href="{{ url("training_program", training_program.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+  &middot;
+  <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks") }}">View Task Archive ({{ student.student_tasks|length }} tasks)</a>
 </p>
 
-<h2 id="title_submissions" class="toggling_on">Submissions</h2>
-<div id="submissions">
-  <p>
-    Reevaluate all {{ submission_count }} submissions for this student in this training program (for all datasets)
-    {{ macro_reevaluation_buttons.reevaluation_buttons(
-           admin.permission_all,
-           url("training_program", training_program.id, "student", selected_user.id, "edit"),
-           participation_id=participation.id) }}
-    <br/>
-    <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "submissions", "download") }}">Download all submissions</a>
-  </p>
-
-  {{ macro_submission.rows(
-         admin,
-         url,
-         url["training_program"][training_program.id]["student"][selected_user.id]["edit"],
-         submissions,
-         submission_page,
-         submission_pages,
-         show_training_day=true) }}
-
-  <div class="hr"></div>
-</div>
-
-
-<h2 id="title_participation_info" class="toggling_on">Student information</h2>
-<div id="participation_info" class="content-constraint">
+<!-- Student Information -->
+<h2 class="title is-5">Student Information</h2>
+<div class="box" style="max-width: 1200px;">
   <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "edit") }}" method="POST">
     {{ xsrf_form_html|safe }}
 
@@ -202,7 +179,7 @@ CMS.AWSFormUtils.initTagify({
       </div>
     </div>
 
-    <div class="field is-grouped" style="margin-top: 1em;">
+    <div class="field is-grouped mt-4">
       <div class="control">
         <button type="submit" class="button is-primary is-outlined">Update</button>
       </div>
@@ -212,28 +189,47 @@ CMS.AWSFormUtils.initTagify({
     </div>
   </form>
 </div>
-<div class="hr"></div>
 
-<h2 id="title_questions" class="toggling_on">Questions</h2>
-<div id="questions">
+<!-- Submissions -->
+<h2 class="title is-5 mt-5">Submissions</h2>
+<div>
+  <p>
+    Reevaluate all {{ submission_count }} submissions for this student in this training program (for all datasets)
+    {{ macro_reevaluation_buttons.reevaluation_buttons(
+           admin.permission_all,
+           url("training_program", training_program.id, "student", selected_user.id, "edit"),
+           participation_id=participation.id) }}
+    <br/>
+    <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "submissions", "download") }}">Download all submissions</a>
+  </p>
+
+  {{ macro_submission.rows(
+         admin,
+         url,
+         url["training_program"][training_program.id]["student"][selected_user.id]["edit"],
+         submissions,
+         submission_page,
+         submission_pages,
+         show_training_day=true) }}
+</div>
+
+<!-- Questions -->
+<h2 class="title is-5 mt-5">Questions</h2>
+<div>
   {% if participation.questions != [] %}
   <div class="notifications">
     {% for msg in participation.questions %}
       {{ macro_question.question(msg, selected_user.id) }}
     {% endfor %}
   </div>
-
   {% else %}
-  No questions.
-
+  <p class="has-text-grey">No questions.</p>
   {% endif %}
-  <div class="hr"></div>
 </div>
 
-
-<h2 id="title_messages" class="toggling_on">Messages</h2>
-<div id="messages">
-
+<!-- Messages -->
+<h2 class="title is-5 mt-5">Messages</h2>
+<div>
   {% set student_page_url = url("training_program", training_program.id, "student", selected_user.id, "edit") %}
   {{ macro_message.send_message_form(url("contest", training_program.managing_contest.id, "user", selected_user.id, "message"), redirect_url=student_page_url) }}
 
@@ -242,10 +238,8 @@ CMS.AWSFormUtils.initTagify({
       {{ macro_message.message_card(msg, url("contest", training_program.managing_contest.id, "user", selected_user.id, "message", msg.id), url("contest", training_program.managing_contest.id, "user", selected_user.id, "message", msg.id, "edit"), redirect_url=student_page_url) }}
     {% endfor %}
   {% else %}
-    <p class="questions-empty">No messages.</p>
+    <p class="has-text-grey">No messages.</p>
   {% endif %}
-  <div class="hr"></div>
 </div>
-
 
 {% endblock core %}

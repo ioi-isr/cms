@@ -45,8 +45,7 @@ show_training_day (bool): if true, show a column indicating which training day
 </details>
 
 <div class="table-search">
-  <label for="submissions_search">Search: </label>
-  <input type="text" id="submissions_search" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)">
+  <input type="text" class="input" id="submissions_search" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)" style="max-width: 350px;">
 </div>
 
 {{ macro_pages.selector(page_url, page, pages) }}
