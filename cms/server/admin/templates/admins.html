@@ -25,9 +25,7 @@
                 <th class="has-text-centered" style="width: 100px;">All perms</th>
                 <th class="has-text-centered">Messaging</th>
                 <th class="has-text-centered">Enabled</th>
-                {% if admin.permission_all %}
                 <th class="has-text-centered">Actions</th>
-                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -61,13 +59,14 @@
                     <svg class="icon is-small has-text-danger"><use href="#icon-x"/></svg>
                     {% endif %}
                 </td>
-                {% if admin.permission_all %}
                 <td class="has-text-centered">
+                    {% if admin.permission_all or a.id == admin.id %}
                     <button type="button" class="btn-icon-only" title="Edit admin"
                             onclick="MicroModal.show('modal-edit-admin-{{ a.id }}')">
                         <svg class="icon is-small"><use href="#icon-edit"/></svg>
                     </button>
-                    {% if a.id != admin.id %}
+                    {% endif %}
+                    {% if admin.permission_all and a.id != admin.id %}
                     <button type="button" class="btn-icon-only" title="Delete admin"
                             onclick='AdminModals.deleteResource({
                                 title: "Remove Admin",
@@ -79,7 +78,6 @@
                     </button>
                     {% endif %}
                 </td>
-                {% endif %}
             </tr>
             {% endfor %}
         </tbody>
@@ -113,9 +111,11 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 {# Edit Admin Modals (one per admin) #}
 {% for a in admins %}
+{% if admin.permission_all or a.id == admin.id %}
 <div class="modal modal--medium" id="modal-edit-admin-{{ a.id }}" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1" data-micromodal-close>
         <div class="modal__container" role="dialog" aria-modal="true"
@@ -134,7 +134,7 @@
         </div>
     </div>
 </div>
-{% endfor %}
 {% endif %}
+{% endfor %}
 
 {% endblock core %}

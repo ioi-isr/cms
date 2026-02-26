@@ -684,7 +684,10 @@ function addSharingEntry(tag, topNames, topToShow) {
     var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
         tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
 
-    var entryId = 'sharing-entry-' + Date.now();
+    var uniqueSuffix = (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : (Date.now() + '-' + Math.random().toString(36).slice(2, 8));
+    var entryId = 'sharing-entry-' + uniqueSuffix;
     var html = '<div class="sharing-entry" id="' + entryId + '" style="display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px; flex-wrap: wrap;">' +
         '<div style="flex: 1; min-width: 120px;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +

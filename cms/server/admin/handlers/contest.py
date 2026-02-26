@@ -193,13 +193,8 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             .scalar()
         )
         self.r_params["submission_count"] = submission_count
-        self.r_params["other_contests"] = (
-            exclude_internal_contests(
-                self.sql_session.query(Contest).filter(Contest.id != self.contest.id)
-            )
-            .filter(~Contest.training_day.has())
-            .order_by(Contest.name)
-            .all()
+        self.r_params["other_contests"] = get_available_contests(
+            self.sql_session, exclude_contest_id=self.contest.id
         )
 
         self.render("contest.html", **self.r_params)
@@ -387,6 +382,12 @@ class RemoveContestHandler(BaseHandler):
                 self.write("error")
                 return
 
+        except ValueError as error:
+            self.set_status(400)
+            self.write(str(error))
+            return
+        except tornado.web.HTTPError:
+            raise
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Error removing contest", repr(error)

@@ -9,7 +9,8 @@
    Color Variables for Theming
    ========================================================================== */
 
-:root {
+:root,
+[data-theme="original"] {
     color-scheme: light;
     /* Primary colors (Bulma theme) */
     --tp-primary: var(--bulma-primary);
@@ -566,6 +567,7 @@
    The hue is clamped between 0 and 120 using min/max */
 .cell-content.score-cell {
     --hue: calc(var(--score, 0) * 1.2);
+
     background-color: color-mix(in srgb, hsl(min(120, max(0, var(--hue))), 75%, 90%) 50%, transparent);
     color: hsl(min(120, max(0, var(--hue))), 90%, 20%);
     background-image: none;

@@ -231,14 +231,14 @@ function initSidebarEvents() {
     sidebar.addEventListener('click', function(e) {
         // Handle section title clicks (but not link clicks)
         var sectionTitle = e.target.closest('.sidebar-section-title');
-        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+        if (sectionTitle && !e.target.closest('a')) {
             toggleSection(sectionTitle);
             return;
         }
 
         // Handle folder header clicks (but not link clicks)
         var folderHeader = e.target.closest('.folder-header');
-        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+        if (folderHeader && !e.target.closest('a')) {
             toggleFolder(folderHeader);
         }
     });
@@ -248,14 +248,14 @@ function initSidebarEvents() {
         if (e.key !== 'Enter' && e.key !== ' ') return;
 
         var sectionTitle = e.target.closest('.sidebar-section-title');
-        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+        if (sectionTitle && !e.target.closest('a')) {
             e.preventDefault();
             toggleSection(sectionTitle);
             return;
         }
 
         var folderHeader = e.target.closest('.folder-header');
-        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+        if (folderHeader && !e.target.closest('a')) {
             e.preventDefault();
             toggleFolder(folderHeader);
         }

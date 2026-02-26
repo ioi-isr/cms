@@ -113,13 +113,13 @@ Required context: admin, task, activate_data, url, xsrf_form_html
                     <p style="font-size: 0.85rem; margin-bottom: 8px;">The following message will be sent to the selected users:</p>
                     <div style="border: 1px solid var(--tp-border); border-radius: 6px; padding: 12px; background: var(--tp-bg-light);">
                         <div style="margin-bottom: 8px;">
-                            <label for="activate-dataset-message-subject" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">Subject:</label>
-                            <input type="text" id="activate-dataset-message-subject" name="message_subject" class="tp-form-input"
+                            <label for="activate-dataset-message-subject-{{ dataset.id }}" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">Subject:</label>
+                            <input type="text" id="activate-dataset-message-subject-{{ dataset.id }}" name="message_subject" class="tp-form-input"
                                    value="Task {{ task.name }} has been rejudged" />
                         </div>
                         <div>
-                            <label for="activate-dataset-message-text" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">Text:</label>
-                            <textarea id="activate-dataset-message-text" name="message_text" class="tp-form-input" rows="3">The task "{{ task.name }}" has been rejudged and the score on your submissions has been updated.</textarea>
+                            <label for="activate-dataset-message-text-{{ dataset.id }}" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">Text:</label>
+                            <textarea id="activate-dataset-message-text-{{ dataset.id }}" name="message_text" class="tp-form-input" rows="3">The task "{{ task.name }}" has been rejudged and the score on your submissions has been updated.</textarea>
                         </div>
                     </div>
                     {% endif %}

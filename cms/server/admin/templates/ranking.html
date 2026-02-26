@@ -15,6 +15,31 @@
     {%- endif -%}
 {%- endmacro %}
 
+{% macro render_student_cell(p, contest, student_tags_by_participation) -%}
+<div class="combined-ranking-student-wrapper">
+  <div class="combined-ranking-student-info">
+    <div class="combined-ranking-name-row">
+      <a class="student-name-link combined-ranking-name-link"
+         href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}"
+         title="{{ p.user.first_name }} {{ p.user.last_name }}">
+        {{ p.user.first_name }} {{ p.user.last_name }}
+      </a>
+      <span class="student-username is-hidden-mobile">({{ p.user.username }})</span>
+      <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">
+        <svg class="icon"><use href="#icon-line-chart"/></svg>
+      </a>
+    </div>
+    {% if student_tags_by_participation and student_tags_by_participation.get(p.id, []) %}
+    <div class="tags mt-1">
+      {% for tag in student_tags_by_participation.get(p.id, []) %}
+        <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{%- endmacro %}
+
 {% block core %}
 <style>
   .td-ranking-table .score-only { display: none; }
@@ -102,28 +127,7 @@
       {% for p in group_participations %}
       <tr>
         <td>
-          <div class="combined-ranking-student-wrapper">
-            <div class="combined-ranking-student-info">
-              <div class="combined-ranking-name-row">
-                <a class="student-name-link combined-ranking-name-link"
-                   href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}"
-                   title="{{ p.user.first_name }} {{ p.user.last_name }}">
-                  {{ p.user.first_name }} {{ p.user.last_name }}
-                </a>
-                <span class="student-username is-hidden-mobile">({{ p.user.username }})</span>
-                <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">
-                  <svg class="icon"><use href="#icon-line-chart"/></svg>
-                </a>
-              </div>
-              {% if student_tags_by_participation.get(p.id, []) %}
-              <div class="tags mt-1">
-                {% for tag in student_tags_by_participation.get(p.id, []) %}
-                  <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
-                {% endfor %}
-              </div>
-              {% endif %}
-            </div>
-          </div>
+          {{ render_student_cell(p, contest, student_tags_by_participation) }}
         </td>
         {% if task_archive_progress_by_participation %}
         {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}
@@ -151,7 +155,7 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="100%" class="has-text-centered p-5 has-text-grey">No students in this group.</td>
+        <td colspan="100" class="has-text-centered p-5 has-text-grey">No students in this group.</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -242,28 +246,7 @@
       {% if not p.hidden %}
     <tr>
       <td>
-        <div class="combined-ranking-student-wrapper">
-          <div class="combined-ranking-student-info">
-            <div class="combined-ranking-name-row">
-              <a class="student-name-link combined-ranking-name-link"
-                 href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}"
-                 title="{{ p.user.first_name }} {{ p.user.last_name }}">
-                {{ p.user.first_name }} {{ p.user.last_name }}
-              </a>
-              <span class="student-username is-hidden-mobile">({{ p.user.username }})</span>
-              <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">
-                <svg class="icon"><use href="#icon-line-chart"/></svg>
-              </a>
-            </div>
-            {% if student_tags_by_participation and student_tags_by_participation.get(p.id, []) %}
-            <div class="tags mt-1">
-              {% for tag in student_tags_by_participation.get(p.id, []) %}
-                <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
-              {% endfor %}
-            </div>
-            {% endif %}
-          </div>
-        </div>
+        {{ render_student_cell(p, contest, student_tags_by_participation) }}
       </td>
       {% if task_archive_progress_by_participation %}
       {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}

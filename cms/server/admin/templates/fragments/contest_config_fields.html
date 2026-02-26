@@ -219,10 +219,10 @@
                 {{ form_field('timezone', 'Timezone', contest.timezone if contest.timezone is not none else '', info_tooltip='Timezone of the server, used to display start, end times and the current server time to contestants. Example: \'Europe/Rome\', \'America/New_York\', ...') }}
             </div>
             <div class="cell is-col-span-1">
-                {{ form_field('start', 'Start time (in ' + (timezone_name|default('UTC')) + ')', (contest.start|format_datetime_input(timezone)) if timezone_name is defined else contest.start, info_tooltip='Start time of the contest in ' + (timezone_name|default('the UTC')) + ' timezone. Example: \'2015-12-31 15:00:00\'.') }}
+                {{ form_field('start', 'Start time (in ' + (timezone_name|default('UTC')) + ')', (contest.start|format_datetime_input(timezone)) if timezone is defined else contest.start, info_tooltip='Start time of the contest in ' + (timezone_name|default('the UTC')) + ' timezone. Example: \'2015-12-31 15:00:00\'.') }}
             </div>
             <div class="cell is-col-span-1">
-                {{ form_field('stop', 'End time (in ' + (timezone_name|default('UTC')) + ')', (contest.stop|format_datetime_input(timezone)) if timezone_name is defined else contest.stop, info_tooltip='End time of the contest in ' + (timezone_name|default('the UTC')) + ' timezone. Example: \'2015-12-31 18:00:00\'.') }}
+                {{ form_field('stop', 'End time (in ' + (timezone_name|default('UTC')) + ')', (contest.stop|format_datetime_input(timezone)) if timezone is defined else contest.stop, info_tooltip='End time of the contest in ' + (timezone_name|default('the UTC')) + ' timezone. Example: \'2015-12-31 18:00:00\'.') }}
             </div>
             <div class="cell is-col-span-2">
                 {{ form_field('per_user_time', 'Length of the contest', (contest.per_user_time.total_seconds()|int if contest.per_user_time is not none else ''), info_tooltip='Length of the contest (in seconds) for each contestant. If not specified, each contestant can submit solutions for the whole duration of the contest. If specified, only up to this length after the first log in (or up to the end of the contest, whichever comes first).') }}

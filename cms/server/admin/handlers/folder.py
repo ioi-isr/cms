@@ -132,4 +132,4 @@ class RemoveFolderHandler(BaseHandler):
             self.set_status(500)
             self.write("Failed to remove folder")
             return
-        self.write("../../folders")
+        self.write(self.url("folders"))

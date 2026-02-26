@@ -62,9 +62,13 @@
   {% endif %}
 </div>
 <script>
-  CMS.AWSFormUtils.initPasswordStrength(
-    "#{{ pw_field_id }}",
-    "#{{ pw_bar_id }}",
-    "#{{ pw_text_id }}"
-  );
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof CMS !== 'undefined' && CMS.AWSFormUtils) {
+      CMS.AWSFormUtils.initPasswordStrength(
+        "#{{ pw_field_id }}",
+        "#{{ pw_bar_id }}",
+        "#{{ pw_text_id }}"
+      );
+    }
+  });
 </script>

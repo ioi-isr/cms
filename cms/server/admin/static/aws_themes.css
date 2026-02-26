@@ -236,6 +236,7 @@
     --tag-inset-shadow-size: 0;
     --placeholder-color: hsl(221, 14%, 55%);
     --input-color: hsl(221, 14%, 85%);
+
     background: hsl(221, 14%, 17%) !important;
     border-color: hsl(221, 14%, 30%) !important;
 }
@@ -318,7 +319,7 @@
    ========================================================================== */
 
 @font-face {
-    font-family: "RetroPixel";
+    font-family: RetroPixel;
     src: url('https://fonts.gstatic.com/s/pressstart2p/v16/e3t4euO8T-267oIAQAu6jDQyK0nS.ttf') format('truetype');
     font-weight: 400;
     font-style: normal;
@@ -356,13 +357,13 @@
     --bulma-text-weak: #404040;
     --tp-primary-gradient: var(--bulma-primary);
 
-    font-family: "RetroPixel", "Courier New", monospace !important;
+    font-family: RetroPixel, "Courier New", monospace !important;
 
     --login-gradient: linear-gradient(135deg, #000080 0%, #008080 50%, #c0c0c0 100%);
 }
 
 [data-theme="mcintosh"] * {
-    font-family: "RetroPixel", "Courier New", monospace !important;
+    font-family: RetroPixel, "Courier New", monospace !important;
     border-radius: 0 !important;
 }
 

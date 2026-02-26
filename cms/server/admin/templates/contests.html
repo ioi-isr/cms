@@ -47,6 +47,7 @@
             <button type="button" class="btn-icon-only" title="Remove contest" style="position: absolute; top: 12px; right: 12px;"
                 aria-label="Remove contest"
                 onclick="openContestRemoveModal(this)"
+                data-contest-id="{{ c.id }}"
                 data-contest-name="{{ c.name|e }}"
                 data-remove-url="{{ url("contests", c.id, "remove") }}"
                 data-participation-count="{{ c.participations|length }}"
@@ -112,6 +113,17 @@ function openContestRemoveModal(btn) {
         document.getElementById('remove-contest-task-count').textContent = taskCount;
     } else {
         taskOptionsDiv.style.display = 'none';
+    }
+
+    var contestId = btn.getAttribute('data-contest-id');
+    var targetSelect = document.getElementById('contest_target_contest_select');
+    if (targetSelect && contestId) {
+        var options = targetSelect.querySelectorAll('option');
+        options.forEach(function(option) {
+            if (option.value === contestId) {
+                option.style.display = 'none';
+            }
+        });
     }
 
     document.querySelectorAll('#modal-remove-contest input[name="contest_remove_action"]').forEach(function(r) {
