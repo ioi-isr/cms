@@ -338,17 +338,25 @@ document.addEventListener('click', function(e) {
         {{ xsrf_form_html|safe }}
 
         <!-- Actions Bar (Floating Card) -->
-        <div class="tp-form-actions tp-form-actions-float" style="margin-bottom: 24px; margin-top: 0; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 12px; padding: 16px 24px;">
-            <div class="tp-form-submit-group">
-                 <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}><span>Update Task</span></button>
-                 <input type="reset" class="button" value="Reset Changes">
-            </div>
-            <div class="tp-form-secondary-actions">
-                 <a href="{{ url("task", task.id, "export") }}" class="button">
-                     <svg class="icon is-small"><use href="#icon-download"/></svg>
-                     <span>Export Task</span>
-                 </a>
-            </div>
+        <div class="box is-float mb-6 mt-0">
+            <nav class="level is-mobile">
+                <div class="level-left">
+                    <div class="level-item">
+                        <div class="buttons">
+                            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}><span>Update Task</span></button>
+                            <input type="reset" class="button" value="Reset Changes">
+                        </div>
+                    </div>
+                </div>
+                <div class="level-right is-hidden-touch">
+                    <div class="level-item">
+                        <a href="{{ url("task", task.id, "export") }}" class="button">
+                            <svg class="icon is-small"><use href="#icon-download"/></svg>
+                            <span>Export Task</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
         </div>
 
         <!-- Main Tabs -->
@@ -607,8 +615,9 @@ document.addEventListener('click', function(e) {
 
         <!-- TAB: Limits & Scoring -->
         <div class="task-page-tab-content" id="tab-limits-scoring">
-            <div class="tp-grid-layout">
-                <div class="tp-card col-span-6">
+          <div class="fixed-grid has-6-cols">
+            <div class="grid">
+                <div class="cell tp-card is-col-span-6-mobile is-col-span-3 is-col-span-2-fullhd">
                     <div class="tp-card-header-modern">
                         <div class="tp-card-header-icon">
                             <svg class="icon"><use href="#icon-sliders"/></svg>
@@ -647,7 +656,7 @@ document.addEventListener('click', function(e) {
                     </div>
                 </div>
 
-                <div class="tp-card col-span-6">
+                <div class="cell tp-card is-col-span-6-mobile is-col-span-3 is-col-span-2-fullhd">
                     <div class="tp-card-header-modern">
                         <div class="tp-card-header-icon">
                             <svg class="icon"><use href="#icon-trophy"/></svg>
@@ -676,6 +685,7 @@ document.addEventListener('click', function(e) {
                     </div>
                 </div>
             </div>
+          </div>
         </div>
 
         <!-- DATASETS SECTION -->
@@ -793,8 +803,9 @@ document.addEventListener('click', function(e) {
 
             <!-- Sub-tab: Configuration -->
             <div class="dataset-subtab-content active" id="ds-config-{{ dataset.id }}">
-                <div class="tp-grid-layout">
-                    <div class="tp-card col-span-12">
+              <div class="fixed-grid has-6-cols">
+                <div class="grid">
+                    <div class="cell tp-card is-col-span-6 is-col-span-4-fullhd">
                         <div class="tp-card-header-modern">
                             <div class="tp-card-header-icon">
                                 <svg class="icon"><use href="#icon-sliders"/></svg>
@@ -820,7 +831,7 @@ document.addEventListener('click', function(e) {
                             </div>
                         </div>
                     </div>
-                    <div class="tp-card col-span-12">
+                    <div class="cell tp-card is-col-span-6 is-col-span-4-fullhd">
                         <div class="tp-card-header-modern">
                             <div class="tp-card-header-icon">
                                 <svg class="icon"><use href="#icon-settings"/></svg>
@@ -900,6 +911,7 @@ document.addEventListener('click', function(e) {
                         </div>
                     </div>
                 </div>
+              </div>
             </div>
 
             <!-- Sub-tab: Subtask Validators -->

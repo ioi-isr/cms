@@ -1,7 +1,7 @@
 {% extends "base.html" %}
+{% from 'macro/bulma_file_input.html' import form_field %}
 
 {% block core %}
-<div class="content-constraint">
     <h1 class="title">Training Program</h1>
     <p class="subtitle has-text-grey">{{ training_program.name }}</p>
 
@@ -9,22 +9,32 @@
         {{ xsrf_form_html|safe }}
 
         <!-- Actions (Moved to Top) -->
-        <div class="tp-form-actions tp-form-actions-float" style="margin-bottom: 24px; margin-top: 0; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 12px; padding: 16px 24px;">
-            <div class="tp-form-submit-group">
-                <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}><span>Update Program</span></button>
-                <input type="reset" class="button" value="Reset">
-            </div>
-
-            <a href="{{ url("training_program", training_program.id, "export") }}" class="button">
-                <svg class="icon is-small"><use href="#icon-download"/></svg>
-                <span>Export all tasks</span>
-            </a>
+        <div class="box is-float mb-6 mt-0">
+            <nav class="level is-mobile">
+                <div class="level-left">
+                    <div class="level-item">
+                        <div class="buttons">
+                            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}><span>Update Program</span></button>
+                            <input type="reset" class="button" value="Reset">
+                        </div>
+                    </div>
+                </div>
+                <div class="level-right is-hidden-touch">
+                    <div class="level-item">
+                        <a href="{{ url("training_program", training_program.id, "export") }}" class="button">
+                            <svg class="icon is-small"><use href="#icon-download"/></svg>
+                            <span>Export all tasks</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
         </div>
 
-        <div class="tp-grid-layout">
+        <div class="fixed-grid has-6-cols">
+          <div class="grid">
 
             <!-- TP Information Card -->
-            <div class="tp-card col-span-12">
+            <div class="cell tp-card is-col-span-6 is-col-span-4-fullhd">
                 <div class="tp-card-header-modern">
                         <div class="tp-card-header-icon">
                             <svg class="icon"><use href="#icon-graduation-cap"/></svg>
@@ -32,21 +42,9 @@
                         <h3 class="tp-card-title-modern">Training Program Information</h3>
                 </div>
                 <div class="tp-card-body">
-                    <div class="tp-form-group">
-                        <label class="tp-form-label" for="name">
-                            Name
-                            <span class="tp-form-info" title="A short name for the training program, preferably using only letters, numbers and underscores.">?</span>
-                        </label>
-                        <input type="text" id="name" name="name" value="{{ training_program.name }}" class="tp-form-input"/>
-                    </div>
+                    {{ form_field('name', 'Name', training_program.name, info_tooltip='A short name for the training program, preferably using only letters, numbers and underscores.') }}
 
-                    <div class="tp-form-group">
-                        <label class="tp-form-label" for="description">
-                            Description
-                            <span class="tp-form-info" title="The name of the training program as seen by users.">?</span>
-                        </label>
-                        <textarea id="description" name="description" class="tp-form-input" rows="3">{{ training_program.description }}</textarea>
-                    </div>
+                    {{ form_field('description', 'Description', training_program.description, type='textarea', info_tooltip='The name of the training program as seen by users.') }}
                 </div>
             </div>
 
@@ -55,7 +53,7 @@
             {% with show_folder=false, show_name=false, show_description=false, show_login_section=true, show_analysis_section=false %}
                 {% include "fragments/contest_config_fields.html" %}
             {% endwith %}
-
+          </div>
         </div>
     </form>
 
@@ -72,7 +70,6 @@
         </button>
         {% endif %}
     </div>
-</div>
 
 {% include "fragments/modal_remove_training_program.html" %}
 

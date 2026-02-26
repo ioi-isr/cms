@@ -2017,18 +2017,17 @@
     }
 }
 
-.tp-form-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 32px;
-    padding-top: 24px;
-    border-top: 1px solid var(--tp-border);
+/* Sticky floating box utility */
+.box.is-float {
+    position: sticky;
+    top: calc(var(--bulma-navbar-height) + 12px);
+    z-index: 40;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    transition: box-shadow 0.3s ease;
 }
 
-.tp-form-submit-group {
-    display: flex;
-    gap: 12px;
+.box.is-float:hover {
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--bulma-text) 15%, transparent);
 }
 
 /* ==========================================================================
@@ -2329,19 +2328,6 @@
     font-size: 0.85rem;
     color: var(--tp-text-secondary);
     line-height: 1.1;
-}
-
-/* Floating Actions Panel - Only when .tp-form-actions-float class is applied */
-.tp-form-actions.tp-form-actions-float {
-    position: sticky;
-    top: calc(var(--bulma-navbar-height) + 12px);
-    z-index: 40;
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--bulma-text) 10%, transparent);
-    transition: box-shadow 0.3s ease;
-}
-
-.tp-form-actions.tp-form-actions-float:hover {
-    box-shadow: 0 6px 20px color-mix(in srgb, var(--bulma-text) 15%, transparent);
 }
 
 /* ==========================================================================
