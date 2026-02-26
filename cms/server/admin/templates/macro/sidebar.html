@@ -39,10 +39,10 @@
 {% macro render_actions(actions) %}
                 <div class="sidebar-actions">
 {% for action in actions %}
-{% if action.type == "button" %}
-                  <button type="button" class="sidebar-action-link" onclick='{{ action.onclick }}'>{{ action.text }}</button>
+{% if action.type == "button" or action.onclick is defined %}
+                  <button type="button" class="sidebar-action-link"{% if action.onclick is defined %} onclick='{{ action.onclick }}'{% endif %}{% if action.url is defined %} data-url="{{ action.url }}"{% endif %}>{{ action.text }}</button>
 {% else %}
-                  <a class="sidebar-action-link" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick='{{ action.onclick }}'{% endif %}>{{ action.text }}</a>
+                  <a class="sidebar-action-link" {% if action.url is defined %}href="{{ action.url }}"{% endif %}>{{ action.text }}</a>
 {% endif %}
 {% endfor %}
                 </div>
@@ -74,7 +74,9 @@
                 </li>
 {% endif %}
 {% if item.actions is defined and item.actions|length > 0 %}
+                <li class="sidebar-action-group">
 {{ render_actions(item.actions) }}
+                </li>
 {% endif %}
               </ul>
             </li>

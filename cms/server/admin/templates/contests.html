@@ -122,6 +122,7 @@ function openContestRemoveModal(btn) {
         options.forEach(function(option) {
             option.style.display = '';
         });
+        targetSelect.value = '';
         options.forEach(function(option) {
             if (option.value === contestId) {
                 option.style.display = 'none';

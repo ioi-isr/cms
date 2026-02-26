@@ -652,6 +652,7 @@ class RemoveTeamHandler(BaseHandler):
                 self.write("error")
                 return
         except Exception as fallback_error:
+            logger.exception("Unexpected error removing team %s", team_id)
             self.service.add_notification(
                 make_datetime(), "Error removing team", repr(fallback_error)
             )

@@ -332,7 +332,10 @@ class FunctionalTestFramework:
         kwargs["user_id"] = user_id
         r = self.admin_req('contest/%s/users/add' % kwargs["contest_id"],
                            args=kwargs)
-        g = re.search(r'/user/' + str(user_id) + r'/edit">', r.text)
+        g = re.search(
+            r'href=["\'][^"\']*/user/' + str(user_id) + r'/edit(?:\?[^"\']*)?["\']',
+            r.text,
+        )
         if g:
             return user_id
         else:

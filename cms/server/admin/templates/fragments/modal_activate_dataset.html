@@ -134,13 +134,13 @@ Required context: admin, task, activate_data, url, xsrf_form_html
 {% endfor %}
 
 <script>
-window.setAllActivateNotify = function(datasetId, state) {
+globalThis.setAllActivateNotify = function(datasetId, state) {
     var boxes = document.querySelectorAll('.notify_user_box_' + datasetId);
     for (var i = 0; i < boxes.length; i++) {
         boxes[i].checked = state;
     }
 };
-window.setDefaultActivateNotify = function(datasetId) {
+globalThis.setDefaultActivateNotify = function(datasetId) {
     var onBoxes = document.querySelectorAll('.default_notify_on_' + datasetId);
     for (var i = 0; i < onBoxes.length; i++) {
         onBoxes[i].checked = true;

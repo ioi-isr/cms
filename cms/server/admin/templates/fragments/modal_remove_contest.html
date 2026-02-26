@@ -81,7 +81,7 @@
 
     confirmBtn.addEventListener('click', function() {
         var taskOptionsDiv = document.getElementById('remove-contest-task-options');
-        var hasTaskOptions = taskOptionsDiv && window.getComputedStyle(taskOptionsDiv).display !== 'none';
+        var hasTaskOptions = taskOptionsDiv && globalThis.getComputedStyle(taskOptionsDiv).display !== 'none';
         var action = 'detach';
         var targetContestId = null;
 
@@ -136,7 +136,7 @@
                 });
             }
         }).then(function() {
-            window.location.href = '{{ url("contests") }}';
+            globalThis.location.href = '{{ url("contests") }}';
         }).catch(function(error) {
             AdminModals.showError(error.message);
         });

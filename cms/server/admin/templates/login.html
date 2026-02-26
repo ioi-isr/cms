@@ -58,7 +58,10 @@
           </div>
           <div class="buttons is-centered">
             <a href="{{ url() }}" class="button is-primary">Go to Overview</a>
-            <a href="{{ url("logout") }}" class="button is-light">Logout</a>
+            <form action="{{ url("logout") }}" method="POST" class="m-0 d-inline-block">
+              {{ xsrf_form_html|safe }}
+              <button type="submit" class="button is-light">Logout</button>
+            </form>
           </div>
 {% endif %}
 
