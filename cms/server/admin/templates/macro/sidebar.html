@@ -1,0 +1,230 @@
+{#
+  Menu rendering macros for global_menu_items.
+  Builds both the sidebar and navbar dropdowns from the same hierarchy.
+
+  === Sidebar ===
+  Top-level items:
+    - No children  → regular menu_entry inside <ul class="menu">
+    - Has children  → sidebar-section (collapsible, with title/caret)
+
+  Nested items (recursive):
+    - Has children  → sidebar-folder (collapsible folder)
+    - type "action" → sidebar-action link (e.g. "Show more...")
+    - Otherwise     → leaf item (<li> with configurable css_class)
+
+  === Navbar ===
+  Top-level items with mobile=true:
+    - No children  → plain navbar-item link
+    - Has children → hoverable dropdown with nested hierarchy
+#}
+
+
+{# ── Badge rendering (shared) ────────────────────────────────── #}
+{% macro render_badges(badges) %}
+{% for badge in badges %}
+<span class="tag is-bordered has-text-{{badge.color}}" {% if badge.count == 0 %}style="display: none;"{% endif %}>{{ badge.count }}</span>
+{% endfor %}
+{% endmacro %}
+
+{# ── Badge container (shared between folder and leaf) ────────── #}
+{% macro render_badge_container(badges) %}
+{% if badges is defined and badges|length > 0 %}
+                <div class="sidebar-badge-container">
+                  {{ render_badges(badges) }}
+                </div>
+{% endif %}
+{% endmacro %}
+
+{# ── Actions block (shared between section and folder) ────────── #}
+{% macro render_actions(actions) %}
+                <div class="sidebar-actions">
+{% for action in actions %}
+{% if action.type == "button" %}
+                  <button type="button" class="sidebar-action-link" onclick="{{ action.onclick }}">{{ action.text }}</button>
+{% else %}
+                  <a class="sidebar-action-link" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>{{ action.text }}</a>
+{% endif %}
+{% endfor %}
+                </div>
+{% endmacro %}
+
+
+
+
+{# ── Sidebar item renderer ──────────────────────────────────── #}
+{% macro render_sidebar_item(item, is_top_level=false) %}
+{% if item.children is defined %}
+            <li class="sidebar-folder" {% if item.folder_key is defined %}data-folder-key="{{ item.folder_key }}"{% endif %}>
+              <div class="folder-header" tabindex="0" role="button" aria-expanded="true">
+{% if item.icon is defined %}
+                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+{% else %}
+                <span class="folder-icon"></span>
+{% endif %}
+                <a href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
+{{ render_badge_container(item.badges) }}
+              </div>
+              <ul class="folder-contents">
+{% for child in item.children %}
+{{ render_sidebar_item(child) }}
+{% endfor %}
+{% if item.empty_text is defined and item.children|length == 0 %}
+                <li class="sidebar-action">
+                  <span class="sidebar-empty">{{ item.empty_text }}</span>
+                </li>
+{% endif %}
+{% if item.actions is defined and item.actions|length > 0 %}
+{{ render_actions(item.actions) }}
+{% endif %}
+              </ul>
+            </li>
+{% elif item.type is defined and item.type == "action" %}
+              <li class="sidebar-action">
+                <a href="{{ item.url }}">{{ item.text }}</a>
+              </li>
+{% else %}
+              <li class="is-gap-2 {{ 'menu_entry' if is_top_level else item.css_class|default('sidebar-item') }}">
+{% if is_top_level and item.icon is defined %}
+                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+{% endif %}
+                <a class="{{ 'menu_link' if is_top_level else '' }}" href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>{{ item.text }}</a>
+{{ render_badge_container(item.badges) }}
+              </li>
+{% endif %}
+{% endmacro %}
+
+
+{# ── Top-level section renderer ──────────────────────────────── #}
+{% macro render_sidebar_section(item, is_admin) %}
+        <div class="sidebar-section" data-section-key="{{ item.key }}">
+          <h2 class="sidebar-section-title" tabindex="0" role="button" aria-expanded="true">
+            <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
+                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+                <a href="{{ item.url }}">{{ item.text }}</a>
+                <span class="section-caret"></span>
+            </div>
+          </h2>
+          <div class="sidebar-section-body">
+{% if item.children|length > 0 %}
+            <ul class="sidebar-menu">
+{% for child in item.children %}
+{{ render_sidebar_item(child) }}
+{% endfor %}
+            </ul>
+{% else %}
+            <p class="sidebar-empty">{{ item.empty_text|default("No items available") }}</p>
+{% endif %}
+{% if is_admin and item.actions is defined and item.actions|length > 0 %}
+{{ render_actions(item.actions) }}
+{% endif %}
+          </div>
+        </div>
+{% endmacro %}
+
+
+{# ══════════════════════════════════════════════════════════════ #}
+{# ── Navbar / mobile shared macros ────────────────────────── #}
+{# ══════════════════════════════════════════════════════════════ #}
+
+{# ── Menu item content with icons (shared helper) ────────────── #}
+{% macro render_menu_content(item, show_icon) %}
+<div class="icon-text is-flex is-align-items-center">
+{% if show_icon %}
+  <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}
+  <span>{{ item.text }}</span>
+</div>
+{% endmacro %}
+
+{# ── Menu actions for dropdown/mobile (buttons and links) ────── #}
+{% macro render_menu_actions(actions, cls, pl_value) %}
+{% if actions is defined and actions|length > 0 %}
+              <hr class="{{ 'dropdown-divider' if cls == 'dropdown-item' else 'navbar-divider' }} my-1">
+{% for action in actions %}
+{% set show_plus = (action.text|lower).startswith("new") %}
+{% if action.type == "button" %}
+              <a class="{{ cls }} has-text-link is-size-7 is-flex is-align-items-center"{% if pl_value %} style="padding-left: {{ pl_value }}"{% endif %} href="javascript:void(0)" onclick="{{ action.onclick }}">
+                {% if show_plus %}<svg class="icon is-small mr-1"><use href="#icon-plus"/></svg>{% endif %}
+                <span>{{ action.text }}</span>
+              </a>
+{% else %}
+              <a class="{{ cls }} has-text-link is-size-7 is-flex is-align-items-center"{% if pl_value %} style="padding-left: {{ pl_value }}"{% endif %} {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>
+                {% if show_plus %}<svg class="icon is-small mr-1"><use href="#icon-plus"/></svg>{% endif %}
+                <span>{{ action.text }}</span>
+              </a>
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endmacro %}
+
+{# ── Recursive menu item for both desktop dropdown and mobile hamburger ── #}
+{#   mode: "dropdown" (desktop) or "mobile" (hamburger)                    #}
+{#   Padding: 0.5rem per depth level (8px per level)                        #}
+{#   Uses inline styles to support unlimited nesting depth                   #}
+{% macro render_menu_item(item, depth, mode) %}
+{% set cls = "dropdown-item" if mode == "dropdown" else "navbar-item" %}
+{% set pl = (depth * 0.5 + 1) ~ 'rem' if depth > 0 else "" %}
+{% set show_icon = depth == 0 and mode == "mobile" and item.icon is defined %}
+{% if item.children is defined and item.children|length > 0 %}
+              <details class="menu-collapsible">
+                <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %}>
+                  <a href="{{ item.url }}" class="is-flex-grow-1 is-flex is-align-items-center" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>
+{{ render_menu_content(item, show_icon) }}
+                  </a>
+                  <button type="button" class="btn-icon-only is-small ml-2" aria-label="Toggle submenu" onclick="event.preventDefault(); event.stopPropagation(); this.closest('details').open = !this.closest('details').open;">
+                      <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
+                  </button>
+                </summary>
+                <div class="is-flex is-flex-direction-column">
+{% for child in item.children %}
+{{ render_menu_item(child, depth + 1, mode) }}
+{% endfor %}
+{{ render_menu_actions(item.actions, cls, ((depth + 1) * 0.5 + 1) ~ 'rem') }}
+                </div>
+              </details>
+{% elif item.children is defined %}
+              <a class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>
+{{ render_menu_content(item, show_icon) }}
+              </a>
+{% elif item.type is defined and item.type == "action" %}
+              <a class="{{ cls }} has-text-grey is-size-7"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}">{{ item.text }}</a>
+{% else %}
+              <a class="{{ cls }}"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>
+{{ render_menu_content(item, show_icon) }}
+              </a>
+{% endif %}
+{% endmacro %}
+
+{# ── Navbar link with icon (shared helper) ───────────────────── #}
+{% macro navbar_link(item) %}
+              <a href="{{ item.url }}" class="navbar-item is-flex is-align-items-center" title="{{ item.text }}">
+                <svg class="icon"><use href="#{{ item.icon }}"/></svg>
+                <span>{{ item.text }}</span>
+              </a>
+{% endmacro %}
+
+{# ── Top-level navbar item (plain link or dropdown) ──────────── #}
+{% macro render_navbar_item(item) %}
+{% if item.children is defined %}
+          <div class="dropdown is-hoverable navbar-dropdown-section">
+            <div class="dropdown-trigger">
+{{ navbar_link(item) }}
+            </div>
+            <div class="dropdown-menu" role="menu" style="min-width: 220px;">
+              <div class="dropdown-content" style="max-height: 400px; overflow-y: auto;">
+{% for child in item.children %}
+{{ render_menu_item(child, 0, "dropdown") }}
+{% endfor %}
+{{ render_menu_actions(item.actions, "dropdown-item", "") }}
+              </div>
+            </div>
+          </div>
+{% else %}
+{{ navbar_link(item) }}
+{% endif %}
+{% endmacro %}
+
+{# ── Mobile hamburger menu item (delegates to shared renderer) ── #}
+{% macro render_mobile_menu_item(item, depth) %}
+{{ render_menu_item(item, depth, "mobile") }}
+{% endmacro %}

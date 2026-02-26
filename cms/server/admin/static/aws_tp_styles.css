@@ -57,10 +57,10 @@
     --tp-border-dark: var(--bulma-border);
 
     /* Shadow */
-    --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
-    --tp-shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.3);
+    --tp-shadow-sm: 0 1px 2px color-mix(in srgb, var(--bulma-text) 5%, transparent);
+    --tp-shadow-md: 0 4px 6px -1px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    --tp-shadow-lg: 0 10px 25px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    --tp-shadow-xl: 0 20px 60px color-mix(in srgb, var(--bulma-text) 30%, transparent);
 }
 
 /* ==========================================================================
@@ -164,7 +164,7 @@
 }
 
 .tp-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.5);
+    background: color-mix(in srgb, var(--bulma-text) 50%, transparent);
 }
 
 .tp-dialog-header {
@@ -472,7 +472,7 @@
     text-align: left;
     min-width: 250px;
     max-width: 300px;
-    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.1);
+    box-shadow: 4px 0 8px -2px color-mix(in srgb, var(--bulma-text) 10%, transparent);
     clip-path: inset(0px -10px 0px 0px);
     border-right: 1px solid var(--tp-border);
     border-bottom: 1px solid var(--tp-bg-gray);
@@ -688,7 +688,7 @@
 .ranking-table thead tr:nth-child(2) th {
     top: var(--ranking-header-top);
     z-index: 15;
-    box-shadow: 0 2px 4px -2px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px -2px color-mix(in srgb, var(--bulma-text) 10%, transparent);
     background-color: var(--tp-bg-white);
 }
 
@@ -758,7 +758,7 @@
 
 .tp-filter-input:focus {
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
     outline: none;
 }
 
@@ -1144,37 +1144,6 @@
     background: var(--tp-bg-white);
 }
 
-.histogram-icon {
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    font-size: inherit;
-    line-height: inherit;
-    color: inherit;
-    font-family: inherit;
-    display: inline;
-    cursor: pointer;
-    margin-left: 4px;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-    vertical-align: middle;
-}
-
-.histogram-icon:hover {
-    opacity: 1;
-}
-
-.histogram-icon:focus {
-    outline: 2px solid var(--bulma-info);
-    outline-offset: 1px;
-}
-
-
-.task-header .header-text,
-.total-col-header .header-text {
-    vertical-align: middle;
-}
 
 /* ==========================================================================
    Combined Ranking Page Specific Styles
@@ -1332,7 +1301,7 @@
 
 .tp-tasks-table .tagify--focus {
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.08);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tp-primary) 8%, transparent);
 }
 
 .tp-tasks-table .tagify__input {
@@ -1507,7 +1476,7 @@
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.6);
+    background: color-mix(in srgb, var(--bulma-white) 60%, transparent);
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 500;
@@ -1520,7 +1489,7 @@
 }
 
 .tp-info-alert-warning .tp-info-alert-badge:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: color-mix(in srgb, var(--bulma-white) 90%, transparent);
 }
 
 .tp-info-alert-info .tp-info-alert-badge {
@@ -1528,7 +1497,7 @@
 }
 
 .tp-info-alert-info .tp-info-alert-badge:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: color-mix(in srgb, var(--bulma-white) 90%, transparent);
 }
 
 .tp-info-alert-count {
@@ -2023,7 +1992,7 @@
 .tp-form-input:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 .tp-form-input::placeholder {
@@ -2304,7 +2273,7 @@
     background: white;
     border-radius: 50%;
     transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--bulma-text) 10%, transparent);
 }
 
 .tp-toggle-input:checked {
@@ -2367,12 +2336,12 @@
     position: sticky;
     top: calc(var(--bulma-navbar-height) + 12px);
     z-index: 40;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--bulma-text) 10%, transparent);
     transition: box-shadow 0.3s ease;
 }
 
 .tp-form-actions.tp-form-actions-float:hover {
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--bulma-text) 15%, transparent);
 }
 
 /* ==========================================================================
@@ -2486,7 +2455,7 @@
 .delays-alert-content {
     background: var(--tp-bg-white);
     border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    border: 1px solid color-mix(in srgb, var(--bulma-text) 6%, transparent);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
@@ -2511,7 +2480,7 @@
 .delays-search-input:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 .delays-search-wrapper {
@@ -2662,7 +2631,7 @@
 .delays-reject-input:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 
@@ -2824,7 +2793,7 @@
 }
 
 .delays-history-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--bulma-text) 7%, transparent);
 }
 
 .delays-history-card-header {
@@ -3290,7 +3259,7 @@
 .tp-task-type-field input[type="text"]:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 .tp-task-type-field select {
@@ -3307,7 +3276,7 @@
 .tp-task-type-field select:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 .tp-task-type-field table {
