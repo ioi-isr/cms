@@ -3400,3 +3400,102 @@
     border-bottom: 2px solid var(--tp-primary);
     display: inline-block;
 }
+
+/* ==========================================================================
+   Mobile Responsive: Combined Ranking, Attendance, Ranking Tables
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    /* --- Un-stick first column on mobile --- */
+    .attendance-table tbody th,
+    .ranking-table tbody th {
+        position: static;
+        box-shadow: none;
+        clip-path: none;
+        min-width: auto;
+        max-width: none;
+    }
+
+    .attendance-table thead tr:first-child th:first-child,
+    .ranking-table thead tr:first-child th:first-child {
+        position: sticky;
+        top: 0;
+        left: auto;
+        z-index: 10;
+    }
+
+    .ranking-table thead th.student-header {
+        left: auto;
+        z-index: 10;
+        width: auto;
+    }
+
+    /* --- Smaller fonts on mobile --- */
+    .attendance-table,
+    .ranking-table {
+        font-size: 0.75rem;
+    }
+
+    .attendance-table thead th,
+    .ranking-table thead th {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+    }
+
+    .cell-wrapper {
+        min-width: 100px;
+        padding: 6px 8px;
+    }
+
+    .cell-content {
+        font-size: 1rem;
+        padding: 8px 4px;
+    }
+
+    .student-name-wrapper,
+    .combined-ranking-student-wrapper {
+        padding: 4px 6px;
+        gap: 6px;
+    }
+
+    .student-name-link {
+        font-size: 0.8rem;
+        max-width: 120px;
+    }
+
+    .student-username {
+        font-size: 0.65em;
+    }
+
+    .combined-ranking-tags {
+        gap: 1px;
+    }
+
+    .combined-ranking-tags .tag {
+        font-size: 0.6em;
+    }
+
+    .training-day-header-main,
+    .date-header-main {
+        font-size: 0.8rem;
+    }
+
+    .training-day-header-sub,
+    .date-header-sub {
+        font-size: 0.65rem;
+    }
+
+    .status-badge {
+        font-size: 0.65rem;
+        padding: 1px 6px;
+    }
+
+    .location-row {
+        font-size: 0.65rem;
+    }
+
+    /* Ranking page toolbar stacks vertically on mobile */
+    .td-ranking-table {
+        font-size: 0.8rem;
+    }
+}
