@@ -130,7 +130,7 @@ CMS.AWSFormUtils.initTagify({
                       title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}">
                     {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
                   </a>
-                  <span class="student-username">(@{{ student.participation.user.username }})</span>
+                  <span class="student-username is-hidden-mobile">(@{{ student.participation.user.username }})</span>
                 </div>
               </div>
             </td>
@@ -229,8 +229,15 @@ CMS.AWSFormUtils.initTagify({
                   title="{{ participation.user.first_name }} {{ participation.user.last_name }}">
                 {{ participation.user.first_name }} {{ participation.user.last_name }}
               </a>
-              <span class="student-username">(@{{ participation.user.username }})</span>
+              <span class="student-username is-hidden-mobile">(@{{ participation.user.username }})</span>
             </div>
+            {% if student_tags_by_participation.get(participation.id, []) %}
+            <div class="tags mt-1">
+              {% for tag in student_tags_by_participation.get(participation.id, []) %}
+                <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
           </div>
         </div>
       </td>
