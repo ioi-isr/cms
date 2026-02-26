@@ -41,8 +41,8 @@
   </div>
   {% if admin.permission_all %}
   <div class="column is-full">
-    <div class="field">
-      <label class="label">Permissions &amp; Status</label>
+    <fieldset class="field">
+      <legend class="label">Permissions &amp; Status</legend>
       <div style="display: flex; flex-direction: column; gap: 8px;">
         <label class="checkbox">
           <input type="checkbox" name="permission_all" {% if admin_permission_all %}checked{% endif %} />
@@ -57,7 +57,7 @@
           Enabled
         </label>
       </div>
-    </div>
+    </fieldset>
   </div>
   {% endif %}
 </div>

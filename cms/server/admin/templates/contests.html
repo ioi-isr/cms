@@ -75,9 +75,9 @@
 function openContestRemoveModal(btn) {
     var name = btn.getAttribute('data-contest-name');
     var removeUrl = btn.getAttribute('data-remove-url');
-    var participationCount = parseInt(btn.getAttribute('data-participation-count')) || 0;
-    var submissionCount = parseInt(btn.getAttribute('data-submission-count')) || 0;
-    var taskCount = parseInt(btn.getAttribute('data-task-count')) || 0;
+    var participationCount = Number.parseInt(btn.getAttribute('data-participation-count')) || 0;
+    var submissionCount = Number.parseInt(btn.getAttribute('data-submission-count')) || 0;
+    var taskCount = Number.parseInt(btn.getAttribute('data-task-count')) || 0;
 
     document.getElementById('remove-contest-name').textContent = name;
 

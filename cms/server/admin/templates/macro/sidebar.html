@@ -97,7 +97,7 @@
 {# ── Top-level section renderer ──────────────────────────────── #}
 {% macro render_sidebar_section(item, is_admin) %}
         <div class="sidebar-section" data-section-key="{{ item.key }}">
-          <h2 class="sidebar-section-title" tabindex="0" role="button" aria-expanded="true">
+          <h2 class="sidebar-section-title" role="listitem" aria-expanded="true">
             <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
                 <svg class="icon"><use href="#{{ item.icon }}"/></svg>
                 <a href="{{ item.url }}">{{ item.text }}</a>
