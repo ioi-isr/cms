@@ -176,13 +176,25 @@ function applySidebarState() {
     var sectionState = SidebarState.load('cms_sidebar_collapsed');
     document.querySelectorAll('.sidebar-section[data-section-key]').forEach(function(el) {
         var key = el.getAttribute('data-section-key');
-        if (sectionState[key]) el.classList.add('collapsed');
+        var sectionTitle = el.querySelector('.sidebar-section-title');
+        if (sectionState[key]) {
+            el.classList.add('collapsed');
+            if (sectionTitle) sectionTitle.setAttribute('aria-expanded', 'false');
+        } else {
+            if (sectionTitle) sectionTitle.setAttribute('aria-expanded', 'true');
+        }
     });
 
     var folderState = SidebarState.load('cms_sidebar_folders_collapsed');
     document.querySelectorAll('.sidebar-folder[data-folder-key]').forEach(function(el) {
         var key = el.getAttribute('data-folder-key');
-        if (folderState[key]) el.classList.add('collapsed');
+        var folderHeader = el.querySelector('.folder-header');
+        if (folderState[key]) {
+            el.classList.add('collapsed');
+            if (folderHeader) folderHeader.setAttribute('aria-expanded', 'false');
+        } else {
+            if (folderHeader) folderHeader.setAttribute('aria-expanded', 'true');
+        }
     });
 
     // End hydration phase - pre-paint CSS no longer applies, class-based CSS takes over
@@ -200,6 +212,7 @@ function initSidebarEvents() {
         if (section) {
             var key = section.getAttribute('data-section-key');
             var isCollapsed = section.classList.toggle('collapsed');
+            sectionTitle.setAttribute('aria-expanded', !isCollapsed ? 'true' : 'false');
             if (key) SidebarState.toggle('cms_sidebar_collapsed', key, isCollapsed);
         }
     }
@@ -210,6 +223,7 @@ function initSidebarEvents() {
         if (folder) {
             var key = folder.getAttribute('data-folder-key');
             var isCollapsed = folder.classList.toggle('collapsed');
+            folderHeader.setAttribute('aria-expanded', !isCollapsed ? 'true' : 'false');
             if (key) SidebarState.toggle('cms_sidebar_folders_collapsed', key, isCollapsed);
         }
     }
@@ -329,7 +343,7 @@ function initHamburgerMenu() {
             var isActive = this.classList.contains('is-active');
             this.setAttribute('aria-expanded', isActive ? 'true' : 'false');
             if (target) {
-                target.classList.toggle('is-active');
+                target.classList.toggle('is-active', isActive);
                 target.setAttribute('aria-hidden', isActive ? 'false' : 'true');
             }
         });

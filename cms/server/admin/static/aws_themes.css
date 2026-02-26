@@ -236,7 +236,7 @@
    ========================================================================== */
 
 @font-face {
-    font-family: 'RetroPixel';
+    font-family: "RetroPixel";
     src: url('https://fonts.gstatic.com/s/pressstart2p/v16/e3t4euO8T-267oIAQAu6jDQyK0nS.ttf') format('truetype');
     font-weight: 400;
     font-style: normal;
@@ -274,13 +274,13 @@
     --bulma-text-weak: #404040;
     --tp-primary-gradient: var(--bulma-primary);
 
-    font-family: 'RetroPixel', 'Courier New', monospace !important;
+    font-family: "RetroPixel", "Courier New", monospace !important;
 
     --login-gradient: linear-gradient(135deg, #000080 0%, #008080 50%, #c0c0c0 100%);
 }
 
 [data-theme="mcintosh"] * {
-    font-family: 'RetroPixel', 'Courier New', monospace !important;
+    font-family: "RetroPixel", "Courier New", monospace !important;
     border-radius: 0 !important;
 }
 
@@ -579,7 +579,7 @@
 
 [data-theme="mcintosh"] .toggling_on:before,
 [data-theme="mcintosh"] .toggling_off:before {
-    font-family: 'Courier New', monospace !important;
+    font-family: "Courier New", monospace !important;
 }
 
 [data-theme="mcintosh"] img,
@@ -592,7 +592,6 @@
 [data-theme="mcintosh"] .glyphicon,
 [data-theme="mcintosh"] svg {
     image-rendering: pixelated !important;
-    image-rendering: -moz-crisp-edges !important;
     image-rendering: crisp-edges !important;
     border-radius: 0 !important;
     filter: contrast(1.5) saturate(0.5) blur(1px) !important;
@@ -614,7 +613,7 @@
 [data-theme="mcintosh"] .fab,
 [data-theme="mcintosh"] .material-icons,
 [data-theme="mcintosh"] .glyphicon {
-    font-family: 'Courier New', monospace !important;
+    font-family: "Courier New", monospace !important;
     font-style: normal !important;
     font-weight: bold !important;
     text-shadow: none !important;
@@ -623,9 +622,37 @@
 }
 
 [data-theme="mcintosh"] svg {
-    shape-rendering: crispEdges !important;
+    shape-rendering: crispedges !important;
 }
 
 [data-theme="mcintosh"] svg * {
-    shape-rendering: crispEdges !important;
+    shape-rendering: crispedges !important;
+}
+/* Width */
+#sidebar::-webkit-scrollbar {
+  width: 16px;
+  background: #c0c0c0; /* classic grey */
+}
+
+/* Track */
+#sidebar::-webkit-scrollbar-track {
+  background: #c0c0c0;
+  border-left: 2px solid #808080;
+  border-top: 2px solid #808080;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+}
+
+/* Thumb */
+#sidebar::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-left: 2px solid #ffffff;
+  border-top: 2px solid #ffffff;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #808080;
+}
+
+/* Thumb hover */
+#sidebar::-webkit-scrollbar-thumb:hover {
+  background: #d4d0c8;
 }

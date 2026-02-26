@@ -55,7 +55,7 @@
 {% macro render_sidebar_item(item, is_top_level=false) %}
 {% if item.children is defined %}
             <li class="sidebar-folder" {% if item.folder_key is defined %}data-folder-key="{{ item.folder_key }}"{% endif %}>
-              <div class="folder-header">
+              <div class="folder-header" tabindex="0" role="button" aria-expanded="true">
 {% if item.icon is defined %}
                 <svg class="icon"><use href="#{{ item.icon }}"/></svg>
 {% else %}
@@ -97,7 +97,7 @@
 {# ── Top-level section renderer ──────────────────────────────── #}
 {% macro render_sidebar_section(item, is_admin) %}
         <div class="sidebar-section" data-section-key="{{ item.key }}">
-          <h2 class="sidebar-section-title">
+          <h2 class="sidebar-section-title" tabindex="0" role="button" aria-expanded="true">
             <div class="is-gap-2 is-flex is-align-items-center is-flex-grow-1">
                 <svg class="icon"><use href="#{{ item.icon }}"/></svg>
                 <a href="{{ item.url }}">{{ item.text }}</a>
@@ -164,12 +164,11 @@
 {% macro render_menu_item(item, depth, mode) %}
 {% set cls = "dropdown-item" if mode == "dropdown" else "navbar-item" %}
 {% set pl = (depth * 0.5 + 1) ~ 'rem' if depth > 0 else "" %}
-{% set title_attr = ' title="' ~ item.title ~ '"' if item.title is defined else '' %}
 {% set show_icon = depth == 0 and mode == "mobile" and item.icon is defined %}
 {% if item.children is defined and item.children|length > 0 %}
               <details class="menu-collapsible">
                 <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %}>
-                  <a href="{{ item.url }}" class="is-flex-grow-1 is-flex is-align-items-center" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();"{{ title_attr }}>
+                  <a href="{{ item.url }}" class="is-flex-grow-1 is-flex is-align-items-center" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>
 {{ render_menu_content(item, show_icon) }}
                   </a>
                   <button type="button" class="btn-icon-only is-small ml-2" aria-label="Toggle submenu" onclick="event.preventDefault(); event.stopPropagation(); this.closest('details').open = !this.closest('details').open;">
@@ -184,13 +183,13 @@
                 </div>
               </details>
 {% elif item.children is defined %}
-              <a class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}"{{ title_attr }}>
+              <a class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>
 {{ render_menu_content(item, show_icon) }}
               </a>
 {% elif item.type is defined and item.type == "action" %}
               <a class="{{ cls }} has-text-grey is-size-7"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}">{{ item.text }}</a>
 {% else %}
-              <a class="{{ cls }}"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}"{{ title_attr }}>
+              <a class="{{ cls }}"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}"{% if item.title is defined %} title="{{ item.title }}"{% endif %}>
 {{ render_menu_content(item, show_icon) }}
               </a>
 {% endif %}

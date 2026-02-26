@@ -324,7 +324,7 @@ pre {
 
 /* LEFT */
 
-#sidebar .svg .icon,
+#sidebar .svg.icon,
 #admin-navbar .navbar-item .icon {
     color: var(--sidebar-slate);
     transition: color 0.15s ease, transform 0.2s ease;
