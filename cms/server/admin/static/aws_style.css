@@ -35,11 +35,14 @@
     --tp-question-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     --tp-question-unanswered-border: var(--bulma-warning-65);
     --tp-question-unanswered-header-bg: var(--bulma-warning-95);
+    --tp-question-unanswered-header-text: var(--bulma-warning-10, var(--bulma-text-strong));
     --tp-question-unanswered-divider: var(--bulma-warning-65);
     --tp-question-claimed-border: var(--bulma-info-75);
     --tp-question-claimed-header-bg: var(--bulma-info-95);
+    --tp-question-claimed-header-text: var(--bulma-info-10, var(--bulma-text-strong));
     --tp-question-claimed-divider: var(--bulma-info-75);
     --tp-question-answered-header-bg: var(--bulma-primary-95);
+    --tp-question-answered-header-text: var(--bulma-primary-10, var(--bulma-text-strong));
     --tp-question-answered-divider: var(--bulma-primary-80);
 
     --sidebar-bg-dark: #0F172A;
@@ -1603,13 +1606,14 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .question-card {
-    border: 1px solid var(--tp-question-border, var(--tp-border));
+    border: 1px solid var(--tp-question-border, var(--bulma-border-weak));
     border-radius: 12px;
     margin-bottom: 1.25em;
     background: var(--tp-question-card-bg);
-    box-shadow: var(--tp-question-shadow, var(--tp-shadow-sm));
+    box-shadow: var(--tp-question-shadow, 0 1px 2px color-mix(in srgb, var(--bulma-text) 5%, transparent));
     transition: box-shadow 0.15s;
     overflow: hidden;
+    color: var(--bulma-text);
 }
 
 .question-card:hover {
@@ -1622,7 +1626,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .question-ignored {
-    border-color: var(--tp-border);
+    border-color: var(--bulma-border-weak);
     opacity: 0.75;
 }
 
@@ -1632,34 +1636,58 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .question-answered {
-    border-color: var(--tp-question-border, var(--tp-border));
+    border-color: var(--tp-question-border, var(--bulma-border-weak));
 }
 
 .question-card.question-unanswered .question-card-header,
 .question-card.question-unanswered .question-card-meta {
     background: var(--tp-question-unanswered-header-bg);
+    color: var(--tp-question-unanswered-header-text);
 }
 
 .question-card.question-unanswered .question-card-header {
     border-bottom: 1px solid var(--tp-question-unanswered-divider);
 }
 
+.question-card.question-unanswered .question-card-header .question-subject,
+.question-card.question-unanswered .question-card-header .question-meta-item,
+.question-card.question-unanswered .question-card-header .question-meta-item a,
+.question-card.question-unanswered .question-card-header .question-meta-item .icon {
+    color: var(--tp-question-unanswered-header-text);
+}
+
 .question-card.question-claimed .question-card-header,
 .question-card.question-claimed .question-card-meta {
     background: var(--tp-question-claimed-header-bg);
+    color: var(--tp-question-claimed-header-text);
 }
 
 .question-card.question-claimed .question-card-header {
     border-bottom: 1px solid var(--tp-question-claimed-divider);
 }
 
+.question-card.question-claimed .question-card-header .question-subject,
+.question-card.question-claimed .question-card-header .question-meta-item,
+.question-card.question-claimed .question-card-header .question-meta-item a,
+.question-card.question-claimed .question-card-header .question-meta-item .icon {
+    color: var(--tp-question-claimed-header-text);
+}
+
 .question-card.question-answered .question-card-header,
 .question-card.question-answered .question-card-meta {
     background: var(--tp-question-answered-header-bg);
+    color: var(--tp-question-answered-header-text);
 }
 
 .question-card.question-answered .question-card-header {
     border-bottom: 1px solid var(--tp-question-answered-divider);
+}
+
+.question-card.question-answered .question-card-header .question-subject,
+.question-card.question-answered .question-card-header .question-meta-item,
+.question-card.question-answered .question-card-header .question-meta-item a,
+.question-card.question-answered .question-card-header .question-meta-item .icon {
+    color: var(--tp-question-answered-header-text);
 }
 .question-card-header {
     display: flex;
@@ -1683,7 +1711,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .question-subject {
     font-size: 1.1em;
     font-weight: 700;
-    color: var(--tp-text-primary);
+    color: var(--bulma-text-strong);
     margin: 0;
     padding: 0;
     line-height: 1.4;
@@ -1722,9 +1750,9 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .question-badge-ignored {
-    background-color: var(--tp-bg-gray);
-    color: var(--tp-text-lighter);
-    border: 1px solid var(--tp-border);
+    background-color: var(--bulma-scheme-main-ter);
+    color: var(--bulma-text-weak);
+    border: 1px solid var(--bulma-border-weak);
 }
 
 .question-badge-claimed {
@@ -1739,8 +1767,8 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     gap: 14px;
     padding: 8px 24px 12px;
     font-size: 0.85em;
-    color: var(--tp-text-muted);
-    border-bottom: 1px solid var(--tp-border);
+    color: var(--bulma-text-weak);
+    border-bottom: 1px solid var(--bulma-border-weak);
 }
 
 .question-card-meta-inline {
@@ -1757,16 +1785,16 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .question-meta-item .icon {
-    color: var(--tp-text-light);
+    color: var(--bulma-text-weak);
 }
 
 .question-meta-item a {
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-weak);
     text-decoration: none;
 }
 
 .question-meta-item a:hover {
-    color: var(--tp-primary);
+    color: var(--bulma-primary);
 }
 
 .question-card-body {
@@ -1775,18 +1803,18 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .question-text {
     font-size: 0.95em;
-    color: var(--tp-text-primary);
+    color: var(--bulma-text-strong);
     line-height: 1.6;
 }
 
 .question-text-empty {
-    color: var(--tp-text-light);
+    color: var(--bulma-text-weak);
     font-style: italic;
 }
 
 .question-reply-section {
     padding: 0 24px 16px;
-    border-top: 1px solid var(--tp-border);
+    border-top: 1px solid var(--bulma-border-weak);
 }
 
 .question-reply-header-row {
@@ -1800,13 +1828,13 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     font-weight: 700;
     font-size: 0.8em;
     letter-spacing: 0.05em;
-    color: var(--tp-primary);
+    color: var(--bulma-primary);
     text-transform: uppercase;
 }
 
 .question-reply-ts {
     font-size: 0.82em;
-    color: var(--tp-text-light);
+    color: var(--bulma-text-weak);
 }
 
 .question-reply-content-row {
@@ -1818,13 +1846,13 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .question-reply-accent {
     width: 4px;
     flex-shrink: 0;
-    background-color: var(--tp-primary);
+    background-color: var(--bulma-primary);
     border-radius: 2px;
 }
 
 .question-reply-text {
     font-size: 0.92em;
-    color: var(--tp-text-secondary);
+    color: var(--bulma-text);
     line-height: 1.5;
     flex: 1;
 }
@@ -1842,7 +1870,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .question-owner-info {
     font-size: 0.9em;
-    color: var(--tp-text-lighter);
+    color: var(--bulma-text-weak);
     font-style: italic;
     padding: 0 24px 16px;
 }
@@ -1853,12 +1881,12 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .question-card .reply_question {
     display: none;
-    border-top: 1px solid var(--tp-border);
+    border-top: 1px solid var(--bulma-border-weak);
     padding-top: 16px;
 }
 
 .question-reply-form-section {
-    background: var(--tp-bg-light);
+    background: var(--bulma-scheme-main-bis);
     border-radius: 8px;
     padding: 20px;
 }
@@ -1868,12 +1896,12 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     align-items: center;
     gap: 8px;
     margin-bottom: 16px;
-    color: var(--tp-primary);
+    color: var(--bulma-primary);
     font-size: 1em;
 }
 
 .question-reply-form-header strong {
-    color: var(--tp-text-primary);
+    color: var(--bulma-text-strong);
 }
 
 .question-form-label {
@@ -1881,7 +1909,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     font-size: 0.8em;
     font-weight: 600;
     letter-spacing: 0.04em;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-weak);
     text-transform: uppercase;
     margin-bottom: 6px;
     margin-top: 12px;
@@ -1895,20 +1923,20 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     display: block;
     width: 100%;
     padding: 9px 12px;
-    border: 1px solid var(--tp-border);
+    border: 1px solid var(--bulma-border-weak);
     border-radius: 6px;
     font-size: 0.92em;
     font-family: inherit;
     background: var(--bulma-scheme-main);
-    color: var(--tp-text-primary);
+    color: var(--bulma-text-strong);
     appearance: auto;
     box-sizing: border-box;
 }
 
 .question-form-select:focus {
-    border-color: var(--tp-primary);
+    border-color: var(--bulma-primary);
     outline: none;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tp-primary) 15%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--bulma-primary) 15%, transparent);
 }
 
 .question-card .reply_question_form {
@@ -1928,9 +1956,9 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     align-items: center;
     justify-content: space-between;
     padding: 12px 24px;
-    border-top: 1px solid var(--tp-border);
+    border-top: 1px solid var(--bulma-border-weak);
     font-size: 0.85em;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-weak);
 }
 
 .announcement-card-footer-left {
