@@ -39,6 +39,21 @@
     --tp-question-claimed-divider: var(--bulma-info-75);
     --tp-question-answered-header-bg: var(--bulma-primary-95);
     --tp-question-answered-divider: var(--bulma-primary-80);
+
+    --sidebar-bg-dark: #0F172A;
+    --sidebar-bg-light: #111827;
+    --sidebar-border: #1F2937;
+    --sidebar-text: #CBD5E1;
+    --sidebar-text-light: #DBE2EC;
+    --sidebar-text-bright: #F8FAFC;
+    --sidebar-text-muted: #64748B;
+    --sidebar-accent: #60A5FA;
+    --sidebar-accent-light: #93C5FD;
+    --sidebar-slate: #94A3B8;
+    --sidebar-hover-bg: color-mix(in srgb, var(--sidebar-slate) 12%, transparent);
+    --sidebar-hover-border: color-mix(in srgb, var(--sidebar-slate) 25%, transparent);
+    --sidebar-title-hover-bg: color-mix(in srgb, var(--sidebar-slate) 16%, transparent);
+    --sidebar-focus-glow: color-mix(in srgb, color-mix(in srgb, color-mix(in srgb, var(--sidebar-accent) 39%, var(--sidebar-text-muted) 61%) 95%, var(--sidebar-bg-dark) 5%) 35%, transparent);
 }
 
 .table {
@@ -72,12 +87,12 @@
 }
 
 .tag.is-opaque {
-  background-color: color-mix(in srgb, currentColor 12%, transparent);
+  background-color: color-mix(in srgb, currentcolor 12%, transparent);
 }
 
 .tag.is-bordered {
-  background-color: color-mix(in srgb, currentColor 12%, transparent);
-  border: 1px solid currentColor;
+  background-color: color-mix(in srgb, currentcolor 12%, transparent);
+  border: 1px solid currentcolor;
   font-weight: 500;
 }
 
@@ -103,16 +118,16 @@ pre {
     border: 1px solid var(--tp-border-light);
     border-radius: 8px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.22) transparent;
+    scrollbar-color: color-mix(in srgb, var(--bulma-border-weak) 22%, transparent) transparent;
 }
 
 .table-container::-webkit-scrollbar-thumb {
-    background-color: rgba(148, 163, 184, 0.22);
+    background-color: color-mix(in srgb, var(--bulma-border-weak) 22%, transparent);
     border-radius: 3px;
 }
 
 .table-container::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(148, 163, 184, 0.38);
+    background-color: color-mix(in srgb, var(--bulma-border-weak) 38%, transparent);
 }
 
 @media (max-width: 1023px) {
@@ -140,7 +155,7 @@ pre {
 
 #admin-navbar .navbar-menu {
     background: var(--sidebar-bg-dark);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--tp-shadow-md, 0 8px 16px rgba(0, 0, 0, 0.2));
     border-top: 1px solid var(--sidebar-border);
     position: fixed;
     top: var(--bulma-navbar-height);
@@ -159,11 +174,6 @@ pre {
 }
 
 
-
-#admin-navbar #theme-toggle {
-    cursor: pointer;
-}
-
 #admin-navbar .navbar-link {
     color: var(--sidebar-text);
     background: transparent;
@@ -181,29 +191,12 @@ pre {
     display: none;
 }
 
-.theme-dropdown-content {
-    min-width: 200px;
-    padding: 0.5rem 0;
-}
-
-#theme-dropdown .dropdown-menu {
-    min-width: 200px;
-}
-
-#theme-dropdown .dropdown-menu {
-    display: none;
-}
-
-#theme-dropdown.is-active .dropdown-menu {
-    display: block;
-}
-
 #theme-dropdown .dropdown-content {
     background: var(--sidebar-bg-dark);
     border: 1px solid var(--sidebar-border);
     border-radius: 6px;
     padding: 0.5rem 0;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--tp-shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.15)), 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 #theme-dropdown .theme-option {
@@ -234,32 +227,15 @@ pre {
 }
 
 /* Theme-specific icon colors */
-.theme-icon-original {
-    color: #0F766E;
-}
-
-.theme-icon-granny-smith {
-    color: #6DC942;
-}
-
-.theme-icon-pink-lady {
-    color: #FF6B9D;
-}
-
-.theme-icon-arkansas-black {
-    color: var(--tp-text-primary);
-}
-
-.theme-icon-golden {
-    color: #d4af37;
-}
-
-.theme-icon-mcintosh {
-    color: #ff0000;
-}
+.theme-icon-original { color: #0F766E; }
+.theme-icon-granny-smith { color: #6DC942; }
+.theme-icon-pink-lady { color: #FF6B9D; }
+.theme-icon-arkansas-black { color: var(--tp-text-primary); }
+.theme-icon-golden { color: #d4af37; }
+.theme-icon-mcintosh { color: #ff0000; }
 
 #admin-navbar .dropdown-content .dropdown-item,
-#admin-navbar .dropdown-content .menu-collapsible
+#admin-navbar .dropdown-content .menu-collapsible,
 #mobile-more-dropdown .dropdown-content .dropdown-item,
 #mobile-more-dropdown .dropdown-content .dropdown-item {
     color: var(--bulma-text);
@@ -307,7 +283,7 @@ pre {
 }
 
 .menu-collapsible > summary .btn-icon-only:hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: color-mix(in srgb, var(--bulma-text-weak) 5%, transparent);
 }
 
 /* ==========================================================================
@@ -348,26 +324,6 @@ pre {
 
 /* LEFT */
 
-/* Sidebar color palette - CSS custom properties for maintainability */
-#admin-navbar,
-#mobile-bottom-nav,
-#sidebar {
-    --sidebar-bg-dark: #0F172A;
-    --sidebar-bg-light: #111827;
-    --sidebar-border: #1F2937;
-    --sidebar-text: #CBD5E1;
-    --sidebar-text-light: #DBE2EC;
-    --sidebar-text-bright: #F8FAFC;
-    --sidebar-text-muted: #64748B;
-    --sidebar-accent: #60A5FA;
-    --sidebar-accent-light: #93C5FD;
-    --sidebar-slate: #94A3B8;
-    --sidebar-hover-bg: color-mix(in srgb, var(--sidebar-slate) 12%, transparent);
-    --sidebar-hover-border: color-mix(in srgb, var(--sidebar-slate) 25%, transparent);
-    --sidebar-title-hover-bg: color-mix(in srgb, var(--sidebar-slate) 16%, transparent);
-    --sidebar-focus-glow: color-mix(in srgb, color-mix(in srgb, color-mix(in srgb, var(--sidebar-accent) 39%, var(--sidebar-text-muted) 61%) 95%, var(--sidebar-bg-dark) 5%) 35%, transparent);
-}
-
 #sidebar .svg .icon,
 #admin-navbar .navbar-item .icon {
     color: var(--sidebar-slate);
@@ -382,7 +338,7 @@ pre {
 
 /* Allow chevron rotation in mobile navbar */
 #admin-navbar .navbar-item .btn-icon-only svg {
-    color: currentColor;
+    color: currentcolor;
     transition: transform 0.2s ease;
 }
 
@@ -442,7 +398,7 @@ pre {
 
 #admin-navbar .dropdown-content {
     overflow-x: hidden;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 /* Sidebar toggle button */
@@ -516,29 +472,29 @@ pre {
 }
 
 #sidebar::-webkit-scrollbar-thumb {
-    background-color: rgba(148, 163, 184, 0.35);
+    background-color: color-mix(in srgb, var(--bulma-border-weak) 35%, transparent);
     border-radius: 3px;
 }
 
 #sidebar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(148, 163, 184, 0.55);
+    background-color: color-mix(in srgb, var(--bulma-border-weak) 55%, transparent);
 }
 
 /* Firefox scrollbar support */
 #sidebar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.35) transparent; /* Thumb Track */
+    scrollbar-color: color-mix(in srgb, var(--bulma-border-weak) 35%, transparent) transparent; /* Thumb Track */
 }
 
 .sidebar-section {
     padding-bottom: 12px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+    border-bottom: 1px solid color-mix(in srgb, var(--bulma-border-weak) 8%, transparent);
 }
 
 #sidebar .hr {
     height: 0;
     margin: 10px 0;
-    border-top: 1px solid rgba(148, 163, 184, 0.08);
+    border-top: 1px solid color-mix(in srgb, var(--bulma-border-weak) 8%, transparent);
 }
 
 .sidebar-section-title {
@@ -774,7 +730,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     border: 1px solid var(--sidebar-border);
     border-radius: 5px;
     background-color: var(--sidebar-bg-dark);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--bulma-white) 4%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--bulma-white) 3%, transparent);
     transition: all 0.15s ease-in-out;
     cursor: pointer;
 }
@@ -783,7 +739,7 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     background-color: var(--sidebar-border);
     color: var(--sidebar-text-bright);
     border-color: var(--sidebar-text-muted);
-    box-shadow: 0 0 0 1px rgba(100, 116, 139, 0.3);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--bulma-text-weak) 30%, transparent);
 }
 
 .sidebar-empty {
@@ -1106,25 +1062,6 @@ body.admin textarea:focus {
     border: 1px solid var(--bulma-warning-75);
 }
 
-body.admin #sidebar {
-    background-color: var(--sidebar-bg-light);
-    border-right: 1px solid var(--sidebar-border);
-}
-
-body.admin #border {
-    border-left: 1px solid var(--sidebar-border);
-    border-right: 1px solid var(--sidebar-border);
-}
-
-body.admin #subpage_border {
-    border-left: 1px solid var(--sidebar-border);
-    border-right: 1px solid var(--sidebar-border);
-}
-
-body.admin table th {
-    border-bottom: 0.072em solid var(--bulma-border);
-}
-
 /* Subtask details */
 body.admin .filter-row {
     margin: 0 0 0.65em;
@@ -1444,7 +1381,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .btn-success {
     background-color: var(--bulma-success);
-    color: white;
+    color: var(--bulma-white);
     border: none;
     padding: 3px 8px;
     cursor: pointer;
@@ -1452,7 +1389,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .btn-danger {
     background-color: var(--bulma-danger);
-    color: white;
+    color: var(--bulma-white);
     border: none;
     padding: 3px 8px;
     cursor: pointer;
@@ -1460,7 +1397,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .btn-warning {
     background-color: var(--bulma-warning);
-    color: white;
+    color: var(--bulma-white);
     border: none;
     padding: 3px 8px;
     cursor: pointer;
@@ -1473,7 +1410,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 }
 
 .notice-pending a {
-    color: white;
+    color: var(--bulma-white);
 }
 
 /* Table search box */
@@ -1497,8 +1434,8 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     font-size: 0.7em;
     font-weight: 700;
     line-height: 1;
-    color: white;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    color: var(--bulma-white);
+    box-shadow: var(--tp-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.15));
     white-space: nowrap;
     transition: transform 0.2s;
 }
@@ -1531,7 +1468,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .sidebar-contest:hover .tag,
 .menu_entry:hover .tag {
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(2, 6, 23, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    box-shadow: 0 3px 8px color-mix(in srgb, var(--bulma-text) 42%, transparent), inset 0 1px 0 color-mix(in srgb, var(--bulma-white) 24%, transparent);
 }
 
 /* Menu icons styling */
@@ -1617,7 +1554,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .questions-tab.active {
     background-color: var(--tp-primary);
-    color: #fff;
+    color: var(--bulma-white);
 }
 
 .questions-pagination {
@@ -1653,7 +1590,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     padding: 0 6px;
     border-radius: 6px;
     background-color: var(--tp-primary);
-    color: #fff;
+    color: var(--bulma-white);
     font-weight: 600;
 }
 
@@ -1668,13 +1605,13 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     border-radius: 12px;
     margin-bottom: 1.25em;
     background: var(--tp-question-card-bg);
-    box-shadow: var(--tp-question-shadow, var(--tp-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05)));
+    box-shadow: var(--tp-question-shadow, var(--tp-shadow-sm));
     transition: box-shadow 0.15s;
     overflow: hidden;
 }
 
 .question-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--bulma-text) 7%, transparent);
 }
 
 .question-unanswered {
@@ -1969,7 +1906,7 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .question-form-select:focus {
     border-color: var(--tp-primary);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.15);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tp-primary) 15%, transparent);
 }
 
 .question-card .reply_question_form {

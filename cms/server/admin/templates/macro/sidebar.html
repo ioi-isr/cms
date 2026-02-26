@@ -127,15 +127,12 @@
 {# ══════════════════════════════════════════════════════════════ #}
 
 {# ── Menu item content with icons (shared helper) ────────────── #}
-{% macro render_menu_content(item, show_icon, show_eye=false) %}
+{% macro render_menu_content(item, show_icon) %}
 <div class="icon-text is-flex is-align-items-center">
 {% if show_icon %}
   <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
 {% endif %}
   <span>{{ item.text }}</span>
-{% if show_eye %}
-    <svg class="icon is-small ml-2" style="opacity: 0.5;"><use href="#icon-eye"/></svg>
-{% endif %}
 </div>
 {% endmacro %}
 
@@ -171,11 +168,11 @@
 {% set show_icon = depth == 0 and mode == "mobile" and item.icon is defined %}
 {% if item.children is defined and item.children|length > 0 %}
               <details class="menu-collapsible">
-                <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %} onclick="event.preventDefault();">
+                <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %}>
                   <a href="{{ item.url }}" class="is-flex-grow-1 is-flex is-align-items-center" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();"{{ title_attr }}>
-{{ render_menu_content(item, show_icon, true) }}
+{{ render_menu_content(item, show_icon) }}
                   </a>
-                  <button type="button" class="btn-icon-only is-small" style="margin-left: 8px;" onclick="event.stopPropagation(); this.closest('details').open = !this.closest('details').open;">
+                  <button type="button" class="btn-icon-only is-small ml-2" aria-label="Toggle submenu" onclick="event.preventDefault(); event.stopPropagation(); this.closest('details').open = !this.closest('details').open;">
                       <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
                   </button>
                 </summary>
@@ -188,7 +185,7 @@
               </details>
 {% elif item.children is defined %}
               <a class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}"{{ title_attr }}>
-{{ render_menu_content(item, show_icon, true) }}
+{{ render_menu_content(item, show_icon) }}
               </a>
 {% elif item.type is defined and item.type == "action" %}
               <a class="{{ cls }} has-text-grey is-size-7"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}">{{ item.text }}</a>

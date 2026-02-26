@@ -278,7 +278,7 @@ function initThemeToggle() {
             options[i].addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                var theme = this.getAttribute('data-theme');
+                var theme = this.getAttribute('data-theme-switch');
                 document.documentElement.setAttribute('data-theme', theme);
                 localStorage.setItem('cms_theme', theme);
                 dropdown.classList.remove('is-active');
@@ -326,7 +326,12 @@ function initHamburgerMenu() {
             var targetId = this.dataset.target;
             var target = document.getElementById(targetId);
             this.classList.toggle('is-active');
-            if (target) target.classList.toggle('is-active');
+            var isActive = this.classList.contains('is-active');
+            this.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+            if (target) {
+                target.classList.toggle('is-active');
+                target.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+            }
         });
     }
 }
@@ -455,7 +460,7 @@ $(document).ready(initHamburgerMenu);
   {"key": "contests",          "icon": "icon-stopwatch",      "text": "Contests",           "url": url("contests"),           "pos": 4, "mobile": true, "badges": [],
    "children": contest_children, "empty_text": "No contests available",
    "actions": [
-     {"type": "link", "text": "New contest", "url": "javascript:void(0)", "onclick": "AdminModals.showAddContestDialog('" ~ url("contests", "add") ~ "', '" ~ url("contest", "") ~ "')"},
+     {"type": "link", "text": "New contest", "url": "#", "onclick": "event.preventDefault(); AdminModals.showAddContestDialog('" ~ url("contests", "add") ~ "', '" ~ url("contest", "") ~ "')"},
      {"type": "button", "text": "New folder", "onclick": "MicroModal.show('modal-add-folder')"},
      {"type": "link", "text": "Manage folders", "url": url("folders")}
    ]},
@@ -566,36 +571,26 @@ $(document).ready(initHamburgerMenu);
           <!-- Theme Dropdown -->
           <div class="dropdown is-right" id="theme-dropdown">
             <div class="dropdown-trigger">
-              <a class="navbar-item" aria-haspopup="true" aria-controls="dropdown-menu" title="Change color theme">
+              <button type="button" class="navbar-item" aria-haspopup="true" aria-controls="dropdown-menu" title="Change color theme">
                 <svg class="icon"><use href="#icon-color-palette"/></svg>
-              </a>
+              </button>
             </div>
             <div class="dropdown-menu" id="dropdown-menu" role="menu">
-              <div class="dropdown-content theme-dropdown-content">
-                <a class="dropdown-item theme-option" data-theme="original">
-                  <svg class="icon theme-icon theme-icon-original"><use href="#icon-apple"/></svg>
-                  <span>Original</span>
-                </a>
-                <a class="dropdown-item theme-option" data-theme="granny-smith">
-                  <svg class="icon theme-icon theme-icon-granny-smith"><use href="#icon-apple"/></svg>
-                  <span>Granny Smith</span>
-                </a>
-                <a class="dropdown-item theme-option" data-theme="pink-lady">
-                  <svg class="icon theme-icon theme-icon-pink-lady"><use href="#icon-apple"/></svg>
-                  <span>Pink Lady</span>
-                </a>
-                <a class="dropdown-item theme-option" data-theme="arkansas-black">
-                  <svg class="icon theme-icon theme-icon-arkansas-black"><use href="#icon-apple"/></svg>
-                  <span>Arkansas Black</span>
-                </a>
-                <a class="dropdown-item theme-option" data-theme="golden">
-                  <svg class="icon theme-icon theme-icon-golden"><use href="#icon-apple"/></svg>
-                  <span>Golden</span>
-                </a>
-                <a class="dropdown-item theme-option" data-theme="mcintosh">
-                  <svg class="icon theme-icon theme-icon-mcintosh"><use href="#icon-apple"/></svg>
-                  <span>McIntosh</span>
-                </a>
+              <div class="dropdown-content">
+                {% set themes = [
+                  {'id': 'original', 'name': 'Original', 'icon_class': 'theme-icon-original'},
+                  {'id': 'granny-smith', 'name': 'Granny Smith', 'icon_class': 'theme-icon-granny-smith'},
+                  {'id': 'pink-lady', 'name': 'Pink Lady', 'icon_class': 'theme-icon-pink-lady'},
+                  {'id': 'arkansas-black', 'name': 'Arkansas Black', 'icon_class': 'theme-icon-arkansas-black'},
+                  {'id': 'golden', 'name': 'Golden', 'icon_class': 'theme-icon-golden'},
+                  {'id': 'mcintosh', 'name': 'McIntosh', 'icon_class': 'theme-icon-mcintosh'}
+                ] %}
+                {% for theme in themes %}
+                  <button type="button" class="dropdown-item theme-option" data-theme-switch="{{ theme.id }}" role="menuitem" title="{{ theme.name }}">
+                    <svg class="icon theme-icon {{ theme.icon_class }}"><use href="#icon-apple"/></svg>
+                    <span>{{ theme.name }}</span>
+                  </button>
+                {% endfor %}
               </div>
             </div>
           </div>
@@ -621,7 +616,7 @@ $(document).ready(initHamburgerMenu);
         </div>
       </div>
       <!-- Mobile hamburger menu (hidden on desktop, toggled by burger) -->
-      <div id="admin-navbar-menu" class="navbar-menu is-hidden-desktop">
+      <div id="admin-navbar-menu" class="navbar-menu is-hidden-desktop" aria-hidden="true">
         <div class="navbar-start">
           {% for item in global_menu_items | sort(attribute='pos') %}
 {{ render_mobile_menu_item(item, 0) }}
