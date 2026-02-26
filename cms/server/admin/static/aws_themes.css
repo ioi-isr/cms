@@ -221,10 +221,56 @@
     color: hsl(221, 14%, 15%);
     border-color: hsl(221, 14%, 50%);
 }
-
 [data-theme="arkansas-black"] #border {
     border-color: hsl(221, 14%, 22%);
 }
+
+/* Tagify dark mode support */
+[data-theme="arkansas-black"] .tagify {
+    --tags-bg: hsl(221, 14%, 17%);
+    --tag-bg: hsl(221, 14%, 24%);
+    --tag-hover: hsl(221, 14%, 28%);
+    --tag-text-color: hsl(221, 14%, 85%);
+    --tag-remove-bg: hsl(0, 50%, 40%);
+    --tag-remove-btn-bg--hover: hsl(0, 50%, 50%);
+    --tag-inset-shadow-size: 0;
+    --placeholder-color: hsl(221, 14%, 55%);
+    --input-color: hsl(221, 14%, 85%);
+    background: hsl(221, 14%, 17%) !important;
+    border-color: hsl(221, 14%, 30%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__tag {
+    background: hsl(221, 14%, 24%) !important;
+    color: hsl(221, 14%, 85%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__tag-text {
+    color: hsl(221, 14%, 85%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__input {
+    color: hsl(221, 14%, 85%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__input::before {
+    color: hsl(221, 14%, 55%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__dropdown {
+    background: hsl(221, 14%, 14%) !important;
+    border-color: hsl(221, 14%, 30%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__dropdown__item {
+    background: black;
+    color: hsl(221, 14%, 85%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__dropdown__item--active {
+    background: hsl(221, 14%, 24%) !important;
+}
+
 
 /* ==========================================================================
    4. Golden Theme
@@ -739,46 +785,72 @@
 
 [data-theme="mcintosh"] #sidebar,
 [data-theme="mcintosh"] .table-container {
-    scrollbar-width: auto;
-    scrollbar-color: #c0c0c0 #c0c0c0;
+    scrollbar-width: thin;
+    scrollbar-color: #808080 #c0c0c0;
 }
 
-/* Width */
+/* Scrollbar width and background */
 [data-theme="mcintosh"] #sidebar::-webkit-scrollbar,
 [data-theme="mcintosh"] .table-container::-webkit-scrollbar {
-    width: 16px;
-    height: 16px;
-    background: #c0c0c0;
+    width: 18px;
+    height: 18px;
 }
 
-/* Track */
+/* Track - the groove the thumb slides in */
 [data-theme="mcintosh"] #sidebar::-webkit-scrollbar-track,
 [data-theme="mcintosh"] .table-container::-webkit-scrollbar-track {
     background: #c0c0c0;
-    border-left: 2px solid #808080;
-    border-top: 2px solid #808080;
-    border-right: 2px solid #ffffff;
-    border-bottom: 2px solid #ffffff;
+    box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #ffffff;
 }
 
-/* Thumb */
+/* Thumb - the draggable scrolling handle */
 [data-theme="mcintosh"] #sidebar::-webkit-scrollbar-thumb,
 [data-theme="mcintosh"] .table-container::-webkit-scrollbar-thumb {
     background: #c0c0c0;
-    border-left: 2px solid #ffffff;
-    border-top: 2px solid #ffffff;
-    border-right: 2px solid #808080;
-    border-bottom: 2px solid #808080;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.5);
+    min-height: 30px;
 }
 
-/* Thumb hover */
+/* Thumb hover state */
 [data-theme="mcintosh"] #sidebar::-webkit-scrollbar-thumb:hover,
 [data-theme="mcintosh"] .table-container::-webkit-scrollbar-thumb:hover {
     background: #d4d0c8;
+}
+
+/* Thumb active/pressed state */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-thumb:active,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-thumb:active {
+    background: #a0a0a0;
+    border-color: #808080 #ffffff #ffffff #808080;
+}
+
+/* Scrollbar buttons (arrows) */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-button,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-button {
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    height: 18px;
+    width: 18px;
+}
+
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-button:hover,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-button:hover {
+    background: #d4d0c8;
+}
+
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-button:active,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-button:active {
+    background: #a0a0a0;
+    border-color: #808080 #ffffff #ffffff #808080;
 }
 
 /* Scrollbar corner (where horizontal and vertical scrollbars meet) */
 [data-theme="mcintosh"] #sidebar::-webkit-scrollbar-corner,
 [data-theme="mcintosh"] .table-container::-webkit-scrollbar-corner {
     background: #c0c0c0;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
 }

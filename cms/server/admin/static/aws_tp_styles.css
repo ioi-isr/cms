@@ -1177,18 +1177,6 @@
     max-width: 100%;
 }
 
-.combined-ranking-tags {
-    margin-top: 3px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-}
-
-.combined-ranking-tag {
-    font-weight: normal;
-    font-size: 0.7em;
-}
-
 .history-link {
     margin-left: auto;
     text-decoration: none;
