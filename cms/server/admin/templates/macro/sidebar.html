@@ -147,15 +147,35 @@
 {# ── Navbar / mobile shared macros ────────────────────────── #}
 {# ══════════════════════════════════════════════════════════════ #}
 
+{# ── Menu item content with icons (shared helper) ────────────── #}
+{% macro render_menu_content(item, show_icon, show_eye=false) %}
+<div class="icon-text is-flex is-align-items-center">
+{% if show_icon %}
+  <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
+{% endif %}
+  <span>{{ item.text }}</span>
+{% if show_eye %}
+    <svg class="icon is-small ml-2" style="opacity: 0.5;"><use href="#icon-eye"/></svg>
+{% endif %}
+</div>
+{% endmacro %}
+
 {# ── Menu actions for dropdown/mobile (buttons and links) ────── #}
-{% macro render_menu_actions(actions, cls, pl) %}
+{% macro render_menu_actions(actions, cls, pl_value) %}
 {% if actions is defined and actions|length > 0 %}
               <hr class="{{ 'dropdown-divider' if cls == 'dropdown-item' else 'navbar-divider' }} my-1">
 {% for action in actions %}
+{% set show_plus = (action.text|lower).startswith("new") %}
 {% if action.type == "button" %}
-              <a class="{{ cls }} has-text-link is-size-7 {{ pl }}" href="javascript:void(0)" onclick="{{ action.onclick }}">+ {{ action.text }}</a>
+              <a class="{{ cls }} has-text-link is-size-7 is-flex is-align-items-center"{% if pl_value %} style="padding-left: {{ pl_value }}"{% endif %} href="javascript:void(0)" onclick="{{ action.onclick }}">
+                {% if show_plus %}<svg class="icon is-small mr-1"><use href="#icon-plus"/></svg>{% endif %}
+                <span>{{ action.text }}</span>
+              </a>
 {% else %}
-              <a class="{{ cls }} has-text-link is-size-7 {{ pl }}" {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>+ {{ action.text }}</a>
+              <a class="{{ cls }} has-text-link is-size-7 is-flex is-align-items-center"{% if pl_value %} style="padding-left: {{ pl_value }}"{% endif %} {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>
+                {% if show_plus %}<svg class="icon is-small mr-1"><use href="#icon-plus"/></svg>{% endif %}
+                <span>{{ action.text }}</span>
+              </a>
 {% endif %}
 {% endfor %}
 {% endif %}
@@ -163,37 +183,39 @@
 
 {# ── Recursive menu item for both desktop dropdown and mobile hamburger ── #}
 {#   mode: "dropdown" (desktop) or "mobile" (hamburger)                    #}
-{#   Bulma pl-* classes: pl-1=0.25rem pl-2=0.5rem pl-3=0.75rem            #}
-{#                       pl-4=1rem pl-5=1.5rem pl-6=3rem                   #}
+{#   Padding: 0.5rem per depth level (8px per level)                        #}
+{#   Uses inline styles to support unlimited nesting depth                   #}
 {% macro render_menu_item(item, depth, mode) %}
 {% set cls = "dropdown-item" if mode == "dropdown" else "navbar-item" %}
-{% set pl = "pl-" ~ ([depth * 2, 6] | min) if depth > 0 else "" %}
+{% set pl = (depth * 0.5 + 1) ~ 'rem' if depth > 0 else "" %}
 {% set title_attr = ' title="' ~ item.title ~ '"' if item.title is defined else '' %}
 {% set show_icon = depth == 0 and mode == "mobile" and item.icon is defined %}
 {% if item.children is defined and item.children|length > 0 %}
-              <details class="menu-collapsible {{ pl }}">
-                <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center">
-{% if show_icon %}                  <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}                  <a href="{{ item.url }}"{{ title_attr }} class="has-text-current" onclick="event.stopPropagation()"><svg class="icon is-small mr-1" style="opacity:0.5;"><use href="#icon-eye"/></svg></a>{{ item.text }}
+              <details class="menu-collapsible">
+                <summary class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %} onclick="event.preventDefault();">
+                  <a href="{{ item.url }}" class="is-flex-grow-1 is-flex is-align-items-center" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();"{{ title_attr }}>
+{{ render_menu_content(item, show_icon, true) }}
+                  </a>
+                  <button type="button" class="btn-icon-only is-small" style="margin-left: 8px;" onclick="event.stopPropagation(); this.closest('details').open = !this.closest('details').open;">
+                      <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
+                  </button>
                 </summary>
                 <div class="is-flex is-flex-direction-column">
 {% for child in item.children %}
 {{ render_menu_item(child, depth + 1, mode) }}
 {% endfor %}
-{{ render_menu_actions(item.actions, cls, "pl-" ~ [((depth + 1) * 2), 6] | min) }}
+{{ render_menu_actions(item.actions, cls, ((depth + 1) * 0.5 + 1) ~ 'rem') }}
                 </div>
               </details>
 {% elif item.children is defined %}
-              <a class="{{ cls }} has-text-weight-semibold {{ pl }}" href="{{ item.url }}"{{ title_attr }}>
-{% if show_icon %}                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}                {{ item.text }}
+              <a class="{{ cls }} has-text-weight-semibold is-flex is-align-items-center"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}"{{ title_attr }}>
+{{ render_menu_content(item, show_icon, true) }}
               </a>
 {% elif item.type is defined and item.type == "action" %}
-              <a class="{{ cls }} has-text-grey is-size-7 {{ pl }}" href="{{ item.url }}">{{ item.text }}</a>
+              <a class="{{ cls }} has-text-grey is-size-7"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}">{{ item.text }}</a>
 {% else %}
-              <a class="{{ cls }} {{ pl }}" href="{{ item.url }}"{{ title_attr }}>
-{% if show_icon %}                <svg class="icon mr-2"><use href="#{{ item.icon }}"/></svg>
-{% endif %}                {{ item.text }}
+              <a class="{{ cls }}"{% if pl %} style="padding-left: {{ pl }}"{% endif %} href="{{ item.url }}"{{ title_attr }}>
+{{ render_menu_content(item, show_icon) }}
               </a>
 {% endif %}
 {% endmacro %}

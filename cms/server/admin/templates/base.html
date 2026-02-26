@@ -274,7 +274,7 @@ function initThemeToggle() {
     }
     var dropdown = document.getElementById('theme-dropdown');
     if (dropdown) {
-        var toggle = dropdown.querySelector('.navbar-link');
+        var toggle = dropdown.querySelector('.navbar-item');
         if (toggle) {
             toggle.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -286,6 +286,7 @@ function initThemeToggle() {
         for (var i = 0; i < options.length; i++) {
             options[i].addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 var theme = this.getAttribute('data-theme');
                 document.documentElement.setAttribute('data-theme', theme);
                 localStorage.setItem('cms_theme', theme);
@@ -601,20 +602,38 @@ $(document).ready(initSidebarToggle);
         <div class="is-flex is-align-items-center ml-auto">
 
           <!-- Theme Dropdown -->
-          <div class="dropdown is-right is-hoverable" id="theme-dropdown">
+          <div class="dropdown is-right" id="theme-dropdown">
             <div class="dropdown-trigger">
               <a class="navbar-item" aria-haspopup="true" aria-controls="dropdown-menu" title="Change color theme">
                 <svg class="icon"><use href="#icon-color-palette"/></svg>
               </a>
             </div>
-            <div class="dropdown-menu" id="dropdown-menu" role="menu" style="min-width: 150px;">
-              <div class="dropdown-content">
-                <a class="dropdown-item theme-option" data-theme="original">Original</a>
-                <a class="dropdown-item theme-option" data-theme="granny-smith">Granny Smith</a>
-                <a class="dropdown-item theme-option" data-theme="pink-lady">Pink Lady</a>
-                <a class="dropdown-item theme-option" data-theme="dark">Dark</a>
-                <a class="dropdown-item theme-option" data-theme="adon-hermon">Adon Hermon</a>
-                <a class="dropdown-item theme-option" data-theme="retro">Retro</a>
+            <div class="dropdown-menu" id="dropdown-menu" role="menu">
+              <div class="dropdown-content theme-dropdown-content">
+                <a class="dropdown-item theme-option" data-theme="original">
+                  <svg class="icon theme-icon theme-icon-original"><use href="#icon-apple"/></svg>
+                  <span>Original</span>
+                </a>
+                <a class="dropdown-item theme-option" data-theme="granny-smith">
+                  <svg class="icon theme-icon theme-icon-granny-smith"><use href="#icon-apple"/></svg>
+                  <span>Granny Smith</span>
+                </a>
+                <a class="dropdown-item theme-option" data-theme="pink-lady">
+                  <svg class="icon theme-icon theme-icon-pink-lady"><use href="#icon-apple"/></svg>
+                  <span>Pink Lady</span>
+                </a>
+                <a class="dropdown-item theme-option" data-theme="arkansas-black">
+                  <svg class="icon theme-icon theme-icon-arkansas-black"><use href="#icon-apple"/></svg>
+                  <span>Arkansas Black</span>
+                </a>
+                <a class="dropdown-item theme-option" data-theme="golden">
+                  <svg class="icon theme-icon theme-icon-golden"><use href="#icon-apple"/></svg>
+                  <span>Golden</span>
+                </a>
+                <a class="dropdown-item theme-option" data-theme="mcintosh">
+                  <svg class="icon theme-icon theme-icon-mcintosh"><use href="#icon-apple"/></svg>
+                  <span>McIntosh</span>
+                </a>
               </div>
             </div>
           </div>
@@ -630,7 +649,7 @@ $(document).ready(initSidebarToggle);
           <div class="navbar-item">
             <form action="{{ url("logout") }}" method="POST" class="m-0">
               {{ xsrf_form_html|safe }}
-              <button type="submit" class="is-clickable is-flex is-align-items-center has-text-inherit" style="border:none; background:none; padding:0; gap:0.4em;">
+              <button type="submit" class="is-clickable is-flex is-align-items-center has-text-inherit">
                 <svg class="icon"><use href="#icon-logout"/></svg>
                 <span class="is-hidden-touch">Logout</span>
               </button>
