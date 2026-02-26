@@ -25,7 +25,7 @@
                 --tags-hover-border-color: var(--tp-border-dark);
                 --tags-focus-border-color: var(--tp-primary);
                 border-radius: 6px;
-                background: #fff;
+                background: var(--tp-bg-white);
 
                 /* Match standard input height/padding */
                 min-height: 38px;
@@ -76,7 +76,7 @@
                         {% for group in contest.training_day.groups %}
                         <tr>
                             <td>
-                                <div class="tp-form-input" style="background-color: #f9fafb; border: 1px solid transparent; color: #374151; font-weight: 500; padding: 8px 10px; min-height: 38px; box-sizing: border-box; display: flex; align-items: center;">
+                                <div class="tp-form-input" style="background-color: var(--bulma-scheme-main-ter); border: 1px solid transparent; color: var(--bulma-text); font-weight: 500; padding: 8px 10px; min-height: 38px; box-sizing: border-box; display: flex; align-items: center;">
                                     {{ group.tag_name }}
                                 </div>
                                 <input type="hidden" name="group_id[]" value="{{ group.id }}" form="update-groups-form"/>
@@ -105,18 +105,18 @@
                         {% endfor %}
 
                         {# --- EDIT MODE: Add New Group Row --- #}
-                        <tr style="background-color: #f8fafc; border-top: 2px solid #e2e8f0;">
+                        <tr style="background-color: var(--bulma-scheme-main-ter); border-top: 2px solid var(--bulma-border);">
                             <td style="position: relative;">
-                                <input type="text" name="tag_name" placeholder="New Group Tag" class="tp-form-input" style="background: white;" required form="add-group-form"/>
+                                <input type="text" name="tag_name" placeholder="New Group Tag" class="tp-form-input" style="background: var(--tp-bg-white);" required form="add-group-form"/>
                             </td>
                             <td>
-                                <input type="datetime-local" name="start_time" class="tp-form-input" style="background: white; padding: 8px 10px; height: 38px; box-sizing: border-box;" form="add-group-form"/>
+                                <input type="datetime-local" name="start_time" class="tp-form-input" style="background: var(--tp-bg-white); padding: 8px 10px; height: 38px; box-sizing: border-box;" form="add-group-form"/>
                             </td>
                             <td>
                                 <div class="tp-group-duration" style="height: 38px; align-items: center;">
-                                    <input type="number" name="duration_hours" min="0" placeholder="0" class="tp-form-input" style="background: white;" form="add-group-form"/>
+                                    <input type="number" name="duration_hours" min="0" placeholder="0" class="tp-form-input" style="background: var(--tp-bg-white);" form="add-group-form"/>
                                     <span>h</span>
-                                    <input type="number" name="duration_minutes" min="0" max="59" placeholder="0" class="tp-form-input" style="background: white;" form="add-group-form"/>
+                                    <input type="number" name="duration_minutes" min="0" max="59" placeholder="0" class="tp-form-input" style="background: var(--tp-bg-white);" form="add-group-form"/>
                                     <span>m</span>
                                 </div>
                             </td>
@@ -203,7 +203,6 @@ function addGroupRow() {
     tagInput.name = 'group_tag_name[]';
     tagInput.placeholder = 'Select a student tag';
     tagInput.className = 'tp-form-input';
-    tagInput.style.background = 'white';
     tagCell.appendChild(tagInput);
     row.appendChild(tagCell);
 
