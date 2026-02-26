@@ -108,7 +108,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
       </div>
     </div>
     {% if admin.permission_all or admin.permission_messaging %}
-    <div class="question-edit-reply-row">
+    <div class="is-flex is-justify-content-end pt-3">
       <button class="button is-text has-text-grey is-small no-underline" onclick="utils.question_reply_toggle(event, this);">
         <svg class="icon is-small"><use href="#icon-edit"/></svg> <span>Edit reply</span>
       </button>
@@ -145,7 +145,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
             <label class="question-form-label">YOUR ANSWER:</label>
             {{ macro_markdown.markdown_input("reply_question_text") }}
           </div>
-          {{ macro_content.form_buttons("Send Reply", show_cancel=true, submit_icon="send") }}
+          {{ macro_content.form_buttons("Send Reply", show_cancel=true, submit_icon="send", cancel_function="question_reply_toggle") }}
         </form>
       </div>
     </div>

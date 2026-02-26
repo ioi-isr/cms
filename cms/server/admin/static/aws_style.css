@@ -472,6 +472,7 @@ pre {
     width: 6px;
 }
 
+.table-container::-webkit-scrollbar-track,
 #sidebar::-webkit-scrollbar-track {
     background: transparent;
 }
@@ -1117,42 +1118,6 @@ body.admin .validator-status {
 body.admin .validator-running {
     color: var(--bulma-info-40);
     font-style: italic;
-}
-
-/* Status badge (pill) */
-body.admin .status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-body.admin .status-badge--success {
-    background: var(--bulma-success-95);
-    color: var(--bulma-success-25);
-}
-
-body.admin .status-badge--danger {
-    background: var(--bulma-danger-95);
-    color: var(--bulma-danger-30);
-}
-
-body.admin .status-badge--warning {
-    background: var(--bulma-warning-95);
-    color: var(--bulma-warning-25);
-}
-
-body.admin .status-badge--muted {
-    background: var(--bulma-scheme-main-ter);
-    color: var(--bulma-text-weak);
-}
-
-body.admin .status-badge--info {
-    background: var(--bulma-info-95);
-    color: var(--bulma-info-40);
 }
 
 /* Valid icon (circular check/X) */
@@ -1860,12 +1825,6 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .question-reply-text p {
     margin: 0;
     padding: 0;
-}
-
-.question-edit-reply-row {
-    display: flex;
-    justify-content: flex-end;
-    padding-top: 10px;
 }
 
 .question-owner-info {

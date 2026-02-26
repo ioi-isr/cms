@@ -258,7 +258,12 @@
 }
 
 [data-theme="arkansas-black"] .tagify__dropdown {
-    background: hsl(221, 14%, 14%) !important;
+    background: black !important;
+    border-color: hsl(221, 14%, 30%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__dropdown__wrapper {
+    background: black !important;
     border-color: hsl(221, 14%, 30%) !important;
 }
 

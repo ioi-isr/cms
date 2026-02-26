@@ -121,9 +121,9 @@ AdminTableUtils.initFilterTagify({
                         </span>
                     </div>
                     {% if student.student_tags %}
-                    <div style="margin-top: 3px; display: flex; flex-wrap: wrap; gap: 2px;">
+                    <div class="tags mt-1">
                         {% for tag in student.student_tags %}
-                          <span class="badge badge-teal" style="font-weight: normal; font-size: 0.7em;">{{ tag }}</span>
+                          <span class="tag is-bordered has-text-primary-35 is-rounded is-small" style="font-weight: normal; font-size: 0.7em;">{{ tag }}</span>
                         {% endfor %}
                     </div>
                     {% endif %}
@@ -140,21 +140,29 @@ AdminTableUtils.initFilterTagify({
             <td data-value="{{ data_value }}" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ 'true' if att.justified else 'false' }}" data-recorded="{{ 'true' if att.recorded else 'false' }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal(this)" onKeyDown="openAttendanceModal(this)">
               <div class="cell-wrapper">
                 {% if att.status == "missed" %}
-                  <div class="status-badge {% if att.justified %}status-justified{% else %}status-missed{% endif %}">
-                    <span>{% if att.justified %}&#128221; Justified{% else %}&#x26D4; Missed{% endif %}</span>
+                  <div class="tag is-bordered is-rounded {% if att.justified %}has-text-warning{% else %}has-text-danger{% endif %}">
+                    {% if att.justified %}
+                      <svg class="icon is-small"><use href="#icon-file-text"/></svg>
+                      <span>Justified</span>
+                    {% else %}
+                      <svg class="icon is-small"><use href="#icon-x"/></svg>
+                      <span>Missed</span>
+                    {% endif %}
                   </div>
                 {% elif att.delay_time %}
-                  <div class="status-badge status-delayed">
+                  <div class="tag is-bordered is-rounded has-text-warning-75">
+                    <svg class="icon is-small"><use href="#icon-clock"/></svg>
                     {% set delay_minutes = att.delay_time.total_seconds() / 60 %}
                     {% if delay_minutes < 60 %}
-                      <span>&#x23F1; Delayed ({{ "%.0f"|format(delay_minutes) }}m)</span>
+                      <span>Delayed ({{ "%.0f"|format(delay_minutes) }}m)</span>
                     {% else %}
-                      <span>&#x23F1; Delayed ({{ "%.1f"|format(delay_minutes / 60) }}h)</span>
+                      <span>Delayed ({{ "%.1f"|format(delay_minutes / 60) }}h)</span>
                     {% endif %}
                   </div>
                 {% else %}
-                  <div class="status-badge status-on-time">
-                    <span>&#x2713; On Time</span>
+                  <div class="tag is-bordered is-rounded has-text-success">
+                    <svg class="icon is-small"><use href="#icon-check"/></svg>
+                    <span>On Time</span>
                   </div>
                 {% endif %}
 
@@ -327,14 +335,14 @@ function updateAttendanceCell(attendanceId, justified, recorded, comment) {
     }
 
     // Update justified status for missed entries
-    var statusBadge = wrapper.querySelector('.status-badge');
+    var statusBadge = wrapper.querySelector('.tag');
     if (statusBadge && cell.dataset.status === 'missed') {
         if (justified) {
-            statusBadge.className = 'status-badge status-justified';
-            statusBadge.querySelector('span').innerHTML = '&#128221; Justified';
+            statusBadge.className = 'tag is-bordered is-rounded has-text-warning';
+            statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-file-text"/></svg><span>Justified</span>';
         } else {
-            statusBadge.className = 'status-badge status-missed';
-            statusBadge.querySelector('span').innerHTML = '&#x26D4; Missed';
+            statusBadge.className = 'tag is-bordered is-rounded has-text-danger';
+            statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-x"/></svg><span>Missed</span>';
         }
     }
 

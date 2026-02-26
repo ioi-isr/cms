@@ -1220,19 +1220,19 @@ document.addEventListener('click', function(e) {
                                     <td>
                                         <div class="list-cell-wrapper center-content">
                                         {% if msr is none %}
-                                        <span class="status-badge status-badge--muted">Not evaluated</span>
+                                        <span class="tag is-opaque">Not evaluated</span>
                                         {% elif not msr.compiled() %}
-                                        <span class="status-badge status-badge--info">Compiling...</span>
+                                        <span class="tag is-opaque has-text-info">Compiling...</span>
                                         {% elif msr.compilation_failed() %}
-                                        <span class="status-badge status-badge--danger">Compilation failed</span>
+                                        <span class="tag is-opaque has-text-danger">Compilation failed</span>
                                         {% elif not msr.evaluated() %}
-                                        <span class="status-badge status-badge--info">Evaluating...</span>
+                                        <span class="tag is-opaque has-text-info">Evaluating...</span>
                                         {% elif msr.evaluation_failed() %}
-                                        <span class="status-badge status-badge--danger">Evaluation error</span>
+                                        <span class="tag is-opaque has-text-danger">Evaluation error</span>
                                         {% elif not msr.scored() %}
-                                        <span class="status-badge status-badge--warning">Scoring...</span>
+                                        <span class="tag is-opaque has-text-info">Scoring...</span>
                                         {% else %}
-                                        <span class="status-badge status-badge--success">Scored</span>
+                                        <span class="tag is-opaque has-text-success">Scored</span>
                                         {% endif %}
                                         </div>
                                     </td>

@@ -116,9 +116,9 @@
                 </a>
               </div>
               {% if student_tags_by_participation.get(p.id, []) %}
-              <div class="combined-ranking-tags">
+              <div class="tags mt-1">
                 {% for tag in student_tags_by_participation.get(p.id, []) %}
-                  <span class="tag is-primary is-light is-small">{{ tag }}</span>
+                  <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
                 {% endfor %}
               </div>
               {% endif %}
@@ -256,9 +256,9 @@
               </a>
             </div>
             {% if student_tags_by_participation and student_tags_by_participation.get(p.id, []) %}
-            <div class="combined-ranking-tags">
+            <div class="tags mt-1">
               {% for tag in student_tags_by_participation.get(p.id, []) %}
-                <span class="tag is-primary is-light is-small">{{ tag }}</span>
+                <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
               {% endfor %}
             </div>
             {% endif %}

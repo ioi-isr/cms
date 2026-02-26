@@ -42,15 +42,16 @@ extra_fields_html (str): optional extra visible fields HTML (inserted after text
 {% endmacro %}
 
 
-{% macro form_buttons(submit_label, show_cancel=false, submit_icon="plus") %}
+{% macro form_buttons(submit_label, show_cancel=false, submit_icon="plus", cancel_function="announcement_edit_toggle") %}
 {#
 Render the action buttons row for a form (Preview Markdown + optional Cancel + Submit).
 
 submit_label (str): label for the submit button.
 show_cancel (bool): whether to show a Cancel button.
 submit_icon (str): icon name for the submit button.
+cancel_function (str): the JavaScript function to call for cancel button.
 #}
-<div class="level pt-3 is-mobile">
+<div class="level pt-3">
   <div class="level-left">
     <div class="level-item">
       <button type="button" class="button" onclick="utils.render_markdown_preview(this)">
@@ -61,7 +62,7 @@ submit_icon (str): icon name for the submit button.
   <div class="level-right">
     <div class="buttons level-item">
       {% if show_cancel %}
-      <button type="button" class="button" onclick="utils.announcement_edit_toggle(event, this);"><span>Cancel</span></button>
+      <button type="button" class="button" onclick="utils.{{ cancel_function }}(event, this);"><span>Cancel</span></button>
       {% endif %}
       <button type="submit" class="button is-primary">
         <svg class="icon is-small"><use href="#icon-{{ submit_icon }}"/></svg> <span>{{ submit_label }}</span>
@@ -111,9 +112,11 @@ extra_left_html (str): optional extra HTML for the left side of the footer.
     </span>
   </div>
   {% if admin.permission_all or admin.permission_messaging %}
-  <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="utils.announcement_edit_toggle(event, this);">
-    <svg class="icon is-small"><use href="#icon-edit"/></svg> <span>Edit</span>
-  </button>
+  <div class="is-flex is-justify-content-end">
+    <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="utils.announcement_edit_toggle(event, this);">
+      <svg class="icon is-small"><use href="#icon-edit"/></svg> <span>Edit</span>
+    </button>
+  </div>
   {% endif %}
 </div>
 {% endmacro %}

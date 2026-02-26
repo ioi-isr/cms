@@ -314,9 +314,9 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                         </a>
                     </div>
                     {% if student.student_tags %}
-                    <div class="tags">
+                    <div class="tags mt-1">
                         {% for tag in student.student_tags %}
-                          <span class="tag is-bordered has-text-primary-35 is-rounded is-small">{{ tag }}</span>
+                          <span class="tag is-small is-bordered has-text-primary-35 is-rounded">{{ tag }}</span>
                         {% endfor %}
                     </div>
                     {% endif %}
