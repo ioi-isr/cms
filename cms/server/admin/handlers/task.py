@@ -206,6 +206,12 @@ class TaskHandler(BaseHandler):
         for dataset in task.datasets:
             if dataset is task.active_dataset:
                 continue
+            if task.active_dataset is None:
+                activate_data[dataset.id] = {
+                    "changes": [],
+                    "default_notify_participations": set(),
+                }
+                continue
             try:
                 changes = compute_changes_for_dataset(task.active_dataset, dataset)
                 notify_participations = set()

@@ -197,11 +197,10 @@ CMS.AWSFormUtils.initTagify({
   </div>
 </div>
 
-<!-- Hidden forms for action buttons (shared XSRF token) -->
-{{ xsrf_form_html|safe }}
-<form id="form-remove-all" action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" style="display: none;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to remove all delays and extra times for all participants?');"></form>
-<form id="form-erase-start-times" action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" style="display: none;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to erase all starting times for all participants?');"></form>
-<form id="form-reset-ip-addresses" action="{{ url("contest", contest.id, "delays_and_extra_times", "reset_ip_addresses") }}" method="POST" style="display: none;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to reset all IP addresses for all participants?');"></form>
+<!-- Hidden forms for action buttons -->
+<form id="form-remove-all" action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" style="display: none;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to remove all delays and extra times for all participants?');">{{ xsrf_form_html|safe }}</form>
+<form id="form-erase-start-times" action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" style="display: none;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to erase all starting times for all participants?');">{{ xsrf_form_html|safe }}</form>
+<form id="form-reset-ip-addresses" action="{{ url("contest", contest.id, "delays_and_extra_times", "reset_ip_addresses") }}" method="POST" style="display: none;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to reset all IP addresses for all participants?');">{{ xsrf_form_html|safe }}</form>
 
 <div class="table-container" style="width: 100%;">
 <table class="table is-fullwidth is-hoverable is-header-muted" id="participations-table">

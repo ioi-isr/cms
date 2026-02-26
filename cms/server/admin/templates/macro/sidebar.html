@@ -143,12 +143,12 @@
 {% for action in actions %}
 {% set show_plus = (action.text|lower).startswith("new") %}
 {% if action.type == "button" %}
-              <a class="{{ cls }} has-text-link is-size-7 is-flex is-align-items-center"{% if pl_value %} style="padding-left: {{ pl_value }}"{% endif %} href="javascript:void(0)" onclick="{{ action.onclick }}">
+              <a class="{{ cls }} has-text-link is-size-7 is-flex is-align-items-center"{% if pl_value %} style="padding-left: {{ pl_value }}"{% endif %} href="javascript:void(0)" onclick='{{ action.onclick }}'>
                 {% if show_plus %}<svg class="icon is-small mr-1"><use href="#icon-plus"/></svg>{% endif %}
                 <span>{{ action.text }}</span>
               </a>
 {% else %}
-              <a class="{{ cls }} has-text-link is-size-7 is-flex is-align-items-center"{% if pl_value %} style="padding-left: {{ pl_value }}"{% endif %} {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick="{{ action.onclick }}"{% endif %}>
+              <a class="{{ cls }} has-text-link is-size-7 is-flex is-align-items-center"{% if pl_value %} style="padding-left: {{ pl_value }}"{% endif %} {% if action.url is defined %}href="{{ action.url }}"{% endif %}{% if action.onclick is defined %} onclick='{{ action.onclick }}'{% endif %}>
                 {% if show_plus %}<svg class="icon is-small mr-1"><use href="#icon-plus"/></svg>{% endif %}
                 <span>{{ action.text }}</span>
               </a>

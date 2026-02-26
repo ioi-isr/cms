@@ -96,9 +96,12 @@ class RemoveParticipationHandler(BaseHandler):
         # Unassign the user from the contest.
         self.sql_session.delete(participation)
 
-        if self.try_commit():
-            # Remove the participation on RWS.
-            self.service.proxy_service.reinitialize()
+        if not self.try_commit():
+            self.set_status(500)
+            self.write("Failed to remove participation")
+            return
+        # Remove the participation on RWS.
+        self.service.proxy_service.reinitialize()
 
         # Maybe they'll want to do this again (for another participation)
         self.write(self.url("contest", contest_id, "users"))

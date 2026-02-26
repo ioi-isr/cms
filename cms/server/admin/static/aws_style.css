@@ -241,7 +241,6 @@ pre {
 
 #admin-navbar .dropdown-content .dropdown-item,
 #admin-navbar .dropdown-content .menu-collapsible,
-#mobile-more-dropdown .dropdown-content .dropdown-item,
 #mobile-more-dropdown .dropdown-content .dropdown-item {
     color: var(--bulma-text);
 }
