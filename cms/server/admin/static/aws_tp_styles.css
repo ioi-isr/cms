@@ -597,7 +597,7 @@
    The hue is clamped between 0 and 120 using min/max */
 .cell-content.score-cell {
     --hue: calc(var(--score, 0) * 1.2);
-    background-color: hsl(min(120, max(0, var(--hue))), 75%, 90%);
+    background-color: hsla(min(120, max(0, var(--hue))), 75%, 90%, 0.55);
     color: hsl(min(120, max(0, var(--hue))), 90%, 20%);
     background-image: none;
 }
@@ -753,6 +753,8 @@
     border-radius: 4px;
     font-size: 0.9rem;
     color: var(--tp-text-primary);
+    background: var(--bulma-scheme-main);
+    color-scheme: var(--bulma-scheme);
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -1174,7 +1176,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     display: block;
-    max-width: 100%;
+    max-width: 180px;
 }
 
 .history-link {
