@@ -619,13 +619,18 @@ class RemoveUserHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, user_id):
         user = self.safe_get_item(User, user_id)
-
-        self.sql_session.delete(user)
-        if not self.try_commit():
+        try:
+            self.sql_session.delete(user)
+            if not self.try_commit():
+                self.set_status(500)
+                self.write("error")
+                return
+            self.service.proxy_service.reinitialize()
+        except Exception:
+            logger.exception("Unexpected error removing user %s", user_id)
             self.set_status(500)
             self.write("error")
             return
-        self.service.proxy_service.reinitialize()
 
         # Maybe they'll want to do this again (for another user)
         self.write("../../users")

@@ -38,6 +38,8 @@ CMS.AWSFormUtils.initTagify({
     }
 })();
 
+CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
+
 {% endblock js_init %}
 
 {% block core %}
@@ -208,11 +210,11 @@ CMS.AWSFormUtils.initTagify({
     <tr>
       <th>User</th>
       <th>Status</th>
-      <th>Timing <span class="delays-th-hint">({{ timezone_name }})</span></th>
-      <th>Delay</th>
-      <th>Extra Time</th>
+      <th class="no-sort">Timing <span class="delays-th-hint">({{ timezone_name }})</span></th>
+      <th data-sort-settings="numeric">Delay</th>
+      <th data-sort-settings="numeric">Extra Time</th>
       <th>IP Address</th>
-      <th>Actions</th>
+      <th class="no-sort">Actions</th>
     </tr>
   </thead>
   <tbody>
@@ -240,7 +242,7 @@ CMS.AWSFormUtils.initTagify({
           </div>
         </div>
       </td>
-      <td>
+      <td data-value="{{ item.status_label|default('') }}">
         {% if item.status_label %}
           <span class="tag is-bordered is-rounded delays-status-{{ item.status_class }}">
             {% if item.status_class == "pre-contest" %}
@@ -283,7 +285,7 @@ CMS.AWSFormUtils.initTagify({
           {% endif %}
         </div>
       </td>
-      <td>
+      <td data-value="{{ participation.delay_time.total_seconds() }}">
         {% if participation.delay_time.total_seconds() > 0 %}
           {% set delay_minutes = participation.delay_time.total_seconds() / 60 %}
           {% if delay_minutes < 60 %}
@@ -295,7 +297,7 @@ CMS.AWSFormUtils.initTagify({
           <span class="delays-text-light">-</span>
         {% endif %}
       </td>
-      <td>
+      <td data-value="{{ participation.extra_time.total_seconds() }}">
         {% if participation.extra_time.total_seconds() > 0 %}
           {% set extra_minutes = participation.extra_time.total_seconds() / 60 %}
           {% if extra_minutes < 60 %}

@@ -43,6 +43,16 @@
         }
       } catch (e) {}
 
+      // Apply minimized sidebar state
+      try {
+        if (localStorage.getItem('cms-sidebar-minimized') === 'true') {
+          css += 'html.sidebar-hydrating #sidebar { width: 80px; flex: 0 0 80px; padding: 0 0.5em 4em; overflow-x: hidden; }\n';
+          css += 'html.sidebar-hydrating #sidebar #sidebar-regular { display: none; }\n';
+          css += 'html.sidebar-hydrating #sidebar #sidebar-minimized { display: block !important; }\n';
+          css += 'html.sidebar-hydrating #sidebar .is-hidden-when-minimized { display: none; }\n';
+        }
+      } catch (e) {}
+
       if (css) {
         var style = document.createElement('style');
         style.id = 'sidebar-prepaint-collapsed';
