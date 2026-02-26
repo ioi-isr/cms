@@ -1998,3 +1998,97 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 .ms-card-subtask.partial .ms-card-partial-icon {
     display: inline-flex;
 }
+
+/* ==========================================================================
+   Mobile Responsive: Question & Announcement Cards
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    /* Stack question card header vertically on mobile */
+    .question-card-header {
+        flex-direction: column;
+        padding: 10px 14px;
+        gap: 8px;
+    }
+
+    /* Let title row wrap and shrink on mobile */
+    .question-card-title-row {
+        gap: 8px;
+        width: 100%;
+    }
+
+    .question-subject {
+        font-size: 0.95em;
+    }
+
+    /* Stack action buttons vertically and full-width */
+    .question-header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .question-header-actions .button {
+        font-size: 0.78rem !important;
+        padding: 4px 10px !important;
+    }
+
+    /* Meta info left-aligned on mobile */
+    .question-header-right {
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .question-card-meta-inline {
+        justify-content: flex-start;
+    }
+
+    /* Smaller body text */
+    .question-card-body {
+        padding: 12px 14px;
+    }
+
+    .question-text {
+        font-size: 0.88em;
+    }
+
+    /* Reply section */
+    .question-reply-section {
+        padding: 0 14px 12px;
+    }
+
+    .question-reply-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    /* Footer / announcement footer */
+    .announcement-card-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 14px;
+    }
+
+    /* Form sections */
+    .question-reply-form-section {
+        padding: 14px;
+    }
+
+    .question-actions {
+        padding: 0 14px 12px;
+    }
+
+    /* Question status badges */
+    .question-status-badge {
+        font-size: 0.65em;
+        padding: 2px 8px;
+    }
+
+    /* Card meta */
+    .question-card-meta {
+        padding: 6px 14px 8px;
+        font-size: 0.78em;
+    }
+}

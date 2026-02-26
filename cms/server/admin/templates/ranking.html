@@ -110,7 +110,7 @@
                    title="{{ p.user.first_name }} {{ p.user.last_name }}">
                   {{ p.user.first_name }} {{ p.user.last_name }}
                 </a>
-                <span class="student-username">({{ p.user.username }})</span>
+                <span class="student-username is-hidden-mobile">({{ p.user.username }})</span>
                 <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">
                   <svg class="icon"><use href="#icon-line-chart"/></svg>
                 </a>
@@ -250,7 +250,7 @@
                  title="{{ p.user.first_name }} {{ p.user.last_name }}">
                 {{ p.user.first_name }} {{ p.user.last_name }}
               </a>
-              <span class="student-username">({{ p.user.username }})</span>
+              <span class="student-username is-hidden-mobile">({{ p.user.username }})</span>
               <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">
                 <svg class="icon"><use href="#icon-line-chart"/></svg>
               </a>
