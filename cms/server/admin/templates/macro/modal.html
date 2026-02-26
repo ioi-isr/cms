@@ -20,7 +20,7 @@
 {% macro modal_header(title, title_id, extra_class="") %}
 <header class="modal__header{{ (' ' ~ extra_class) if extra_class else '' }}">
     <h2 class="modal__title" id="{{ title_id }}">{{ title }}</h2>
-    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+    <button type="button" class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
 </header>
 {% endmacro %}
 

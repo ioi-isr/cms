@@ -81,7 +81,7 @@
 
     confirmBtn.addEventListener('click', function() {
         var taskOptionsDiv = document.getElementById('remove-contest-task-options');
-        var hasTaskOptions = taskOptionsDiv && taskOptionsDiv.style.display !== 'none';
+        var hasTaskOptions = taskOptionsDiv && window.getComputedStyle(taskOptionsDiv).display !== 'none';
         var action = 'detach';
         var targetContestId = null;
 

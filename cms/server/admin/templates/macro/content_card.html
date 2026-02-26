@@ -96,7 +96,7 @@ Render the header of a display card (subject + timestamp + optional delete butto
 {% endmacro %}
 
 
-{% macro card_footer(admin_name, extra_left_html="") %}
+{% macro card_footer(admin_name, extra_left_html="", edit_function="announcement_edit_toggle") %}
 {#
 Render the footer of a display card (meta info + edit button).
 
@@ -113,7 +113,7 @@ extra_left_html (str): optional extra HTML for the left side of the footer.
   </div>
   {% if admin.permission_all or admin.permission_messaging %}
   <div class="is-flex is-justify-content-end">
-    <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="utils.announcement_edit_toggle(event, this);">
+    <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="utils.{{ edit_function }}(event, this);">
       <svg class="icon is-small"><use href="#icon-edit"/></svg> <span>Edit</span>
     </button>
   </div>
@@ -122,7 +122,7 @@ extra_left_html (str): optional extra HTML for the left side of the footer.
 {% endmacro %}
 
 
-{% macro edit_form(action_url, submit_label, subject_name="subject", text_name="text", datalist_id="", extra_hidden_html="", extra_fields_html="") %}
+{% macro edit_form(action_url, submit_label, subject_name="subject", text_name="text", datalist_id="", extra_hidden_html="", extra_fields_html="", cancel_function="announcement_edit_toggle") %}
 {#
 Render the edit form section that appears when the Edit button is clicked.
 
@@ -146,7 +146,7 @@ extra_fields_html (str): optional extra visible fields HTML (inserted after text
         <label class="question-form-label">TEXT</label>
         {{ macro_markdown.markdown_input(text_name) }}
         {{ extra_fields_html|safe }}
-        {{ form_buttons(submit_label, show_cancel=true, submit_icon="edit") }}
+        {{ form_buttons(submit_label, show_cancel=true, submit_icon="edit", cancel_function=cancel_function) }}
       </form>
     </div>
   </div>
