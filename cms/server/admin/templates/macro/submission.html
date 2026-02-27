@@ -11,25 +11,30 @@ submission_count (int): total number of submissions.
 reevaluation_buttons_html (str): pre-rendered reevaluation buttons HTML.
 download_url (str|None): URL to download all submissions, or None to hide.
 #}
-<div class="box mb-4">
-  <div class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 0.5rem;">
-    <span class="has-text-grey is-size-7">{{ submission_count }} submission{{ "s" if submission_count != 1 else "" }}</span>
-    <div class="ml-auto is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 0.5rem;">
-      <button type="button" class="button is-small" id="diff-tool-btn" onclick="(function(){ var p=document.getElementById('diffchooser-panel'); var open=p.style.display!=='none'; p.style.display=open?'none':'block'; document.getElementById('diff-tool-btn').classList.toggle('is-info',!open); var t=document.getElementById('submissions_table'); if(t){if(!open){t.classList.add('diff-open');}else{t.classList.remove('diff-open');}} })()">
-        <svg class="icon is-small"><use href="#icon-file-diff"/></svg>
-        <span>Diff Tool</span>
-      </button>
-      {% if download_url %}
-      <a href="{{ download_url }}" class="button is-small">
-        <svg class="icon is-small"><use href="#icon-download"/></svg>
-        <span>Download All</span>
-      </a>
-      {% endif %}
-      <span class="is-size-7 has-text-weight-semibold is-uppercase has-text-grey mr-1">Re-evaluate All:</span>
+<div class="box is-bordered mb-4">
+  <div class="is-flex is-align-items-center is-flex-wrap-wrap is-gap-1">
+    <span class="has-text-grey is-size-6 mr-2">{{ submission_count }} submission{{ "s" if submission_count != 1 else "" }}</span>
+
+    <input type="text" class="input is-small" id="submissions_search" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)" style="max-width: 280px; flex: 1 1 auto; min-width: 200px;">
+
+    <button type="button" class="button is-small" id="diff-tool-btn" onclick="(function(){ var p=document.getElementById('diffchooser-panel'); var open=p.style.display!=='none'; p.style.display=open?'none':'block'; document.getElementById('diff-tool-btn').classList.toggle('is-info',!open); var t=document.getElementById('submissions_table'); if(t){if(!open){t.classList.add('diff-open');}else{t.classList.remove('diff-open');}} })()">
+      <svg class="icon is-small"><use href="#icon-file-diff"/></svg>
+      <span>Diff Tool</span>
+    </button>
+
+    <div class="is-flex is-align-items-center is-flex-wrap-wrap mx-auto" style="gap: 0.5rem;">
+      <span class="is-size-7 has-text-weight-semibold is-uppercase has-text-grey" style="white-space: nowrap;">Re-evaluate All:</span>
       <div class="buttons has-addons mb-0">
         {{ reevaluation_buttons_html }}
       </div>
     </div>
+
+    {% if download_url %}
+    <a href="{{ download_url }}" class="button is-small">
+      <svg class="icon is-small"><use href="#icon-download"/></svg>
+      <span>Download All</span>
+    </a>
+    {% endif %}
   </div>
 
   <!-- Diff Tool Panel (hidden by default) -->
@@ -52,11 +57,6 @@ download_url (str|None): URL to download all submissions, or None to hide.
         <button type="button" class="button is-small" onclick="document.getElementById('diffchooser-panel').style.display='none'; document.getElementById('diff-tool-btn').classList.remove('is-info'); var t=document.getElementById('submissions_table'); if(t) t.classList.remove('diff-open');">Cancel</button>
       </div>
     </div>
-  </div>
-
-  <!-- Search -->
-  <div class="mt-3">
-    <input type="text" class="input is-small" id="submissions_search" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)">
   </div>
 </div>
 {%- endmacro %}
