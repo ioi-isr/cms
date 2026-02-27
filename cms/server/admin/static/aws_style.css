@@ -91,6 +91,20 @@ textarea {
     }
 }
 
+.pagination {
+  --bulma-pagination-item-padding-left: 0;
+  --bulma-pagination-item-padding-right: 0;
+  --bulma-pagination-selected-item-h: var(--bulma-primary-h);
+  --bulma-pagination-selected-item-s: var(--bulma-primary-s);
+  --bulma-pagination-selected-item-background-l: var(--bulma-primary-l);
+  --bulma-pagination-item-font-size: 0.8em;
+}
+
+.pagination-link.is-current,
+.pagination-link.is-selected {
+  color: white !important;
+}
+
 .table {
     --bulma-table-head-background-color: var(--bulma-scheme-main-ter);
     --bulma-table-cell-border-color: var(--bulma-border-weak);

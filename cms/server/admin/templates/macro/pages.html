@@ -8,7 +8,7 @@ pages (int): total number of pages.
 #}
 
   {% if pages > 1 %}
-<nav class="pagination is-centered" role="navigation" aria-label="pagination">
+<nav class="pagination" role="navigation" aria-label="pagination">
     <a class="pagination-previous" {% if page == 0 %}disabled{% else %}href="{{ page_url(page=page - 1) }}"{% endif %}>Previous</a>
     <a class="pagination-next" {% if page == pages - 1 %}disabled{% else %}href="{{ page_url(page=page + 1) }}"{% endif %}>Next</a>
     <ul class="pagination-list">
