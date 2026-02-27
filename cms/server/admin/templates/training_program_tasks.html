@@ -3,7 +3,7 @@
 {% block core %}
 <div class="content-constraint" style="max-width: 900px;">
     <!-- Header -->
-    <h1 class="title">Tasks</h1>
+    <h1 class="title is-spaced">Tasks</h1>
     <p class="subtitle has-text-grey">
         Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
     </p>
@@ -23,8 +23,8 @@
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
-                Add Task
+            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
+                <span>Add Task</span>
             </button>
         </form>
     </div>
@@ -37,14 +37,14 @@
     <form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST" id="tasks-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
-        <div class="tp-table-container">
+        <div class="table-container">
             <table class="ranking-table tp-tasks-table" id="tasks-table">
                 <thead>
                     <tr>
                         <th class="grip-column no-sort"></th>
                         <th style="text-align: left;">Task</th>
                         <th style="text-align: left;">Training Day</th>
-                        <th class="text-center no-sort" style="width: 120px;">Actions</th>
+                        <th class="has-text-centered no-sort" style="width: 120px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="tasks-tbody">
@@ -57,7 +57,7 @@
                         draggable="true">
                         <!-- Drag handle -->
                         <td class="grip-cell">
-                            <div class="grip-handle" title="Drag to reorder">
+                            <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder task">
                                 <svg class="icon is-small"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
@@ -78,21 +78,21 @@
                         <td data-value="{{ t.training_day.contest.name if (t.training_day and t.training_day.contest) else ('zzz_archived_' + (t.training_day.name or '') if (t.training_day and is_archived) else ('zzz_none' if not t.training_day else t.training_day.name)) }}">
                             <div class="list-cell-wrapper">
                                 {% if t.training_day is not none and t.training_day.contest is not none %}
-                                <a href="{{ url("contest", t.training_day.contest.id) }}" class="source-badge badge-training">
+                                <a href="{{ url("contest", t.training_day.contest.id) }}" class="tag is-bordered has-text-primary">
                                     {{ t.training_day.contest.name }}
                                 </a>
                                 {% elif t.training_day is not none %}
-                                <span class="source-badge badge-archived">
+                                <span class="tag is-bordered has-text-warning">
                                     {{ t.training_day.name or "(archived)" }}
                                 </span>
                                 {% else %}
-                                <span class="text-muted" style="font-size: 0.85rem;">Not assigned</span>
+                                <span class="has-text-grey-light" style="font-size: 0.85rem;">Not assigned</span>
                                 {% endif %}
                             </div>
                         </td>
 
                         <!-- Actions -->
-                        <td class="text-center">
+                        <td class="has-text-centered">
                             <div class="list-cell-wrapper center-content" style="gap: 8px;">
                                 {% if is_archived %}
                                 <!-- Detach button for archived training day tasks -->
@@ -100,7 +100,7 @@
                                     {% if not admin.permission_all %}disabled{% endif %}
                                     data-operation="detach_{{ t.id }}"
                                     onclick="AdminModals.confirmThen('Detach this task from the archived training day? It will become available for new training days.', function() { var form = this.closest('form'); var inp = form.querySelector('input[name=operation]'); if (!inp) { inp = document.createElement('input'); inp.type = 'hidden'; inp.name = 'operation'; form.appendChild(inp); } inp.value = this.dataset.operation; form.submit(); }.bind(this), {icon: 'question'}); return false;"
-                                    title="Detach from archived training day">
+                                    title="Detach from archived training day" aria-label="Detach task from archived training day">
                                     <svg class="icon is-small"><use href="#icon-unlock"/></svg>
                                 </button>
                                 {% endif %}
@@ -112,7 +112,7 @@
                                     data-training-day-name="{% if t.training_day and t.training_day.contest %}{{ (t.training_day.contest.description or t.training_day.contest.name) | e }}{% elif t.training_day %}{{ (t.training_day.description or t.training_day.name or 'Archived') | e }}{% else %}{% endif %}"
                                     data-is-active="{{ 'true' if (t.training_day and t.training_day.contest) else 'false' }}"
                                     {% if not admin.permission_all %}disabled{% endif %}
-                                    title="Remove from program">
+                                    title="Remove from program" aria-label="Remove task from program">
                                     <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                 </button>
                             </div>

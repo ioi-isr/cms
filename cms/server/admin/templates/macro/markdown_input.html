@@ -1,9 +1,9 @@
 {% macro markdown_input(name) %}
-<textarea name="{{ name }}" class="markdown_input"></textarea><br/>
+<textarea name="{{ name }}" class="markdown_input textarea"></textarea><br/>
 You can use Markdown here. URLs are not automatically linked, surround them with &lt;&gt; like &lt;http://example.org&gt;.
 <div class="markdown_preview"></div>
 {% endmacro %}
 
 {% macro markdown_preview() %}
-<button type="button" class="button-link button-link-secondary" onclick="utils.render_markdown_preview(this)">Preview Markdown</button>
+<button type="button" class="button" onclick="utils.render_markdown_preview(this)">Preview Markdown</button>
 {% endmacro %}

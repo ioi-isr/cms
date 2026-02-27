@@ -1,18 +1,17 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="container is-fluid">
     <!-- Header -->
-    <h1 class="title">Training Programs</h1>
+    <h1 class="title is-spaced">Training Programs</h1>
 
     <!-- Stats Cards Row -->
-    <div class="tp-stats-row">
+    <div class="grid is-col-min-16 is-gap-3 is-auto-fill mb-6">
         <div class="tp-stat-card">
             <div class="tp-stat-icon tp-stat-icon-purple">
                 <svg class="icon"><use href="#icon-graduation-cap"/></svg>
             </div>
             <div class="tp-stat-content">
-                <div class="tp-stat-label">Active Programs</div>
+                <div class="has-text-grey">Active Programs</div>
                 <div class="tp-stat-value">{{ active_programs }}</div>
             </div>
         </div>
@@ -21,7 +20,7 @@
                 <svg class="icon"><use href="#icon-users"/></svg>
             </div>
             <div class="tp-stat-content">
-                <div class="tp-stat-label">Total Students</div>
+                <div class="has-text-grey">Total Students</div>
                 <div class="tp-stat-value">{{ total_students }}</div>
             </div>
         </div>
@@ -30,14 +29,14 @@
                 <svg class="icon"><use href="#icon-clock"/></svg>
             </div>
             <div class="tp-stat-content">
-                <div class="tp-stat-label">Active Training Days</div>
+                <div class="has-text-grey">Active Training Days</div>
                 <div class="tp-stat-value">{{ active_training_days }}</div>
             </div>
         </div>
     </div>
 
     <!-- Program Cards Grid -->
-    <div class="tp-cards-grid">
+    <div class="grid is-col-min-16 is-gap-3 is-auto-fill">
         {% for tp in training_programs %}
         {% set active_tds = tp.training_days | selectattr("contest") | list %}
         {% set archived_tds = tp.training_days | rejectattr("contest") | list %}
@@ -107,7 +106,7 @@
                 {% if tp.managing_contest.start and tp.managing_contest.stop %}
                 <span>{{ tp.managing_contest.start.strftime('%Y-%m-%d') }} &mdash; {{ tp.managing_contest.stop.strftime('%Y-%m-%d') }}</span>
                 {% else %}
-                <span class="text-muted">No dates set</span>
+                <span class="has-text-grey-light">No dates set</span>
                 {% endif %}
             </div>
 
@@ -127,9 +126,9 @@
                         <div class="tp-training-day-info">
                             <div class="tp-training-day-name">{{ td.contest.name }}</div>
                             {% if td.contest.start and td.contest.start.year <= tp.managing_contest.stop.year %}
-                            <div class="tp-training-day-date">{{ td.contest.start.strftime('%b %d') }}</div>
+                            <div class="has-text-grey-light is-size-7">{{ td.contest.start.strftime('%b %d') }}</div>
                             {% else %}
-                            <div class="tp-training-day-date">Unscheduled</div>
+                            <div class="has-text-grey-light is-size-7">Unscheduled</div>
                             {% endif %}
                         </div>
                         <div class="tp-training-day-indicators">
@@ -179,7 +178,6 @@
         </button>
         {% endif %}
     </div>
-</div>
 
 {% include "fragments/modal_remove_training_program.html" %}
 

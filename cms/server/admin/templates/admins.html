@@ -1,56 +1,140 @@
+{% from "macro/modal.html" import modal_header, modal_footer %}
 {% extends "base.html" %}
 
 {% block core %}
-
-<h1 class="title">Admins list</h1>
-
-<div id="details">
-  <table class="table is-bordered is-striped is-hoverable">
-    <thead>
-      <tr>
-        <th>Enabled</th>
-        <th>Username</th>
-        <th>Name</th>
-        <th>All permissions</th>
-        <th>Messaging permissions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for a in admins %}
-      <tr>
-        <td>{{ a.enabled }}</td>
-        <td>
-          {% if admin.permission_all or admin.id == a.id %}
-          <a href="{{ url("admin", a.id) }}">{{ a.username }}</a>
-          {% else %}
-          {{ a.username }}
-          {% endif %}
-        </td>
-        <td>{{ a.name }}</td>
-        <td>{{ a.permission_all }}</td>
-        <td>{{ a.permission_messaging }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="level is-mobile">
+    <div class="level-left">
+        <h1 class="title is-spaced">Admins</h1>
+    </div>
+    {% if admin.permission_all %}
+    <div class="level-right">
+        <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-admin')">
+            <svg class="icon is-small"><use href="#icon-plus"/></svg>
+            <span>New Admin</span>
+        </button>
+    </div>
+    {% endif %}
 </div>
 
-{% if admin.permission_all %}
-<hr/>
+<div class="table-container">
+    <table class="table is-bordered is-striped is-hoverable">
+        <thead>
+            <tr>
+                <th class="has-text-left">Username</th>
+                <th class="has-text-left">Name</th>
+                <th class="has-text-centered" style="width: 100px;">All perms</th>
+                <th class="has-text-centered">Messaging</th>
+                <th class="has-text-centered">Enabled</th>
+                <th class="has-text-centered">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in admins %}
+            <tr {% if not a.enabled %}style="opacity: 0.6"{% endif %}>
+                <td>
+                    <span class="has-text-weight-semibold is-size-6">{{ a.username }}</span>
+                    {% if a.id == admin.id %}
+                    <span class="tag has-text-info is-bordered ml-2">you</span>
+                    {% endif %}
+                </td>
+                <td>{{ a.name }}</td>
+                <td class="has-text-centered">
+                    {% if a.permission_all %}
+                    <svg class="icon is-small has-text-success"><use href="#icon-check"/></svg>
+                    {% else %}
+                    <span class="has-text-grey">-</span>
+                    {% endif %}
+                </td>
+                <td class="has-text-centered">
+                    {% if a.permission_messaging %}
+                    <svg class="icon is-small has-text-success"><use href="#icon-check"/></svg>
+                    {% else %}
+                    <span class="has-text-grey">-</span>
+                    {% endif %}
+                </td>
+                <td class="has-text-centered">
+                    {% if a.enabled %}
+                    <svg class="icon is-small has-text-success"><use href="#icon-check"/></svg>
+                    {% else %}
+                    <svg class="icon is-small has-text-danger"><use href="#icon-x"/></svg>
+                    {% endif %}
+                </td>
+                <td class="has-text-centered">
+                    {% if admin.permission_all or a.id == admin.id %}
+                    <button type="button" class="btn-icon-only" title="Edit admin" aria-label="Edit admin"
+                            onclick="MicroModal.show('modal-edit-admin-{{ a.id }}')">
+                        <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                    </button>
+                    {% endif %}
+                    {% if admin.permission_all and a.id != admin.id %}
+                    <button type="button" class="btn-icon-only" title="Delete admin" aria-label="Delete admin"
+                            onclick='AdminModals.deleteResource({
+                                title: "Remove Admin",
+                                message: {{ ("Are you sure you want to remove admin \"" ~ a.username ~ "\"?")|tojson|forceescape }},
+                                deleteUrl: {{ url("admin", a.id)|tojson|forceescape }},
+                                confirmLabel: "Yes, Remove"
+                            })'>
+                        <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                    </button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-<a href="{{ url("admins", "add") }}">Add a new admin</a>
+<div class="tp-filter-card mt-6 is-size-7 has-text-grey">
+    <ul class="ml-0 pl-5">
+        <li>Disabled admins cannot log in.</li>
+        <li>Admins with <strong>All permissions</strong> can do any operation, regardless of other permission bits.</li>
+        <li><strong>Messaging</strong> permissions allow the admin to answer questions, send private messages and announcements.</li>
+    </ul>
+</div>
+
+{# Add Admin Modal #}
+{% if admin.permission_all %}
+<div class="modal modal--medium" id="modal-add-admin" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-admin-title">
+            {{ modal_header("New Admin", "modal-add-admin-title") }}
+            <form id="add-admin-form" enctype="multipart/form-data"
+                  action="{{ url("admins", "add") }}" method="POST">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    {% with form_id = "add-admin" %}
+                    {% include "fragments/admin_form.html" %}
+                    {% endwith %}
+                </main>
+                {{ modal_footer("Create Admin") }}
+            </form>
+        </div>
+    </div>
+</div>
 {% endif %}
 
-<hr/>
-
-<ul>
-  <li>Disabled admins cannot log in.</li>
-  <li>Admins with the "All permissions" bit set can do any
-    operation, regardless of the status of the other permission
-    bits.</li>
-  <li>The "Messaging" permissions allow the admin to communicate with
-    the contestants, answering questions, sending private messages
-    and announcements.</li>
-</ul>
+{# Edit Admin Modals (one per admin) #}
+{% for a in admins %}
+{% if admin.permission_all or a.id == admin.id %}
+<div class="modal modal--medium" id="modal-edit-admin-{{ a.id }}" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true"
+             aria-labelledby="modal-edit-admin-title-{{ a.id }}">
+            {{ modal_header("Edit Admin: " ~ a.username, "modal-edit-admin-title-" ~ a.id) }}
+            <form enctype="multipart/form-data"
+                  action="{{ url("admin", a.id) }}" method="POST">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    {% with admin_being_edited = a, form_id = "edit-admin-" ~ a.id %}
+                    {% include "fragments/admin_form.html" %}
+                    {% endwith %}
+                </main>
+                {{ modal_footer("Save Changes", submit_icon="#icon-check") }}
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
 
 {% endblock core %}

@@ -25,7 +25,7 @@
                 --tags-hover-border-color: var(--tp-border-dark);
                 --tags-focus-border-color: var(--tp-primary);
                 border-radius: 6px;
-                background: #fff;
+                background: var(--tp-bg-white);
 
                 /* Match standard input height/padding */
                 min-height: 38px;
@@ -76,7 +76,7 @@
                         {% for group in contest.training_day.groups %}
                         <tr>
                             <td>
-                                <div class="tp-form-input" style="background-color: #f9fafb; border: 1px solid transparent; color: #374151; font-weight: 500; padding: 8px 10px; min-height: 38px; box-sizing: border-box; display: flex; align-items: center;">
+                                <div class="tp-form-input" style="background-color: var(--bulma-scheme-main-ter); border: 1px solid transparent; color: var(--bulma-text); font-weight: 500; padding: 8px 10px; min-height: 38px; box-sizing: border-box; display: flex; align-items: center;">
                                     {{ group.tag_name }}
                                 </div>
                                 <input type="hidden" name="group_id[]" value="{{ group.id }}" form="update-groups-form"/>
@@ -99,24 +99,24 @@
                                 <input type="checkbox" name="alphabetical_{{ group.id }}" {{ "checked" if group.alphabetical_task_order else "" }} style="width: 18px; height: 18px; cursor: pointer;" form="update-groups-form"/>
                             </td>
                             <td style="text-align: right;">
-                                <button type="button" class="tp-btn-remove" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}');" {% if not admin.permission_all %} disabled{% endif %}>Remove</button>
+                                <button type="button" class="button is-small is-danger is-light" onclick="removeMainGroup('{{ url("contest", contest.id, "training_day_group", group.id, "remove") }}');" {% if not admin.permission_all %} disabled{% endif %}>Remove</button>
                             </td>
                         </tr>
                         {% endfor %}
 
                         {# --- EDIT MODE: Add New Group Row --- #}
-                        <tr style="background-color: #f8fafc; border-top: 2px solid #e2e8f0;">
+                        <tr style="background-color: var(--bulma-scheme-main-ter); border-top: 2px solid var(--bulma-border);">
                             <td style="position: relative;">
-                                <input type="text" name="tag_name" placeholder="New Group Tag" class="tp-form-input" style="background: white;" required form="add-group-form"/>
+                                <input type="text" name="tag_name" placeholder="New Group Tag" class="tp-form-input" required form="add-group-form"/>
                             </td>
                             <td>
-                                <input type="datetime-local" name="start_time" class="tp-form-input" style="background: white; padding: 8px 10px; height: 38px; box-sizing: border-box;" form="add-group-form"/>
+                                <input type="datetime-local" name="start_time" class="tp-form-input" style="padding: 8px 10px; height: 38px; box-sizing: border-box;" form="add-group-form"/>
                             </td>
                             <td>
                                 <div class="tp-group-duration" style="height: 38px; align-items: center;">
-                                    <input type="number" name="duration_hours" min="0" placeholder="0" class="tp-form-input" style="background: white;" form="add-group-form"/>
+                                    <input type="number" name="duration_hours" min="0" placeholder="0" class="tp-form-input" form="add-group-form"/>
                                     <span>h</span>
-                                    <input type="number" name="duration_minutes" min="0" max="59" placeholder="0" class="tp-form-input" style="background: white;" form="add-group-form"/>
+                                    <input type="number" name="duration_minutes" min="0" max="59" placeholder="0" class="tp-form-input" form="add-group-form"/>
                                     <span>m</span>
                                 </div>
                             </td>
@@ -124,8 +124,9 @@
                                 <input type="checkbox" name="alphabetical_task_order" style="width: 18px; height: 18px; cursor: pointer;" form="add-group-form"/>
                             </td>
                             <td style="text-align: right;">
-                                <button type="submit" id="add-group-submit-btn" class="tp-btn-primary" style="display: none; padding: 6px 12px; font-size: 0.9em;" form="add-group-form" {% if not admin.permission_all %} disabled{% endif %}>
-                                    + Add
+                                <button type="submit" id="add-group-submit-btn" class="button is-primary" style="display: none; padding: 6px 12px; font-size: 0.9em;" form="add-group-form" {% if not admin.permission_all %} disabled{% endif %}>
+                                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                                    <span>Add</span>
                                 </button>
                             </td>
                         </tr>
@@ -136,14 +137,14 @@
 
         {% if is_create %}
             <!-- CREATE MODE: Button to add dynamic JS rows -->
-            <button type="button" id="add-group-btn" class="tp-btn-secondary tp-btn-add-group">
+            <button type="button" id="add-group-btn" class="button">
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
-                Add Main Group
+                <span>Add Main Group</span>
             </button>
         {% else %}
             <!-- EDIT MODE: Save changes button -->
             <div style="margin-top: 16px; text-align: right;">
-                <button type="submit" class="tp-btn-primary" form="update-groups-form" {% if not admin.permission_all %} disabled{% endif %}>Save Group Changes</button>
+                <button type="submit" class="button is-primary" form="update-groups-form" {% if not admin.permission_all %} disabled{% endif %}><span>Save Group Changes</span></button>
             </div>
         {% endif %}
 
@@ -202,7 +203,6 @@ function addGroupRow() {
     tagInput.name = 'group_tag_name[]';
     tagInput.placeholder = 'Select a student tag';
     tagInput.className = 'tp-form-input';
-    tagInput.style.background = 'white';
     tagCell.appendChild(tagInput);
     row.appendChild(tagCell);
 
@@ -277,7 +277,7 @@ function addGroupRow() {
     actionsCell.style.textAlign = 'right';
     var removeBtn = document.createElement('button');
     removeBtn.type = 'button';
-    removeBtn.className = 'tp-btn-remove';
+    removeBtn.className = 'button is-small is-danger is-light';
     removeBtn.textContent = 'Remove';
     actionsCell.appendChild(removeBtn);
     row.appendChild(actionsCell);

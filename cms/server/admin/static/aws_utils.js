@@ -1634,6 +1634,62 @@ var ModelSolutionModal = (function() {
 })();
 
 
-// Form utilities (initDateTimeValidation, initRemovePage, initReadOnlyTagify, initTagify)
+// Form utilities (initDateTimeValidation, initReadOnlyTagify, initTagify)
 // have been moved to aws_form_utils.js for better code organization.
 // Backward compatibility aliases are set up in aws_form_utils.js.
+
+/**
+ * Sidebar toggle functionality
+ * Toggles between regular and minimized sidebar views
+ */
+(function () {
+    const STORAGE_KEY = 'cms-sidebar-minimized';
+
+    function initSidebarToggle() {
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('sidebar-toggle');
+        const regularContent = document.getElementById('sidebar-regular');
+        const minimizedContent = document.getElementById('sidebar-minimized');
+
+        if (!sidebar || !toggleBtn || !regularContent || !minimizedContent) {
+            return;
+        }
+
+        // Restore saved state
+        const isMinimized = localStorage.getItem(STORAGE_KEY) === 'true';
+        if (isMinimized) {
+            applySidebarState(true);
+        }
+
+        // Toggle on button click
+        toggleBtn.addEventListener('click', function () {
+            const willBeMinimized = !sidebar.classList.contains('minimized');
+            applySidebarState(willBeMinimized);
+            localStorage.setItem(STORAGE_KEY, willBeMinimized.toString());
+        });
+
+        function applySidebarState(minimized) {
+            const iconUse = toggleBtn.querySelector('use');
+            if (minimized) {
+                sidebar.classList.add('minimized');
+                regularContent.style.display = 'none';
+                minimizedContent.style.display = 'block';
+                if (iconUse) iconUse.setAttribute('href', '#icon-chevrons-right');
+                toggleBtn.setAttribute('title', 'Expand sidebar');
+            } else {
+                sidebar.classList.remove('minimized');
+                regularContent.style.display = 'block';
+                minimizedContent.style.display = 'none';
+                if (iconUse) iconUse.setAttribute('href', '#icon-chevrons-left');
+                toggleBtn.setAttribute('title', 'Collapse sidebar');
+            }
+        }
+    }
+
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSidebarToggle);
+    } else {
+        initSidebarToggle();
+    }
+})();

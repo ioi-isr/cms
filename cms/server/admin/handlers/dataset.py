@@ -52,7 +52,6 @@ from cms.grading.tasktypes.util import \
     get_allowed_manager_basenames, compile_manager_bytes, create_sandbox
 from cms.grading.languagemanager import filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
-from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.subtask_validation import set_sandbox_resource_limits
 from cmscommon.datetime import make_datetime
 from cmscommon.importers import import_testcases_from_zipfile, compile_template_regex
@@ -255,40 +254,12 @@ class DeleteDatasetHandler(BaseHandler):
 
 
 class ActivateDatasetHandler(BaseHandler):
-    """Set a given dataset to be the active one for a task.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        changes = compute_changes_for_dataset(task.active_dataset, dataset)
-        notify_participations = set()
-
-        # By default, we will notify users who's public scores have changed, or
-        # their non-public scores have changed but they have used a token.
-        for c in changes:
-            score_changed = c.old_score is not None or c.new_score is not None
-            public_score_changed = c.old_public_score is not None or \
-                c.new_public_score is not None
-            if public_score_changed or \
-                    (c.submission.tokened() and score_changed):
-                notify_participations.add(c.submission.participation.id)
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["changes"] = changes
-        self.r_params["default_notify_participations"] = notify_participations
-        self.render("activate_dataset.html", **self.r_params)
-
+    """Set a given dataset to be the active one for a task."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
-
+        fallback_url = self.url("task", task.id)
         task.active_dataset = dataset
 
         if dataset.task_type == 'OutputOnly':
@@ -309,6 +280,10 @@ class ActivateDatasetHandler(BaseHandler):
                 .evaluation_service.search_operations_not_done()
             self.service\
                 .scoring_service.search_operations_not_done()
+
+        else:
+            self.redirect(fallback_url)
+            return
 
         # Now send notifications to contestants.
         datetime = make_datetime()
@@ -332,7 +307,7 @@ class ActivateDatasetHandler(BaseHandler):
                 make_datetime(),
                 "Messages sent to %d users." % count, "")
 
-        self.redirect(self.url("task", task.id))
+        self.redirect(fallback_url)
 
 
 class ToggleAutojudgeDatasetHandler(BaseHandler):

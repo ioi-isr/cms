@@ -1,201 +1,195 @@
+{% from "macro/modal.html" import modal_header, modal_footer %}
 {% extends "base.html" %}
 
 {% block core %}
-<div class="content-constraint" style="max-width: 900px;">
-    <!-- Header -->
-    <h1 class="title">Students</h1>
-    <p class="subtitle has-text-grey">
-        Program: <a href="{{ url("training_program", training_program.id) }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
-    </p>
+<!-- Header -->
+<h1 class="title is-spaced">Students</h1>
+<p class="subtitle has-text-grey">
+    Program: <a href="{{ url("training_program", training_program.id) }}" style="color: var(--tp-text-primary); font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+</p>
 
-    {% include "fragments/overload_warning.html" %}
+{% include "fragments/overload_warning.html" %}
 
-    <!-- Action Buttons Row -->
-    <div class="action-buttons-row">
-        <!-- Add Students from List Button -->
-        <form id="bulk-add-form" action="{{ url("training_program", training_program.id, "students", "bulk_add") }}" method="POST" enctype="multipart/form-data" style="display: inline;">
-            {{ xsrf_form_html|safe }}
-            <input type="file" name="students_file" accept=".txt" class="file-input-hidden" id="students-file-input"
-                {% if not admin.permission_all %}disabled{% endif %}
-                onchange="if(this.files.length) this.form.submit();" />
-            <label for="students-file-input" class="button is-medium{% if not admin.permission_all %} is-disabled{% endif %}" {% if not admin.permission_all %}aria-disabled="true"{% endif %}>
-                <svg class="icon is-small"><use href="#icon-upload"/></svg>
-                <span>Add Students from List</span>
-            </label>
-        </form>
-
-        <!-- Bulk Assign Task Button -->
-        <button type="button" class="button is-medium" onclick="openBulkAssignModal()">
-          <svg class="icon is-small"><use href="#icon-tag"/></svg>
-          <span>Bulk Assign Task</span>
-        </button>
-
-        <!-- Add Student Button -->
-        <button type="button" class="button is-medium is-primary has-text-white" onclick="document.getElementById('add-student-dialog').showModal()">
-            <svg class="icon"><use href="#icon-plus"/></svg>
-            <span>Add Student</span>
-        </button>
-    </div>
-
-    <!-- Add Student Dialog (native HTML dialog element) -->
-    <dialog id="add-student-dialog" class="tp-dialog">
-        <div class="tp-dialog-header">
-            <h3>Add Student</h3>
-            <form method="dialog">
-                <button type="submit" class="tp-dialog-close">&times;</button>
-            </form>
-        </div>
-        <form action="{{ url("training_program", training_program.id, "students", "add") }}" method="POST">
-            {{ xsrf_form_html|safe }}
-            <div class="tp-dialog-body">
-                <label for="user_id">Select a user to add:</label>
-                <select name="user_id" id="user_id" class="searchable-select" style="width: 100%;">
-                    <option value="" selected disabled hidden>Search for a user...</option>
-                    {% for u in unassigned_users %}
-                    <option value="{{ u.id }}">{{ u.username }} - {{ u.first_name }} {{ u.last_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="tp-dialog-footer">
-                <button type="button" class="tp-btn-secondary" onclick="document.getElementById('add-student-dialog').close()">Cancel</button>
-                <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
-                    Add to Program
-                </button>
-            </div>
-        </form>
-    </dialog>
-
-    <!-- Bulk Add Results (if any) -->
-    {% if bulk_add_results %}
-    <div class="tp-filter-card" style="margin-bottom: 24px;">
-        <div style="width: 100%;">
-            <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: #1f2937;">Bulk Add Results</h3>
-            <p style="margin: 0 0 12px 0; color: #6b7280;">{{ students_added }} student(s) successfully added to the training program.</p>
-            <table class="ranking-table" style="width: 100%;">
-                <thead>
-                    <tr>
-                        <th style="text-align: left;">Username</th>
-                        <th style="text-align: left;">Status</th>
-                        <th style="text-align: left;">Message</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for result in bulk_add_results %}
-                    <tr>
-                        <td><div class="list-cell-wrapper">{{ result.username }}</div></td>
-                        <td>
-                            <div class="list-cell-wrapper">
-                                {% if result.status == "success" %}
-                                <span class="source-badge badge-training">Success</span>
-                                {% elif result.status == "already_exists" %}
-                                <span class="source-badge badge-archived">Already in program</span>
-                                {% else %}
-                                <span class="source-badge" style="background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;">Not found</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td><div class="list-cell-wrapper">{{ result.message }}</div></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Students Table -->
-    <div class="tp-section-header">
-        <h2>All Students ({{ training_program.students|length }})</h2>
-    </div>
-
-    <form action="{{ url("training_program", training_program.id, "students") }}" method="POST" id="students-form">
+<!-- Action Buttons Row -->
+<div class="buttons are-centered">
+    <!-- Add Students from List Button -->
+    <form id="bulk-add-form" action="{{ url("training_program", training_program.id, "students", "bulk_add") }}" method="POST" enctype="multipart/form-data" style="display: inline;">
         {{ xsrf_form_html|safe }}
-        <div class="tp-table-container">
-            <table class="ranking-table" id="students-table" style="width: 100%;">
-                <thead>
-                    <tr>
-                        <th style="text-align: left;">Student</th>
-                        <th data-sort-settings="numeric reversed" style="text-align: left; width: 30%;">Task Archive Progress</th>
-                        <th class="text-center no-sort" style="width: 20%;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for student in training_program.students|sort(attribute="participation.user.username") %}
-                    {% set u = student.participation.user %}
-                    {% set progress = student_progress.get(student.id, {}) %}
-                    <tr>
-                        <!-- Student (combined name column with avatar and tags inline) -->
-                        <td data-value="{{ u.first_name }} {{ u.last_name }}">
-                            <div class="student-name-wrapper">
-                                {% if u.picture %}
-                                <img class="student-avatar" src="{{ url("file", u.picture, "picture") }}" alt="{{ u.first_name }} {{ u.last_name }}"/>
-                                {% else %}
-                                <div class="student-avatar-placeholder">{{ u.first_name[:1] or '?' }}{{ u.last_name[:1] }}</div>
-                                {% endif %}
-                                <div class="student-info">
-                                    <a class="student-name-link"
-                                       href="{{ url("training_program", training_program.id, "student", u.id, "edit") }}"
-                                       title="{{ u.first_name }} {{ u.last_name }}">
-                                        {{ u.first_name }} {{ u.last_name }}
-                                    </a>
-                                    <span class="student-username">({{ u.username }})</span>
-                                    {% for tag in student.student_tags %}
-                                    <span class="badge badge-teal student-tag-inline">{{ tag }}</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </td>
-
-                        <!-- Task Archive Progress (with CSS-based progress bar) -->
-                        <td data-value="{{ progress.percentage|default(-1) if progress.task_count > 0 else -1 }}">
-                            <div class="list-cell-wrapper">
-                                {% if progress.task_count > 0 %}
-                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" class="progress-link">
-                                    <span class="progress-percentage" style="--pct: {{ progress.percentage }}">
-                                        {{ "%.0f"|format(progress.percentage) }}%
-                                    </span>
-                                    <div class="progress-bar-modern" style="--pct: {{ progress.percentage }}"></div>
-                                    <span class="progress-score">
-                                        {{ "%.0f"|format(progress.total_score) }}/{{ "%.0f"|format(progress.max_score) }}
-                                    </span>
-                                </a>
-                                {% else %}
-                                <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" class="progress-link no-tasks">
-                                    No tasks
-                                </a>
-                                {% endif %}
-                            </div>
-                        </td>
-
-                        <!-- Actions -->
-                        <td class="text-center">
-                            <div class="list-cell-wrapper center-content">
-                                <button type="button" class="btn-icon-only"
-                                    {% if not admin.permission_all %}disabled{% endif %}
-                                    onclick="openRemoveStudentModal(this); return false;"
-                                    data-username="{{ u.username }}"
-                                    data-full-name="{{ u.first_name }} {{ u.last_name }}"
-                                    data-remove-url="{{ url('training_program', training_program.id, 'student', u.id, 'remove') }}"
-                                    title="Remove from program">
-                                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <input type="file" name="students_file" accept=".txt" class="file-input-hidden" id="students-file-input"
+            {% if not admin.permission_all %}disabled{% endif %}
+            onchange="if(this.files.length) this.form.submit();" />
+        <label for="students-file-input" class="button is-medium{% if not admin.permission_all %} is-disabled{% endif %}" {% if not admin.permission_all %}aria-disabled="true"{% endif %}>
+            <svg class="icon is-small"><use href="#icon-upload"/></svg>
+            <span>Add Students from List</span>
+        </label>
     </form>
 
-    {% if not training_program.students %}
-    <div style="text-align: center; padding: 80px 20px; color: #64748b;">
-        <div style="font-size: 3em; margin-bottom: 10px; opacity: 0.15; filter: grayscale(1);">👥</div>
-        <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No students in this program yet</p>
-        <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.7;">Use the "Add Student" button above to add students.</p>
-    </div>
-    {% endif %}
+    <!-- Bulk Assign Task Button -->
+    <button type="button" class="button is-medium" onclick="openBulkAssignModal()">
+      <svg class="icon is-small"><use href="#icon-tag"/></svg>
+      <span>Bulk Assign Task</span>
+    </button>
+
+    <!-- Add Student Button -->
+    <button type="button" class="button is-medium is-primary" onclick="document.getElementById('add-student-dialog').showModal()">
+        <svg class="icon"><use href="#icon-plus"/></svg>
+        <span>Add Student</span>
+    </button>
 </div>
+
+<!-- Add Student Dialog (native HTML dialog element) -->
+<dialog id="add-student-dialog" class="tp-dialog">
+    <div class="tp-dialog-header">
+        <h3>Add Student</h3>
+        <form method="dialog">
+            <button type="submit" class="tp-dialog-close">&times;</button>
+        </form>
+    </div>
+    <form action="{{ url("training_program", training_program.id, "students", "add") }}" method="POST">
+        {{ xsrf_form_html|safe }}
+        <div class="tp-dialog-body">
+            <label for="user_id">Select a user to add:</label>
+            <select name="user_id" id="user_id" class="searchable-select" style="width: 100%;" required>
+                <option value="" selected disabled hidden>Search for a user...</option>
+                {% for u in unassigned_users %}
+                <option value="{{ u.id }}">{{ u.username }} - {{ u.first_name }} {{ u.last_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="tp-dialog-footer">
+            <button type="button" class="button" onclick="document.getElementById('add-student-dialog').close()"><span>Cancel</span></button>
+            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}>
+                <span>Add to Program</span>
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Bulk Add Results (if any) -->
+{% if bulk_add_results %}
+<div class="tp-filter-card" style="margin-bottom: 24px;">
+    <div style="width: 100%;">
+        <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--tp-text-primary);">Bulk Add Results</h3>
+        <p style="margin: 0 0 12px 0; color: var(--tp-text-muted);">{{ students_added }} student(s) successfully added to the training program.</p>
+        <table class="ranking-table" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Username</th>
+                    <th style="text-align: left;">Status</th>
+                    <th style="text-align: left;">Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in bulk_add_results %}
+                <tr>
+                    <td><div class="list-cell-wrapper">{{ result.username }}</div></td>
+                    <td>
+                        <div class="list-cell-wrapper">
+                            {% if result.status == "success" %}
+                            <span class="tag is-bordered has-text-primary">Success</span>
+                            {% elif result.status == "already_exists" %}
+                            <span class="tag is-bordered has-text-warning">Already in program</span>
+                            {% else %}
+                            <span class="tag is-bordered has-text-danger">Not found</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td><div class="list-cell-wrapper">{{ result.message }}</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Students Table -->
+<h2 class="title is-5">All Students ({{ training_program.students|length }})</h2>
+
+<div class="table-container" style="width: 100%; max-width: 900px;">
+    <table class="table is-hoverable is-striped is-bordered is-fullwidth" id="students-table">
+        <thead class="is-uppercase is-3">
+            <tr>
+                <th class="has-text-left has-text-grey">Student</th>
+                <th class="has-text-left has-text-grey" data-sort-settings="numeric reversed" style="width: 30%;">Task Archive Progress</th>
+                <th class="has-text-centered no-sort has-text-grey" style="width: 20%;">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="p-0">
+            {% for student in training_program.students|sort(attribute="participation.user.username") %}
+            {% set u = student.participation.user %}
+            {% set progress = student_progress.get(student.id, {}) %}
+            <tr>
+                <!-- Student (combined name column with avatar and tags inline) -->
+                <td data-value="{{ u.first_name }} {{ u.last_name }}">
+                    <div class="student-name-wrapper">
+                        {% if u.picture %}
+                        <img class="student-avatar" src="{{ url("file", u.picture, "picture") }}" alt="{{ u.first_name }} {{ u.last_name }}"/>
+                        {% else %}
+                        <div class="student-avatar-placeholder">{{ u.first_name[:1] or '?' }}{{ u.last_name[:1] }}</div>
+                        {% endif %}
+                        <div class="student-info">
+                            <a class="student-name-link"
+                               href="{{ url("training_program", training_program.id, "student", u.id, "edit") }}"
+                               title="{{ u.first_name }} {{ u.last_name }}">
+                                {{ u.first_name }} {{ u.last_name }}
+                            </a>
+                            <span class="student-username">({{ u.username }})</span>
+                            {% for tag in student.student_tags %}
+                            <span class="tag is-bordered has-text-primary">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </td>
+
+                <!-- Task Archive Progress (with CSS-based progress bar) -->
+                <td data-value="{{ progress.percentage|default(-1) if progress.task_count > 0 else -1 }}">
+                    <div class="list-cell-wrapper">
+                        {% if progress.task_count > 0 %}
+                        <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" class="progress-link">
+                            <span class="progress-percentage" style="--pct: {{ progress.percentage }}">
+                                {{ "%.0f"|format(progress.percentage) }}%
+                            </span>
+                            <div class="progress-bar-modern" style="--pct: {{ progress.percentage }}"></div>
+                            <span class="progress-score">
+                                {{ "%.0f"|format(progress.total_score) }}/{{ "%.0f"|format(progress.max_score) }}
+                            </span>
+                        </a>
+                        {% else %}
+                        <a href="{{ url("training_program", training_program.id, "student", u.id, "tasks") }}" class="progress-link no-tasks">
+                            No tasks
+                        </a>
+                        {% endif %}
+                    </div>
+                </td>
+
+                <!-- Actions -->
+                <td class="has-text-centered">
+                    <div class="list-cell-wrapper center-content">
+                        <button type="button" class="btn-icon-only"
+                            {% if not admin.permission_all %}disabled{% endif %}
+                            onclick="openRemoveStudentModal(this); return false;"
+                            data-username="{{ u.username }}"
+                            data-full-name="{{ u.first_name }} {{ u.last_name }}"
+                            data-remove-url="{{ url('training_program', training_program.id, 'student', u.id, 'remove') }}"
+                            title="Remove from program" aria-label="Remove student from program">
+                            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not training_program.students %}
+<div style="text-align: center; padding: 80px 20px; color: var(--tp-text-muted);">
+    <div style="font-size: 3em; margin-bottom: 10px; opacity: 0.15; filter: grayscale(1);">👥</div>
+    <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No students in this program yet</p>
+    <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.7;">Use the "Add Student" button above to add students.</p>
+</div>
+{% endif %}
 
 <script>
 // Table sorting using CMS.AWSUtils
@@ -283,10 +277,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal" id="modal-bulk-assign" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1">
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="bulkAssignTitle">
-            <header class="modal__header">
-                <h2 class="modal__title" id="bulkAssignTitle">Bulk Assign Task</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
+            {{ modal_header("Bulk Assign Task", "bulkAssignTitle") }}
             <form action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
                 {{ xsrf_form_html|safe }}
                 <main class="modal__content">
@@ -294,28 +285,21 @@ document.addEventListener('DOMContentLoaded', function() {
                         Assign a task to all students who have the specified tag.
                         Students who already have the task assigned will be skipped.
                     </p>
-                    <div class="bulk-assign-row">
-                        <div class="modal__form-group">
-                            <label for="bulkAssignTaskSelect">Task</label>
-                            <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
-                                <option value="" selected disabled hidden>Select a task...</option>
-                                {% for task in (all_tasks or []) %}
-                                <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="modal__form-group">
-                            <label for="bulkAssignTagInput">Student Tag</label>
-                            <input type="text" name="tag" id="bulkAssignTagInput" placeholder="Select a student tag..." />
-                        </div>
+                    <div class="modal__form-group">
+                        <label for="bulkAssignTaskSelect">Task</label>
+                        <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
+                            <option value="" selected disabled hidden>Select a task...</option>
+                            {% for task in (all_tasks or []) %}
+                            <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="modal__form-group">
+                        <label for="bulkAssignTagInput">Student Tag</label>
+                        <input type="text" name="tag" id="bulkAssignTagInput" placeholder="Select a student tag..." />
                     </div>
                 </main>
-                <footer class="modal__footer">
-                    <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                    <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>
-                        Assign Task to Group
-                    </button>
-                </footer>
+                {{ modal_footer("Assign Task to Group", disabled=(not admin.permission_all)) }}
             </form>
         </div>
     </div>

@@ -34,7 +34,7 @@ import re
 from datetime import date
 
 from sqlalchemy import and_, exists
-from cms.db import Contest, Participation, Submission, Team, User, TrainingDay, TrainingProgram
+from cms.db import Contest, Participation, Team, User, TrainingDay, TrainingProgram
 from cms.server.picture_utils import (
     process_picture_upload, PictureValidationError
 )
@@ -614,57 +614,30 @@ class TeamListHandler(SimpleHandler("teams.html")):
 
 
 class RemoveUserHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the user from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, user_id):
-        user = self.safe_get_item(User, user_id)
-        submission_query = (
-            self.sql_session.query(Submission)
-            .join(Submission.participation)
-            .filter(Participation.user == user)
-        )
-        participation_query = self.sql_session.query(Participation).filter(
-            Participation.user == user
-        )
-
-        self.render_params_for_remove_confirmation(submission_query)
-        self.r_params["user"] = user
-        self.r_params["participation_count"] = participation_query.count()
-        self.render("user_remove.html", **self.r_params)
+    """Delete removes the user from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, user_id):
         user = self.safe_get_item(User, user_id)
-
-        self.sql_session.delete(user)
-        if self.try_commit():
+        try:
+            self.sql_session.delete(user)
+            if not self.try_commit():
+                self.set_status(500)
+                self.write("error")
+                return
             self.service.proxy_service.reinitialize()
+        except Exception:
+            logger.exception("Unexpected error removing user %s", user_id)
+            self.set_status(500)
+            self.write("error")
+            return
 
         # Maybe they'll want to do this again (for another user)
         self.write("../../users")
 
 
 class RemoveTeamHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the team from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, team_id):
-        team = self.safe_get_item(Team, team_id)
-        participation_query = self.sql_session.query(Participation).filter(
-            Participation.team == team
-        )
-
-        self.r_params = self.render_params()
-        self.r_params["team"] = team
-        self.r_params["participation_count"] = participation_query.count()
-        self.render("team_remove.html", **self.r_params)
+    """Delete removes the team from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, team_id):
@@ -679,10 +652,18 @@ class RemoveTeamHandler(BaseHandler):
             self.sql_session.delete(team)
             if self.try_commit():
                 self.service.proxy_service.reinitialize()
+            else:
+                self.set_status(500)
+                self.write("error")
+                return
         except Exception as fallback_error:
+            logger.exception("Unexpected error removing team %s", team_id)
             self.service.add_notification(
                 make_datetime(), "Error removing team", repr(fallback_error)
             )
+            self.set_status(500)
+            self.write("error")
+            return
 
         # Maybe they'll want to do this again (for another team)
         self.write("../../teams")
@@ -782,12 +763,10 @@ class AddTeamHandler(BaseHandler):
         self.redirect(self.url("teams"))
 
 
-class AddUserHandler(
-    SimpleHandler("add_user.html", permission_all=True), UserValidationMixin
-):
+class AddUserHandler(BaseHandler, UserValidationMixin):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("users", "add")
+        fallback_page = self.url("users")
 
         user = self.save_user(None, fallback_page)
         if user:
