@@ -34,11 +34,11 @@
 <footer class="modal__footer">
     <button type="button" class="button" data-micromodal-close><span>{{ cancel_label }}</span></button>
     {% if secondary_label %}
-    <button type="submit" class="button{{ (' ' ~ secondary_class) if secondary_class else '' }}"{{ (' name="' ~ secondary_name ~ '"') | safe if secondary_name else '' }}{{ (' value="' ~ secondary_value ~ '"') | safe if secondary_value else '' }}>
+    <button type="submit" class="button{% if secondary_class %} {{ secondary_class|e }}{% endif %}"{% if secondary_name %} name="{{ secondary_name|e }}"{% endif %}{% if secondary_value %} value="{{ secondary_value|e }}"{% endif %}>
         <span>{{ secondary_label }}</span>
     </button>
     {% endif %}
-    <button type="submit" class="button {{ submit_class }}"{{ (' id="' ~ submit_id ~ '"') | safe if submit_id else '' }}{{ (' name="' ~ submit_name ~ '"') | safe if submit_name else '' }}{{ (' value="' ~ submit_value ~ '"') | safe if submit_value else '' }}{{ ' disabled aria-disabled="true"' | safe if disabled else '' }}>
+    <button type="submit" class="button {{ submit_class|e }}"{% if submit_id %} id="{{ submit_id|e }}"{% endif %}{% if submit_name %} name="{{ submit_name|e }}"{% endif %}{% if submit_value %} value="{{ submit_value|e }}"{% endif %}{% if disabled %} disabled aria-disabled="true"{% endif %}>
         {% if submit_icon %}<svg class="icon is-small"><use href="{{ submit_icon }}"/></svg>{% endif %}
         <span>{{ submit_label }}</span>
     </button>

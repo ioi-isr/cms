@@ -25,7 +25,7 @@
         {{ p.user.first_name }} {{ p.user.last_name }}
       </a>
       <span class="student-username is-hidden-mobile">({{ p.user.username }})</span>
-      <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">
+      <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history" aria-label="View score and rank history">
         <svg class="icon"><use href="#icon-line-chart"/></svg>
       </a>
     </div>

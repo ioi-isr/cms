@@ -5,7 +5,7 @@
 <!-- Header -->
 <h1 class="title is-spaced">Students</h1>
 <p class="subtitle has-text-grey">
-    Program: <a href="{{ url("training_program", training_program.id) }}" style="color: #475569; font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+    Program: <a href="{{ url("training_program", training_program.id) }}" style="color: var(--tp-text-primary); font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
 </p>
 
 {% include "fragments/overload_warning.html" %}
@@ -69,8 +69,8 @@
 {% if bulk_add_results %}
 <div class="tp-filter-card" style="margin-bottom: 24px;">
     <div style="width: 100%;">
-        <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: #1f2937;">Bulk Add Results</h3>
-        <p style="margin: 0 0 12px 0; color: #6b7280;">{{ students_added }} student(s) successfully added to the training program.</p>
+        <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--tp-text-primary);">Bulk Add Results</h3>
+        <p style="margin: 0 0 12px 0; color: var(--tp-text-muted);">{{ students_added }} student(s) successfully added to the training program.</p>
         <table class="ranking-table" style="width: 100%;">
             <thead>
                 <tr>
@@ -184,7 +184,7 @@
 </div>
 
 {% if not training_program.students %}
-<div style="text-align: center; padding: 80px 20px; color: #64748b;">
+<div style="text-align: center; padding: 80px 20px; color: var(--tp-text-muted);">
     <div style="font-size: 3em; margin-bottom: 10px; opacity: 0.15; filter: grayscale(1);">👥</div>
     <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No students in this program yet</p>
     <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.7;">Use the "Add Student" button above to add students.</p>

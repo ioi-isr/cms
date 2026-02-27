@@ -151,18 +151,22 @@ AdminModals.confirm = function(opts) {
     var hasWarning = opts.warningHtml || opts.warning || (opts.warnings && opts.warnings.length > 0);
 
     if (hasWarning) {
-        warningBox.style.display = 'block';
-
-        if (opts.warningHtml) {
-            warningText.innerHTML = opts.warningHtml;
-        } else if (opts.warning) {
-            warningText.textContent = opts.warning;
-        } else {
-            warningText.textContent = '';
+        if (warningBox) {
+            warningBox.style.display = 'block';
         }
 
-        warningList.innerHTML = '';
-        if (opts.warnings && opts.warnings.length > 0) {
+        if (opts.warningHtml) {
+            if (warningText) warningText.innerHTML = opts.warningHtml;
+        } else if (opts.warning) {
+            if (warningText) warningText.textContent = opts.warning;
+        } else {
+            if (warningText) warningText.textContent = '';
+        }
+
+        if (warningList) {
+            warningList.innerHTML = '';
+        }
+        if (warningList && opts.warnings && opts.warnings.length > 0) {
             opts.warnings.forEach(function (w) {
                 var li = document.createElement('li');
                 li.textContent = w;
@@ -170,9 +174,15 @@ AdminModals.confirm = function(opts) {
             });
         }
     } else {
-        warningBox.style.display = 'none';
-        warningText.textContent = '';
-        warningList.innerHTML = '';
+        if (warningBox) {
+            warningBox.style.display = 'none';
+        }
+        if (warningText) {
+            warningText.textContent = '';
+        }
+        if (warningList) {
+            warningList.innerHTML = '';
+        }
     }
 
     var btn = document.getElementById('modal-confirm-btn');

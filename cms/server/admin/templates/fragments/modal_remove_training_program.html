@@ -82,6 +82,10 @@
     if (!confirmBtn) return;
 
     confirmBtn.addEventListener('click', function() {
+        if (confirmBtn.disabled) {
+            return;
+        }
+
         var taskOptionsDiv = document.getElementById('remove-program-task-options');
         var hasTaskOptions = taskOptionsDiv && taskOptionsDiv.style.display !== 'none';
         var action = 'delete_all';
@@ -124,6 +128,8 @@
             return;
         }
 
+        confirmBtn.disabled = true;
+
         fetch(removeUrl + '?' + params.toString(), {
             method: 'DELETE',
             headers: {
@@ -134,12 +140,14 @@
                 return response.text();
             } else {
                 return response.text().then(function(text) {
+                    confirmBtn.disabled = false;
                     throw new Error(text || 'Failed to remove training program');
                 });
             }
         }).then(function() {
             window.location.href = '{{ url("training_programs") }}';
         }).catch(function(error) {
+            confirmBtn.disabled = false;
             AdminModals.showError(error.message);
         });
     });

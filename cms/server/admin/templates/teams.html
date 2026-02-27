@@ -44,7 +44,13 @@
                     title: "Remove Team",
                     message: "Are you sure you want to remove team " + {{ t.code|tojson }} + " (" + {{ t.name|tojson }} + ")?",
                     warnings: [
-                        {% if t.participations|length > 0 %}{{ (t.participations|length|string + " participation(s) will lose their team association.")|tojson }}{% else %}{{ "This team has no associated participations."|tojson }}{% endif %}
+                        {% if t.participations|length == 1 %}
+                        {{ "1 participation will lose its team association."|tojson }}
+                        {% elif t.participations|length > 1 %}
+                        {{ (t.participations|length|string + " participations will lose their team associations.")|tojson }}
+                        {% else %}
+                        {{ "This team has no associated participations."|tojson }}
+                        {% endif %}
                     ],
                     deleteUrl: {{ url("teams", t.id, "remove")|tojson }},
                     confirmLabel: "Yes, Remove"
