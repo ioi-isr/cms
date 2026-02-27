@@ -2143,7 +2143,7 @@
 }
 
 .tp-toggle-input:checked {
-    background: var(--tp-primary);
+    background: var(--bulma-primary);
 }
 
 .tp-toggle-input:checked::after {
@@ -2151,7 +2151,7 @@
 }
 
 .tp-toggle-input:focus-visible {
-    box-shadow: 0 0 0 2px var(--tp-bg-white), 0 0 0 4px var(--tp-primary-light);
+    box-shadow: 0 0 0 2px var(--tp-bg-white), 0 0 0 4px var(--bulma-primary-30);
 }
 
 /* Language Grid */

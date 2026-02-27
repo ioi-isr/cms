@@ -316,7 +316,7 @@
 
 @font-face {
     font-family: RetroPixel;
-    src: url('/static/fonts/RetroPixel.ttf') format('truetype');
+    src: url('fonts/RetroPixel.ttf') format('truetype');
     font-weight: 400;
     font-style: normal;
     font-display: swap;

@@ -512,7 +512,61 @@ class BaseHandler(CommonRequestHandler):
             .all()
         )
 
+        params["breadcrumbs"] = self._build_breadcrumbs()
+
         return params
+
+    def _build_breadcrumbs(self) -> list[dict]:
+        """Recursively build breadcrumb path with icons.
+
+        Returns a list of breadcrumb items, each with:
+        - name: display name
+        - url: link URL
+        - icon: icon class (optional)
+        """
+        if self.contest is None:
+            return []
+
+        breadcrumbs = []
+
+        def add_breadcrumb_recursive(folder):
+            """Recursively add breadcrumbs from folder to root."""
+            if folder.parent:
+                add_breadcrumb_recursive(folder.parent)
+            breadcrumbs.append(
+                {
+                    "name": folder.name,
+                    "url": self.url("folder", folder.id),
+                    "icon": "icon-folder",
+                }
+            )
+
+        def add_training_program_breadcrumb(training_program):
+            breadcrumbs.append(
+                {
+                    "name": training_program.name,
+                    "url": self.url("training_program", training_program.id),
+                    "icon": "icon-graduation-cap",
+                }
+            )
+
+        if self.contest.training_day:
+            add_training_program_breadcrumb(self.contest.training_day.training_program)
+        elif self.contest.folder:
+            add_breadcrumb_recursive(self.contest.folder)
+
+        if self.contest.training_program:
+            add_training_program_breadcrumb(self.contest.training_program)
+        else:
+            breadcrumbs.append(
+                {
+                    "name": self.contest.name,
+                    "url": self.url("contest", self.contest.id),
+                    "icon": None,
+                }
+            )
+
+        return breadcrumbs
 
     def render_params_for_training_program(
         self, training_program: "TrainingProgram"
