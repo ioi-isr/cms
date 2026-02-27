@@ -13,7 +13,7 @@ AdminTableUtils.initFilterTagify({
 {% endblock js_init %}
 
 {% block core %}
-<h1 class="title">Attendance: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
+<h1 class="title is-spaced">Attendance: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
 
 {{ info_alert.alert(
     title="Attendance Data",

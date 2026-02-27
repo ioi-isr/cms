@@ -469,7 +469,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% endmacro %}
 
 {% block core %}
-<h1 class="title"><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }}{% if subtask_name %}: {{ subtask_name }}{% endif %} Tests</h1>
+<h1 class="title is-spaced"><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }}{% if subtask_name %}: {{ subtask_name }}{% endif %} Tests</h1>
 
 <h2>Subtask {{ subtask_index }}{% if subtask_name %} ({{ subtask_name }}){% endif %} Details</h2>
 

@@ -9,7 +9,7 @@
 {% if sr is not none %}
   {% set status = sr.get_status() %}
 {% endif %}
-<h1 class="title">Submission {{ s.id }} (Task: <a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a>)</h1>
+<h1 class="title is-spaced">Submission {{ s.id }} (Task: <a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a>)</h1>
 
 {% set dataset_selector_par_url = url("submission", s.id) %}
 {% include "fragments/dataset_selector.html" %}
