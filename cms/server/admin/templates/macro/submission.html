@@ -4,38 +4,59 @@
 
 {% macro header(admin, submission_count, reevaluation_buttons_html, download_url=none) -%}
 {#
-Render the submissions header with action buttons.
+Render the submissions header with action buttons inside a box.
 
 admin (Admin): the logged in admin.
 submission_count (int): total number of submissions.
 reevaluation_buttons_html (str): pre-rendered reevaluation buttons HTML.
 download_url (str|None): URL to download all submissions, or None to hide.
 #}
-<div class="level is-mobile mb-4">
-  <div class="level-left">
-    <div class="level-item">
-      <span class="has-text-grey">{{ submission_count }} submission{{ "s" if submission_count != 1 else "" }}</span>
-    </div>
-  </div>
-  <div class="level-right">
-    <div class="level-item">
-      <div class="buttons">
-        <button type="button" class="button is-small" onclick="document.getElementById('diffchooser').toggleAttribute('open')">
-          <svg class="icon is-small"><use href="#icon-file-diff"/></svg>
-          <span>Diff Tool</span>
-        </button>
-        {% if download_url %}
-        <a href="{{ download_url }}" class="button is-small">
-          <svg class="icon is-small"><use href="#icon-download"/></svg>
-          <span>Download All</span>
-        </a>
-        {% endif %}
-        <div class="buttons has-addons mb-0 ml-2">
-          <span class="button is-small is-static">Re-evaluate all</span>
-          {{ reevaluation_buttons_html }}
-        </div>
+<div class="box mb-4">
+  <div class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 0.5rem;">
+    <span class="has-text-grey is-size-7">{{ submission_count }} submission{{ "s" if submission_count != 1 else "" }}</span>
+    <div class="ml-auto is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 0.5rem;">
+      <button type="button" class="button is-small" id="diff-tool-btn" onclick="(function(){ var p=document.getElementById('diffchooser-panel'); var open=p.style.display!=='none'; p.style.display=open?'none':'block'; document.getElementById('diff-tool-btn').classList.toggle('is-info',!open); })()">
+        <svg class="icon is-small"><use href="#icon-file-diff"/></svg>
+        <span>Diff Tool</span>
+      </button>
+      {% if download_url %}
+      <a href="{{ download_url }}" class="button is-small">
+        <svg class="icon is-small"><use href="#icon-download"/></svg>
+        <span>Download All</span>
+      </a>
+      {% endif %}
+      <span class="is-size-7 has-text-weight-semibold is-uppercase has-text-grey mr-1">Re-evaluate All:</span>
+      <div class="buttons has-addons mb-0">
+        {{ reevaluation_buttons_html }}
       </div>
     </div>
+  </div>
+
+  <!-- Diff Tool Panel (hidden by default) -->
+  <div id="diffchooser-panel" style="display: none;">
+    <hr class="my-3">
+    <p class="is-size-7 has-text-grey mb-2">Select two submissions from the table, or enter submission IDs:</p>
+    <div class="field is-grouped is-align-items-flex-end">
+      <div class="control">
+        <label class="label is-small">Old</label>
+        <input class="input is-small" type="number" id="diff-old-input" style="width: 80px;">
+      </div>
+      <div class="control">
+        <label class="label is-small">New</label>
+        <input class="input is-small" type="number" id="diff-new-input" style="width: 80px;">
+      </div>
+      <div class="control">
+        <button type="button" class="button is-small is-info" onclick="utils.do_diff()">Diff</button>
+      </div>
+      <div class="control">
+        <button type="button" class="button is-small" onclick="document.getElementById('diffchooser-panel').style.display='none'; document.getElementById('diff-tool-btn').classList.remove('is-info');">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="mt-3">
+    <input type="text" class="input is-small" id="submissions_search" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)">
   </div>
 </div>
 {%- endmacro %}
@@ -63,29 +84,6 @@ show_training_day (bool): if true, show a column indicating which training day
 <p class="has-text-grey">No submissions found.</p>
 
 {% else %}
-
-<details id="diffchooser" ontoggle="utils.update_diffchooser()" style="display: none;">
-  <summary>Diff submissions...</summary>
-  Select two submissions from the table, or enter submission IDs: <br>
-  <div class="field is-grouped">
-    <div class="control">
-      <label class="label">old</label>
-      <input class="input is-small" type="number" id="diff-old-input" style="width: 80px;">
-    </div>
-    <div class="control">
-      <label class="label">new</label>
-      <input class="input is-small" type="number" id="diff-new-input" style="width: 80px;">
-    </div>
-    <div class="control">
-      <label class="label">&nbsp;</label>
-      <button type="button" class="button is-small" onclick="utils.do_diff()">Diff</button>
-    </div>
-  </div>
-</details>
-
-<div class="table-search">
-  <input type="text" class="input" id="submissions_search" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)" style="max-width: 350px;">
-</div>
 
 {{ macro_pages.selector(page_url, page, pages) }}
 

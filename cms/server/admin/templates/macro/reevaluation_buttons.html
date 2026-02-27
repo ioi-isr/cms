@@ -81,7 +81,7 @@ Render reevaluation buttons as Bulma button group (for page headers).
 
 Same parameters as reevaluation_buttons.
 #}
-<button type="button" class="button is-small is-warning is-outlined" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
+<button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'EvaluationService', 0,
                  'invalidate_submission', {
                  {{ _invalidate_arguments(submission_id, dataset_id, participation_id, contest_id) }}
@@ -89,11 +89,10 @@ Same parameters as reevaluation_buttons.
                  function(response) { utils.redirect_if_ok('{{ next_page }}', response); }
                  ); }, {icon: 'question'});"
 {% if not allowed %}disabled{% endif %}
-        title="Rerun compilation" aria-label="Rerun compilation">
-    <svg class="icon is-small"><use href="#icon-compile"/></svg>
-    <span>Compile</span>
+        title="Compilation">
+    <svg class="icon is-small"><use href="#icon-compile"/></svg> <span>Compile</span>
 </button>
-<button type="button" class="button is-small is-warning is-outlined" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
+<button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'EvaluationService', 0,
                  'invalidate_submission', {
                  {{ _invalidate_arguments(submission_id, dataset_id, participation_id, contest_id) }}
@@ -101,11 +100,10 @@ Same parameters as reevaluation_buttons.
                  function(response) { utils.redirect_if_ok('{{ next_page }}', response); }
                   ); }, {icon: 'question'});"
 {% if not allowed %}disabled{% endif %}
-        title="Rerun evaluation" aria-label="Rerun evaluation">
-    <svg class="icon is-small"><use href="#icon-evaluate"/></svg>
-    <span>Evaluate</span>
+        title="Evaluation">
+    <svg class="icon is-small"><use href="#icon-evaluate"/></svg> <span>Evaluate</span>
 </button>
-<button type="button" class="button is-small is-success is-outlined" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
+<button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'ScoringService', 0,
                  'invalidate_submission', {
                  {{ _invalidate_arguments(submission_id, dataset_id, participation_id, contest_id) }}
@@ -113,8 +111,7 @@ Same parameters as reevaluation_buttons.
                  function(response) { utils.redirect_if_ok('{{ next_page }}', response); }
                  ); }, {icon: 'question'});"
 {% if not allowed %}disabled{% endif %}
-        title="Rerun scoring" aria-label="Rerun scoring">
-    <svg class="icon is-small"><use href="#icon-score-type"/></svg>
-    <span>Score</span>
+        title="Score">
+    <svg class="icon is-small"><use href="#icon-score-type"/></svg> <span>Score</span>
 </button>
 {% endmacro %}
