@@ -9,7 +9,7 @@
 {% if sr is not none %}
   {% set status = sr.get_status() %}
 {% endif %}
-<h1 class="title">Submission {{ s.id }} (Task: <a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a>)</h1>
+<h1 class="title is-spaced">Submission {{ s.id }} (Task: <a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a>)</h1>
 
 {% set dataset_selector_par_url = url("submission", s.id) %}
 {% include "fragments/dataset_selector.html" %}
@@ -103,22 +103,22 @@
         <td>Status</td>
         <td id="submission_status">
           {% if status == SubmissionResult.COMPILING %}
-            <span class="tag is-light is-info">Compiling...</span>
+            <span class="tag is-opaque has-text-info">Compiling...</span>
           {% elif status == SubmissionResult.COMPILATION_FAILED %}
-            <span class="tag is-light is-danger">Compilation failed</span>
+            <span class="tag is-opaque has-text-danger">Compilation failed</span>
           {% elif status == SubmissionResult.EVALUATING %}
-            <span class="tag is-light is-info">Evaluating...</span>
+            <span class="tag is-opaque has-text-info">Evaluating...</span>
           {% elif status == SubmissionResult.SCORING %}
-            <span class="tag is-light is-info">Scoring...</span>
+            <span class="tag is-opaque has-text-info">Scoring...</span>
           {% elif status == SubmissionResult.EVALUATION_FAILED %}
-            <span class="tag is-light is-danger">Evaluation system error</span>
+            <span class="tag is-opaque has-text-danger">Evaluation system error</span>
           {% elif status == SubmissionResult.SCORED %}
             {% if st is defined %}
               {% set max_score = st.max_score %}
             {% else %}
               {% set max_score = "[Cannot get score type - see logs]" %}
             {% endif %}
-            <span class="tag is-light is-success">Scored ({{ sr.score }} / {{ max_score }})</span>
+            <span class="tag is-opaque has-text-success">Scored ({{ sr.score }} / {{ max_score }})</span>
           {% else %}
             <span class="tag is-light">N/A</span>
           {% endif %}

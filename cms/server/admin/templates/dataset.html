@@ -5,7 +5,7 @@
 
 {% block core %}
 
-<h1 class="title">{{ task.title }} (<a href="{{ url("task", task.id) }}">{{ task.name }}</a>)</h1>
+<h1 class="title is-spaced">{{ task.title }} (<a href="{{ url("task", task.id) }}">{{ task.name }}</a>)</h1>
 
 {% set dataset_selector_par_url = url("dataset") %}
 {% include "fragments/dataset_selector.html" %}

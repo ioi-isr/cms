@@ -80,20 +80,10 @@ class FolderHandler(BaseHandler):
         self.redirect(fallback)
 
 
-class AddFolderHandler(SimpleHandler("add_folder.html", permission_all=True)):
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self):
-        self.r_params = self.render_params()
-        self.r_params["all_folders"] = (
-            self.sql_session.query(ContestFolder)
-            .order_by(ContestFolder.name)
-            .all()
-        )
-        self.render("add_folder.html", **self.r_params)
+class AddFolderHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback = self.url("folders", "add")
-        operation = self.get_argument("operation", "Create")
+        fallback = self.url("folders")
         try:
             name = self.get_argument("name")
             description = self.get_argument("description", "")
@@ -113,31 +103,17 @@ class AddFolderHandler(SimpleHandler("add_folder.html", permission_all=True)):
             return
 
         if self.try_commit():
-            if operation == "Create and add another":
-                self.redirect(fallback)
-            else:
-                self.redirect(self.url("folders"))
+            self.redirect(self.url("folders"))
         else:
             self.redirect(fallback)
 
 
 class RemoveFolderHandler(BaseHandler):
-    """Confirm and remove a folder.
+    """Remove a folder via DELETE request.
 
-    On delete, move subfolders under the parent (or root) and detach contests
-    (SET NULL). This preserves inner structure.
+    Subfolders and contests are reparented to the parent (or root).
+    This preserves inner structure.
     """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, folder_id: str):
-        folder = self.safe_get_item(ContestFolder, folder_id)
-        self.r_params = self.render_params()
-        self.r_params["folder"] = folder
-        self.r_params["subfolder_count"] = len(folder.children)
-        self.r_params["contest_count"] = exclude_internal_contests(
-            self.sql_session.query(Contest).filter(Contest.folder == folder)
-        ).count()
-        self.render("folder_remove.html", **self.r_params)
-
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, folder_id: str):
         folder = self.safe_get_item(ContestFolder, folder_id)
@@ -152,5 +128,8 @@ class RemoveFolderHandler(BaseHandler):
             c.folder = parent
         # Delete the folder itself; contests will be detached via FK SET NULL
         self.sql_session.delete(folder)
-        self.try_commit()
-        self.write("../../folders")
+        if not self.try_commit():
+            self.set_status(500)
+            self.write("Failed to remove folder")
+            return
+        self.write(self.url("folders"))

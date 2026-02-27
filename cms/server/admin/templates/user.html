@@ -174,18 +174,21 @@
       </div>
     </div>
   </form>
-  <form action="{{ url("users") }}" method="POST" style="display:inline;">
-      {{ xsrf_form_html|safe }}
-      <input type="hidden" name="user_id" value="{{ user.id }}"/>
-      <button type="submit"
-           name="operation"
-           value="Remove"
-           class="button is-danger is-outlined is-pulled-right"
-  {% if not admin.permission_all %}
-           disabled
-  {% endif %}
-           >Remove</button>
-  </form>
+  {% set ns = namespace(sub_count=0) %}
+  {% for p in user.participations %}{% set ns.sub_count = ns.sub_count + p.submissions|length %}{% endfor %}
+  <button type="button"
+       class="button is-danger is-outlined is-pulled-right"
+       {% if not admin.permission_all %}disabled{% endif %}
+       onclick='AdminModals.deleteResource({
+           title: "Remove User",
+           message: "Are you sure you want to remove user " + {{ user.username|tojson }} + ", including all related data?",
+           warnings: [
+               "{{ user.participations|length }} participation(s) will be deleted.",
+               "{{ ns.sub_count }} submission(s) will be deleted."
+           ],
+           deleteUrl: {{ url("users", user.id, "remove")|tojson }},
+           confirmLabel: "Yes, Remove"
+       })'>Remove</button>
 </div>
 <div class="hr"></div>
 

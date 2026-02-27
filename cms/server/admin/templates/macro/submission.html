@@ -138,24 +138,24 @@ show_training_day (bool): if true, show a column indicating which training day
   {% endif %}
   <td>
     {% if status == SubmissionResult.COMPILING %}
-    <span class="tag is-light is-info">Compiling...</span>
+    <span class="tag is-opaque has-text-info">Compiling...</span>
     {% else %}
     <div id="title_evaluation_{{ s.id }}" class="toggling_off">
 
       {% if status == SubmissionResult.COMPILATION_FAILED %}
-      <span class="tag is-light is-danger">Compilation failed</span>
+      <span class="tag is-opaque has-text-danger">Compilation failed</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% elif status == SubmissionResult.EVALUATING %}
-      <span class="tag is-light is-info">Evaluating...</span>
+      <span class="tag is-opaque has-text-info">Evaluating...</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% elif status == SubmissionResult.EVALUATION_FAILED %}
-      <span class="tag is-light is-danger">Evaluation system error</span>
+      <span class="tag is-opaque has-text-danger">Evaluation system error</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% elif status == SubmissionResult.SCORING %}
-      <span class="tag is-light is-info">Scoring...</span>
+      <span class="tag is-opaque has-text-info">Scoring...</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
         {% if sr.evaluated() %}
         <h3>Testcases</h3>
@@ -191,7 +191,7 @@ show_training_day (bool): if true, show a column indicating which training day
         {% else %}
           {% set max_score = "[Cannot get score type - see logs]" %}
         {% endif %}
-      <span class="tag is-light is-success">Scored ({{ sr.score }} / {{ max_score }})</span>
+      <span class="tag is-opaque has-text-success">Scored ({{ sr.score }} / {{ max_score }})</span>
       <div id="evaluation_{{ s.id }}" class="score_details" style="display: none;">
         {% if score_type is defined %}
           {{ score_type.get_html_details(sr.score_details, FEEDBACK_LEVEL_FULL)|safe }}

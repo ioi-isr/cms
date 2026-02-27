@@ -15,41 +15,41 @@
     {%- endif -%}
 {%- endmacro %}
 
+{% macro render_student_cell(p, contest, student_tags_by_participation) -%}
+<div class="combined-ranking-student-wrapper">
+  <div class="combined-ranking-student-info">
+    <div class="combined-ranking-name-row">
+      <a class="student-name-link combined-ranking-name-link"
+         href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}"
+         title="{{ p.user.first_name }} {{ p.user.last_name }}">
+        {{ p.user.first_name }} {{ p.user.last_name }}
+      </a>
+      <span class="student-username is-hidden-mobile">({{ p.user.username }})</span>
+      <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history" aria-label="View score and rank history">
+        <svg class="icon"><use href="#icon-line-chart"/></svg>
+      </a>
+    </div>
+    {% if student_tags_by_participation and student_tags_by_participation.get(p.id, []) %}
+    <div class="tags mt-1">
+      {% for tag in student_tags_by_participation.get(p.id, []) %}
+        <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{%- endmacro %}
+
 {% block core %}
 <style>
   .td-ranking-table .score-only { display: none; }
   .td-ranking-table.hide-indicators .indicator { display: none; }
   .td-ranking-table.hide-indicators .score-only { display: inline; }
-  .main-group-section { margin-bottom: 30px; }
-  .main-group-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
-  }
-  .main-group-header h2 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #111827;
-  }
-  .export-links { display: flex; gap: 6px; }
-  .export-links a {
-    padding: 2px 6px;
-    background: #f3f4f6;
-    color: #374151;
-    border: 1px solid #d1d5db;
-    border-radius: 3px;
-    text-decoration: none;
-    font-size: 0.75rem;
-  }
-  .export-links a:hover { background: #e5e7eb; }
 </style>
-<h1 class="title">Ranking</h1>
+<h1 class="title is-spaced">Ranking</h1>
 
 {% if main_groups_data %}
 {# Training day with main groups - show separate tables per group #}
-<label style="margin-bottom: 15px; display: block;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label>
 
 {# Build task index lookup once for all groups #}
 {% set all_tasks = contest.get_tasks() | list %}
@@ -58,27 +58,57 @@
   {% set _ = task_index.update({task.id: loop.index0}) %}
 {% endfor %}
 
+<!-- Toolbar: search + indicators toggle -->
+<div class="level mb-4">
+  <div class="level-left">
+    <div class="level-item">
+      <div class="table-search">
+        <input type="text" class="input" id="ranking-search" placeholder="Search by name, username, tag..." style="max-width: 350px;"
+               oninput="filterAllRankingTables(this.value)">
+      </div>
+    </div>
+  </div>
+  <div class="level-right">
+    <div class="level-item">
+      <label class="checkbox">
+        <input type="checkbox" class="show-indicators-toggle" checked>
+        Show indicators
+      </label>
+    </div>
+  </div>
+</div>
+
 {% for group_data in main_groups_data %}
 {% set group_name = group_data.name %}
 {% set group_participations = group_data.participations %}
 {% set group_tasks = group_data.tasks %}
 
-<div class="main-group-section">
-  <div class="main-group-header">
-    <h2>{{ group_name }}</h2>
-    <div class="export-links">
-      <a href="{{ url("contest", contest.id, "ranking", "csv") }}?main_group={{ group_name | urlencode }}">CSV</a>
-      <a href="{{ url("contest", contest.id, "ranking", "txt") }}?main_group={{ group_name | urlencode }}">TXT</a>
+<div class="mb-5">
+  <div class="level mb-3">
+    <div class="level-left">
+      <div class="level-item">
+        <h2 class="subtitle is-5 mb-0">{{ group_name }}</h2>
+      </div>
+    </div>
+    <div class="level-right">
+      <div class="level-item buttons are-small">
+        <a class="button is-light" href="{{ url("contest", contest.id, "ranking", "csv") }}?main_group={{ group_name | urlencode }}">
+          <svg class="icon is-small"><use href="#icon-download"/></svg>
+          <span>CSV</span>
+        </a>
+        <a class="button is-light" href="{{ url("contest", contest.id, "ranking", "txt") }}?main_group={{ group_name | urlencode }}">
+          <svg class="icon is-small"><use href="#icon-download"/></svg>
+          <span>TXT</span>
+        </a>
+      </div>
     </div>
   </div>
 
   <div class="table-container">
-    <table class="table is-bordered is-striped is-hoverable td-ranking-table" id="ranking-table-{{ loop.index }}">
+    <table class="table is-bordered is-striped is-hoverable is-narrow is-fullwidth td-ranking-table" id="ranking-table-{{ loop.index }}">
     <thead>
       <tr>
-        <th>Username</th>
-        <th>User</th>
-        <th>Tags</th>
+        <th class="no-sort">Student</th>
         {% if task_archive_progress_by_participation %}
         <th data-sort-settings="numeric reversed">Task Archive Progress</th>
         {% endif %}
@@ -96,12 +126,8 @@
     <tbody>
       {% for p in group_participations %}
       <tr>
-        <td><a href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}">{{ p.user.username }}</a> <a href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">[history]</a></td>
-        <td>{{ "%s %s"|format(p.user.first_name, p.user.last_name) }}</td>
         <td>
-          {% for tag in student_tags_by_participation.get(p.id, []) %}
-            <span class="tag is-info is-light">{{ tag }}</span>
-          {% endfor %}
+          {{ render_student_cell(p, contest, student_tags_by_participation) }}
         </td>
         {% if task_archive_progress_by_participation %}
         {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}
@@ -129,7 +155,7 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="100%" style="text-align: center; padding: 20px; color: #6b7280;">No students in this group.</td>
+        <td colspan="100" class="has-text-centered p-5 has-text-grey">No students in this group.</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -139,6 +165,12 @@
 {% endfor %}
 
 <script>
+  function filterAllRankingTables(searchText) {
+    {% for group_data in main_groups_data %}
+    CMS.AWSUtils.filter_table('ranking-table-{{ loop.index }}', searchText);
+    {% endfor %}
+  }
+
   $(document).ready(function() {
     {% for group_data in main_groups_data %}
     CMS.AWSUtils.init_table_sort($("#ranking-table-{{ loop.index }}"), true, -1, true);
@@ -156,17 +188,42 @@
 
 {% else %}
 {# Regular contest or training day without groups - show single table #}
-Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>, <a href="{{ url("contest", contest.id, "ranking", "txt") }}">text</a>.
-<label style="margin-left: 20px;"><input type="checkbox" class="show-indicators-toggle" checked> Show indicators</label>
+
+<!-- Toolbar: search + export + indicators -->
+<div class="level mb-4">
+  <div class="level-left">
+    <div class="level-item">
+      <div class="table-search">
+        <input type="text" class="input" id="ranking-search" placeholder="Search by name, username, tag..." style="max-width: 350px;"
+               oninput="CMS.AWSUtils.filter_table('ranking-table', this.value)">
+      </div>
+    </div>
+    <div class="level-item">
+      <label class="checkbox">
+        <input type="checkbox" class="show-indicators-toggle" checked>
+        Show indicators
+      </label>
+    </div>
+  </div>
+  <div class="level-right">
+    <div class="level-item buttons are-small">
+      <a class="button is-light" href="{{ url("contest", contest.id, "ranking", "csv") }}">
+        <svg class="icon is-small"><use href="#icon-download"/></svg>
+        <span>CSV</span>
+      </a>
+      <a class="button is-light" href="{{ url("contest", contest.id, "ranking", "txt") }}">
+        <svg class="icon is-small"><use href="#icon-download"/></svg>
+        <span>TXT</span>
+      </a>
+    </div>
+  </div>
+</div>
+
 <div class="table-container">
-<table id="ranking-table" class="table is-bordered is-striped is-hoverable td-ranking-table">
+<table id="ranking-table" class="table is-bordered is-striped is-hoverable is-narrow is-fullwidth td-ranking-table">
   <thead>
     <tr>
-      <th>Username</th>
-      <th>User</th>
-      {% if student_tags_by_participation %}
-      <th>Tags</th>
-      {% endif %}
+      <th class="no-sort">Student</th>
       {% if task_archive_progress_by_participation %}
       <th data-sort-settings="numeric reversed">Task Archive Progress</th>
       {% endif %}
@@ -188,15 +245,9 @@ Download as <a href="{{ url("contest", contest.id, "ranking", "csv") }}">csv</a>
     {% for p in contest.participations %}
       {% if not p.hidden %}
     <tr>
-      <td><a href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}">{{ p.user.username }}</a> <a href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history">[history]</a></td>
-      <td>{{ "%s %s"|format(p.user.first_name, p.user.last_name) }}</td>
-      {% if student_tags_by_participation %}
       <td>
-        {% for tag in student_tags_by_participation.get(p.id, []) %}
-          <span class="tag is-info is-light">{{ tag }}</span>
-        {% endfor %}
+        {{ render_student_cell(p, contest, student_tags_by_participation) }}
       </td>
-      {% endif %}
       {% if task_archive_progress_by_participation %}
       {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}
       {% set details_url = url("training_program", training_program.id, "student", p.user.id, "tasks") %}

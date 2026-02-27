@@ -9,138 +9,59 @@
    Color Variables for Theming
    ========================================================================== */
 
-:root {
-    /* Primary colors (teal theme) */
-    --tp-primary: #0F766E;
-    --tp-primary-hover: #0d655e;
-    --tp-primary-light: #14b8a6;
-    --tp-primary-gradient: linear-gradient(135deg, #0F766E 0%, #14b8a6 100%);
+:root,
+[data-theme="original"] {
+    color-scheme: light;
+    /* Primary colors (Bulma theme) */
+    --tp-primary: var(--bulma-primary);
+    --tp-primary-hover: var(--bulma-primary-dark);
+    --tp-primary-gradient: linear-gradient(135deg, var(--bulma-primary) 0%, var(--bulma-primary-70) 100%);
 
     /* Status colors */
-    --tp-success: #059669;
-    --tp-success-light: #d1fae5;
-    --tp-success-dark: #065f46;
+    --tp-success: var(--bulma-success);
+    --tp-success-light: var(--bulma-success-90);
+    --tp-success-dark: var(--bulma-success-20);
 
-    --tp-warning: #d97706;
-    --tp-warning-light: #fef3c7;
-    --tp-warning-dark: #92400e;
+    --tp-warning: var(--bulma-warning);
+    --tp-warning-light: var(--bulma-warning-90);
+    --tp-warning-dark: var(--bulma-warning-20);
 
-    --tp-danger: #dc2626;
-    --tp-danger-light: #fef2f2;
-    --tp-danger-dark: #991b1b;
-    --tp-danger-border: #fecaca;
+    --tp-danger: var(--bulma-danger);
+    --tp-danger-light: var(--bulma-danger-95);
+    --tp-danger-dark: var(--bulma-danger-20);
+    --tp-danger-border: var(--bulma-danger-80);
 
     /* Info colors (blue) */
-    --tp-info: #3b82f6;
-    --tp-info-hover: #2563eb;
-    --tp-info-light: #f0f9ff;
-    --tp-info-border: #bae6fd;
-    --tp-info-dark: #0369a1;
+    --tp-info: var(--bulma-info);
+    --tp-info-hover: var(--bulma-info-45);
+    --tp-info-light: var(--bulma-info-95);
+    --tp-info-border: var(--bulma-info-80);
+    --tp-info-dark: var(--bulma-info-25);
 
     /* Neutral colors */
-    --tp-text-primary: #1e293b;
-    --tp-text-secondary: #374151;
-    --tp-text-muted: #64748b;
-    --tp-text-light: #9ca3af;
-    --tp-text-lighter: #6b7280;
+    --tp-text-primary: var(--bulma-text-strong);
+    --tp-text-secondary: var(--bulma-text);
+    --tp-text-muted: var(--bulma-text-75, var(--bulma-text-weak));
+    --tp-text-light: var(--bulma-text-65, var(--bulma-text-weak));
+    --tp-text-lighter: var(--bulma-text-55, var(--bulma-text-weak));
 
     /* Background colors */
-    --tp-bg-white: #ffffff;
-    --tp-bg-light: #f8fafc;
-    --tp-bg-gray: #f3f4f6;
-    --tp-bg-hover: #f9fafb;
-    --tp-bg-secondary: #f9fafb;
+    --tp-bg-white: var(--bulma-scheme-main);
+    --tp-bg-light: var(--bulma-scheme-main-bis);
+    --tp-bg-gray: var(--bulma-scheme-main-ter);
+    --tp-bg-hover: var(--bulma-scheme-main-bis);
+    --tp-bg-secondary: var(--bulma-scheme-main-bis);
 
     /* Border colors */
-    --tp-border: #e5e7eb;
-    --tp-border-light: #e2e8f0;
-    --tp-border-dark: #cbd5e1;
+    --tp-border: var(--bulma-border-weak);
+    --tp-border-light: var(--bulma-border-weak);
+    --tp-border-dark: var(--bulma-border);
 
     /* Shadow */
-    --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
-    --tp-shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-/* ==========================================================================
-   Action Buttons Row
-   ========================================================================== */
-
-.action-buttons-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    padding: 24px 0;
-    margin-bottom: 16px;
-}
-
-/* Outline button style */
-.btn-outline {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    background: var(--tp-bg-white);
-    color: var(--tp-text-secondary);
-    border: 1px solid var(--tp-border);
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    font-family: inherit;
-}
-
-.btn-outline:hover {
-    background: var(--tp-bg-hover);
-    border-color: var(--tp-text-light);
-    color: var(--tp-text-primary);
-}
-
-.btn-outline svg,
-.btn-outline .btn-icon {
-    width: 18px;
-    height: 18px;
-}
-
-/* ==========================================================================
-   Sortable Table Headers
-   ========================================================================== */
-
-.sortable-header {
-    cursor: pointer;
-    user-select: none;
-    transition: color 0.2s;
-    white-space: nowrap;
-}
-
-.sortable-header:hover {
-    color: var(--tp-text-primary);
-    background: var(--tp-bg-light);
-}
-
-.sortable-header::after {
-    content: '\2195';
-    font-size: 1.1em;
-    margin-left: 5px;
-    opacity: 0.3;
-    display: inline-block;
-    vertical-align: middle;
-}
-
-.sortable-header.sort-asc::after {
-    content: '\2191';
-    opacity: 1;
-    color: var(--tp-primary);
-}
-
-.sortable-header.sort-desc::after {
-    content: '\2193';
-    opacity: 1;
-    color: var(--tp-primary);
+    --tp-shadow-sm: 0 1px 2px color-mix(in srgb, var(--bulma-text) 5%, transparent);
+    --tp-shadow-md: 0 4px 6px -1px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    --tp-shadow-lg: 0 10px 25px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    --tp-shadow-xl: 0 20px 60px color-mix(in srgb, var(--bulma-text) 30%, transparent);
 }
 
 /* ==========================================================================
@@ -173,7 +94,7 @@
 }
 
 .tp-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.5);
+    background: color-mix(in srgb, var(--bulma-text) 50%, transparent);
 }
 
 .tp-dialog-header {
@@ -239,7 +160,7 @@
 }
 
 .progress-link.no-tasks {
-    color: #9ca3af;
+    color: var(--tp-text-light);
     font-size: 0.85rem;
 }
 
@@ -253,32 +174,13 @@
 
 .progress-score {
     font-size: 0.8rem;
-    color: #6b7280;
+    color: var(--tp-text-lighter);
     white-space: nowrap;
 }
 
 /* ==========================================================================
    Student Table Styles
    ========================================================================== */
-
-/* Page-specific table overrides */
-#students-table thead th {
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    z-index: auto !important;
-    box-shadow: none !important;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--tp-text-muted);
-    background: var(--tp-bg-light);
-    padding: 14px 16px !important;
-}
-
-#students-table td {
-    padding: 0;
-}
 
 .student-name-wrapper {
     display: flex;
@@ -432,64 +334,6 @@
     z-index: 10001 !important;
 }
 
-/* Bulk assign modal layout */
-.bulk-assign-row {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    margin-bottom: 16px;
-}
-
-.bulk-assign-row .modal__form-group {
-    flex: 1;
-    min-width: 0;
-    margin-bottom: 0;
-}
-
-.bulk-assign-row .searchable-select,
-.bulk-assign-row .ts-wrapper,
-.bulk-assign-row .ts-wrapper .ts-control {
-    width: 100%;
-}
-
-@media (max-width: 700px) {
-    .bulk-assign-row {
-        flex-direction: column;
-    }
-}
-
-/* ==========================================================================
-   Text Utilities
-   ========================================================================== */
-
-.text-center {
-    text-align: center;
-}
-
-.text-left {
-    text-align: left;
-}
-
-.text-right {
-    text-align: right;
-}
-
-.text-muted {
-    color: var(--tp-text-muted);
-}
-
-.text-success {
-    color: var(--tp-success);
-}
-
-.text-warning {
-    color: var(--tp-warning);
-}
-
-.text-danger {
-    color: var(--tp-danger);
-}
-
 /* ==========================================================================
    Table Styles
    ========================================================================== */
@@ -548,7 +392,7 @@
     vertical-align: middle;
 }
 
-/* 2. First Column (Students) */
+/* 2. First Column (Students) - Sticky on desktop only */
 .attendance-table tbody th,
 .ranking-table tbody th {
     position: sticky;
@@ -558,7 +402,7 @@
     text-align: left;
     min-width: 250px;
     max-width: 300px;
-    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.1);
+    box-shadow: 4px 0 8px -2px color-mix(in srgb, var(--bulma-text) 10%, transparent);
     clip-path: inset(0px -10px 0px 0px);
     border-right: 1px solid var(--tp-border);
     border-bottom: 1px solid var(--tp-bg-gray);
@@ -597,37 +441,6 @@
     gap: 6px;
     min-width: 140px;
     padding: 10px 12px;
-}
-
-/* Modern Badges */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 8px;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    width: fit-content;
-}
-
-.status-on-time {
-    background-color: var(--tp-success-light);
-    color: var(--tp-success-dark);
-}
-
-.status-delayed {
-    background-color: var(--tp-warning-light);
-    color: var(--tp-warning-dark);
-}
-
-.status-missed  {
-    background-color: var(--tp-danger-light);
-    color: var(--tp-danger-dark);
-}
-
-.status-unknown {
-    background-color: var(--tp-bg-gray);
-    color: var(--tp-text-light);
 }
 
 .location-row {
@@ -669,22 +482,22 @@
     align-items: center;
     justify-content: center;
     padding: 12px 8px;
-    font-size: 1.25rem; /* Much smaller than 1.5em */
+    font-size: 1.25rem;
     font-weight: 600;
-    border-radius: 6px; /* Soften the blockiness */
-    margin: 4px; /* Give the cell breathing room inside the grid */
+    border-radius: 6px;
+    margin: 4px;
     height: calc(100% - 8px);
     width: calc(100% - 8px);
-    color: var(--tp-text-primary); /* Dark Slate, not black */
-    background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3));
+    color: var(--tp-text-primary);
 }
 
-/* Score cell coloring using CSS custom properties
+/* Score cell coloring using CSS custom properties with transparency for dark mode
    Uses --score (0-100) to calculate hue: 0 (Red) -> 60 (Yellow) -> 120 (Green)
    The hue is clamped between 0 and 120 using min/max */
 .cell-content.score-cell {
     --hue: calc(var(--score, 0) * 1.2);
-    background-color: hsl(min(120, max(0, var(--hue))), 75%, 90%);
+
+    background-color: color-mix(in srgb, hsl(min(120, max(0, var(--hue))), 75%, 90%) 50%, transparent);
     color: hsl(min(120, max(0, var(--hue))), 90%, 20%);
     background-image: none;
 }
@@ -752,7 +565,7 @@
 .badge-teal {
     background-color: var(--tp-success-light);
     color: var(--tp-success-dark);
-    border-color: #ccfbf1;
+    border-color: var(--bulma-primary-90);
 }
 
 .badge-slate {
@@ -775,7 +588,7 @@
 .ranking-table thead tr:nth-child(2) th {
     top: var(--ranking-header-top);
     z-index: 15;
-    box-shadow: 0 2px 4px -2px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px -2px color-mix(in srgb, var(--bulma-text) 10%, transparent);
     background-color: var(--tp-bg-white);
 }
 
@@ -840,12 +653,14 @@
     border-radius: 4px;
     font-size: 0.9rem;
     color: var(--tp-text-primary);
+    background: var(--bulma-scheme-main);
+    color-scheme: var(--bulma-scheme);
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .tp-filter-input:focus {
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
     outline: none;
 }
 
@@ -875,86 +690,6 @@
     font-size: 1.1rem !important;
 }
 
-/* Buttons */
-.tp-btn,
-.tp-btn-primary,
-.tp-btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-family: inherit;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    line-height: 1.5;
-    box-sizing: border-box;
-    vertical-align: middle;
-}
-
-.tp-btn,
-.tp-btn-primary,
-.tp-btn-secondary {
-    padding: 6px 16px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-}
-
-.tp-btn.primary,
-.tp-btn-primary {
-    background-color: var(--tp-primary);
-    color: white !important;
-    border: none;
-    font-weight: 500;
-}
-
-.tp-btn.secondary,
-.tp-btn-secondary {
-    background: var(--tp-bg-white);
-    color: var(--tp-text-secondary);
-    border: 1px solid var(--tp-border);
-    font-weight: 600;
-}
-
-.tp-btn.primary:hover,
-.tp-btn-primary:hover {
-    background-color: var(--tp-primary-hover);
-    color: white;
-}
-
-.tp-btn.secondary:hover,
-.tp-btn-secondary:hover {
-    background: var(--tp-bg-gray);
-    border-color: var(--tp-border-dark);
-    color: var(--tp-text-primary);
-}
-
-/* Data Table Wrapper */
-.tp-table-container {
-    overflow-x: auto;
-    max-height: 75vh;
-    border: 1px solid var(--tp-border-light);
-    border-radius: 8px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.22) transparent;
-}
-
-.tp-table-container::-webkit-scrollbar {
-    width: 6px;
-}
-
-.tp-table-container::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.tp-table-container::-webkit-scrollbar-thumb {
-    background-color: rgba(148, 163, 184, 0.22);
-    border-radius: 3px;
-}
-
-.tp-table-container::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(148, 163, 184, 0.38);
-}
 
 /* ==========================================================================
    Training Day & Ranking Table Styles
@@ -1130,20 +865,9 @@
     cursor: help;
 }
 
-
-.status-justified {
-    background-color: #fed7aa !important;
-    color: #92400e !important;
-}
-
 /* ==========================================================================
    Navigation & Header Components
    ========================================================================== */
-
-/* Breadcrumb Navigation */
-.nav-breadcrumb {
-    margin-bottom: 12px;
-}
 
 .nav-back-link {
     display: inline-flex;
@@ -1191,50 +915,6 @@
 
 .progress-item:last-child {
     border-bottom: none;
-}
-
-/* ==========================================================================
-   Source Badges
-   ========================================================================== */
-
-.source-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 1em;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    width: fit-content;
-    text-decoration: none;
-}
-
-.badge-training {
-    background: var(--tp-success-light);
-    color: var(--tp-success-dark);
-    border: 1px solid #bbf7d0;
-}
-
-.badge-training:hover {
-    background: #dcfce7;
-}
-
-.badge-archived {
-    background: var(--tp-warning-light);
-    color: var(--tp-warning-dark);
-    border: 1px solid #fde68a;
-}
-
-.badge-shared {
-    background: var(--tp-info-light);
-    color: var(--tp-info-dark);
-    border: 1px solid var(--tp-info-border);
-}
-
-.badge-manual {
-    background: var(--tp-bg-light);
-    color: var(--tp-text-muted);
-    border: 1px solid var(--tp-border);
 }
 
 /* ==========================================================================
@@ -1360,37 +1040,6 @@
     background: var(--tp-bg-white);
 }
 
-.histogram-icon {
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    font-size: inherit;
-    line-height: inherit;
-    color: inherit;
-    font-family: inherit;
-    display: inline;
-    cursor: pointer;
-    margin-left: 4px;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-    vertical-align: middle;
-}
-
-.histogram-icon:hover {
-    opacity: 1;
-}
-
-.histogram-icon:focus {
-    outline: 2px solid #007bff;
-    outline-offset: 1px;
-}
-
-
-.task-header .header-text,
-.total-col-header .header-text {
-    vertical-align: middle;
-}
 
 /* ==========================================================================
    Combined Ranking Page Specific Styles
@@ -1421,19 +1070,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     display: block;
-    max-width: 100%;
-}
-
-.combined-ranking-tags {
-    margin-top: 3px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-}
-
-.combined-ranking-tag {
-    font-weight: normal;
-    font-size: 0.7em;
+    max-width: 180px;
 }
 
 .history-link {
@@ -1548,7 +1185,7 @@
 
 .tp-tasks-table .tagify--focus {
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.08);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tp-primary) 8%, transparent);
 }
 
 .tp-tasks-table .tagify__input {
@@ -1577,7 +1214,7 @@
 
 .subtask-score-table thead th:first-child {
     z-index: 3;
-    background: var(--tp-bg-secondary, #f9fafb);
+    background: var(--tp-bg-secondary);
 }
 
 /* Grip handle for drag and drop */
@@ -1723,7 +1360,7 @@
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.6);
+    background: color-mix(in srgb, var(--bulma-white) 60%, transparent);
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 500;
@@ -1736,7 +1373,7 @@
 }
 
 .tp-info-alert-warning .tp-info-alert-badge:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: color-mix(in srgb, var(--bulma-white) 90%, transparent);
 }
 
 .tp-info-alert-info .tp-info-alert-badge {
@@ -1744,7 +1381,7 @@
 }
 
 .tp-info-alert-info .tp-info-alert-badge:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: color-mix(in srgb, var(--bulma-white) 90%, transparent);
 }
 
 .tp-info-alert-count {
@@ -1773,14 +1410,6 @@
    Training Programs Page - Card Layout
    ========================================================================== */
 
-/* Stats Row */
-.tp-stats-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    margin-bottom: 32px;
-}
-
 .tp-stat-card {
     display: flex;
     align-items: center;
@@ -1803,8 +1432,8 @@
 }
 
 .tp-stat-icon-purple {
-    background: #f3e8ff;
-    color: #7c3aed;
+    background: var(--bulma-link-95);
+    color: var(--bulma-link-35);
 }
 
 .tp-stat-icon-green {
@@ -1822,28 +1451,11 @@
     flex-direction: column;
 }
 
-.tp-stat-label {
-    font-size: 0.85rem;
-    color: var(--tp-text-muted);
-    margin-bottom: 4px;
-}
-
 .tp-stat-value {
     font-size: 1.75rem;
     font-weight: 700;
     color: var(--tp-text-primary);
     line-height: 1;
-}
-
-/* Cards Grid */
-.tp-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 24px;
-}
-
-.tp-cards-grid--compact {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
 
 /* Program Card */
@@ -1891,7 +1503,7 @@
 
 .tp-card-description {
     font-size: 0.9rem;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-weak);
     line-height: 1.4;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1932,7 +1544,7 @@
     border-radius: 8px;
     box-shadow: var(--tp-shadow-lg);
     min-width: 180px;
-    z-index: 100;
+    z-index: 50;
     padding: 8px 0;
 }
 
@@ -1994,12 +1606,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-weak);
     font-size: 0.9rem;
 }
 
 .tp-card-stat svg {
-    color: var(--tp-text-light);
+    color: var(--bulma-text-weak);
 }
 
 /* Card Dates */
@@ -2007,7 +1619,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-weak);
     font-size: 0.9rem;
     margin-bottom: 20px;
 }
@@ -2106,11 +1718,6 @@
     text-overflow: ellipsis;
 }
 
-.tp-training-day-date {
-    font-size: 0.8rem;
-    color: var(--tp-text-muted);
-}
-
 .tp-training-day-tasks-badge {
     background: var(--tp-danger);
     color: white;
@@ -2187,17 +1794,6 @@
 .tp-create-subtitle {
     font-size: 0.9rem;
     color: var(--tp-text-muted);
-}
-
-/* Responsive adjustments */
-@media (max-width: 900px) {
-    .tp-stats-row {
-        grid-template-columns: 1fr;
-    }
-
-    .tp-cards-grid {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* Training Day Indicators */
@@ -2280,7 +1876,7 @@
 .tp-form-input:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 .tp-form-input::placeholder {
@@ -2305,45 +1901,17 @@
     }
 }
 
-.tp-form-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 32px;
-    padding-top: 24px;
-    border-top: 1px solid var(--tp-border);
+/* Sticky floating box utility */
+.box.is-float {
+    position: sticky;
+    top: calc(var(--bulma-navbar-height) + 12px);
+    z-index: 40;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    transition: box-shadow 0.3s ease;
 }
 
-.tp-form-submit-group {
-    display: flex;
-    gap: 12px;
-}
-
-.tp-btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 6px 16px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--tp-text-secondary);
-    background: var(--tp-bg-white);
-    border: 1px solid var(--tp-border);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    font-family: inherit;
-    line-height: 1.5;
-    box-sizing: border-box;
-    vertical-align: middle;
-}
-
-.tp-btn-secondary:hover {
-    background: var(--tp-bg-gray);
-    border-color: var(--tp-border-dark);
-    color: var(--tp-text-primary);
+.box.is-float:hover {
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--bulma-text) 15%, transparent);
 }
 
 /* ==========================================================================
@@ -2461,39 +2029,6 @@
     color: var(--tp-text-lighter);
 }
 
-/* Override table font-size for buttons to maintain normal size */
-.tp-groups-table .tp-btn-primary,
-.tp-groups-table .tp-btn-secondary,
-.tp-groups-table .tp-btn-remove {
-    font-size: 0.9rem !important;
-    padding: 6px 16px !important;
-}
-
-.tp-groups-table .tp-btn-remove {
-    padding: 4px 10px;
-}
-.tp-btn-add-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.tp-btn-remove {
-    padding: 4px 10px;
-    background: var(--tp-danger-light);
-    color: var(--tp-danger);
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.tp-btn-remove:hover {
-    background: var(--tp-danger-border);
-}
-
 /* ==========================================================================
    Modern Grid & Card Layout (Redesign)
    ========================================================================== */
@@ -2557,23 +2092,6 @@
     padding: 0;
 }
 
-/* Grid Spans */
-.col-span-12 {
-    grid-column: span 12;
-}
-
-.col-span-6 {
-    grid-column: span 6;
-}
-
-
-@media (max-width: 1100px) {
-
-    .col-span-6 {
-        grid-column: span 12;
-    }
-}
-
 /* Modern Toggle Switch */
 .tp-toggle-wrapper {
     display: flex;
@@ -2602,7 +2120,7 @@
     -webkit-appearance: none;
     width: 44px;
     height: 24px;
-    background: #e2e8f0;
+    background: var(--bulma-border-weak);
     border-radius: 24px;
     position: relative;
     cursor: pointer;
@@ -2621,11 +2139,11 @@
     background: white;
     border-radius: 50%;
     transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--bulma-text) 10%, transparent);
 }
 
 .tp-toggle-input:checked {
-    background: var(--tp-primary);
+    background: var(--bulma-primary);
 }
 
 .tp-toggle-input:checked::after {
@@ -2633,7 +2151,7 @@
 }
 
 .tp-toggle-input:focus-visible {
-    box-shadow: 0 0 0 2px var(--tp-bg-white), 0 0 0 4px var(--tp-primary-light);
+    box-shadow: 0 0 0 2px var(--tp-bg-white), 0 0 0 4px var(--bulma-primary-30);
 }
 
 /* Language Grid */
@@ -2663,7 +2181,7 @@
 }
 
 .tp-checkbox-card:hover {
-    background: #e2e8f0;
+    background: var(--bulma-scheme-main-ter);
 }
 
 .tp-checkbox-card input[type="checkbox"] {
@@ -2677,19 +2195,6 @@
     font-size: 0.85rem;
     color: var(--tp-text-secondary);
     line-height: 1.1;
-}
-
-/* Floating Actions Panel - Only when .tp-form-actions-float class is applied */
-.tp-form-actions.tp-form-actions-float {
-    position: sticky;
-    top: 20px;
-    z-index: 100;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.3s ease;
-}
-
-.tp-form-actions.tp-form-actions-float:hover {
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 /* ==========================================================================
@@ -2737,7 +2242,7 @@
 
 .delays-alert-card-warning {
     background: var(--tp-warning-light);
-    border: 1px solid #fde68a;
+    border: 1px solid var(--bulma-warning-70);
 }
 
 .delays-alert-card-danger {
@@ -2803,7 +2308,7 @@
 .delays-alert-content {
     background: var(--tp-bg-white);
     border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    border: 1px solid color-mix(in srgb, var(--bulma-text) 6%, transparent);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
@@ -2828,7 +2333,7 @@
 .delays-search-input:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 .delays-search-wrapper {
@@ -2865,47 +2370,6 @@
     border-color: var(--tp-border-dark);
 }
 
-.delays-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 0.88rem;
-    background-color: var(--tp-bg-white);
-}
-
-.delays-table thead th {
-    background: var(--tp-bg-light);
-    color: var(--tp-text-muted);
-    font-weight: 600;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--tp-border-light);
-    text-align: left;
-    white-space: nowrap;
-}
-
-.delays-table tbody tr {
-    background: var(--tp-bg-white);
-    transition: background 0.15s;
-}
-
-.delays-table tbody tr:hover td {
-    background-color: var(--tp-bg-hover);
-}
-
-.delays-table tbody td {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--tp-border-light);
-    vertical-align: middle;
-    background-color: transparent;
-}
-
-.delays-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
 .delays-timing-label {
     font-size: 0.7rem;
     font-weight: 600;
@@ -2920,10 +2384,6 @@
 .delays-timing-value {
     font-size: 0.85rem;
     color: var(--tp-text-primary);
-}
-
-.delays-timing-value-actual {
-    font-weight: 700;
 }
 
 .delays-timing-none {
@@ -2942,8 +2402,8 @@
     gap: 8px;
     padding: 10px 14px;
     margin-bottom: 12px;
-    background: #fff8e1;
-    border: 1px solid #ffe082;
+    background: var(--bulma-warning-95);
+    border: 1px solid var(--bulma-warning-75);
     border-radius: 8px;
     font-size: 0.85rem;
     color: var(--tp-warning-dark);
@@ -3024,44 +2484,27 @@
 .delays-reject-input:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
-}
-
-
-.delays-status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    border-radius: 9999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    white-space: nowrap;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 .delays-status-pre-contest {
-    background: #ede9fe;
-    color: #5b21b6;
+    color: var(--bulma-link);
 }
 
 .delays-status-can-start {
-    background: var(--tp-warning-light);
-    color: var(--tp-warning-dark);
+    color: var(--tp-warning);
 }
 
 .delays-status-in-contest {
-    background: #ccfbf1;
     color: var(--tp-primary);
 }
 
 .delays-status-finished {
-    background: var(--tp-success-light);
-    color: var(--tp-success-dark);
+    color: var(--tp-success);
 }
 
 .delays-status-missed {
-    background: var(--tp-danger-light);
-    color: var(--tp-danger-dark);
+    color: var(--tp-danger);
 }
 
 .delays-archive-banner {
@@ -3069,7 +2512,7 @@
     align-items: center;
     gap: 12px;
     background: var(--tp-success-light);
-    border: 1px solid #a7f3d0;
+    border: 1px solid var(--bulma-success-75);
     border-radius: 10px;
     padding: 14px 20px;
     margin-bottom: 18px;
@@ -3191,7 +2634,7 @@
 }
 
 .delays-history-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--bulma-text) 7%, transparent);
 }
 
 .delays-history-card-header {
@@ -3205,42 +2648,6 @@
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.delays-history-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-.delays-history-badge-approved {
-    background: var(--tp-success-light);
-    color: var(--tp-success-dark);
-    border: 1px solid #a7f3d0;
-}
-
-.delays-history-badge-rejected {
-    background: var(--tp-danger-light);
-    color: var(--tp-danger-dark);
-    border: 1px solid var(--tp-danger-border);
-}
-
-.delays-history-badge-configured {
-    background: #ecfeff;
-    color: var(--tp-primary);
-    border: 1px solid #a5f3fc;
-}
-
-.delays-history-badge-pending {
-    background: var(--tp-warning-light);
-    color: var(--tp-warning-dark);
-    border: 1px solid #fde68a;
 }
 
 .delays-history-card-body {
@@ -3357,10 +2764,10 @@
 }
 
 .network-group {
-    border: 1px solid var(--tp-border, #e5e7eb);
+    border: 1px solid var(--tp-border);
     border-radius: 8px;
     overflow: hidden;
-    background: var(--tp-bg-white, #fff);
+    background: var(--tp-bg-white);
     transition: box-shadow 0.15s ease;
 }
 
@@ -3374,23 +2781,23 @@
     gap: 8px;
     padding: 10px 14px;
     cursor: pointer;
-    background: var(--tp-bg-light, #f8fafc);
+    background: var(--tp-bg-light);
     user-select: none;
     transition: background 0.15s ease;
 }
 
 .network-header:hover {
-    background: var(--tp-bg-gray, #f3f4f6);
+    background: var(--tp-bg-gray);
 }
 
 .network-header:focus-visible {
-    outline: 2px solid var(--tp-primary, #0F766E);
+    outline: 2px solid var(--tp-primary);
     outline-offset: -2px;
 }
 
 .network-toggle-icon {
     font-size: 0.7rem;
-    color: var(--tp-text-muted, #64748b);
+    color: var(--tp-text-muted);
     transition: transform 0.2s ease;
     flex-shrink: 0;
     width: 14px;
@@ -3415,25 +2822,25 @@
     height: 16px;
     cursor: pointer;
     flex-shrink: 0;
-    accent-color: var(--tp-primary, #0F766E);
+    accent-color: var(--tp-primary);
 }
 
 .network-name {
     font-weight: 600;
     font-size: 0.9rem;
-    color: var(--tp-text-primary, #1e293b);
+    color: var(--tp-text-primary);
     font-family: monospace;
 }
 
 .network-count {
     font-size: 0.8rem;
-    color: var(--tp-text-muted, #64748b);
+    color: var(--tp-text-muted);
     margin-left: auto;
     white-space: nowrap;
 }
 
 .network-ips {
-    border-top: 1px solid var(--tp-border, #e5e7eb);
+    border-top: 1px solid var(--tp-border);
     padding: 4px 0;
 }
 
@@ -3448,7 +2855,7 @@
 }
 
 .ip-row:hover {
-    background: var(--tp-bg-hover, #f9fafb);
+    background: var(--tp-bg-hover);
 }
 
 .ip-row input[type="checkbox"] {
@@ -3456,18 +2863,18 @@
     height: 15px;
     cursor: pointer;
     flex-shrink: 0;
-    accent-color: var(--tp-primary, #0F766E);
+    accent-color: var(--tp-primary);
 }
 
 .ip-addr {
-    color: var(--tp-text-secondary, #374151);
+    color: var(--tp-text-secondary);
     font-family: monospace;
     font-size: 0.85rem;
 }
 
 .ip-count {
     font-size: 0.78rem;
-    color: var(--tp-text-light, #9ca3af);
+    color: var(--tp-text-light);
     margin-left: auto;
     white-space: nowrap;
 }
@@ -3666,7 +3073,7 @@
 .tp-task-type-options {
     margin-top: 12px;
     padding: 16px;
-    background: var(--tp-bg-light, #f9fafb);
+    background: var(--tp-bg-light);
     border: 1px solid var(--tp-border);
     border-radius: 10px;
 }
@@ -3693,7 +3100,7 @@
 .tp-task-type-field input[type="text"]:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 .tp-task-type-field select {
@@ -3710,7 +3117,7 @@
 .tp-task-type-field select:focus {
     outline: none;
     border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
 }
 
 .tp-task-type-field table {
@@ -3741,17 +3148,6 @@
    Overview Page
    ========================================================================== */
 
-.overview-section {
-    margin-bottom: 32px;
-}
-
-/* Status Cards Grid */
-.overview-status-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 16px;
-}
-
 .overview-status-card {
     display: flex;
     align-items: center;
@@ -3769,35 +3165,13 @@
 }
 
 .overview-status-card-icon {
-    width: 42px;
-    height: 42px;
+    width: 54px;
+    height: 54px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-}
-
-.overview-status-card-content {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.overview-status-card-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--tp-text-primary);
-    line-height: 1.1;
-}
-
-.overview-status-card-label {
-    font-size: 0.8rem;
-    color: var(--tp-text-muted);
-    margin-top: 2px;
-    white-space: normal;
-    line-height: 1.2;
-    overflow-wrap: break-word;
 }
 
 /* Status card color variants */
@@ -3833,13 +3207,6 @@
     border-left: 3px solid var(--tp-danger);
 }
 
-.overview-status-message {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 24px;
-    color: var(--tp-text-muted);
-}
-
 /* Two-column layout for queue & workers */
 .overview-two-col {
     display: grid;
@@ -3856,32 +3223,6 @@
     .overview-two-col {
         grid-template-columns: 1fr;
     }
-}
-
-/* Overview table styling (Bulma table overrides for this page) */
-.overview-table {
-    font-size: 0.9rem;
-}
-
-.overview-table thead th {
-    background-color: var(--tp-bg-light) !important;
-    color: var(--tp-text-muted) !important;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    font-weight: 600;
-    border-bottom: 1px solid var(--tp-border) !important;
-    white-space: nowrap;
-}
-
-.overview-table td {
-    vertical-align: middle !important;
-    border-bottom: 1px solid var(--tp-border) !important;
-    color: var(--tp-text-secondary);
-}
-
-.overview-table tbody tr:hover {
-    background-color: var(--tp-bg-hover) !important;
 }
 
 .overview-empty-row {
@@ -3913,4 +3254,101 @@
     padding-bottom: 4px;
     border-bottom: 2px solid var(--tp-primary);
     display: inline-block;
+}
+
+/* ==========================================================================
+   Mobile Responsive: Combined Ranking, Attendance, Ranking Tables
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    /* --- Un-stick first column on mobile --- */
+    .attendance-table tbody th,
+    .ranking-table tbody th {
+        position: static;
+        box-shadow: none;
+        clip-path: none;
+        min-width: auto;
+        max-width: none;
+    }
+
+    .attendance-table thead tr:first-child th:first-child,
+    .ranking-table thead tr:first-child th:first-child {
+        position: sticky;
+        top: 0;
+        left: auto;
+        z-index: 10;
+    }
+
+    .ranking-table thead th.student-header {
+        left: auto;
+        z-index: 10;
+        width: auto;
+    }
+
+    /* --- Smaller fonts on mobile --- */
+    .attendance-table,
+    .ranking-table {
+        font-size: 0.75rem;
+    }
+
+    .attendance-table thead th,
+    .ranking-table thead th {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+    }
+
+    .attendance-table th:first-child,
+    .attendance-table td:first-child {
+        max-width: 150px;
+        min-width: 120px;
+    }
+
+    .cell-wrapper {
+        min-width: 100px;
+        padding: 6px 8px;
+    }
+
+    .cell-content {
+        font-size: 1rem;
+        padding: 8px 4px;
+    }
+
+    .student-name-wrapper,
+    .combined-ranking-student-wrapper {
+        padding: 4px 6px;
+        gap: 6px;
+    }
+
+    .student-name-link {
+        font-size: 0.8rem;
+        max-width: 120px;
+    }
+
+    .student-username {
+        font-size: 0.65em;
+    }
+
+    .training-day-header-main,
+    .date-header-main {
+        font-size: 0.8rem;
+    }
+
+    .training-day-header-sub,
+    .date-header-sub {
+        font-size: 0.65rem;
+    }
+
+    .status-badge {
+        font-size: 0.65rem;
+        padding: 1px 6px;
+    }
+
+    .location-row {
+        font-size: 0.65rem;
+    }
+
+    /* Ranking page toolbar stacks vertically on mobile */
+    .td-ranking-table {
+        font-size: 0.8rem;
+    }
 }

@@ -3,7 +3,7 @@
 {% from "macro/bulma_file_input.html" import bulma_file_input %}
 
 {% block core %}
-<h1 class="title">Import Task</h1>
+<h1 class="title is-spaced">Import Task</h1>
 
 <form enctype="multipart/form-data" action="{{ url("tasks", "import") }}" method="POST">
   {{ xsrf_form_html|safe }}

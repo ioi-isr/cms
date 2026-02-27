@@ -1,6 +1,7 @@
 {# This macro should be imported "with context". #}
 
 {% import 'macro/markdown_input.html' as macro_markdown %}
+{% import 'macro/content_card.html' as macro_content %}
 
 {% macro question(msg, user_id) %}
 {#
@@ -40,10 +41,10 @@ user_id (int|None): if we are rendering one of the questions on a single user's
           {% endif %}
           {% if not msg.ignored %}
             <input type="hidden" name="ignore" value="yes"/>
-            <button type="submit" class="question-btn question-btn-outline">Ignore</button>
+            <button type="submit" class="button"><span>Ignore</span></button>
           {% else %}
             <input type="hidden" name="ignore" value="no"/>
-            <button type="submit" class="question-btn question-btn-outline">Unignore</button>
+            <button type="submit" class="button"><span>Unignore</span></button>
           {% endif %}
         </form>
 
@@ -55,15 +56,15 @@ user_id (int|None): if we are rendering one of the questions on a single user's
             {% endif %}
             {% if msg.admin is none %}
               <input type="hidden" name="claim" value="yes"/>
-              <button type="submit" class="question-btn question-btn-outline">Claim</button>
+              <button type="submit" class="button"><span>Claim</span></button>
             {% else %}
               <input type="hidden" name="claim" value="no"/>
-              <button type="submit" class="question-btn question-btn-outline">Unclaim</button>
+              <button type="submit" class="button"><span>Unclaim</span></button>
             {% endif %}
           </form>
         {% endif %}
 
-        <button class="button is-primary has-text-white" onclick="utils.question_reply_toggle(event, this);">
+        <button class="button is-primary" onclick="utils.question_reply_toggle(event, this);">
           <svg class="icon is-small"><use href="#icon-reply"/></svg> <span>Reply</span>
         </button>
       </div>
@@ -107,9 +108,9 @@ user_id (int|None): if we are rendering one of the questions on a single user's
       </div>
     </div>
     {% if admin.permission_all or admin.permission_messaging %}
-    <div class="question-edit-reply-row">
-      <button class="question-edit-reply-link" onclick="utils.question_reply_toggle(event, this);">
-        <svg class="icon is-small"><use href="#icon-edit"/></svg> Edit reply
+    <div class="is-flex is-justify-content-end pt-3">
+      <button class="button is-text has-text-grey is-small no-underline" onclick="utils.question_reply_toggle(event, this);">
+        <svg class="icon is-small"><use href="#icon-edit"/></svg> <span>Edit reply</span>
       </button>
     </div>
     {% endif %}
@@ -144,21 +145,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
             <label class="question-form-label">YOUR ANSWER:</label>
             {{ macro_markdown.markdown_input("reply_question_text") }}
           </div>
-          <div class="question-reply-form-actions">
-            <div class="question-reply-form-left">
-              <span class="alternative_answer">
-                <button type="button" class="question-btn question-btn-outline question-btn-preview" onclick="utils.render_markdown_preview(this)">
-                  <svg class="icon is-small"><use href="#icon-eye"/></svg> Preview Markdown
-                </button>
-              </span>
-            </div>
-            <div class="question-reply-form-right">
-              <button type="button" class="question-btn question-btn-outline" onclick="utils.question_reply_toggle(event, this);">Cancel</button>
-              <button type="submit" class="question-btn question-btn-primary">
-                <svg class="icon is-small"><use href="#icon-send"/></svg> Send Reply
-              </button>
-            </div>
-          </div>
+          {{ macro_content.form_buttons("Send Reply", show_cancel=true, submit_icon="send", cancel_function="question_reply_toggle") }}
         </form>
       </div>
     </div>

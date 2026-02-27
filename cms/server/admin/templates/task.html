@@ -2,6 +2,7 @@
 {% import "fragments/model_solution_fields.html" as ms_fields with context %}
 {% import "fragments/dataset_form_fields.html" as ds_fields with context %}
 {% from "macro/bulma_file_input.html" import bulma_file_input, form_field %}
+{% from "macro/modal.html" import modal_header, modal_footer %}
 
 {% extends "base.html" %}
 
@@ -323,7 +324,7 @@ document.addEventListener('click', function(e) {
 {% set allow_partial = task.submission_format|length > 1 and not language_required %}
 
 <div class="content-constraint">
-    <h1 class="title">{{ task.title }} ({{ task.name }})</h1>
+    <h1 class="title is-spaced">{{ task.title }} ({{ task.name }})</h1>
     <p class="subtitle has-text-grey">
         Task Configuration
         {% if submissions|length > 0 %}
@@ -337,17 +338,25 @@ document.addEventListener('click', function(e) {
         {{ xsrf_form_html|safe }}
 
         <!-- Actions Bar (Floating Card) -->
-        <div class="tp-form-actions tp-form-actions-float" style="margin-bottom: 24px; margin-top: 0; background: var(--tp-bg-white); border: 1px solid var(--tp-border); border-radius: 12px; padding: 16px 24px;">
-            <div class="tp-form-submit-group">
-                 <button type="submit" class="tp-btn-primary" {% if not admin.permission_all %}disabled{% endif %}>Update Task</button>
-                 <input type="reset" class="tp-btn-secondary" value="Reset Changes">
-            </div>
-            <div class="tp-form-secondary-actions">
-                 <a href="{{ url("task", task.id, "export") }}" class="tp-btn-secondary">
-                     <svg class="icon is-small" style="vertical-align: text-bottom;"><use href="#icon-download"/></svg>
-                     Export Task
-                 </a>
-            </div>
+        <div class="box is-float mb-6 mt-0">
+            <nav class="level is-mobile">
+                <div class="level-left">
+                    <div class="level-item">
+                        <div class="buttons">
+                            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %}><span>Update Task</span></button>
+                            <input type="reset" class="button" value="Reset Changes">
+                        </div>
+                    </div>
+                </div>
+                <div class="level-right is-hidden-mobile">
+                    <div class="level-item">
+                        <a href="{{ url("task", task.id, "export") }}" class="button">
+                            <svg class="icon is-small"><use href="#icon-download"/></svg>
+                            <span>Export Task</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
         </div>
 
         <!-- Main Tabs -->
@@ -395,9 +404,9 @@ document.addEventListener('click', function(e) {
                                 <span class="tp-form-info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants.">?</span>
                             </label>
                             {% if admin.permission_all %}
-                            <button type="button" onclick="MicroModal.show('modal-add-statement');" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                            <button type="button" onclick="MicroModal.show('modal-add-statement');" class="button">
                                 <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
-                                Add Statement
+                                <span>Add Statement</span>
                             </button>
                             {% endif %}
                         </div>
@@ -435,7 +444,7 @@ document.addEventListener('click', function(e) {
                                         <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--tp-primary);" />
                                     </td>
                                     <td style="text-align: center;">
-                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" title="Delete statement">
+                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" title="Delete statement" aria-label="Delete statement">
                                             <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                         </button>
                                     </td>
@@ -454,9 +463,9 @@ document.addEventListener('click', function(e) {
                                 <span class="tp-form-info" title="Attachments for this task. Contestants can view and download attachments from the task page.">?</span>
                             </label>
                             {% if admin.permission_all %}
-                            <button type="button" onclick="document.getElementById('attachment_file').click();" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                            <button type="button" onclick="document.getElementById('attachment_file').click();" class="button">
                                 <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
-                                Add File
+                                <span>Add File</span>
                             </button>
                             {% endif %}
                         </div>
@@ -487,8 +496,8 @@ document.addEventListener('click', function(e) {
                             </label>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <input type="text" name="submission_format" value="{{ task.submission_format|join(", ") }}" class="tp-form-input"/>
-                                {% if task.active_dataset.task_type == "OutputOnly" %}
-                                <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="tp-btn-secondary" style="white-space: nowrap; padding: 6px 12px; background: none; border: none; cursor: pointer;">Set Default</button>
+                                {% if task.active_dataset.task_type == "OutputOnly" and admin.permission_all %}
+                                <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="button"><span>Set Default</span></button>
                                 {% endif %}
                             </div>
                         </div>
@@ -606,8 +615,9 @@ document.addEventListener('click', function(e) {
 
         <!-- TAB: Limits & Scoring -->
         <div class="task-page-tab-content" id="tab-limits-scoring">
-            <div class="tp-grid-layout">
-                <div class="tp-card col-span-6">
+          <div class="fixed-grid has-6-cols">
+            <div class="grid">
+                <div class="cell tp-card is-col-span-6-mobile is-col-span-3 is-col-span-2-fullhd">
                     <div class="tp-card-header-modern">
                         <div class="tp-card-header-icon">
                             <svg class="icon"><use href="#icon-sliders"/></svg>
@@ -646,7 +656,7 @@ document.addEventListener('click', function(e) {
                     </div>
                 </div>
 
-                <div class="tp-card col-span-6">
+                <div class="cell tp-card is-col-span-6-mobile is-col-span-3 is-col-span-2-fullhd">
                     <div class="tp-card-header-modern">
                         <div class="tp-card-header-icon">
                             <svg class="icon"><use href="#icon-trophy"/></svg>
@@ -675,6 +685,7 @@ document.addEventListener('click', function(e) {
                     </div>
                 </div>
             </div>
+          </div>
         </div>
 
         <!-- DATASETS SECTION -->
@@ -686,7 +697,7 @@ document.addEventListener('click', function(e) {
         <div style="text-align: center; padding: 40px 24px; background: var(--tp-bg-light); border: 1px solid var(--tp-border-light); border-radius: 12px;">
             <p style="color: var(--tp-text-muted); margin-bottom: 16px;">No datasets have been created for this task.</p>
             {% if admin.permission_all %}
-            <a href="javascript:void(0)" class="tp-btn-primary" onclick="MicroModal.show('modal-add-dataset')">Create a new dataset</a>
+            <a href="javascript:void(0)" class="button is-primary" onclick="MicroModal.show('modal-add-dataset')"><span>Create a new dataset</span></a>
             {% endif %}
         </div>
         {% else %}
@@ -712,10 +723,10 @@ document.addEventListener('click', function(e) {
                     </button>
                     <div class="tp-menu-dropdown">
                         {% if dataset is not sameas (task.active_dataset) %}
-                        <a href="{{ url("dataset", dataset.id, "activate") }}" class="tp-menu-item">
+                        <button type="button" onclick="MicroModal.show('modal-activate-dataset-{{ dataset.id }}')" class="tp-menu-item">
                             <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
                             Make Live
-                        </a>
+                        </button>
                         {% endif %}
                         <a href="javascript:void(0)" onclick="MicroModal.show('modal-clone-dataset-{{ dataset.id }}')" class="tp-menu-item">
                             <svg class="icon is-small"><use href="#icon-clipboard-list"/></svg>
@@ -792,8 +803,9 @@ document.addEventListener('click', function(e) {
 
             <!-- Sub-tab: Configuration -->
             <div class="dataset-subtab-content active" id="ds-config-{{ dataset.id }}">
-                <div class="tp-grid-layout">
-                    <div class="tp-card col-span-12">
+              <div class="fixed-grid has-6-cols">
+                <div class="grid">
+                    <div class="cell tp-card is-col-span-6 is-col-span-4-fullhd">
                         <div class="tp-card-header-modern">
                             <div class="tp-card-header-icon">
                                 <svg class="icon"><use href="#icon-sliders"/></svg>
@@ -819,7 +831,7 @@ document.addEventListener('click', function(e) {
                             </div>
                         </div>
                     </div>
-                    <div class="tp-card col-span-12">
+                    <div class="cell tp-card is-col-span-6 is-col-span-4-fullhd">
                         <div class="tp-card-header-modern">
                             <div class="tp-card-header-icon">
                                 <svg class="icon"><use href="#icon-settings"/></svg>
@@ -862,9 +874,9 @@ document.addEventListener('click', function(e) {
                                         <span class="tp-form-info" title="Managers are sources, headers, libraries or binaries used during evaluation.">?</span>
                                     </label>
                                     {% if admin.permission_all %}
-                                    <button type="button" onclick="document.getElementById('manager_file_{{ dataset.id }}').click();" class="tp-btn-secondary" style="padding: 6px 16px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                                    <button type="button" onclick="document.getElementById('manager_file_{{ dataset.id }}').click();" class="button">
                                     <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
-                                    Add Manager
+                                    <span>Add Manager</span>
                                 </button>
                                     {% endif %}
                                 </div>
@@ -899,6 +911,7 @@ document.addEventListener('click', function(e) {
                         </div>
                     </div>
                 </div>
+              </div>
             </div>
 
             <!-- Sub-tab: Subtask Validators -->
@@ -1025,7 +1038,7 @@ document.addEventListener('click', function(e) {
                                           <svg class="icon is-small" style="color: var(--tp-primary); flex-shrink: 0;"><use href="#icon-file-code"/></svg>
                                           <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')" style="color: var(--tp-primary); font-weight: 500;">{{ validator.filename }}</a>
                                           {% if validator.executable_digest is none %}
-                                            <span class="validator-badge validator-badge--error">compilation failed</span>
+                                            <span class="tag is-rounded is-opaque has-text-warning-25 has-text-weight-semibold">compilation failed</span>
                                           {% endif %}
                                           {% if admin.permission_all %}
                                           <span style="margin-left: auto; display: flex; gap: 4px; flex-shrink: 0;">
@@ -1038,9 +1051,9 @@ document.addEventListener('click', function(e) {
                                           </span>
                                           {% endif %}
                                         {% else %}
-                                          <span class="validator-badge validator-badge--warning">
+                                          <span class="tag is-rounded is-bordered has-text-danger has-text-weight-bold">
                                             <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
-                                            No validator
+                                            <span>No validator</span>
                                           </span>
                                           {% if admin.permission_all %}
                                           <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator">
@@ -1057,16 +1070,16 @@ document.addEventListener('click', function(e) {
                                         {% elif validator and validator.validation_results|length > 0 %}
                                           <span style="font-weight: 500; color: var(--tp-text-primary);">{{ ns.subtask_tc_count }} tests:</span>
                                           {% if ns.subtask_passed > 0 %}
-                                          <span class="validator-badge validator-badge--pass">{{ ns.subtask_passed }} passed</span>
+                                          <span class="tag has-text-success is-opaque is-rounded has-text-weight-semibold">{{ ns.subtask_passed }} passed</span>
                                           {% endif %}
                                           {% if ns.subtask_failed > 0 %}
-                                          <span class="validator-badge validator-badge--fail">{{ ns.subtask_failed }} failed</span>
+                                          <span class="tag has-text-danger is-opaque is-rounded has-text-weight-semibold">{{ ns.subtask_failed }} failed</span>
                                           {% endif %}
                                           {% if ns.subtask_error > 0 %}
-                                          <span class="validator-badge validator-badge--error">{{ ns.subtask_error }} error</span>
+                                          <span class="tag has-text-warning-25 is-opaque is-rounded has-text-weight-semibold">{{ ns.subtask_error }} error</span>
                                           {% endif %}
                                           {% if ns.subtask_not_validated > 0 %}
-                                          <span class="validator-badge validator-badge--muted">{{ ns.subtask_not_validated }} not validated</span>
+                                          <span class="tag has-text-dark is-opaque is-rounded has-text-weight-semibold">{{ ns.subtask_not_validated }} not validated</span>
                                           {% endif %}
                                         {% endif %}
                                           <a href="{{ url("dataset", dataset.id, "subtask", subtask.idx, "details") }}" style="color: var(--tp-text-muted); text-align: center; font-size: 0.85rem;">[details]</a>
@@ -1096,7 +1109,7 @@ document.addEventListener('click', function(e) {
             <!-- Sub-tab: Model Solutions -->
             <div class="dataset-subtab-content" id="ds-models-{{ dataset.id }}">
                 <div class="tp-card">
-                    <div class="tp-card-header-modern" style="flex-wrap: wrap; gap: 12px;">
+                    <div class="tp-card-header-modern is-flex-wrap-wrap">
                         <div class="tp-card-header-icon">
                             <svg class="icon"><use href="#icon-file-code"/></svg>
                         </div>
@@ -1104,11 +1117,11 @@ document.addEventListener('click', function(e) {
                             Model Solutions
                             <span class="tp-form-info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.">?</span>
                         </h3>
-                        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                        <div class="ml-auto is-flex is-align-items-center is-flex-wrap-wrap">
                             {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
-                            <span style="font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Reevaluate All:</span>
-                            <div class="btn-group">
-                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                            <span class="is-size-7 has-text-weight-semibold is-uppercase has-text-grey mr-2">Reevaluate All:</span>
+                            <div class="buttons has-addons mb-0 mr-2">
+                                <button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                                                  'EvaluationService', 0,
                                                  'invalidate_model_solutions', {
                                                  'dataset_id': {{ dataset.id }},
@@ -1116,9 +1129,9 @@ document.addEventListener('click', function(e) {
                                                  function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
                                                  ); }, {icon: 'question'});"
                                         title="Compilation">
-                                    <svg class="icon is-small"><use href="#icon-compile"/></svg> Compile
+                                    <svg class="icon is-small"><use href="#icon-compile"/></svg> <span>Compile</span>
                                 </button>
-                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                <button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                                                  'EvaluationService', 0,
                                                  'invalidate_model_solutions', {
                                                  'dataset_id': {{ dataset.id }},
@@ -1126,22 +1139,22 @@ document.addEventListener('click', function(e) {
                                                  function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
                                                  ); }, {icon: 'question'});"
                                         title="Evaluation">
-                                    <svg class="icon is-small"><use href="#icon-evaluate"/></svg> Eval
+                                    <svg class="icon is-small"><use href="#icon-evaluate"/></svg> <span>Evaluate</span>
                                 </button>
-                                <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
+                                <button type="button" class="button is-small" onclick="AdminModals.confirmThen('Do you really want to reevaluate all model solutions?', function() { cmsrpc_request(
                                                  'ScoringService', 0,
                                                  'invalidate_model_solutions', {
                                                  'dataset_id': {{ dataset.id }}},
                                                  function(response) { utils.redirect_if_ok('{{ url("task", task.id) }}', response); }
                                                  ); }, {icon: 'question'});"
                                         title="Score">
-                                    <svg class="icon is-small"><use href="#icon-score-type"/></svg> Score
+                                    <svg class="icon is-small"><use href="#icon-score-type"/></svg> <span>Score</span>
                                 </button>
                             </div>
                             {% endif %}
                             {% if admin.permission_all %}
-                            <button type="button" onclick="ModelSolutionModal.openAdd({{ dataset.id }}, '{{ url("dataset", dataset.id, "model_solutions", "add") }}');" class="tp-btn-secondary" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
-                                <svg class="icon is-small"><use href="#icon-file-plus"/></svg> Add
+                            <button type="button" onclick="ModelSolutionModal.openAdd({{ dataset.id }}, '{{ url("dataset", dataset.id, "model_solutions", "add") }}');" class="button">
+                                <svg class="icon is-small"><use href="#icon-file-plus"/></svg> <span>Add</span>
                             </button>
                             {% endif %}
                         </div>
@@ -1207,19 +1220,19 @@ document.addEventListener('click', function(e) {
                                     <td>
                                         <div class="list-cell-wrapper center-content">
                                         {% if msr is none %}
-                                        <span class="status-badge status-badge--muted">Not evaluated</span>
+                                        <span class="tag is-opaque">Not evaluated</span>
                                         {% elif not msr.compiled() %}
-                                        <span class="status-badge status-badge--info">Compiling...</span>
+                                        <span class="tag is-opaque has-text-info">Compiling...</span>
                                         {% elif msr.compilation_failed() %}
-                                        <span class="status-badge status-badge--danger">Compilation failed</span>
+                                        <span class="tag is-opaque has-text-danger">Compilation failed</span>
                                         {% elif not msr.evaluated() %}
-                                        <span class="status-badge status-badge--info">Evaluating...</span>
+                                        <span class="tag is-opaque has-text-info">Evaluating...</span>
                                         {% elif msr.evaluation_failed() %}
-                                        <span class="status-badge status-badge--danger">Evaluation error</span>
+                                        <span class="tag is-opaque has-text-danger">Evaluation error</span>
                                         {% elif not msr.scored() %}
-                                        <span class="status-badge status-badge--warning">Scoring...</span>
+                                        <span class="tag is-opaque has-text-info">Scoring...</span>
                                         {% else %}
-                                        <span class="status-badge status-badge--success">Scored</span>
+                                        <span class="tag is-opaque has-text-success">Scored</span>
                                         {% endif %}
                                         </div>
                                     </td>
@@ -1234,14 +1247,14 @@ document.addEventListener('click', function(e) {
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content" style="gap: 4px;">
-                                        <button type="button" class="btn-icon-only" onclick='ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});' title="Edit">
+                                        <button type="button" class="btn-icon-only" onclick='ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});' title="Edit" aria-label="Edit model solution">
                                             <svg class="icon is-small"><use href="#icon-edit"/></svg>
                                         </button>
                                         {% if admin.permission_all %}
-                                        <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-replace-ms-{{ meta.id }}');" title="Replace">
+                                        <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-replace-ms-{{ meta.id }}');" title="Replace" aria-label="Replace model solution">
                                             <svg class="icon is-small"><use href="#icon-replace"/></svg>
                                         </button>
-                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');" title="Delete">
+                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');" title="Delete" aria-label="Delete model solution">
                                             <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                         </button>
                                         {% endif %}
@@ -1320,64 +1333,6 @@ document.addEventListener('click', function(e) {
 
             <!-- Sub-tab: Test Cases -->
             <div class="dataset-subtab-content" id="ds-testcases-{{ dataset.id }}">
-                <div class="tp-card">
-                    <div class="tp-card-header-modern">
-                        <div class="tp-card-header-icon">
-                            <svg class="icon"><use href="#icon-clipboard-list"/></svg>
-                        </div>
-                        <h3 class="tp-card-title-modern">Generators</h3>
-                        {% if admin.permission_all %}
-                        <button type="button" onclick="MicroModal.show('modal-add-generator-{{ dataset.id }}');" class="tp-btn-secondary" style="margin-left: auto; padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
-                        <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
-                        Add
-                    </button>
-                        {% endif %}
-                    </div>
-                    <div class="tp-card-body">
-                        {% if dataset.generators|length == 0 %}
-                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No generators.</div>
-                        {% else %}
-                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
-                        <table class="tp-tasks-table" style="margin: 0; text-align: center;">
-                            <thead>
-                                <tr>
-                                    <th>Filename</th>
-                                    <th>Template</th>
-                                    <th>Ops</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            {% for filename, generator in dataset.generators|dictsort(by="key") %}
-                            <tr>
-                                <td><div class="list-cell-wrapper"><a href="javascript:void(0);" onclick="utils.show_file('{{ generator.filename }}','{{ url("file", generator.digest, generator.filename) }}')">{{ generator.filename }}</a></div></td>
-                                <td>
-                                    <div class="list-cell-wrapper center-content">
-                                    {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
-                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-edit-generator-{{ generator.id }}');" title="Edit generator" style="margin-left: 8px;">
-                                        <svg class="icon is-small"><use href="#icon-edit"/></svg>
-                                    </button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="list-cell-wrapper center-content" style="gap: 8px;">
-                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-generate-tc-{{ generator.id }}');" title="Generate testcases">
-                                        <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
-                                    </button>
-                                    {% if admin.permission_all %}
-                                    <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');" title="Delete generator">
-                                        <svg class="icon is-small"><use href="#icon-trash"/></svg>
-                                    </button>
-                                    {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
 
                 <div class="tp-card" style="margin-top: 20px;">
                     <div class="tp-card-header-modern">
@@ -1413,12 +1368,12 @@ document.addEventListener('click', function(e) {
                         <h3 class="tp-card-title-modern">Test Cases</h3>
                         <div style="margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 0.85rem;">
                             {% if admin.permission_all %}
-                            <button type="button" onclick="MicroModal.show('modal-add-testcase-{{ dataset.id }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Add</button>
-                            <button type="button" onclick="MicroModal.show('modal-add-testcases-{{ dataset.id }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Add multiple</button>
+                            <button type="button" onclick="MicroModal.show('modal-add-testcase-{{ dataset.id }}');" class="button"><span>Add</span></button>
+                            <button type="button" onclick="MicroModal.show('modal-add-testcases-{{ dataset.id }}');" class="button"><span>Add multiple</span></button>
                             {% endif %}
-                            <button type="button" onclick="showDownloadTestcasesDialog({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "download") }}');" class="tp-btn-secondary" style="padding: 4px 12px;">Download all</button>
+                            <button type="button" onclick="showDownloadTestcasesDialog({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "download") }}');" class="button"><span>Download all</span></button>
                             {% if admin.permission_all %}
-                            <button type="button" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});" class="tp-btn-secondary" style="padding: 4px 12px; color: var(--tp-danger);">Delete multiple</button>
+                            <button type="button" id="toggle_multi_delete_{{ dataset.id }}" onclick="toggleMultipleDeleteMode({{ dataset.id }});" class="button" style="color: var(--tp-danger);"><span>Delete multiple</span></button>
                             {% endif %}
                         </div>
                     </div>
@@ -1485,14 +1440,14 @@ document.addEventListener('click', function(e) {
                                     {% endif %}
                                     <td>
                                         <div class="list-cell-wrapper center-content">
-                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')" title="Show input">
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')" title="Show input" aria-label="Show input file">
                                             <svg class="icon is-small"><use href="#icon-eye"/></svg>
                                         </button>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content">
-                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')" title="Show output">
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')" title="Show output" aria-label="Show output file">
                                             <svg class="icon is-small"><use href="#icon-eye"/></svg>
                                         </button>
                                         </div>
@@ -1501,7 +1456,7 @@ document.addEventListener('click', function(e) {
                                         <div class="list-cell-wrapper center-content">
                                         <button type="button" class="btn-icon-only"
                                             onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "testcase", testcase.id, "delete") }}');"
-                                            title="Delete testcase">
+                                            title="Delete testcase" aria-label="Delete testcase">
                                             <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                         </button>
                                         </div>
@@ -1514,8 +1469,66 @@ document.addEventListener('click', function(e) {
 
                         {% if admin.permission_all %}
                         <div class="multi_delete_actions" id="multi_delete_actions_{{ dataset.id }}" style="display:none; margin-top: 18px;">
-                            <button type="button" id="cancel_multi_delete_{{ dataset.id }}" class="tp-btn-secondary" onclick="toggleMultipleDeleteMode({{ dataset.id }});">Cancel</button>
-                            <button type="button" id="delete_selected_{{ dataset.id }}" class="tp-btn-secondary" style="color: var(--tp-danger); border: 1px solid var(--tp-danger);" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');">Delete selected</button>
+                            <button type="button" id="cancel_multi_delete_{{ dataset.id }}" class="button" onclick="toggleMultipleDeleteMode({{ dataset.id }});"><span>Cancel</span></button>
+                            <button type="button" id="delete_selected_{{ dataset.id }}" class="button" style="color: var(--tp-danger); border: 1px solid var(--tp-danger);" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');"><span>Delete selected</span></button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="tp-card">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon"><use href="#icon-clipboard-list"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">Generators</h3>
+                        {% if admin.permission_all %}
+                        <button type="button" onclick="MicroModal.show('modal-add-generator-{{ dataset.id }}');" class="button">
+                        <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                        <span>Add</span>
+                    </button>
+                        {% endif %}
+                    </div>
+                    <div class="tp-card-body">
+                        {% if dataset.generators|length == 0 %}
+                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No generators.</div>
+                        {% else %}
+                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
+                        <table class="tp-tasks-table" style="margin: 0; text-align: center;">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Template</th>
+                                    <th>Ops</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for filename, generator in dataset.generators|dictsort(by="key") %}
+                            <tr>
+                                <td><div class="list-cell-wrapper"><a href="javascript:void(0);" onclick="utils.show_file('{{ generator.filename }}','{{ url("file", generator.digest, generator.filename) }}')">{{ generator.filename }}</a></div></td>
+                                <td>
+                                    <div class="list-cell-wrapper center-content">
+                                    {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
+                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-edit-generator-{{ generator.id }}');" title="Edit generator" aria-label="Edit generator" style="margin-left: 8px;">
+                                        <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                                    </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="list-cell-wrapper center-content" style="gap: 8px;">
+                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-generate-tc-{{ generator.id }}');" title="Generate testcases" aria-label="Generate testcases">
+                                        <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
+                                    </button>
+                                    {% if admin.permission_all %}
+                                    <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');" title="Delete generator" aria-label="Delete generator">
+                                        <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                    </button>
+                                    {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
                         </div>
                         {% endif %}
                     </div>
@@ -1560,10 +1573,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-statement" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1">
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-statement-title">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-statement-title">Add Statement</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Statement", "modal-add-statement-title") }}
                 <form action="{{ url("task", task.id, "statements", "add") }}" method="POST" enctype="multipart/form-data">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1584,10 +1594,7 @@ document.addEventListener('click', function(e) {
                             {{ bulma_file_input("stmt-source", "source", ".doc,.docx,.tex", button_text="Choose source file…") }}
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                        <button type="submit" class="tp-btn-primary">Upload Statement</button>
-                    </footer>
+                    {{ modal_footer("Upload Statement") }}
                 </form>
             </div>
         </div>
@@ -1601,10 +1608,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-edit-generator-{{ generator.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-edit-generator-{{ generator.id }}-title" style="max-width: 520px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-edit-generator-{{ generator.id }}-title">Edit Generator</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Edit Generator", "modal-edit-generator-" ~ generator.id ~ "-title") }}
                 <form method="POST" action="{{ url("dataset", dataset.id, "generator", generator.id, "edit") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1623,10 +1627,7 @@ document.addEventListener('click', function(e) {
                             <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                        <button type="submit" class="tp-btn-primary">Save</button>
-                    </footer>
+                    {{ modal_footer("Save") }}
                 </form>
             </div>
         </div>
@@ -1642,10 +1643,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-generate-tc-{{ generator.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-generate-tc-{{ generator.id }}-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-generate-tc-{{ generator.id }}-title">Generate Testcases</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Generate Testcases", "modal-generate-tc-" ~ generator.id ~ "-title") }}
                 <form method="POST" action="{{ url("dataset", dataset.id, "generator", generator.id, "generate") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1692,9 +1690,9 @@ document.addEventListener('click', function(e) {
                         {% endif %}
                     </main>
                     <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
+                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
                         {% if generator.executable_digest is not none %}
-                        <button type="submit" class="tp-btn-primary">Generate</button>
+                        <button type="submit" class="button is-primary"><span>Generate</span></button>
                         {% endif %}
                     </footer>
                 </form>
@@ -1711,10 +1709,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-testcase-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-testcase-{{ dataset.id }}-title" style="max-width: 520px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-testcase-{{ dataset.id }}-title">Add Testcase</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Testcase", "modal-add-testcase-" ~ dataset.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "testcases", "add") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1731,10 +1726,7 @@ document.addEventListener('click', function(e) {
                             {{ bulma_file_input("tc-" ~ dataset.id ~ "-output", "output", "", required=true, button_text="Choose output file…") }}
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                        <button type="submit" class="tp-btn-primary">Upload Testcase</button>
-                    </footer>
+                    {{ modal_footer("Upload Testcase") }}
                 </form>
             </div>
         </div>
@@ -1748,10 +1740,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-testcases-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-testcases-{{ dataset.id }}-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-testcases-{{ dataset.id }}-title">Add Multiple Testcases</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Multiple Testcases", "modal-add-testcases-" ~ dataset.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "testcases", "add_multiple") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1781,10 +1770,7 @@ document.addEventListener('click', function(e) {
                             </label>
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                        <button type="submit" class="tp-btn-primary">Upload</button>
-                    </footer>
+                    {{ modal_footer("Upload") }}
                 </form>
             </div>
         </div>
@@ -1798,10 +1784,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-generator-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-generator-{{ dataset.id }}-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-generator-{{ dataset.id }}-title">Add Generator</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Generator", "modal-add-generator-" ~ dataset.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "generators", "add") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -1830,10 +1813,7 @@ document.addEventListener('click', function(e) {
                             <small class="modal__hint">Use * as the testcase codename (e.g. output.* or *.out)</small>
                         </div>
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                        <button type="submit" class="tp-btn-primary">Upload Generator</button>
-                    </footer>
+                    {{ modal_footer("Upload Generator") }}
                 </form>
             </div>
         </div>
@@ -1847,10 +1827,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-ms-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-ms-{{ dataset.id }}-title" style="max-width: 640px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-ms-{{ dataset.id }}-title">Add Model Solution</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Add Model Solution", "modal-ms-" ~ dataset.id ~ "-title") }}
                 <form id="ms-form-{{ dataset.id }}" method="POST" enctype="multipart/form-data">
                     {{ xsrf_form_html|safe }}
                     <input type="hidden" name="_ms_mode" value="add" />
@@ -1976,10 +1953,7 @@ document.addEventListener('click', function(e) {
                         </div>
                         {% endif %}
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                        <button type="submit" class="tp-btn-primary" id="ms-{{ dataset.id }}-submit">Add Model Solution</button>
-                    </footer>
+                    {{ modal_footer("Add Model Solution", submit_id="ms-" ~ dataset.id ~ "-submit") }}
                 </form>
             </div>
         </div>
@@ -1994,10 +1968,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-replace-ms-{{ meta.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-replace-ms-{{ meta.id }}-title" style="max-width: 520px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-replace-ms-{{ meta.id }}-title">Replace Model Solution</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Replace Model Solution", "modal-replace-ms-" ~ meta.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("model_solution", meta.id, "replace") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -2008,10 +1979,7 @@ document.addEventListener('click', function(e) {
                         {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "replace-ms-" ~ meta.id, meta.submission.language if meta.submission else None) }}
                         {{ ms_fields.language_filter_script("#modal-replace-ms-" ~ meta.id ~ " form", allowed_langs, language_required) }}
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                        <button type="submit" class="tp-btn-primary">Replace</button>
-                    </footer>
+                    {{ modal_footer("Replace") }}
                 </form>
             </div>
         </div>
@@ -2025,19 +1993,13 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-add-dataset" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-dataset-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-add-dataset-title">Create Dataset</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Create Dataset", "modal-add-dataset-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("task", task.id, "add_dataset") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
                         {{ ds_fields.dataset_fields("add-ds", "new", "showNewDatasetTaskType();", dataset=None, TASK_TYPES=TASK_TYPES, SCORE_TYPES=SCORE_TYPES) }}
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                        <button type="submit" class="tp-btn-primary">Create</button>
-                    </footer>
+                    {{ modal_footer("Create") }}
                 </form>
             </div>
         </div>
@@ -2050,10 +2012,7 @@ document.addEventListener('click', function(e) {
     <div class="modal" id="modal-clone-dataset-{{ dataset.id }}" aria-hidden="true">
         <div class="modal__overlay" tabindex="-1" data-micromodal-close>
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-clone-dataset-{{ dataset.id }}-title" style="max-width: 560px;">
-                <header class="modal__header">
-                    <h2 class="modal__title" id="modal-clone-dataset-{{ dataset.id }}-title">Clone Dataset</h2>
-                    <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-                </header>
+                {{ modal_header("Clone Dataset", "modal-clone-dataset-" ~ dataset.id ~ "-title") }}
                 <form method="POST" enctype="multipart/form-data" action="{{ url("dataset", dataset.id, "clone") }}">
                     {{ xsrf_form_html|safe }}
                     <main class="modal__content">
@@ -2076,10 +2035,7 @@ document.addEventListener('click', function(e) {
                         </div>
                         {% endif %}
                     </main>
-                    <footer class="modal__footer">
-                        <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                        <button type="submit" class="tp-btn-primary">Clone</button>
-                    </footer>
+                    {{ modal_footer("Clone") }}
                 </form>
             </div>
         </div>
@@ -2087,18 +2043,22 @@ document.addEventListener('click', function(e) {
     {% endfor %}
     {% endif %}
 
+    <!-- Activate Dataset Modals -->
+    {% include "fragments/modal_activate_dataset.html" %}
+
     <!-- Remove Task -->
     <div style="margin-top: 24px; text-align: right;">
-        <button type="button" class="tp-btn-remove"
+        <button type="button" class="button is-small is-danger is-light"
             {% if not admin.permission_all %}disabled{% endif %}
             onclick='AdminModals.deleteResource({
                 title: "Remove Task",
-                message: {{ ('Are you sure you want to remove task "' ~ task.name ~ '"? This will delete all related data including submissions and cannot be undone.')|tojson|forceescape }},
+                message: {{ ('Are you sure you want to remove task "' ~ task.name ~ '", including all related data?')|tojson|forceescape }},
+                warnings: [{{ (task.submissions|length ~ " submission(s) will be deleted.")|tojson|forceescape }}],
                 deleteUrl: {{ url("tasks", task.id, "remove")|tojson|forceescape }},
                 confirmLabel: "Yes, Remove Task"
             })'>
-            <svg class="icon is-small" style="vertical-align: text-bottom;"><use href="#icon-trash"/></svg>
-            Remove Task
+            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            <span>Remove Task</span>
         </button>
     </div>
 </div>

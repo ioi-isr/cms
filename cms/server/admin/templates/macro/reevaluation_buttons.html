@@ -63,7 +63,7 @@ contest_id (int|None): the id of the contest to invalidate.
         disabled
 {% endif %}
         title="Evaluation" class="btn-icon-only btn-icon-warn" aria-label="Rerun evaluation">
-    <svg class="icon is-small"><use href="#icon-test-cases"/></svg>
+    <svg class="icon is-small"><use href="#icon-evaluate"/></svg>
 </button>
 <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'ScoringService', 0,

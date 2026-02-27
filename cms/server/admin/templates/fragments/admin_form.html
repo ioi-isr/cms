@@ -1,4 +1,6 @@
-{# This snippet shows a form to add/edit an admin; if admin_being_edited is set, its data will be used as defaults. #}
+{# This snippet shows a form to add/edit an admin; if admin_being_edited is set, its data will be used as defaults.
+   Requires: admin_being_edited (optional), admin (current logged-in admin), form_id (for password strength JS scoping) #}
+{% from "macro/bulma_file_input.html" import form_field %}
 
 {% if admin_being_edited is defined %}
   {% set admin_username = admin_being_edited.username %}
@@ -6,60 +8,67 @@
   {% set admin_permission_all = admin_being_edited.permission_all %}
   {% set admin_permission_messaging = admin_being_edited.permission_messaging %}
   {% set admin_enabled = admin_being_edited.enabled %}
+  {% set is_edit = True %}
 {% else %}
   {% set admin_username = "" %}
   {% set admin_name = "" %}
   {% set admin_permission_all = True %}
   {% set admin_permission_messaging = False %}
   {% set admin_enabled = True %}
+  {% set is_edit = False %}
 {% endif %}
 
-<div>
-  <table>
-    <tr>
-      <td>Username</td>
-      <td><input type="text" name="username" value="{{ admin_username }}"/></td>
-    </tr>
-    <tr>
-      <td>Password</td>
-      <td>
-        <input type="password" name="password" id="admin-password-field" value="" autocomplete="new-password"/>
-        <div id="admin-password-strength-container" style="margin-top: 5px;">
-          <div id="admin-password-strength-bar" style="height: 5px; border-radius: 3px; transition: all 0.3s ease; display: none;"></div>
-          <span id="admin-password-strength-text" style="font-size: 12px;"></span>
-        </div>
-        <script>
-          CMS.AWSFormUtils.initPasswordStrength(
-            "#admin-password-field",
-            "#admin-password-strength-bar",
-            "#admin-password-strength-text"
-          );
-        </script>
-      </td>
-    </tr>
-    <tr>
-      <td>Name</td>
-      <td><input type="text" name="name" value="{{ admin_name }}"/></td>
-    </tr>
-    {% if admin.permission_all %}
-    <tr>
-      <td>All permissions</td>
-      <td>
-        <input type="checkbox" name="permission_all" {% if admin_permission_all %}checked{% endif %} />
-      </td>
-    </tr>
-    <tr>
-      <td>Messaging permissions</td>
-      <td>
-        <input type="checkbox" name="permission_messaging" {% if admin_permission_messaging %}checked{% endif %} />
-      </td>
-    </tr>
-    <tr>
-      <td>Enabled</td>
-      <td>
-        <input type="checkbox" name="enabled" {% if admin_enabled %}checked{% endif %} />
-      </td>
-    </tr>
+{% set pw_field_id = (form_id ~ "-password") if form_id is defined else "admin-password-field" %}
+{% set pw_bar_id = pw_field_id ~ "-strength-bar" %}
+{% set pw_text_id = pw_field_id ~ "-strength-text" %}
+
+<div class="columns is-multiline">
+  <div class="column is-half">
+    {{ form_field('username', 'Username', admin_username, required=true, icon='user', autocomplete='username') }}
+  </div>
+  <div class="column is-half">
+    {{ form_field('name', 'Name', admin_name, required=true, icon='user') }}
+  </div>
+  <div class="column is-full">
+    {{ form_field('password', 'Password', '', type='password', required=(not is_edit), icon='key', autocomplete='new-password', input_id=pw_field_id) }}
+    <div class="mt-1">
+      <div id="{{ pw_bar_id }}" class="is-3" style="height: 5px; border-radius: 3px; transition: all 0.3s ease; display: none;"></div>
+      <span id="{{ pw_text_id }}" class="is-size-7"></span>
+    </div>
+    {% if is_edit %}
+    <p class="help">Leave blank to keep the current password.</p>
     {% endif %}
-  </table>
+  </div>
+  {% if admin.permission_all %}
+  <div class="column is-full">
+    <fieldset class="field">
+      <legend class="label">Permissions &amp; Status</legend>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <label class="checkbox">
+          <input type="checkbox" name="permission_all" {% if admin_permission_all %}checked{% endif %} />
+          All permissions
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="permission_messaging" {% if admin_permission_messaging %}checked{% endif %} />
+          Messaging permissions
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="enabled" {% if admin_enabled %}checked{% endif %} />
+          Enabled
+        </label>
+      </div>
+    </fieldset>
+  </div>
+  {% endif %}
 </div>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof CMS !== 'undefined' && CMS.AWSFormUtils) {
+      CMS.AWSFormUtils.initPasswordStrength(
+        "#{{ pw_field_id }}",
+        "#{{ pw_bar_id }}",
+        "#{{ pw_text_id }}"
+      );
+    }
+  });
+</script>

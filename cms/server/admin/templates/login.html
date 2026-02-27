@@ -1,52 +1,72 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="shortcut icon" href="{{ url("static", "favicon.ico") }}" />
-    <link rel="stylesheet" type="text/css" href="{{ url("static", "reset.css") }}">
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "bulma.min.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
-    <title>Admin</title>
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_themes.css") }}">
+    <title>Admin Login</title>
   </head>
   <body class="admin">
-    <div id="login-content">
+    {% include 'fragments/svg_icons.html' %}
+    <section class="hero is-fullheight" style="background: var(--login-gradient);">
+      <div class="hero-body is-justify-content-center is-align-items-center">
+        <div class="box" style="width: 100%; max-width: 420px;">
 
 {% if admin is undefined %}
-<h1>Welcome</h1>
+          <div class="has-text-centered mb-5">
+            <figure class="image is-96x96 is-inline-block mb-3">
+              <img src="{{ url("static", "ioi-logo.png") }}" alt="IOI Logo">
+            </figure>
+            <h1 class="title is-4">Admin Panel</h1>
+            <p class="subtitle is-6 has-text-grey">Sign in to continue</p>
+          </div>
+
     {% if handler.get_argument("login_error", "") != "" %}
-<h4 class="alert">Failed to log in.</h4>
+          <div class="notification is-danger is-light">
+            <strong>Login failed.</strong> Please check your credentials and try again.
+          </div>
     {% endif %}
-<p>Please log in:</p>
-<form action="{{ url("login") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  {% set next_page = handler.get_argument("next", none) %}
-  {% if next_page is not none %}
-  <input type="hidden" name="next" value="{{ next_page }}">
-  {% endif %}
-  <div class="section">
-    <label>
-      <span>Username</span>
-      <input type="text" name="username" autofocus>
-    </label>
-  </div>
-  <div class="section">
-    <label class="control-label">
-      <span>Password</span>
-      <input type="password" name="password" autocomplete="current-password">
-    </label>
-  </div>
-  <div class="section">
-    <button type="submit">Login</button>
-    <button type="reset">Reset</button>
-  </div>
-</form>
+          {% from 'macro/bulma_file_input.html' import form_field %}
+
+          <form action="{{ url("login") }}" method="POST">
+            {{ xsrf_form_html|safe }}
+            {% set next_page = handler.get_argument("next", none) %}
+            {% if next_page is not none %}
+            <input type="hidden" name="next" value="{{ next_page }}">
+            {% endif %}
+
+            {{ form_field('username', 'Username', type='text', placeholder='Enter your username', icon='user', required=true, autocomplete='username') }}
+            {{ form_field('password', 'Password', type='password', placeholder='Enter your password', icon='lock', required=true, autocomplete='current-password') }}
+
+            <div class="field mt-5">
+              <div class="control">
+                <button class="button is-primary is-fullwidth" type="submit">
+                  <strong>Sign In</strong>
+                </button>
+              </div>
+            </div>
+          </form>
 {% else %}
-
-You are already logged in. <a href="{{ url("logout") }}">Logout</a>
-or go to the <a href="{{ url() }}">overview</a>.
-
+          <div class="has-text-centered mb-5">
+            <figure class="image is-96x96 is-inline-block mb-3">
+              <img src="{{ url("static", "ioi-logo.png") }}" alt="IOI Logo">
+            </figure>
+            <h1 class="title is-4">Already Logged In</h1>
+          </div>
+          <div class="buttons is-centered">
+            <a href="{{ url() }}" class="button is-primary">Go to Overview</a>
+            <form action="{{ url("logout") }}" method="POST" class="m-0 d-inline-block">
+              {{ xsrf_form_html|safe }}
+              <button type="submit" class="button is-light">Logout</button>
+            </form>
+          </div>
 {% endif %}
 
-    </div>
+        </div>
+      </div>
+    </section>
   </body>
 </html>

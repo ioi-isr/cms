@@ -1,11 +1,10 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="container is-fluid">
     <!-- Header -->
     <div class="level">
         <div class="level-left">
-            <h1 class="title">Tasks</h1>
+            <h1 class="title is-spaced">Tasks</h1>
         </div>
         <div class="level-right">
             {% if admin.permission_all %}
@@ -13,7 +12,7 @@
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
                 <span>Import from ZIP</span>
             </a>
-            <button type="button" class="button is-primary has-text-white" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
                 <span>Add Task</span>
             </button>
@@ -26,8 +25,8 @@
         <h3>No tasks have been created yet</h3>
         {% if admin.permission_all %}
         <p>
-            <button type="button" class="tp-btn-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
-                Create your first task
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
+                <span>Create your first task</span>
             </button>
         </p>
         {% endif %}
@@ -39,7 +38,7 @@
     </div>
 
     <!-- Tasks Cards Grid -->
-    <div class="tp-cards-grid tp-cards-grid--compact" id="tasks-grid">
+    <div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="tasks-grid">
         {% for t in task_list %}
         <div class="tp-program-card" style="padding: 20px; position: relative;">
             {% if admin.permission_all %}
@@ -47,7 +46,10 @@
                 aria-label="Remove task"
                 onclick='AdminModals.deleteResource({
                     title: "Remove Task",
-                    message: "Are you sure you want to remove task \"" + {{ t.name|tojson }} + "\"?",
+                    message: "Are you sure you want to remove task " + {{ t.name|tojson }} + ", including all related data?",
+                    warnings: [
+                        {{ (t.submissions|length|string ~ " submission(s) will be deleted.")|tojson }}
+                    ],
                     deleteUrl: {{ url("tasks", t.id, "remove")|tojson }},
                     confirmLabel: "Yes, Remove"
                 })'>
@@ -56,7 +58,7 @@
             {% endif %}
             <div style="display: flex; align-items: center; gap: 14px;">
                 <div class="tp-stat-icon" style="background: var(--tp-info-light); color: var(--tp-info); width: 40px; height: 40px; border-radius: 10px;">
-                    <svg class="icon is-small"><use href="#icon-clipboard-list"/></svg>
+                    <svg class="icon"><use href="#icon-puzzle"/></svg>
                 </div>
                 <div style="min-width: 0;">
                     <a href="{{ url("task", t.id) }}" style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.title }}">{{ t.name }}</a>
@@ -67,5 +69,4 @@
         {% endfor %}
     </div>
     {% endif %}
-</div>
 {% endblock core %}

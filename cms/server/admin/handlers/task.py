@@ -41,6 +41,7 @@ except:
 import tornado.web
 
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
+from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.admin.handlers.utils import parse_tags
 from cmscommon.datetime import make_datetime
@@ -200,6 +201,44 @@ class TaskHandler(BaseHandler):
         self.r_params["subtask_names"] = subtask_names
         self.r_params["subtask_info"] = subtask_info
         self.r_params["running_validator_ids"] = get_running_validator_ids()
+
+        activate_data = {}
+        for dataset in task.datasets:
+            if dataset is task.active_dataset:
+                continue
+            if task.active_dataset is None:
+                activate_data[dataset.id] = {
+                    "changes": [],
+                    "default_notify_participations": set(),
+                }
+                continue
+            try:
+                changes = compute_changes_for_dataset(task.active_dataset, dataset)
+                notify_participations = set()
+                for c in changes:
+                    score_changed = c.old_score is not None or c.new_score is not None
+                    public_score_changed = (
+                        c.old_public_score is not None or c.new_public_score is not None
+                    )
+                    if public_score_changed or (
+                        c.submission.tokened() and score_changed
+                    ):
+                        notify_participations.add(c.submission.participation.id)
+                activate_data[dataset.id] = {
+                    "changes": changes,
+                    "default_notify_participations": notify_participations,
+                }
+            except Exception as error:
+                logger.exception(
+                    "Failed to compute activation changes for dataset %s",
+                    dataset.id,
+                    exc_info=error,
+                )
+                activate_data[dataset.id] = {
+                    "changes": [],
+                    "default_notify_participations": set(),
+                }
+        self.r_params["activate_data"] = activate_data
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -619,20 +658,7 @@ class TaskListHandler(SimpleHandler("tasks.html")):
 
 
 class RemoveTaskHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the task from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.task == task)
-
-        self.render_params_for_remove_confirmation(submission_query)
-        self.r_params["task"] = task
-        self.render("task_remove.html", **self.r_params)
+    """Delete removes the task from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, task_id):
@@ -658,7 +684,7 @@ class RemoveTaskHandler(BaseHandler):
             self.service.proxy_service.reinitialize()
 
         # Maybe they'll want to do this again (for another task)
-        self.write("../../tasks")
+        self.write(self.url("tasks"))
 
 
 class DefaultSubmissionFormatHandler(BaseHandler):

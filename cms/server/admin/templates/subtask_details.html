@@ -429,14 +429,14 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           <td>
             {% if tc_info.result %}
               {% if tc_info.result.passed %}
-                <span class="validator-badge validator-badge--pass">Passed</span>
+                <span class="tag has-text-success is-opaque is-rounded has-text-weight-semibold">Passed</span>
               {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
-                <span class="validator-badge validator-badge--fail">Failed</span>
+                <span class="tag has-text-danger is-opaque is-rounded has-text-weight-semibold">Failed</span>
               {% else %}
-                <span class="validator-badge validator-badge--error">Error ({{ tc_info.result.exit_status }})</span>
+                <span class="tag has-text-warning-25 is-opaque is-rounded has-text-weight-semibold">Error ({{ tc_info.result.exit_status }})</span>
               {% endif %}
             {% else %}
-              <span class="validator-badge validator-badge--muted">Not validated</span>
+              <span class="tag has-text-dark is-opaque is-rounded has-text-weight-semibold">Not validated</span>
             {% endif %}
           </td>
           <td>
@@ -469,8 +469,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% endmacro %}
 
 {% block core %}
-<div class="container is-fluid">
-<h1 class="title"><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }}{% if subtask_name %}: {{ subtask_name }}{% endif %} Tests</h1>
+<h1 class="title is-spaced"><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }}{% if subtask_name %}: {{ subtask_name }}{% endif %} Tests</h1>
 
 <h2>Subtask {{ subtask_index }}{% if subtask_name %} ({{ subtask_name }}){% endif %} Details</h2>
 
@@ -583,5 +582,4 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 <p>
   <a href="{{ url("task", task.id) }}">Back to task</a>
 </p>
-</div>
 {% endblock core %}

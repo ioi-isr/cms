@@ -26,7 +26,7 @@ import logging
 from cms.db import Admin
 from cmscommon.crypto import hash_password, validate_password_strength
 from cmscommon.datetime import make_datetime
-from .base import BaseHandler, SimpleHandler, require_permission
+from .base import BaseHandler, require_permission
 
 
 logger = logging.getLogger(__name__)
@@ -66,10 +66,10 @@ def _admin_attrs(handler: BaseHandler) -> dict:
     return attrs
 
 
-class AddAdminHandler(SimpleHandler("add_admin.html", permission_all=True)):
+class AddAdminHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("admins", "add")
+        fallback_page = self.url("admins")
 
         try:
             attrs = _admin_attrs(self)
@@ -117,14 +117,6 @@ class AdminHandler(BaseHandler):
         "authentication",
     ]
 
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, admin_id: str):
-        admin = self.safe_get_item(Admin, admin_id)
-
-        self.r_params = self.render_params()
-        self.r_params["admin_being_edited"] = admin
-        self.render("admin.html", **self.r_params)
-
     @require_permission(BaseHandler.PERMISSION_ALL, self_allowed=True)
     def post(self, admin_id: str):
         admin = self.safe_get_item(Admin, admin_id)
@@ -135,7 +127,7 @@ class AdminHandler(BaseHandler):
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(self.url("admin", admin_id))
+            self.redirect(self.url("admins"))
             return
 
         # If the admin is allowed here because has permission_all,
@@ -143,7 +135,7 @@ class AdminHandler(BaseHandler):
         # allowed because they are editing their own details, they can
         # only change a subset of the fields.
         if not self.current_user.permission_all:
-            for key in new_attrs.keys():
+            for key in list(new_attrs.keys()):
                 if key not in AdminHandler.SELF_MODIFIABLE_FIELDS:
                     del new_attrs[key]
         admin.set_attrs(new_attrs)
@@ -152,7 +144,7 @@ class AdminHandler(BaseHandler):
             logger.info("Admin %s updated.", admin.id)
             self.redirect(self.url("admins"))
         else:
-            self.redirect(self.url("admin", admin_id))
+            self.redirect(self.url("admins"))
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, admin_id: str):
