@@ -444,7 +444,7 @@ document.addEventListener('click', function(e) {
                                         <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--tp-primary);" />
                                     </td>
                                     <td style="text-align: center;">
-                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" title="Delete statement">
+                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" title="Delete statement" aria-label="Delete statement">
                                             <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                         </button>
                                     </td>
@@ -1247,14 +1247,14 @@ document.addEventListener('click', function(e) {
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content" style="gap: 4px;">
-                                        <button type="button" class="btn-icon-only" onclick='ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});' title="Edit">
+                                        <button type="button" class="btn-icon-only" onclick='ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});' title="Edit" aria-label="Edit model solution">
                                             <svg class="icon is-small"><use href="#icon-edit"/></svg>
                                         </button>
                                         {% if admin.permission_all %}
-                                        <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-replace-ms-{{ meta.id }}');" title="Replace">
+                                        <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-replace-ms-{{ meta.id }}');" title="Replace" aria-label="Replace model solution">
                                             <svg class="icon is-small"><use href="#icon-replace"/></svg>
                                         </button>
-                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');" title="Delete">
+                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("model_solution", meta.id, "delete") }}');" title="Delete" aria-label="Delete model solution">
                                             <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                         </button>
                                         {% endif %}
@@ -1333,64 +1333,6 @@ document.addEventListener('click', function(e) {
 
             <!-- Sub-tab: Test Cases -->
             <div class="dataset-subtab-content" id="ds-testcases-{{ dataset.id }}">
-                <div class="tp-card">
-                    <div class="tp-card-header-modern">
-                        <div class="tp-card-header-icon">
-                            <svg class="icon"><use href="#icon-clipboard-list"/></svg>
-                        </div>
-                        <h3 class="tp-card-title-modern">Generators</h3>
-                        {% if admin.permission_all %}
-                        <button type="button" onclick="MicroModal.show('modal-add-generator-{{ dataset.id }}');" class="button">
-                        <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
-                        <span>Add</span>
-                    </button>
-                        {% endif %}
-                    </div>
-                    <div class="tp-card-body">
-                        {% if dataset.generators|length == 0 %}
-                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No generators.</div>
-                        {% else %}
-                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
-                        <table class="tp-tasks-table" style="margin: 0; text-align: center;">
-                            <thead>
-                                <tr>
-                                    <th>Filename</th>
-                                    <th>Template</th>
-                                    <th>Ops</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            {% for filename, generator in dataset.generators|dictsort(by="key") %}
-                            <tr>
-                                <td><div class="list-cell-wrapper"><a href="javascript:void(0);" onclick="utils.show_file('{{ generator.filename }}','{{ url("file", generator.digest, generator.filename) }}')">{{ generator.filename }}</a></div></td>
-                                <td>
-                                    <div class="list-cell-wrapper center-content">
-                                    {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
-                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-edit-generator-{{ generator.id }}');" title="Edit generator" style="margin-left: 8px;">
-                                        <svg class="icon is-small"><use href="#icon-edit"/></svg>
-                                    </button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="list-cell-wrapper center-content" style="gap: 8px;">
-                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-generate-tc-{{ generator.id }}');" title="Generate testcases">
-                                        <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
-                                    </button>
-                                    {% if admin.permission_all %}
-                                    <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');" title="Delete generator">
-                                        <svg class="icon is-small"><use href="#icon-trash"/></svg>
-                                    </button>
-                                    {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
 
                 <div class="tp-card" style="margin-top: 20px;">
                     <div class="tp-card-header-modern">
@@ -1498,14 +1440,14 @@ document.addEventListener('click', function(e) {
                                     {% endif %}
                                     <td>
                                         <div class="list-cell-wrapper center-content">
-                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')" title="Show input">
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('input_{{ testcase.codename }}','{{ url("file", testcase.input, "input_%s"|format(testcase.codename)) }}')" title="Show input" aria-label="Show input file">
                                             <svg class="icon is-small"><use href="#icon-eye"/></svg>
                                         </button>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content">
-                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')" title="Show output">
+                                        <button type="button" class="btn-icon-only btn-icon-success" onclick="utils.show_file('output_{{ testcase.codename }}','{{ url("file", testcase.output, "output_%s"|format(testcase.codename)) }}')" title="Show output" aria-label="Show output file">
                                             <svg class="icon is-small"><use href="#icon-eye"/></svg>
                                         </button>
                                         </div>
@@ -1514,7 +1456,7 @@ document.addEventListener('click', function(e) {
                                         <div class="list-cell-wrapper center-content">
                                         <button type="button" class="btn-icon-only"
                                             onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "testcase", testcase.id, "delete") }}');"
-                                            title="Delete testcase">
+                                            title="Delete testcase" aria-label="Delete testcase">
                                             <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                         </button>
                                         </div>
@@ -1529,6 +1471,64 @@ document.addEventListener('click', function(e) {
                         <div class="multi_delete_actions" id="multi_delete_actions_{{ dataset.id }}" style="display:none; margin-top: 18px;">
                             <button type="button" id="cancel_multi_delete_{{ dataset.id }}" class="button" onclick="toggleMultipleDeleteMode({{ dataset.id }});"><span>Cancel</span></button>
                             <button type="button" id="delete_selected_{{ dataset.id }}" class="button" style="color: var(--tp-danger); border: 1px solid var(--tp-danger);" onclick="deleteSelectedTestcases({{ dataset.id }}, '{{ url("dataset", dataset.id, "testcases", "delete_selected") }}');"><span>Delete selected</span></button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="tp-card">
+                    <div class="tp-card-header-modern">
+                        <div class="tp-card-header-icon">
+                            <svg class="icon"><use href="#icon-clipboard-list"/></svg>
+                        </div>
+                        <h3 class="tp-card-title-modern">Generators</h3>
+                        {% if admin.permission_all %}
+                        <button type="button" onclick="MicroModal.show('modal-add-generator-{{ dataset.id }}');" class="button">
+                        <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                        <span>Add</span>
+                    </button>
+                        {% endif %}
+                    </div>
+                    <div class="tp-card-body">
+                        {% if dataset.generators|length == 0 %}
+                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No generators.</div>
+                        {% else %}
+                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
+                        <table class="tp-tasks-table" style="margin: 0; text-align: center;">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Template</th>
+                                    <th>Ops</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for filename, generator in dataset.generators|dictsort(by="key") %}
+                            <tr>
+                                <td><div class="list-cell-wrapper"><a href="javascript:void(0);" onclick="utils.show_file('{{ generator.filename }}','{{ url("file", generator.digest, generator.filename) }}')">{{ generator.filename }}</a></div></td>
+                                <td>
+                                    <div class="list-cell-wrapper center-content">
+                                    {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
+                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-edit-generator-{{ generator.id }}');" title="Edit generator" aria-label="Edit generator" style="margin-left: 8px;">
+                                        <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                                    </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="list-cell-wrapper center-content" style="gap: 8px;">
+                                    <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-generate-tc-{{ generator.id }}');" title="Generate testcases" aria-label="Generate testcases">
+                                        <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
+                                    </button>
+                                    {% if admin.permission_all %}
+                                    <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');" title="Delete generator" aria-label="Delete generator">
+                                        <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                    </button>
+                                    {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
                         </div>
                         {% endif %}
                     </div>

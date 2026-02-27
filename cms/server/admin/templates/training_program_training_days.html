@@ -185,7 +185,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         {% if admin.permission_all %}draggable="true"{% endif %}>
                         <!-- Drag handle -->
                         <td class="grip-cell">
-                            <div class="grip-handle" title="Drag to reorder">
+                            <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder training day">
                                 <svg class="icon is-small" style="fill: currentColor; stroke: none;"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
@@ -245,7 +245,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                    class="btn-icon-only btn-archive"
                                    {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
                                    onclick="MicroModal.show('modal-archive-td-{{ td.id }}')"
-                                   title="Archive training day">
+                                   title="Archive training day" aria-label="Archive training day">
                                     <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
                                 </button>
                                 <!-- Remove button -->
@@ -257,7 +257,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                    data-participation-count="{{ td.contest.participations|length }}"
                                    data-task-count="{{ td.tasks|length }}"
                                    data-is-archived="false"
-                                   title="Remove training day">
+                                   title="Remove training day" aria-label="Remove training day">
                                     <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                 </button>
                             </div>
@@ -360,7 +360,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     <!-- Share Scoreboard -->
                     <td style="text-align: center;">
                         <div class="list-cell-wrapper" style="justify-content: center;">
-                            <button type="button" class="btn-icon-only" title="Configure scoreboard sharing"
+                            <button type="button" class="btn-icon-only" title="Configure scoreboard sharing" aria-label="Configure scoreboard sharing"
                                     onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
                                     {% if not admin.permission_all %}disabled{% endif %}>
                                 <svg class="icon is-small"><use href="#icon-share"/></svg>

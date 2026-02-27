@@ -57,7 +57,7 @@
                         draggable="true">
                         <!-- Drag handle -->
                         <td class="grip-cell">
-                            <div class="grip-handle" title="Drag to reorder">
+                            <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder task">
                                 <svg class="icon is-small"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
@@ -100,7 +100,7 @@
                                     {% if not admin.permission_all %}disabled{% endif %}
                                     data-operation="detach_{{ t.id }}"
                                     onclick="AdminModals.confirmThen('Detach this task from the archived training day? It will become available for new training days.', function() { var form = this.closest('form'); var inp = form.querySelector('input[name=operation]'); if (!inp) { inp = document.createElement('input'); inp.type = 'hidden'; inp.name = 'operation'; form.appendChild(inp); } inp.value = this.dataset.operation; form.submit(); }.bind(this), {icon: 'question'}); return false;"
-                                    title="Detach from archived training day">
+                                    title="Detach from archived training day" aria-label="Detach task from archived training day">
                                     <svg class="icon is-small"><use href="#icon-unlock"/></svg>
                                 </button>
                                 {% endif %}
@@ -112,7 +112,7 @@
                                     data-training-day-name="{% if t.training_day and t.training_day.contest %}{{ (t.training_day.contest.description or t.training_day.contest.name) | e }}{% elif t.training_day %}{{ (t.training_day.description or t.training_day.name or 'Archived') | e }}{% else %}{% endif %}"
                                     data-is-active="{{ 'true' if (t.training_day and t.training_day.contest) else 'false' }}"
                                     {% if not admin.permission_all %}disabled{% endif %}
-                                    title="Remove from program">
+                                    title="Remove from program" aria-label="Remove task from program">
                                     <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                 </button>
                             </div>

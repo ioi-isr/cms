@@ -61,13 +61,13 @@
                 </td>
                 <td class="has-text-centered">
                     {% if admin.permission_all or a.id == admin.id %}
-                    <button type="button" class="btn-icon-only" title="Edit admin"
+                    <button type="button" class="btn-icon-only" title="Edit admin" aria-label="Edit admin"
                             onclick="MicroModal.show('modal-edit-admin-{{ a.id }}')">
                         <svg class="icon is-small"><use href="#icon-edit"/></svg>
                     </button>
                     {% endif %}
                     {% if admin.permission_all and a.id != admin.id %}
-                    <button type="button" class="btn-icon-only" title="Delete admin"
+                    <button type="button" class="btn-icon-only" title="Delete admin" aria-label="Delete admin"
                             onclick='AdminModals.deleteResource({
                                 title: "Remove Admin",
                                 message: {{ ("Are you sure you want to remove admin \"" ~ a.username ~ "\"?")|tojson|forceescape }},
