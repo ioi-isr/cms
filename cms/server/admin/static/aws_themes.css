@@ -116,6 +116,19 @@
     --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
     --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
 
+    --tp-question-unanswered-header-bg: rgba(255, 193, 7, 0.15);
+    --tp-question-unanswered-header-text: hsl(221, 14%, 85%);
+    --tp-question-unanswered-border: rgba(255, 193, 7, 0.25);
+    --tp-question-unanswered-divider: rgba(255, 193, 7, 0.2);
+    --tp-question-claimed-header-bg: rgba(52, 152, 219, 0.15);
+    --tp-question-claimed-header-text: hsl(221, 14%, 85%);
+    --tp-question-claimed-border: rgba(52, 152, 219, 0.25);
+    --tp-question-claimed-divider: rgba(52, 152, 219, 0.2);
+    --tp-question-answered-header-bg: rgba(46, 125, 50, 0.15);
+    --tp-question-answered-header-text: hsl(221, 14%, 85%);
+    --tp-question-answered-border: rgba(46, 125, 50, 0.25);
+    --tp-question-answered-divider: rgba(46, 125, 50, 0.2);
+
     --login-gradient: linear-gradient(135deg, #0a0f1a 0%, #1a2332 50%, #2d3748 100%);
 
     --sidebar-bg-dark: #1a202c;
@@ -171,52 +184,24 @@
     color: hsl(221, 14%, 85%);
 }
 
+[data-theme="arkansas-black"] .tp-dialog,
 [data-theme="arkansas-black"] .question-card,
-[data-theme="arkansas-black"] .tp-card {
+[data-theme="arkansas-black"] .tp-card,
+[data-theme="arkansas-black"] .tp-dialog-footer {
     background: hsl(221, 14%, 14%);
     border-color: hsl(221, 14%, 24%);
 }
 
-/* Force dark text on the tinted (light) header backgrounds in dark mode */
-[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header,
-[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header,
-[data-theme="arkansas-black"] .question-card.question-answered .question-card-header {
-    color: hsl(221, 14%, 15%);
+[data-theme="arkansas-black"] .tp-dialog {
+    background: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
 }
 
-[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-subject,
-[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-subject,
-[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-subject {
-    color: hsl(221, 14%, 15%);
+[data-theme="arkansas-black"] .tp-dialog-header {
+    border-bottom-color: hsl(221, 14%, 24%);
 }
 
-[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-status-badge,
-[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-status-badge,
-[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-status-badge {
-    color: hsl(221, 14%, 15%);
-}
-
-[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-meta,
-[data-theme="arkansas-black"] .question-card.question-claimed .question-card-meta,
-[data-theme="arkansas-black"] .question-card.question-answered .question-card-meta {
-    color: hsl(221, 14%, 30%);
-}
-
-[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-meta-item,
-[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-meta-item,
-[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-meta-item,
-[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-meta-item a,
-[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-meta-item a,
-[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-meta-item a {
-    color: hsl(221, 14%, 30%);
-}
-
-[data-theme="arkansas-black"] .question-card.question-unanswered .question-card-header .question-header-actions .button,
-[data-theme="arkansas-black"] .question-card.question-claimed .question-card-header .question-header-actions .button,
-[data-theme="arkansas-black"] .question-card.question-answered .question-card-header .question-header-actions .button {
-    color: hsl(221, 14%, 15%);
-    border-color: hsl(221, 14%, 50%);
-}
+/* Make question headers slightly transparent for better dark mode appearance */
 [data-theme="arkansas-black"] #border {
     border-color: hsl(221, 14%, 22%);
 }
@@ -565,15 +550,6 @@
     color: #fff;
 }
 
-[data-theme="mcintosh"] .question-card .question-card-header .question-meta-item,
-[data-theme="mcintosh"] .question-card .question-card-header .question-meta-item a,
-[data-theme="mcintosh"] .question-card .question-card-header .question-meta-item .icon {
-    color: #c0c0c0;
-}
-
-[data-theme="mcintosh"] .question-card .question-card-header .question-meta-item a:hover {
-    color: #ffff00;
-}
 
 [data-theme="mcintosh"] .question-card .question-card-header .question-status-badge {
     background: #c0c0c0;

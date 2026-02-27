@@ -1132,25 +1132,11 @@
 }
 
 .tp-tasks-table thead th {
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    z-index: auto !important;
-    box-shadow: none !important;
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--tp-text-muted);
-    background: var(--tp-bg-light);
+    color: var(--bulma-text-55);
     padding: 14px 16px !important;
-}
-
-.tp-tasks-table td {
-    padding: 0;
-}
-
-.tp-tasks-table tbody tr:hover {
-    background-color: var(--tp-bg-hover);
 }
 
 /* Task page specific compact styling for test cases table */
@@ -2663,6 +2649,7 @@
     margin-bottom: 0;
 }
 
+.delays-history-card-reason-label,
 .delays-history-card-field-label {
     display: flex;
     align-items: center;
@@ -2671,7 +2658,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-65);
     margin-bottom: 4px;
 }
 
@@ -2682,18 +2669,6 @@
 
 .delays-history-card-reason {
     margin-bottom: 0;
-}
-
-.delays-history-card-reason-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--tp-text-muted);
-    margin-bottom: 6px;
 }
 
 .delays-history-card-reason-box {
@@ -2714,25 +2689,14 @@
 .delays-history-card-meta-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 6px;
     font-size: 0.8rem;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-70);
     margin-bottom: 4px;
 }
 
 .delays-history-card-meta-row:last-child {
     margin-bottom: 0;
-}
-
-.delays-history-card-meta-row span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.delays-history-card-meta-row span:last-child {
-    font-weight: 600;
-    color: var(--tp-text-secondary);
 }
 
 .delays-empty-state {

@@ -54,7 +54,7 @@
                                 </div>
                             </td>
                             <td class="has-text-centered">
-                                <div class="list-cell-wrapper center-content" style="gap: 6px;">
+                                <div class="list-cell-wrapper center-content is-gap-1">
                                     <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit='return AdminModals.confirmSubmit(event, "Approve password reset for " + {{ u.username|tojson }} + "?", {icon: "question"});'>
                                         {{ xsrf_form_html|safe }}
                                         <button type="submit" class="button is-small is-success is-outlined">Approve</button>

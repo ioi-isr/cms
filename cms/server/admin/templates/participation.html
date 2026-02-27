@@ -7,7 +7,7 @@
 {% import 'macro/message.html' as macro_message with context %}
 
 {% block core %}
-<h1 class="title">
+<h1 class="title is-spaced">
   Participation:
   {# For training day participations, link to the student page in the training program #}
   {% if contest.training_day is not none and contest.training_day.training_program is not none %}
@@ -16,7 +16,7 @@
   <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
   {% endif %}
 </h1>
-<p class="subtitle has-text-grey">
+<p class="subtitle has-text-grey mb-5">
   Contest: <a href="{{ url("contest", contest.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ contest.name }}</a>
 </p>
 

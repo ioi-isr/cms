@@ -21,10 +21,10 @@ CMS.AWSFormUtils.initTagify({
 {% endblock js_init %}
 
 {% block core %}
-<h1 class="title">
+<h1 class="title is-spaced">
   Student: <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
 </h1>
-<p class="subtitle has-text-grey">
+<p class="subtitle has-text-grey mb-5">
   Training Program: <a href="{{ url("training_program", training_program.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
   &middot;
   <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks") }}">View Task Archive ({{ student.student_tasks|length }} tasks)</a>

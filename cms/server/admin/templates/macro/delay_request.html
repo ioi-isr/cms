@@ -27,19 +27,17 @@ variant (str): "pending", "history", or "auto" to pick layout.
         {% endif %}
       </h3>
     </div>
-    <div class="question-header-right">
-      <div class="question-card-meta question-card-meta-inline">
-        {% if user_id is none %}
-        <span class="question-meta-item">
-          <svg class="icon is-small"><use href="#icon-user"/></svg>
-          <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">{{ req.participation.user.username }}</a>
-        </span>
-        {% endif %}
-        <span class="question-meta-item">
-          <svg class="icon is-small"><use href="#icon-calendar"/></svg>
-          {{ req.request_timestamp|format_datetime }}
-        </span>
-      </div>
+    <div class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 12px; font-size: 0.85em;">
+      {% if user_id is none %}
+      <span class="is-flex is-align-items-center icon-text">
+        <svg class="icon is-small"><use href="#icon-user"/></svg>
+        <a href="{{ url("contest", contest.id, "user", req.participation.user.id, "edit") }}" title="{{ req.participation.user.first_name }} {{ req.participation.user.last_name }}">{{ req.participation.user.username }}</a>
+      </span>
+      {% endif %}
+      <span class="is-flex is-align-items-center icon-text">
+        <svg class="icon is-small"><use href="#icon-calendar"/></svg>
+        <span>{{ req.request_timestamp|format_datetime }}</span>
+      </span>
     </div>
   </div>
   <div class="question-card-body">
@@ -146,15 +144,15 @@ variant (str): "pending", "history", or "auto" to pick layout.
   {% if req.status != 'pending' %}
   <div class="delays-history-card-footer">
     {% if req.admin %}
-    <div class="delays-history-card-meta-row">
-      <span><svg class="icon is-small"><use href="#icon-users"/></svg> Processed by:</span>
-      <span>{{ req.admin.name }}</span>
+    <div class="delays-history-card-meta-row icon-text">
+      <svg class="icon is-small"><use href="#icon-users"/></svg>
+      <span>Processed by: {{ req.admin.name }}</span>
     </div>
     {% endif %}
     {% if req.processed_timestamp %}
-    <div class="delays-history-card-meta-row">
-      <span><svg class="icon is-small"><use href="#icon-clock"/></svg> At:</span>
-      <span>{{ req.processed_timestamp|format_datetime }}</span>
+    <div class="delays-history-card-meta-row icon-text">
+      <svg class="icon is-small"><use href="#icon-clock"/></svg>
+      <span>At: {{ req.processed_timestamp|format_datetime }}</span>
     </div>
     {% endif %}
   </div>
