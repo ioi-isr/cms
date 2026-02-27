@@ -35,7 +35,7 @@ except:
 from sqlalchemy import not_
 import tornado.web
 
-from cms.db import Contest, DelayRequest, Participation
+from cms.db import Contest, DelayRequest, Participation, Student
 from cms.server.contest.phase_management import compute_actual_phase
 from cmscommon.datetime import make_datetime
 from cms.server.util import check_training_day_eligibility
@@ -163,6 +163,34 @@ class DelaysAndExtraTimesHandler(BaseHandler):
             })
 
         self.r_params["participation_statuses"] = participation_statuses
+
+        # Build student tags mapping for display
+        student_tags_by_part = {}
+        training_day = self.contest.training_day
+        if training_day is not None:
+            training_program = training_day.training_program
+            if training_program is not None:
+                # Batch query: fetch all students for this training program's participations
+                participation_user_ids = {
+                    item["participation"].user_id for item in participation_statuses
+                }
+                students = (
+                    self.sql_session.query(Student, Participation.user_id)
+                    .join(Participation, Student.participation_id == Participation.id)
+                    .filter(Student.training_program_id == training_program.id)
+                    .filter(Participation.user_id.in_(participation_user_ids))
+                    .all()
+                )
+                student_by_user_id = {uid: student for student, uid in students}
+
+                for item in participation_statuses:
+                    p = item["participation"]
+                    student = student_by_user_id.get(p.user_id)
+                    if student:
+                        student_tags_by_part[p.id] = student.student_tags or []
+                    else:
+                        student_tags_by_part[p.id] = []
+        self.r_params["student_tags_by_participation"] = student_tags_by_part
 
         # Check if all participants are in stage ≥1 (finished or missed)
         # This is used to show the "Archive Training" button on training day attendance pages

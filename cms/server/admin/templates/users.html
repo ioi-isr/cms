@@ -1,27 +1,28 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="container is-fluid">
     <!-- Header -->
     <div class="level">
         <div class="level-left">
-            <h1 class="title">Users</h1>
+            <h1 class="title is-spaced">Users</h1>
         </div>
         <div class="level-right">
-            <a href="{{ url("users", "export") }}" class="button">
-                <svg class="icon is-small"><use href="#icon-download"/></svg>
-                <span>Export CSV</span>
-            </a>
-            <a href="{{ url("users", "import") }}" class="button">
-                <svg class="icon is-small"><use href="#icon-upload"/></svg>
-                <span>Import CSV</span>
-            </a>
-            {% if admin.permission_all %}
-            <button type="button" class="button is-primary has-text-white" onclick="MicroModal.show('modal-add-user')">
-                <svg class="icon is-small"><use href="#icon-plus"/></svg>
-                <span>New User</span>
-            </button>
-            {% endif %}
+            <div class="buttons">
+                <a href="{{ url("users", "export") }}" class="button">
+                    <svg class="icon is-small"><use href="#icon-download"/></svg>
+                    <span>Export CSV</span>
+                </a>
+                <a href="{{ url("users", "import") }}" class="button">
+                    <svg class="icon is-small"><use href="#icon-upload"/></svg>
+                    <span>Import CSV</span>
+                </a>
+                {% if admin.permission_all %}
+                <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-user')">
+                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                    <span>New User</span>
+                </button>
+                {% endif %}
+            </div>
         </div>
     </div>
 
@@ -33,12 +34,12 @@
                 <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 4px; color: var(--tp-warning);"><use href="#icon-alert-triangle"/></svg>
                 Pending Password Resets ({{ pending_users|length }})
             </h3>
-            <div class="tp-table-container">
+            <div class="table-container">
                 <table class="ranking-table">
                     <thead>
                         <tr>
                             <th style="text-align: left;">User</th>
-                            <th class="text-center" style="width: 160px;">Actions</th>
+                            <th class="has-text-centered" style="width: 160px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -52,7 +53,7 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="text-center">
+                            <td class="has-text-centered">
                                 <div class="list-cell-wrapper center-content" style="gap: 6px;">
                                     <form action="{{ url("user", u.id, "approve_password_reset") }}" method="POST" style="display:inline;" onsubmit='return AdminModals.confirmSubmit(event, "Approve password reset for " + {{ u.username|tojson }} + "?", {icon: "question"});'>
                                         {{ xsrf_form_html|safe }}
@@ -78,7 +79,7 @@
         <h3>No users yet</h3>
         {% if admin.permission_all %}
         <p>
-            <button type="button" class="button is-primary has-text-white" onclick="MicroModal.show('modal-add-user')">
+            <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-user')">
                 Create your first user
             </button>
         </p>
@@ -91,14 +92,20 @@
     </div>
 
     <!-- Users Cards Grid -->
-    <div class="tp-cards-grid tp-cards-grid--compact" id="users-grid">
+    <div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="users-grid">
         {% for u in user_list|sort(attribute="username") %}
         <div class="tp-program-card" style="padding: 20px; position: relative;">
             {% if admin.permission_all %}
+            {% set ns = namespace(sub_count=0) %}
+            {% for p in u.participations %}{% set ns.sub_count = ns.sub_count + p.submissions|length %}{% endfor %}
             <button type="button" class="btn-icon-only" title="Remove user" style="position: absolute; top: 12px; right: 12px;"
                 onclick='AdminModals.deleteResource({
                     title: "Remove User",
-                    message: "Are you sure you want to remove user \"" + {{ u.username|tojson }} + "\"?",
+                    message: "Are you sure you want to remove user " + {{ u.username|tojson }} + ", including all related data?",
+                    warnings: [
+                        "{{ u.participations|length }} participation(s) will be deleted.",
+                        "{{ ns.sub_count }} submission(s) will be deleted."
+                    ],
                     deleteUrl: {{ url("users", u.id, "remove")|tojson }},
                     confirmLabel: "Yes, Remove"
                 })'>
@@ -126,32 +133,7 @@
         {% endfor %}
     </div>
     {% endif %}
-</div>
 
-{% if admin.permission_all %}
-<div class="modal modal--medium" id="modal-add-user" aria-hidden="true">
-    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
-        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-add-user-title">
-            <header class="modal__header">
-                <h2 class="modal__title" id="modal-add-user-title">New user</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
-            <main class="modal__content">
-                <form id="add-user-form" enctype="multipart/form-data" action="{{ url("users", "add") }}" method="POST">
-                    {{ xsrf_form_html|safe }}
-                    {% set user = None %}
-                    {% from "macro/user_fields.html" import user_fields with context %}
-                    {{ user_fields(None) }}
-                </form>
-            </main>
-            <footer class="modal__footer">
-                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                <button type="submit" form="add-user-form" class="tp-btn-primary">Create user</button>
-            </footer>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

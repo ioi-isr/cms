@@ -3,7 +3,7 @@
 {% from "macro/bulma_file_input.html" import bulma_file_input %}
 
 {% block core %}
-<h1 class="title">Users list</h1>
+<h1 class="title is-spaced">Users list</h1>
 
 {% include "fragments/overload_warning.html" %}
 
@@ -72,38 +72,38 @@
          value="Add user" />
 </form>
 
-<form action="{{ url("contest", contest.id, "users") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Edit selected user:
-  <input type="submit"
-         name="operation"
-         value="Remove from contest"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
-  <table class="table is-bordered is-striped is-hoverable">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Username</th>
-        <th>First name</th>
-        <th>Last name</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in contest.participations|map(attribute="user")|sort(attribute="username") %}
-      <tr>
-        <td>
-          <input type="radio" name="user_id" value="{{ u.id }}"/>
-        </td>
-        <td><a href="{{ url("contest", contest.id, "user", u.id, "edit") }}">{{ u.username }}</a></td>
-        <td>{{ u.first_name }}</td>
-        <td>{{ u.last_name }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
+<table class="table is-bordered is-striped is-hoverable">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>First name</th>
+      <th>Last name</th>
+      {% if admin.permission_all %}<th></th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in contest.participations|sort(attribute="user.username") %}
+    <tr>
+      <td><a href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}">{{ p.user.username }}</a></td>
+      <td>{{ p.user.first_name }}</td>
+      <td>{{ p.user.last_name }}</td>
+      {% if admin.permission_all %}
+      <td>
+        <button type="button" class="button is-small is-danger is-outlined"
+            onclick='AdminModals.deleteResource({
+                title: "Remove Participation",
+                message: "Are you sure you want to remove user " + {{ p.user.username|tojson }} + " from contest " + {{ contest.name|tojson }} + "?",
+                warnings: [{{ (p.submissions|length|string + " submission(s) will be deleted.")|tojson }}],
+                deleteUrl: {{ url("contest", contest.id, "user", p.user.id, "remove")|tojson }},
+                confirmLabel: "Yes, Remove"
+            })'>
+            Remove
+        </button>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
 {% endblock core %}

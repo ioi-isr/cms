@@ -98,20 +98,20 @@ variant (str): "pending", "history", or "auto" to pick layout.
       </div>
     </div>
     {% if req.status == 'approved' %}
-      <span class="delays-history-badge delays-history-badge-approved">
-        <svg class="icon is-small"><use href="#icon-check"/></svg> Approved
+      <span class="tag is-rounded is-bordered has-text-success">
+        <svg class="icon is-small"><use href="#icon-check"/></svg> <span>Approved</span>
       </span>
     {% elif req.status == 'rejected' %}
-      <span class="delays-history-badge delays-history-badge-rejected">
-        <svg class="icon is-small"><use href="#icon-x"/></svg> Rejected
+      <span class="tag is-rounded is-bordered has-text-danger">
+        <svg class="icon is-small"><use href="#icon-x"/></svg> <span>Rejected</span>
       </span>
     {% elif req.status == 'admin_configured' %}
-      <span class="delays-history-badge delays-history-badge-configured">
-        <svg class="icon is-small"><use href="#icon-sliders"/></svg> Admin Configured
+      <span class="tag is-rounded is-bordered has-text-primary">
+        <svg class="icon is-small"><use href="#icon-sliders"/></svg> <span>Admin Configured</span>
       </span>
     {% elif req.status == 'pending' %}
-      <span class="delays-history-badge delays-history-badge-pending">
-        <svg class="icon is-small"><use href="#icon-clock"/></svg> Pending
+      <span class="tag is-rounded is-bordered has-text-warning">
+        <svg class="icon is-small"><use href="#icon-clock"/></svg> <span>Pending</span>
       </span>
     {% endif %}
   </div>

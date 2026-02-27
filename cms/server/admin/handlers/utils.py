@@ -41,7 +41,9 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def get_available_contests(sql_session: Session) -> list["Contest"]:
+def get_available_contests(
+    sql_session: Session, exclude_contest_id: int | None = None
+) -> list["Contest"]:
     """Get contests available for task moves or associations.
 
     Returns contests that are not internal (name starting with '__'),
@@ -49,15 +51,14 @@ def get_available_contests(sql_session: Session) -> list["Contest"]:
     contests. Results are ordered by name.
 
     sql_session: The database session.
+    exclude_contest_id: Optional contest ID to exclude from results.
 
     return: List of available Contest objects.
     """
-    return (
-        exclude_internal_contests(sql_session.query(Contest))
-        .filter(~Contest.training_day.has())
-        .order_by(Contest.name)
-        .all()
-    )
+    query = exclude_internal_contests(sql_session.query(Contest))
+    if exclude_contest_id is not None:
+        query = query.filter(Contest.id != exclude_contest_id)
+    return query.filter(~Contest.training_day.has()).order_by(Contest.name).all()
 
 
 def get_all_student_tags(

@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="container is-fluid">
     <!-- Header -->
     <div class="level">
         <div class="level-left">
-            <h1 class="title">Teams</h1>
+            <h1 class="title is-spaced">Teams</h1>
         </div>
         <div class="level-right">
             {% if admin.permission_all %}
-            <button type="button" class="button is-primary has-text-white" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
+            <button type="button" class="button is-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
                 <span>Add Team</span>
             </button>
@@ -22,8 +21,8 @@
         <h3>No teams have been created yet</h3>
         {% if admin.permission_all %}
         <p>
-            <button type="button" class="tp-btn-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
-                Create your first team
+            <button type="button" class="button is-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
+                <span>Create your first team</span>
             </button>
         </p>
         {% endif %}
@@ -35,7 +34,7 @@
     </div>
 
     <!-- Teams Cards Grid -->
-    <div class="tp-cards-grid tp-cards-grid--compact" id="teams-grid">
+    <div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="teams-grid">
         {% for t in team_list|sort(attribute="code") %}
         <div class="tp-program-card" style="padding: 20px; position: relative;">
             {% if admin.permission_all %}
@@ -43,7 +42,16 @@
                 aria-label="Remove team"
                 onclick='AdminModals.deleteResource({
                     title: "Remove Team",
-                    message: "Are you sure you want to remove team \"" + {{ t.code|tojson }} + "\"?",
+                    message: "Are you sure you want to remove team " + {{ t.code|tojson }} + " (" + {{ t.name|tojson }} + ")?",
+                    warnings: [
+                        {% if t.participations|length == 1 %}
+                        {{ "1 participation will lose its team association."|tojson }}
+                        {% elif t.participations|length > 1 %}
+                        {{ (t.participations|length|string + " participations will lose their team associations.")|tojson }}
+                        {% else %}
+                        {{ "This team has no associated participations."|tojson }}
+                        {% endif %}
+                    ],
                     deleteUrl: {{ url("teams", t.id, "remove")|tojson }},
                     confirmLabel: "Yes, Remove"
                 })'>
@@ -52,7 +60,7 @@
             {% endif %}
             <div style="display: flex; align-items: center; gap: 14px;">
                 <div class="tp-stat-icon" style="background: var(--tp-info-light); color: var(--tp-info); width: 40px; height: 40px; border-radius: 10px;">
-                    <svg class="icon is-small"><use href="#icon-users"/></svg>
+                    <svg class="icon"><use href="#icon-flag"/></svg>
                 </div>
                 <div style="min-width: 0;">
                     <a href="{{ url("team", t.id) }}" style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.code }}">{{ t.code }}</a>
@@ -63,5 +71,4 @@
         {% endfor %}
     </div>
     {% endif %}
-</div>
 {% endblock core %}

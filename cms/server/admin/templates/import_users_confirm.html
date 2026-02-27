@@ -2,7 +2,7 @@
 
 {% block core %}
 
-<h1 class="title">Import Users - Confirm</h1>
+<h1 class="title is-spaced">Import Users - Confirm</h1>
 
 <form action="{{ url("users", "import", "confirm") }}" method="POST">
   {{ xsrf_form_html|safe }}

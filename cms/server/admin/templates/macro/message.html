@@ -27,8 +27,8 @@ edit_url (str): the URL to POST the edited message.
 redirect_url (str): optional URL to redirect to after editing (passed as hidden 'next' field).
 #}
 {% set delete_btn %}
-  <button type="button" class="question-edit-reply-link" onclick="CMS.AWSUtils.ajax_delete_reload('{{ delete_url }}');">
-    <svg class="icon is-small"><use href="#icon-trash"/></svg> Remove
+  <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="CMS.AWSUtils.ajax_delete_reload('{{ delete_url }}');">
+    <svg class="icon is-small"><use href="#icon-trash"/></svg> <span>Remove</span>
   </button>
 {% endset %}
 {% set hidden_html %}
@@ -42,7 +42,7 @@ redirect_url (str): optional URL to redirect to after editing (passed as hidden 
   </div>
 
   <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
-  <textarea class="announcement_raw_text" style="display:none;">{{ msg.text|e }}</textarea>
+  <textarea class="announcement_raw_text textarea" style="display:none;">{{ msg.text|e }}</textarea>
 
   {{ card.card_footer(msg.admin.name if msg.admin is not none else "<unknown>") }}
 

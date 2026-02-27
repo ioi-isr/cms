@@ -1,48 +1,46 @@
-<!-- Remove Training Program Modal Fragment -->
-<!-- Include this fragment in pages where the "Remove Training Program" modal is needed -->
-<!-- Required context: admin, url, xsrf_form_html -->
-<!-- Static mode (single program page): training_program, participation_count, submission_count, task_count, training_day_count, training_day_participation_count, training_day_submission_count, other_contests -->
-<!-- Dynamic mode (listing page): other_contests; caller JS populates modal via element IDs before showing -->
+<!-- Remove Contest Modal Fragment -->
+<!-- Include this fragment in pages where the "Remove Contest" modal is needed -->
+<!-- Required context: admin, url, xsrf_form_html, other_contests -->
+<!-- Static mode (single contest page): contest, submission_count -->
+<!-- Dynamic mode (listing page): caller JS populates modal via element IDs before showing -->
 
 {% from "macro/modal.html" import modal_header %}
 {% if admin is defined and admin.permission_all %}
-<div class="modal modal--medium" id="modal-remove-program" aria-hidden="true">
+<div class="modal modal--medium" id="modal-remove-contest" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1">
-        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-remove-program-title">
-            {{ modal_header("Remove Training Program", "modal-remove-program-title", "modal__header--danger") }}
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-remove-contest-title">
+            {{ modal_header("Remove Contest", "modal-remove-contest-title", "modal__header--danger") }}
             <main class="modal__content">
                 {{ xsrf_form_html|safe }}
                 <p style="margin-bottom: 16px;">
-                    Are you sure you want to remove the training program <strong id="remove-program-name">{% if training_program is defined %}{{ training_program.name }}{% endif %}</strong>?
+                    Are you sure you want to remove contest <strong id="remove-contest-name">{% if contest is not none %}{{ contest.name }}{% endif %}</strong>?
                 </p>
-                <div class="modal__warning--danger" id="remove-program-stats-box">
+                <div class="modal__warning--danger" id="remove-contest-stats-box">
                     <p class="modal__warning-title">
                         <svg class="icon is-small" style="vertical-align: middle;"><use href="#icon-alert-triangle"/></svg>
                         Warning: This action cannot be undone!
                     </p>
-                    <ul id="remove-program-stats">
-                        {% if training_program is defined %}
-                        <li>{{ participation_count|default(0) }} participation(s) will be deleted</li>
-                        <li>{{ submission_count|default(0) }} submission(s) will be deleted</li>
-                        <li>{{ training_day_count|default(0) }} training day(s) will be deleted</li>
-                        {% if training_day_count|default(0) > 0 %}
-                        <li>{{ training_day_participation_count|default(0) }} training day participation(s) will be deleted</li>
-                        <li>{{ training_day_submission_count|default(0) }} training day submission(s) will be deleted</li>
+                    <ul id="remove-contest-stats" style="margin: 4px 0 0 0; padding-left: 20px;">
+                        {% if contest is not none %}
+                        <li>{{ contest.participations|length }} participation(s) will be deleted.</li>
+                        <li>{{ submission_count|default(0) }} submission(s) will be deleted.</li>
+                        {% if contest.tasks|length > 0 %}
+                        <li>{{ contest.tasks|length }} task(s) will be affected (see options below).</li>
                         {% endif %}
                         {% endif %}
                     </ul>
                 </div>
 
-                <div id="remove-program-task-options" style="{% if not training_program is defined or task_count|default(0) == 0 %}display: none; {% endif %}margin-bottom: 16px;">
+                <div id="remove-contest-task-options" style="{% if contest is none or contest.tasks|length == 0 %}display: none; {% endif %}margin-top: 16px; margin-bottom: 4px;">
                     <p style="margin-bottom: 12px; font-weight: 500;">
-                        The training program has <strong id="remove-program-task-count">{% if training_program is defined %}{{ task_count|default(0) }}{% endif %}</strong> task(s). What should happen to them?
+                        The contest has <strong id="remove-contest-task-count">{% if contest is not none %}{{ contest.tasks|length }}{% endif %}</strong> task(s). What should happen to them?
                     </p>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <label style="display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 6px; cursor: pointer;">
-                            <input type="radio" name="action" value="move" id="action_move" style="margin-top: 3px;">
+                            <input type="radio" name="contest_remove_action" value="move" id="contest_action_move" style="margin-top: 3px;">
                             <div>
                                 <span style="font-weight: 500;">Move to another contest</span>
-                                <select name="target_contest_id" id="target_contest_select" style="display: block; margin-top: 4px; padding: 6px 10px; border: 1px solid var(--tp-border); border-radius: 4px; width: 100%;">
+                                <select name="contest_target_contest_id" id="contest_target_contest_select" style="display: block; margin-top: 4px; padding: 6px 10px; border: 1px solid var(--tp-border); border-radius: 4px; width: 100%;">
                                     <option value="">Select a contest...</option>
                                     {% for c in other_contests|default([]) %}
                                     <option value="{{ c.id }}">{{ c.name }}</option>
@@ -51,14 +49,14 @@
                             </div>
                         </label>
                         <label style="display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 6px; cursor: pointer;">
-                            <input type="radio" name="action" value="detach" style="margin-top: 3px;">
+                            <input type="radio" name="contest_remove_action" value="detach" style="margin-top: 3px;">
                             <div>
-                                <span style="font-weight: 500;">Detach from program</span>
+                                <span style="font-weight: 500;">Detach from contest</span>
                                 <span style="display: block; font-size: 0.85rem; color: var(--tp-text-muted);">Tasks will remain in the system but won't belong to any contest</span>
                             </div>
                         </label>
                         <label class="modal__danger-option">
-                            <input type="radio" name="action" value="delete_all" style="margin-top: 3px;">
+                            <input type="radio" name="contest_remove_action" value="delete_all" style="margin-top: 3px;">
                             <div>
                                 <span class="modal__danger-option-title">Delete all tasks</span>
                                 <span class="modal__danger-option-desc">Tasks will be permanently deleted from the system</span>
@@ -69,8 +67,8 @@
             </main>
             <footer class="modal__footer">
                 <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
-                <button type="button" class="button is-danger" id="confirm-remove-program-btn"
-                        data-remove-url="{% if training_program is defined %}{{ url("training_programs", training_program.id, "remove") }}{% endif %}">Yes, Remove Program</button>
+                <button type="button" class="button is-danger" id="confirm-remove-contest-btn"
+                        data-remove-url="{% if contest is not none %}{{ url("contests", contest.id, "remove") }}{% endif %}">Yes, Remove Contest</button>
             </footer>
         </div>
     </div>
@@ -78,21 +76,18 @@
 
 <script>
 (function() {
-    var confirmBtn = document.getElementById('confirm-remove-program-btn');
+    var confirmBtn = document.getElementById('confirm-remove-contest-btn');
     if (!confirmBtn) return;
 
     confirmBtn.addEventListener('click', function() {
-        if (confirmBtn.disabled) {
-            return;
-        }
-
-        var taskOptionsDiv = document.getElementById('remove-program-task-options');
-        var hasTaskOptions = taskOptionsDiv && taskOptionsDiv.style.display !== 'none';
-        var action = 'delete_all';
+        if (confirmBtn.disabled) return;
+        var taskOptionsDiv = document.getElementById('remove-contest-task-options');
+        var hasTaskOptions = taskOptionsDiv && globalThis.getComputedStyle(taskOptionsDiv).display !== 'none';
+        var action = 'detach';
         var targetContestId = null;
 
         if (hasTaskOptions) {
-            var selectedAction = document.querySelector('#modal-remove-program input[name="action"]:checked');
+            var selectedAction = document.querySelector('#modal-remove-contest input[name="contest_remove_action"]:checked');
             if (!selectedAction) {
                 AdminModals.showError('Please select what to do with the tasks.');
                 return;
@@ -100,7 +95,7 @@
             action = selectedAction.value;
 
             if (action === 'move') {
-                var targetSelect = document.getElementById('target_contest_select');
+                var targetSelect = document.getElementById('contest_target_contest_select');
                 targetContestId = targetSelect ? targetSelect.value : null;
                 if (!targetContestId) {
                     AdminModals.showError('Please select a target contest to move tasks to.');
@@ -121,7 +116,7 @@
             params.append('target_contest_id', targetContestId);
         }
 
-        var modalEl = document.getElementById('modal-remove-program');
+        var modalEl = document.getElementById('modal-remove-contest');
         var xsrfInput = modalEl ? modalEl.querySelector('input[name="_xsrf"]') : document.querySelector('input[name="_xsrf"]');
         if (!xsrfInput) {
             AdminModals.showError('Missing XSRF token');
@@ -129,6 +124,7 @@
         }
 
         confirmBtn.disabled = true;
+        confirmBtn.classList.add('is-loading');
 
         fetch(removeUrl + '?' + params.toString(), {
             method: 'DELETE',
@@ -140,15 +136,15 @@
                 return response.text();
             } else {
                 return response.text().then(function(text) {
-                    confirmBtn.disabled = false;
-                    throw new Error(text || 'Failed to remove training program');
+                    throw new Error(text || 'Failed to remove contest');
                 });
             }
         }).then(function() {
-            window.location.href = '{{ url("training_programs") }}';
+            globalThis.location.href = '{{ url("contests") }}';
         }).catch(function(error) {
-            confirmBtn.disabled = false;
             AdminModals.showError(error.message);
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('is-loading');
         });
     });
 })();

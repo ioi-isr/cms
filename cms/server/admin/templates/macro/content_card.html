@@ -42,27 +42,32 @@ extra_fields_html (str): optional extra visible fields HTML (inserted after text
 {% endmacro %}
 
 
-{% macro form_buttons(submit_label, show_cancel=false, submit_icon="plus") %}
+{% macro form_buttons(submit_label, show_cancel=false, submit_icon="plus", cancel_function="announcement_edit_toggle") %}
 {#
 Render the action buttons row for a form (Preview Markdown + optional Cancel + Submit).
 
 submit_label (str): label for the submit button.
 show_cancel (bool): whether to show a Cancel button.
 submit_icon (str): icon name for the submit button.
+cancel_function (str): the JavaScript function to call for cancel button.
 #}
-<div class="question-reply-form-actions">
-  <div class="question-reply-form-left">
-    <button type="button" class="question-btn question-btn-outline question-btn-preview" onclick="utils.render_markdown_preview(this)">
-      <svg class="icon is-small"><use href="#icon-eye"/></svg> Preview Markdown
-    </button>
+<div class="level pt-3">
+  <div class="level-left">
+    <div class="level-item">
+      <button type="button" class="button" onclick="utils.render_markdown_preview(this)">
+        <svg class="icon is-small"><use href="#icon-eye"/></svg> <span>Preview Markdown</span>
+      </button>
+    </div>
   </div>
-  <div class="question-reply-form-right">
-    {% if show_cancel %}
-    <button type="button" class="question-btn question-btn-outline" onclick="utils.announcement_edit_toggle(event, this);">Cancel</button>
-    {% endif %}
-    <button type="submit" class="question-btn question-btn-primary">
-      <svg class="icon is-small"><use href="#icon-{{ submit_icon }}"/></svg> {{ submit_label }}
-    </button>
+  <div class="level-right">
+    <div class="buttons level-item">
+      {% if show_cancel %}
+      <button type="button" class="button" onclick="utils.{{ cancel_function }}(event, this);"><span>Cancel</span></button>
+      {% endif %}
+      <button type="submit" class="button is-primary">
+        <svg class="icon is-small"><use href="#icon-{{ submit_icon }}"/></svg> <span>{{ submit_label }}</span>
+      </button>
+    </div>
   </div>
 </div>
 {% endmacro %}
@@ -91,12 +96,13 @@ Render the header of a display card (subject + timestamp + optional delete butto
 {% endmacro %}
 
 
-{% macro card_footer(admin_name, extra_left_html="") %}
+{% macro card_footer(admin_name, extra_left_html="", edit_function="announcement_edit_toggle") %}
 {#
 Render the footer of a display card (meta info + edit button).
 
 admin_name (str): the name of the admin who created the item.
 extra_left_html (str): optional extra HTML for the left side of the footer.
+edit_function (str): JavaScript function called when the Edit button is clicked.
 #}
 <div class="announcement-card-footer">
   <div class="announcement-card-footer-left">
@@ -107,15 +113,17 @@ extra_left_html (str): optional extra HTML for the left side of the footer.
     </span>
   </div>
   {% if admin.permission_all or admin.permission_messaging %}
-  <button type="button" class="question-edit-reply-link" onclick="utils.announcement_edit_toggle(event, this);">
-    <svg class="icon is-small"><use href="#icon-edit"/></svg> Edit
-  </button>
+  <div class="is-flex is-justify-content-end">
+    <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="utils.{{ edit_function }}(event, this);">
+      <svg class="icon is-small"><use href="#icon-edit"/></svg> <span>Edit</span>
+    </button>
+  </div>
   {% endif %}
 </div>
 {% endmacro %}
 
 
-{% macro edit_form(action_url, submit_label, subject_name="subject", text_name="text", datalist_id="", extra_hidden_html="", extra_fields_html="") %}
+{% macro edit_form(action_url, submit_label, subject_name="subject", text_name="text", datalist_id="", extra_hidden_html="", extra_fields_html="", cancel_function="announcement_edit_toggle") %}
 {#
 Render the edit form section that appears when the Edit button is clicked.
 
@@ -126,6 +134,7 @@ text_name (str): the name attribute for the text textarea.
 datalist_id (str): optional datalist id to attach to the subject input.
 extra_hidden_html (str): optional extra hidden fields HTML.
 extra_fields_html (str): optional extra visible fields HTML (inserted after text).
+cancel_function (str): JavaScript function called when the Cancel button is clicked.
 #}
 {% if admin.permission_all or admin.permission_messaging %}
 <div class="question-actions">
@@ -139,7 +148,7 @@ extra_fields_html (str): optional extra visible fields HTML (inserted after text
         <label class="question-form-label">TEXT</label>
         {{ macro_markdown.markdown_input(text_name) }}
         {{ extra_fields_html|safe }}
-        {{ form_buttons(submit_label, show_cancel=true, submit_icon="edit") }}
+        {{ form_buttons(submit_label, show_cancel=true, submit_icon="edit", cancel_function=cancel_function) }}
       </form>
     </div>
   </div>

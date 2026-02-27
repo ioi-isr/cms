@@ -1,0 +1,46 @@
+{#
+  Shared macros for modal dialog structure.
+
+  modal_header(title, title_id, extra_class="")
+    Renders the <header class="modal__header"> block.
+    - title:       The heading text.
+    - title_id:    The id attribute for the <h2> (must match aria-labelledby on the container).
+    - extra_class: Optional additional CSS class on the header element (e.g. "modal__header--danger").
+
+  modal_footer(submit_label, submit_id="", submit_icon="", submit_class="is-primary", cancel_label="Cancel", disabled=false, submit_name="", submit_value="", secondary_label="", secondary_name="operation", secondary_value="", secondary_class="")
+    Renders the <footer class="modal__footer"> block with a Cancel button and one primary submit button.
+    - submit_label: Text inside the submit button's <span>.
+    - submit_id:    Optional id attribute for the submit button.
+    - submit_icon:  Optional SVG icon href (e.g. "#icon-check"); renders an <svg> before the label.
+    - submit_class: CSS modifier class(es) for the submit button (default: "is-primary").
+    - cancel_label: Label for the cancel button (default: "Cancel").
+    - disabled:     Whether to disable the submit button (default: false).
+    - submit_name:  Optional name attribute for the primary submit button.
+    - submit_value: Optional value attribute for the primary submit button.
+    - secondary_label: Optional label for a secondary submit button.
+    - secondary_name:  Name attribute for the secondary submit button.
+    - secondary_value: Value attribute for the secondary submit button.
+    - secondary_class: Optional CSS modifier class(es) for the secondary submit button.
+#}
+
+{% macro modal_header(title, title_id, extra_class="") %}
+<header class="modal__header{{ (' ' ~ extra_class) if extra_class else '' }}">
+    <h2 class="modal__title" id="{{ title_id }}">{{ title }}</h2>
+    <button type="button" class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+</header>
+{% endmacro %}
+
+{% macro modal_footer(submit_label, submit_id="", submit_icon="", submit_class="is-primary", cancel_label="Cancel", disabled=false, submit_name="", submit_value="", secondary_label="", secondary_name="operation", secondary_value="", secondary_class="") %}
+<footer class="modal__footer">
+    <button type="button" class="button" data-micromodal-close><span>{{ cancel_label }}</span></button>
+    {% if secondary_label %}
+    <button type="submit" class="button{% if secondary_class %} {{ secondary_class|e }}{% endif %}"{% if secondary_name %} name="{{ secondary_name|e }}"{% endif %}{% if secondary_value %} value="{{ secondary_value|e }}"{% endif %}>
+        <span>{{ secondary_label }}</span>
+    </button>
+    {% endif %}
+    <button type="submit" class="button {{ submit_class|e }}"{% if submit_id %} id="{{ submit_id|e }}"{% endif %}{% if submit_name %} name="{{ submit_name|e }}"{% endif %}{% if submit_value %} value="{{ submit_value|e }}"{% endif %}{% if disabled %} disabled aria-disabled="true"{% endif %}>
+        {% if submit_icon %}<svg class="icon is-small"><use href="{{ submit_icon }}"/></svg>{% endif %}
+        <span>{{ submit_label }}</span>
+    </button>
+</footer>
+{% endmacro %}

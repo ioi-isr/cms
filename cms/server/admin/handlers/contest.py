@@ -40,16 +40,16 @@ from cms.db import (
     Task,
     ContestFolder,
     TrainingDay,
-    TrainingProgram,
 )
 from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from cms.server.admin.handlers.utils import get_all_student_tags
-
-from .base import BaseHandler, SimpleContestHandler, SimpleHandler, \
-    require_permission
+from cms.server.admin.handlers.utils import (
+    get_available_contests,
+    get_all_student_tags,
+)
+from .base import BaseHandler, SimpleContestHandler, require_permission
 
 
 def remove_contest_with_action(session, contest, action, target_contest=None):
@@ -184,6 +184,18 @@ class ContestHandler(SimpleContestHandler("contest.html")):
                 self.sql_session, training_program
             )
         self.r_params["all_student_tags"] = all_student_tags
+
+        # Data for the remove contest modal
+        submission_count = (
+            self.sql_session.query(func.count(Submission.id))
+            .join(Submission.participation)
+            .filter(Participation.contest == self.contest)
+            .scalar()
+        )
+        self.r_params["submission_count"] = submission_count
+        self.r_params["other_contests"] = get_available_contests(
+            self.sql_session, exclude_contest_id=self.contest.id
+        )
 
         self.render("contest.html", **self.r_params)
 
@@ -330,55 +342,18 @@ class ResourcesListHandler(BaseHandler):
         self.render("resourceslist.html", **self.r_params)
 
 
-class ContestListHandler(SimpleHandler("contests.html")):
-    """Get returns the list of all contests, post perform operations on
-    a specific contest (removing them from CMS).
-
-    """
-
-    REMOVE = "Remove"
+class ContestListHandler(BaseHandler):
+    """Get returns the list of all contests."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
-    def post(self):
-        contest_id = self.get_argument("contest_id")
-        operation = self.get_argument("operation")
-
-        if operation == self.REMOVE:
-            asking_page = self.url("contests", contest_id, "remove")
-            # Open asking for remove page
-            self.redirect(asking_page)
-        else:
-            self.service.add_notification(
-                make_datetime(), "Invalid operation %s" % operation, ""
-            )
-            self.redirect(self.url("contests"))
+    def get(self):
+        self.r_params = self.render_params()
+        self.r_params["other_contests"] = get_available_contests(self.sql_session)
+        self.render("contests.html", **self.r_params)
 
 
 class RemoveContestHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the contest from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, contest_id):
-        contest = self.safe_get_item(Contest, contest_id)
-        submission_query = (
-            self.sql_session.query(Submission)
-            .join(Submission.participation)
-            .filter(Participation.contest == contest)
-        )
-
-        self.contest = contest
-        self.render_params_for_remove_confirmation(submission_query)
-
-        self.r_params["task_count"] = len(contest.tasks)
-        self.r_params["other_contests"] = exclude_internal_contests(
-            self.sql_session.query(Contest)
-            .filter(Contest.id != contest.id)
-        ).filter(~Contest.training_day.has()).order_by(Contest.name).all()
-
-        self.render("contest_remove.html", **self.r_params)
+    """Delete removes the contest from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, contest_id):
@@ -387,25 +362,41 @@ class RemoveContestHandler(BaseHandler):
 
         try:
             action = self.get_argument("action", "detach")
-            assert action in ["move", "detach", "delete_all"], \
-                "Invalid action specified"
+            if action not in ["move", "detach", "delete_all"]:
+                raise ValueError("Invalid action specified")
 
             target_contest_id = None
             if action == "move":
-                target_contest_id = self.get_argument("target_contest_id", None)
-                assert target_contest_id, (
-                    "Target contest must be specified when moving tasks"
-                )
-                assert target_contest_id != str(contest_id), (
-                    "Target contest cannot be the same as the contest being deleted"
-                )
+                target_contest_id_raw = self.get_argument("target_contest_id", None)
+                if not target_contest_id_raw:
+                    raise ValueError(
+                        "Target contest must be specified when moving tasks"
+                    )
+                try:
+                    target_contest_id = int(target_contest_id_raw)
+                except (TypeError, ValueError):
+                    raise ValueError("Target contest id must be a valid integer")
+                if target_contest_id == int(contest_id):
+                    raise ValueError(
+                        "Target contest cannot be the same as the contest being deleted"
+                    )
 
-            self._remove_contest_with_action(contest, action, target_contest_id)
+            if not self._remove_contest_with_action(contest, action, target_contest_id):
+                self.set_status(500)
+                self.write("error")
+                return
 
+        except ValueError as error:
+            self.set_status(400)
+            self.write(str(error))
+            return
+        except tornado.web.HTTPError:
+            raise
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Error removing contest", repr(error)
             )
+            self.set_status(500)
             self.write("error")
             return
 
@@ -434,3 +425,5 @@ class RemoveContestHandler(BaseHandler):
                 "Contest removed successfully",
                 f"Contest removed with action: {action}",
             )
+            return True
+        return False

@@ -171,7 +171,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
     </div>
 {% endmacro %}
 
-<h1 class="title">Combined Ranking: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
+<h1 class="title is-spaced">Combined Ranking: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
 
 {{ info_alert.alert(
     title="Archived Training Days",
@@ -199,16 +199,16 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
   <div class="tp-filter-group">
     <label class="tp-filter-label" for="student_tags_mode">Tag Mode:</label>
     <select id="student_tags_mode" name="student_tags_mode" class="tp-filter-input" style="min-width: 120px;">
-      <option value="current" {% if student_tags_mode == 'current' %}selected{% endif %}>Current</option>
-      <option value="historical" {% if student_tags_mode == 'historical' %}selected{% endif %}>During Training</option>
-    </select>
+            <option value="current" {% if student_tags_mode == 'current' %}selected{% endif %}>Current</option>
+            <option value="historical" {% if student_tags_mode == 'historical' %}selected{% endif %}>During Training</option>
+          </select>
   </div>
   <div class="tp-filter-group" style="margin-left: 5px;">
-    <button type="submit" class="button is-primary has-text-white">Apply Filter</button>
-    {% if start_date or end_date or training_day_types or student_tags %}
-    <a href="{{ url('training_program', training_program.id, 'combined_ranking') }}" class="tp-btn-secondary">Clear</a>
-    {% endif %}
-  </div>
+    <button type="submit" class="button is-primary">Apply Filter</button>
+      {% if start_date or end_date or training_day_types or student_tags %}
+    <a href="{{ url('training_program', training_program.id, 'combined_ranking') }}" class="button"><span>Clear</span></a>
+      {% endif %}
+    </div>
 </form>
 
 {% if archived_training_days %}
@@ -236,7 +236,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
     </div>
   </div>
 </div>
-<div class="tp-table-container">
+<div class="table-container">
   <table class="ranking-table" id="ranking_table">
     <thead>
       <tr>
@@ -248,9 +248,9 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
           <div class="training-day-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
           {% endif %}
           {% if td.training_day_types %}
-          <div class="training-day-header-types" style="margin-top: 4px;">
+          <div class="tags is-justify-content-center">
             {% for type in td.training_day_types %}
-                <span class="badge badge-slate badge-pill">{{ type }}</span>
+                <span class="tag is-opaque is-small">{{ type }}</span>
             {% endfor %}
           </div>
           {% endif %}
@@ -266,13 +266,17 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
         {% for td in archived_training_days %}
           {% for task in training_day_tasks.get(td.id, []) %}
           <th class="task-header" title="{{ task.title }}" data-parent-day="{{ td.id }}" data-task-id="{{ task.id }}" data-sort-settings="numeric" scope="col">
-              <span class="header-text">{{ task.name }}</span>
-              <button class="histogram-icon" title="View histogram" aria-label="View histogram for {{ task.name }}" type="button" onclick='event.stopPropagation(); showTaskHistogram({{ task.id }}, {{ task.name|tojson }}, {{ td.id }})'><svg class="icon is-small"><use href="#icon-histogram"/></svg></button>
+              <button class="button is-ghost has-text-inherit no-underline" title="View histogram" aria-label="View histogram for {{ task.name }}" type="button" onclick='event.stopPropagation(); showTaskHistogram({{ task.id }}, {{ task.name|tojson }}, {{ td.id }})'>
+                <span>{{ task.name }}</span>
+                <svg class="icon is-small"><use href="#icon-histogram"/></svg>
+              </button>
           </th>
           {% endfor %}
-          <th class="total-col total-col-header" title="Daily Total" data-training-day-id="{{ td.id }}" data-sort-settings="numeric" scope="col">
-              <span class="header-text">Total</span>
-              <button class="histogram-icon" title="View histogram" aria-label="View histogram for {{ td.description or td.name or "Session" }}" type="button" onclick='event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, {{ (td.description or td.name or "Session")|tojson }})'><svg class="icon is-small"><use href="#icon-histogram"/></svg></button>
+          <th class="total-col total-col-header is-vcentered" title="Daily Total" data-training-day-id="{{ td.id }}" data-sort-settings="numeric" scope="col">
+              <button class="button is-ghost has-text-inherit no-underline" title="View histogram" aria-label="View histogram for {{ td.description or td.name or "Session" }}" type="button" onclick='event.stopPropagation(); showTrainingDayHistogram({{ td.id }}, {{ (td.description or td.name or "Session")|tojson }})'>
+                <span>Total</span>
+                <svg class="icon is-small"><use href="#icon-histogram"/></svg>
+              </button>
           </th>
         {% endfor %}
       </tr>
@@ -291,7 +295,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                            title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}">
                             {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
                         </a>
-                        <span class="student-username">
+                        <span class="student-username is-hidden-mobile">
                             ({{ student.participation.user.username }})
                         </span>
 
@@ -310,15 +314,15 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                         </a>
                     </div>
                     {% if student.student_tags %}
-                    <div class="combined-ranking-tags">
+                    <div class="tags mt-1">
                         {% for tag in student.student_tags %}
-                          <span class="badge badge-teal combined-ranking-tag">{{ tag }}</span>
+                          <span class="tag is-small is-bordered has-text-primary-35 is-rounded">{{ tag }}</span>
                         {% endfor %}
                     </div>
                     {% endif %}
                 </div>
             {% else %}
-                <span class="text-muted">(Unknown)</span>
+                <span class="has-text-grey-light">(Unknown)</span>
             {% endif %}
           </div>
         </th>
@@ -400,7 +404,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
       </tr>
       {% else %}
       <tr>
-        <td colspan="100%" style="text-align:center; padding: 40px; color: #6b7280;">
+        <td colspan="100" class="has-text-centered p-5 has-text-grey">
           No students found in this training program.
         </td>
       </tr>

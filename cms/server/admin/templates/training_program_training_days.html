@@ -1,3 +1,4 @@
+{% from "macro/modal.html" import modal_header %}
 {% extends "base.html" %}
 {% import 'fragments/info_alert.html' as info_alert %}
 
@@ -126,7 +127,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     <div class="level">
         <div class="level-left">
             <div>
-                <h1 class="title">Training Days</h1>
+                <h1 class="title is-spaced">Training Days</h1>
                 <p class="subtitle has-text-grey">
                     Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
                 </p>
@@ -140,7 +141,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     <span>Import Contest</span>
                 </button>
                 <button type="button" onclick="MicroModal.show('modal-add-training-day')"
-                  class="button is-medium is-primary has-text-white" {% if not admin.permission_all %}disabled{% endif %}>
+                  class="button is-medium is-primary" {% if not admin.permission_all %}disabled{% endif %}>
                     <svg class="icon is-small"><use href="#icon-plus"/></svg>
                     <span>Add Training Day</span>
                 </button>
@@ -162,7 +163,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     <form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST" id="training-days-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
-        <div class="tp-table-container">
+        <div class="table-container">
             <table class="ranking-table tp-tasks-table" id="training-days-table">
                 <thead>
                     <tr>
@@ -172,7 +173,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
                         <th data-sort-settings="numeric" style="text-align: left;">Start</th>
                         <th class="no-sort" style="text-align: left;">Tasks</th>
-                        <th class="text-center no-sort" style="width: 100px;">Actions</th>
+                        <th class="has-text-centered no-sort" style="width: 100px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="training-days-tbody">
@@ -184,7 +185,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         {% if admin.permission_all %}draggable="true"{% endif %}>
                         <!-- Drag handle -->
                         <td class="grip-cell">
-                            <div class="grip-handle" title="Drag to reorder">
+                            <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder training day">
                                 <svg class="icon is-small" style="fill: currentColor; stroke: none;"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
@@ -228,23 +229,23 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                 {% set tasks = td.contest.get_tasks() %}
                                 {% if tasks %}
                                     {% for task in tasks %}
-                                        <a href="{{ url("task", task.id) }}" class="source-badge badge-training" title="{{ task.title }}">{{ task.name }}</a>
+                                        <a href="{{ url("task", task.id) }}" class="tag is-bordered has-text-primary" title="{{ task.title }}">{{ task.name }}</a>
                                     {% endfor %}
                                 {% else %}
-                                    <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
+                                    <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
                                 {% endif %}
                             </div>
                         </td>
 
                         <!-- Actions -->
-                        <td class="text-center">
+                        <td class="has-text-centered">
                             <div class="list-cell-wrapper center-content" style="gap: 4px;">
                                 <!-- Archive button -->
                                 <button type="button"
                                    class="btn-icon-only btn-archive"
                                    {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
                                    onclick="MicroModal.show('modal-archive-td-{{ td.id }}')"
-                                   title="Archive training day">
+                                   title="Archive training day" aria-label="Archive training day">
                                     <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
                                 </button>
                                 <!-- Remove button -->
@@ -256,7 +257,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                    data-participation-count="{{ td.contest.participations|length }}"
                                    data-task-count="{{ td.tasks|length }}"
                                    data-is-archived="false"
-                                   title="Remove training day">
+                                   title="Remove training day" aria-label="Remove training day">
                                     <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                 </button>
                             </div>
@@ -287,7 +288,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         type="info"
     ) }}
 
-    <div class="tp-table-container">
+    <div class="table-container">
         <table class="ranking-table tp-tasks-table" id="archived-training-days-table">
             <thead>
                 <tr>
@@ -341,17 +342,17 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
                             {% if td.archived_tasks_data %}
                                 {% for task_id_str, task_info in td.archived_tasks_data.items() %}
-                                    <button class="source-badge badge-archived"
+                                    <button class="tag is-bordered has-text-warning"
                                             type="button"
                                             title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
                                             onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
                                             aria-label="Show histogram for {{ task_info.get('name', 'Task ' ~ task_id_str) }}">
-                                        {{ task_info.get('name', 'Task ' ~ task_id_str) }}
-                                        <span class="histogram-icon" aria-hidden="true"><svg class="icon is-small"><use href="#icon-histogram"/></svg></span>
+                                        <span>{{ task_info.get('name', 'Task ' ~ task_id_str) }}</span>
+                                        <svg class="icon is-small"><use href="#icon-histogram"/></svg>
                                     </button>
                                 {% endfor %}
                             {% else %}
-                                <span class="text-muted" style="font-size: 0.85rem;">No tasks</span>
+                                <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
                             {% endif %}
                         </div>
                     </td>
@@ -359,13 +360,13 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     <!-- Share Scoreboard -->
                     <td style="text-align: center;">
                         <div class="list-cell-wrapper" style="justify-content: center;">
-                            <button type="button" class="btn-icon-only" title="Configure scoreboard sharing"
+                            <button type="button" class="btn-icon-only" title="Configure scoreboard sharing" aria-label="Configure scoreboard sharing"
                                     onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
                                     {% if not admin.permission_all %}disabled{% endif %}>
                                 <svg class="icon is-small"><use href="#icon-share"/></svg>
                             </button>
                             {% if td.scoreboard_sharing %}
-                            <span class="source-badge badge-shared" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
+                            <span class="tag is-bordered has-text-link" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
                                 {{ td.scoreboard_sharing | length }}
                             </span>
                             {% endif %}
@@ -400,10 +401,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 <div class="modal modal--medium" id="modal-scoreboard-sharing" aria-hidden="true">
     <div class="modal__overlay" tabindex="-1">
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="scoreboardSharingTitle">
-            <header class="modal__header">
-                <h2 class="modal__title" id="scoreboardSharingTitle">Scoreboard Sharing</h2>
-                <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
-            </header>
+            {{ modal_header("Scoreboard Sharing", "scoreboardSharingTitle") }}
             <main class="modal__content">
             <p style="margin-bottom: 16px; color: var(--tp-text-secondary);">
                 Configure which student tags can view the scoreboard for this training day.
@@ -444,13 +442,14 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             <div id="scoreboardSharingEntries" style="margin-bottom: 16px;">
             </div>
 
-            <button type="button" class="tp-btn-secondary" onclick="addSharingEntry()" style="margin-bottom: 20px;">
-                + Add Tag
+            <button type="button" class="button" onclick="addSharingEntry()">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Tag</span>
             </button>
             </main>
             <footer class="modal__footer">
-                <button type="button" class="tp-btn-secondary" data-micromodal-close>Cancel</button>
-                <button type="button" class="tp-btn-primary" id="save-scoreboard-sharing-btn">Save</button>
+                <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
+                <button type="button" class="button is-primary" id="save-scoreboard-sharing-btn"><span>Save</span></button>
             </footer>
         </div>
     </div>
@@ -685,7 +684,10 @@ function addSharingEntry(tag, topNames, topToShow) {
     var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
         tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
 
-    var entryId = 'sharing-entry-' + Date.now();
+    var uniqueSuffix = (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : (Date.now() + '-' + Math.random().toString(36).slice(2, 8));
+    var entryId = 'sharing-entry-' + uniqueSuffix;
     var html = '<div class="sharing-entry" id="' + entryId + '" style="display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px; flex-wrap: wrap;">' +
         '<div style="flex: 1; min-width: 120px;">' +
             '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
