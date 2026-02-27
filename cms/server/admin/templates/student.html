@@ -193,15 +193,14 @@ CMS.AWSFormUtils.initTagify({
 <!-- Submissions -->
 <h2 class="title is-5 mt-5">Submissions</h2>
 <div>
-  <p>
-    Reevaluate all {{ submission_count }} submissions for this student in this training program (for all datasets)
-    {{ macro_reevaluation_buttons.reevaluation_buttons(
-           admin.permission_all,
-           url("training_program", training_program.id, "student", selected_user.id, "edit"),
-           participation_id=participation.id) }}
-    <br/>
-    <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "submissions", "download") }}">Download all submissions</a>
-  </p>
+  {{ macro_submission.header(
+         admin,
+         submission_count,
+         macro_reevaluation_buttons.reevaluation_buttons_bar(
+             admin.permission_all,
+             url("training_program", training_program.id, "student", selected_user.id, "edit"),
+             participation_id=participation.id),
+         download_url=url("training_program", training_program.id, "student", selected_user.id, "submissions", "download")) }}
 
   {{ macro_submission.rows(
          admin,

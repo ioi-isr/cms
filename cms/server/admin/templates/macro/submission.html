@@ -2,6 +2,45 @@
 {% import 'macro/pages.html' as macro_pages %}
 
 
+{% macro header(admin, submission_count, reevaluation_buttons_html, download_url=none) -%}
+{#
+Render the submissions header with action buttons.
+
+admin (Admin): the logged in admin.
+submission_count (int): total number of submissions.
+reevaluation_buttons_html (str): pre-rendered reevaluation buttons HTML.
+download_url (str|None): URL to download all submissions, or None to hide.
+#}
+<div class="level is-mobile mb-4">
+  <div class="level-left">
+    <div class="level-item">
+      <span class="has-text-grey">{{ submission_count }} submission{{ "s" if submission_count != 1 else "" }}</span>
+    </div>
+  </div>
+  <div class="level-right">
+    <div class="level-item">
+      <div class="buttons">
+        <button type="button" class="button is-small" onclick="document.getElementById('diffchooser').toggleAttribute('open')">
+          <svg class="icon is-small"><use href="#icon-file-diff"/></svg>
+          <span>Diff Tool</span>
+        </button>
+        {% if download_url %}
+        <a href="{{ download_url }}" class="button is-small">
+          <svg class="icon is-small"><use href="#icon-download"/></svg>
+          <span>Download All</span>
+        </a>
+        {% endif %}
+        <div class="buttons has-addons mb-0 ml-2">
+          <span class="button is-small is-static">Re-evaluate all</span>
+          {{ reevaluation_buttons_html }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+
 {% macro rows(admin, url, page_url, submissions, page, pages, dataset=none, timezone=none, show_training_day=false) -%}
 {#
 Render a table of submission data.
@@ -21,11 +60,11 @@ show_training_day (bool): if true, show a column indicating which training day
     the submission was made via (for training program submissions view).
 #}
 {% if pages == 0 %}
-<p>No submissions found.</p>
+<p class="has-text-grey">No submissions found.</p>
 
 {% else %}
 
-<details id="diffchooser" ontoggle="utils.update_diffchooser()">
+<details id="diffchooser" ontoggle="utils.update_diffchooser()" style="display: none;">
   <summary>Diff submissions...</summary>
   Select two submissions from the table, or enter submission IDs: <br>
   <div class="field is-grouped">
