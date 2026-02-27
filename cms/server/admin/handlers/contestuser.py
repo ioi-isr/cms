@@ -94,14 +94,21 @@ class RemoveParticipationHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         # Unassign the user from the contest.
-        self.sql_session.delete(participation)
-
-        if not self.try_commit():
+        try:
+            self.sql_session.delete(participation)
+            if not self.try_commit():
+                self.set_status(500)
+                self.write("Failed to remove participation")
+                return
+            # Remove the participation on RWS.
+            self.service.proxy_service.reinitialize()
+        except Exception:
+            logger.exception(
+                "Unexpected error removing participation for user %s", user_id
+            )
             self.set_status(500)
-            self.write("Failed to remove participation")
+            self.write("error")
             return
-        # Remove the participation on RWS.
-        self.service.proxy_service.reinitialize()
 
         # Maybe they'll want to do this again (for another participation)
         self.write(self.url("contest", contest_id, "users"))

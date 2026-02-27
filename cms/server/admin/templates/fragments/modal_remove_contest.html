@@ -80,6 +80,7 @@
     if (!confirmBtn) return;
 
     confirmBtn.addEventListener('click', function() {
+        if (confirmBtn.disabled) return;
         var taskOptionsDiv = document.getElementById('remove-contest-task-options');
         var hasTaskOptions = taskOptionsDiv && globalThis.getComputedStyle(taskOptionsDiv).display !== 'none';
         var action = 'detach';
@@ -122,6 +123,9 @@
             return;
         }
 
+        confirmBtn.disabled = true;
+        confirmBtn.classList.add('is-loading');
+
         fetch(removeUrl + '?' + params.toString(), {
             method: 'DELETE',
             headers: {
@@ -139,6 +143,8 @@
             globalThis.location.href = '{{ url("contests") }}';
         }).catch(function(error) {
             AdminModals.showError(error.message);
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('is-loading');
         });
     });
 })();

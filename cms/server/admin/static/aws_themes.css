@@ -128,10 +128,6 @@
     --sidebar-accent: #805ad5;
     --sidebar-accent-light: #9f7aea;
     --sidebar-slate: #4a5568;
-    --sidebar-hover-bg: color-mix(in srgb, var(--sidebar-slate) 12%, transparent);
-    --sidebar-hover-border: color-mix(in srgb, var(--sidebar-slate) 25%, transparent);
-    --sidebar-title-hover-bg: color-mix(in srgb, var(--sidebar-slate) 16%, transparent);
-    --sidebar-focus-glow: color-mix(in srgb, color-mix(in srgb, color-mix(in srgb, var(--sidebar-accent) 39%, var(--sidebar-text-muted) 61%) 95%, var(--sidebar-bg-dark) 5%) 35%, transparent);
 }
 
 [data-theme="arkansas-black"] .button.is-light {

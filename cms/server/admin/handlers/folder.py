@@ -111,8 +111,8 @@ class AddFolderHandler(BaseHandler):
 class RemoveFolderHandler(BaseHandler):
     """Remove a folder via DELETE request.
 
-    Subfolders are reparented to the parent (or root) and contests are
-    detached. This preserves inner structure.
+    Subfolders and contests are reparented to the parent (or root).
+    This preserves inner structure.
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, folder_id: str):

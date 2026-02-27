@@ -1669,17 +1669,18 @@ var ModelSolutionModal = (function() {
         });
 
         function applySidebarState(minimized) {
+            const iconUse = toggleBtn.querySelector('use');
             if (minimized) {
                 sidebar.classList.add('minimized');
                 regularContent.style.display = 'none';
                 minimizedContent.style.display = 'block';
-                toggleBtn.querySelector('use').setAttribute('href', '#icon-chevrons-right');
+                if (iconUse) iconUse.setAttribute('href', '#icon-chevrons-right');
                 toggleBtn.setAttribute('title', 'Expand sidebar');
             } else {
                 sidebar.classList.remove('minimized');
                 regularContent.style.display = 'block';
                 minimizedContent.style.display = 'none';
-                toggleBtn.querySelector('use').setAttribute('href', '#icon-chevrons-left');
+                if (iconUse) iconUse.setAttribute('href', '#icon-chevrons-left');
                 toggleBtn.setAttribute('title', 'Collapse sidebar');
             }
         }

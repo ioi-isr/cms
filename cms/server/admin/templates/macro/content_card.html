@@ -102,6 +102,7 @@ Render the footer of a display card (meta info + edit button).
 
 admin_name (str): the name of the admin who created the item.
 extra_left_html (str): optional extra HTML for the left side of the footer.
+edit_function (str): JavaScript function called when the Edit button is clicked.
 #}
 <div class="announcement-card-footer">
   <div class="announcement-card-footer-left">
@@ -133,6 +134,7 @@ text_name (str): the name attribute for the text textarea.
 datalist_id (str): optional datalist id to attach to the subject input.
 extra_hidden_html (str): optional extra hidden fields HTML.
 extra_fields_html (str): optional extra visible fields HTML (inserted after text).
+cancel_function (str): JavaScript function called when the Cancel button is clicked.
 #}
 {% if admin.permission_all or admin.permission_messaging %}
 <div class="question-actions">

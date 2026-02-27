@@ -496,7 +496,7 @@ document.addEventListener('click', function(e) {
                             </label>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <input type="text" name="submission_format" value="{{ task.submission_format|join(", ") }}" class="tp-form-input"/>
-                                {% if task.active_dataset.task_type == "OutputOnly" %}
+                                {% if task.active_dataset.task_type == "OutputOnly" and admin.permission_all %}
                                 <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="button"><span>Set Default</span></button>
                                 {% endif %}
                             </div>

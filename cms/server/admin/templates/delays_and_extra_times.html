@@ -52,10 +52,12 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
     </div>
   </div>
   <div class="level-right">
+    {% if admin.permission_all %}
     <button type="button" class="button is-primary is-medium" onclick="MicroModal.show('modal-set-delay')">
       <svg class="icon is-small"><use href="#icon-clock"/></svg>
       <span>Set Delay for User</span>
     </button>
+    {% endif %}
   </div>
 </div>
 <p class="subtitle has-text-grey">Monitor student participation, manage delays, and track IP addresses.</p>
@@ -183,6 +185,7 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
         <span>Export CSV</span>
       </a>
     </div>
+    {% if admin.permission_all %}
     <div class="level-item">
       <div class="buttons">
         <button type="submit" form="form-remove-all" class="button" title="Remove All Delays &amp; Extra Times" aria-label="Remove All Delays & Extra Times">
@@ -196,13 +199,16 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
         </button>
       </div>
     </div>
+    {% endif %}
   </div>
 </div>
 
 <!-- Hidden forms for action buttons -->
+{% if admin.permission_all %}
 <form id="form-remove-all" action="{{ url("contest", contest.id, "delays_and_extra_times", "remove_all") }}" method="POST" style="display: none;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to remove all delays and extra times for all participants?');">{{ xsrf_form_html|safe }}</form>
 <form id="form-erase-start-times" action="{{ url("contest", contest.id, "delays_and_extra_times", "erase_start_times") }}" method="POST" style="display: none;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to erase all starting times for all participants?');">{{ xsrf_form_html|safe }}</form>
 <form id="form-reset-ip-addresses" action="{{ url("contest", contest.id, "delays_and_extra_times", "reset_ip_addresses") }}" method="POST" style="display: none;" onsubmit="return AdminModals.confirmSubmit(event, 'Are you sure you want to reset all IP addresses for all participants?');">{{ xsrf_form_html|safe }}</form>
+{% endif %}
 
 <div class="table-container" style="width: 100%;">
 <table class="table is-fullwidth is-hoverable is-header-muted" id="participations-table">

@@ -48,7 +48,7 @@
                     title: "Remove Task",
                     message: "Are you sure you want to remove task " + {{ t.name|tojson }} + ", including all related data?",
                     warnings: [
-                        "{{ t.submissions|length }} submission(s) will be deleted."
+                        {{ (t.submissions|length|string ~ " submission(s) will be deleted.")|tojson }}
                     ],
                     deleteUrl: {{ url("tasks", t.id, "remove")|tojson }},
                     confirmLabel: "Yes, Remove"

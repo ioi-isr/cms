@@ -55,6 +55,7 @@
     --sidebar-accent: #60A5FA;
     --sidebar-accent-light: #93C5FD;
     --sidebar-slate: #94A3B8;
+    --sidebar-hover-bg: rgba(74, 85, 104, 0.12);
     --sidebar-hover-bg: color-mix(in srgb, var(--sidebar-slate) 12%, transparent);
     --sidebar-hover-border: color-mix(in srgb, var(--sidebar-slate) 25%, transparent);
     --sidebar-title-hover-bg: color-mix(in srgb, var(--sidebar-slate) 16%, transparent);

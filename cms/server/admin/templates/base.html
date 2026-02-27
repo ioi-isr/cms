@@ -542,16 +542,16 @@ $(document).ready(initHamburgerMenu);
   {% set context_menu_items = [
     {"icon": "icon-activity",       "text": "Overview",         "url": url("contest", training_program.managing_contest.id, "overview"),      "pos": 1,  "mobile": false, "badges": []},
     {"icon": "icon-cpu",            "text": "Resource usage",   "url": url("contest", training_program.managing_contest.id, "resourceslist"), "pos": 2,  "mobile": false, "badges": []},
-    {"icon": "icon-users",          "text": "Students",         "url": url("training_program", training_program.id, "students"),              "pos": 3,  "mobile": true,  "badges": []},
-    {"icon": "icon-laptop-code",    "text": "Training Days",    "url": url("training_program", training_program.id, "training_days"),         "pos": 4,  "mobile": true,
+    {"icon": "icon-settings",       "text": "General",          "url": url("training_program", training_program.id),                          "pos": 3,  "mobile": false, "badges": []},
+    {"icon": "icon-users",          "text": "Students",         "url": url("training_program", training_program.id, "students"),              "pos": 4,  "mobile": true,  "badges": []},
+    {"icon": "icon-laptop-code",    "text": "Training Days",    "url": url("training_program", training_program.id, "training_days"),         "pos": 5,  "mobile": true,
      "badges": [{"count": total_td_unanswered_questions|default(0), "color": "danger"}, {"count": total_td_pending_delay_requests|default(0), "color": "warning"}],
      "children": td_children, "folder_key": "training-days-section", "empty_text": "No active training days",
      "actions": [{"type": "button", "text": "Add a training day", "onclick": "MicroModal.show('modal-add-training-day')"}]},
-    {"icon": "icon-settings",       "text": "General",          "url": url("training_program", training_program.id),                          "pos": 5,  "mobile": false, "badges": []},
     {"icon": "icon-home-chart",     "text": "Home Task Scores", "url": url("training_program", training_program.id, "ranking"),               "pos": 6,  "mobile": false, "badges": []},
     {"icon": "icon-file-code",      "text": "Submissions",      "url": url("training_program", training_program.id, "submissions"),           "pos": 7,  "mobile": false, "badges": []},
     {"icon": "icon-puzzle",         "text": "Tasks",             "url": url("training_program", training_program.id, "tasks"),                "pos": 8,  "mobile": false, "badges": []},
-    {"icon": "icon-calendar-check", "text": "Attendance",        "url": url("training_program", training_program.id, "attendance"),            "pos": 9,  "mobile": true,  "badges": []},
+    {"icon": "icon-calendar-check", "text": "Attendance",        "url": url("training_program", training_program.id, "attendance"),           "pos": 9,  "mobile": true,  "badges": []},
     {"icon": "icon-trophy",         "text": "Ranking",           "url": url("training_program", training_program.id, "combined_ranking"),     "pos": 10, "mobile": true,  "badges": []},
     {"icon": "icon-message-circle", "text": "Questions",         "url": url("training_program", training_program.id, "questions"),            "pos": 11, "mobile": true,
      "badges": [{"count": unanswered|default(0), "color": "danger"}]},
@@ -806,7 +806,6 @@ $(document).ready(initHamburgerMenu);
           </ul>
         </nav>
         {% endif %}
-        <div id="notifications" class="notifications"></div>
         <div class="modal modal--wide" id="modal-show-file" aria-hidden="true">
             <div class="modal__overlay" tabindex="-1" data-micromodal-close>
                 <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-show-file-title" style="max-width: 900px; max-height: 85vh; display: flex; flex-direction: column;">
@@ -823,8 +822,10 @@ $(document).ready(initHamburgerMenu);
             </div>
         </div>
         <div class="container is-fluid">
-        {% block core %}{% endblock core %}
-      </div>
+          <div id="notifications" class="notifications"></div>
+          {% block core %}{% endblock core %}
+        </div>
+      </main>
 
       <!-- Global modals for sidebar actions -->
       {% include "fragments/modal_add_user.html" %}

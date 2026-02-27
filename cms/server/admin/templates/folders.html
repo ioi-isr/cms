@@ -57,7 +57,7 @@
                     <button type="button" class="btn-icon-only" title="Remove folder"
                                 onclick='AdminModals.deleteResource({
                                     title: "Remove Folder",
-                                    message: {{ ("Are you sure you want to remove folder \"" ~ f.name ~ "\"? Its subfolders will be moved to its parent and its contests will be detached.")|tojson|forceescape }},
+                                    message: {{ ("Are you sure you want to remove folder \"" ~ f.name ~ "\"? Its subfolders and contests will be moved to its parent (or to root if no parent exists).")|tojson|forceescape }},
                                     deleteUrl: {{ url("folders", f.id, "remove")|tojson|forceescape }},
                                     confirmLabel: "Yes, Remove"
                                 })'>

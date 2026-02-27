@@ -367,12 +367,16 @@ class RemoveContestHandler(BaseHandler):
 
             target_contest_id = None
             if action == "move":
-                target_contest_id = self.get_argument("target_contest_id", None)
-                if not target_contest_id:
+                target_contest_id_raw = self.get_argument("target_contest_id", None)
+                if not target_contest_id_raw:
                     raise ValueError(
                         "Target contest must be specified when moving tasks"
                     )
-                if target_contest_id == str(contest_id):
+                try:
+                    target_contest_id = int(target_contest_id_raw)
+                except (TypeError, ValueError):
+                    raise ValueError("Target contest id must be a valid integer")
+                if target_contest_id == int(contest_id):
                     raise ValueError(
                         "Target contest cannot be the same as the contest being deleted"
                     )

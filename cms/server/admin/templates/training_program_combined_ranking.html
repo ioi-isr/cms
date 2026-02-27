@@ -183,26 +183,26 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
   <div class="tp-filter-group">
     <label class="tp-filter-label" for="start_date">From:</label>
     <input type="date" id="start_date" class="tp-filter-input" name="start_date" value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}" />
-      </div>
+  </div>
   <div class="tp-filter-group">
     <label class="tp-filter-label" for="end_date">To:</label>
     <input type="date" id="end_date" class="tp-filter-input" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
-    </div>
+  </div>
   <div class="tp-filter-group">
     <label class="tp-filter-label" for="training_day_types">Day Types:</label>
     <input type="text" id="training_day_types" name="training_day_types" style="min-width: 200px;" value="{{ training_day_types | join(', ') }}" />
-      </div>
+  </div>
   <div class="tp-filter-group">
     <label class="tp-filter-label" for="student_tags">Student Tags:</label>
     <input type="text" id="student_tags" name="student_tags" style="min-width: 200px;" value="{{ student_tags | join(', ') }}" />
-    </div>
+  </div>
   <div class="tp-filter-group">
     <label class="tp-filter-label" for="student_tags_mode">Tag Mode:</label>
     <select id="student_tags_mode" name="student_tags_mode" class="tp-filter-input" style="min-width: 120px;">
             <option value="current" {% if student_tags_mode == 'current' %}selected{% endif %}>Current</option>
             <option value="historical" {% if student_tags_mode == 'historical' %}selected{% endif %}>During Training</option>
           </select>
-        </div>
+  </div>
   <div class="tp-filter-group" style="margin-left: 5px;">
     <button type="submit" class="button is-primary">Apply Filter</button>
       {% if start_date or end_date or training_day_types or student_tags %}
