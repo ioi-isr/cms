@@ -8,20 +8,29 @@ pages (int): total number of pages.
 #}
 
   {% if pages > 1 %}
-<div>
-  Pages:
+<nav class="pagination is-centered" role="navigation" aria-label="pagination">
+    <a class="pagination-previous" {% if page == 0 %}disabled{% else %}href="{{ page_url(page=page - 1) }}"{% endif %}>Previous</a>
+    <a class="pagination-next" {% if page == pages - 1 %}disabled{% else %}href="{{ page_url(page=page + 1) }}"{% endif %}>Next</a>
+    <ul class="pagination-list">
     {% if pages <= 20 %}
       {{ range_selector(page_url, page, pages, 0, pages) }}
     {% else %}
-      {% if page != 0 %}
-  <a href="{{ page_url(page=0) }}">First</a>
+      {% if page > 2 %}
+        <li><a class="pagination-link" href="{{ page_url(page=0) }}" aria-label="Goto page 1">1</a></li>
+        {% if page > 3 %}
+        <li><span class="pagination-ellipsis">&hellip;</span></li>
+        {% endif %}
       {% endif %}
-      {{ range_selector(page_url, page, pages, page - 2, pages + 3) }}
-      {% if page != pages - 1 %}
-  <a href="{{ page_url(page=pages - 1) }}">Last</a>
+      {{ range_selector(page_url, page, pages, page - 2, page + 3) }}
+      {% if page < pages - 3 %}
+        {% if page < pages - 4 %}
+        <li><span class="pagination-ellipsis">&hellip;</span></li>
+        {% endif %}
+        <li><a class="pagination-link" href="{{ page_url(page=pages - 1) }}" aria-label="Goto page {{ pages }}">{{ pages }}</a></li>
       {% endif %}
     {% endif %}
-</div>
+    </ul>
+</nav>
   {% endif %}
 {%- endmacro %}
 
@@ -31,10 +40,12 @@ pages (int): total number of pages.
 Show a page range selector from start (included) to end (excluded).
 #}
   {% for i in range([0, start]|max, [pages, end]|min) %}
+    <li>
     {% if i != page %}
-  <a href="{{ page_url(page=i) }}">{{ i + 1 }}</a>
+      <a class="pagination-link" href="{{ page_url(page=i) }}" aria-label="Goto page {{ i + 1 }}">{{ i + 1 }}</a>
     {% else %}
-  {{ i + 1 }}
+      <a class="pagination-link is-current" aria-label="Page {{ i + 1 }}" aria-current="page">{{ i + 1 }}</a>
     {% endif %}
+    </li>
   {% endfor %}
 {%- endmacro %}
