@@ -7,44 +7,22 @@
 {% import 'macro/message.html' as macro_message with context %}
 
 {% block core %}
-<h1>
-  Participation of
+<h1 class="title is-spaced">
+  Participation:
   {# For training day participations, link to the student page in the training program #}
   {% if contest.training_day is not none and contest.training_day.training_program is not none %}
   <a href="{{ url("training_program", contest.training_day.training_program.id, "student", selected_user.id, "edit") }}">{{ selected_user.username }}</a>
   {% else %}
   <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
   {% endif %}
-  in <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
 </h1>
+<p class="subtitle has-text-grey mb-5">
+  Contest: <a href="{{ url("contest", contest.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ contest.name }}</a>
+</p>
 
-<h2 id="title_submissions" class="toggling_on">Submissions</h2>
-<div id="submissions">
-  <p>
-    Reevaluate all {{ submission_count }} submissions for this user in this contest (for all datasets)
-    {{ macro_reevaluation_buttons.reevaluation_buttons(
-           admin.permission_all,
-           url("contest", contest.id, "user", participation.user_id, "edit"),
-           participation_id=participation.id) }}
-    <br/>
-    <a href="{{ url("contest", contest.id, "user", participation.user_id, "submissions", "download") }}">Download all submissions</a>
-  </p>
-
-  {{ macro_submission.rows(
-         admin,
-         url,
-         url["contest"][contest.id]["user"][selected_user.id]["edit"],
-         submissions,
-         submission_page,
-         submission_pages,
-         timezone=timezone) }}
-
-  <div class="hr"></div>
-</div>
-
-
-<h2 id="title_participation_info" class="toggling_on">Participation information</h2>
-<div id="participation_info" class="content-constraint">
+<!-- Participation Information -->
+<h2 class="title is-5">Participation Information</h2>
+<div class="box" style="max-width: 1200px;">
   <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
   <form enctype="multipart/form-data" action="{{ url("contest", contest.id, "user", selected_user.id, "edit") }}" method="POST">
     {{ xsrf_form_html|safe }}
@@ -120,7 +98,7 @@
       </div>
     </div>
 
-    <div class="field is-grouped" style="margin-top: 1em;">
+    <div class="field is-grouped mt-4">
       <div class="control">
         <button type="submit" class="button is-primary is-outlined">Update</button>
       </div>
@@ -130,46 +108,60 @@
     </div>
   </form>
 </div>
-<div class="hr"></div>
 
+<!-- Submissions -->
+<h2 class="title is-5 mt-5">Submissions</h2>
+<div>
+  {{ macro_submission.header(
+         admin,
+         submission_count,
+         macro_reevaluation_buttons.reevaluation_buttons_bar(
+             admin.permission_all,
+             url("contest", contest.id, "user", participation.user_id, "edit"),
+             participation_id=participation.id),
+         download_url=url("contest", contest.id, "user", participation.user_id, "submissions", "download")) }}
 
-<h2 id="title_questions" class="toggling_on">Questions</h2>
-<div id="questions">
+  {{ macro_submission.rows(
+         admin,
+         url,
+         url["contest"][contest.id]["user"][selected_user.id]["edit"],
+         submissions,
+         submission_page,
+         submission_pages,
+         timezone=timezone) }}
+</div>
+
+<!-- Questions -->
+<h2 class="title is-5 mt-5">Questions</h2>
+<div>
   {% if participation.questions != [] %}
   <div class="notifications">
     {% for msg in participation.questions %}
       {{ macro_question.question(msg, selected_user.id) }}
     {% endfor %}
   </div>
-
   {% else %}
-  No questions.
-
+  <p class="has-text-grey">No questions.</p>
   {% endif %}
-  <div class="hr"></div>
 </div>
 
-
-<h2 id="title_delay_requests" class="toggling_on">Delay Requests</h2>
-<div id="delay_requests">
+<!-- Delay Requests -->
+<h2 class="title is-5 mt-5">Delay Requests</h2>
+<div>
   {% if participation.delay_requests != [] %}
   <div class="delays-history-grid delays-history-grid-single">
     {% for req in participation.delay_requests|reverse %}
       {{ macro_delay_request.delay_request(req, selected_user.id) }}
     {% endfor %}
   </div>
-
   {% else %}
-  No delay requests.
-
+  <p class="has-text-grey">No delay requests.</p>
   {% endif %}
-  <div class="hr"></div>
 </div>
 
-
-<h2 id="title_messages" class="toggling_on">Messages</h2>
-<div id="messages">
-
+<!-- Messages -->
+<h2 class="title is-5 mt-5">Messages</h2>
+<div>
   {{ macro_message.send_message_form(url("contest", contest.id, "user", selected_user.id, "message")) }}
 
   {% if participation.messages != [] %}
@@ -177,10 +169,8 @@
       {{ macro_message.message_card(msg, url("contest", contest.id, "user", selected_user.id, "message", msg.id), url("contest", contest.id, "user", selected_user.id, "message", msg.id, "edit")) }}
     {% endfor %}
   {% else %}
-    <p class="questions-empty">No messages.</p>
+    <p class="has-text-grey">No messages.</p>
   {% endif %}
-  <div class="hr"></div>
 </div>
-
 
 {% endblock core %}

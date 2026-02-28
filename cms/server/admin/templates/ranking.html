@@ -32,7 +32,7 @@
     {% if student_tags_by_participation and student_tags_by_participation.get(p.id, []) %}
     <div class="tags mt-1">
       {% for tag in student_tags_by_participation.get(p.id, []) %}
-        <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
+        <span class="tag is-opaque-bg has-text-primary-35 is-small">{{ tag }}</span>
       {% endfor %}
     </div>
     {% endif %}
@@ -116,7 +116,7 @@
         <th>Team</th>
         {% endif %}
         {% for task in group_tasks %}
-        <th data-sort-settings="numeric reversed"><a href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
+        <th data-sort-settings="numeric reversed"><a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
         {% endfor %}
         {% if not task_archive_progress_by_participation %}
         <th data-sort-settings="numeric reversed">Global</th>
@@ -231,7 +231,7 @@
       <th>Team</th>
       {% endif %}
       {% for task in contest.get_tasks() %}
-      <th data-sort-settings="numeric reversed"><a href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
+      <th data-sort-settings="numeric reversed"><a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
       {% endfor %}
       {% if not task_archive_progress_by_participation %}
       <th data-sort-settings="numeric reversed">Global</th>

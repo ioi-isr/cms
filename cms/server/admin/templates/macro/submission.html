@@ -2,6 +2,66 @@
 {% import 'macro/pages.html' as macro_pages %}
 
 
+{% macro header(admin, submission_count, reevaluation_buttons_html, download_url=none) -%}
+{#
+Render the submissions header with action buttons inside a box.
+
+admin (Admin): the logged in admin.
+submission_count (int): total number of submissions.
+reevaluation_buttons_html (str): pre-rendered reevaluation buttons HTML.
+download_url (str|None): URL to download all submissions, or None to hide.
+#}
+<div class="box is-bordered mb-4">
+  <div class="is-flex is-align-items-center is-flex-wrap-wrap is-gap-1">
+    <span class="has-text-grey is-size-6 mr-2">{{ submission_count }} submission{{ "s" if submission_count != 1 else "" }}</span>
+
+    <input type="text" class="input is-small" id="submissions_search" aria-label="Filter submissions by user, task, or status" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)" style="max-width: 280px; flex: 1 1 auto; min-width: 200px;">
+
+    <button type="button" class="button is-small" id="diff-tool-btn" onclick="(function(){ var p=document.getElementById('diffchooser-panel'); var open=p.style.display!=='none'; p.style.display=open?'none':'block'; document.getElementById('diff-tool-btn').classList.toggle('is-info',!open); var t=document.getElementById('submissions_table'); if(t){if(!open){t.classList.add('diff-open'); if (typeof utils.update_diffchooser === 'function') { utils.update_diffchooser(); }}else{t.classList.remove('diff-open');}} })()">
+      <svg class="icon is-small"><use href="#icon-file-diff"/></svg>
+      <span>Diff Tool</span>
+    </button>
+
+    <div class="is-flex is-align-items-center is-flex-wrap-wrap mx-auto" style="gap: 0.5rem;">
+      <span class="is-size-7 has-text-weight-semibold is-uppercase has-text-grey" style="white-space: nowrap;">Re-evaluate All:</span>
+      <div class="buttons has-addons mb-0">
+        {{ reevaluation_buttons_html }}
+      </div>
+    </div>
+
+    {% if download_url %}
+    <a href="{{ download_url }}" class="button is-small">
+      <svg class="icon is-small"><use href="#icon-download"/></svg>
+      <span>Download All</span>
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Diff Tool Panel (hidden by default) -->
+  <div id="diffchooser-panel" style="display: none;">
+    <hr class="my-3">
+    <p class="is-size-7 has-text-grey mb-2">Select two submissions from the table, or enter submission IDs:</p>
+    <div class="field is-grouped is-align-items-flex-end">
+      <div class="control">
+        <label class="label is-small" for="diff-old-input">Old</label>
+        <input class="input is-small" type="number" id="diff-old-input" style="width: 80px;">
+      </div>
+      <div class="control">
+        <label class="label is-small" for="diff-new-input">New</label>
+        <input class="input is-small" type="number" id="diff-new-input" style="width: 80px;">
+      </div>
+      <div class="control">
+        <button type="button" class="button is-small is-info" onclick="utils.do_diff()">Diff</button>
+      </div>
+      <div class="control">
+        <button type="button" class="button is-small" onclick="document.getElementById('diffchooser-panel').style.display='none'; document.getElementById('diff-tool-btn').classList.remove('is-info'); var t=document.getElementById('submissions_table'); if(t) t.classList.remove('diff-open');">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+
 {% macro rows(admin, url, page_url, submissions, page, pages, dataset=none, timezone=none, show_training_day=false) -%}
 {#
 Render a table of submission data.
@@ -21,33 +81,9 @@ show_training_day (bool): if true, show a column indicating which training day
     the submission was made via (for training program submissions view).
 #}
 {% if pages == 0 %}
-<p>No submissions found.</p>
+<p class="has-text-grey">No submissions found.</p>
 
 {% else %}
-
-<details id="diffchooser" ontoggle="utils.update_diffchooser()">
-  <summary>Diff submissions...</summary>
-  Select two submissions from the table, or enter submission IDs: <br>
-  <div class="field is-grouped">
-    <div class="control">
-      <label class="label">old</label>
-      <input class="input is-small" type="number" id="diff-old-input" style="width: 80px;">
-    </div>
-    <div class="control">
-      <label class="label">new</label>
-      <input class="input is-small" type="number" id="diff-new-input" style="width: 80px;">
-    </div>
-    <div class="control">
-      <label class="label">&nbsp;</label>
-      <button type="button" class="button is-small" onclick="utils.do_diff()">Diff</button>
-    </div>
-  </div>
-</details>
-
-<div class="table-search">
-  <label for="submissions_search">Search: </label>
-  <input type="text" id="submissions_search" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)">
-</div>
 
 {{ macro_pages.selector(page_url, page, pages) }}
 
@@ -138,24 +174,24 @@ show_training_day (bool): if true, show a column indicating which training day
   {% endif %}
   <td>
     {% if status == SubmissionResult.COMPILING %}
-    <span class="tag is-opaque has-text-info">Compiling...</span>
+    <span class="tag is-opaque-bg has-text-info">Compiling...</span>
     {% else %}
     <div id="title_evaluation_{{ s.id }}" class="toggling_off">
 
       {% if status == SubmissionResult.COMPILATION_FAILED %}
-      <span class="tag is-opaque has-text-danger">Compilation failed</span>
+      <span class="tag is-opaque-bg has-text-danger">Compilation failed</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% elif status == SubmissionResult.EVALUATING %}
-      <span class="tag is-opaque has-text-info">Evaluating...</span>
+      <span class="tag is-opaque-bg has-text-info">Evaluating...</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% elif status == SubmissionResult.EVALUATION_FAILED %}
-      <span class="tag is-opaque has-text-danger">Evaluation system error</span>
+      <span class="tag is-opaque-bg has-text-danger">Evaluation system error</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
 
       {% elif status == SubmissionResult.SCORING %}
-      <span class="tag is-opaque has-text-info">Scoring...</span>
+      <span class="tag is-opaque-bg has-text-info">Scoring...</span>
       <div id="evaluation_{{ s.id }}" style="display: none;">
         {% if sr.evaluated() %}
         <h3>Testcases</h3>
@@ -191,7 +227,7 @@ show_training_day (bool): if true, show a column indicating which training day
         {% else %}
           {% set max_score = "[Cannot get score type - see logs]" %}
         {% endif %}
-      <span class="tag is-opaque has-text-success">Scored ({{ sr.score }} / {{ max_score }})</span>
+      <span class="tag is-opaque-bg has-text-success">Scored ({{ sr.score }} / {{ max_score }})</span>
       <div id="evaluation_{{ s.id }}" class="score_details" style="display: none;">
         {% if score_type is defined %}
           {{ score_type.get_html_details(sr.score_details, FEEDBACK_LEVEL_FULL)|safe }}
@@ -219,7 +255,7 @@ show_training_day (bool): if true, show a column indicating which training day
   <td>
     {% for filename, sub_file in s.files|dictsort(by="key") %}
       {% set real_filename = get_lang_filename(s.language, filename) %}
-    <a href="javascript:void(0);" onclick="utils.show_file('{{ real_filename }}','{{ url("submission_file", sub_file.id) }}')">{{ real_filename }}</a><br/>
+    <a href="javascript:void(0);" onclick='utils.show_file({{ real_filename|tojson }}, {{ url("submission_file", sub_file.id)|tojson }})'>{{ real_filename }}</a><br/>
     {% endfor %}
   </td>
   <td>

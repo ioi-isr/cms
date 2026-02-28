@@ -80,7 +80,7 @@
               <div style="flex: 1;">
                 <label for="first_training_weight" style="font-size: 0.85em;">Weight of first training (%)</label>
                 <input type="number" id="first_training_weight" name="first_training_weight"
-                       value="100" min="1" max="100" step="1" style="width: 100%;" />
+                       value="100" min="1" max="100" step="1" class="input" style="width: 100%;" />
               </div>
               <div style="flex: 1;">
                 <label style="font-size: 0.85em;">Monthly decay</label>
@@ -95,13 +95,13 @@
               <div style="flex: 1;">
                 <label for="home_factor" style="font-size: 0.85em;">Home factor</label>
                 <input type="number" id="home_factor" name="home_factor"
-                       value="1.0" min="0" max="2" step="0.05" style="width: 100%;" />
+                       value="1.0" min="0" max="2" step="0.05" class="input" style="width: 100%;" />
                 <small class="modal__hint">Multiplier for students attending from home (not recorded)</small>
               </div>
               <div style="flex: 1;">
                 <label for="recorded_home_factor" style="font-size: 0.85em;">Recorded from home factor</label>
                 <input type="number" id="recorded_home_factor" name="recorded_home_factor"
-                       value="1.0" min="0" max="2" step="0.05" style="width: 100%;" />
+                       value="1.0" min="0" max="2" step="0.05" class="input" style="width: 100%;" />
                 <small class="modal__hint">Multiplier for students attending from home (recorded)</small>
               </div>
             </div>
@@ -116,7 +116,7 @@
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                 <span class="badge badge-slate badge-pill">{{ t }}</span>
                 <span style="font-size: 0.85em; color: #6b7280;">({{ type_counts.get(t, 0) }} training day{{ 's' if type_counts.get(t, 0) != 1 else '' }})</span>
-                <input type="number" class="type-pct-input" data-type="{{ t }}"
+                <input type="number" class="input type-pct-input" data-type="{{ t }}"
                        min="0" max="100" step="1" placeholder="%" style="width: 80px;" />
                 <span style="font-size: 0.85em;">%</span>
               </div>
@@ -153,7 +153,7 @@
               <div style="flex: 1;">
                 <label for="num_outliers" style="font-size: 0.85em;">Number of outliers to drop (each side)</label>
                 <input type="number" id="num_outliers" name="num_outliers"
-                       value="0" min="0" max="{{ [((td_list | length) - 1) // 2, 0] | max }}" step="1" style="width: 120px;" />
+                       value="0" min="0" max="{{ [((td_list | length) - 1) // 2, 0] | max }}" step="1" class="input" style="width: 120px;" />
                 <small class="modal__hint">E.g. setting 2 drops the 2 best and 2 worst training days per student</small>
               </div>
             </div>
@@ -185,7 +185,7 @@
             <div class="modal__form-group">
               <label for="top_x">Normalize by top X</label>
               <input type="number" id="top_x" name="top_x"
-                     value="10" min="3" max="{{ [num_students, 3] | max }}" step="1" style="width: 120px;" />
+                     value="10" min="3" max="{{ [num_students, 3] | max }}" step="1" class="input" style="width: 120px;" />
               <small class="modal__hint">Reference is calculated from top X scores in each training day (default: 10)</small>
             </div>
 

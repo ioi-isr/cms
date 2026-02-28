@@ -70,19 +70,17 @@ user_id (int|None): if we are rendering one of the questions on a single user's
       </div>
       {% endif %}
     </div>
-    <div class="question-header-right">
-      <div class="question-card-meta question-card-meta-inline">
-        {% if user_id is none %}
-          <span class="question-meta-item">
-            <svg class="icon is-small"><use href="#icon-user"/></svg>
-            <a href="{{ url("contest", contest.id, "user", msg.participation.user.id, "edit") }}" title="{{ msg.participation.user.first_name }} {{ msg.participation.user.last_name }}">{{ msg.participation.user.username }}</a>
-          </span>
-        {% endif %}
-        <span class="question-meta-item">
-          <svg class="icon is-small"><use href="#icon-calendar"/></svg>
-          {{ msg.question_timestamp|format_datetime }}
+    <div class="is-flex is-align-items-center is-flex-wrap-wrap is-gap-3" style="font-size: 0.85em;">
+      {% if user_id is none %}
+        <span class="is-flex is-align-items-center icon-text has-text-grey">
+          <svg class="icon is-small"><use href="#icon-user"/></svg>
+          <a href="{{ url("contest", contest.id, "user", msg.participation.user.id, "edit") }}" title="{{ msg.participation.user.first_name }} {{ msg.participation.user.last_name }}">{{ msg.participation.user.username }}</a>
         </span>
-      </div>
+      {% endif %}
+      <span class="is-flex is-align-items-center icon-text has-text-grey">
+        <svg class="icon is-small"><use href="#icon-calendar"/></svg>
+        {{ msg.question_timestamp|format_datetime }}
+      </span>
     </div>
   </div>
 

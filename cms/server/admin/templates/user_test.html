@@ -40,7 +40,7 @@
           {% for filename in ut.task.submission_format %}
             {% if filename in ut.files %}
               {% set real_filename = get_lang_filename(ut.language, filename) %}
-          <a href="javascript:void(0);" onclick="utils.show_file('{{ real_filename }}','{{ url("user_test_file", ut.files[filename].id) }}')">
+          <a href="javascript:void(0);" onclick='utils.show_file({{ real_filename|tojson }}, {{ url("user_test_file", ut.files[filename].id)|tojson }})'>
             {{ real_filename }}
           </a>
           <br/>
@@ -112,7 +112,7 @@
 
     {% if utr.output is not none %}
   <h3>Output</h3>
-  <a href="javascript:void(0);" onclick="utils.show_file('output','{{ url("file", utr.output, "output") }}')">See output</a>
+  <a href="javascript:void(0);" onclick='utils.show_file("output", {{ url("file", utr.output, "output")|tojson }})'>See output</a>
     {% endif %}
 
 </div>
