@@ -140,7 +140,12 @@ class AddFolderHandler(BaseHandler):
             return
 
         if self.try_commit():
-            self.redirect(self.url("folders"))
+            # Redirect to parent folder page if created inside one,
+            # otherwise to root folders list.
+            if parent is not None:
+                self.redirect(self.url("folder", parent.id))
+            else:
+                self.redirect(self.url("folders"))
         else:
             self.redirect(fallback)
 

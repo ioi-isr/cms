@@ -167,7 +167,9 @@ class FunctionalTestFramework:
         if parent_id is not None:
             args["parent_id"] = str(parent_id)
         resp = self.admin_req('folders/add', args=args)
-        if not resp.url or not resp.url.endswith('/folders'):
+        # After creation, root folders redirect to /folders and child
+        # folders redirect to /folder/<parent_id>.
+        if not resp.url or not re.search(r'/folders?(?:/\d+)?$', resp.url):
             raise TestException("Unable to create folder.")
         m = re.search(
             r'<a class="[^"]*\bhas-text-weight-semibold\b[^"]*" href="[^"]*/folder/(\d+)">\s*'
