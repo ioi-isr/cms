@@ -1,0 +1,143 @@
+{#
+  Shared macros for model solution forms (add and replace).
+
+  base_fields: Name + Description
+  file_fields: file inputs + optional language select
+  score_fields: expected score range + subtasks
+#}
+
+{% macro base_fields(form_id, id_prefix=None) %}
+  {% if id_prefix is none %}
+    {% set id_prefix = form_id if form_id is defined else "ms" %}
+  {% endif %}
+  <div class="ms-form-row">
+    <label class="ms-form-label" for="{{ id_prefix }}-name">Name:</label>
+    <div class="ms-form-field">
+      <input id="{{ id_prefix }}-name"
+             type="text"
+             name="name"
+             class="ms-form-control"
+             pattern="^[\\w\\-\\s()^]+$"
+             title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)."
+             required />
+      <div class="ms-form-hint">(identifier for export, e.g., 'intended', 'bruteforce')</div>
+    </div>
+  </div>
+
+  <div class="ms-form-row">
+    <label class="ms-form-label" for="{{ id_prefix }}-description">Description:</label>
+    <div class="ms-form-field">
+      <input id="{{ id_prefix }}-description" type="text" name="description" class="ms-form-control" required />
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro file_fields(task, allowed_langs, language_required, selected_language=None, form_id=None, id_prefix=None) %}
+  {% if id_prefix is none %}
+    {% set id_prefix = form_id if form_id is defined else "ms" %}
+  {% endif %}
+  {% for filename in task.submission_format %}
+    {% set input_id = (id_prefix ~ "-" ~ filename)|replace(".", "-")|replace("%", "")|replace("/", "-")|replace(" ", "-") %}
+    <div class="ms-form-row">
+      <label class="ms-form-label" for="{{ input_id }}">{{ filename }}:</label>
+      <div class="ms-form-field">
+        <input id="{{ input_id }}" type="file" name="{{ filename }}" class="ms-file-input" />
+      </div>
+    </div>
+  {% endfor %}
+  {% if language_required %}
+    <div class="ms-form-row">
+      <label class="ms-form-label" for="{{ id_prefix }}-language">Language:</label>
+      <div class="ms-form-field">
+        <select id="{{ id_prefix }}-language" name="language" class="ms-form-control">
+  {% for lang in allowed_langs %}
+          <option value="{{ lang }}" {{ "selected" if selected_language is not none and selected_language == lang else "" }}>{{ lang }}</option>
+  {% endfor %}
+        </select>
+      </div>
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro score_fields(form_id, subtasks=None, ms=None, id_prefix=None) %}
+  {% if id_prefix is none %}
+    {% set id_prefix = form_id if form_id is defined else "ms" %}
+  {% endif %}
+  <div class="ms-form-row">
+    <label class="ms-form-label" for="{{ id_prefix }}-expected-min">Expected Score Min:</label>
+    <div class="ms-form-field">
+      <input id="{{ id_prefix }}-expected-min"
+             type="number"
+             step="0.01"
+             min="0"
+             name="expected_score_min"
+             value="0.0"
+             class="ms-form-control"
+             style="width: 100px;"
+             required />
+    </div>
+  </div>
+
+  <div class="ms-form-row">
+    <label class="ms-form-label" for="{{ id_prefix }}-expected-max">Expected Score Max:</label>
+    <div class="ms-form-field">
+      <input id="{{ id_prefix }}-expected-max"
+             type="number"
+             step="0.01"
+             min="0"
+             name="expected_score_max"
+             value="100.0"
+             class="ms-form-control"
+             style="width: 100px;"
+             required />
+    </div>
+  </div>
+
+{% if subtasks and ms %}
+  <div class="ms-form-row ms-form-row-full">
+    <div class="ms-form-field">
+      {{ ms.auto_calc_checkbox(form_id) }}
+    </div>
+  </div>
+  <div class="ms-form-row ms-form-row-full">
+    <strong>Expected Subtask Scores:</strong>
+  </div>
+  <div class="ms-form-row ms-form-row-full">
+    <div class="ms-form-field">
+      {{ ms.subtask_table(subtasks, form_id) }}
+    </div>
+  </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro language_filter_script(form_selector, allowed_langs, language_required) %}
+  {% if language_required %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const TASK_LANGUAGES = {
+  {% for lang in allowed_langs %}
+        "{{ lang }}": {
+    {% for extension in (lang|to_language).source_extensions %}
+            "{{ extension }}": true,
+    {% endfor %}
+        },
+  {% endfor %}
+    };
+
+    const formSelector = {{ form_selector|tojson }};
+    document.querySelectorAll(formSelector).forEach(function(form) {
+        const select = form.querySelector('select[name="language"]');
+        if (!select) return;
+        const inputs = form.querySelectorAll('input[type="file"]');
+        const filter = function() {
+            CMS.AWSUtils.filter_languages(select.options, inputs, TASK_LANGUAGES);
+        };
+        inputs.forEach(function(input) {
+            input.addEventListener('change', filter);
+        });
+        filter();
+    });
+});
+</script>
+  {% endif %}
+{% endmacro %}

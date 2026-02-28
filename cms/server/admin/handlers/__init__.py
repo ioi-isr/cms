@@ -159,6 +159,7 @@ from .modelsolution import \
     ModelSolutionHandler, \
     EditModelSolutionHandler, \
     DeleteModelSolutionHandler, \
+    ReplaceModelSolutionHandler, \
     ConfigureImportedModelSolutionsHandler
 from .folder import \
     FolderListHandler, \
@@ -348,6 +349,7 @@ HANDLERS = [
     (r"/model_solution/([0-9]+)(?:/([0-9]+))?", ModelSolutionHandler),
     (r"/model_solution/([0-9]+)/edit", EditModelSolutionHandler),
     (r"/model_solution/([0-9]+)/delete", DeleteModelSolutionHandler),
+    (r"/model_solution/([0-9]+)/replace", ReplaceModelSolutionHandler),
     (r"/task/([0-9]+)/model_solutions/configure", ConfigureImportedModelSolutionsHandler),
 
     # The following prefixes are handled by WSGI middlewares:

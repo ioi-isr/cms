@@ -213,4 +213,32 @@
   color: var(--ms-color-text-muted);
   cursor: pointer;
 }
+.ms-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-spacing-md);
+  min-width: 320px;
+}
+.ms-form-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--ms-spacing-md);
+  align-items: center;
+}
+.ms-form-row-full {
+  grid-template-columns: 1fr;
+}
+.ms-form-label {
+  font-weight: 600;
+  color: var(--ms-color-text);
+}
+.ms-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-spacing-xs);
+}
+.ms-form-hint {
+  font-size: var(--ms-font-size-sm);
+  color: var(--ms-color-text-muted);
+}
 </style>
