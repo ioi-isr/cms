@@ -672,19 +672,18 @@ class RemoveTeamHandler(BaseHandler):
 class TeamHandler(BaseHandler):
     """Manage a single team.
 
-    If referred by GET, this handler will return a pre-filled HTML form.
-    If referred by POST, this handler will sync the team data with the form's.
+    GET redirects to the teams list (the old team.html page has been
+    replaced by an inline edit modal on the teams page).
+    POST accepts both regular form submissions and AJAX (JSON) requests.
     """
 
     def get(self, team_id):
-        team = self.safe_get_item(Team, team_id)
+        self.redirect(self.url("teams"))
 
-        self.r_params = self.render_params()
-        self.r_params["team"] = team
-        self.render("team.html", **self.r_params)
-
+    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, team_id):
-        fallback_page = self.url("team", team_id)
+        is_ajax = "application/json" in self.request.headers.get("Accept", "")
+        fallback_page = self.url("teams")
 
         team = self.safe_get_item(Team, team_id)
 
@@ -696,11 +695,17 @@ class TeamHandler(BaseHandler):
 
             if attrs.get("code") is None:
                 raise ValueError("No team code specified.")
+            if attrs.get("name") is None:
+                raise ValueError("No team name specified.")
 
             # Update the team.
             team.set_attrs(attrs)
 
         except Exception as error:
+            if is_ajax:
+                self.set_status(400)
+                self.write({"error": str(error)})
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error)
             )
@@ -710,6 +715,20 @@ class TeamHandler(BaseHandler):
         if self.try_commit():
             # Update the team on RWS.
             self.service.proxy_service.reinitialize()
+            if is_ajax:
+                self.write(
+                    {"ok": True, "id": team.id,
+                     "code": team.code, "name": team.name}
+                )
+                return
+        else:
+            if is_ajax:
+                self.set_status(500)
+                self.write(
+                    {"error": "Failed to save team. The code may already exist."}
+                )
+                return
+
         self.redirect(fallback_page)
 
 

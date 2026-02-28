@@ -8,10 +8,10 @@
         </div>
         <div class="level-right">
             {% if admin.permission_all %}
-            <a href="{{ url("tasks", "import") }}" class="button">
+            <button type="button" class="button" onclick="MicroModal.show('modal-import-task')">
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
                 <span>Import from ZIP</span>
-            </a>
+            </button>
             <button type="button" class="button is-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
                 <span>Add Task</span>
@@ -69,4 +69,5 @@
         {% endfor %}
     </div>
     {% endif %}
+{% include "fragments/modal_import_task.html" %}
 {% endblock core %}

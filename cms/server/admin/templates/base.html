@@ -787,11 +787,11 @@ $(document).ready(initHamburgerMenu);
 
       <main id="core">
         {% if breadcrumbs %}
-        <nav class="breadcrumb has-succeeds-separator" aria-label="breadcrumbs">
+        <nav class="breadcrumb has-succeeds-separator box is-bordered is-radiusless mb-5 py-3 px-4" aria-label="breadcrumbs">
           <ul>
         {% for crumb in breadcrumbs %}
-            <li>
-              <a href="{{ crumb.url }}">
+            <li{% if loop.last %} class="is-active"{% endif %}>
+              <a href="{{ crumb.url }}" class="has-text-link-35 has-text-weight-medium">
             {% if crumb.icon %}
                 <svg class="icon is-small"><use href="#{{ crumb.icon }}"/></svg>
             {% endif %}

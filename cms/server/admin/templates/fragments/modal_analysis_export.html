@@ -133,7 +133,7 @@
               {% for td in multi_type_tds %}
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                 <span style="font-size: 0.85em; min-width: 200px;">{{ td.description or td.name or "Session" }}{% if td.start_time %} ({{ td.start_time.strftime('%b %d') }}){% endif %}</span>
-                <select class="type-assign-select" data-td-id="{{ td.id }}" style="min-width: 120px;">
+                <select class="type-assign-select tp-form-input" data-td-id="{{ td.id }}" style="min-width: 120px;">
                   {% for t in td.training_day_types %}
                   <option value="{{ t }}">{{ t }}</option>
                   {% endfor %}

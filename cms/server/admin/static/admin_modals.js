@@ -355,68 +355,89 @@ AdminModals.confirmThen = function(message, callback, options) {
 };
 
 /**
- * Shows a SweetAlert2 dialog for adding a new team.
- * Posts via AJAX to the given URL and reloads on success.
- * @param {string} postUrl - The URL to POST the new team to
+ * Internal helper: shared HTML and style for the team code/name form.
+ * @private
  */
-AdminModals.showAddTeamDialog = function (postUrl) {
+AdminModals._teamFormHtml =
+    '<div class="swal-custom-form">' +
+        '<div class="form-group">' +
+            '<label for="swal-team-code">Team Code</label>' +
+            '<input id="swal-team-code" class="swal2-input" placeholder="e.g. ISR" maxlength="3" style="text-transform: uppercase;">' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label for="swal-team-name">Team Name</label>' +
+            '<input id="swal-team-name" class="swal2-input" placeholder="e.g. Israel">' +
+        '</div>' +
+    '</div>' +
+    '<style>' +
+        '.swal-custom-form { text-align: left; }' +
+        '.swal-custom-form .form-group { margin-bottom: 1rem; }' +
+        '.swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }' +
+        '.swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }' +
+    '</style>';
+
+/**
+ * Internal helper: show a SweetAlert2 dialog for creating or editing a team.
+ * Handles form rendering, validation, XSRF token, and AJAX submission.
+ * @private
+ * @param {Object} opts
+ * @param {string} opts.title        - Dialog title
+ * @param {string} opts.confirmText  - Confirm button label
+ * @param {string} opts.postUrl      - URL to POST to
+ * @param {string} opts.errorVerb    - Verb for error messages (e.g. "create" or "update")
+ * @param {string} [opts.initialCode] - Pre-fill code (for edit)
+ * @param {string} [opts.initialName] - Pre-fill name (for edit)
+ * @param {Function} [opts.onSuccess] - Called with result data on success (defaults to reload)
+ */
+AdminModals._showTeamDialog = function (opts) {
     Swal.fire({
-        title: 'Add New Team',
-        html: `
-            <div class="swal-custom-form">
-                <div class="form-group">
-                    <label for="swal-team-code">Team Code</label>
-                    <input id="swal-team-code" class="swal2-input" placeholder="e.g. ISR" maxlength="3" style="text-transform: uppercase;">
-                </div>
-                <div class="form-group">
-                    <label for="swal-team-name">Team Name</label>
-                    <input id="swal-team-name" class="swal2-input" placeholder="e.g. Israel">
-                </div>
-            </div>
-            <style>
-                .swal-custom-form { text-align: left; }
-                .swal-custom-form .form-group { margin-bottom: 1rem; }
-                .swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }
-                .swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }
-            </style>
-        `,
+        title: opts.title,
+        html: AdminModals._teamFormHtml,
         focusConfirm: false,
         showCancelButton: true,
-        confirmButtonText: 'Create Team',
+        confirmButtonText: opts.confirmText,
         cancelButtonText: 'Cancel',
         reverseButtons: true,
 
-        didOpen: () => {
-            const codeInput = Swal.getPopup().querySelector('#swal-team-code');
-            const nameInput = Swal.getPopup().querySelector('#swal-team-name');
-            if (codeInput) codeInput.focus();
+        didOpen: function () {
+            var codeInput = Swal.getPopup().querySelector('#swal-team-code');
+            var nameInput = Swal.getPopup().querySelector('#swal-team-name');
+            if (codeInput) {
+                if (opts.initialCode) codeInput.value = opts.initialCode;
+                codeInput.focus();
+                if (opts.initialCode) codeInput.select();
+            }
+            if (nameInput && opts.initialName) nameInput.value = opts.initialName;
 
-            [codeInput, nameInput].forEach(input => {
-                if (input) input.addEventListener('keyup', (e) => {
+            [codeInput, nameInput].forEach(function (input) {
+                if (input) input.addEventListener('keyup', function (e) {
                     if (e.key === 'Enter') Swal.clickConfirm();
                 });
             });
         },
 
-        preConfirm: async () => {
-            const codeInput = document.getElementById('swal-team-code');
-            const nameInput = document.getElementById('swal-team-name');
-            const code = codeInput.value.trim().toUpperCase();
-            const name = nameInput.value.trim();
+        preConfirm: function () {
+            var codeInput = document.getElementById('swal-team-code');
+            var nameInput = document.getElementById('swal-team-name');
+            var code = codeInput.value.trim().toUpperCase();
+            var name = nameInput.value.trim();
 
             if (!code) {
                 Swal.showValidationMessage('Team code is required');
-                setTimeout(() => codeInput.focus(), 100);
+                setTimeout(function () { codeInput.focus(); }, 100);
                 return false;
             }
             if (!name) {
                 Swal.showValidationMessage('Team name is required');
-                setTimeout(() => nameInput.focus(), 100);
+                setTimeout(function () { nameInput.focus(); }, 100);
                 return false;
             }
 
-            let xsrfToken = document.querySelector('input[name="_xsrf"]')?.value;
-            if (!xsrfToken && typeof get_cookie === 'function') {
+            var xsrfToken = null;
+            var xsrfInput = document.querySelector('input[name="_xsrf"]');
+            if (xsrfInput) {
+                xsrfToken = xsrfInput.value;
+            } else if (typeof get_cookie === 'function') {
                 xsrfToken = get_cookie('_xsrf');
             }
             if (!xsrfToken) {
@@ -424,42 +445,93 @@ AdminModals.showAddTeamDialog = function (postUrl) {
                 return false;
             }
 
-            if (codeInput) codeInput.value = code;
-            const formData = new FormData();
+            codeInput.value = code;
+            var formData = new FormData();
             formData.append('code', code);
             formData.append('name', name);
 
-            try {
-                const response = await fetch(postUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-XSRFToken': xsrfToken
-                    },
-                    body: formData
-                });
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to create team');
+            return fetch(opts.postUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-XSRFToken': xsrfToken
+                },
+                body: formData
+            }).then(function (response) {
+                var contentType = (response.headers.get('content-type') || '').toLowerCase();
+                if (contentType.indexOf('application/json') !== -1) {
+                    return response.json().then(function (data) {
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Failed to ' + opts.errorVerb + ' team');
+                        }
+                        return data;
+                    });
                 }
-                return data;
-            } catch (error) {
+                // Non-JSON response (HTML error page, empty body, etc.)
+                return response.text().then(function (body) {
+                    var msg = 'Failed to ' + opts.errorVerb + ' team: ' +
+                        (response.statusText || 'HTTP ' + response.status);
+                    if (body && body.length < 200) {
+                        msg += ' — ' + body;
+                    }
+                    throw new Error(msg);
+                });
+            }).catch(function (error) {
                 Swal.showValidationMessage(error.message || 'Network error occurred');
                 return false;
+            });
+        }
+    }).then(function (result) {
+        if (result.isConfirmed && result.value) {
+            if (opts.onSuccess) {
+                opts.onSuccess(result.value);
+            } else {
+                window.location.reload();
             }
         }
-    }).then((result) => {
-        if (result.isConfirmed && result.value) {
+    });
+};
+
+/**
+ * Shows a SweetAlert2 dialog for adding a new team.
+ * Posts via AJAX to the given URL and reloads on success.
+ * @param {string} postUrl - The URL to POST the new team to
+ */
+AdminModals.showAddTeamDialog = function (postUrl) {
+    AdminModals._showTeamDialog({
+        title: 'Add New Team',
+        confirmText: 'Create Team',
+        postUrl: postUrl,
+        errorVerb: 'create',
+        onSuccess: function (data) {
             Swal.fire({
                 icon: 'success',
                 title: 'Team Created',
-                text: `Team "${result.value.code}" has been created successfully.`,
+                text: 'Team "' + data.code + '" has been created successfully.',
                 timer: 1500,
                 showConfirmButton: false
-            }).then(() => {
+            }).then(function () {
                 window.location.reload();
             });
         }
+    });
+};
+
+/**
+ * Shows a SweetAlert2 dialog for editing an existing team.
+ * Posts via AJAX to the given URL and reloads on success.
+ * @param {string} postUrl - The URL to POST the updated team to
+ * @param {string} currentCode - The current team code
+ * @param {string} currentName - The current team name
+ */
+AdminModals.showEditTeamDialog = function (postUrl, currentCode, currentName) {
+    AdminModals._showTeamDialog({
+        title: 'Edit Team',
+        confirmText: 'Save Changes',
+        postUrl: postUrl,
+        errorVerb: 'update',
+        initialCode: currentCode,
+        initialName: currentName
     });
 };
 
