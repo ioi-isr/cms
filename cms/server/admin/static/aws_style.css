@@ -1940,12 +1940,12 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 .ms-card-subtask.selected {
     border-color: var(--bulma-primary-40);
-    background: var(--bulma-primary-95);
+    background: color-mix(in srgb, var(--bulma-primary-40) 12%, transparent);
 }
 
 .ms-card-subtask.partial {
     border-color: var(--tp-warning);
-    background: var(--tp-warning-light);
+    background: color-mix(in srgb, var(--tp-warning) 12%, transparent);
 }
 
 .ms-card-check,

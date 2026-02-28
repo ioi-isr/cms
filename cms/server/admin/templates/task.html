@@ -1834,12 +1834,12 @@ document.addEventListener('click', function(e) {
                     <main class="modal__content">
                         <div class="modal__form-group">
                             <label for="ms-{{ dataset.id }}-name">Name <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="text" id="ms-{{ dataset.id }}-name" name="name" pattern="^[A-Za-z0-9_ \^\-\(\)]+$" title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)." required />
+                            <input class="input" type="text" id="ms-{{ dataset.id }}-name" name="name" pattern="^[A-Za-z0-9_ \^\-\(\)]+$" title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)." required />
                             <small class="modal__hint">Identifier for export (e.g., 'intended', 'bruteforce')</small>
                         </div>
                         <div class="modal__form-group">
                             <label for="ms-{{ dataset.id }}-description">Description <span style="color: var(--tp-danger);">*</span></label>
-                            <input type="text" id="ms-{{ dataset.id }}-description" name="description" required />
+                            <input class="input" type="text" id="ms-{{ dataset.id }}-description" name="description" required />
                         </div>
                         <div class="modal__form-group ms-file-section" id="ms-{{ dataset.id }}-file-section">
                             {{ ms_fields.file_fields(task, allowed_langs, language_required, allow_partial, "ms-" ~ dataset.id) }}
@@ -1877,7 +1877,7 @@ document.addEventListener('click', function(e) {
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
                                 <label for="ms-{{ dataset.id }}-global-pct" style="font-size: 0.82rem; font-weight: 600; color: var(--tp-text-muted); white-space: nowrap;">Apply to all selected:</label>
-                                <input type="number" id="ms-{{ dataset.id }}-global-pct" min="0" max="100" step="0.1" value="100" data-dataset="{{ dataset.id }}" oninput="ModelSolutionModal.globalPctChanged(this);" style="width: 64px; text-align: center; padding: 3px 6px; border: 1px solid var(--tp-border); border-radius: 6px; font-size: 0.85rem;" />
+                                <input type="number" id="ms-{{ dataset.id }}-global-pct" min="0" max="100" step="0.1" value="100" class="input" data-dataset="{{ dataset.id }}" oninput="ModelSolutionModal.globalPctChanged(this);" style="width: 64px; text-align: center; padding: 3px 6px; border: 1px solid var(--tp-border); border-radius: 6px; font-size: 0.85rem;" />
                                 <span style="font-size: 0.82rem; color: var(--tp-text-muted);">%</span>
                             </div>
                             <input type="hidden" name="expected_score_min" id="ms-{{ dataset.id }}-score-min" value="0" />
@@ -1908,26 +1908,26 @@ document.addEventListener('click', function(e) {
                                         <tr style="border-bottom: 1px solid var(--tp-border);">
                                             <td style="padding: 6px 8px; font-weight: 500;">{{ st.display_name }} <span style="color: var(--tp-text-muted); font-weight: 400;">({{ st.max_score }} pts)</span></td>
                                             <td style="text-align: center; padding: 6px 8px;">
-                                                <input type="number" min="0" max="100" step="0.1" value="100" class="ms-adv-pct" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.pctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                                <input type="number" min="0" max="100" step="0.1" value="100" class="input ms-adv-pct" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.pctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
                                             </td>
                                             <td style="text-align: center; padding: 6px 8px;">
-                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-min-input" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.minMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                                <input type="number" min="0" step="0.01" value="0.00" class="input ms-adv-min-input" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.minMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
                                             </td>
                                             <td style="text-align: center; padding: 6px 8px;">
-                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-max-input" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.minMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                                <input type="number" min="0" step="0.01" value="0.00" class="input ms-adv-max-input" data-dataset="{{ dataset.id }}" data-idx="{{ st.idx }}" data-max="{{ st.max_score }}" oninput="ModelSolutionModal.minMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
                                             </td>
                                         </tr>
                                         {% endfor %}
                                         <tr style="border-top: 2px solid var(--tp-border);">
                                             <td style="padding: 6px 8px; font-weight: 700;">Full Solution</td>
                                             <td style="text-align: center; padding: 6px 8px;">
-                                                <input type="number" min="0" max="100" step="0.1" value="100" class="ms-adv-total-pct" id="ms-{{ dataset.id }}-adv-total-pct" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalPctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
+                                                <input type="number" min="0" max="100" step="0.1" value="100" class="input ms-adv-total-pct" id="ms-{{ dataset.id }}-adv-total-pct" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalPctChanged(this);" style="width: 60px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px;" />
                                             </td>
                                             <td style="text-align: center; padding: 6px 8px; font-weight: 700;">
-                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-total-min-input" id="ms-{{ dataset.id }}-adv-total-min" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalMinMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px; font-weight: 700;" />
+                                                <input type="number" min="0" step="0.01" value="0.00" class="input ms-adv-total-min-input" id="ms-{{ dataset.id }}-adv-total-min" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalMinMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px; font-weight: 700;" />
                                             </td>
                                             <td style="text-align: center; padding: 6px 8px; font-weight: 700;">
-                                                <input type="number" min="0" step="0.01" value="0.00" class="ms-adv-total-max-input" id="ms-{{ dataset.id }}-adv-total-max" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalMinMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px; font-weight: 700;" />
+                                                <input type="number" min="0" step="0.01" value="0.00" class="input ms-adv-total-max-input" id="ms-{{ dataset.id }}-adv-total-max" data-dataset="{{ dataset.id }}" data-total-score="{{ total_score }}" oninput="ModelSolutionModal.totalMinMaxChanged(this);" style="width: 70px; text-align: center; padding: 2px 4px; border: 1px solid var(--tp-border); border-radius: 4px; font-weight: 700;" />
                                             </td>
                                         </tr>
                                         <tr>
