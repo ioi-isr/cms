@@ -1,0 +1,90 @@
+<!-- Import Task Modal Fragment -->
+<!-- Include this fragment in pages where the "Import Task" modal is needed -->
+<!-- Required context: admin, url, xsrf_form_html, contest_list -->
+
+{% from "macro/modal.html" import modal_header, modal_footer %}
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
+{% if admin is defined and admin.permission_all %}
+<div class="modal modal--wide" id="modal-import-task" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-import-task-title">
+            {{ modal_header("Import Task from ZIP", "modal-import-task-title") }}
+            <form enctype="multipart/form-data" action="{{ url("tasks", "import") }}" method="POST" id="import-task-form">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    <div class="modal__form-group">
+                        <label>
+                            Task Archive (ZIP)
+                            <span class="has-text-danger">*</span>
+                        </label>
+                        {{ bulma_file_input("import-task-file", "task_file", ".zip", required=true, button_text="Choose ZIP archive...") }}
+                        <small class="modal__hint">Upload a zip file containing the task data in a supported format (Italian YAML, Polygon, TPS).</small>
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label class="label">Import Options</label>
+                        <label class="checkbox">
+                            <input type="checkbox" name="update" value="true">
+                            Update existing task (if task with same name exists)
+                        </label>
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label class="checkbox">
+                            <input type="checkbox" name="no_statement" value="true">
+                            Do not import task statement
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 16px;">
+                        <div class="modal__form-group" style="flex: 1;">
+                            <label for="import-task-contest">Attach to Contest (optional)</label>
+                            <div class="select is-fullwidth">
+                                <select name="contest_id" id="import-task-contest">
+                                    <option value="">-- No Contest --</option>
+                                    {% for contest in contest_list %}
+                                    <option value="{{ contest.id }}">{{ contest.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="modal__form-group" style="flex: 1;">
+                            <label for="import-task-loader">Loader (optional)</label>
+                            <div class="select is-fullwidth">
+                                <select name="loader" id="import-task-loader">
+                                    <option value="">-- Autodetect --</option>
+                                    <option value="italy_yaml">Italian YAML</option>
+                                    <option value="polygon_task">Polygon</option>
+                                    <option value="tps">TPS</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 16px;">
+                        <div class="modal__form-group" style="flex: 1;">
+                            <label for="import-task-input-tpl">Input file template</label>
+                            <input type="text" class="input" name="input_template" id="import-task-input-tpl" placeholder="input.*">
+                            <small class="modal__hint">Use * as wildcard (default: input.*)</small>
+                        </div>
+
+                        <div class="modal__form-group" style="flex: 1;">
+                            <label for="import-task-output-tpl">Output file template</label>
+                            <input type="text" class="input" name="output_template" id="import-task-output-tpl" placeholder="output.*">
+                            <small class="modal__hint">Use * as wildcard (default: output.*)</small>
+                        </div>
+                    </div>
+
+                    <div class="modal__warning" style="margin-top: 16px;">
+                        <strong>Supported Formats:</strong>
+                        Italian YAML (task.yaml), Polygon (XML), TPS.
+                        The zip should contain the task directory structure.
+                    </div>
+                </main>
+                {{ modal_footer("Import Task", submit_icon="#icon-upload") }}
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}

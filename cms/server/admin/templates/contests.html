@@ -8,10 +8,10 @@
         </div>
         <div class="level-right">
             {% if admin.permission_all %}
-            <a href="{{ url("contests", "import") }}" class="button">
+            <button type="button" class="button" onclick="MicroModal.show('modal-import-contest')">
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
                 <span>Import from ZIP</span>
-            </a>
+            </button>
             <button type="button" class="button is-primary" onclick='AdminModals.showAddContestDialog("{{ url("contests", "add") }}", "{{ url("contest", "") }}")'>
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
                 <span>Add Contest</span>
@@ -71,6 +71,7 @@
     {% endif %}
 
 {% include "fragments/modal_remove_contest.html" %}
+{% include "fragments/modal_import_contest.html" %}
 
 <script>
 function openContestRemoveModal(btn) {

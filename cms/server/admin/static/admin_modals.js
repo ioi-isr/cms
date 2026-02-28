@@ -464,6 +464,116 @@ AdminModals.showAddTeamDialog = function (postUrl) {
 };
 
 /**
+ * Shows a SweetAlert2 dialog for editing an existing team.
+ * Posts via AJAX to the given URL and reloads on success.
+ * @param {string} postUrl - The URL to POST the updated team to
+ * @param {string} currentCode - The current team code
+ * @param {string} currentName - The current team name
+ */
+AdminModals.showEditTeamDialog = function (postUrl, currentCode, currentName) {
+    Swal.fire({
+        title: 'Edit Team',
+        html:
+            '<div class="swal-custom-form">' +
+                '<div class="form-group">' +
+                    '<label for="swal-team-code">Team Code</label>' +
+                    '<input id="swal-team-code" class="swal2-input" placeholder="e.g. ISR" maxlength="3" style="text-transform: uppercase;">' +
+                '</div>' +
+                '<div class="form-group">' +
+                    '<label for="swal-team-name">Team Name</label>' +
+                    '<input id="swal-team-name" class="swal2-input" placeholder="e.g. Israel">' +
+                '</div>' +
+            '</div>' +
+            '<style>' +
+                '.swal-custom-form { text-align: left; }' +
+                '.swal-custom-form .form-group { margin-bottom: 1rem; }' +
+                '.swal-custom-form label { display: block; font-weight: 600; font-size: 0.9em; color: #333; margin-bottom: 5px; }' +
+                '.swal-custom-form .swal2-input { margin: 0 !important; width: 100% !important; box-sizing: border-box; height: 2.5em; }' +
+            '</style>',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Save Changes',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+
+        didOpen: function () {
+            var codeInput = Swal.getPopup().querySelector('#swal-team-code');
+            var nameInput = Swal.getPopup().querySelector('#swal-team-name');
+            if (codeInput) {
+                codeInput.value = currentCode;
+                codeInput.focus();
+                codeInput.select();
+            }
+            if (nameInput) nameInput.value = currentName;
+
+            [codeInput, nameInput].forEach(function (input) {
+                if (input) input.addEventListener('keyup', function (e) {
+                    if (e.key === 'Enter') Swal.clickConfirm();
+                });
+            });
+        },
+
+        preConfirm: function () {
+            var codeInput = document.getElementById('swal-team-code');
+            var nameInput = document.getElementById('swal-team-name');
+            var code = codeInput.value.trim().toUpperCase();
+            var name = nameInput.value.trim();
+
+            if (!code) {
+                Swal.showValidationMessage('Team code is required');
+                setTimeout(function () { codeInput.focus(); }, 100);
+                return false;
+            }
+            if (!name) {
+                Swal.showValidationMessage('Team name is required');
+                setTimeout(function () { nameInput.focus(); }, 100);
+                return false;
+            }
+
+            var xsrfToken = null;
+            var xsrfInput = document.querySelector('input[name="_xsrf"]');
+            if (xsrfInput) {
+                xsrfToken = xsrfInput.value;
+            } else if (typeof get_cookie === 'function') {
+                xsrfToken = get_cookie('_xsrf');
+            }
+            if (!xsrfToken) {
+                AdminModals.showError('Missing XSRF token');
+                return false;
+            }
+
+            if (codeInput) codeInput.value = code;
+            var formData = new FormData();
+            formData.append('code', code);
+            formData.append('name', name);
+
+            return fetch(postUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-XSRFToken': xsrfToken
+                },
+                body: formData
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to update team');
+                    }
+                    return data;
+                });
+            }).catch(function (error) {
+                Swal.showValidationMessage(error.message || 'Network error occurred');
+                return false;
+            });
+        }
+    }).then(function (result) {
+        if (result.isConfirmed && result.value) {
+            window.location.reload();
+        }
+    });
+};
+
+/**
  * Shows a SweetAlert2 input dialog to rename a dataset description inline.
  * Posts via AJAX and reloads the page on success.
  * @param {string} renameUrl - The URL to POST the new description to

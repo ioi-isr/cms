@@ -63,7 +63,7 @@
                     <svg class="icon"><use href="#icon-flag"/></svg>
                 </div>
                 <div style="min-width: 0;">
-                    <a href="{{ url("team", t.id) }}" style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.code }}">{{ t.code }}</a>
+                    <a href="#" onclick="event.preventDefault(); AdminModals.showEditTeamDialog({{ url("team", t.id)|tojson }}, {{ t.code|tojson }}, {{ t.name|tojson }})" style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.code }}">{{ t.code }}</a>
                     <div style="font-size: 0.85rem; color: var(--tp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.name }}</div>
                 </div>
             </div>
