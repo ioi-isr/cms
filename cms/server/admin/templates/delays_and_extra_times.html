@@ -241,7 +241,7 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
             {% if student_tags_by_participation.get(participation.id, []) %}
             <div class="tags mt-1">
               {% for tag in student_tags_by_participation.get(participation.id, []) %}
-                <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
+                <span class="tag is-opaque-bg has-text-primary-35 is-small">{{ tag }}</span>
               {% endfor %}
             </div>
             {% endif %}

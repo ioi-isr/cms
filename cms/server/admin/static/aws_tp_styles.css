@@ -1412,21 +1412,6 @@
     flex-shrink: 0;
 }
 
-.tp-stat-icon-purple {
-    background: color-mix(in srgb, var(--bulma-link-65) 24%, transparent);
-    color: var(--bulma-link);
-}
-
-.tp-stat-icon-green {
-    background: color-mix(in srgb, var(--bulma-success) 24%, transparent);
-    color: var(--tp-success);
-}
-
-.tp-stat-icon-orange {
-    background: color-mix(in srgb, var(--bulma-warning) 24%, transparent);
-    color: var(--tp-warning);
-}
-
 .tp-stat-content {
     display: flex;
     flex-direction: column;
@@ -1605,10 +1590,6 @@
     margin-bottom: 20px;
 }
 
-.tp-card-dates svg {
-    color: var(--tp-text-light);
-}
-
 /* Active Training Days Section */
 .tp-card-training-days {
     background: var(--tp-bg-light);
@@ -1676,7 +1657,6 @@
 .tp-training-day-icon {
     width: 32px;
     height: 32px;
-    background: color-mix(in srgb, var(--bulma-info) 24%, transparent);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -2394,21 +2374,11 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: var(--tp-success-light);
+    background: color-mix(in srgb, var(--tp-success-light) 42%, transparent);
     border: 1px solid var(--bulma-success-75);
     border-radius: 10px;
     padding: 14px 20px;
     margin-bottom: 18px;
-}
-
-.delays-archive-banner strong {
-    color: var(--tp-success-dark);
-}
-
-.delays-archive-banner p {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--tp-success-dark);
 }
 
 .delays-archive-btn {

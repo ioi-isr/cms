@@ -429,14 +429,14 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           <td>
             {% if tc_info.result %}
               {% if tc_info.result.passed %}
-                <span class="tag has-text-success is-opaque is-rounded has-text-weight-semibold">Passed</span>
+                <span class="tag has-text-success is-opaque-bg is-rounded has-text-weight-semibold">Passed</span>
               {% elif tc_info.result.exit_status in ['ok', 'nonzero return', none] %}
-                <span class="tag has-text-danger is-opaque is-rounded has-text-weight-semibold">Failed</span>
+                <span class="tag has-text-danger is-opaque-bg is-rounded has-text-weight-semibold">Failed</span>
               {% else %}
-                <span class="tag has-text-warning-25 is-opaque is-rounded has-text-weight-semibold">Error ({{ tc_info.result.exit_status }})</span>
+                <span class="tag has-text-warning-25 is-opaque-bg is-rounded has-text-weight-semibold">Error ({{ tc_info.result.exit_status }})</span>
               {% endif %}
             {% else %}
-              <span class="tag has-text-dark is-opaque is-rounded has-text-weight-semibold">Not validated</span>
+              <span class="tag has-text-dark is-opaque-bg is-rounded has-text-weight-semibold">Not validated</span>
             {% endif %}
           </td>
           <td>

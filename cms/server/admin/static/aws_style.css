@@ -91,6 +91,8 @@ textarea {
     }
 }
 
+.is-size-s { font-size: 0.85rem !important; }
+
 .pagination {
   --bulma-pagination-item-padding-left: 0;
   --bulma-pagination-item-padding-right: 0;
@@ -106,7 +108,7 @@ textarea {
 }
 
 .box.is-bordered {
-  box-shadow: border: 1px solid var(--tp-border);
+  box-shadow: var(--tp-shadow-sm);
   border: 1px solid var(--bulma-border-weak);
 }
 
@@ -140,7 +142,7 @@ textarea {
     color: var(--bulma-white);
 }
 
-.tag.is-opaque {
+.is-opaque-bg {
   background-color: color-mix(in srgb, currentcolor 12%, transparent);
 }
 
@@ -172,8 +174,8 @@ pre {
 .ts-dropdown,
 .ts-dropdown .option {
     background-color: var(--bulma-scheme-main) !important;
-    color: var(--bulma-text-70) !important;
-    border-color: var(--bulma-border)
+    color: var(--bulma-text) !important;
+    border-color: var(--bulma-border);
 }
 
 [data-theme="arkansas-black"] .ts-dropdown .option:hover {
@@ -1108,11 +1110,6 @@ th .column-sort {
 
 body.admin pre {
     border-left: 2px solid var(--bulma-primary);
-}
-
-body.admin a,
-body.admin a:visited {
-    color: var(--bulma-primary);
 }
 
 /* Sidebar links should stay bright/white, not inherit teal */

@@ -9,8 +9,8 @@ pages (int): total number of pages.
 
   {% if pages > 1 %}
 <nav class="pagination" role="navigation" aria-label="pagination">
-    <a class="pagination-previous" {% if page == 0 %}disabled{% else %}href="{{ page_url(page=page - 1) }}"{% endif %}>Previous</a>
-    <a class="pagination-next" {% if page == pages - 1 %}disabled{% else %}href="{{ page_url(page=page + 1) }}"{% endif %}>Next</a>
+    <a class="pagination-previous"{% if page == 0 %} is-disabled aria-disabled="true" tabindex="-1"{% else %} href="{{ page_url(page=page - 1) }}"{% endif %}>Previous</a>
+    <a class="pagination-next"{% if page == pages - 1 %} is-disabled aria-disabled="true" tabindex="-1"{% else %} href="{{ page_url(page=page + 1) }}"{% endif %}>Next</a>
     <ul class="pagination-list">
     {% if pages <= 20 %}
       {{ range_selector(page_url, page, pages, 0, pages) }}

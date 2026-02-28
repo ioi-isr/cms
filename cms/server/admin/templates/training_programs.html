@@ -7,7 +7,7 @@
     <!-- Stats Cards Row -->
     <div class="grid is-col-min-16 is-gap-3 is-auto-fill mb-6">
         <div class="tp-stat-card">
-            <div class="tp-stat-icon tp-stat-icon-purple">
+            <div class="tp-stat-icon has-text-link-65 is-opaque-bg">
                 <svg class="icon"><use href="#icon-graduation-cap"/></svg>
             </div>
             <div class="tp-stat-content">
@@ -16,7 +16,7 @@
             </div>
         </div>
         <div class="tp-stat-card">
-            <div class="tp-stat-icon tp-stat-icon-green">
+            <div class="tp-stat-icon has-text-success is-opaque-bg">
                 <svg class="icon"><use href="#icon-users"/></svg>
             </div>
             <div class="tp-stat-content">
@@ -25,7 +25,7 @@
             </div>
         </div>
         <div class="tp-stat-card">
-            <div class="tp-stat-icon tp-stat-icon-orange">
+            <div class="tp-stat-icon has-text-warning is-opaque-bg">
                 <svg class="icon"><use href="#icon-clock"/></svg>
             </div>
             <div class="tp-stat-content">
@@ -102,7 +102,7 @@
 
             <!-- Date Range -->
             <div class="tp-card-dates">
-                <svg class="icon is-small"><use href="#icon-calendar"/></svg>
+                <svg class="icon is-small has-text-light"><use href="#icon-calendar"/></svg>
                 {% if tp.managing_contest.start and tp.managing_contest.stop %}
                 <span>{{ tp.managing_contest.start.strftime('%Y-%m-%d') }} &mdash; {{ tp.managing_contest.stop.strftime('%Y-%m-%d') }}</span>
                 {% else %}
@@ -120,7 +120,7 @@
                     {% for td in active_tds[:3] %}
                     {% set td_notif = training_day_notifications.get(td.id, {}) %}
                     <a href="{{ url("contest", td.contest.id) }}" class="tp-training-day-item">
-                        <div class="tp-training-day-icon">
+                        <div class="tp-training-day-icon is-opaque-bg">
                             <svg class="icon is-small"><use href="#icon-calendar"/></svg>
                         </div>
                         <div class="tp-training-day-info">
@@ -174,7 +174,7 @@
                 <svg class="icon"><use href="#icon-plus"/></svg>
             </div>
             <div class="has-text-weight-bold has-text-primary mb-1 is-size-5">Create New Program</div>
-            <div class="has-text-grey is-size-6">Start a new training season</div>
+            <div class="has-text-grey is-size-s">Start a new training season</div>
         </button>
         {% endif %}
     </div>

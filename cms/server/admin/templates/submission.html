@@ -103,22 +103,22 @@
         <td>Status</td>
         <td id="submission_status">
           {% if status == SubmissionResult.COMPILING %}
-            <span class="tag is-opaque has-text-info">Compiling...</span>
+            <span class="tag is-opaque-bg has-text-info">Compiling...</span>
           {% elif status == SubmissionResult.COMPILATION_FAILED %}
-            <span class="tag is-opaque has-text-danger">Compilation failed</span>
+            <span class="tag is-opaque-bg has-text-danger">Compilation failed</span>
           {% elif status == SubmissionResult.EVALUATING %}
-            <span class="tag is-opaque has-text-info">Evaluating...</span>
+            <span class="tag is-opaque-bg has-text-info">Evaluating...</span>
           {% elif status == SubmissionResult.SCORING %}
-            <span class="tag is-opaque has-text-info">Scoring...</span>
+            <span class="tag is-opaque-bg has-text-info">Scoring...</span>
           {% elif status == SubmissionResult.EVALUATION_FAILED %}
-            <span class="tag is-opaque has-text-danger">Evaluation system error</span>
+            <span class="tag is-opaque-bg has-text-danger">Evaluation system error</span>
           {% elif status == SubmissionResult.SCORED %}
             {% if st is defined %}
               {% set max_score = st.max_score %}
             {% else %}
               {% set max_score = "[Cannot get score type - see logs]" %}
             {% endif %}
-            <span class="tag is-opaque has-text-success">Scored ({{ sr.score }} / {{ max_score }})</span>
+            <span class="tag is-opaque-bg has-text-success">Scored ({{ sr.score }} / {{ max_score }})</span>
           {% else %}
             <span class="tag is-light">N/A</span>
           {% endif %}

@@ -73,14 +73,14 @@
 
       {% if participations|length > 0 %}
       <p class="mb-2"><strong>Reset URL:</strong></p>
-      <p class="mb-3">
+      <div class="mb-3">
         <p class="has-text-code" style="word-break: break-all;">/{{ participations[0].contest.name }}/password_reset_confirm/{{ user.password_reset_token }}</p>
         <small class="has-text-grey-dark">(Relative path - prepend your CWS server address, e.g., https://your-cws-server.com)
         {% if participations|length > 1 %}
         <br>Note: This user participates in multiple contests. The reset URL works for any contest they're registered in.
         {% endif %}
         </small>
-      </p>
+      </div>
 
       <p class="mb-3"><strong>Expires:</strong> {{ user.password_reset_token_expires|format_datetime }}</p>
       {% else %}
