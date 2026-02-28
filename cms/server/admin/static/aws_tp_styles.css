@@ -443,20 +443,6 @@
     padding: 10px 12px;
 }
 
-.location-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 4px;
-    flex-wrap: wrap;
-    font-size: 0.75rem;
-    color: var(--tp-text-light);
-}
-
-.location-icon {
-    font-size: 0.85rem;
-}
-
 .reason-text {
     font-size: 0.75rem;
     color: var(--tp-text-muted);
@@ -794,12 +780,6 @@
     z-index: 10;
 }
 
-.ranking-table .empty-cell-content {
-    color: var(--tp-border-dark);
-    text-align: center;
-    font-weight: normal;
-}
-
 .inaccessible-cell {
     background-color: var(--tp-bg-gray);
     background-image: radial-gradient(var(--tp-border) 1px, transparent 1px);
@@ -858,7 +838,7 @@
 
 .comment-text {
     font-size: 0.75rem;
-    color: var(--tp-text-muted);
+    color: var(--bulma-grey);
     margin-top: 4px;
     line-height: 1.3;
     overflow-wrap: break-word;
@@ -1121,36 +1101,17 @@
     margin: 0;
 }
 
-.tp-section-header--wrap {
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
 /* Tasks table specific styles */
 .tp-tasks-table {
     width: 100%;
 }
 
 .tp-tasks-table thead th {
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    z-index: auto !important;
-    box-shadow: none !important;
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--tp-text-muted);
-    background: var(--tp-bg-light);
+    color: var(--bulma-text-55);
     padding: 14px 16px !important;
-}
-
-.tp-tasks-table td {
-    padding: 0;
-}
-
-.tp-tasks-table tbody tr:hover {
-    background-color: var(--tp-bg-hover);
 }
 
 /* Task page specific compact styling for test cases table */
@@ -1431,21 +1392,6 @@
     flex-shrink: 0;
 }
 
-.tp-stat-icon-purple {
-    background: var(--bulma-link-95);
-    color: var(--bulma-link-35);
-}
-
-.tp-stat-icon-green {
-    background: var(--tp-success-light);
-    color: var(--tp-success);
-}
-
-.tp-stat-icon-orange {
-    background: var(--tp-warning-light);
-    color: var(--tp-warning);
-}
-
 .tp-stat-content {
     display: flex;
     flex-direction: column;
@@ -1624,10 +1570,6 @@
     margin-bottom: 20px;
 }
 
-.tp-card-dates svg {
-    color: var(--tp-text-light);
-}
-
 /* Active Training Days Section */
 .tp-card-training-days {
     background: var(--tp-bg-light);
@@ -1695,7 +1637,6 @@
 .tp-training-day-icon {
     width: 32px;
     height: 32px;
-    background: var(--tp-info-light);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -1784,18 +1725,6 @@
     color: white;
 }
 
-.tp-create-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--tp-primary);
-    margin-bottom: 4px;
-}
-
-.tp-create-subtitle {
-    font-size: 0.9rem;
-    color: var(--tp-text-muted);
-}
-
 /* Training Day Indicators */
 .tp-training-day-indicators {
     display: flex;
@@ -1804,29 +1733,6 @@
     margin-left: auto;
 }
 
-.tp-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.tp-indicator svg {
-    flex-shrink: 0;
-}
-
-.tp-indicator-question {
-    background: var(--tp-info-light);
-    color: var(--tp-info);
-}
-
-.tp-indicator-delay {
-    background: var(--tp-warning-light);
-    color: var(--tp-warning-dark);
-}
 
 /* Bottom stats row (for archived days counter) */
 .tp-card-stats-bottom {
@@ -2069,7 +1975,7 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    background: var(--tp-info-light);
+    background: color-mix(in srgb, var(--bulma-info) 12%, transparent);
     color: var(--tp-primary);
     border-radius: 8px;
 }
@@ -2240,38 +2146,9 @@
     position: relative;
 }
 
-.delays-alert-card-warning {
-    background: var(--tp-warning-light);
-    border: 1px solid var(--bulma-warning-70);
-}
-
 .delays-alert-card-danger {
-    background: var(--tp-danger-light);
+    background: color-mix(in srgb, var(--bulma-danger) 12%, transparent);
     border: 1px solid var(--tp-danger-border);
-}
-
-.delays-alert-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.delays-alert-header-icon {
-    font-size: 1.1rem;
-}
-
-.delays-alert-title {
-    font-size: 1rem;
-    font-weight: 700;
-}
-
-.delays-alert-card-warning .delays-alert-title {
-    color: var(--tp-warning-dark);
-}
-
-.delays-alert-card-danger .delays-alert-title {
-    color: var(--tp-danger-dark);
 }
 
 .delays-alert-count {
@@ -2288,21 +2165,8 @@
     color: white;
 }
 
-.delays-alert-card-warning .delays-alert-count {
-    background: var(--tp-warning);
-}
-
 .delays-alert-card-danger .delays-alert-count {
     background: var(--tp-danger);
-}
-
-.delays-alert-description {
-    font-size: 0.85rem;
-    margin-bottom: 12px;
-}
-
-.delays-alert-card-danger .delays-alert-description {
-    color: var(--tp-danger-dark);
 }
 
 .delays-alert-content {
@@ -2347,27 +2211,6 @@
     transform: translateY(-50%);
     color: var(--tp-text-muted);
     pointer-events: none;
-}
-
-.delays-icon-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: 1px solid var(--tp-border);
-    border-radius: 8px;
-    background: var(--tp-bg-white);
-    color: var(--tp-text-secondary);
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    font-size: 1rem;
-}
-
-.delays-icon-btn:hover {
-    background: var(--tp-bg-gray);
-    border-color: var(--tp-border-dark);
 }
 
 .delays-timing-label {
@@ -2511,21 +2354,11 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: var(--tp-success-light);
+    background: color-mix(in srgb, var(--tp-success-light) 42%, transparent);
     border: 1px solid var(--bulma-success-75);
     border-radius: 10px;
     padding: 14px 20px;
     margin-bottom: 18px;
-}
-
-.delays-archive-banner strong {
-    color: var(--tp-success-dark);
-}
-
-.delays-archive-banner p {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--tp-success-dark);
 }
 
 .delays-archive-btn {
@@ -2663,6 +2496,7 @@
     margin-bottom: 0;
 }
 
+.delays-history-card-reason-label,
 .delays-history-card-field-label {
     display: flex;
     align-items: center;
@@ -2671,7 +2505,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-65);
     margin-bottom: 4px;
 }
 
@@ -2682,18 +2516,6 @@
 
 .delays-history-card-reason {
     margin-bottom: 0;
-}
-
-.delays-history-card-reason-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--tp-text-muted);
-    margin-bottom: 6px;
 }
 
 .delays-history-card-reason-box {
@@ -2714,25 +2536,14 @@
 .delays-history-card-meta-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 6px;
     font-size: 0.8rem;
-    color: var(--tp-text-muted);
+    color: var(--bulma-text-70);
     margin-bottom: 4px;
 }
 
 .delays-history-card-meta-row:last-child {
     margin-bottom: 0;
-}
-
-.delays-history-card-meta-row span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.delays-history-card-meta-row span:last-child {
-    font-weight: 600;
-    color: var(--tp-text-secondary);
 }
 
 .delays-empty-state {
@@ -3176,7 +2987,7 @@
 
 /* Status card color variants */
 .overview-status-success .overview-status-card-icon {
-    background: var(--tp-success-light);
+    background: color-mix(in srgb, var(--bulma-success) 24%, transparent);
     color: var(--tp-success);
 }
 .overview-status-success {
@@ -3184,7 +2995,7 @@
 }
 
 .overview-status-info .overview-status-card-icon {
-    background: var(--tp-info-light);
+    background: color-mix(in srgb, var(--bulma-info) 24%, transparent);
     color: var(--tp-info);
 }
 .overview-status-info {
@@ -3192,7 +3003,7 @@
 }
 
 .overview-status-warning .overview-status-card-icon {
-    background: var(--tp-warning-light);
+    background: color-mix(in srgb, var(--bulma-warning) 24%, transparent);
     color: var(--tp-warning);
 }
 .overview-status-warning {
@@ -3200,7 +3011,7 @@
 }
 
 .overview-status-danger .overview-status-card-icon {
-    background: var(--tp-danger-light);
+    background: color-mix(in srgb, var(--bulma-danger) 24%, transparent);
     color: var(--tp-danger);
 }
 .overview-status-danger {

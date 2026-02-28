@@ -106,12 +106,12 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
 {% if has_ineligible %}
 <div class="delays-ineligible-section">
   <div class="delays-alert-card delays-alert-card-danger">
-    <div class="delays-alert-header">
-      <span class="delays-alert-header-icon"><svg class="icon is-small"><use href="#icon-info"/></svg></span>
-      <span class="delays-alert-title">Ineligible Students</span>
+    <div class="is-flex is-align-items-center is-gap-2 mb-3 has-text-danger">
+      <svg class="icon"><use href="#icon-info"/></svg>
+      <h2 class="has-text-weight-bold is-size-5">Ineligible Students</h2>
       <span class="delays-alert-count">{{ ineligible_students|length }}</span>
     </div>
-    <div class="delays-alert-description">Students missing a main group tag cannot participate. Edit their tags below to fix this.</div>
+    <div class="is-size-6 mb-4 has-text-danger">Students missing a main group tag cannot participate. Edit their tags below to fix this.</div>
     <div class="delays-alert-content">
       <table class="table is-fullwidth is-hoverable is-header-muted">
         <thead>
@@ -241,7 +241,7 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
             {% if student_tags_by_participation.get(participation.id, []) %}
             <div class="tags mt-1">
               {% for tag in student_tags_by_participation.get(participation.id, []) %}
-                <span class="tag is-opaque has-text-primary-35 is-small">{{ tag }}</span>
+                <span class="tag is-opaque-bg has-text-primary-35 is-small">{{ tag }}</span>
               {% endfor %}
             </div>
             {% endif %}

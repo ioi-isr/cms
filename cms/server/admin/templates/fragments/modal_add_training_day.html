@@ -16,13 +16,13 @@
                             Name (codename)
                             <span style="color: var(--tp-danger);">*</span>
                         </label>
-                        <input type="text" id="td-name" name="name" placeholder="e.g., day1" required />
+                        <input type="text" id="td-name" class="input" name="name" placeholder="e.g., day1" required />
                         <small class="modal__hint">A unique identifier for the training day contest</small>
                     </div>
 
                     <div class="modal__form-group">
                         <label for="td-description">Description</label>
-                        <input type="text" id="td-description" name="description" placeholder="e.g., Training Day 1 - Graphs" />
+                        <input type="text" class="input" id="td-description" name="description" placeholder="e.g., Training Day 1 - Graphs" />
                         <small class="modal__hint">Human-readable description (defaults to name if empty)</small>
                     </div>
 
@@ -32,15 +32,15 @@
                                 Start Time ({{ timezone_name|default('UTC') }})
                                 <span class="tp-form-info" title="When the training day starts. If not specified and groups have start times, defaults to the earliest group start time.">?</span>
                             </label>
-                            <input type="datetime-local" id="td-start" name="start" />
+                            <input type="datetime-local" id="td-start" name="start" class="input" />
                             <small class="modal__hint">Optional, defaults to earliest group time</small>
                         </div>
                         <div class="modal__form-group" style="flex: 1;">
                             <label for="td-duration">Duration</label>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="number" id="td-duration-hours" name="duration_hours" min="0" placeholder="0" style="width: 70px;" />
+                                <input type="number" id="td-duration-hours" name="duration_hours" min="0" placeholder="0" class="input" style="width: 70px;" />
                                 <span>hours</span>
-                                <input type="number" id="td-duration-minutes" name="duration_minutes" min="0" max="59" placeholder="0" style="width: 70px;" />
+                                <input type="number" id="td-duration-minutes" name="duration_minutes" min="0" max="59" placeholder="0" class="input" style="width: 70px;" />
                                 <span>minutes</span>
                             </div>
                             <small class="modal__hint">Optional</small>

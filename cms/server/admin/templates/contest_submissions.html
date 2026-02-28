@@ -8,19 +8,20 @@
 
 <div id="submissions">
 
-  <p>
-    Reevaluate all {{ submission_count }} submissions in this contest (for all datasets)
-    {{ macro_reevaluation_buttons.reevaluation_buttons(
-           admin.permission_all,
-           url("contest", contest.id, "submissions"),
-           contest_id=contest.id) }}
-    <br/>
-    {% if is_training_program|default(false) %}
-    <a href="{{ url("training_program", training_program.id, "submissions", "download") }}">Download all submissions</a>
-    {% else %}
-    <a href="{{ url("contest", contest.id, "submissions", "download") }}">Download all submissions</a>
-    {% endif %}
-  </p>
+  {% if is_training_program|default(false) %}
+    {% set download_url = url("training_program", training_program.id, "submissions", "download") %}
+  {% else %}
+    {% set download_url = url("contest", contest.id, "submissions", "download") %}
+  {% endif %}
+
+  {{ macro_submission.header(
+         admin,
+         submission_count,
+         macro_reevaluation_buttons.reevaluation_buttons_bar(
+             admin.permission_all,
+             url("contest", contest.id, "submissions"),
+             contest_id=contest.id),
+         download_url=download_url) }}
 
   {{ macro_submission.rows(
          admin,

@@ -37,8 +37,8 @@
     <form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST" id="tasks-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
-        <div class="table-container">
-            <table class="ranking-table tp-tasks-table" id="tasks-table">
+        <div class="table-container" style="width: 100%">
+            <table class="ranking-table tp-tasks-table table is-fullwidth" id="tasks-table">
                 <thead>
                     <tr>
                         <th class="grip-column no-sort"></th>
