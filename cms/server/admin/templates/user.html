@@ -203,7 +203,7 @@
           <td>{{ p.contest.description }}</td>
           <td class="has-text-centered">
             <form action="{{ url("user", user.id, "edit_participation") }}" method="POST" style="display:inline;"
-                  onsubmit="return AdminModals.confirmSubmit(event, {{ ("Are you sure you want to remove participation for " ~ p.user.username ~ " in contest \"" ~ p.contest.name ~ "\"?")|tojson|forceescape }});">
+                  onsubmit='return AdminModals.confirmSubmit(event, {{ ("Are you sure you want to remove participation for " ~ p.user.username ~ " in contest \"" ~ p.contest.name ~ "\"?")|tojson }})'>
               {{ xsrf_form_html|safe }}
               <input type="hidden" name="contest_id" value="{{ p.contest.id }}"/>
               <input type="hidden" name="operation" value="Remove"/>

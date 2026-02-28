@@ -379,7 +379,7 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                     <svg class="icon has-text-grey"><title>Participated from home</title><use href="#icon-home"/></svg>
                   {% endif %}
                   {% if attendance and attendance.recorded %}
-                    <span class="attendance-badge recorded-badge" title="Recorded">&#127909;</span>
+                    <svg class="icon has-text-grey"><title>Recorded</title><use href="#icon-video"/></svg>
                   {% endif %}
                 {% else %}
                   {% if attendance and attendance.status == 'missed' and attendance.justified %}
