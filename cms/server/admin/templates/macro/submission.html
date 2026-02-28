@@ -17,7 +17,7 @@ download_url (str|None): URL to download all submissions, or None to hide.
 
     <input type="text" class="input is-small" id="submissions_search" aria-label="Filter submissions by user, task, or status" placeholder="Filter by user, task, status..." oninput="CMS.AWSUtils.filter_table('submissions_table', this.value)" style="max-width: 280px; flex: 1 1 auto; min-width: 200px;">
 
-    <button type="button" class="button is-small" id="diff-tool-btn" onclick="(function(){ var p=document.getElementById('diffchooser-panel'); var open=p.style.display!=='none'; p.style.display=open?'none':'block'; document.getElementById('diff-tool-btn').classList.toggle('is-info',!open); var t=document.getElementById('submissions_table'); if(t){if(!open){t.classList.add('diff-open');}else{t.classList.remove('diff-open');}} })()">
+    <button type="button" class="button is-small" id="diff-tool-btn" onclick="(function(){ var p=document.getElementById('diffchooser-panel'); var open=p.style.display!=='none'; p.style.display=open?'none':'block'; document.getElementById('diff-tool-btn').classList.toggle('is-info',!open); var t=document.getElementById('submissions_table'); if(t){if(!open){t.classList.add('diff-open'); if (typeof utils.update_diffchooser === 'function') { utils.update_diffchooser(); }}else{t.classList.remove('diff-open');}} })()">
       <svg class="icon is-small"><use href="#icon-file-diff"/></svg>
       <span>Diff Tool</span>
     </button>
