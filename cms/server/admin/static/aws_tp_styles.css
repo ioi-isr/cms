@@ -1121,11 +1121,6 @@
     margin: 0;
 }
 
-.tp-section-header--wrap {
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
 /* Tasks table specific styles */
 .tp-tasks-table {
     width: 100%;
@@ -1418,17 +1413,17 @@
 }
 
 .tp-stat-icon-purple {
-    background: var(--bulma-link-95);
-    color: var(--bulma-link-35);
+    background: color-mix(in srgb, var(--bulma-link-65) 24%, transparent);
+    color: var(--bulma-link);
 }
 
 .tp-stat-icon-green {
-    background: var(--tp-success-light);
+    background: color-mix(in srgb, var(--bulma-success) 24%, transparent);
     color: var(--tp-success);
 }
 
 .tp-stat-icon-orange {
-    background: var(--tp-warning-light);
+    background: color-mix(in srgb, var(--bulma-warning) 24%, transparent);
     color: var(--tp-warning);
 }
 
@@ -1681,7 +1676,7 @@
 .tp-training-day-icon {
     width: 32px;
     height: 32px;
-    background: var(--tp-info-light);
+    background: color-mix(in srgb, var(--bulma-info) 24%, transparent);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -1770,18 +1765,6 @@
     color: white;
 }
 
-.tp-create-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--tp-primary);
-    margin-bottom: 4px;
-}
-
-.tp-create-subtitle {
-    font-size: 0.9rem;
-    color: var(--tp-text-muted);
-}
-
 /* Training Day Indicators */
 .tp-training-day-indicators {
     display: flex;
@@ -1790,29 +1773,6 @@
     margin-left: auto;
 }
 
-.tp-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.tp-indicator svg {
-    flex-shrink: 0;
-}
-
-.tp-indicator-question {
-    background: var(--tp-info-light);
-    color: var(--tp-info);
-}
-
-.tp-indicator-delay {
-    background: var(--tp-warning-light);
-    color: var(--tp-warning-dark);
-}
 
 /* Bottom stats row (for archived days counter) */
 .tp-card-stats-bottom {
@@ -2055,7 +2015,7 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    background: var(--tp-info-light);
+    background: color-mix(in srgb, var(--bulma-info) 12%, transparent);
     color: var(--tp-primary);
     border-radius: 8px;
 }
@@ -2226,38 +2186,9 @@
     position: relative;
 }
 
-.delays-alert-card-warning {
-    background: var(--tp-warning-light);
-    border: 1px solid var(--bulma-warning-70);
-}
-
 .delays-alert-card-danger {
-    background: var(--tp-danger-light);
+    background: color-mix(in srgb, var(--bulma-danger) 12%, transparent);
     border: 1px solid var(--tp-danger-border);
-}
-
-.delays-alert-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.delays-alert-header-icon {
-    font-size: 1.1rem;
-}
-
-.delays-alert-title {
-    font-size: 1rem;
-    font-weight: 700;
-}
-
-.delays-alert-card-warning .delays-alert-title {
-    color: var(--tp-warning-dark);
-}
-
-.delays-alert-card-danger .delays-alert-title {
-    color: var(--tp-danger-dark);
 }
 
 .delays-alert-count {
@@ -2274,21 +2205,8 @@
     color: white;
 }
 
-.delays-alert-card-warning .delays-alert-count {
-    background: var(--tp-warning);
-}
-
 .delays-alert-card-danger .delays-alert-count {
     background: var(--tp-danger);
-}
-
-.delays-alert-description {
-    font-size: 0.85rem;
-    margin-bottom: 12px;
-}
-
-.delays-alert-card-danger .delays-alert-description {
-    color: var(--tp-danger-dark);
 }
 
 .delays-alert-content {
@@ -2333,27 +2251,6 @@
     transform: translateY(-50%);
     color: var(--tp-text-muted);
     pointer-events: none;
-}
-
-.delays-icon-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: 1px solid var(--tp-border);
-    border-radius: 8px;
-    background: var(--tp-bg-white);
-    color: var(--tp-text-secondary);
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    font-size: 1rem;
-}
-
-.delays-icon-btn:hover {
-    background: var(--tp-bg-gray);
-    border-color: var(--tp-border-dark);
 }
 
 .delays-timing-label {
@@ -3140,7 +3037,7 @@
 
 /* Status card color variants */
 .overview-status-success .overview-status-card-icon {
-    background: var(--tp-success-light);
+    background: color-mix(in srgb, var(--bulma-success) 24%, transparent);
     color: var(--tp-success);
 }
 .overview-status-success {
@@ -3148,7 +3045,7 @@
 }
 
 .overview-status-info .overview-status-card-icon {
-    background: var(--tp-info-light);
+    background: color-mix(in srgb, var(--bulma-info) 24%, transparent);
     color: var(--tp-info);
 }
 .overview-status-info {
@@ -3156,7 +3053,7 @@
 }
 
 .overview-status-warning .overview-status-card-icon {
-    background: var(--tp-warning-light);
+    background: color-mix(in srgb, var(--bulma-warning) 24%, transparent);
     color: var(--tp-warning);
 }
 .overview-status-warning {
@@ -3164,7 +3061,7 @@
 }
 
 .overview-status-danger .overview-status-card-icon {
-    background: var(--tp-danger-light);
+    background: color-mix(in srgb, var(--bulma-danger) 24%, transparent);
     color: var(--tp-danger);
 }
 .overview-status-danger {

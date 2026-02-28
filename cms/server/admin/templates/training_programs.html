@@ -131,17 +131,17 @@
                             <div class="has-text-grey-light is-size-7">Unscheduled</div>
                             {% endif %}
                         </div>
-                        <div class="tp-training-day-indicators">
+                        <div class="tags is-align-items-center m-0">
                             {% if td_notif.get("unanswered_questions", 0) > 0 %}
-                            <span class="tp-indicator tp-indicator-question" title="{{ td_notif.unanswered_questions }} unanswered question{{ 's' if td_notif.unanswered_questions != 1 else '' }}">
+                            <span class="tag is-rounded is-bordered has-text-danger" title="{{ td_notif.unanswered_questions }} unanswered question{{ 's' if td_notif.unanswered_questions != 1 else '' }}">
                                 <svg class="icon is-small"><use href="#icon-help-circle"/></svg>
-                                {{ td_notif.unanswered_questions }}
+                                <span>{{ td_notif.unanswered_questions }}</span>
                             </span>
                             {% endif %}
                             {% if td_notif.get("pending_delay_requests", 0) > 0 %}
-                            <span class="tp-indicator tp-indicator-delay" title="{{ td_notif.pending_delay_requests }} pending delay request{{ 's' if td_notif.pending_delay_requests != 1 else '' }}">
+                            <span class="tag is-rounded is-bordered has-text-warning" title="{{ td_notif.pending_delay_requests }} pending delay request{{ 's' if td_notif.pending_delay_requests != 1 else '' }}">
                                 <svg class="icon is-small"><use href="#icon-clock"/></svg>
-                                {{ td_notif.pending_delay_requests }}
+                                <span></span>{{ td_notif.pending_delay_requests }}</span>
                             </span>
                             {% endif %}
                         </div>
@@ -171,10 +171,10 @@
         {% if admin.permission_all %}
         <button type="button" class="tp-create-card" onclick="MicroModal.show('modal-add-program')">
             <div class="tp-create-icon">
-                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <svg class="icon"><use href="#icon-plus"/></svg>
             </div>
-            <div class="tp-create-title">Create New Program</div>
-            <div class="tp-create-subtitle">Start a new training season</div>
+            <div class="has-text-weight-bold has-text-primary mb-1 is-size-5">Create New Program</div>
+            <div class="has-text-grey is-size-6">Start a new training season</div>
         </button>
         {% endif %}
     </div>
