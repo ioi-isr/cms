@@ -1,4 +1,4 @@
-html {
+﻿html {
     font-size: 100%;
 }
 
@@ -192,7 +192,7 @@ pre {
     border: 1px solid var(--tp-border-light);
     border-radius: 8px;
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--bulma-border-weak) 22%, transparent) transparent;
+    scrollbar-color: color-mix(in srgb, var(--bulma-border-weak) 22%, transparent);
 }
 
 .table-container::-webkit-scrollbar-thumb {

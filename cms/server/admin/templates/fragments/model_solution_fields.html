@@ -17,7 +17,7 @@
   {% if language_required %}
   <div class="modal__form-group">
       <label for="{{ id_prefix }}-language">Language:</label>
-      <select id="{{ id_prefix }}-language" name="language">
+      <select id="{{ id_prefix }}-language" name="language" class="tp-form-input">
           {% for lang in allowed_langs %}
           <option value="{{ lang }}" {{ "selected" if selected_language is not none and selected_language == lang else "" }}>{{ lang }}</option>
           {% endfor %}
