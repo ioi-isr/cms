@@ -10,18 +10,24 @@ from cms.db import ContestFolder, Contest, TrainingDay
 from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 
-from .base import BaseHandler, SimpleHandler, require_permission
+from .base import BaseHandler, require_permission
 
 
-class FolderListHandler(SimpleHandler("folders.html")):
+class FolderListHandler(BaseHandler):
+    """Root folders page – shows top-level folders and unassigned contests."""
+
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self):
         self.r_params = self.render_params()
-        self.r_params["folders"] = (
+        all_folders = (
             self.sql_session.query(ContestFolder)
             .order_by(ContestFolder.name)
             .all()
         )
+        self.r_params["root_folders"] = [
+            f for f in all_folders if f.parent_id is None
+        ]
+        self.r_params["all_folders"] = all_folders
         self.r_params["root_contests"] = (
             exclude_internal_contests(
                 self.sql_session.query(Contest).filter(Contest.folder_id.is_(None))
@@ -42,10 +48,41 @@ class FolderHandler(BaseHandler):
         folder = self.safe_get_item(ContestFolder, folder_id)
         self.r_params = self.render_params()
         self.r_params["folder"] = folder
+        # Subfolders ordered by name
+        self.r_params["subfolders"] = sorted(
+            folder.children, key=lambda f: f.name
+        )
+        # Contests in this folder (exclude internal training-day contests)
+        self.r_params["folder_contests"] = (
+            exclude_internal_contests(
+                self.sql_session.query(Contest)
+                .filter(Contest.folder == folder)
+            )
+            .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
+            .filter(TrainingDay.id.is_(None))
+            .order_by(Contest.name)
+            .all()
+        )
         # Potential parents: all except self and descendants
-        all_folders = self.sql_session.query(ContestFolder).order_by(ContestFolder.name).all()
-        # Exclude self and descendants to prevent cycles
-        self.r_params["possible_parents"] = [f for f in all_folders if f is not folder and not f.is_descendant_of(folder)]
+        all_folders = (
+            self.sql_session.query(ContestFolder)
+            .order_by(ContestFolder.name)
+            .all()
+        )
+        self.r_params["possible_parents"] = [
+            f for f in all_folders
+            if f is not folder and not f.is_descendant_of(folder)
+        ]
+        # All folders (for subfolder edit modal parent dropdowns)
+        self.r_params["all_folders"] = all_folders
+        # Breadcrumb: ancestors from root down to this folder
+        breadcrumbs = []
+        cur = folder.parent
+        while cur is not None:
+            breadcrumbs.append(cur)
+            cur = cur.parent
+        breadcrumbs.reverse()
+        self.r_params["breadcrumbs"] = breadcrumbs
         self.render("folder.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

@@ -1,0 +1,55 @@
+<!-- Edit Folder Modal Fragment (one per folder) -->
+<!-- Required context: admin, url, xsrf_form_html, folder (the folder being edited), possible_parents -->
+
+{% from "macro/bulma_file_input.html" import form_field %}
+{% from "macro/modal.html" import modal_header, modal_footer %}
+
+{% if admin is defined and admin.permission_all %}
+<div class="modal modal--medium" id="modal-edit-folder-{{ folder.id }}" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-edit-folder-title-{{ folder.id }}">
+            {{ modal_header("Edit Folder: " ~ folder.name, "modal-edit-folder-title-" ~ folder.id) }}
+            <form action="{{ url("folder", folder.id) }}" method="POST">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    <div class="columns is-multiline">
+                        <div class="column is-half">
+                            {{ form_field('name', 'Name', required=true, icon='folder', value=folder.name) }}
+                        </div>
+                        <div class="column is-half">
+                            {{ form_field('description', 'Description', value=folder.description, hint='Defaults to name if left blank.') }}
+                        </div>
+                        <div class="column is-half">
+                            <div class="field">
+                                <label for="edit-folder-parent-{{ folder.id }}" class="label">Parent</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select id="edit-folder-parent-{{ folder.id }}" name="parent_id">
+                                            <option value="none">(root)</option>
+                                            {% for f in possible_parents %}
+                                            <option value="{{ f.id }}" {{ 'selected' if f.id == (folder.parent.id if folder.parent else -1) else '' }}>{{ f.name }}{% if f.description %} — {{ f.description }}{% endif %}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-half">
+                            <div class="field">
+                                <label for="edit-folder-hidden-{{ folder.id }}" class="label">Hidden</label>
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input id="edit-folder-hidden-{{ folder.id }}" type="checkbox" name="hidden" value="1" {{ 'checked' if folder.hidden else '' }} />
+                                        Unlisted in contest server
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+                {{ modal_footer("Save Changes", submit_icon="#icon-check") }}
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
