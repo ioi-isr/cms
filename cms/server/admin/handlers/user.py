@@ -680,6 +680,7 @@ class TeamHandler(BaseHandler):
     def get(self, team_id):
         self.redirect(self.url("teams"))
 
+    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, team_id):
         is_ajax = "application/json" in self.request.headers.get("Accept", "")
         fallback_page = self.url("teams")
