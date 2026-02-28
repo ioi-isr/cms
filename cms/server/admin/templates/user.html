@@ -152,7 +152,7 @@
       <div class="field is-grouped is-grouped-multiline is-align-items-flex-end">
         <div class="control">
           <label class="label is-display-inline" for="contest_id">Add a new participation: </label>
-          <select name="contest_id" id="contest_id" class="searchable-select">
+          <select name="contest_id" id="contest_id" class="searchable-select" required>
             <option value="" selected disabled hidden>Select a contest...</option>
             {% for c in unassigned_contests %}
             <option value="{{ c.id }}">

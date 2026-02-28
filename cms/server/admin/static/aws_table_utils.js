@@ -202,7 +202,7 @@ CMS.AWSTableUtils.filterTable = function(table_id, search_text) {
             return;
         }
         var text = "";
-        var cells = row.querySelectorAll(":scope > td");
+        var cells = row.querySelectorAll(":scope > td, :scope > th");
         cells.forEach(function (td) {
             if (td.querySelector("table")) {
                 var clone = td.cloneNode(true);
