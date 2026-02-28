@@ -51,10 +51,10 @@
                 {% for f in root_folders %}
                 <tr>
                     <td>
-                        <a href="{{ url("folder", f.id) }}" class="is-flex is-align-items-center" style="gap: 8px; text-decoration: none; color: inherit;">
+                        <div class="is-flex is-align-items-center" style="gap: 8px;">
                             <svg class="icon is-small has-text-info"><use href="#icon-folder"/></svg>
-                            <span class="has-text-weight-semibold">{{ f.name }}</span>
-                        </a>
+                            <a class="has-text-weight-semibold" href="{{ url("folder", f.id) }}">{{ f.name }}</a>
+                        </div>
                     </td>
                     <td>{{ f.description }}</td>
                     <td class="has-text-centered">
@@ -89,10 +89,10 @@
                 {% for c in root_contests %}
                 <tr>
                     <td>
-                        <a href="{{ url("contest", c.id) }}" class="is-flex is-align-items-center" style="gap: 8px; text-decoration: none; color: inherit;">
+                        <div class="is-flex is-align-items-center" style="gap: 8px;">
                             <svg class="icon is-small has-text-warning"><use href="#icon-trophy"/></svg>
-                            <span class="has-text-weight-semibold">{{ c.name }}</span>
-                        </a>
+                            <a class="has-text-weight-semibold" href="{{ url("contest", c.id) }}">{{ c.name }}</a>
+                        </div>
                     </td>
                     <td>{{ c.description }}</td>
                     <td class="has-text-centered"></td>
