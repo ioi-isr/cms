@@ -141,7 +141,7 @@
                             {% if td_notif.get("pending_delay_requests", 0) > 0 %}
                             <span class="tag is-rounded is-bordered has-text-warning" title="{{ td_notif.pending_delay_requests }} pending delay request{{ 's' if td_notif.pending_delay_requests != 1 else '' }}">
                                 <svg class="icon is-small"><use href="#icon-clock"/></svg>
-                                <span></span>{{ td_notif.pending_delay_requests }}</span>
+                                <span>{{ td_notif.pending_delay_requests }}</span>
                             </span>
                             {% endif %}
                         </div>
