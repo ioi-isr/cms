@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macro/folder_table.html" import folder_contents_table %}
 
 {% block core %}
     <!-- Header -->
@@ -30,86 +31,13 @@
         {% endif %}
     </div>
     {% else %}
-    <!-- Search -->
-    <div class="table-search" style="margin-bottom: 16px;">
-        <input type="text" class="input" placeholder="Search folders and contests..." aria-label="Search folders and contests" oninput="CMS.AWSUtils.filter_table('folders-table', this.value)" style="max-width: 350px;">
-    </div>
-
-    <div class="table-container">
-        <table class="table is-bordered is-striped is-hoverable" id="folders-table">
-            <thead>
-                <tr>
-                    <th class="has-text-left">Name</th>
-                    <th class="has-text-left">Description</th>
-                    <th class="has-text-centered" style="width: 100px;">Status</th>
-                    {% if admin.permission_all %}
-                    <th class="has-text-centered" style="width: 100px;">Actions</th>
-                    {% endif %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for f in root_folders %}
-                <tr>
-                    <td>
-                        <div class="is-flex is-align-items-center" style="gap: 8px;">
-                            <svg class="icon is-small has-text-info"><use href="#icon-folder"/></svg>
-                            <a class="has-text-weight-semibold" href="{{ url("folder", f.id) }}">{{ f.name }}</a>
-                        </div>
-                    </td>
-                    <td>{{ f.description }}</td>
-                    <td class="has-text-centered">
-                        {% if f.hidden %}
-                        <span class="tag is-bordered has-text-grey">
-                            <svg class="icon is-small" style="width: 12px; height: 12px; margin-right: 4px;"><use href="#icon-eye"/></svg>
-                            Hidden
-                        </span>
-                        {% endif %}
-                    </td>
-                    {% if admin.permission_all %}
-                    <td class="has-text-centered">
-                        <div class="is-flex is-justify-content-center" style="gap: 4px;">
-                            <button type="button" class="btn-icon-only" title="Edit folder" aria-label="Edit folder"
-                                    onclick="MicroModal.show('modal-edit-folder-{{ f.id }}')">
-                                <svg class="icon is-small"><use href="#icon-edit"/></svg>
-                            </button>
-                            <button type="button" class="btn-icon-only" title="Remove folder" aria-label="Remove folder"
-                                    onclick='AdminModals.deleteResource({
-                                        title: "Remove Folder",
-                                        message: {{ ("Are you sure you want to remove folder \"" ~ f.name ~ "\"? Its subfolders and contests will be moved to its parent (or to root if no parent exists).")|tojson|forceescape }},
-                                        deleteUrl: {{ url("folders", f.id, "remove")|tojson|forceescape }},
-                                        confirmLabel: "Yes, Remove"
-                                    })'>
-                                <svg class="icon is-small"><use href="#icon-trash"/></svg>
-                            </button>
-                        </div>
-                    </td>
-                    {% endif %}
-                </tr>
-                {% endfor %}
-                {% for c in root_contests %}
-                <tr>
-                    <td>
-                        <div class="is-flex is-align-items-center" style="gap: 8px;">
-                            <svg class="icon is-small has-text-warning"><use href="#icon-trophy"/></svg>
-                            <a class="has-text-weight-semibold" href="{{ url("contest", c.id) }}">{{ c.name }}</a>
-                        </div>
-                    </td>
-                    <td>{{ c.description }}</td>
-                    <td class="has-text-centered"></td>
-                    {% if admin.permission_all %}
-                    <td class="has-text-centered"></td>
-                    {% endif %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    {{ folder_contents_table("folders-table", root_folders, root_contests) }}
     {% endif %}
 
 {# Edit Folder Modals (one per root folder) #}
 {% if admin is defined and admin.permission_all %}
     {% for f in root_folders %}
-        {% with folder = f, possible_parents = all_folders|rejectattr("id", "equalto", f.id)|list %}
+        {% with folder = f, possible_parents = folder_list|rejectattr("id", "equalto", f.id)|list %}
         {% include "fragments/modal_edit_folder.html" %}
         {% endwith %}
     {% endfor %}

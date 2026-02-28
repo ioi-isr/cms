@@ -13,30 +13,50 @@ from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 
 
+def _folder_breadcrumbs(handler, folder):
+    """Build breadcrumb dicts (name, url, icon) from root to *folder*."""
+    parts = []
+    cur = folder
+    while cur is not None:
+        parts.append(
+            {
+                "name": cur.name,
+                "url": handler.url("folder", cur.id),
+                "icon": "icon-folder",
+            }
+        )
+        cur = cur.parent
+    parts.reverse()
+    return parts
+
+
+def _visible_contests(session, folder=None):
+    """Return non-internal, non-training-day contests in *folder* (or root)."""
+    q = session.query(Contest)
+    if folder is not None:
+        q = q.filter(Contest.folder == folder)
+    else:
+        q = q.filter(Contest.folder_id.is_(None))
+    return (
+        exclude_internal_contests(q)
+        .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
+        .filter(TrainingDay.id.is_(None))
+        .order_by(Contest.name)
+        .all()
+    )
+
+
 class FolderListHandler(BaseHandler):
     """Root folders page – shows top-level folders and unassigned contests."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self):
         self.r_params = self.render_params()
-        all_folders = (
-            self.sql_session.query(ContestFolder)
-            .order_by(ContestFolder.name)
-            .all()
-        )
+        # folder_list and root_contests are already in render_params;
+        # derive root_folders from folder_list to avoid an extra query.
         self.r_params["root_folders"] = [
-            f for f in all_folders if f.parent_id is None
+            f for f in self.r_params["folder_list"] if f.parent_id is None
         ]
-        self.r_params["all_folders"] = all_folders
-        self.r_params["root_contests"] = (
-            exclude_internal_contests(
-                self.sql_session.query(Contest).filter(Contest.folder_id.is_(None))
-            )
-            .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
-            .filter(TrainingDay.id.is_(None))
-            .order_by(Contest.name)
-            .all()
-        )
         self.render("folders.html", **self.r_params)
 
 
@@ -53,36 +73,16 @@ class FolderHandler(BaseHandler):
             folder.children, key=lambda f: f.name
         )
         # Contests in this folder (exclude internal training-day contests)
-        self.r_params["folder_contests"] = (
-            exclude_internal_contests(
-                self.sql_session.query(Contest)
-                .filter(Contest.folder == folder)
-            )
-            .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
-            .filter(TrainingDay.id.is_(None))
-            .order_by(Contest.name)
-            .all()
+        self.r_params["folder_contests"] = _visible_contests(
+            self.sql_session, folder
         )
         # Potential parents: all except self and descendants
-        all_folders = (
-            self.sql_session.query(ContestFolder)
-            .order_by(ContestFolder.name)
-            .all()
-        )
         self.r_params["possible_parents"] = [
-            f for f in all_folders
+            f for f in self.r_params["folder_list"]
             if f is not folder and not f.is_descendant_of(folder)
         ]
-        # All folders (for subfolder edit modal parent dropdowns)
-        self.r_params["all_folders"] = all_folders
-        # Breadcrumb: ancestors from root down to this folder
-        breadcrumbs = []
-        cur = folder.parent
-        while cur is not None:
-            breadcrumbs.append(cur)
-            cur = cur.parent
-        breadcrumbs.reverse()
-        self.r_params["breadcrumbs"] = breadcrumbs
+        # Breadcrumb: use the same dict format as base.html expects
+        self.r_params["breadcrumbs"] = _folder_breadcrumbs(self, folder)
         self.render("folder.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

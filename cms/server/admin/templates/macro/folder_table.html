@@ -1,0 +1,109 @@
+{#
+  Shared macros for the folder / contest listing table used by both
+  folders.html (root level) and folder.html (individual folder).
+
+  Required context variables: url, admin
+#}
+
+{# ── Full table with search, thead and tbody ─────────────────────── #}
+{% macro folder_contents_table(table_id, folders, contests, show_actions=true) %}
+<div style="margin-bottom: 16px;">
+    <input type="text" class="input" placeholder="Search folders and contests..."
+           aria-label="Search"
+           oninput="CMS.AWSUtils.filter_table('{{ table_id }}', this.value)"
+           style="max-width: 350px;">
+</div>
+
+<div class="table-container">
+    <table class="table is-bordered is-striped is-hoverable" id="{{ table_id }}">
+        <thead>
+            <tr>
+                <th class="has-text-left">Name</th>
+                <th class="has-text-left">Description</th>
+                <th class="has-text-centered" style="width: 120px;">Contents</th>
+                <th class="has-text-centered" style="width: 100px;">Status</th>
+                {% if show_actions and admin.permission_all %}
+                <th class="has-text-centered" style="width: 100px;">Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in folders %}
+            {{ folder_row(f, show_actions) }}
+            {% endfor %}
+            {% for c in contests %}
+            {{ contest_row(c, show_actions) }}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+{# ── Single folder row ───────────────────────────────────────────── #}
+{% macro folder_row(f, show_actions=true) %}
+<tr>
+    <td>
+        <div class="is-flex is-align-items-center" style="gap: 8px;">
+            <svg class="icon is-small has-text-info"><use href="#icon-folder"/></svg>
+            <a class="has-text-weight-semibold" href="{{ url("folder", f.id) }}">{{ f.name }}</a>
+        </div>
+    </td>
+    <td>{{ f.description }}</td>
+    <td class="has-text-centered">
+        {% set n_sub = f.children|length %}
+        {% set n_con = f.contests|length %}
+        {% if n_sub or n_con %}
+        <span class="has-text-grey is-size-7">
+            {%- if n_sub %}{{ n_sub }} folder{{ 's' if n_sub != 1 else '' }}{% endif -%}
+            {%- if n_sub and n_con %}, {% endif -%}
+            {%- if n_con %}{{ n_con }} contest{{ 's' if n_con != 1 else '' }}{% endif -%}
+        </span>
+        {% endif %}
+    </td>
+    <td class="has-text-centered">
+        {% if f.hidden %}
+        <span class="tag is-bordered has-text-grey">
+            <svg class="icon is-small" style="width: 12px; height: 12px; margin-right: 4px;"><use href="#icon-eye"/></svg>
+            Hidden
+        </span>
+        {% endif %}
+    </td>
+    {% if show_actions and admin.permission_all %}
+    <td class="has-text-centered">
+        <div class="is-flex is-justify-content-center" style="gap: 4px;">
+            <button type="button" class="btn-icon-only" title="Edit folder" aria-label="Edit folder"
+                    onclick="MicroModal.show('modal-edit-folder-{{ f.id }}')">
+                <svg class="icon is-small"><use href="#icon-edit"/></svg>
+            </button>
+            <button type="button" class="btn-icon-only" title="Remove folder" aria-label="Remove folder"
+                    onclick='AdminModals.deleteResource({
+                        title: "Remove Folder",
+                        message: {{ ("Are you sure you want to remove folder \"" ~ f.name ~ "\"? Its subfolders and contests will be moved to its parent (or to root if no parent exists).")|tojson|forceescape }},
+                        deleteUrl: {{ url("folders", f.id, "remove")|tojson|forceescape }},
+                        confirmLabel: "Yes, Remove"
+                    })'>
+                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            </button>
+        </div>
+    </td>
+    {% endif %}
+</tr>
+{% endmacro %}
+
+{# ── Single contest row ──────────────────────────────────────────── #}
+{% macro contest_row(c, show_actions=true) %}
+<tr>
+    <td>
+        <div class="is-flex is-align-items-center" style="gap: 8px;">
+            <svg class="icon is-small has-text-warning"><use href="#icon-trophy"/></svg>
+            <a class="has-text-weight-semibold" href="{{ url("contest", c.id) }}">{{ c.name }}</a>
+        </div>
+    </td>
+    <td>{{ c.description }}</td>
+    <td class="has-text-centered"></td>
+    <td class="has-text-centered"></td>
+    {% if show_actions and admin.permission_all %}
+    <td class="has-text-centered"></td>
+    {% endif %}
+</tr>
+{% endmacro %}
