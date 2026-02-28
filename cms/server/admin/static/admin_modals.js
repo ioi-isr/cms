@@ -458,11 +458,23 @@ AdminModals._showTeamDialog = function (opts) {
                 },
                 body: formData
             }).then(function (response) {
-                return response.json().then(function (data) {
-                    if (!response.ok) {
-                        throw new Error(data.error || 'Failed to ' + opts.errorVerb + ' team');
+                var contentType = (response.headers.get('content-type') || '').toLowerCase();
+                if (contentType.indexOf('application/json') !== -1) {
+                    return response.json().then(function (data) {
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Failed to ' + opts.errorVerb + ' team');
+                        }
+                        return data;
+                    });
+                }
+                // Non-JSON response (HTML error page, empty body, etc.)
+                return response.text().then(function (body) {
+                    var msg = 'Failed to ' + opts.errorVerb + ' team: ' +
+                        (response.statusText || 'HTTP ' + response.status);
+                    if (body && body.length < 200) {
+                        msg += ' — ' + body;
                     }
-                    return data;
+                    throw new Error(msg);
                 });
             }).catch(function (error) {
                 Swal.showValidationMessage(error.message || 'Network error occurred');
