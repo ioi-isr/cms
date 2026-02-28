@@ -780,12 +780,6 @@
     z-index: 10;
 }
 
-.ranking-table .empty-cell-content {
-    color: var(--tp-border-dark);
-    text-align: center;
-    font-weight: normal;
-}
-
 .inaccessible-cell {
     background-color: var(--tp-bg-gray);
     background-image: radial-gradient(var(--tp-border) 1px, transparent 1px);
