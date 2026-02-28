@@ -29,6 +29,7 @@
 
 import csv
 import io
+import json
 import logging
 import re
 from datetime import date
@@ -333,49 +334,62 @@ class ExportUsersHandler(BaseHandler):
 
 
 class ImportUsersHandler(BaseHandler):
-    """Import users from a CSV file.
+    """Process a CSV file upload and return parsed user data as JSON.
 
-    GET shows the upload form.
-    POST processes the CSV and shows results with conflicts.
+    The upload form lives inside a MicroModal dialog on the users page,
+    so there is no standalone GET page.  The POST endpoint returns JSON
+    when the request includes ``Accept: application/json`` (the normal
+    modal path) or falls back to a redirect for non-AJAX callers.
     """
 
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self):
-        self.r_params = self.render_params()
-        self.render("import_users.html", **self.r_params)
+    def _is_ajax(self):
+        accept = self.request.headers.get("Accept", "")
+        return "application/json" in accept
+
+    def _json_error(self, message, status=400):
+        self.set_status(status)
+        self.set_header("Content-Type", "application/json")
+        self.write(json.dumps({"error": message}))
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("users", "import")
-
         if "csv_file" not in self.request.files:
+            if self._is_ajax():
+                self._json_error("Please select a CSV file to upload.")
+                return
             self.service.add_notification(
                 make_datetime(),
                 "No file uploaded",
                 "Please select a CSV file to upload.",
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("users"))
             return
 
         csv_file = self.request.files["csv_file"][0]
         filename = csv_file["filename"]
 
         if not filename.lower().endswith(".csv"):
+            if self._is_ajax():
+                self._json_error("Only CSV files are accepted.")
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid file type", "Only CSV files are accepted."
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("users"))
             return
 
         try:
             content = csv_file["body"].decode("utf-8")
         except UnicodeDecodeError:
+            if self._is_ajax():
+                self._json_error("CSV file must be UTF-8 encoded.")
+                return
             self.service.add_notification(
                 make_datetime(),
                 "Invalid file encoding",
                 "CSV file must be UTF-8 encoded.",
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("users"))
             return
 
         reader = csv.DictReader(io.StringIO(content))
@@ -395,12 +409,14 @@ class ImportUsersHandler(BaseHandler):
         if not reader.fieldnames or not expected_headers.issubset(
             set(reader.fieldnames)
         ):
+            msg = f"CSV must have headers: {', '.join(sorted(expected_headers))}"
+            if self._is_ajax():
+                self._json_error(msg)
+                return
             self.service.add_notification(
-                make_datetime(),
-                "Invalid CSV format",
-                f"CSV must have headers: {', '.join(expected_headers)}",
+                make_datetime(), "Invalid CSV format", msg,
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("users"))
             return
 
         new_users = []
@@ -512,32 +528,58 @@ class ImportUsersHandler(BaseHandler):
             else:
                 new_users.append(user_data)
 
-        self.r_params = self.render_params()
-        self.r_params["new_users"] = new_users
-        self.r_params["failed_users"] = failed_users
-        self.r_params["existing_users"] = existing_users
-        self.render("import_users_confirm.html", **self.r_params)
+        result = {
+            "new_users": new_users,
+            "failed_users": failed_users,
+            "existing_users": existing_users,
+        }
+
+        if self._is_ajax():
+            self.set_header("Content-Type", "application/json")
+            self.write(json.dumps(result))
+            return
+
+        # Fallback for non-AJAX: redirect back to users page
+        self.redirect(self.url("users"))
 
 
 class ImportUsersConfirmHandler(BaseHandler):
-    """Confirm and execute the user import."""
+    """Confirm and execute the user import via AJAX."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        import json
-
-        new_users_json = self.get_argument("new_users", "[]")
-        existing_users_json = self.get_argument("existing_users", "[]")
+        is_ajax = "application/json" in self.request.headers.get("Accept", "")
 
         try:
-            new_users = json.loads(new_users_json)
-            existing_users = json.loads(existing_users_json)
-        except json.JSONDecodeError:
-            self.service.add_notification(
-                make_datetime(), "Invalid data", "Failed to parse user data."
-            )
-            self.redirect(self.url("users"))
-            return
+            body = json.loads(self.request.body)
+            new_users = body.get("new_users", [])
+            existing_users = body.get("existing_users", [])
+            update_user_ids = [
+                str(uid) for uid in body.get("update_user_ids", [])
+            ]
+        except (json.JSONDecodeError, AttributeError):
+            # Fallback for form-encoded requests
+            new_users_json = self.get_argument("new_users", "[]")
+            existing_users_json = self.get_argument("existing_users", "[]")
+            try:
+                new_users = json.loads(new_users_json)
+                existing_users = json.loads(existing_users_json)
+            except json.JSONDecodeError:
+                if is_ajax:
+                    self.set_status(400)
+                    self.set_header("Content-Type", "application/json")
+                    self.write(json.dumps(
+                        {"error": "Failed to parse user data."}
+                    ))
+                    return
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid data",
+                    "Failed to parse user data.",
+                )
+                self.redirect(self.url("users"))
+                return
+            update_user_ids = self.get_arguments("update_user")
 
         created_count = 0
         updated_count = 0
@@ -564,8 +606,6 @@ class ImportUsersConfirmHandler(BaseHandler):
                 errors.append(
                     f"Failed to create user {user_data['username']}: {str(error)}"
                 )
-
-        update_user_ids = self.get_arguments("update_user")
 
         for user_data in existing_users:
             user_id = str(user_data["existing_id"])
@@ -599,10 +639,22 @@ class ImportUsersConfirmHandler(BaseHandler):
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()
-            message = f"Successfully created {created_count} user(s) and updated {updated_count} user(s)."
+            message = (f"Successfully created {created_count} user(s)"
+                       f" and updated {updated_count} user(s).")
             if errors:
                 message += f" Errors: {'; '.join(errors)}"
-            self.service.add_notification(make_datetime(), "Import completed", message)
+            self.service.add_notification(
+                make_datetime(), "Import completed", message
+            )
+
+        if is_ajax:
+            self.set_header("Content-Type", "application/json")
+            self.write(json.dumps({
+                "created": created_count,
+                "updated": updated_count,
+                "errors": errors,
+            }))
+            return
 
         self.redirect(self.url("users"))
 

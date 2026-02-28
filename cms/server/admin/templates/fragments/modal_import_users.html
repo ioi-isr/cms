@@ -1,0 +1,73 @@
+<!-- Import Users Modal Fragment (2-step: upload CSV, then confirm) -->
+<!-- Required context: admin, url, xsrf_form_html -->
+
+{% from "macro/modal.html" import modal_header, modal_footer %}
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
+{% if admin is defined and admin.permission_all %}
+<div class="modal modal--wide" id="modal-import-users" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-import-users-title">
+
+            <!-- ===== Step 1: File Upload ===== -->
+            <div id="import-users-step-upload">
+                {{ modal_header("Import Users from CSV", "modal-import-users-title") }}
+                <form id="import-users-upload-form" enctype="multipart/form-data" action="{{ url("users", "import") }}">
+                    {{ xsrf_form_html|safe }}
+                    <main class="modal__content">
+                        <div class="modal__form-group">
+                            <label>
+                                CSV File
+                                <span class="has-text-danger">*</span>
+                            </label>
+                            {{ bulma_file_input("import-users-file", "csv_file", ".csv", required=true, button_text="Choose CSV file...") }}
+                            <small class="modal__hint">Upload a UTF-8 encoded CSV file.</small>
+                        </div>
+
+                        <div class="modal__warning">
+                            <strong>Required columns:</strong>
+                            First name, Last name, Username, Password, Plain text / Hash.
+                            <br>
+                            <strong>Optional columns:</strong>
+                            E-mail, Date of birth (YYYY-MM-DD), Timezone, Preferred languages.
+                            <br>
+                            <strong>Note:</strong> Passwords marked as "Plain text" will be hashed using bcrypt on import.
+                        </div>
+
+                        <div id="import-users-upload-error" class="modal__warning--danger" style="display:none;">
+                            <p class="modal__warning-body" id="import-users-upload-error-text"></p>
+                        </div>
+                    </main>
+                    <footer class="modal__footer">
+                        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
+                        <button type="submit" class="button is-primary" id="import-users-upload-btn">
+                            <svg class="icon is-small"><use href="#icon-upload"/></svg>
+                            <span>Upload &amp; Process</span>
+                        </button>
+                    </footer>
+                </form>
+            </div>
+
+            <!-- ===== Step 2: Confirmation ===== -->
+            <div id="import-users-step-confirm" style="display:none;">
+                <header class="modal__header">
+                    <h2 class="modal__title" id="modal-import-users-confirm-title">Import Users - Confirm</h2>
+                    <button type="button" class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                </header>
+                <main class="modal__content" id="import-users-confirm-body">
+                    <!-- Populated by JS -->
+                </main>
+                <footer class="modal__footer">
+                    <button type="button" class="button" id="import-users-back-btn">
+                        <span>Back</span>
+                    </button>
+                    <button type="button" class="button is-primary" id="import-users-confirm-btn" style="display:none;">
+                        <svg class="icon is-small"><use href="#icon-check"/></svg>
+                        <span>Confirm Import</span>
+                    </button>
+                </footer>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endif %}
