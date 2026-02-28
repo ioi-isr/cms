@@ -37,7 +37,7 @@ from cmscontrib.importing import ImportDataError
 from cmscontrib.loaders import choose_loader
 from cmscontrib.loaders.base_loader import LoaderValidationError
 
-from .base import BaseHandler, SimpleHandler, require_permission
+from .base import BaseHandler, require_permission
 from .dataset import validate_template
 
 
@@ -187,9 +187,12 @@ def _inject_templates_into_yaml(task_path, input_template, output_template):
         logger.warning("Failed to inject templates into task.yaml: %s", e)
 
 
-class ImportTaskHandler(
-        SimpleHandler("import_task.html", permission_all=True)):
+class ImportTaskHandler(BaseHandler):
     """Handler for importing a task from a zip file.
+
+    GET redirects to the tasks list (the old import_task.html page has
+    been replaced by an inline modal on the tasks page).
+    POST processes the uploaded zip archive.
 
     Model solutions found in the task archive are imported with default
     expected score ranges (0-100) if no metadata is provided in task.yaml.
@@ -197,8 +200,12 @@ class ImportTaskHandler(
     solutions configuration page.
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self):
+        self.redirect(self.url("tasks"))
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("tasks", "import")
+        fallback_page = self.url("tasks")
 
         task_file = _validate_zip_upload(self, "task_file", fallback_page)
         if task_file is None:
@@ -300,14 +307,20 @@ class ImportTaskHandler(
                                  log_error=True)
 
 
-class ImportContestHandler(
-        SimpleHandler("import_contest.html", permission_all=True)):
+class ImportContestHandler(BaseHandler):
     """Handler for importing a contest from a zip file.
 
+    GET redirects to the contests list (the old import_contest.html page
+    has been replaced by an inline modal on the contests page).
+    POST processes the uploaded zip archive.
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self):
+        self.redirect(self.url("contests"))
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("contests", "import")
+        fallback_page = self.url("contests")
 
         contest_file = _validate_zip_upload(self, "contest_file", fallback_page)
         if contest_file is None:

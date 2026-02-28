@@ -1,0 +1,76 @@
+<!-- Import Contest Modal Fragment -->
+<!-- Include this fragment in pages where the "Import Contest" modal is needed -->
+<!-- Required context: admin, url, xsrf_form_html -->
+
+{% from "macro/modal.html" import modal_header, modal_footer %}
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
+{% if admin is defined and admin.permission_all %}
+<div class="modal modal--wide" id="modal-import-contest" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-import-contest-title">
+            {{ modal_header("Import Contest from ZIP", "modal-import-contest-title") }}
+            <form enctype="multipart/form-data" action="{{ url("contests", "import") }}" method="POST" id="import-contest-form">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    <div class="modal__form-group">
+                        <label>
+                            Contest Archive (ZIP)
+                            <span class="has-text-danger">*</span>
+                        </label>
+                        {{ bulma_file_input("import-contest-file", "contest_file", ".zip", required=true, button_text="Choose ZIP archive...") }}
+                        <small class="modal__hint">Upload a zip file containing the contest data in a supported format (Italian YAML, Polygon).</small>
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label class="label">Import Options</label>
+                        <label class="checkbox">
+                            <input type="checkbox" name="import_tasks" value="true">
+                            Import tasks if they do not exist in the database
+                        </label>
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label class="checkbox">
+                            <input type="checkbox" name="update_contest" value="true">
+                            Update existing contest (if contest with same name exists)
+                        </label>
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label class="checkbox">
+                            <input type="checkbox" name="update_tasks" value="true">
+                            Update existing tasks
+                        </label>
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label class="checkbox">
+                            <input type="checkbox" name="no_statements" value="true">
+                            Do not import task statements
+                        </label>
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label for="import-contest-loader">Loader (optional, autodetect if empty)</label>
+                        <div class="select is-fullwidth">
+                            <select name="loader" id="import-contest-loader">
+                                <option value="">-- Autodetect --</option>
+                                <option value="italy_yaml">Italian YAML</option>
+                                <option value="polygon_contest">Polygon</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal__warning" style="margin-top: 16px;">
+                        <strong>Supported Formats:</strong>
+                        Italian YAML (contest.yaml), Polygon (XML).
+                        The zip should contain the contest directory structure.
+                        Users and teams referenced must already exist in the database.
+                    </div>
+                </main>
+                {{ modal_footer("Import Contest", submit_icon="#icon-upload") }}
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
