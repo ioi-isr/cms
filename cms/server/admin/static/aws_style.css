@@ -1112,6 +1112,11 @@ body.admin pre {
     border-left: 2px solid var(--bulma-primary);
 }
 
+body.admin a,
+body.admin a:visited {
+    color: var(--bulma-primary-35);
+}
+
 /* Sidebar links should stay bright/white, not inherit teal */
 body.admin #sidebar a,
 body.admin #sidebar a:visited {
@@ -1182,26 +1187,6 @@ body.admin .validator-status {
 body.admin .validator-running {
     color: var(--bulma-info-40);
     font-style: italic;
-}
-
-/* Valid icon (circular check/X) */
-body.admin .valid-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-}
-
-body.admin .valid-icon--yes {
-    background: var(--bulma-success-95);
-    color: var(--bulma-success-40);
-}
-
-body.admin .valid-icon--no {
-    background: var(--bulma-danger-95);
-    color: var(--bulma-danger);
 }
 
 /* Score matrix cells */

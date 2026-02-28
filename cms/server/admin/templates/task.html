@@ -1211,9 +1211,9 @@ document.addEventListener('click', function(e) {
                                         {% if score_in_range is none %}
                                         <span style="color: var(--tp-text-muted);">-</span>
                                         {% elif score_in_range %}
-                                        <span class="valid-icon valid-icon--yes"><svg class="icon is-small"><use href="#icon-check"/></svg></span>
+                                        <span class="tag is-rounded has-text-success is-opaque-bg"><svg class="icon is-small"><use href="#icon-check"/></svg></span>
                                         {% else %}
-                                        <span class="valid-icon valid-icon--no"><svg class="icon is-small"><use href="#icon-x"/></svg></span>
+                                        <span class="tag is-rounded has-text-danger is-opaque-bg"><svg class="icon is-small"><use href="#icon-x"/></svg></span>
                                         {% endif %}
                                         </div>
                                     </td>

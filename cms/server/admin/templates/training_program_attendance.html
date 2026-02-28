@@ -167,20 +167,26 @@ AdminTableUtils.initFilterTagify({
                 {% endif %}
 
                 {% if att.status != "missed" %}
-                <div class="location-row">
+                <div class="location-row is-size-7 has-text-grey is-flex is-align-items-center icon-text gap-1 mt-1">
                   {% if att.location == "class" %}
-                    <span class="location-icon">&#x1F3EB;</span> Class
+                    <svg class="icon is-small"><use href="#icon-school"/></svg>
+                    <span>Class</span>
                   {% elif att.location == "home" %}
-                    <span class="location-icon">&#x1F3E0;</span> Home
+                    <svg class="icon is-small"><use href="#icon-home"/></svg>
+                    <span>Home</span>
                   {% elif att.location == "both" %}
-                    <span class="location-icon">&#x1F3EB; &#x21C4; &#x1F3E0;</span> Both
+                    <svg class="icon is-small"><use href="#icon-school"/></svg>
+                    <svg class="icon is-small has-text-grey-light"><use href="#icon-swap"/></svg>
+                    <svg class="icon is-small"><use href="#icon-home"/></svg>
+                    <span>Both</span>
                   {% elif att.location %}
                     <span>{{ att.location }}</span>
                   {% else %}
-                    <span class="location-icon">&#x2753;</span> Unknown
+                    <svg class="icon is-small"><use href="#icon-question-mark"/></svg>
+                    <span>Unknown</span>
                   {% endif %}
                   {% if att.recorded %}
-                    <span class="recorded-badge" title="Recorded">&#127909;</span>
+                    <svg class="icon is-small recorded-badge"><title>Recorded</title><use href="#icon-video"/></svg>
                   {% endif %}
                 </div>
                 {% endif %}
@@ -192,8 +198,9 @@ AdminTableUtils.initFilterTagify({
                 {% endif %}
 
                 {% if att.comment %}
-                  <div class="comment-text" title="{{ att.comment }}">
-                    &#x1F4AC; {{ att.comment }}
+                  <div class="comment-text is-flex is-align-items-center gap-1" title="{{ att.comment }}">
+                    <svg class="icon is-small"><use href="#icon-message-circle"/></svg>
+                    <span class="ml-1">{{ att.comment }}</span>
                   </div>
                 {% endif %}
               </div>
@@ -323,10 +330,15 @@ function updateAttendanceCell(attendanceId, justified, recorded, comment) {
         var recordedBadge = locationRow.querySelector('.recorded-badge');
         if (recorded && !recordedBadge) {
             // Create recorded badge
-            var badge = document.createElement('span');
-            badge.className = 'recorded-badge';
-            badge.title = 'Recorded';
-            badge.innerHTML = '&#127909;';
+            var svgNS = 'http://www.w3.org/2000/svg';
+            var badge = document.createElementNS(svgNS, 'svg');
+            badge.setAttribute('class', 'icon is-small recorded-badge');
+            var title = document.createElementNS(svgNS, 'title');
+            title.textContent = 'Recorded';
+            var use = document.createElementNS(svgNS, 'use');
+            use.setAttribute('href', '#icon-video');
+            badge.appendChild(title);
+            badge.appendChild(use);
             locationRow.appendChild(badge);
         } else if (!recorded && recordedBadge) {
             // Remove recorded badge
@@ -351,9 +363,9 @@ function updateAttendanceCell(attendanceId, justified, recorded, comment) {
     if (comment && !existingComment) {
         // Create comment text
         var commentDiv = document.createElement('div');
-        commentDiv.className = 'comment-text';
+        commentDiv.className = 'comment-text is-flex is-align-items-center gap-1';
         commentDiv.title = comment;
-        commentDiv.textContent = '💬 ' + comment;
+        commentDiv.innerHTML = '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
         wrapper.appendChild(commentDiv);
     } else if (!comment && existingComment) {
         // Remove comment text
@@ -361,7 +373,7 @@ function updateAttendanceCell(attendanceId, justified, recorded, comment) {
     } else if (comment && existingComment) {
         // Update existing comment text
         existingComment.title = comment;
-        existingComment.textContent = '💬 ' + comment;
+        existingComment.innerHTML = '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
     }
 }
 

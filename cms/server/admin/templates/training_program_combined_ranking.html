@@ -371,25 +371,27 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                     {% set global_total.value = global_total.value + cell_value %}
                   {% endif %}
                   {% if attendance and attendance.status == 'missed' and attendance.justified %}
-                    <span class="attendance-badge justified-badge" title="Justified absence">&#10060;&#128221;</span>
+                    <svg class="icon has-text-danger"><title>Justified absence</title><use href="#icon-x"/></svg>
+                    <svg class="icon has-text-warning"><title>Justified absence</title><use href="#icon-file-text"/></svg>
                   {% elif attendance and attendance.status == 'missed' %}
-                    <span class="attendance-badge missed-badge" title="Missed training">&#10060;</span>
+                    <svg class="icon has-text-danger"><title>Missed training</title><use href="#icon-x"/></svg>
                   {% elif attendance and attendance.location == 'home' %}
-                    <span class="attendance-badge home-badge" title="Participated from home">&#127968;</span>
+                    <svg class="icon has-text-grey"><title>Participated from home</title><use href="#icon-home"/></svg>
                   {% endif %}
                   {% if attendance and attendance.recorded %}
                     <span class="attendance-badge recorded-badge" title="Recorded">&#127909;</span>
                   {% endif %}
                 {% else %}
                   {% if attendance and attendance.status == 'missed' and attendance.justified %}
-                    <span class="attendance-badge justified-badge" title="Justified absence">&#10060;&#128221;</span>
+                    <svg class="icon has-text-danger"><title>Justified absence</title><use href="#icon-x"/></svg>
+                    <svg class="icon has-text-warning"><title>Justified absence</title><use href="#icon-file-text"/></svg>
                   {% elif attendance and attendance.status == 'missed' %}
-                    <span class="attendance-badge missed-badge" title="Missed training">&#10060;</span>
+                    <svg class="icon has-text-danger"><title>Missed training</title><use href="#icon-x"/></svg>
                   {% else %}
-                    <span class="empty-cell-content">-</span>
+                    <span class="has-text-grey-light has-text-centered has-text-weight-normal">-</span>
                   {% endif %}
                   {% if attendance and attendance.recorded %}
-                    <span class="attendance-badge recorded-badge" title="Recorded">&#127909;</span>
+                    <svg class="icon has-text-grey"><title>Recorded</title><use href="#icon-video"/></svg>
                   {% endif %}
                 {% endif %}
             </div>
