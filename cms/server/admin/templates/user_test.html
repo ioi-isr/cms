@@ -112,7 +112,7 @@
 
     {% if utr.output is not none %}
   <h3>Output</h3>
-  <a href="javascript:void(0);" onclick="utils.show_file('output','{{ url("file", utr.output, "output") }}')">See output</a>
+  <a href="javascript:void(0);" onclick='utils.show_file("output", {{ url("file", utr.output, "output")|tojson }})'>See output</a>
     {% endif %}
 
 </div>
