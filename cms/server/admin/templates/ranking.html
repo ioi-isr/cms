@@ -135,7 +135,7 @@
         {% endif %}
         {% if show_teams %}
           {% if p.team %}
-          <td><a href="#" onclick="event.preventDefault(); AdminModals.showEditTeamDialog({{ url('team', p.team_id)|tojson }}, {{ p.team.code|tojson }}, {{ p.team.name|tojson }})">{{ p.team.name }}</a></td>
+          <td><a href="#" onclick='event.preventDefault(); AdminModals.showEditTeamDialog({{ url('team', p.team_id)|tojson }}, {{ p.team.code|tojson }}, {{ p.team.name|tojson }})'>{{ p.team.name }}</a></td>
           {% else %}
           <td></td>
           {% endif %}
@@ -261,7 +261,7 @@
       {% endif %}
       {% if show_teams %}
         {% if p.team %}
-        <td><a href="#" onclick="event.preventDefault(); AdminModals.showEditTeamDialog({{ url('team', p.team_id)|tojson }}, {{ p.team.code|tojson }}, {{ p.team.name|tojson }})">{{ p.team.name }}</a></td>
+        <td><a href="#" onclick='event.preventDefault(); AdminModals.showEditTeamDialog({{ url('team', p.team_id)|tojson }}, {{ p.team.code|tojson }}, {{ p.team.name|tojson }})'>{{ p.team.name }}</a></td>
         {% else %}
         <td></td>
         {% endif %}
