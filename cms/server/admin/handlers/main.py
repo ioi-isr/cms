@@ -143,17 +143,6 @@ class ResourcesHandler(BaseHandler):
         self.render("resources.html", **self.r_params)
 
 
-class ResourcesListRedirectHandler(BaseHandler):
-    """Redirect old resourceslist URLs to the unified resources page."""
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, entity_type=None, entity_id=None):
-        if entity_id is not None:
-            self.redirect(self.url("resources", "all", entity_id))
-        else:
-            self.redirect(self.url("resources"))
-
-
 class NotificationsHandler(BaseHandler):
     """Displays notifications.
 

@@ -400,7 +400,7 @@ class BaseHandler(CommonRequestHandler):
 
             # Don't redirect certain actions - they should use the contest handlers
             # directly since questions/announcements belong to the managing contest,
-            # messages use the contest user, and overview/resourceslist are contest-
+            # messages use the contest user, and overview/resources are contest-
             # specific pages that training programs redirect to
             if (
                 remaining_path.startswith("/question/")
