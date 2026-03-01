@@ -637,16 +637,6 @@ class ImportUsersConfirmHandler(BaseHandler):
                         f"Failed to update user {user_data['username']}: {str(error)}"
                     )
 
-        if self.try_commit():
-            self.service.proxy_service.reinitialize()
-            message = (f"Successfully created {created_count} user(s)"
-                       f" and updated {updated_count} user(s).")
-            if errors:
-                message += f" Errors: {'; '.join(errors)}"
-            self.service.add_notification(
-                make_datetime(), "Import completed", message
-            )
-
         commit_ok = self.try_commit()
         if commit_ok:
             self.service.proxy_service.reinitialize()

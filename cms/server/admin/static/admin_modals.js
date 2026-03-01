@@ -996,13 +996,23 @@ AdminModals._importUsers.handleConfirm = function () {
     } else if (typeof get_cookie === 'function') {
         xsrfToken = get_cookie('_xsrf');
     }
+    if (!xsrfToken) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Import Failed',
+            text: 'Missing XSRF token. Refresh the page and try again.'
+        });
+        confirmBtn.disabled = false;
+        confirmBtn.querySelector('span').textContent = 'Confirm Import';
+        return;
+    }
 
     fetch(window.importUsersConfirmUrl, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'X-XSRFToken': xsrfToken || ''
+            'X-XSRFToken': xsrfToken
         },
         body: JSON.stringify({
             new_users: data.new_users || [],
@@ -1010,9 +1020,25 @@ AdminModals._importUsers.handleConfirm = function () {
             update_user_ids: updateIds
         })
     }).then(function (resp) {
-        return resp.json().then(function (result) {
-            if (!resp.ok) throw new Error(result.error || 'Import failed');
-            return result;
+        var contentType = (resp.headers.get('content-type') || '').toLowerCase();
+
+        if (!resp.ok) {
+            if (contentType.indexOf('application/json') !== -1) {
+                return resp.json().catch(function () {
+                    throw new Error('Import failed with an invalid JSON error response.');
+                }).then(function (result) {
+                    throw new Error(result.error || ('Import failed (HTTP ' + resp.status + ')'));
+                });
+            }
+            throw new Error('Import failed (HTTP ' + resp.status + ')');
+        }
+
+        if (contentType.indexOf('application/json') === -1) {
+            throw new Error('Import failed: server returned a non-JSON response.');
+        }
+
+        return resp.json().catch(function () {
+            throw new Error('Import failed: server returned invalid JSON.');
         });
     }).then(function (result) {
         MicroModal.close('modal-import-users');
