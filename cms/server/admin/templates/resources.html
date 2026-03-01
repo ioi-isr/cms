@@ -319,7 +319,7 @@ for (var i in shards)
 {# Services Card #}
 <div class="tp-card mb-4">
   <div class="tp-card-header-modern">
-    <div class="tp-card-header-icon"><i class="icon-list"></i></div>
+    <div class="tp-card-header-icon"><svg class="icon"><use href="#icon-clipboard-list"/></svg></div>
     <h3 class="tp-card-title-modern">Services{% if resource_addresses|length > 1 %} &mdash; Machine {{ i }}{% endif %}</h3>
   </div>
   <div class="tp-card-body" style="padding: 0; overflow-x: auto;">
@@ -346,7 +346,7 @@ for (var i in shards)
 {# Graphs Card #}
 <div class="tp-card mb-5">
   <div class="tp-card-header-modern">
-    <div class="tp-card-header-icon"><i class="icon-activity"></i></div>
+    <div class="tp-card-header-icon"><svg class="icon"><use href="#icon-activity"/></svg></div>
     <h3 class="tp-card-title-modern">Resource Graphs{% if resource_addresses|length > 1 %} &mdash; Machine {{ i }}{% endif %}</h3>
   </div>
   <div class="tp-card-body">

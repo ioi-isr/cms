@@ -31,7 +31,6 @@ from .contest import \
     AddContestHandler, \
     ContestHandler, \
     OverviewHandler, \
-    ResourcesListHandler, \
     ContestListHandler, \
     RemoveContestHandler
 from .contestannouncement import \
@@ -107,6 +106,7 @@ from .main import \
     LoginHandler, \
     LogoutHandler, \
     ResourcesHandler, \
+    ResourcesListRedirectHandler, \
     NotificationsHandler, \
     MarkdownRenderHandler
 from .submission import \
@@ -221,7 +221,7 @@ HANDLERS = [
     (r"/", OverviewHandler),
     (r"/login", LoginHandler),
     (r"/logout", LogoutHandler),
-    (r"/resourceslist", ResourcesListHandler),
+    (r"/resourceslist", ResourcesListRedirectHandler),
     (r"/resources", ResourcesHandler),
     (r"/resources/([0-9]+|all)", ResourcesHandler),
     (r"/resources/([0-9]+|all)/([0-9]+)", ResourcesHandler),
@@ -238,7 +238,7 @@ HANDLERS = [
     (r"/contest/([0-9]+)", ContestHandler),
     (r"/(contest|training_program)/([0-9]+)/export", ExportContestHandler),
     (r"/(contest|training_program)/([0-9]+)/overview", OverviewHandler),
-    (r"/(contest|training_program)/([0-9]+)/resourceslist", ResourcesListHandler),
+    (r"/(contest|training_program)/([0-9]+)/resourceslist", ResourcesListRedirectHandler),
 
     # Contest's users
 
