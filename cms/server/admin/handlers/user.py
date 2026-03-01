@@ -425,6 +425,7 @@ class ImportUsersHandler(BaseHandler):
         row_num = 1
 
         username_pattern = re.compile(r"^[A-Za-z0-9_-]+$")
+        seen_usernames = {}  # Track usernames to detect duplicates within file
 
         for row in reader:
             row_num += 1
@@ -446,6 +447,14 @@ class ImportUsersHandler(BaseHandler):
                 errors.append(
                     "Username must contain only letters, numbers, hyphens, and underscores"
                 )
+            elif username in seen_usernames:
+                # Duplicate username within the uploaded file
+                errors.append(
+                    f"Duplicate username (already seen in row {seen_usernames[username]})"
+                )
+            else:
+                # Track this username for future duplicate detection
+                seen_usernames[username] = row_num
 
             if not first_name:
                 errors.append("First name is required")
@@ -456,7 +465,9 @@ class ImportUsersHandler(BaseHandler):
             if not password:
                 errors.append("Password is required")
 
-            if password_type and password_type.lower() not in ["plain text", "hash"]:
+            if not password_type:
+                errors.append("Plain text / Hash is required")
+            elif password_type.lower() not in ["plain text", "hash"]:
                 errors.append(
                     f"Invalid password type '{password_type}'. Must be 'Plain text' or 'Hash'"
                 )
@@ -465,10 +476,10 @@ class ImportUsersHandler(BaseHandler):
             date_of_birth = None
             if date_of_birth_str:
                 try:
-                    date_of_birth = date.fromisoformat(date_of_birth_str)
-                except ValueError:
+                    date_of_birth = validate_date_of_birth(date_of_birth_str)
+                except ValueError as e:
                     errors.append(
-                        f"Invalid date of birth format '{date_of_birth_str}'. Use YYYY-MM-DD format."
+                        f"Invalid date of birth '{date_of_birth_str}': {str(e)}"
                     )
 
             if errors:
@@ -491,7 +502,7 @@ class ImportUsersHandler(BaseHandler):
 
             if password_type.lower() == "plain text":
                 password_value = hash_password(password, "bcrypt")
-            else:
+            elif password_type.lower() == "hash":
                 if password.startswith("bcrypt:"):
                     password_value = password
                 else:
