@@ -406,10 +406,19 @@ class ImportUsersHandler(BaseHandler):
             "Preferred languages",
         }
 
-        if not reader.fieldnames or not expected_headers.issubset(
+        # Only require the required columns, not optional ones
+        required_headers = {
+            "First name",
+            "Last name",
+            "Username",
+            "Password",
+            "Plain text / Hash",
+        }
+
+        if not reader.fieldnames or not required_headers.issubset(
             set(reader.fieldnames)
         ):
-            msg = f"CSV must have headers: {', '.join(sorted(expected_headers))}"
+            msg = f"CSV must have headers: {', '.join(sorted(required_headers))}"
             if self._is_ajax():
                 self._json_error(msg)
                 return
