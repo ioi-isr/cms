@@ -281,50 +281,96 @@ for (var i in shards)
 
 <h1 class="title is-spaced">Resource usage</h1>
 
+{# ── Machine Selector ─────────────────────────────────────────── #}
+{% if all_resource_addresses|length > 1 %}
+<div class="is-flex is-align-items-center is-flex-wrap-wrap mb-5" style="gap: 0.5rem;">
+    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold" style="white-space: nowrap;">Machine:</span>
+    <div class="buttons has-addons mb-0">
+      {% if selected_shard == "all" %}
+        <span class="button is-small is-primary">All</span>
+      {% else %}
+        <a href="{{ url(*(["resources", "all"] + contest_address)) }}" class="button is-small">All</a>
+      {% endif %}
+      {% for shard_id in all_resource_addresses|sort %}
+        {% if selected_shard != "all" and selected_shard|int == shard_id %}
+          <span class="button is-small is-primary">{{ all_resource_addresses[shard_id] }} ({{ shard_id }})</span>
+        {% else %}
+          <a href="{{ url(*(["resources", shard_id|string] + contest_address)) }}" class="button is-small">{{ all_resource_addresses[shard_id] }} ({{ shard_id }})</a>
+        {% endif %}
+      {% endfor %}
+    </div>
+</div>
+{% elif all_resource_addresses|length == 1 %}
+<div class="is-flex is-align-items-center mb-5" style="gap: 0.5rem;">
+    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Machine:</span>
+    {% for shard_id in all_resource_addresses %}
+    <span class="has-text-weight-medium">{{ all_resource_addresses[shard_id] }} ({{ shard_id }})</span>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# ── Machine Sections ──────────────────────────────────────────── #}
 {% for i in resource_addresses %}
 
-<h2 id="title_machine_{{ i }}" class="toggling_on">Machine {{ i }} ({{ resource_addresses[i] }})</h2>
-<div id="machine_{{ i }}">
+{% if resource_addresses|length > 1 %}
+<h2 class="subtitle is-5 has-text-weight-semibold mb-3 mt-5">Machine {{ i }} ({{ resource_addresses[i] }})</h2>
+{% endif %}
 
-  <table id="services_{{ i }}_table" class="sub_table">
-    <thead>
-      <tr>
-        <th>Service</th>
-        <th>Uptime (s)</th>
-        <th>Threads</th>
-        <th>Resident (MB)</th>
-        <th>Virtual (MB)</th>
-        <th>User (%)</th>
-        <th>System (%)</th>
-        <th>Autorestart</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td style="text-align: center;" colspan="8"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
-    </tbody>
-  </table>
-
-  <table>
-    <thead>
-    </thead>
-    <tbody>
-      <tr>
-        <td style="vertical-align:top;">CPU</td>
-        <td style="padding: 1em 0.25em;"><div id="cpu_{{ i }}" style="width: 500px; height: 9.75em;"></div></td>
-      </tr>
-      <tr>
-        <td style="vertical-align:top;">Memory</td>
-        <td style="padding: 1em 0.25em;"><div id="memory_{{ i }}" style="width: 500px; height: 9.75em;"></div></td>
-      </tr>
-      <tr>
-        <td style="vertical-align:top;">Swap</td>
-        <td style="padding: 1em 0.25em;"><div id="swap_{{ i }}" style="width: 500px; height: 9.75em;"></div></td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="hr"></div>
+{# Services Card #}
+<div class="tp-card mb-4">
+  <div class="tp-card-header-modern">
+    <div class="tp-card-header-icon"><i class="icon-list"></i></div>
+    <h3 class="tp-card-title-modern">Services{% if resource_addresses|length > 1 %} &mdash; Machine {{ i }}{% endif %}</h3>
+  </div>
+  <div class="tp-card-body" style="padding: 0; overflow-x: auto;">
+    <table id="services_{{ i }}_table" class="table is-fullwidth is-hoverable is-striped mb-0">
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Uptime (s)</th>
+          <th class="has-text-centered">Threads</th>
+          <th class="has-text-centered">Resident (MB)</th>
+          <th class="has-text-centered">Virtual (MB)</th>
+          <th class="has-text-centered">User (%)</th>
+          <th class="has-text-centered">System (%)</th>
+          <th class="has-text-centered">Autorestart</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="text-align: center;" colspan="8"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
+      </tbody>
+    </table>
+  </div>
 </div>
+
+{# Graphs Card #}
+<div class="tp-card mb-5">
+  <div class="tp-card-header-modern">
+    <div class="tp-card-header-icon"><i class="icon-activity"></i></div>
+    <h3 class="tp-card-title-modern">Resource Graphs{% if resource_addresses|length > 1 %} &mdash; Machine {{ i }}{% endif %}</h3>
+  </div>
+  <div class="tp-card-body">
+    <div class="columns is-multiline">
+      <div class="column is-12">
+        <p class="has-text-weight-semibold has-text-grey mb-2">CPU</p>
+        <div id="cpu_{{ i }}" style="width: 500px; height: 9.75em;"></div>
+      </div>
+      <div class="column is-12">
+        <p class="has-text-weight-semibold has-text-grey mb-2">Memory</p>
+        <div id="memory_{{ i }}" style="width: 500px; height: 9.75em;"></div>
+      </div>
+      <div class="column is-12">
+        <p class="has-text-weight-semibold has-text-grey mb-2">Swap</p>
+        <div id="swap_{{ i }}" style="width: 500px; height: 9.75em;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endfor %}
+
+{% if resource_addresses|length == 0 %}
+<div class="notification is-light">No resource services are configured.</div>
+{% endif %}
 
 {% endblock core %}

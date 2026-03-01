@@ -474,7 +474,7 @@ $(document).ready(initHamburgerMenu);
 {# ── Assemble global_menu_items with full hierarchy ──────────── #}
 {% set global_menu_items = [
   {"key": "overview",          "icon": "icon-activity",       "text": "Overview",           "url": url(),                     "pos": 1, "mobile": false, "badges": []},
-  {"key": "resource-list",     "icon": "icon-cpu",            "text": "Resource usage",     "url": url("resourceslist"),      "pos": 2, "mobile": false, "badges": []},
+  {"key": "resource-list",     "icon": "icon-cpu",            "text": "Resource usage",     "url": url("resources"),           "pos": 2, "mobile": false, "badges": []},
   {"key": "training-programs", "icon": "icon-graduation-cap", "text": "Training Programs",  "url": url("training_programs"),  "pos": 3, "mobile": true, "badges": [],
    "children": tp_children, "empty_text": "No training programs available",
    "actions": [{"type": "button", "text": "New training program", "onclick": "MicroModal.show('modal-add-program')"}]},
@@ -499,7 +499,7 @@ $(document).ready(initHamburgerMenu);
 {% if contest is defined and contest is not none and training_program is not defined %}
   {% set context_menu_items = [
     {"icon": "icon-activity",       "text": "Overview",       "url": url("contest", contest.id, "overview"),               "pos": 1,  "mobile": false, "badges": []},
-    {"icon": "icon-cpu",            "text": "Resource usage", "url": url("contest", contest.id, "resourceslist"),          "pos": 2,  "mobile": false, "badges": []},
+    {"icon": "icon-cpu",            "text": "Resource usage", "url": url("resources", "all", contest.id|string),          "pos": 2,  "mobile": false, "badges": []},
     {"icon": "icon-settings",       "text": "General",        "url": url("contest", contest.id),                           "pos": 3,  "mobile": true,  "badges": []},
     {"icon": "icon-trophy",         "text": "Ranking",        "url": url("contest", contest.id, "ranking"),                "pos": 4,  "mobile": true,  "badges": []},
     {"icon": "icon-file-code",      "text": "Submissions",    "url": url("contest", contest.id, "submissions"),            "pos": 5,  "mobile": true,  "badges": []},
@@ -538,7 +538,7 @@ $(document).ready(initHamburgerMenu);
   {% endfor %}
   {% set context_menu_items = [
     {"icon": "icon-activity",       "text": "Overview",         "url": url("contest", training_program.managing_contest.id, "overview"),      "pos": 1,  "mobile": false, "badges": []},
-    {"icon": "icon-cpu",            "text": "Resource usage",   "url": url("contest", training_program.managing_contest.id, "resourceslist"), "pos": 2,  "mobile": false, "badges": []},
+    {"icon": "icon-cpu",            "text": "Resource usage",   "url": url("resources", "all", training_program.managing_contest.id|string), "pos": 2,  "mobile": false, "badges": []},
     {"icon": "icon-settings",       "text": "General",          "url": url("training_program", training_program.id),                          "pos": 3,  "mobile": false, "badges": []},
     {"icon": "icon-users",          "text": "Students",         "url": url("training_program", training_program.id, "students"),              "pos": 4,  "mobile": true,  "badges": []},
     {"icon": "icon-laptop-code",    "text": "Training Days",    "url": url("training_program", training_program.id, "training_days"),         "pos": 5,  "mobile": true,
