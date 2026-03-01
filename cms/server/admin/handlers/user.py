@@ -647,8 +647,28 @@ class ImportUsersConfirmHandler(BaseHandler):
                 make_datetime(), "Import completed", message
             )
 
+        commit_ok = self.try_commit()
+        if commit_ok:
+            self.service.proxy_service.reinitialize()
+            message = (f"Successfully created {created_count} user(s)"
+                       f" and updated {updated_count} user(s).")
+            if errors:
+                message += f" Errors: {'; '.join(errors)}"
+            self.service.add_notification(
+                make_datetime(), "Import completed", message
+            )
+
         if is_ajax:
             self.set_header("Content-Type", "application/json")
+            if not commit_ok:
+                self.set_status(500)
+                self.write(json.dumps({
+                    "error": "Database commit failed. No users were imported.",
+                    "created": 0,
+                    "updated": 0,
+                    "errors": errors,
+                }))
+                return
             self.write(json.dumps({
                 "created": created_count,
                 "updated": updated_count,
