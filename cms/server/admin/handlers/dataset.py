@@ -1009,6 +1009,7 @@ class GenerateTestcasesHandler(BaseHandler):
         overwrite = self.get_argument("overwrite", "") == "on"
         public = self.get_argument("public", "") == "on"
         output_source = self.get_argument("output_source", "generator")
+        stdin_input = self.get_argument("stdin_input", "")
 
         input_template = generator.input_filename_template
         output_template = generator.output_filename_template
@@ -1102,6 +1103,12 @@ class GenerateTestcasesHandler(BaseHandler):
                 sandbox.timeout = effective_timeout
                 sandbox.wallclock_timeout = effective_timeout * 2
 
+            # If stdin input was provided, write it to a file and
+            # configure the sandbox to pipe it to the generator.
+            if stdin_input:
+                sandbox.create_file_from_string("stdin.txt", stdin_input)
+                sandbox.stdin_file = "stdin.txt"
+
             # Set stdout/stderr files so they are created during execution
             sandbox.stdout_file = "stdout.txt"
             sandbox.stderr_file = "stderr.txt"
@@ -1149,7 +1156,8 @@ class GenerateTestcasesHandler(BaseHandler):
             sandbox_home = sandbox.relative_path("")
             for root, _dirs, files in os.walk(sandbox_home):
                 for filename in files:
-                    if filename in [exe_name, "stdout.txt", "stderr.txt"]:
+                    if filename in [exe_name, "stdout.txt", "stderr.txt",
+                                    "stdin.txt"]:
                         continue
                     rel_path = os.path.relpath(
                         os.path.join(root, filename), sandbox_home)

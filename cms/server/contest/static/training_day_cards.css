@@ -31,7 +31,8 @@
 .training-day-card.upcoming { border-left-color: #0d6efd; }
 .training-day-card.ended { border-left-color: #dc3545; }
 .training-day-meta { flex: 1; min-width: 250px; }
-.training-day-title { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #333; }
+.training-day-title { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #333; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.training-day-type-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #e8f0fe; color: #1a73e8; line-height: 1.4; vertical-align: middle; }
 .training-day-detail { font-size: 14px; color: #666; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
 .training-day-detail .detail-icon { flex-shrink: 0; color: #888; }
 .training-day-detail .detail-label { color: #888; }

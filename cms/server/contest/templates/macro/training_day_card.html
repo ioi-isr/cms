@@ -18,7 +18,14 @@ show_ended_status: if True, shows ENDED status for ended trainings (default: Fal
 #}
     <div class="training-day-card {% if show_ended_status and td_info.has_ended %}ended{% elif td_info.has_started %}started{% else %}upcoming{% endif %}">
         <div class="training-day-meta">
-            <h3 class="training-day-title">{{ td_info.contest.description }}</h3>
+            <h3 class="training-day-title">
+                {{ td_info.contest.description }}
+                {% if td_info.training_day and td_info.training_day.training_day_types %}
+                {% for td_type in td_info.training_day.training_day_types %}
+                <span class="training-day-type-badge">{{ td_type }}</span>
+                {% endfor %}
+                {% endif %}
+            </h3>
             <div class="training-day-detail">
                 <svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                 <span class="detail-label">{% trans %}Start:{% endtrans %}</span> {{ td_info.user_start_time|format_datetime_smart }}

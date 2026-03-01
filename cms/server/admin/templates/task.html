@@ -1663,6 +1663,11 @@ document.addEventListener('click', function(e) {
                         </div>
                         {% else %}
                         <div class="modal__form-group">
+                            <label for="gen-tc-{{ generator.id }}-stdin-input">Standard input (optional)</label>
+                            <textarea id="gen-tc-{{ generator.id }}-stdin-input" name="stdin_input" rows="3" placeholder="Data to pass to the generator via stdin" style="font-family: monospace; font-size: 0.85rem;"></textarea>
+                            <small class="modal__hint">If provided, this text will be piped to the generator's standard input.</small>
+                        </div>
+                        <div class="modal__form-group">
                             <label for="gen-tc-{{ generator.id }}-output-source">Output generation</label>
                             <select id="gen-tc-{{ generator.id }}-output-source" name="output_source">
                                 <option value="generator">Generator outputs (default)</option>
