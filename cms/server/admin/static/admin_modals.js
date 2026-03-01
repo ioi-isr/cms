@@ -775,3 +775,317 @@ AdminModals.showAddTaskDialog = function (postUrl, taskBaseUrl) {
         }
     });
 };
+
+/* ------------------------------------------------------------------ */
+/*  Import Users – two-step modal (upload CSV → confirm & import)     */
+/* ------------------------------------------------------------------ */
+
+AdminModals._importUsers = AdminModals._importUsers || {};
+
+/**
+ * Initialise the import-users modal wiring.
+ * Called once from DOMContentLoaded (see bottom of this block).
+ */
+AdminModals._importUsers.init = function () {
+    var uploadForm   = document.getElementById('import-users-upload-form');
+    var backBtn      = document.getElementById('import-users-back-btn');
+    if (!uploadForm) return;  // modal fragment not on this page
+
+    uploadForm.addEventListener('submit', AdminModals._importUsers.handleUpload);
+    if (backBtn) backBtn.addEventListener('click', AdminModals._importUsers.showUploadStep);
+
+    var confirmBtn = document.getElementById('import-users-confirm-btn');
+    if (confirmBtn) confirmBtn.addEventListener('click', AdminModals._importUsers.handleConfirm);
+
+    /* Reset to step 1 whenever the modal is opened */
+    var modal = document.getElementById('modal-import-users');
+    if (modal) {
+        modal.addEventListener('modal-reset', function () {
+            AdminModals._importUsers.showUploadStep();
+        });
+    }
+};
+
+/** Show step-1 (upload) and hide step-2 (confirm). */
+AdminModals._importUsers.showUploadStep = function () {
+    document.getElementById('import-users-step-upload').style.display = '';
+    document.getElementById('import-users-step-confirm').style.display = 'none';
+    document.getElementById('import-users-upload-error').style.display = 'none';
+};
+
+/** Show step-2 and hide step-1. */
+AdminModals._importUsers.showConfirmStep = function () {
+    document.getElementById('import-users-step-upload').style.display = 'none';
+    document.getElementById('import-users-step-confirm').style.display = '';
+};
+
+/**
+ * Handle the CSV upload (step 1 → step 2).
+ * Posts the file via fetch, receives JSON, builds the confirm UI.
+ */
+AdminModals._importUsers.handleUpload = function (e) {
+    e.preventDefault();
+    var form = document.getElementById('import-users-upload-form');
+    var btn  = document.getElementById('import-users-upload-btn');
+    var errBox  = document.getElementById('import-users-upload-error');
+    var errText = document.getElementById('import-users-upload-error-text');
+
+    errBox.style.display = 'none';
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Processing\u2026';
+
+    var formData = new FormData(form);
+
+    fetch(form.action || window.importUsersUploadUrl, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: formData
+    }).then(function (resp) {
+        var contentType = (resp.headers.get('content-type') || '').toLowerCase();
+        return resp.text().then(function (body) {
+            var trimmedBody = (body || '').trim();
+
+            if (contentType.indexOf('application/json') !== -1) {
+                var data = null;
+                try {
+                    data = trimmedBody ? JSON.parse(trimmedBody) : {};
+                } catch (parseError) {
+                    var parseDetail = trimmedBody || resp.statusText || 'Invalid JSON response';
+                    throw new Error('Upload failed (HTTP ' + resp.status + '): ' + parseDetail);
+                }
+
+                if (!resp.ok) {
+                    throw new Error(
+                        data.error ||
+                        ('Upload failed (HTTP ' + resp.status + '): ' + (resp.statusText || 'Request failed'))
+                    );
+                }
+                return data;
+            }
+
+            var detail = trimmedBody || resp.statusText || 'Unexpected non-JSON response';
+            throw new Error('Upload failed (HTTP ' + resp.status + '): ' + detail);
+        });
+    }).then(function (data) {
+        AdminModals._importUsers._lastData = data;
+        AdminModals._importUsers.renderConfirm(data);
+        AdminModals._importUsers.showConfirmStep();
+    }).catch(function (err) {
+        errText.textContent = err.message || 'An error occurred.';
+        errBox.style.display = '';
+    }).finally(function () {
+        btn.disabled = false;
+        btn.querySelector('span').textContent = 'Upload & Process';
+    });
+};
+
+/**
+ * Build the confirmation HTML for step 2.
+ */
+AdminModals._importUsers.renderConfirm = function (data) {
+    var body = document.getElementById('import-users-confirm-body');
+    var confirmBtn = document.getElementById('import-users-confirm-btn');
+    var html = '';
+    var esc = AdminModals.escapeHtml;
+
+    var newUsers      = data.new_users || [];
+    var existingUsers = data.existing_users || [];
+    var failedUsers   = data.failed_users || [];
+
+    /* --- New users table --- */
+    if (newUsers.length) {
+        html += '<h3 style="margin:0 0 8px;">New Users (' + newUsers.length + ')</h3>';
+        html += '<p>The following users will be created:</p>';
+        html += '<div class="table-container"><table class="table is-bordered is-striped is-hoverable"><thead><tr>' +
+            '<th>Row</th><th>Username</th><th>First Name</th><th>Last Name</th>' +
+            '<th>E-mail</th><th>Timezone</th>' +
+            '</tr></thead><tbody>';
+        for (var i = 0; i < newUsers.length; i++) {
+            var u = newUsers[i];
+            html += '<tr>' +
+                '<td>' + esc(String(u.row)) + '</td>' +
+                '<td>' + esc(u.username) + '</td>' +
+                '<td>' + esc(u.first_name) + '</td>' +
+                '<td>' + esc(u.last_name) + '</td>' +
+                '<td>' + esc(u.email || '') + '</td>' +
+                '<td>' + esc(u.timezone || '') + '</td>' +
+                '</tr>';
+        }
+        html += '</tbody></table></div>';
+    }
+
+    /* --- Existing users table (with checkboxes) --- */
+    if (existingUsers.length) {
+        html += '<h3 style="margin:16px 0 8px;">Existing Users (' + existingUsers.length + ')</h3>';
+        html += '<p>The following usernames already exist. Select which users to update:</p>';
+        html += '<p>' +
+            '<button type="button" class="button is-small" id="import-users-select-all">Select All</button> ' +
+            '<button type="button" class="button is-small" id="import-users-deselect-all">Deselect All</button>' +
+            '</p>';
+        html += '<div class="table-container"><table class="table is-bordered is-striped is-hoverable"><thead><tr>' +
+            '<th>Update?</th><th>Row</th><th>Username</th><th>First Name</th><th>Last Name</th>' +
+            '<th>E-mail</th><th>Timezone</th>' +
+            '</tr></thead><tbody>';
+        for (var j = 0; j < existingUsers.length; j++) {
+            var eu = existingUsers[j];
+            var firstChanged = (eu.existing_first_name !== undefined && eu.first_name !== eu.existing_first_name);
+            var lastChanged  = (eu.existing_last_name !== undefined && eu.last_name !== eu.existing_last_name);
+            var emailChanged = (eu.existing_email !== undefined && (eu.email || '') !== (eu.existing_email || ''));
+            var tzChanged    = (eu.existing_timezone !== undefined && (eu.timezone || '') !== (eu.existing_timezone || ''));
+            html += '<tr>' +
+                '<td><input type="checkbox" class="import-users-update-cb" value="' + esc(String(eu.existing_id)) + '"/></td>' +
+                '<td>' + esc(String(eu.row)) + '</td>' +
+                '<td>' + esc(eu.username) + '</td>' +
+                '<td>' + esc(eu.first_name) + (firstChanged ? '<br><small style="color:#6b7280;">(was: ' + esc(eu.existing_first_name || '') + ')</small>' : '') + '</td>' +
+                '<td>' + esc(eu.last_name) + (lastChanged ? '<br><small style="color:#6b7280;">(was: ' + esc(eu.existing_last_name || '') + ')</small>' : '') + '</td>' +
+                '<td>' + esc(eu.email || '') + (emailChanged ? '<br><small style="color:#6b7280;">(was: ' + esc(eu.existing_email || '') + ')</small>' : '') + '</td>' +
+                '<td>' + esc(eu.timezone || '') + (tzChanged ? '<br><small style="color:#6b7280;">(was: ' + esc(eu.existing_timezone || '') + ')</small>' : '') + '</td>' +
+                '</tr>';
+        }
+        html += '</tbody></table></div>';
+    }
+
+    /* --- Failed users table --- */
+    if (failedUsers.length) {
+        html += '<h3 style="margin:16px 0 8px; color:var(--bulma-danger);">Failed Users (' + failedUsers.length + ')</h3>';
+        html += '<p>The following users could not be imported due to validation errors:</p>';
+        html += '<div class="table-container"><table class="table is-bordered is-striped is-hoverable"><thead><tr>' +
+            '<th>Row</th><th>Username</th><th>First Name</th><th>Last Name</th><th>Errors</th>' +
+            '</tr></thead><tbody>';
+        for (var k = 0; k < failedUsers.length; k++) {
+            var fu = failedUsers[k];
+            var errHtml = '<ul style="margin:0;padding-left:20px;">';
+            for (var ei = 0; ei < fu.errors.length; ei++) {
+                errHtml += '<li>' + esc(fu.errors[ei]) + '</li>';
+            }
+            errHtml += '</ul>';
+            html += '<tr>' +
+                '<td>' + esc(String(fu.row)) + '</td>' +
+                '<td>' + esc(fu.username) + '</td>' +
+                '<td>' + esc(fu.first_name) + '</td>' +
+                '<td>' + esc(fu.last_name) + '</td>' +
+                '<td style="color:var(--bulma-danger);">' + errHtml + '</td>' +
+                '</tr>';
+        }
+        html += '</tbody></table></div>';
+    }
+
+    if (!newUsers.length && !existingUsers.length) {
+        html += '<p>No valid users found to import.</p>';
+    }
+
+    body.innerHTML = html;
+
+    /* Show / hide confirm button */
+    confirmBtn.style.display = (newUsers.length || existingUsers.length) ? '' : 'none';
+
+    /* Wire select-all / deselect-all buttons */
+    var selAll   = document.getElementById('import-users-select-all');
+    var deselAll = document.getElementById('import-users-deselect-all');
+    if (selAll) {
+        selAll.addEventListener('click', function () {
+            body.querySelectorAll('.import-users-update-cb').forEach(function (cb) { cb.checked = true; });
+        });
+    }
+    if (deselAll) {
+        deselAll.addEventListener('click', function () {
+            body.querySelectorAll('.import-users-update-cb').forEach(function (cb) { cb.checked = false; });
+        });
+    }
+};
+
+/**
+ * Handle the confirm button (step 2 → execute import).
+ */
+AdminModals._importUsers.handleConfirm = function () {
+    var data = AdminModals._importUsers._lastData;
+    if (!data) return;
+
+    var confirmBtn = document.getElementById('import-users-confirm-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.querySelector('span').textContent = 'Importing\u2026';
+
+    var updateIds = [];
+    document.querySelectorAll('.import-users-update-cb:checked').forEach(function (cb) {
+        updateIds.push(Number(cb.value));
+    });
+
+    var xsrfToken = null;
+    var xsrfInput = document.querySelector('input[name="_xsrf"]');
+    if (xsrfInput) {
+        xsrfToken = xsrfInput.value;
+    } else if (typeof get_cookie === 'function') {
+        xsrfToken = get_cookie('_xsrf');
+    }
+    if (!xsrfToken) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Import Failed',
+            text: 'Missing XSRF token. Refresh the page and try again.'
+        });
+        confirmBtn.disabled = false;
+        confirmBtn.querySelector('span').textContent = 'Confirm Import';
+        return;
+    }
+
+    fetch(window.importUsersConfirmUrl, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-XSRFToken': xsrfToken
+        },
+        body: JSON.stringify({
+            new_users: data.new_users || [],
+            existing_users: data.existing_users || [],
+            update_user_ids: updateIds
+        })
+    }).then(function (resp) {
+        var contentType = (resp.headers.get('content-type') || '').toLowerCase();
+
+        if (!resp.ok) {
+            if (contentType.indexOf('application/json') !== -1) {
+                return resp.json().catch(function () {
+                    throw new Error('Import failed with an invalid JSON error response.');
+                }).then(function (result) {
+                    throw new Error(result.error || ('Import failed (HTTP ' + resp.status + ')'));
+                });
+            }
+            throw new Error('Import failed (HTTP ' + resp.status + ')');
+        }
+
+        if (contentType.indexOf('application/json') === -1) {
+            throw new Error('Import failed: server returned a non-JSON response.');
+        }
+
+        return resp.json().catch(function () {
+            throw new Error('Import failed: server returned invalid JSON.');
+        });
+    }).then(function (result) {
+        MicroModal.close('modal-import-users');
+
+        var msg = 'Created ' + result.created + ' user(s), updated ' + result.updated + ' user(s).';
+        if (result.errors && result.errors.length) {
+            msg += ' Errors: ' + result.errors.join('; ');
+        }
+        Swal.fire({
+            icon: (result.errors && result.errors.length) ? 'warning' : 'success',
+            title: 'Import Complete',
+            text: msg,
+            timer: 2500,
+            showConfirmButton: true
+        }).then(function () {
+            window.location.reload();
+        });
+    }).catch(function (err) {
+        Swal.fire({ icon: 'error', title: 'Import Failed', text: err.message });
+    }).finally(function () {
+        confirmBtn.disabled = false;
+        confirmBtn.querySelector('span').textContent = 'Confirm Import';
+    });
+};
+
+/* Initialise on page load */
+document.addEventListener('DOMContentLoaded', function () {
+    AdminModals._importUsers.init();
+});

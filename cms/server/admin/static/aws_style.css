@@ -1110,6 +1110,7 @@ th .column-sort {
 
 body.admin pre {
     border-left: 2px solid var(--bulma-primary);
+    background-color: var(--bulma-scheme-main-ter);
 }
 
 body.admin a,
