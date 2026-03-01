@@ -122,6 +122,45 @@ def parse_string_list(value: str) -> list[str]:
     return [x.strip() for x in value.split(",") if x.strip()]
 
 
+def visible_contests(
+    session: Session,
+    folder: ContestFolder | None = None,
+) -> list[Contest]:
+    """Return non-internal, non-training-day contests in folder (or root)."""
+    q: Query = session.query(Contest)
+    if folder is not None:
+        q = q.filter(Contest.folder == folder)
+    else:
+        q = q.filter(Contest.folder_id.is_(None))
+    return (
+        exclude_internal_contests(q)
+        .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
+        .filter(TrainingDay.id.is_(None))
+        .order_by(Contest.name)
+        .all()
+    )
+
+
+def get_folder_breadcrumb(
+    handler: "BaseHandler",
+    folder: ContestFolder,
+) -> list[dict]:
+    """Build breadcrumb dicts (name, url, icon) from root to *folder*."""
+    breadcrumbs = []
+    cur = folder
+    while cur is not None:
+        breadcrumbs.append(
+            {
+                "name": cur.name,
+                "url": handler.url("folder", cur.id),
+                "icon": "icon-folder",
+            }
+        )
+        cur = cur.parent
+    breadcrumbs.reverse()
+    return breadcrumbs
+
+
 def parse_int(value: str) -> int:
     """Parse and validate an integer."""
     try:
@@ -483,15 +522,7 @@ class BaseHandler(CommonRequestHandler):
             .order_by(ContestFolder.name)
             .all()
         )
-        params["root_contests"] = (
-            exclude_internal_contests(
-                self.sql_session.query(Contest).filter(Contest.folder_id.is_(None))
-            )
-            .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
-            .filter(TrainingDay.id.is_(None))
-            .order_by(Contest.name)
-            .all()
-        )
+        params["root_contests"] = visible_contests(self.sql_session)
         params["pending_password_resets"] = (
             self.sql_session.query(User)
             .filter(User.password_reset_pending.is_(True))
@@ -529,18 +560,6 @@ class BaseHandler(CommonRequestHandler):
 
         breadcrumbs = []
 
-        def add_breadcrumb_recursive(folder):
-            """Recursively add breadcrumbs from folder to root."""
-            if folder.parent:
-                add_breadcrumb_recursive(folder.parent)
-            breadcrumbs.append(
-                {
-                    "name": folder.name,
-                    "url": self.url("folder", folder.id),
-                    "icon": "icon-folder",
-                }
-            )
-
         def add_training_program_breadcrumb(training_program):
             breadcrumbs.append(
                 {
@@ -551,9 +570,11 @@ class BaseHandler(CommonRequestHandler):
             )
 
         if self.contest.training_day:
-            add_training_program_breadcrumb(self.contest.training_day.training_program)
+            add_training_program_breadcrumb(
+                self.contest.training_day.training_program
+            )
         elif self.contest.folder:
-            add_breadcrumb_recursive(self.contest.folder)
+            breadcrumbs.extend(get_folder_breadcrumb(self, self.contest.folder))
 
         if self.contest.training_program:
             add_training_program_breadcrumb(self.contest.training_program)

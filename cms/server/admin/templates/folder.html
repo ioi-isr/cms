@@ -6,15 +6,19 @@
     <div class="level">
         <div class="level-left">
             <div>
-                <h1 class="title is-spaced" style="margin-bottom: 4px;">{{ folder.name }}</h1>
+                <h1 class="title is-spaced mb-1">{{ folder.name }}</h1>
                 {% if folder.description and folder.description != folder.name %}
                 <p class="has-text-grey">{{ folder.description }}</p>
                 {% endif %}
             </div>
         </div>
-        {% if admin.permission_all %}
         <div class="level-right">
             <div class="buttons">
+                <a class="button" href="{{ url("folders") }}">
+                    <svg class="icon is-small"><use href="#icon-chevron-left"/></svg>
+                    <span>Back to Root</span>
+                </a>
+                {% if admin.permission_all %}
                 <button type="button" class="button" onclick="MicroModal.show('modal-edit-folder-{{ folder.id }}')">
                     <svg class="icon is-small"><use href="#icon-edit"/></svg>
                     <span>Edit Folder</span>
@@ -34,21 +38,23 @@
                     <svg class="icon is-small"><use href="#icon-plus"/></svg>
                     <span>New Subfolder</span>
                 </button>
+                {% endif %}
             </div>
         </div>
-        {% endif %}
     </div>
 
     {% if folder.hidden %}
-    <div class="tp-filter-card" style="margin-bottom: 16px; border-left: 3px solid var(--tp-warning);">
-        <div class="is-flex is-align-items-center" style="gap: 8px;">
-            <svg class="icon is-small has-text-warning"><use href="#icon-eye"/></svg>
+    <div class="notification is-warning is-light mb-4">
+        <div class="is-flex is-align-items-center">
+            <svg class="icon is-small has-text-warning mr-2"><use href="#icon-eye-off"/></svg>
             <span class="has-text-grey">This folder is hidden (unlisted in contest server)</span>
         </div>
     </div>
     {% endif %}
 
     {% set has_items = (subfolders|length > 0) or (folder_contests|length > 0) %}
+
+    {{ folder_contents_table("folder-table", subfolders, folder_contests, show_table=has_items) }}
 
     {% if not has_items %}
     <div class="empty-state-box">
@@ -61,8 +67,6 @@
         </p>
         {% endif %}
     </div>
-    {% else %}
-    {{ folder_contents_table("folder-table", subfolders, folder_contests) }}
     {% endif %}
 
 {# Edit Folder Modal (current folder) #}
@@ -86,4 +90,3 @@ function openAddSubfolderModal() {
 }
 </script>
 {% endblock core %}
-

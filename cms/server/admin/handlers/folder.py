@@ -6,44 +6,16 @@ Minimal CRUD and parent assignment. Contests can be assigned to a folder from
 the contest page (dropdown).
 """
 
-from cms.db import ContestFolder, Contest, TrainingDay
+from cms.db import ContestFolder, Contest
 from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 
-from .base import BaseHandler, require_permission
-
-
-def _folder_breadcrumbs(handler, folder):
-    """Build breadcrumb dicts (name, url, icon) from root to *folder*."""
-    parts = []
-    cur = folder
-    while cur is not None:
-        parts.append(
-            {
-                "name": cur.name,
-                "url": handler.url("folder", cur.id),
-                "icon": "icon-folder",
-            }
-        )
-        cur = cur.parent
-    parts.reverse()
-    return parts
-
-
-def _visible_contests(session, folder=None):
-    """Return non-internal, non-training-day contests in *folder* (or root)."""
-    q = session.query(Contest)
-    if folder is not None:
-        q = q.filter(Contest.folder == folder)
-    else:
-        q = q.filter(Contest.folder_id.is_(None))
-    return (
-        exclude_internal_contests(q)
-        .outerjoin(TrainingDay, Contest.id == TrainingDay.contest_id)
-        .filter(TrainingDay.id.is_(None))
-        .order_by(Contest.name)
-        .all()
-    )
+from .base import (
+    BaseHandler,
+    get_folder_breadcrumb,
+    require_permission,
+    visible_contests,
+)
 
 
 class FolderListHandler(BaseHandler):
@@ -73,7 +45,7 @@ class FolderHandler(BaseHandler):
             folder.children, key=lambda f: f.name
         )
         # Contests in this folder (exclude internal training-day contests)
-        self.r_params["folder_contests"] = _visible_contests(
+        self.r_params["folder_contests"] = visible_contests(
             self.sql_session, folder
         )
         # Potential parents: all except self and descendants
@@ -82,7 +54,7 @@ class FolderHandler(BaseHandler):
             if f is not folder and not f.is_descendant_of(folder)
         ]
         # Breadcrumb: use the same dict format as base.html expects
-        self.r_params["breadcrumbs"] = _folder_breadcrumbs(self, folder)
+        self.r_params["breadcrumbs"] = get_folder_breadcrumb(self, folder)
         self.render("folder.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)

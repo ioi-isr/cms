@@ -19,6 +19,8 @@
 
     {% set has_items = (root_folders|length > 0) or (root_contests|length > 0) %}
 
+    {{ folder_contents_table("folders-table", root_folders, root_contests, show_table=has_items) }}
+
     {% if not has_items %}
     <div class="empty-state-box">
         <h3>No folders or contests yet</h3>
@@ -30,8 +32,6 @@
         </p>
         {% endif %}
     </div>
-    {% else %}
-    {{ folder_contents_table("folders-table", root_folders, root_contests) }}
     {% endif %}
 
 {# Edit Folder Modals (one per root folder) #}

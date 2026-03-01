@@ -6,24 +6,45 @@
 #}
 
 {# ── Full table with search, thead and tbody ─────────────────────── #}
-{% macro folder_contents_table(table_id, folders, contests, show_actions=true) %}
-<div style="margin-bottom: 16px;">
-    <input type="text" class="input" placeholder="Search folders and contests..."
-           aria-label="Search"
-           oninput="CMS.AWSUtils.filter_table('{{ table_id }}', this.value)"
-           style="max-width: 350px;">
+{% macro folder_contents_table(table_id, folders, contests, show_actions=true, show_table=true) %}
+<div class="field is-grouped is-grouped-multiline mb-4">
+    <div class="control is-expanded">
+        <select id="{{ table_id }}-jump-select"
+                class="searchable-select"
+                style="width: 100%"
+                aria-label="Jump to folder or contest">
+            <option value="">Find folder or contest...</option>
+            <optgroup label="Folders">
+                {% for f in folder_list %}
+                <option value="{{ url("folder", f.id) }}">Folder: {{ f.name }}</option>
+                {% endfor %}
+            </optgroup>
+            <optgroup label="Contests">
+                {% for c in contest_list %}
+                <option value="{{ url("contest", c.id) }}">Contest: {{ c.name }}</option>
+                {% endfor %}
+            </optgroup>
+        </select>
+    </div>
+    <div class="control">
+        <button type="button"
+                class="button is-primary"
+                onclick="CMSFolderNav.goToSelection('{{ table_id }}-jump-select')">
+            Go
+        </button>
+    </div>
 </div>
 
+{% if show_table %}
 <div class="table-container">
-    <table class="table is-bordered is-striped is-hoverable" id="{{ table_id }}">
+    <table class="table is-fullwidth is-bordered is-striped is-hoverable" id="{{ table_id }}">
         <thead>
             <tr>
                 <th class="has-text-left">Name</th>
                 <th class="has-text-left">Description</th>
-                <th class="has-text-centered" style="width: 120px;">Contents</th>
-                <th class="has-text-centered" style="width: 100px;">Status</th>
+                <th class="has-text-centered">Contents</th>
                 {% if show_actions and admin.permission_all %}
-                <th class="has-text-centered" style="width: 100px;">Actions</th>
+                <th class="has-text-centered">Actions</th>
                 {% endif %}
             </tr>
         </thead>
@@ -37,15 +58,33 @@
         </tbody>
     </table>
 </div>
+{% endif %}
+<script>
+window.CMSFolderNav = window.CMSFolderNav || {
+    goToSelection: function(selectId) {
+        var select = document.getElementById(selectId);
+        if (!select || !select.value) {
+            return;
+        }
+        window.location.href = select.value;
+    }
+};
+</script>
 {% endmacro %}
 
 {# ── Single folder row ───────────────────────────────────────────── #}
 {% macro folder_row(f, show_actions=true) %}
 <tr>
     <td>
-        <div class="is-flex is-align-items-center" style="gap: 8px;">
-            <svg class="icon is-small has-text-info"><use href="#icon-folder"/></svg>
-            <a class="has-text-weight-semibold" href="{{ url("folder", f.id) }}">{{ f.name }}</a>
+        <div class="is-flex is-align-items-center is-flex-wrap-nowrap">
+            <svg class="icon is-small has-text-info mr-2"><use href="#icon-folder"/></svg>
+            <a class="has-text-weight-semibold mr-2" href="{{ url("folder", f.id) }}">{{ f.name }}</a>
+            {% if f.hidden %}
+            <span class="tag is-bordered has-text-grey">
+                <svg class="icon is-small mr-1"><use href="#icon-eye-off"/></svg>
+                Hidden
+            </span>
+            {% endif %}
         </div>
     </td>
     <td>{{ f.description }}</td>
@@ -60,18 +99,10 @@
         </span>
         {% endif %}
     </td>
-    <td class="has-text-centered">
-        {% if f.hidden %}
-        <span class="tag is-bordered has-text-grey">
-            <svg class="icon is-small" style="width: 12px; height: 12px; margin-right: 4px;"><use href="#icon-eye"/></svg>
-            Hidden
-        </span>
-        {% endif %}
-    </td>
     {% if show_actions and admin.permission_all %}
     <td class="has-text-centered">
-        <div class="is-flex is-justify-content-center" style="gap: 4px;">
-            <button type="button" class="btn-icon-only" title="Edit folder" aria-label="Edit folder"
+        <div class="is-flex is-justify-content-center is-align-items-center is-flex-wrap-nowrap">
+            <button type="button" class="btn-icon-only mr-1" title="Edit folder" aria-label="Edit folder"
                     onclick="MicroModal.show('modal-edit-folder-{{ f.id }}')">
                 <svg class="icon is-small"><use href="#icon-edit"/></svg>
             </button>
@@ -94,13 +125,12 @@
 {% macro contest_row(c, show_actions=true) %}
 <tr>
     <td>
-        <div class="is-flex is-align-items-center" style="gap: 8px;">
-            <svg class="icon is-small has-text-warning"><use href="#icon-trophy"/></svg>
+        <div class="is-flex is-align-items-center is-flex-wrap-nowrap">
+            <svg class="icon is-small has-text-warning mr-2"><use href="#icon-trophy"/></svg>
             <a class="has-text-weight-semibold" href="{{ url("contest", c.id) }}">{{ c.name }}</a>
         </div>
     </td>
     <td>{{ c.description }}</td>
-    <td class="has-text-centered"></td>
     <td class="has-text-centered"></td>
     {% if show_actions and admin.permission_all %}
     <td class="has-text-centered"></td>
