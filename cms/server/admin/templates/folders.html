@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% from "macro/folder_table.html" import folder_contents_table with context %}
 
 {% block core %}
+    <!-- Header -->
     <div class="level">
         <div class="level-left">
             <h1 class="title is-spaced">Folders</h1>
@@ -15,9 +17,13 @@
         {% endif %}
     </div>
 
-    {% if folders|length == 0 %}
+    {% set has_items = (root_folders|length > 0) or (root_contests|length > 0) %}
+
+    {{ folder_contents_table("folders-table", root_folders, root_contests, show_table=has_items) }}
+
+    {% if not has_items %}
     <div class="empty-state-box">
-        <h3>No folders yet</h3>
+        <h3>No folders or contests yet</h3>
         {% if admin.permission_all %}
         <p>
             <button type="button" class="button is-primary" onclick="MicroModal.show('modal-add-folder')">
@@ -26,60 +32,15 @@
         </p>
         {% endif %}
     </div>
-    {% else %}
-    <table class="table is-bordered is-striped is-hoverable">
-        <thead>
-            <tr>
-                <th class="has-text-left">Name</th>
-                <th class="has-text-left">Description</th>
-                <th class="has-text-left">Parent</th>
-                <th class="has-text-left">Hidden</th>
-                {% if admin.permission_all %}
-                <th class="has-text-centered" style="width: 100px;">Actions</th>
-                {% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for f in folders %}
-            <tr>
-                <td><a class="has-text-weight-semibold" href="{{ url("folder", f.id) }}">{{ f.name }}</a></td>
-                <td>{{ f.description }}</td>
-                <td>{{ f.parent.description if f.parent is not none else "(root)" }}</td>
-                <td class="has-text-centered">
-                    {% if f.hidden %}
-                    <svg class="icon is-small has-text-warning"><use href="#icon-check"/></svg>
-                    {% else %}
-                    <span class="has-text-grey">—</span>
-                    {% endif %}
-                </td>
-                {% if admin.permission_all %}
-                <td class="has-text-centered">
-                    <button type="button" class="btn-icon-only" title="Remove folder"
-                                onclick='AdminModals.deleteResource({
-                                    title: "Remove Folder",
-                                    message: {{ ("Are you sure you want to remove folder \"" ~ f.name ~ "\"? Its subfolders and contests will be moved to its parent (or to root if no parent exists).")|tojson|forceescape }},
-                                    deleteUrl: {{ url("folders", f.id, "remove")|tojson|forceescape }},
-                                    confirmLabel: "Yes, Remove"
-                                })'>
-                        <svg class="icon is-small"><use href="#icon-trash"/></svg>
-                    </button>
-                </td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
     {% endif %}
 
-    {% if root_contests|length > 0 %}
-    <div class="tp-filter-card mt-5">
-        <h3 class="is-size-6 has-text-weight-semibold" style="margin-bottom: 8px;">Contests at root (no folder)</h3>
-        <ul class="pl-5">
-            {% for c in root_contests %}
-            <li><a href="{{ url("contest", c.id) }}">{{ c.description }}</a></li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+{# Edit Folder Modals (one per root folder) #}
+{% if admin is defined and admin.permission_all %}
+    {% for f in root_folders %}
+        {% with folder = f %}
+        {% include "fragments/modal_edit_folder.html" %}
+        {% endwith %}
+    {% endfor %}
+{% endif %}
 
 {% endblock core %}
