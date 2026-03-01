@@ -156,21 +156,10 @@
                       {% else %}
                         N/A
                       {% endif %}
-                      <button class="button is-warning is-small is-light ml-2" onclick="cmsrpc_request(
-                                       'EvaluationService', 0,
-                                       'invalidate_submission', {
-                                         'submission_id': {{ s.id }},
-                                         'dataset_id': {{ shown_dataset.id }},
-                                         'level': 'compilation',
-                                         'archive_sandbox': true
-                                       },
-                                       function(response) { utils.redirect_if_ok('{{ url("submission", s.id, shown_dataset.id) }}', response); }
-                      );"
-                      {% if not admin.permission_all %}
-                      disabled
-                      {% endif %}>
-                        Rerun and archive
-                      </button>
+                      {{ macro_reevaluation_buttons.rpc_rerun_archive_button(
+                           admin.permission_all,
+                           url("submission", s.id, shown_dataset.id),
+                           s.id, shown_dataset.id, 'compilation') }}
                     </div>
                 </div>
                 <div class="cell">
@@ -243,21 +232,10 @@
                                 N/A
                               {% endif %}
 
-                              <button class="button is-warning is-small is-light" onclick="cmsrpc_request(
-                                               'EvaluationService', 0,
-                                               'invalidate_submission', {
-                                                 'submission_id': {{ s.id }},
-                                                 'dataset_id': {{ shown_dataset.id }},
-                                                 'level': 'evaluation',
-                                                 'archive_sandbox': true
-                                               },
-                                               function(response) { utils.redirect_if_ok('{{ url("submission", s.id, shown_dataset.id) }}', response); }
-                              );"
-                              {% if not admin.permission_all %}
-                              disabled
-                              {% endif %}>
-                                Rerun and archive
-                              </button>
+                              {{ macro_reevaluation_buttons.rpc_rerun_archive_button(
+                                   admin.permission_all,
+                                   url("submission", s.id, shown_dataset.id),
+                                   s.id, shown_dataset.id, 'evaluation') }}
                             </td>
                           </tr>
                         </table>
@@ -403,23 +381,11 @@
                   N/A
                 {% endif %}
 
-                <button class="button is-warning is-small is-light"
-                  onclick="cmsrpc_request(
-                           'EvaluationService', 0,
-                           'invalidate_submission', {
-                             'submission_id': {{ s.id }},
-                             'dataset_id': {{ shown_dataset.id }},
-                             'testcase_id': {{ ev.testcase_id }},
-                             'level': 'evaluation',
-                             'archive_sandbox': true
-                           },
-                           function(response) { utils.redirect_if_ok('{{ url("submission", s.id, shown_dataset.id) }}', response); }
-                );"
-                {% if not admin.permission_all %}
-                disabled
-                {% endif %}>
-                  Rerun and archive
-                </button>
+                {{ macro_reevaluation_buttons.rpc_rerun_archive_button(
+                     admin.permission_all,
+                     url("submission", s.id, shown_dataset.id),
+                     s.id, shown_dataset.id, 'evaluation',
+                     testcase_id=ev.testcase_id) }}
               </td>
             </tr>
             {% endfor %}

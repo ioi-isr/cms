@@ -350,18 +350,18 @@ for (var i in shards)
     <h3 class="tp-card-title-modern">Resource Graphs{% if resource_addresses|length > 1 %} &mdash; Machine {{ i }}{% endif %}</h3>
   </div>
   <div class="tp-card-body">
-    <div class="columns is-multiline">
-      <div class="column is-12">
+    <div class="grid is-gap-8 is-col-min-24">
+      <div class="cell">
         <p class="has-text-weight-semibold has-text-grey mb-2">CPU</p>
-        <div id="cpu_{{ i }}" style="width: 500px; height: 9.75em;"></div>
+        <div id="cpu_{{ i }}" style="width: 100%; max-width: 500px; height: 9.75em;"></div>
       </div>
-      <div class="column is-12">
+      <div class="cell">
         <p class="has-text-weight-semibold has-text-grey mb-2">Memory</p>
-        <div id="memory_{{ i }}" style="width: 500px; height: 9.75em;"></div>
+        <div id="memory_{{ i }}" style="width: 100%; max-width: 500px; height: 9.75em;"></div>
       </div>
-      <div class="column is-12">
+      <div class="cell">
         <p class="has-text-weight-semibold has-text-grey mb-2">Swap</p>
-        <div id="swap_{{ i }}" style="width: 500px; height: 9.75em;"></div>
+        <div id="swap_{{ i }}" style="width: 100%; max-width: 500px; height: 9.75em;"></div>
       </div>
     </div>
   </div>
