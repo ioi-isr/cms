@@ -841,9 +841,30 @@ AdminModals._importUsers.handleUpload = function (e) {
         headers: { 'Accept': 'application/json' },
         body: formData
     }).then(function (resp) {
-        return resp.json().then(function (data) {
-            if (!resp.ok) throw new Error(data.error || 'Upload failed');
-            return data;
+        var contentType = (resp.headers.get('content-type') || '').toLowerCase();
+        return resp.text().then(function (body) {
+            var trimmedBody = (body || '').trim();
+
+            if (contentType.indexOf('application/json') !== -1) {
+                var data = null;
+                try {
+                    data = trimmedBody ? JSON.parse(trimmedBody) : {};
+                } catch (parseError) {
+                    var parseDetail = trimmedBody || resp.statusText || 'Invalid JSON response';
+                    throw new Error('Upload failed (HTTP ' + resp.status + '): ' + parseDetail);
+                }
+
+                if (!resp.ok) {
+                    throw new Error(
+                        data.error ||
+                        ('Upload failed (HTTP ' + resp.status + '): ' + (resp.statusText || 'Request failed'))
+                    );
+                }
+                return data;
+            }
+
+            var detail = trimmedBody || resp.statusText || 'Unexpected non-JSON response';
+            throw new Error('Upload failed (HTTP ' + resp.status + '): ' + detail);
         });
     }).then(function (data) {
         AdminModals._importUsers._lastData = data;
