@@ -45,104 +45,84 @@
         </div>
     </div>
     <div class="tp-card-body">
-        <div class="columns is-multiline">
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Submission Time</span>
-                    <div class="has-text-weight-medium">{{ s.timestamp|format_datetime }}</div>
+        <div class="grid is-col-min-8 is-gap-4">
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Submission Time</span>
+                <div class="has-text-weight-medium">{{ s.timestamp|format_datetime }}</div>
+            </div>
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">ID</span>
+                <div class="has-text-weight-medium">{{ s.id }}</div>
+            </div>
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Task</span>
+                <div><a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a></div>
+            </div>
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">User</span>
+                <div><a href="{{ url("contest", s.participation.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a></div>
+            </div>
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Language</span>
+                <div class="has-text-weight-medium">{% if s.language is none %}N/A{% else %}{{ s.language }}{% endif %}</div>
+            </div>
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Token</span>
+                <div class="has-text-weight-medium">{% if s.token is none %}No{% else %}Yes{% endif %}</div>
+            </div>
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Files</span>
+                <div>
+                  {% for filename, sub_file in s.files|dictsort(by="key") %}
+                      {% set real_filename = get_lang_filename(s.language, filename) %}
+                  <a href="javascript:void(0);" onclick='utils.show_file({{ real_filename|tojson }}, {{ url("submission_file", sub_file.id)|tojson }})'>
+                    {{ real_filename }}
+                  </a>
+                  {% if not loop.last %}<br/>{% endif %}
+                  {% endfor %}
                 </div>
             </div>
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">ID</span>
-                    <div class="has-text-weight-medium">{{ s.id }}</div>
-                </div>
-            </div>
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Task</span>
-                    <div><a href="{{ url("task", s.task.id) }}">{{ s.task.name }}</a></div>
-                </div>
-            </div>
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">User</span>
-                    <div><a href="{{ url("contest", s.participation.contest.id, "user", s.participation.user.id, "edit") }}">{{ s.participation.user.username }}</a></div>
-                </div>
-            </div>
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Language</span>
-                    <div class="has-text-weight-medium">{% if s.language is none %}N/A{% else %}{{ s.language }}{% endif %}</div>
-                </div>
-            </div>
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Token</span>
-                    <div class="has-text-weight-medium">{% if s.token is none %}No{% else %}Yes{% endif %}</div>
-                </div>
-            </div>
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Files</span>
-                    <div>
-                      {% for filename, sub_file in s.files|dictsort(by="key") %}
-                          {% set real_filename = get_lang_filename(s.language, filename) %}
-                      <a href="javascript:void(0);" onclick='utils.show_file({{ real_filename|tojson }}, {{ url("submission_file", sub_file.id)|tojson }})'>
-                        {{ real_filename }}
-                      </a>
-                      {% if not loop.last %}<br/>{% endif %}
-                      {% endfor %}
-                    </div>
-                </div>
-            </div>
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Official</span>
-                    <div>
-                        <form action="{{ url("submission", s.id, shown_dataset.id, "official") }}" name="official_status_form" method="POST" class="is-inline">
-                        {{ xsrf_form_html|safe }}
-                        {% if s.official %}
-                          <input type="hidden" name="official" value="no"/>
-                          <span class="has-text-weight-medium">Yes</span>
-                          <button
-                          {% if not admin.permission_all %}
-                              disabled
-                          {% endif %}
-                           type="submit" class="button is-small is-light ml-2">Make unofficial</button>
-                        {% else %}
-                          <input type="hidden" name="official" value="yes"/>
-                          <span class="has-text-weight-medium">No</span>
-                          <button
-                          {% if not admin.permission_all %}
-                              disabled
-                          {% endif %}
-                           type="submit" class="button is-small is-light ml-2">Make official</button>
-                        {% endif %}
-                        </form>
-                    </div>
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Official</span>
+                <div>
+                    <form action="{{ url("submission", s.id, shown_dataset.id, "official") }}" name="official_status_form" method="POST" class="is-inline">
+                    {{ xsrf_form_html|safe }}
+                    {% if s.official %}
+                      <input type="hidden" name="official" value="no"/>
+                      <span class="has-text-weight-medium">Yes</span>
+                      <button
+                      {% if not admin.permission_all %}
+                          disabled
+                      {% endif %}
+                       type="submit" class="button is-small is-light ml-2">Make unofficial</button>
+                    {% else %}
+                      <input type="hidden" name="official" value="yes"/>
+                      <span class="has-text-weight-medium">No</span>
+                      <button
+                      {% if not admin.permission_all %}
+                          disabled
+                      {% endif %}
+                       type="submit" class="button is-small is-light ml-2">Make official</button>
+                    {% endif %}
+                    </form>
                 </div>
             </div>
             {% if status == SubmissionResult.SCORED and st is defined %}
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Score as seen by user</span>
-                    <div>
-                      {% if s.token is not none %}
-                        {{ st.format_score(sr.score, st.max_score, sr.score_details, s.task.score_precision) }}
-                      {% else %}
-                        {{ st.format_score(sr.public_score, st.max_public_score, sr.public_score_details, s.task.score_precision) }}
-                      {% endif %}
-                    </div>
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Score as seen by user</span>
+                <div>
+                  {% if s.token is not none %}
+                    {{ st.format_score(sr.score, st.max_score, sr.score_details, s.task.score_precision) }}
+                  {% else %}
+                    {{ st.format_score(sr.public_score, st.max_public_score, sr.public_score_details, s.task.score_precision) }}
+                  {% endif %}
                 </div>
             </div>
             {% endif %}
             {% if sr is not none and sr.scored_at is not none %}
-            <div class="column is-6">
-                <div class="mb-4">
-                    <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Latency as seen by user</span>
-                    <div class="has-text-weight-medium">{{ (sr.scored_at - s.timestamp).total_seconds()|format_duration }}</div>
-                </div>
+            <div class="cell">
+                <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Latency as seen by user</span>
+                <div class="has-text-weight-medium">{{ (sr.scored_at - s.timestamp).total_seconds()|format_duration }}</div>
             </div>
             {% endif %}
         </div>
@@ -152,159 +132,147 @@
         <hr class="my-3">
         <details>
             <summary class="has-text-weight-semibold is-size-6 mb-3" style="cursor: pointer;">Technical Details</summary>
-            <div class="columns is-multiline">
-                <div class="column is-6">
-                    <div class="mb-4">
-                        <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Compilation failures</span>
-                        <div class="has-text-weight-medium">{{ sr.compilation_tries }}</div>
+            <div class="grid is-col-min-10 is-gap-4">
+                <div class="cell">
+                    <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Compilation failures</span>
+                    <div class="has-text-weight-medium">{{ sr.compilation_tries }}</div>
+                </div>
+                <div class="cell">
+                    <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Compilation shard</span>
+                    <div class="has-text-weight-medium">{{ sr.compilation_shard }}</div>
+                </div>
+                <div class="cell">
+                    <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Compilation sandbox</span>
+                    <div>
+                      {% if sr.compilation_sandbox_digests %}
+                        {% for sandbox_digest in sr.compilation_sandbox_digests %}
+                          {%- set filename = "submission_%s_compilation_sandbox_%s.tar.gz"|format(sr.submission_id, loop.index) -%}
+                          <a href="{{ url("file", sandbox_digest, filename) }}">
+                            {{- sr.compilation_sandbox_paths[loop.index0] -}}
+                          </a>
+                        {% endfor %}
+                      {% elif sr.compilation_sandbox_paths %}
+                        {{ sr.compilation_sandbox_paths|join(" ") }}
+                      {% else %}
+                        N/A
+                      {% endif %}
+                      <button class="button is-warning is-small is-light ml-2" onclick="cmsrpc_request(
+                                       'EvaluationService', 0,
+                                       'invalidate_submission', {
+                                         'submission_id': {{ s.id }},
+                                         'dataset_id': {{ shown_dataset.id }},
+                                         'level': 'compilation',
+                                         'archive_sandbox': true
+                                       },
+                                       function(response) { utils.redirect_if_ok('{{ url("submission", s.id, shown_dataset.id) }}', response); }
+                      );"
+                      {% if not admin.permission_all %}
+                      disabled
+                      {% endif %}>
+                        Rerun and archive
+                      </button>
                     </div>
                 </div>
-                <div class="column is-6">
-                    <div class="mb-4">
-                        <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Compilation shard</span>
-                        <div class="has-text-weight-medium">{{ sr.compilation_shard }}</div>
-                    </div>
-                </div>
-                <div class="column is-6">
-                    <div class="mb-4">
-                        <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Compilation sandbox</span>
-                        <div>
-                          {% if sr.compilation_sandbox_digests %}
-                            {% for sandbox_digest in sr.compilation_sandbox_digests %}
-                              {%- set filename = "submission_%s_compilation_sandbox_%s.tar.gz"|format(sr.submission_id, loop.index) -%}
-                              <a href="{{ url("file", sandbox_digest, filename) }}">
-                                {{- sr.compilation_sandbox_paths[loop.index0] -}}
-                              </a>
-                            {% endfor %}
-                          {% elif sr.compilation_sandbox_paths %}
-                            {{ sr.compilation_sandbox_paths|join(" ") }}
-                          {% else %}
-                            N/A
+                <div class="cell">
+                    <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Evaluation failures</span>
+                    <div>
+                      {{ sr.evaluation_tries }}
+                      {% if sr.evaluation_tries > 0 %}
+                      <button type="button" class="button is-small is-light ml-2" onclick="var el = document.getElementById('eval_failure_details'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">Details</button>
+                      <div id="eval_failure_details" style="display: none; margin-top: 10px;">
+                        <table class="table is-bordered is-narrow is-size-s">
+                          {% if sr.last_evaluation_failure_details %}
+                          <tr>
+                            <td><strong>Exit status</strong></td>
+                            <td>{{ sr.last_evaluation_failure_details.get('exit_status', 'N/A') }}</td>
+                          </tr>
+                          {% if sr.last_evaluation_failure_details.get('signal') %}
+                          <tr>
+                            <td><strong>Signal</strong></td>
+                            <td>{{ sr.last_evaluation_failure_details.get('signal')|format_signal }}</td>
+                          </tr>
                           {% endif %}
-                          <button class="button is-warning is-small is-light ml-2" onclick="cmsrpc_request(
-                                           'EvaluationService', 0,
-                                           'invalidate_submission', {
-                                             'submission_id': {{ s.id }},
-                                             'dataset_id': {{ shown_dataset.id }},
-                                             'level': 'compilation',
-                                             'archive_sandbox': true
-                                           },
-                                           function(response) { utils.redirect_if_ok('{{ url("submission", s.id, shown_dataset.id) }}', response); }
-                          );"
-                          {% if not admin.permission_all %}
-                          disabled
-                          {% endif %}>
-                            Rerun and archive
-                          </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="column is-6">
-                    <div class="mb-4">
-                        <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Evaluation failures</span>
-                        <div>
-                          {{ sr.evaluation_tries }}
-                          {% if sr.evaluation_tries > 0 %}
-                          <button type="button" class="button is-small is-light ml-2" onclick="var el = document.getElementById('eval_failure_details'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">Details</button>
-                          <div id="eval_failure_details" style="display: none; margin-top: 10px;">
-                            <table class="table is-bordered is-narrow is-size-7">
-                              {% if sr.last_evaluation_failure_details %}
-                              <tr>
-                                <td><strong>Exit status</strong></td>
-                                <td>{{ sr.last_evaluation_failure_details.get('exit_status', 'N/A') }}</td>
-                              </tr>
-                              {% if sr.last_evaluation_failure_details.get('signal') %}
-                              <tr>
-                                <td><strong>Signal</strong></td>
-                                <td>{{ sr.last_evaluation_failure_details.get('signal')|format_signal }}</td>
-                              </tr>
+                          {% if sr.last_evaluation_failure_details.get('execution_time') is not none %}
+                          <tr>
+                            <td><strong>Execution time</strong></td>
+                            <td>{{ sr.last_evaluation_failure_details.get('execution_time') }} s</td>
+                          </tr>
+                          {% endif %}
+                          {% if sr.last_evaluation_failure_details.get('execution_memory') is not none %}
+                          <tr>
+                            <td><strong>Memory used</strong></td>
+                            <td>{{ (sr.last_evaluation_failure_details.get('execution_memory') // (1024 * 1024)) }} MiB</td>
+                          </tr>
+                          {% endif %}
+                          {% if sr.last_evaluation_failure_details.get('stdout') %}
+                          <tr>
+                            <td><strong>Standard output</strong></td>
+                            <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stdout') }}</pre></td>
+                          </tr>
+                          {% endif %}
+                          {% if sr.last_evaluation_failure_details.get('stderr') %}
+                          <tr>
+                            <td><strong>Standard error</strong></td>
+                            <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stderr') }}</pre></td>
+                          </tr>
+                          {% endif %}
+                          {% endif %}
+                          {% if sr.last_evaluation_failure_text is not none %}
+                          <tr>
+                            <td><strong>Error text</strong></td>
+                            <td>{{ sr.last_evaluation_failure_text|format_status_text }}</td>
+                          </tr>
+                          {% endif %}
+                          <tr>
+                            <td><strong>Worker shard</strong></td>
+                            <td>{% if sr.last_evaluation_failure_shard is not none %}{{ sr.last_evaluation_failure_shard }}{% else %}N/A{% endif %}</td>
+                          </tr>
+                          <tr>
+                            <td><strong>Sandbox</strong></td>
+                            <td>
+                              {% if sr.last_evaluation_failure_sandbox_digests %}
+                                {% for sandbox_digest in sr.last_evaluation_failure_sandbox_digests %}
+                                  {%- set filename = "submission_%s_evaluation_failure_sandbox_%s.tar.gz"|format(sr.submission_id, loop.index) -%}
+                                  <a href="{{ url("file", sandbox_digest, filename) }}">
+                                    {{- sr.last_evaluation_failure_sandbox_paths[loop.index0] -}}
+                                  </a>
+                                {% endfor %}
+                              {% elif sr.last_evaluation_failure_sandbox_paths %}
+                                {{ sr.last_evaluation_failure_sandbox_paths|join(" ") }}
+                              {% else %}
+                                N/A
                               {% endif %}
-                              {% if sr.last_evaluation_failure_details.get('execution_time') is not none %}
-                              <tr>
-                                <td><strong>Execution time</strong></td>
-                                <td>{{ sr.last_evaluation_failure_details.get('execution_time') }} s</td>
-                              </tr>
-                              {% endif %}
-                              {% if sr.last_evaluation_failure_details.get('execution_memory') is not none %}
-                              <tr>
-                                <td><strong>Memory used</strong></td>
-                                <td>{{ (sr.last_evaluation_failure_details.get('execution_memory') // (1024 * 1024)) }} MiB</td>
-                              </tr>
-                              {% endif %}
-                              {% if sr.last_evaluation_failure_details.get('stdout') %}
-                              <tr>
-                                <td><strong>Standard output</strong></td>
-                                <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stdout') }}</pre></td>
-                              </tr>
-                              {% endif %}
-                              {% if sr.last_evaluation_failure_details.get('stderr') %}
-                              <tr>
-                                <td><strong>Standard error</strong></td>
-                                <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stderr') }}</pre></td>
-                              </tr>
-                              {% endif %}
-                              {% endif %}
-                              {% if sr.last_evaluation_failure_text is not none %}
-                              <tr>
-                                <td><strong>Error text</strong></td>
-                                <td>{{ sr.last_evaluation_failure_text|format_status_text }}</td>
-                              </tr>
-                              {% endif %}
-                              <tr>
-                                <td><strong>Worker shard</strong></td>
-                                <td>{% if sr.last_evaluation_failure_shard is not none %}{{ sr.last_evaluation_failure_shard }}{% else %}N/A{% endif %}</td>
-                              </tr>
-                              <tr>
-                                <td><strong>Sandbox</strong></td>
-                                <td>
-                                  {% if sr.last_evaluation_failure_sandbox_digests %}
-                                    {% for sandbox_digest in sr.last_evaluation_failure_sandbox_digests %}
-                                      {%- set filename = "submission_%s_evaluation_failure_sandbox_%s.tar.gz"|format(sr.submission_id, loop.index) -%}
-                                      <a href="{{ url("file", sandbox_digest, filename) }}">
-                                        {{- sr.last_evaluation_failure_sandbox_paths[loop.index0] -}}
-                                      </a>
-                                    {% endfor %}
-                                  {% elif sr.last_evaluation_failure_sandbox_paths %}
-                                    {{ sr.last_evaluation_failure_sandbox_paths|join(" ") }}
-                                  {% else %}
-                                    N/A
-                                  {% endif %}
 
-                                  <button class="button is-warning is-small is-light" onclick="cmsrpc_request(
-                                                   'EvaluationService', 0,
-                                                   'invalidate_submission', {
-                                                     'submission_id': {{ s.id }},
-                                                     'dataset_id': {{ shown_dataset.id }},
-                                                     'level': 'evaluation',
-                                                     'archive_sandbox': true
-                                                   },
-                                                   function(response) { utils.redirect_if_ok('{{ url("submission", s.id, shown_dataset.id) }}', response); }
-                                  );"
-                                  {% if not admin.permission_all %}
-                                  disabled
-                                  {% endif %}>
-                                    Rerun and archive
-                                  </button>
-                                </td>
-                              </tr>
-                            </table>
-                          </div>
-                          {% endif %}
-                        </div>
+                              <button class="button is-warning is-small is-light" onclick="cmsrpc_request(
+                                               'EvaluationService', 0,
+                                               'invalidate_submission', {
+                                                 'submission_id': {{ s.id }},
+                                                 'dataset_id': {{ shown_dataset.id }},
+                                                 'level': 'evaluation',
+                                                 'archive_sandbox': true
+                                               },
+                                               function(response) { utils.redirect_if_ok('{{ url("submission", s.id, shown_dataset.id) }}', response); }
+                              );"
+                              {% if not admin.permission_all %}
+                              disabled
+                              {% endif %}>
+                                Rerun and archive
+                              </button>
+                            </td>
+                          </tr>
+                        </table>
+                      </div>
+                      {% endif %}
                     </div>
                 </div>
                 {% set t, m = sr.get_max_evaluation_resources() %}
-                <div class="column is-6">
-                    <div class="mb-4">
-                        <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Max execution time</span>
-                        <div class="has-text-weight-medium">{% if t is not none %}{{ t }} s{% else %}N/A{% endif %}</div>
-                    </div>
+                <div class="cell">
+                    <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Max execution time</span>
+                    <div class="has-text-weight-medium">{% if t is not none %}{{ t }} s{% else %}N/A{% endif %}</div>
                 </div>
-                <div class="column is-6">
-                    <div class="mb-4">
-                        <span class="has-text-grey is-size-7 is-uppercase has-text-weight-semibold">Max memory used</span>
-                        <div class="has-text-weight-medium">{% if m is not none %}{{ m // (1024 * 1024) }} MiB{% else %}N/A{% endif %}</div>
-                    </div>
+                <div class="cell">
+                    <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Max memory used</span>
+                    <div class="has-text-weight-medium">{% if m is not none %}{{ m // (1024 * 1024) }} MiB{% else %}N/A{% endif %}</div>
                 </div>
             </div>
         </details>
@@ -383,8 +351,8 @@
         </div>
         <h3 class="tp-card-title-modern">Evaluation (admin view)</h3>
     </div>
-    <div class="tp-card-body" style="padding: 0;">
-      <div class="table-container" style="border: none; border-radius: 0;">
+    <div class="tp-card-body p-0">
+      <div class="table-container" style="border: none; border-radius: 0; width: 100%">
       <table class="table is-fullwidth is-striped is-hoverable is-header-muted mb-0">
         <thead>
           <tr>
