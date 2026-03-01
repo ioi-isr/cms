@@ -1106,7 +1106,8 @@ class GenerateTestcasesHandler(BaseHandler):
             # If stdin input was provided, write it to a file and
             # configure the sandbox to pipe it to the generator.
             if stdin_input:
-                sandbox.create_file_from_string("stdin.txt", stdin_input)
+                sandbox.create_file_from_string(
+                    "stdin.txt", stdin_input.encode("utf-8"))
                 sandbox.stdin_file = "stdin.txt"
 
             # Set stdout/stderr files so they are created during execution
