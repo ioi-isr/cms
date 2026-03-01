@@ -598,11 +598,17 @@ class ImportUsersConfirmHandler(BaseHandler):
 
         for user_data in new_users:
             try:
+                username = user_data.get("username")
+                if not username:
+                    raise ValueError("username is required")
+                if username.startswith("__"):
+                    raise ValueError("Username cannot start with '__'")
+
                 date_of_birth = None
                 if user_data.get("date_of_birth"):
-                    date_of_birth = date.fromisoformat(user_data["date_of_birth"])
+                    date_of_birth = validate_date_of_birth(user_data["date_of_birth"])
                 user = User(
-                    username=user_data["username"],
+                    username=username,
                     first_name=user_data["first_name"],
                     last_name=user_data["last_name"],
                     password=user_data["password"],
@@ -615,38 +621,39 @@ class ImportUsersConfirmHandler(BaseHandler):
                 created_count += 1
             except Exception as error:
                 errors.append(
-                    f"Failed to create user {user_data['username']}: {str(error)}"
+                    f"Failed to create user {user_data.get('username', '<unknown>')}: {str(error)}"
                 )
 
         for user_data in existing_users:
-            user_id = str(user_data["existing_id"])
-            if user_id in update_user_ids:
-                try:
-                    user = (
-                        self.sql_session.query(User)
-                        .filter(User.id == user_data["existing_id"])
-                        .first()
-                    )
-                    if user:
-                        user.first_name = user_data["first_name"]
-                        user.last_name = user_data["last_name"]
-                        user.password = user_data["password"]
-                        user.email = user_data.get("email")
-                        if user_data.get("date_of_birth"):
-                            user.date_of_birth = date.fromisoformat(
-                                user_data["date_of_birth"]
-                            )
-                        else:
-                            user.date_of_birth = None
-                        user.timezone = user_data.get("timezone")
-                        user.preferred_languages = user_data.get(
-                            "preferred_languages", []
+            try:
+                existing_id = user_data.get("existing_id")
+                if existing_id is None:
+                    raise ValueError("existing_id is required")
+                user_id = str(existing_id)
+                if user_id not in update_user_ids:
+                    continue
+
+                user = (
+                    self.sql_session.query(User).filter(User.id == existing_id).first()
+                )
+                if user:
+                    user.first_name = user_data["first_name"]
+                    user.last_name = user_data["last_name"]
+                    user.password = user_data["password"]
+                    user.email = user_data.get("email")
+                    if user_data.get("date_of_birth"):
+                        user.date_of_birth = validate_date_of_birth(
+                            user_data["date_of_birth"]
                         )
-                        updated_count += 1
-                except Exception as error:
-                    errors.append(
-                        f"Failed to update user {user_data['username']}: {str(error)}"
-                    )
+                    else:
+                        user.date_of_birth = None
+                    user.timezone = user_data.get("timezone")
+                    user.preferred_languages = user_data.get("preferred_languages", [])
+                    updated_count += 1
+            except Exception as error:
+                errors.append(
+                    f"Failed to update user {user_data.get('username', '<unknown>')}: {str(error)}"
+                )
 
         commit_ok = self.try_commit()
         if commit_ok:

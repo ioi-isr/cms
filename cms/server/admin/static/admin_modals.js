@@ -792,10 +792,10 @@ AdminModals._importUsers.init = function () {
     if (!uploadForm) return;  // modal fragment not on this page
 
     uploadForm.addEventListener('submit', AdminModals._importUsers.handleUpload);
-    backBtn.addEventListener('click', AdminModals._importUsers.showUploadStep);
+    if (backBtn) backBtn.addEventListener('click', AdminModals._importUsers.showUploadStep);
 
     var confirmBtn = document.getElementById('import-users-confirm-btn');
-    confirmBtn.addEventListener('click', AdminModals._importUsers.handleConfirm);
+    if (confirmBtn) confirmBtn.addEventListener('click', AdminModals._importUsers.handleConfirm);
 
     /* Reset to step 1 whenever the modal is opened */
     var modal = document.getElementById('modal-import-users');
