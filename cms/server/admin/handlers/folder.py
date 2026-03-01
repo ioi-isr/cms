@@ -19,7 +19,7 @@ from .base import (
 
 
 class FolderListHandler(BaseHandler):
-    """Root folders page – shows top-level folders and unassigned contests."""
+    """Root folders page - shows top-level folders and unassigned contests."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self):
@@ -70,7 +70,7 @@ class FolderHandler(BaseHandler):
             else:
                 parent = self.safe_get_item(ContestFolder, int(parent_id_str))
                 # Prevent folder cycles even if an invalid parent option is submitted.
-                if parent.id == folder.id or parent.is_descendant_of(folder):
+                if parent.is_descendant_of(folder):
                     raise ValueError("Invalid parent: cannot set folder parent to itself or one of its descendants.")
 
             hidden = self.get_argument("hidden", "0") == "1"
@@ -134,7 +134,7 @@ class RemoveFolderHandler(BaseHandler):
             child.parent = folder.parent
         # Move contests under this folder to its parent (or root if None)
         parent = folder.parent
-        for c in self.sql_session.query(Contest).filter(Contest.folder == folder).all():
+        for c in list(folder.contests):
             c.folder = parent
         # Delete the folder itself after explicit reparenting.
         self.sql_session.delete(folder)
