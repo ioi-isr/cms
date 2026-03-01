@@ -1,5 +1,5 @@
 <!-- Edit Folder Modal Fragment (one per folder) -->
-<!-- Required context: admin, url, xsrf_form_html, folder (the folder being edited), possible_parents -->
+<!-- Required context: admin, url, xsrf_form_html, folder (the folder being edited), folder_list -->
 
 {% from "macro/bulma_file_input.html" import form_field %}
 {% from "macro/modal.html" import modal_header, modal_footer %}
@@ -26,8 +26,10 @@
                                     <div class="select is-fullwidth">
                                         <select id="edit-folder-parent-{{ folder.id }}" name="parent_id">
                                             <option value="none">(root)</option>
-                                            {% for f in possible_parents %}
-                                            <option value="{{ f.id }}" {{ 'selected' if f.id == (folder.parent.id if folder.parent else -1) else '' }}>{{ f.name }}{% if f.description %} — {{ f.description }}{% endif %}</option>
+                                            {% for p in folder_list %}
+                                            {% if p.id != folder.id and not p.is_descendant_of(folder) %}
+                                            <option value="{{ p.id }}" {{ 'selected' if p.id == (folder.parent.id if folder.parent else -1) else '' }}>{{ p.name }}{% if p.description %} — {{ p.description }}{% endif %}</option>
+                                            {% endif %}
                                             {% endfor %}
                                         </select>
                                     </div>

@@ -74,7 +74,7 @@
     {% include "fragments/modal_edit_folder.html" %}
     {# Edit Folder Modals (subfolders) #}
     {% for f in subfolders %}
-        {% with folder = f, possible_parents = folder_list|rejectattr("id", "equalto", f.id)|list %}
+        {% with folder = f %}
         {% include "fragments/modal_edit_folder.html" %}
         {% endwith %}
     {% endfor %}

@@ -48,11 +48,6 @@ class FolderHandler(BaseHandler):
         self.r_params["folder_contests"] = visible_contests(
             self.sql_session, folder
         )
-        # Potential parents: all except self and descendants
-        self.r_params["possible_parents"] = [
-            f for f in self.r_params["folder_list"]
-            if f is not folder and not f.is_descendant_of(folder)
-        ]
         # Breadcrumb: use the same dict format as base.html expects
         self.r_params["breadcrumbs"] = get_folder_breadcrumb(self, folder)
         self.render("folder.html", **self.r_params)
@@ -74,6 +69,9 @@ class FolderHandler(BaseHandler):
                 parent = None
             else:
                 parent = self.safe_get_item(ContestFolder, int(parent_id_str))
+                # Prevent folder cycles even if an invalid parent option is submitted.
+                if parent.id == folder.id or parent.is_descendant_of(folder):
+                    raise ValueError("Invalid parent: cannot set folder parent to itself or one of its descendants.")
 
             hidden = self.get_argument("hidden", "0") == "1"
 
@@ -136,11 +134,9 @@ class RemoveFolderHandler(BaseHandler):
             child.parent = folder.parent
         # Move contests under this folder to its parent (or root if None)
         parent = folder.parent
-        for c in exclude_internal_contests(
-            self.sql_session.query(Contest).filter(Contest.folder == folder)
-        ).all():
+        for c in self.sql_session.query(Contest).filter(Contest.folder == folder).all():
             c.folder = parent
-        # Delete the folder itself; contests will be detached via FK SET NULL
+        # Delete the folder itself after explicit reparenting.
         self.sql_session.delete(folder)
         if not self.try_commit():
             self.set_status(500)
