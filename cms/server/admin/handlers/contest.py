@@ -32,7 +32,7 @@ from datetime import timedelta
 
 import tornado.web
 
-from cms import ServiceCoord, get_service_shards, get_service_address
+
 from cms.db import (
     Contest,
     Participation,
@@ -326,20 +326,6 @@ class OverviewHandler(BaseHandler):
         )
         self.render("overview.html", **self.r_params)
 
-
-class ResourcesListHandler(BaseHandler):
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, entity_type: str | None = None, entity_id: str | None = None):
-        self.setup_contest_or_training_program(
-            entity_type, entity_id, allow_none=True
-        )
-        self.r_params["resource_addresses"] = {}
-        services = get_service_shards("ResourceService")
-        for i in range(services):
-            self.r_params["resource_addresses"][i] = get_service_address(
-                ServiceCoord("ResourceService", i)
-            ).ip
-        self.render("resourceslist.html", **self.r_params)
 
 
 class ContestListHandler(BaseHandler):

@@ -115,3 +115,41 @@ Same parameters as reevaluation_buttons.
     <svg class="icon is-small"><use href="#icon-score-type"/></svg> <span>Score</span>
 </button>
 {% endmacro %}
+
+
+{% macro rpc_rerun_archive_button(allowed,
+                                   redirect_url,
+                                   submission_id,
+                                   dataset_id,
+                                   level,
+                                   testcase_id=None) %}
+{#
+Render a "Rerun and archive" button that calls EvaluationService/invalidate_submission
+with archive_sandbox=true.
+
+allowed (bool): whether the logged-in admin may trigger the action.
+redirect_url (str): URL to redirect to on success.
+submission_id (int): id of the submission.
+dataset_id (int): id of the dataset.
+level (str): invalidation level ('compilation' or 'evaluation').
+testcase_id (int|None): optional testcase id for per-testcase reruns.
+#}
+<button class="button is-warning is-small is-light{% if testcase_id is none %} ml-2{% endif %}"
+  onclick='AdminModals.confirmThen("Do you really want to rerun and archive?", function() {
+    cmsrpc_request(
+           "EvaluationService", 0,
+           "invalidate_submission", {
+             "submission_id": {{ submission_id }},
+             "dataset_id": {{ dataset_id }},
+             {% if testcase_id is not none %}"testcase_id": {{ testcase_id }},
+             {% endif %}"level": {{ level|tojson }},
+             "archive_sandbox": true
+           },
+           function(response) { utils.redirect_if_ok({{ redirect_url|tojson }}, response); }
+  ); }, {icon: "question"});'
+{% if not allowed %}
+  disabled
+{% endif %}>
+  Rerun and archive
+</button>
+{% endmacro %}
