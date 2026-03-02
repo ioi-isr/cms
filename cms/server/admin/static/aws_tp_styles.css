@@ -126,18 +126,6 @@
     color: var(--tp-text-primary);
 }
 
-.tp-dialog-body {
-    padding: 20px;
-}
-
-.tp-dialog-body label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--tp-text-secondary);
-    margin-bottom: 8px;
-}
-
 .tp-dialog-footer {
     display: flex;
     justify-content: flex-end;
@@ -485,7 +473,6 @@
 
     background-color: color-mix(in srgb, hsl(min(120, max(0, var(--hue))), 75%, 90%) 50%, transparent);
     color: hsl(min(120, max(0, var(--hue))), 90%, 20%);
-    background-image: none;
 }
 
 /* Modern progress bar using CSS custom properties
@@ -967,7 +954,6 @@
 }
 
 .histogram-stats {
-    background: var(--tp-info-light);
     border: 1px solid var(--tp-info-border);
     border-radius: 6px;
     padding: 12px 16px;
@@ -987,7 +973,6 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 14px;
-    background: var(--tp-bg-light);
     border-bottom: 1px solid var(--tp-border);
 }
 
@@ -2313,23 +2298,6 @@
     gap: 10px;
 }
 
-.delays-reject-input {
-    padding: 8px 12px;
-    border: 1px solid var(--tp-border);
-    border-radius: 8px;
-    font-size: 0.85rem;
-    color: var(--tp-text-primary);
-    background: var(--tp-bg-white);
-    min-width: 220px;
-    transition: border-color 0.2s;
-}
-
-.delays-reject-input:focus {
-    outline: none;
-    border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
-}
-
 .delays-status-pre-contest {
     color: var(--bulma-link);
 }
@@ -3161,5 +3129,15 @@
     /* Ranking page toolbar stacks vertically on mobile */
     .td-ranking-table {
         font-size: 0.8rem;
+    }
+
+    /* --- Histogram modal mobile responsive --- */
+    .modal--wide .modal__container {
+        max-width: 95vw;
+        padding: 10px;
+    }
+
+    .histogram-chart-container {
+        overflow-x: auto;
     }
 }

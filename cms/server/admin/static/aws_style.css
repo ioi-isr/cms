@@ -179,6 +179,10 @@ pre {
     border-color: var(--bulma-border);
 }
 
+.ts-dropdown {
+    z-index: 45 !important;
+}
+
 [data-theme="arkansas-black"] .ts-dropdown .option:hover {
     background: var(--bulma-scheme-main-ter) !important;
 }
