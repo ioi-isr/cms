@@ -475,7 +475,7 @@ $(document).ready(initHamburgerMenu);
 {% set global_menu_items = [
   {"key": "overview",          "icon": "icon-activity",       "text": "Overview",           "url": url(),                     "pos": 1, "mobile": false, "badges": []},
   {"key": "resource-list",     "icon": "icon-cpu",            "text": "Resource usage",     "url": url("resources"),           "pos": 2, "mobile": false, "badges": []},
-  {"key": "training-programs", "icon": "icon-graduation-cap", "text": "Training Programs",  "url": url("training_programs"),  "pos": 3, "mobile": true, "badges": [],
+  {"key": "training-programs", "icon": "icon-graduation-cap", "text": "Training Programs", "url": url("training_programs"),  "pos": 3, "mobile": true, "mobile_text": "Programs", "badges": [],
    "children": tp_children, "empty_text": "No training programs available",
    "actions": [{"type": "button", "text": "New training program", "onclick": "MicroModal.show('modal-add-program')"}]},
   {"key": "contests",          "icon": "icon-stopwatch",      "text": "Contests",           "url": url("contests"),           "pos": 4, "mobile": true, "badges": [],
@@ -541,7 +541,7 @@ $(document).ready(initHamburgerMenu);
     {"icon": "icon-cpu",            "text": "Resource usage",   "url": url("resources", "all", training_program.managing_contest.id|string), "pos": 2,  "mobile": false, "badges": []},
     {"icon": "icon-settings",       "text": "General",          "url": url("training_program", training_program.id),                          "pos": 3,  "mobile": false, "badges": []},
     {"icon": "icon-users",          "text": "Students",         "url": url("training_program", training_program.id, "students"),              "pos": 4,  "mobile": true,  "badges": []},
-    {"icon": "icon-laptop-code",    "text": "Training Days",    "url": url("training_program", training_program.id, "training_days"),         "pos": 5,  "mobile": true,
+    {"icon": "icon-laptop-code",    "text": "Training Days",    "url": url("training_program", training_program.id, "training_days"),         "pos": 5,  "mobile": true, "mobile_text": "Trainings",
      "badges": [{"count": total_td_unanswered_questions|default(0), "color": "danger"}, {"count": total_td_pending_delay_requests|default(0), "color": "warning"}],
      "children": td_children, "folder_key": "training-days-section", "empty_text": "No active training days",
      "actions": [{"type": "button", "text": "Add a training day", "onclick": "MicroModal.show('modal-add-training-day')"}]},
@@ -745,8 +745,8 @@ $(document).ready(initHamburgerMenu);
   <div class="is-flex is-justify-content-space-evenly is-align-items-stretch is-flex-grow-1" style="width: 100%; height: 3.5rem;">
 
     {% for item in mobile_items %}
-    <a href="{{ item.url }}" class="is-flex is-align-items-center is-justify-content-center has-text-grey" title="{{ item.text }}" style="flex: 1;">
-      <div style="position: relative;">
+    <a href="{{ item.url }}" class="is-flex is-flex-direction-column is-align-items-center is-justify-content-center has-text-grey" title="{{ item.text }}" style="flex: 1;">
+      <div class="is-relative is-flex is-align-items-center is-justify-content-center">
         <svg class="icon is-medium"><use href="#{{ item.icon }}"/></svg>
         {% set ns = namespace(shown=false) %}
         {% for badge in item.badges if badge.count > 0 and not ns.shown %}
@@ -754,6 +754,7 @@ $(document).ready(initHamburgerMenu);
           <span class="tag is-{{ badge.color }} is-rounded" style="position:absolute; top:-4px; right:-8px; height: 18px; min-width: 18px; padding: 0 4px; font-size: 0.7rem; font-weight: bold;">{{ badge.count }}</span>
         {% endfor %}
       </div>
+      <div class="is-size-7 mt-0 has-text-centered">{{ item.mobile_text if item.mobile_text is defined else item.text }}</div>
     </a>
     {% endfor %}
 
@@ -762,8 +763,11 @@ $(document).ready(initHamburgerMenu);
     <div class="dropdown is-up is-right" id="mobile-more-dropdown" style="flex: 1; display: flex;">
 
       <!-- Using an <a> tag ensures mobile browsers correctly register the tap/click -->
-      <a id="mobile-more-trigger" class="dropdown-trigger is-flex is-align-items-center is-justify-content-center has-text-grey" style="width: 100%; height: 100%; text-decoration: none; cursor: pointer;">
-        <svg class="icon is-medium"><use href="#icon-more"/></svg>
+      <a id="mobile-more-trigger" class="dropdown-trigger is-flex is-flex-direction-column is-align-items-center is-justify-content-center has-text-grey" style="width: 100%; height: 100%; text-decoration: none; cursor: pointer;">
+        <div class="is-flex is-align-items-center is-justify-content-center">
+          <svg class="icon is-medium"><use href="#icon-more"/></svg>
+        </div>
+        <div class="is-size-7 has-text-centered">More</div>
       </a>
 
       <!-- The Menu that pops upwards -->

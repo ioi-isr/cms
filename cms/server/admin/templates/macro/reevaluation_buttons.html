@@ -135,18 +135,18 @@ level (str): invalidation level ('compilation' or 'evaluation').
 testcase_id (int|None): optional testcase id for per-testcase reruns.
 #}
 <button class="button is-warning is-small is-light{% if testcase_id is none %} ml-2{% endif %}"
-  onclick="AdminModals.confirmThen('Do you really want to rerun and archive?', function() {
+  onclick='AdminModals.confirmThen("Do you really want to rerun and archive?", function() {
     cmsrpc_request(
-           'EvaluationService', 0,
-           'invalidate_submission', {
-             'submission_id': {{ submission_id }},
-             'dataset_id': {{ dataset_id }},
-             {% if testcase_id is not none %}'testcase_id': {{ testcase_id }},
-             {% endif %}'level': '{{ level }}',
-             'archive_sandbox': true
+           "EvaluationService", 0,
+           "invalidate_submission", {
+             "submission_id": {{ submission_id }},
+             "dataset_id": {{ dataset_id }},
+             {% if testcase_id is not none %}"testcase_id": {{ testcase_id }},
+             {% endif %}"level": {{ level|tojson }},
+             "archive_sandbox": true
            },
-           function(response) { utils.redirect_if_ok('{{ redirect_url }}', response); }
-  ); }, {icon: 'question'});"
+           function(response) { utils.redirect_if_ok({{ redirect_url|tojson }}, response); }
+  ); }, {icon: "question"});'
 {% if not allowed %}
   disabled
 {% endif %}>
