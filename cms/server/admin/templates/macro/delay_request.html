@@ -71,7 +71,7 @@ variant (str): "pending", "history", or "auto" to pick layout.
     <form action="{{ url("contest", contest.id, "delay_request", req.id, "reject") }}" method="POST" class="delays-inline-form delays-reject-form">
       {{ xsrf_form_html|safe }}
       <button type="submit" class="button is-danger">Reject</button>
-      <input type="text" name="rejection_reason" class="delays-reject-input" placeholder="Rejection reason (optional)">
+      <input type="text" name="rejection_reason" class="input is-size-s" placeholder="Rejection reason (optional)">
     </form>
   </div>
   {% endif %}

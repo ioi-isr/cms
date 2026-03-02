@@ -267,11 +267,16 @@ class TrainingDaysHandler(ContestHandler):
             td_contest = training_day.contest
 
             if td_contest is None:
-                past_trainings.append(
-                    self._build_past_training_info(
-                        training_day, participation, archived_rankings_map, task_by_id
+                # Only show archived training days if the student participated in them
+                if training_day.id in archived_rankings_map:
+                    past_trainings.append(
+                        self._build_past_training_info(
+                            training_day,
+                            participation,
+                            archived_rankings_map,
+                            task_by_id,
+                        )
                     )
-                )
                 continue
 
             timing_info = get_training_day_timing_info(
