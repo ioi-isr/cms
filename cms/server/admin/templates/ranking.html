@@ -32,7 +32,7 @@
     {% if student_tags_by_participation and student_tags_by_participation.get(p.id, []) %}
     <div class="tags mt-1">
       {% for tag in student_tags_by_participation.get(p.id, []) %}
-        <span class="tag is-opaque-bg has-text-primary-35 is-small">{{ tag }}</span>
+        <span class="tag is-opaque-bg has-text-primary-35 is-tiny">{{ tag }}</span>
       {% endfor %}
     </div>
     {% endif %}
