@@ -92,6 +92,7 @@ textarea {
 }
 
 .is-size-s { font-size: 0.85rem !important; }
+.is-tiny { font-size: 0.67rem !important; }
 
 .pagination {
   --bulma-pagination-item-padding-left: 0;

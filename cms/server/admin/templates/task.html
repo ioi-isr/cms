@@ -2060,7 +2060,8 @@ document.addEventListener('click', function(e) {
                 message: {{ ('Are you sure you want to remove task "' ~ task.name ~ '", including all related data?')|tojson|forceescape }},
                 warnings: [{{ (task.submissions|length ~ " submission(s) will be deleted.")|tojson|forceescape }}],
                 deleteUrl: {{ url("tasks", task.id, "remove")|tojson|forceescape }},
-                confirmLabel: "Yes, Remove Task"
+                confirmLabel: "Yes, Remove Task",
+                onSuccess: function(response) { window.location.href = response; }
             })'>
             <svg class="icon is-small"><use href="#icon-trash"/></svg>
             <span>Remove Task</span>
