@@ -167,83 +167,90 @@
                     <div>
                       {{ sr.evaluation_tries }}
                       {% if sr.evaluation_tries > 0 %}
-                      <button type="button" class="button is-small is-light ml-2" onclick="var el = document.getElementById('eval_failure_details'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">Details</button>
-                      <div id="eval_failure_details" style="display: none; margin-top: 10px;">
-                        <table class="table is-bordered is-narrow is-size-s">
-                          {% if sr.last_evaluation_failure_details %}
-                          <tr>
-                            <td><strong>Exit status</strong></td>
-                            <td>{{ sr.last_evaluation_failure_details.get('exit_status', 'N/A') }}</td>
-                          </tr>
-                          {% if sr.last_evaluation_failure_details.get('signal') %}
-                          <tr>
-                            <td><strong>Signal</strong></td>
-                            <td>{{ sr.last_evaluation_failure_details.get('signal')|format_signal }}</td>
-                          </tr>
-                          {% endif %}
-                          {% if sr.last_evaluation_failure_details.get('execution_time') is not none %}
-                          <tr>
-                            <td><strong>Execution time</strong></td>
-                            <td>{{ sr.last_evaluation_failure_details.get('execution_time') }} s</td>
-                          </tr>
-                          {% endif %}
-                          {% if sr.last_evaluation_failure_details.get('execution_memory') is not none %}
-                          <tr>
-                            <td><strong>Memory used</strong></td>
-                            <td>{{ (sr.last_evaluation_failure_details.get('execution_memory') // (1024 * 1024)) }} MiB</td>
-                          </tr>
-                          {% endif %}
-                          {% if sr.last_evaluation_failure_details.get('stdout') %}
-                          <tr>
-                            <td><strong>Standard output</strong></td>
-                            <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stdout') }}</pre></td>
-                          </tr>
-                          {% endif %}
-                          {% if sr.last_evaluation_failure_details.get('stderr') %}
-                          <tr>
-                            <td><strong>Standard error</strong></td>
-                            <td><pre style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stderr') }}</pre></td>
-                          </tr>
-                          {% endif %}
-                          {% endif %}
-                          {% if sr.last_evaluation_failure_text is not none %}
-                          <tr>
-                            <td><strong>Error text</strong></td>
-                            <td>{{ sr.last_evaluation_failure_text|format_status_text }}</td>
-                          </tr>
-                          {% endif %}
-                          <tr>
-                            <td><strong>Worker shard</strong></td>
-                            <td>{% if sr.last_evaluation_failure_shard is not none %}{{ sr.last_evaluation_failure_shard }}{% else %}N/A{% endif %}</td>
-                          </tr>
-                          <tr>
-                            <td><strong>Sandbox</strong></td>
-                            <td>
-                              {% if sr.last_evaluation_failure_sandbox_digests %}
-                                {% for sandbox_digest in sr.last_evaluation_failure_sandbox_digests %}
-                                  {%- set filename = "submission_%s_evaluation_failure_sandbox_%s.tar.gz"|format(sr.submission_id, loop.index) -%}
-                                  <a href="{{ url("file", sandbox_digest, filename) }}">
-                                    {{- sr.last_evaluation_failure_sandbox_paths[loop.index0] -}}
-                                  </a>
-                                {% endfor %}
-                              {% elif sr.last_evaluation_failure_sandbox_paths %}
-                                {{ sr.last_evaluation_failure_sandbox_paths|join(" ") }}
-                              {% else %}
-                                N/A
-                              {% endif %}
-
-                              {{ macro_reevaluation_buttons.rpc_rerun_archive_button(
-                                   admin.permission_all,
-                                   url("submission", s.id, shown_dataset.id),
-                                   s.id, shown_dataset.id, 'evaluation') }}
-                            </td>
-                          </tr>
-                        </table>
-                      </div>
+                      <button type="button" class="button is-small is-light ml-2" onclick="var el = document.getElementById('eval_failure_details'); el.open = !el.open;">Details</button>
                       {% endif %}
                     </div>
                 </div>
+            </div>
+            {% if sr.evaluation_tries > 0 %}
+            <details id="eval_failure_details" class="mt-3">
+                <summary style="display: none;"></summary>
+                <div class="grid is-col-min-10 is-gap-4">
+                    {% if sr.last_evaluation_failure_details %}
+                    <div class="cell">
+                        <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Exit status</span>
+                        <div class="has-text-weight-medium">{{ sr.last_evaluation_failure_details.get('exit_status', 'N/A') }}</div>
+                    </div>
+                    {% if sr.last_evaluation_failure_details.get('signal') %}
+                    <div class="cell">
+                        <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Signal</span>
+                        <div class="has-text-weight-medium">{{ sr.last_evaluation_failure_details.get('signal')|format_signal }}</div>
+                    </div>
+                    {% endif %}
+                    {% if sr.last_evaluation_failure_details.get('execution_time') is not none %}
+                    <div class="cell">
+                        <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Execution time</span>
+                        <div class="has-text-weight-medium">{{ sr.last_evaluation_failure_details.get('execution_time') }} s</div>
+                    </div>
+                    {% endif %}
+                    {% if sr.last_evaluation_failure_details.get('execution_memory') is not none %}
+                    <div class="cell">
+                        <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Memory used</span>
+                        <div class="has-text-weight-medium">{{ (sr.last_evaluation_failure_details.get('execution_memory') // (1024 * 1024)) }} MiB</div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                    {% if sr.last_evaluation_failure_text is not none %}
+                    <div class="cell">
+                        <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Error text</span>
+                        <div class="has-text-weight-medium">{{ sr.last_evaluation_failure_text|format_status_text }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="cell">
+                        <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Worker shard</span>
+                        <div class="has-text-weight-medium">{% if sr.last_evaluation_failure_shard is not none %}{{ sr.last_evaluation_failure_shard }}{% else %}N/A{% endif %}</div>
+                    </div>
+                    <div class="cell">
+                        <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Sandbox</span>
+                        <div>
+                          {% if sr.last_evaluation_failure_sandbox_digests %}
+                            {% for sandbox_digest in sr.last_evaluation_failure_sandbox_digests %}
+                              {%- set filename = "submission_%s_evaluation_failure_sandbox_%s.tar.gz"|format(sr.submission_id, loop.index) -%}
+                              <a href="{{ url("file", sandbox_digest, filename) }}">
+                                {{- sr.last_evaluation_failure_sandbox_paths[loop.index0] -}}
+                              </a>
+                            {% endfor %}
+                          {% elif sr.last_evaluation_failure_sandbox_paths %}
+                            {{ sr.last_evaluation_failure_sandbox_paths|join(" ") }}
+                          {% else %}
+                            N/A
+                          {% endif %}
+
+                          {{ macro_reevaluation_buttons.rpc_rerun_archive_button(
+                               admin.permission_all,
+                               url("submission", s.id, shown_dataset.id),
+                               s.id, shown_dataset.id, 'evaluation') }}
+                        </div>
+                    </div>
+                    {% if sr.last_evaluation_failure_details %}
+                    {% if sr.last_evaluation_failure_details.get('stdout') %}
+                    <div class="cell" style="grid-column: 1 / -1;">
+                        <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Standard output</span>
+                        <pre class="mt-2" style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stdout') }}</pre>
+                    </div>
+                    {% endif %}
+                    {% if sr.last_evaluation_failure_details.get('stderr') %}
+                    <div class="cell" style="grid-column: 1 / -1;">
+                        <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Standard error</span>
+                        <pre class="mt-2" style="max-height: 200px; overflow: auto; white-space: pre-wrap;">{{ sr.last_evaluation_failure_details.get('stderr') }}</pre>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </details>
+            {% endif %}
                 {% set t, m = sr.get_max_evaluation_resources() %}
+            <div class="grid is-col-min-10 is-gap-4 mt-3">
                 <div class="cell">
                     <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Max execution time</span>
                     <div class="has-text-weight-medium">{% if t is not none %}{{ t }} s{% else %}N/A{% endif %}</div>
