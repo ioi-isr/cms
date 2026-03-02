@@ -1,90 +1,114 @@
 {% extends "base.html" %}
-{% import "macro/model_solution_subtasks.html" as ms %}
 
 {% block core %}
-{% include "fragments/model_solution_styles.html" %}
 
 <h1 class="title is-spaced">Configure Model Solutions</h1>
 
-<div class="ms-alert ms-alert-info">
+<div class="notification is-info is-light">
   The following model solutions need configuration. Please set the expected score ranges for each solution.
 </div>
 
 <form action="{{ url("task", task.id, "model_solutions", "configure") }}" method="POST">
   {{ xsrf_form_html|safe }}
 
-  <div class="ms-card">
-    <div class="ms-card-header">Overall Score Ranges</div>
-    <div class="ms-card-body" style="padding: 0;">
-      <table class="table is-bordered is-striped is-hoverable" style="width: 100%; margin: 0;">
+  <div class="tp-card" style="margin-bottom: 1.5rem;">
+    <div class="tp-card-header-modern">
+      <div class="tp-card-header-icon">
+        <svg class="icon"><use href="#icon-score-type"/></svg>
+      </div>
+      <h3 class="tp-card-title-modern">Overall Score Ranges</h3>
+    </div>
+    <div class="tp-card-body" style="padding: 0;">
+      <div style="border-radius: 0 0 12px 12px; overflow-x: auto;">
+      <table class="tp-tasks-table" style="margin: 0; text-align: center;">
         <thead>
           <tr>
-            <th style="padding: 10px;">Name</th>
-            <th style="padding: 10px;">Language</th>
-            <th style="padding: 10px;">Description</th>
-            <th style="padding: 10px;">Expected Min</th>
-            <th style="padding: 10px;">Expected Max</th>
-            <th style="padding: 10px;">Status</th>
+            <th style="text-align: left;">Name</th>
+            <th>Language</th>
+            <th style="text-align: left;">Description</th>
+            <th>Expected Min</th>
+            <th>Expected Max</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
 {% for sol in model_solutions %}
-          <tr{% if sol.needs_config %} class="needs-config" style="background-color: #fff3cd;"{% endif %}>
-            <td style="padding: 10px;">
-              <strong>{{ sol.name }}</strong>
-              <input type="hidden" name="sol_{{ sol.id }}_id" value="{{ sol.id }}" />
-            </td>
-            <td style="padding: 10px;">{{ sol.language or 'auto-detect' }}</td>
-            <td style="padding: 10px;">
-              <input type="text" name="sol_{{ sol.id }}_description" value="{{ sol.description }}" placeholder="Optional description" class="ms-form-control" style="width: 200px;" />
-            </td>
-            <td style="padding: 10px;">
-              <input type="number" min="0" step="0.01" name="sol_{{ sol.id }}_score_min" value="{{ sol.expected_score_min }}" class="ms-form-control" style="width: 80px;" />
-            </td>
-            <td style="padding: 10px;">
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <input type="number" min="0" step="0.01" name="sol_{{ sol.id }}_score_max" value="{{ sol.expected_score_max }}" class="ms-form-control" style="width: 80px;" />
-{% if subtasks %}
-                <label class="ms-auto-calc-label" style="margin-top: 4px;">
-                  <input type="checkbox" class="ms-form-check-input calc-from-subtasks" data-sol-id="{{ sol.id }}" />
-                  Calculate score range from subtask table
-                </label>
-{% endif %}
+          <tr{% if sol.needs_config %} style="background-color: var(--tp-warning-light);"{% endif %}>
+            <td>
+              <div class="list-cell-wrapper" style="font-weight: 600;">
+                {{ sol.name }}
+                <input type="hidden" name="sol_{{ sol.id }}_id" value="{{ sol.id }}" />
               </div>
             </td>
-            <td style="padding: 10px; color: {% if sol.needs_config %}#856404{% else %}#28a745{% endif %}; font-weight: 500;">
-              {% if sol.needs_config %}Needs Config{% else %}Configured{% endif %}
+            <td><div class="list-cell-wrapper center-content" style="color: var(--tp-text-muted);">{{ sol.language or 'auto-detect' }}</div></td>
+            <td>
+              <div class="list-cell-wrapper">
+                <input type="text" name="sol_{{ sol.id }}_description" value="{{ sol.description }}" placeholder="Optional description" class="input" style="width: 200px;" />
+              </div>
+            </td>
+            <td>
+              <div class="list-cell-wrapper center-content">
+                <input type="number" min="0" step="0.01" name="sol_{{ sol.id }}_score_min" value="{{ sol.expected_score_min }}" class="input" style="width: 90px; text-align: center;" />
+              </div>
+            </td>
+            <td>
+              <div class="list-cell-wrapper center-content">
+                <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;">
+                  <input type="number" min="0" step="0.01" name="sol_{{ sol.id }}_score_max" value="{{ sol.expected_score_max }}" class="input" style="width: 90px; text-align: center;" />
+{% if subtasks %}
+                  <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--tp-text-muted); cursor: pointer;">
+                    <input type="checkbox" class="calc-from-subtasks" data-sol-id="{{ sol.id }}" />
+                    Calc from subtasks
+                  </label>
+{% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="list-cell-wrapper center-content">
+{% if sol.needs_config %}
+                <span class="tag is-warning is-light">Needs Config</span>
+{% else %}
+                <span class="tag is-success is-light">Configured</span>
+{% endif %}
+              </div>
             </td>
           </tr>
 {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 
 {% if subtasks %}
-  <div class="ms-card">
-    <div class="ms-card-header">Subtask Expected Scores</div>
-    <div class="ms-card-body">
-      <p style="margin-bottom: 16px; color: #6c757d;">Configure expected scores per subtask. Use the buttons to quickly set scores:</p>
+  <div class="tp-card" style="margin-bottom: 1.5rem;">
+    <div class="tp-card-header-modern">
+      <div class="tp-card-header-icon">
+        <svg class="icon"><use href="#icon-evaluate"/></svg>
+      </div>
+      <h3 class="tp-card-title-modern">Subtask Expected Scores</h3>
+    </div>
+    <div class="tp-card-body">
+      <p style="margin-bottom: 16px; color: var(--tp-text-muted); font-size: 0.9rem;">Configure expected scores per subtask. Use the buttons to quickly set scores:</p>
 
 {% for sol in model_solutions %}
-      <div class="ms-solution-row{% if sol.needs_config %} needs-config{% endif %}" data-sol-id="{{ sol.id }}">
-        <div class="ms-solution-name">{{ sol.name }}</div>
-        <div class="ms-solution-subtasks">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--tp-border); gap: 8px;{% if sol.needs_config %} background-color: var(--tp-warning-light); border-radius: 6px; padding-left: 12px; padding-right: 12px; margin-bottom: 4px;{% endif %}" data-sol-id="{{ sol.id }}">
+        <div style="font-weight: 600; min-width: 100px; font-size: 0.9rem;">{{ sol.name }}</div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1;">
 {% for st in subtasks if st.max_score > 0 %}
-          <div class="ms-subtask-group">
-            <span class="ms-subtask-group-label">{{ st.display_name }}</span>
-            <input type="number" min="0"  step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_min"
+          <div style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 6px;">
+            <span style="font-weight: 600; font-size: 0.8rem; color: var(--tp-text-secondary); white-space: nowrap;">{{ st.display_name }}</span>
+            <input type="number" min="0" step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_min"
                    value="{% if sol.subtask_expected_scores and sol.subtask_expected_scores[st.idx|string] %}{{ sol.subtask_expected_scores[st.idx|string].min }}{% else %}0{% endif %}"
-                   class="ms-subtask-input subtask-min" data-sol-id="{{ sol.id }}" placeholder="Min" title="Min (max: {{ st.max_score }})" />
-            <span style="color: #6c757d;">-</span>
+                   class="input subtask-min" data-sol-id="{{ sol.id }}" placeholder="Min" title="Min (max: {{ st.max_score }})" style="width: 60px; text-align: center; padding: 3px 6px; font-size: 0.85rem;" />
+            <span style="color: var(--tp-text-muted);">-</span>
             <input type="number" min="0" step="0.01" name="sol_{{ sol.id }}_st_{{ st.idx }}_max"
                    value="{% if sol.subtask_expected_scores and sol.subtask_expected_scores[st.idx|string] %}{{ sol.subtask_expected_scores[st.idx|string].max }}{% else %}{{ st.max_score }}{% endif %}"
-                   class="ms-subtask-input subtask-max" data-sol-id="{{ sol.id }}" placeholder="Max" title="Max (max: {{ st.max_score }})" />
-            <div class="ms-btn-group">
-              <button type="button" class="ms-btn ms-btn-outline-danger btn-zero-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" title="Set to zero">0</button>
-              <button type="button" class="ms-btn ms-btn-outline-success btn-full-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" data-max-score="{{ st.max_score }}" title="Set to full score ({{ st.max_score }})">Full</button>
+                   class="input subtask-max" data-sol-id="{{ sol.id }}" placeholder="Max" title="Max (max: {{ st.max_score }})" style="width: 60px; text-align: center; padding: 3px 6px; font-size: 0.85rem;" />
+            <div class="buttons are-small" style="margin: 0;">
+              <button type="button" class="button is-danger is-outlined is-small btn-zero-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" title="Set to zero">0</button>
+              <button type="button" class="button is-success is-outlined is-small btn-full-score" data-sol-id="{{ sol.id }}" data-st-idx="{{ st.idx }}" data-max-score="{{ st.max_score }}" title="Set to full score ({{ st.max_score }})">Full</button>
             </div>
           </div>
 {% endfor %}
@@ -95,13 +119,17 @@
   </div>
 {% endif %}
 
-  <div style="margin: 20px 0; display: flex; gap: 10px;">
-    <button type="submit" class="ms-btn ms-btn-primary">Save Configuration</button>
-    <button type="button" class="ms-btn ms-btn-secondary" onclick="window.location.href='{{ url("task", task.id) }}'">Skip</button>
+  <div class="buttons" style="margin-top: 20px;">
+    <button type="submit" class="button is-primary">
+      <svg class="icon is-small"><use href="#icon-check"/></svg> <span>Save Configuration</span>
+    </button>
+    <button type="button" class="button" onclick="window.location.href='{{ url("task", task.id) }}'">
+      <span>Skip</span>
+    </button>
   </div>
 </form>
 
-<div class="ms-alert ms-alert-warning">
+<div class="notification is-warning is-light">
   <strong>Note:</strong> Solutions highlighted in yellow have default values and may need configuration.
   You can also configure them later from the task page.
 </div>
