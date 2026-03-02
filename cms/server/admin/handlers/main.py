@@ -115,18 +115,32 @@ class ResourcesHandler(BaseHandler):
         self.r_params = self.render_params()
         self.r_params["resource_shards"] = \
             get_service_shards("ResourceService")
+
+        # All addresses for the machine selector
+        all_resource_addresses = {}
+        for i in range(self.r_params["resource_shards"]):
+            try:
+                all_resource_addresses[i] = get_service_address(
+                    ServiceCoord("ResourceService", i)
+                ).ip
+            except KeyError:
+                logger.warning(f"Missing ResourceService shard {i}, skipping")
+        self.r_params["all_resource_addresses"] = all_resource_addresses
+        self.r_params["selected_shard"] = shard
+        self.r_params["contest_address"] = contest_address
+
+        # Active addresses (what to actually display)
         self.r_params["resource_addresses"] = {}
         if shard == "all":
-            for i in range(self.r_params["resource_shards"]):
-                self.r_params["resource_addresses"][i] = get_service_address(
-                    ServiceCoord("ResourceService", i)).ip
+            self.r_params["resource_addresses"] = dict(all_resource_addresses)
         else:
             shard = int(shard)
             try:
                 address = get_service_address(
                     ServiceCoord("ResourceService", shard))
             except KeyError:
-                self.redirect(self.url(*(["resourceslist"] + contest_address)))
+                self.redirect(
+                    self.url(*(["resources", "all"] + contest_address)))
                 return
             self.r_params["resource_addresses"][shard] = address.ip
 
