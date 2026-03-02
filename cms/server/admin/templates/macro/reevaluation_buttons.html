@@ -135,7 +135,8 @@ level (str): invalidation level ('compilation' or 'evaluation').
 testcase_id (int|None): optional testcase id for per-testcase reruns.
 #}
 <button class="button is-warning is-small is-light{% if testcase_id is none %} ml-2{% endif %}"
-  onclick="cmsrpc_request(
+  onclick="AdminModals.confirmThen('Do you really want to rerun and archive?', function() {
+    cmsrpc_request(
            'EvaluationService', 0,
            'invalidate_submission', {
              'submission_id': {{ submission_id }},
@@ -145,7 +146,7 @@ testcase_id (int|None): optional testcase id for per-testcase reruns.
              'archive_sandbox': true
            },
            function(response) { utils.redirect_if_ok('{{ redirect_url }}', response); }
-  );"
+  ); }, {icon: 'question'});"
 {% if not allowed %}
   disabled
 {% endif %}>

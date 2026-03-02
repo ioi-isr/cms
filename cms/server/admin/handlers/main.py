@@ -119,8 +119,12 @@ class ResourcesHandler(BaseHandler):
         # All addresses for the machine selector
         all_resource_addresses = {}
         for i in range(self.r_params["resource_shards"]):
-            all_resource_addresses[i] = get_service_address(
-                ServiceCoord("ResourceService", i)).ip
+            try:
+                all_resource_addresses[i] = get_service_address(
+                    ServiceCoord("ResourceService", i)
+                ).ip
+            except KeyError:
+                logger.warning(f"Missing ResourceService shard {i}, skipping")
         self.r_params["all_resource_addresses"] = all_resource_addresses
         self.r_params["selected_shard"] = shard
         self.r_params["contest_address"] = contest_address
