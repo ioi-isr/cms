@@ -524,7 +524,7 @@ function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayNa
 
     if (currentSharing && currentSharing['__everyone__']) {
         everyoneCheckbox.checked = true;
-        everyoneSettings.style.display = 'block';
+        everyoneSettings.classList.remove('is-hidden');
         var everyoneData = currentSharing['__everyone__'];
 
         // Set top_to_show
@@ -555,7 +555,7 @@ function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayNa
         validateEveryoneFields();
     } else {
         everyoneCheckbox.checked = false;
-        everyoneSettings.style.display = 'none';
+        everyoneSettings.classList.add('is-hidden');
         document.getElementById('everyoneTopToShow').value = 0;
         document.getElementById('everyoneTopNames').value = 0;
         document.getElementById('everyoneTopToShowAll').checked = false;
@@ -586,7 +586,11 @@ function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayNa
 function toggleEveryoneSettings() {
     var checkbox = document.getElementById('shareWithEveryone');
     var settings = document.getElementById('everyoneSettings');
-    settings.style.display = checkbox.checked ? 'block' : 'none';
+    if (checkbox.checked) {
+        settings.classList.remove('is-hidden');
+    } else {
+        settings.classList.add('is-hidden');
+    }
 }
 
 function toggleEveryoneTopToShowAll() {
