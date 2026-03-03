@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="content-constraint" style="max-width: 900px;">
+<div class="content-constraint tp-max-w-900">
     <!-- Header -->
     <h1 class="title is-spaced">Tasks</h1>
     <p class="subtitle has-text-grey">
@@ -13,17 +13,17 @@
     <!-- Add Task Card -->
     <div class="tp-filter-card">
         <label class="tp-filter-label" for="task_id">Add Task:</label>
-        <form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px; flex: 1;">
+        <form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST" class="is-flex is-gap-3 is-flex-grow-1">
             {{ xsrf_form_html|safe }}
-            <div style="flex-grow: 1;">
-                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;">
+            <div class="is-flex-grow-1">
+                <select name="task_id" id="task_id" class="searchable-select is-fullwidth">
                     <option value="" selected disabled hidden>Select a task...</option>
                     {% for t in unassigned_tasks %}
                     <option value="{{ t.id }}">{{ t.name }} - {{ t.title }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
+            <button type="submit" class="button is-primary is-nowrap" {% if not admin.permission_all %}disabled{% endif %}>
                 <span>Add Task</span>
             </button>
         </form>
@@ -37,14 +37,14 @@
     <form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST" id="tasks-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
-        <div class="table-container" style="width: 100%">
+        <div class="table-container is-fullwidth">
             <table class="ranking-table tp-tasks-table table is-fullwidth" id="tasks-table">
                 <thead>
                     <tr>
                         <th class="grip-column no-sort"></th>
-                        <th style="text-align: left;">Task</th>
-                        <th style="text-align: left;">Training Day</th>
-                        <th class="has-text-centered no-sort" style="width: 120px;">Actions</th>
+                        <th class="has-text-left">Task</th>
+                        <th class="has-text-left">Training Day</th>
+                        <th class="has-text-centered no-sort tp-col-actions-sm">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="tasks-tbody">
@@ -86,14 +86,14 @@
                                     {{ t.training_day.name or "(archived)" }}
                                 </span>
                                 {% else %}
-                                <span class="has-text-grey-light" style="font-size: 0.85rem;">Not assigned</span>
+                                <span class="has-text-grey-light is-size-s">Not assigned</span>
                                 {% endif %}
                             </div>
                         </td>
 
                         <!-- Actions -->
                         <td class="has-text-centered">
-                            <div class="list-cell-wrapper center-content" style="gap: 8px;">
+                            <div class="list-cell-wrapper center-content is-gap-2">
                                 {% if is_archived %}
                                 <!-- Detach button for archived training day tasks -->
                                 <button type="button" class="btn-icon-only btn-detach"

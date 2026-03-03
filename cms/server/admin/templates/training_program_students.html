@@ -5,7 +5,7 @@
 <!-- Header -->
 <h1 class="title is-spaced">Students</h1>
 <p class="subtitle has-text-grey">
-    Program: <a href="{{ url("training_program", training_program.id) }}" style="color: var(--tp-text-primary); font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+    Program: <a href="{{ url("training_program", training_program.id) }}" class="tp-program-link">{{ training_program.name }}</a>
 </p>
 
 {% include "fragments/overload_warning.html" %}
@@ -13,7 +13,7 @@
 <!-- Action Buttons Row -->
 <div class="buttons are-centered">
     <!-- Add Students from List Button -->
-    <form id="bulk-add-form" action="{{ url("training_program", training_program.id, "students", "bulk_add") }}" method="POST" enctype="multipart/form-data" style="display: inline;">
+    <form id="bulk-add-form" action="{{ url("training_program", training_program.id, "students", "bulk_add") }}" method="POST" enctype="multipart/form-data" class="is-inline-block">
         {{ xsrf_form_html|safe }}
         <input type="file" name="students_file" accept=".txt" class="file-input-hidden" id="students-file-input"
             {% if not admin.permission_all %}disabled{% endif %}
@@ -49,7 +49,7 @@
         {{ xsrf_form_html|safe }}
         <div class="tp-dialog-body">
             <label for="user_id">Select a user to add:</label>
-            <select name="user_id" id="user_id" class="searchable-select" style="width: 100%;" required>
+            <select name="user_id" id="user_id" class="searchable-select is-fullwidth" required>
                 <option value="" selected disabled hidden>Search for a user...</option>
                 {% for u in unassigned_users %}
                 <option value="{{ u.id }}">{{ u.username }} - {{ u.first_name }} {{ u.last_name }}</option>
@@ -67,16 +67,16 @@
 
 <!-- Bulk Add Results (if any) -->
 {% if bulk_add_results %}
-<div class="tp-filter-card" style="margin-bottom: 24px;">
-    <div style="width: 100%;">
-        <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--tp-text-primary);">Bulk Add Results</h3>
-        <p style="margin: 0 0 12px 0; color: var(--tp-text-muted);">{{ students_added }} student(s) successfully added to the training program.</p>
-        <table class="ranking-table" style="width: 100%;">
+<div class="tp-filter-card mb-5">
+    <div>
+        <h3 class="is-size-6 has-text-weight-semibold mb-3">Bulk Add Results</h3>
+        <p class="mb-3 has-text-grey">{{ students_added }} student(s) successfully added to the training program.</p>
+        <table class="ranking-table is-fullwidth">
             <thead>
                 <tr>
-                    <th style="text-align: left;">Username</th>
-                    <th style="text-align: left;">Status</th>
-                    <th style="text-align: left;">Message</th>
+                    <th class="has-text-left">Username</th>
+                    <th class="has-text-left">Status</th>
+                    <th class="has-text-left">Message</th>
                 </tr>
             </thead>
             <tbody>
@@ -106,13 +106,13 @@
 <!-- Students Table -->
 <h2 class="title is-5">All Students ({{ training_program.students|length }})</h2>
 
-<div class="table-container" style="width: 100%; max-width: 900px;">
+<div class="table-container tp-max-w-900">
     <table class="table is-hoverable is-striped is-bordered is-fullwidth" id="students-table">
         <thead class="is-uppercase is-3">
             <tr>
                 <th class="has-text-left has-text-grey">Student</th>
-                <th class="has-text-left has-text-grey" data-sort-settings="numeric reversed" style="width: 30%;">Task Archive Progress</th>
-                <th class="has-text-centered no-sort has-text-grey" style="width: 20%;">Actions</th>
+                <th class="has-text-left has-text-grey tp-col-progress" data-sort-settings="numeric reversed">Task Archive Progress</th>
+                <th class="has-text-centered no-sort has-text-grey tp-col-actions">Actions</th>
             </tr>
         </thead>
         <tbody class="p-0">
@@ -184,10 +184,10 @@
 </div>
 
 {% if not training_program.students %}
-<div style="text-align: center; padding: 80px 20px; color: var(--tp-text-muted);">
-    <div style="font-size: 3em; margin-bottom: 10px; opacity: 0.15; filter: grayscale(1);">👥</div>
-    <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No students in this program yet</p>
-    <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.7;">Use the "Add Student" button above to add students.</p>
+<div class="tp-empty-state">
+    <div class="tp-empty-state-icon">👥</div>
+    <p class="tp-empty-state-title">No students in this program yet</p>
+    <p class="tp-empty-state-subtitle">Use the "Add Student" button above to add students.</p>
 </div>
 {% endif %}
 
@@ -281,13 +281,13 @@ document.addEventListener('DOMContentLoaded', function() {
             <form action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
                 {{ xsrf_form_html|safe }}
                 <main class="modal__content">
-                    <p style="margin: 0 0 16px 0; color: var(--tp-text-secondary); font-size: 0.9rem;">
+                    <p class="mb-4 is-size-s">
                         Assign a task to all students who have the specified tag.
                         Students who already have the task assigned will be skipped.
                     </p>
                     <div class="modal__form-group">
                         <label for="bulkAssignTaskSelect">Task</label>
-                        <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select" style="width: 100%;">
+                        <select name="task_id" id="bulkAssignTaskSelect" class="searchable-select is-fullwidth">
                             <option value="" selected disabled hidden>Select a task...</option>
                             {% for task in (all_tasks or []) %}
                             <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>

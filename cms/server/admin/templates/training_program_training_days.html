@@ -134,7 +134,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             </div>
         </div>
         <div class="level-right">
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div class="is-flex is-gap-2 is-align-items-center">
                 <button type="button" onclick="MicroModal.show('modal-import-contest')"
                   class="button is-medium" {% if not admin.permission_all %}disabled{% endif %}>
                     <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
@@ -163,17 +163,17 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     <form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST" id="training-days-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
-        <div class="table-container" style="width: 100%;">
+        <div class="table-container is-fullwidth">
             <table class="ranking-table tp-tasks-table" id="training-days-table">
                 <thead>
                     <tr>
                         <th class="grip-column no-sort"></th>
-                        <th style="text-align: left;">Name</th>
-                        <th class="no-sort" style="text-align: left;">Description</th>
-                        <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
-                        <th data-sort-settings="numeric" style="text-align: left;">Start</th>
-                        <th class="no-sort" style="text-align: left;">Tasks</th>
-                        <th class="has-text-centered no-sort" style="width: 100px;">Actions</th>
+                        <th class="has-text-left">Name</th>
+                        <th class="no-sort has-text-left">Description</th>
+                        <th class="no-sort has-text-left tp-col-types">Types</th>
+                        <th data-sort-settings="numeric" class="has-text-left">Start</th>
+                        <th class="no-sort has-text-left">Tasks</th>
+                        <th class="has-text-centered no-sort tp-col-actions-sm">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="training-days-tbody">
@@ -186,71 +186,71 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <!-- Drag handle -->
                         <td class="grip-cell">
                             <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder training day">
-                                <svg class="icon is-small" style="fill: currentColor; stroke: none;"><use href="#icon-grip"/></svg>
+                                <svg class="icon is-small tp-icon-fill"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
 
                         <!-- Name -->
                         <td data-value="{{ td.contest.name }}">
-                            <div class="list-cell-wrapper" style="flex-direction: column; align-items: flex-start;">
-                                <a href="{{ url("contest", td.contest.id) }}" class="student-name-link" style="max-width: none;">{{ td.contest.name }}</a>
+                            <div class="list-cell-wrapper is-flex-direction-column is-align-items-flex-start">
+                                <a href="{{ url("contest", td.contest.id) }}" class="student-name-link tp-no-max-width">{{ td.contest.name }}</a>
                             </div>
                         </td>
 
                         <!-- Description -->
                         <td>
                             <div class="list-cell-wrapper">
-                                <span style="color: var(--tp-text-secondary);">{{ td.contest.description }}</span>
+                                <span class="tp-text-secondary">{{ td.contest.description }}</span>
                             </div>
                         </td>
 
                         <!-- Types -->
                         <td>
                             <div class="list-cell-wrapper">
-                                <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
+                                <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} class="tp-input-types"/>
                             </div>
                         </td>
 
                         <!-- Start Time -->
                         <td data-value="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 9999999999 }}">
-                            <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                            <div class="list-cell-wrapper tp-date-cell">
                                 {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
                                     <div>{{ td.contest.start.strftime('%Y-%m-%d') }}</div>
-                                    <div style="color: #94a3b8; font-size: 0.9em;">{{ td.contest.start.strftime('%H:%M') }}</div>
+                                    <div class="tp-date-time">{{ td.contest.start.strftime('%H:%M') }}</div>
                                 {% else %}
-                                    <span class="badge-pill badge-slate" style="font-size: 0.85rem; font-weight: 600;">Unscheduled</span>
+                                    <span class="badge-pill badge-slate tp-badge-unscheduled">Unscheduled</span>
                                 {% endif %}
                             </div>
                         </td>
 
                         <!-- Tasks -->
                         <td>
-                            <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
+                            <div class="list-cell-wrapper is-flex-wrap-wrap is-gap-1">
                                 {% set tasks = td.contest.get_tasks() %}
                                 {% if tasks %}
                                     {% for task in tasks %}
                                         <a href="{{ url("task", task.id) }}" class="tag is-bordered has-text-primary" title="{{ task.title }}">{{ task.name }}</a>
                                     {% endfor %}
                                 {% else %}
-                                    <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
+                                    <span class="has-text-grey-light is-size-s">No tasks</span>
                                 {% endif %}
                             </div>
                         </td>
 
                         <!-- Actions -->
                         <td class="has-text-centered">
-                            <div class="list-cell-wrapper center-content" style="gap: 4px;">
+                            <div class="list-cell-wrapper center-content is-gap-1">
                                 <!-- Archive button -->
                                 <button type="button"
                                    class="btn-icon-only btn-archive"
-                                   {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
+                                   {% if not admin.permission_all %}disabled class="is-disabled"{% endif %}
                                    onclick="MicroModal.show('modal-archive-td-{{ td.id }}')"
                                    title="Archive training day" aria-label="Archive training day">
                                     <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
                                 </button>
                                 <!-- Remove button -->
                                 <button type="button" class="btn-icon-only"
-                                   {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
+                                   {% if not admin.permission_all %}disabled class="is-disabled"{% endif %}
                                    onclick="openRemoveTrainingDayModal(this); return false;"
                                    data-td-name="{{ td.contest.name }}"
                                    data-remove-url="{{ url('training_program', training_program.id, 'training_day', td.id, 'remove') }}"
@@ -278,7 +278,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     <div></div>
 
     <!-- Archived Training Days Section -->
-    <div class="tp-section-header" style="margin-top: 40px;">
+    <div class="tp-section-header mt-6">
         <h2>Archived Training Days ({{ training_program.training_days | rejectattr("contest") | list | length }})</h2>
     </div>
 
@@ -288,16 +288,16 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         type="info"
     ) }}
 
-    <div class="table-container" style="width: 100%;">
+    <div class="table-container is-fullwidth">
         <table class="ranking-table tp-tasks-table" id="archived-training-days-table">
             <thead>
                 <tr>
-                    <th style="text-align: left;">Name</th>
-                    <th class="no-sort" style="text-align: left;">Description</th>
-                    <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
-                    <th data-sort-settings="numeric" style="text-align: left;">Start</th>
-                    <th class="no-sort" style="text-align: left;">Tasks</th>
-                    <th class="no-sort" style="text-align: center; width: 100px;">Share</th>
+                    <th class="has-text-left">Name</th>
+                    <th class="no-sort has-text-left">Description</th>
+                    <th class="no-sort has-text-left tp-col-types">Types</th>
+                    <th data-sort-settings="numeric" class="has-text-left">Start</th>
+                    <th class="no-sort has-text-left">Tasks</th>
+                    <th class="no-sort has-text-centered tp-col-actions-sm">Share</th>
                 </tr>
             </thead>
             <tbody>
@@ -307,40 +307,40 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     <!-- Name -->
                     <td data-value="{{ td.name or '' }}">
                         <div class="list-cell-wrapper">
-                            <span style="font-weight: 600; color: var(--tp-text-primary);">{{ td.name or "(no name)" }}</span>
+                            <span class="has-text-weight-semibold tp-text-primary">{{ td.name or "(no name)" }}</span>
                         </div>
                     </td>
 
                     <!-- Description -->
                     <td>
                         <div class="list-cell-wrapper">
-                            <span style="color: var(--tp-text-secondary);">{{ td.description or "(no description)" }}</span>
+                            <span class="tp-text-secondary">{{ td.description or "(no description)" }}</span>
                         </div>
                     </td>
 
                     <!-- Types -->
                     <td>
                         <div class="list-cell-wrapper">
-                            <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
+                            <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} class="tp-input-types"/>
                         </div>
                     </td>
 
                     <!-- Start Time -->
                     <td data-value="{{ td.start_time.timestamp() if td.start_time else 9999999999 }}">
-                        <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                        <div class="list-cell-wrapper tp-date-cell">
                             {% if td.start_time %}
                                 <div>{{ td.start_time.strftime('%Y-%m-%d') }}</div>
-                                <div style="color: #94a3b8; font-size: 0.9em;">{{ td.start_time.strftime('%H:%M') }}</div>
+                                <div class="tp-date-time">{{ td.start_time.strftime('%H:%M') }}</div>
                             {% else %}
-                                <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                                <span class="tp-empty-dot">&middot;</span>
                             {% endif %}
                         </div>
                     </td>
 
                     <!-- Tasks -->
                     <td>
-                        <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
-                            {% if td.archived_tasks_data %}
+                        <div class="list-cell-wrapper is-flex-wrap-wrap is-gap-1">
+                            {% if td.archived_tasks_data %>
                                 {% for task_id_str, task_info in td.archived_tasks_data.items() %}
                                     <button class="tag is-bordered has-text-warning"
                                             type="button"
@@ -352,21 +352,21 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                     </button>
                                 {% endfor %}
                             {% else %}
-                                <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
+                                <span class="has-text-grey-light is-size-s">No tasks</span>
                             {% endif %}
                         </div>
                     </td>
 
                     <!-- Share Scoreboard -->
-                    <td style="text-align: center;">
-                        <div class="list-cell-wrapper" style="justify-content: center;">
+                    <td class="has-text-centered">
+                        <div class="list-cell-wrapper is-justify-content-center">
                             <button type="button" class="btn-icon-only" title="Configure scoreboard sharing" aria-label="Configure scoreboard sharing"
                                     onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
                                     {% if not admin.permission_all %}disabled{% endif %}>
                                 <svg class="icon is-small"><use href="#icon-share"/></svg>
                             </button>
                             {% if td.scoreboard_sharing %}
-                            <span class="tag is-bordered has-text-link" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
+                            <span class="tag is-bordered has-text-link ml-1 tp-tag-tiny" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
                                 {{ td.scoreboard_sharing | length }}
                             </span>
                             {% endif %}
@@ -403,43 +403,43 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="scoreboardSharingTitle">
             {{ modal_header("Scoreboard Sharing", "scoreboardSharingTitle") }}
             <main class="modal__content">
-            <p style="margin-bottom: 16px; color: var(--tp-text-secondary);">
+            <p class="mb-4 tp-text-secondary">
                 Configure which student tags can view the scoreboard for this training day.
                 Students will only see results for their tag group.
             </p>
 
             <!-- Share with Everyone option -->
-            <div id="everyoneShareSection" style="margin-bottom: 20px; padding: 16px; background: var(--tp-bg-secondary); border-radius: 8px; border: 1px solid var(--tp-border);">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                    <input type="checkbox" id="shareWithEveryone" onchange="toggleEveryoneSettings()" style="width: 18px; height: 18px; cursor: pointer;">
-                    <label for="shareWithEveryone" style="font-weight: 600; cursor: pointer;">Share with Everyone</label>
-                    <span style="font-size: 0.85rem; color: var(--tp-text-secondary);">(All students can view, regardless of tags)</span>
+            <div id="everyoneShareSection" class="tp-sharing-section">
+                <div class="is-flex is-align-items-center is-gap-3 mb-3">
+                    <input type="checkbox" id="shareWithEveryone" onchange="toggleEveryoneSettings()" class="tp-checkbox">
+                    <label for="shareWithEveryone" class="has-text-weight-semibold is-clickable">Share with Everyone</label>
+                    <span class="is-size-s tp-text-secondary">(All students can view, regardless of tags)</span>
                 </div>
-                <div id="everyoneSettings" style="display: none; margin-left: 30px;">
-                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 150px;">
-                            <label for="everyoneTopToShow" style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="number" id="everyoneTopToShow" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
-                                <input type="checkbox" id="everyoneTopToShowAll" onchange="toggleEveryoneTopToShowAll()" style="cursor: pointer;">
-                                <label for="everyoneTopToShowAll" style="font-size: 0.85rem; cursor: pointer;">All</label>
+                <div id="everyoneSettings" class="tp-sharing-settings is-hidden">
+                    <div class="is-flex is-gap-4 is-flex-wrap-wrap">
+                        <div class="is-flex-grow-1 tp-sharing-field">
+                            <label for="everyoneTopToShow" class="tp-sharing-label">Results to Show</label>
+                            <div class="is-flex is-align-items-center is-gap-2">
+                                <input type="number" id="everyoneTopToShow" value="0" min="0" class="tp-sharing-input" onchange="validateEveryoneFields()">
+                                <input type="checkbox" id="everyoneTopToShowAll" onchange="toggleEveryoneTopToShowAll()" class="is-clickable">
+                                <label for="everyoneTopToShowAll" class="is-size-s is-clickable">All</label>
                             </div>
                         </div>
-                        <div style="flex: 1; min-width: 150px;">
-                            <label for="everyoneTopNames" style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names to Show</label>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="number" id="everyoneTopNames" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
-                                <input type="checkbox" id="everyoneTopNamesAll" onchange="toggleEveryoneTopNamesAll()" style="cursor: pointer;">
-                                <label for="everyoneTopNamesAll" style="font-size: 0.85rem; cursor: pointer;">All</label>
+                        <div class="is-flex-grow-1 tp-sharing-field">
+                            <label for="everyoneTopNames" class="tp-sharing-label">Full Names to Show</label>
+                            <div class="is-flex is-align-items-center is-gap-2">
+                                <input type="number" id="everyoneTopNames" value="0" min="0" class="tp-sharing-input" onchange="validateEveryoneFields()">
+                                <input type="checkbox" id="everyoneTopNamesAll" onchange="toggleEveryoneTopNamesAll()" class="is-clickable">
+                                <label for="everyoneTopNamesAll" class="is-size-s is-clickable">All</label>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div style="margin-bottom: 12px; font-weight: 600;">Share by Tag</div>
+            <div class="mb-3 has-text-weight-semibold">Share by Tag</div>
 
-            <div id="scoreboardSharingEntries" style="margin-bottom: 16px;">
+            <div id="scoreboardSharingEntries" class="mb-4">
             </div>
 
             <button type="button" class="button" onclick="addSharingEntry()">
@@ -688,28 +688,28 @@ function addSharingEntry(tag, topNames, topToShow) {
         ? window.crypto.randomUUID()
         : (Date.now() + '-' + Math.random().toString(36).slice(2, 8));
     var entryId = 'sharing-entry-' + uniqueSuffix;
-    var html = '<div class="sharing-entry" id="' + entryId + '" style="display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px; flex-wrap: wrap;">' +
-        '<div style="flex: 1; min-width: 120px;">' +
-            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
-            '<input type="text" class="sharing-tag" data-sharing-tag-input="true" placeholder="Select a tag" style="width: 160px;" value="' + escapeHtml(tag || '') + '">' +
+    var html = '<div class="sharing-entry" id="' + entryId + '">' +
+        '<div class="tp-sharing-entry-tag">' +
+            '<label class="tp-sharing-label">Tag</label>' +
+            '<input type="text" class="sharing-tag tp-sharing-tag-input" data-sharing-tag-input="true" placeholder="Select a tag" value="' + escapeHtml(tag || '') + '">' +
         '</div>' +
-        '<div style="min-width: 140px;">' +
-            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>' +
-            '<div style="display: flex; align-items: center; gap: 6px;">' +
-                '<input type="number" class="sharing-top-to-show" value="' + escapeHtml(topToShowVal.toString()) + '" min="0" ' + (topToShowIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
-                '<input type="checkbox" class="sharing-top-to-show-all" ' + (topToShowIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
-                '<span style="font-size: 0.85rem;">All</span>' +
+        '<div class="tp-sharing-entry-field">' +
+            '<label class="tp-sharing-label">Results to Show</label>' +
+            '<div class="is-flex is-align-items-center is-gap-1">' +
+                '<input type="number" class="sharing-top-to-show tp-sharing-input-sm" value="' + escapeHtml(topToShowVal.toString()) + '" min="0" ' + (topToShowIsAll ? 'disabled' : '') + '>' +
+                '<input type="checkbox" class="sharing-top-to-show-all is-clickable" ' + (topToShowIsAll ? 'checked' : '') + '>' +
+                '<span class="is-size-s">All</span>' +
             '</div>' +
         '</div>' +
-        '<div style="min-width: 140px;">' +
-            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names</label>' +
-            '<div style="display: flex; align-items: center; gap: 6px;">' +
-                '<input type="number" class="sharing-top-names" value="' + escapeHtml(topNamesVal.toString()) + '" min="0" ' + (topNamesIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
-                '<input type="checkbox" class="sharing-top-names-all" ' + (topNamesIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
-                '<span style="font-size: 0.85rem;">All</span>' +
+        '<div class="tp-sharing-entry-field">' +
+            '<label class="tp-sharing-label">Full Names</label>' +
+            '<div class="is-flex is-align-items-center is-gap-1">' +
+                '<input type="number" class="sharing-top-names tp-sharing-input-sm" value="' + escapeHtml(topNamesVal.toString()) + '" min="0" ' + (topNamesIsAll ? 'disabled' : '') + '>' +
+                '<input type="checkbox" class="sharing-top-names-all is-clickable" ' + (topNamesIsAll ? 'checked' : '') + '>' +
+                '<span class="is-size-s">All</span>' +
             '</div>' +
         '</div>' +
-        '<button type="button" class="sharing-remove-btn" style="margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">\u00D7</button>' +
+        '<button type="button" class="sharing-remove-btn" title="Remove">\u00D7</button>' +
     '</div>';
 
     entriesContainer.insertAdjacentHTML('beforeend', html);
