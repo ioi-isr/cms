@@ -5,7 +5,7 @@
 <!-- Header -->
 <h1 class="title is-spaced">Students</h1>
 <p class="subtitle has-text-grey">
-    Program: <a href="{{ url("training_program", training_program.id) }}" class="tp-program-link">{{ training_program.name }}</a>
+    Program: <a href="{{ url("training_program", training_program.id) }}" class="has-text-primary has-text-weight-semibold">{{ training_program.name }}</a>
 </p>
 
 {% include "fragments/overload_warning.html" %}
@@ -68,10 +68,10 @@
 <!-- Bulk Add Results (if any) -->
 {% if bulk_add_results %}
 <div class="tp-filter-card mb-5">
-    <div>
-        <h3 class="is-size-6 has-text-weight-semibold mb-3">Bulk Add Results</h3>
+    <div style="width: 100%;">
+        <h3 class="is-size-6 has-text-weight-semibold mb-3" style="margin: 0;">Bulk Add Results</h3>
         <p class="mb-3 has-text-grey">{{ students_added }} student(s) successfully added to the training program.</p>
-        <table class="ranking-table is-fullwidth">
+        <table class="ranking-table" style="width: 100%;">
             <thead>
                 <tr>
                     <th class="has-text-left">Username</th>
@@ -106,13 +106,13 @@
 <!-- Students Table -->
 <h2 class="title is-5">All Students ({{ training_program.students|length }})</h2>
 
-<div class="table-container tp-max-w-900">
+<div class="table-container" style="width: 100%; max-width: 900px;">
     <table class="table is-hoverable is-striped is-bordered is-fullwidth" id="students-table">
         <thead class="is-uppercase is-3">
             <tr>
                 <th class="has-text-left has-text-grey">Student</th>
-                <th class="has-text-left has-text-grey tp-col-progress" data-sort-settings="numeric reversed">Task Archive Progress</th>
-                <th class="has-text-centered no-sort has-text-grey tp-col-actions">Actions</th>
+                <th class="has-text-left has-text-grey" data-sort-settings="numeric reversed" style="width: 30%;">Task Archive Progress</th>
+                <th class="has-text-centered no-sort has-text-grey" style="width: 20%;">Actions</th>
             </tr>
         </thead>
         <tbody class="p-0">
@@ -184,10 +184,10 @@
 </div>
 
 {% if not training_program.students %}
-<div class="tp-empty-state">
-    <div class="tp-empty-state-icon">👥</div>
-    <p class="tp-empty-state-title">No students in this program yet</p>
-    <p class="tp-empty-state-subtitle">Use the "Add Student" button above to add students.</p>
+<div class="has-text-centered py-6 px-4 has-text-grey">
+    <div class="is-size-1 mb-2" style="opacity: 0.15; filter: grayscale(1);">👥</div>
+    <p class="m-0 is-size-5 has-text-weight-medium has-text-grey-dark">No students in this program yet</p>
+    <p class="mt-1 mb-0 is-size-6">Use the "Add Student" button above to add students.</p>
 </div>
 {% endif %}
 
@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <form action="{{ url("training_program", training_program.id, "bulk_assign_task") }}" method="POST">
                 {{ xsrf_form_html|safe }}
                 <main class="modal__content">
-                    <p class="mb-4 is-size-s">
+                    <p class="mb-4 is-size-s has-text-grey">
                         Assign a task to all students who have the specified tag.
                         Students who already have the task assigned will be skipped.
                     </p>

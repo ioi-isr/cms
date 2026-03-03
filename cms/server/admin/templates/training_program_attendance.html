@@ -49,14 +49,14 @@ AdminTableUtils.initFilterTagify({
   </div>
   <div class="tp-filter-group">
     <label class="tp-filter-label" for="training_day_types">Types:</label>
-    <input type="text" id="training_day_types" name="training_day_types" class="tp-filter-input-wide" value="{{ training_day_types | join(', ') }}" />
+    <input type="text" id="training_day_types" name="training_day_types" style="min-width: 200px;" value="{{ training_day_types | join(', ') }}" />
   </div>
   <div class="tp-filter-group">
     <label class="tp-filter-label" for="student_tags">Student Tags:</label>
-    <input type="text" id="student_tags" name="student_tags" class="tp-filter-input-wide" value="{{ student_tags | join(', ') }}" />
+    <input type="text" id="student_tags" name="student_tags" style="min-width: 200px;" value="{{ student_tags | join(', ') }}" />
   </div>
 
-  <div class="tp-filter-group ml-1">
+  <div class="tp-filter-group" style="margin-left: 5px;">
       <button type="submit" class="button is-primary"><span>Apply Filter</span></button>
 
       {% if start_date or end_date or training_day_types or student_tags %}
@@ -92,9 +92,9 @@ AdminTableUtils.initFilterTagify({
           <div class="date-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
           {% endif %}
           {% if td.training_day_types %}
-          <div class="date-header-types mt-1 is-flex is-flex-wrap-wrap is-justify-content-center is-gap-0">
+          <div class="date-header-types mt-1 is-flex is-flex-wrap-wrap is-justify-content-center is-gap-0.5">
             {% for type in td.training_day_types %}
-                <span class="badge badge-slate badge-pill tp-badge-type">{{ type }}</span>
+                <span class="badge badge-slate badge-pill has-text-weight-normal is-size-7">{{ type }}</span>
             {% endfor %}
           </div>
           {% endif %}
@@ -113,7 +113,7 @@ AdminTableUtils.initFilterTagify({
                         <a class="student-name-link"
                            href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}"
                            title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}"
-                           class="tp-name-truncate">
+                           style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%;">
                             {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
                         </a>
                         <span class="student-username is-hidden-mobile">
@@ -265,9 +265,9 @@ AdminTableUtils.initFilterTagify({
 </div>
 
 {% else %}
-  <div class="tp-empty-state-box">
-    <h3>No Data Available</h3>
-    <p>No archived training days found matching your filter.</p>
+  <div class="has-text-centered p-6 has-background-grey-lighter" style="border-radius: 8px; border: 1px dashed var(--bulma-border);">
+    <h3 class="has-text-grey-dark mb-2">No Data Available</h3>
+    <p class="has-text-grey">No archived training days found matching your filter.</p>
   </div>
 {% endif %}
 
