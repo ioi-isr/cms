@@ -529,7 +529,7 @@ CMS.AWSUtils.filter_table = function(table_id, search_text) {
     if (!table) {
         return;
     }
-    var rows = table.querySelectorAll("tbody tr");
+    var rows = table.querySelectorAll(":scope > tbody > tr");
     var search_lower = search_text.toLowerCase().trim();
 
     rows.forEach(function(row) {
@@ -537,7 +537,21 @@ CMS.AWSUtils.filter_table = function(table_id, search_text) {
             row.style.display = "";
             return;
         }
-        var text = row.textContent.toLowerCase();
+        var text = "";
+        var cells = row.querySelectorAll(":scope > td");
+        cells.forEach(function(td) {
+            if (td.querySelector("table")) {
+                var clone = td.cloneNode(true);
+                var nestedTables = clone.querySelectorAll("table");
+                nestedTables.forEach(function (nested) {
+                    nested.remove();
+                });
+                text += clone.textContent + " ";
+            } else {
+                text += td.textContent + " ";
+            }
+        });
+        text = text.toLowerCase();
         if (text.indexOf(search_lower) !== -1) {
             row.style.display = "";
         } else {
