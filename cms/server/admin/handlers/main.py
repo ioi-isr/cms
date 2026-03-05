@@ -199,6 +199,30 @@ class NotificationsHandler(BaseHandler):
 
         self.write(json.dumps(res))
 
+def _get_orphan_digests(file_cacher):
+    """Return (all_files, orphan_digests) from the file cacher.
+
+    Compares files present in the file store against those referenced
+    in the database. Files not referenced by any task or contest are
+    considered orphans.
+    """
+    files = {digest for digest, _ in file_cacher.list()}
+    with SessionGen() as session:
+        referenced = enumerate_files(session)
+    return files, files - referenced
+
+
+def _get_orphan_size(file_cacher, orphan_digests):
+    """Return the total size in bytes of the given orphan digests."""
+    total = 0
+    for digest in orphan_digests:
+        try:
+            total += file_cacher.get_size(digest)
+        except KeyError:
+            pass
+    return total
+
+
 class FileCacherStatsHandler(BaseHandler):
     """Returns file cacher statistics as JSON.
 
@@ -209,28 +233,14 @@ class FileCacherStatsHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self):
         try:
-            filecacher = self.service.file_cacher
-            files = set(file[0] for file in filecacher.list())
-            total_files = len(files)
-
-            with SessionGen() as session:
-                found_digests = enumerate_files(session)
-
-            orphan_digests = files - found_digests
-            orphan_count = len(orphan_digests)
-
-            total_size = 0
-            for orphan in orphan_digests:
-                try:
-                    total_size += filecacher.get_size(orphan)
-                except KeyError:
-                    pass
-
+            files, orphan_digests = _get_orphan_digests(
+                self.service.file_cacher)
             self.write(json.dumps({
-                "total_files": total_files,
-                "referenced_files": total_files - orphan_count,
-                "orphan_files": orphan_count,
-                "orphan_size": total_size,
+                "total_files": len(files),
+                "referenced_files": len(files) - len(orphan_digests),
+                "orphan_files": len(orphan_digests),
+                "orphan_size": _get_orphan_size(
+                    self.service.file_cacher, orphan_digests),
             }))
         except Exception as error:
             logger.error("Error computing file cacher stats: %s", error,
@@ -245,26 +255,15 @@ class FileCacherDeleteOrphansHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
         try:
-            filecacher = self.service.file_cacher
-            files = set(file[0] for file in filecacher.list())
+            fc = self.service.file_cacher
+            _, orphan_digests = _get_orphan_digests(fc)
+            deleted_size = _get_orphan_size(fc, orphan_digests)
 
-            with SessionGen() as session:
-                found_digests = enumerate_files(session)
-
-            orphan_digests = files - found_digests
-            deleted_count = 0
-            deleted_size = 0
-
-            for orphan in orphan_digests:
-                try:
-                    deleted_size += filecacher.get_size(orphan)
-                except KeyError:
-                    pass
-                filecacher.delete(orphan)
-                deleted_count += 1
+            for digest in orphan_digests:
+                fc.delete(digest)
 
             self.write(json.dumps({
-                "deleted_count": deleted_count,
+                "deleted_count": len(orphan_digests),
                 "deleted_size": deleted_size,
             }))
         except Exception as error:
