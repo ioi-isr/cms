@@ -336,18 +336,25 @@ def enumerate_files(
     skip_generated=False,
 ) -> set[str]:
     """Enumerate all the files (by digest) referenced by the
-    contest.
+    given contest, or by all tasks and contests if contest is None.
 
-    return: the digests of the file referenced in the contest.
+    When contest is None, task-related queries start from the Task
+    table directly (not through Contest.tasks) so that tasks not
+    assigned to any contest are also included.
+
+    return: the set of digests of the referenced files.
 
     """
-    contest_q = session.query(Contest)
-    if contest is not None:
-        contest_q = contest_q.filter(Contest.id == contest.id)
-
     queries = list()
 
-    task_q = contest_q.join(Contest.tasks)
+    if contest is not None:
+        # Contest-scoped: only tasks belonging to this contest.
+        task_q = (session.query(Task)
+                  .filter(Task.contest_id == contest.id))
+    else:
+        # Global: all tasks, including those not assigned to any contest.
+        task_q = session.query(Task)
+
     queries.append(task_q.join(Task.statements).with_entities(Statement.digest))
     queries.append(task_q.join(Task.statements)
                    .filter(Statement.source_digest.isnot(None))
@@ -402,6 +409,13 @@ def enumerate_files(
             queries.append(user_test_result_q
                            .filter(UserTestResult.output != None)
                            .with_entities(UserTestResult.output))
+
+    # Print jobs and user pictures are contest-scoped.
+    if contest is not None:
+        contest_q = (session.query(Contest)
+                     .filter(Contest.id == contest.id))
+    else:
+        contest_q = session.query(Contest)
 
     if not skip_print_jobs and not skip_users:
         queries.append(contest_q.join(Contest.participations)

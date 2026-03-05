@@ -461,7 +461,7 @@ for (var i in shards)
   <div class="tp-card-body">
     <div id="filecacher-placeholder">
       <p class="has-text-grey mb-3" style="font-size: 0.9rem;">
-        Analyze the file store to find orphan files that are no longer referenced by any contest data.
+        Analyze the file store to find orphan files that are no longer referenced by any task or contest data.
         This scan can be slow on large databases.
       </p>
       <button class="button is-info is-outlined" id="filecacher-scan-btn" onclick="fileCacherScan()">
@@ -473,26 +473,24 @@ for (var i in shards)
       <p class="has-text-grey"><img src="{{ url("static", "loading.gif") }}" alt="loading..." style="vertical-align: middle; margin-right: 6px;" />Scanning file store&hellip; This may take a while.</p>
     </div>
     <div id="filecacher-results" style="display: none;">
-      <table class="table is-fullwidth is-hoverable mb-4">
-        <tbody>
-          <tr>
-            <td class="has-text-weight-semibold" style="width: 250px;">Total files in store</td>
-            <td id="fc-total-files">—</td>
-          </tr>
-          <tr>
-            <td class="has-text-weight-semibold">Referenced files</td>
-            <td id="fc-referenced-files">—</td>
-          </tr>
-          <tr>
-            <td class="has-text-weight-semibold">Orphan files</td>
-            <td id="fc-orphan-files">—</td>
-          </tr>
-          <tr>
-            <td class="has-text-weight-semibold">Orphan files size</td>
-            <td id="fc-orphan-size">—</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="grid is-col-min-8 is-gap-4 mb-4">
+        <div class="cell">
+          <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Total Files</span>
+          <div class="has-text-weight-medium" id="fc-total-files">—</div>
+        </div>
+        <div class="cell">
+          <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Referenced Files</span>
+          <div class="has-text-weight-medium" id="fc-referenced-files">—</div>
+        </div>
+        <div class="cell">
+          <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Orphan Files</span>
+          <div class="has-text-weight-medium" id="fc-orphan-files">—</div>
+        </div>
+        <div class="cell">
+          <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Orphan Size</span>
+          <div class="has-text-weight-medium" id="fc-orphan-size">—</div>
+        </div>
+      </div>
       <div class="is-flex is-align-items-center" style="gap: 0.75rem;">
         <button class="button is-danger is-outlined" id="filecacher-delete-btn" onclick="fileCacherDeleteOrphans()" disabled>
           <span class="icon is-small"><svg class="icon"><use href="#icon-trash-2"/></svg></span>

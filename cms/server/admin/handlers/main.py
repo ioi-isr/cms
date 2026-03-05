@@ -30,7 +30,6 @@ import logging
 
 from cms import ServiceCoord, get_service_shards, get_service_address
 from cms.db import Admin, Contest, DelayRequest, Question, SessionGen, enumerate_files
-from cms.db.filecacher import FileCacher
 from cms.server.jinja2_toolbox import markdown_filter
 from cmscommon.crypto import validate_password
 from cmscommon.datetime import make_datetime, make_timestamp
@@ -210,7 +209,7 @@ class FileCacherStatsHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def get(self):
         try:
-            filecacher = FileCacher()
+            filecacher = self.service.file_cacher
             files = set(file[0] for file in filecacher.list())
             total_files = len(files)
 
@@ -246,7 +245,7 @@ class FileCacherDeleteOrphansHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
         try:
-            filecacher = FileCacher()
+            filecacher = self.service.file_cacher
             files = set(file[0] for file in filecacher.list())
 
             with SessionGen() as session:
