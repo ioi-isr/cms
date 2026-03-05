@@ -29,7 +29,8 @@ import json
 import logging
 
 from cms import ServiceCoord, get_service_shards, get_service_address
-from cms.db import Admin, Contest, DelayRequest, Question
+from cms.db import Admin, Contest, DelayRequest, Question, SessionGen, enumerate_files
+from cms.db.filecacher import FileCacher
 from cms.server.jinja2_toolbox import markdown_filter
 from cmscommon.crypto import validate_password
 from cmscommon.datetime import make_datetime, make_timestamp
@@ -198,6 +199,81 @@ class NotificationsHandler(BaseHandler):
         self.service.notifications = []
 
         self.write(json.dumps(res))
+
+class FileCacherStatsHandler(BaseHandler):
+    """Returns file cacher statistics as JSON.
+
+    This is an expensive operation that scans the entire file store
+    and database, so it is only triggered on demand.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self):
+        try:
+            filecacher = FileCacher()
+            files = set(file[0] for file in filecacher.list())
+            total_files = len(files)
+
+            with SessionGen() as session:
+                found_digests = enumerate_files(session)
+
+            orphan_digests = files - found_digests
+            orphan_count = len(orphan_digests)
+
+            total_size = 0
+            for orphan in orphan_digests:
+                try:
+                    total_size += filecacher.get_size(orphan)
+                except KeyError:
+                    pass
+
+            self.write(json.dumps({
+                "total_files": total_files,
+                "referenced_files": total_files - orphan_count,
+                "orphan_files": orphan_count,
+                "orphan_size": total_size,
+            }))
+        except Exception as error:
+            logger.error("Error computing file cacher stats: %s", error,
+                         exc_info=True)
+            self.set_status(500)
+            self.write(json.dumps({"error": str(error)}))
+
+
+class FileCacherDeleteOrphansHandler(BaseHandler):
+    """Delete orphan files from the file cacher."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self):
+        try:
+            filecacher = FileCacher()
+            files = set(file[0] for file in filecacher.list())
+
+            with SessionGen() as session:
+                found_digests = enumerate_files(session)
+
+            orphan_digests = files - found_digests
+            deleted_count = 0
+            deleted_size = 0
+
+            for orphan in orphan_digests:
+                try:
+                    deleted_size += filecacher.get_size(orphan)
+                except KeyError:
+                    pass
+                filecacher.delete(orphan)
+                deleted_count += 1
+
+            self.write(json.dumps({
+                "deleted_count": deleted_count,
+                "deleted_size": deleted_size,
+            }))
+        except Exception as error:
+            logger.error("Error deleting orphan files: %s", error,
+                         exc_info=True)
+            self.set_status(500)
+            self.write(json.dumps({"error": str(error)}))
+
 
 class MarkdownRenderHandler(BaseHandler):
     """Renders Markdown for AWS message previews."""

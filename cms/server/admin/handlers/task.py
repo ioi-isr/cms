@@ -491,7 +491,8 @@ class StatementHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         self.sql_session.delete(statement)
-        self.try_commit()
+        if not self.try_commit():
+            self.set_status(500)
 
         # Page to redirect to.
         self.write("%s" % task.id)
@@ -588,7 +589,8 @@ class AttachmentHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         self.sql_session.delete(attachment)
-        self.try_commit()
+        if not self.try_commit():
+            self.set_status(500)
 
         # Page to redirect to.
         self.write("%s" % task.id)
@@ -680,7 +682,9 @@ class RemoveTaskHandler(BaseHandler):
             for task in following_tasks:
                 task.num -= 1
                 self.sql_session.flush()
-        if self.try_commit():
+        if not self.try_commit():
+            self.set_status(500)
+        else:
             self.service.proxy_service.reinitialize()
 
         # Maybe they'll want to do this again (for another task)
