@@ -281,9 +281,11 @@ function fileCacherShowState(state) {
     document.getElementById('filecacher-error').style.display = state === 'error' ? '' : 'none';
 }
 
-function fileCacherScan() {
+function fileCacherScan(clearDeleteStatus) {
     fileCacherShowState('loading');
-    document.getElementById('filecacher-delete-status').textContent = '';
+    if (clearDeleteStatus !== false) {
+        document.getElementById('filecacher-delete-status').textContent = '';
+    }
     fetch('{{ url("filecacher", "stats") }}', {
         headers: { 'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value }
     }).then(function(resp) {
@@ -330,7 +332,7 @@ function fileCacherDeleteOrphans() {
             statusEl.classList.remove('has-text-grey');
             statusEl.classList.add('has-text-success');
             // Refresh stats to show updated numbers
-            fileCacherScan();
+            fileCacherScan(false);
         }).catch(function(error) {
             deleteBtn.classList.remove('is-loading');
             deleteBtn.disabled = false;
