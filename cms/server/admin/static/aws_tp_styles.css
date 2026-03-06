@@ -231,11 +231,6 @@
     white-space: nowrap;
 }
 
-.student-tag-inline {
-    font-weight: normal;
-    font-size: 0.7em;
-}
-
 /* ==========================================================================
    Icon-only Button (for actions like delete)
    ========================================================================== */
@@ -510,41 +505,6 @@
 
 .ranking-table tbody tr:nth-child(even) {
     background-color: var(--tp-bg-light); /* Very light gray */
-}
-
-/* Badge Styles */
-.badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 10px;
-    font-size: 0.75em;
-    font-weight: 600;
-    line-height: 1.2;
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: baseline;
-    border-radius: 9999px;
-    margin-right: 4px;
-    margin-bottom: 2px;
-    border: 1px solid transparent;
-}
-
-.badge-pill {
-    border-radius: 9999px;
-    padding-left: 8px;
-    padding-right: 8px;
-}
-
-.badge-teal {
-    background-color: var(--tp-success-light);
-    color: var(--tp-success-dark);
-    border-color: var(--bulma-primary-90);
-}
-
-.badge-slate {
-    background-color: var(--tp-bg-light);
-    color: var(--tp-text-secondary);
-    border-color: var(--tp-border);
 }
 
 .ranking-table thead th {
@@ -1731,27 +1691,6 @@
    Form Card Styles
    ========================================================================== */
 
-.tp-form-card {
-    background: var(--tp-bg-white);
-    border: 1px solid var(--tp-border);
-    border-radius: 12px;
-    padding: 32px;
-    box-shadow: var(--tp-shadow-sm);
-}
-
-.tp-form-label {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--tp-text-primary);
-    margin-bottom: 8px;
-}
-
-.tp-form-required {
-    color: var(--tp-danger);
-    margin-left: 2px;
-}
-
 .tp-form-input {
     width: 100%;
     padding: 10px 14px;
@@ -1772,24 +1711,6 @@
 
 .tp-form-input::placeholder {
     color: var(--tp-text-light);
-}
-
-.tp-form-hint {
-    font-size: 0.8rem;
-    color: var(--tp-text-muted);
-    margin-top: 6px;
-}
-
-.tp-form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-@media (max-width: 600px) {
-    .tp-form-row {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* Sticky floating box utility */
@@ -1831,36 +1752,6 @@
     font-size: 13px;
     color: var(--tp-text-lighter);
     margin: 0 0 20px 0;
-}
-
-.tp-form-info {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--tp-bg-gray);
-    color: var(--tp-text-lighter);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: help;
-    margin-left: 4px;
-}
-
-.tp-form-duration {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.tp-form-input-small {
-    width: 80px !important;
-}
-
-.tp-form-duration-label {
-    font-size: 13px;
-    color: var(--tp-text-lighter);
 }
 
 .tp-groups-table-container {
@@ -1923,14 +1814,6 @@
 /* ==========================================================================
    Modern Grid & Card Layout (Redesign)
    ========================================================================== */
-
-/* Main Grid Container */
-.tp-grid-layout {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 24px;
-    align-items: start;
-}
 
 /* Card Component */
 .tp-card {
@@ -2865,64 +2748,6 @@
     margin-bottom: 0;
 }
 
-.tp-task-type-field input[type="text"] {
-    padding: 8px 12px;
-    font-size: 0.9rem;
-    border: 1px solid var(--tp-border);
-    border-radius: 8px;
-    background: var(--tp-bg-white);
-    color: var(--tp-text-primary);
-    transition: border-color 0.2s, box-shadow 0.2s;
-    box-sizing: border-box;
-}
-
-.tp-task-type-field input[type="text"]:focus {
-    outline: none;
-    border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
-}
-
-.tp-task-type-field select {
-    padding: 8px 12px;
-    font-size: 0.9rem;
-    border: 1px solid var(--tp-border);
-    border-radius: 8px;
-    background: var(--tp-bg-white);
-    color: var(--tp-text-primary);
-    transition: border-color 0.2s, box-shadow 0.2s;
-    box-sizing: border-box;
-}
-
-.tp-task-type-field select:focus {
-    outline: none;
-    border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
-}
-
-.tp-task-type-field table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    margin-top: 4px;
-}
-
-.tp-task-type-field table td {
-    padding: 6px 0;
-    vertical-align: middle;
-    font-size: 0.85rem;
-    color: var(--tp-text-secondary);
-}
-
-.tp-task-type-field table td:first-child {
-    font-weight: 500;
-    padding-right: 12px;
-    white-space: nowrap;
-}
-
-.tp-task-type-field table td input[type="text"] {
-    width: 100%;
-}
-
 /* ==========================================================================
    Overview Page
    ========================================================================== */
@@ -3009,12 +2834,6 @@
     padding: 24px !important;
     color: var(--tp-text-muted) !important;
     font-style: italic;
-}
-
-.overview-hint {
-    font-size: 0.8rem;
-    color: var(--tp-text-muted);
-    margin-left: 4px;
 }
 
 /* ==========================================================================
