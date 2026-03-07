@@ -251,8 +251,10 @@ class ParameterTypeCollection(ParameterType):
                                          loop.index0) %}
   {% set subp_previous_value = (previous_value[loop.index0]
                                 if previous_value is not none else none) %}
-  {% set subp_input_id = ("%s_%d"|format(input_id, loop.index0)
-                          if input_id is not none else none) %}
+  {% set subp_input_id = (input_id
+                          if input_id is not none and loop.index0 == 0 else
+                          ("%s_%d"|format(input_id, loop.index0)
+                           if input_id is not none else none)) %}
   <div class="field is-horizontal">
     <div class="field-label is-small">
       <label class="label"{% if subp_input_id is not none %} for="{{ subp_input_id }}"{% endif %}>{{ subp.name }}</label>

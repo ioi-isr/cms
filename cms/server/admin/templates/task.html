@@ -441,9 +441,11 @@ document.addEventListener('click', function(e) {
                                                 <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--tp-primary);" />
                                             </td>
                                             <td style="text-align: center;">
+                                                {% if admin.permission_all %}
                                                 <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" title="Delete statement" aria-label="Delete statement">
                                                     <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                                 </button>
+                                                {% endif %}
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -457,9 +459,11 @@ document.addEventListener('click', function(e) {
                         <!-- Attachments -->
                         <div class="cell is-col-span-2">
                             <fieldset class="field file-drop-zone" role="group" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
+                                     {% if admin.permission_all %}
                                      ondragover="event.preventDefault();this.classList.add('is-dragover')"
                                      ondragleave="this.classList.remove('is-dragover')"
-                                     ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('attachment_file');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()">
+                                     ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('attachment_file');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()"
+                                     {% endif %}>
                                 <legend class="label mb-0 is-pulled-left">
                                         Attachments
                                         <span class="info" title="Attachments for this task. Contestants can view and download attachments from the task page."></span>
@@ -484,7 +488,9 @@ document.addEventListener('click', function(e) {
                                                 <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
                                                 <a href="{{ url("file", attachment.digest, attachment.filename) }}" style="color: inherit;">{{ attachment.filename }}</a>
                                             </span>
+                                            {% if admin.permission_all %}
                                             <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment" aria-label="Delete attachment"></button>
+                                            {% endif %}
                                         </div>
                                     </div>
                                     {% endfor %}
@@ -587,7 +593,7 @@ document.addEventListener('click', function(e) {
                             {{ form_field('token_max_number', 'Maximum number of tokens', task.token_max_number if task.token_max_number is not none else '', type='number', info_tooltip='The maximum number of tokens a contestant can use in this task. Used only if tokens are finite.') }}
                         </div>
                         <div class="cell is-col-span-1">
-                            {{ form_field('token_min_interval', 'Minimum interval between tokens (seconds)', task.token_min_interval.total_seconds()|int, type='number', info_tooltip='The minimum amount of time (in seconds) after using a token before being able to use another. Used only if finite.') }}
+                            {{ form_field('token_min_interval', 'Minimum interval between tokens (seconds)', task.token_min_interval.total_seconds()|int if task.token_min_interval is not none else '', type='number', info_tooltip='The minimum amount of time (in seconds) after using a token before being able to use another. Used only if finite.') }}
                         </div>
                         <div class="cell is-col-span-1">
                             {{ form_field('token_gen_initial', 'Initial number of tokens', task.token_gen_initial, type='number', info_tooltip='The number of tokens available when the contest starts. Used only if finite.') }}
@@ -596,7 +602,7 @@ document.addEventListener('click', function(e) {
                             {{ form_field('token_gen_number', 'Token generation number', task.token_gen_number, type='number', info_tooltip='The number of tokens generated periodically. Used only if finite.') }}
                         </div>
                         <div class="cell is-col-span-1">
-                            {{ form_field('token_gen_interval', 'Token generation period (minutes)', task.token_gen_interval.total_seconds()|int // 60, type='number', info_tooltip='The amount of time (in minutes) between two token generation events. Used only if finite.') }}
+                            {{ form_field('token_gen_interval', 'Token generation period (minutes)', (task.token_gen_interval.total_seconds()|int // 60) if task.token_gen_interval is not none else '', type='number', info_tooltip='The amount of time (in minutes) between two token generation events. Used only if finite.') }}
                         </div>
                         <div class="cell is-col-span-1">
                             {{ form_field('token_gen_max', 'Maximum accumulated tokens', task.token_gen_max if task.token_gen_max is not none else '', type='number', info_tooltip='Maximum number of tokens available at any given time. Used only if finite.') }}
@@ -848,9 +854,11 @@ document.addEventListener('click', function(e) {
 
                             <div class="field" style="margin-top: 16px;">
                                 <fieldset class="file-drop-zone" role="group" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
+                                         {% if admin.permission_all %}
                                          ondragover="event.preventDefault();this.classList.add('is-dragover')"
                                          ondragleave="this.classList.remove('is-dragover')"
-                                         ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('manager_file_{{ dataset.id }}');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()">
+                                         ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('manager_file_{{ dataset.id }}');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()"
+                                         {% endif %}>
                                 <legend class="label mb-0 is-pulled-left">
                                         Managers
                                         <span class="info" title="Managers are sources, headers, libraries or binaries used during evaluation."></span>
@@ -883,7 +891,9 @@ document.addEventListener('click', function(e) {
                                                     <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file-code"/></svg>
                                                     <a href="{{ url("file", manager.digest, manager.filename) }}" style="color: inherit;">{{ manager.filename }}</a>
                                                 </span>
+                                                {% if admin.permission_all %}
                                                 <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager" aria-label="Delete manager"></button>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
