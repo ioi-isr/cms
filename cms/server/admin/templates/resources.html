@@ -262,6 +262,92 @@ var plotOptions = {
     }
 };
 
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    var k = 1024;
+    var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function formatNumber(num) {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function fileCacherShowState(state) {
+    document.getElementById('filecacher-placeholder').style.display = state === 'placeholder' ? '' : 'none';
+    document.getElementById('filecacher-loading').style.display = state === 'loading' ? '' : 'none';
+    document.getElementById('filecacher-results').style.display = state === 'results' ? '' : 'none';
+    document.getElementById('filecacher-error').style.display = state === 'error' ? '' : 'none';
+}
+
+function fileCacherScan(clearDeleteStatus) {
+    fileCacherShowState('loading');
+    if (clearDeleteStatus !== false) {
+        var statusEl = document.getElementById('filecacher-delete-status');
+        statusEl.textContent = '';
+        statusEl.classList.remove('has-text-grey','has-text-warning','has-text-success','has-text-danger');
+    }
+    fetch('{{ url("filecacher", "stats") }}', {
+        headers: { 'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value }
+    }).then(function(resp) {
+        return resp.json().then(function(data) {
+            if (!resp.ok) throw new Error(data.error || 'Failed to scan file store');
+            return data;
+        });
+    }).then(function(data) {
+        document.getElementById('fc-total-files').textContent = formatNumber(data.total_files);
+        document.getElementById('fc-referenced-files').textContent = formatNumber(data.referenced_files);
+        document.getElementById('fc-orphan-files').textContent = formatNumber(data.orphan_files);
+        document.getElementById('fc-orphan-size').textContent = formatBytes(data.orphan_size) + ' (' + formatNumber(data.orphan_size) + ' bytes)';
+        var deleteBtn = document.getElementById('filecacher-delete-btn');
+        deleteBtn.disabled = data.orphan_files === 0;
+        fileCacherShowState('results');
+    }).catch(function(error) {
+        document.getElementById('filecacher-error-msg').textContent = 'Error: ' + error.message;
+        fileCacherShowState('error');
+    });
+}
+
+function fileCacherDeleteOrphans() {
+    AdminModals.simpleConfirm(
+        'This will permanently delete all orphan files from the file store. This action cannot be undone.',
+        { title: 'Delete Orphan Files?', confirmButtonText: 'Yes, Delete', icon: 'warning' }
+    ).then(function(confirmed) {
+        if (!confirmed) return;
+        var deleteBtn = document.getElementById('filecacher-delete-btn');
+        var statusEl = document.getElementById('filecacher-delete-status');
+        deleteBtn.disabled = true;
+        deleteBtn.classList.add('is-loading');
+        statusEl.textContent = 'Deleting orphan files...';
+        statusEl.classList.remove('has-text-grey','has-text-warning','has-text-success','has-text-danger');
+        statusEl.classList.add('has-text-grey');
+        fetch('{{ url("filecacher", "delete_orphans") }}', {
+            method: 'POST',
+            headers: { 'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value }
+        }).then(function(resp) {
+            return resp.json().then(function(data) {
+                if (!resp.ok) throw new Error(data.error || 'Failed to delete orphan files');
+                return data;
+            });
+        }).then(function(data) {
+            deleteBtn.classList.remove('is-loading');
+            statusEl.textContent = 'Deleted ' + formatNumber(data.deleted_count) + ' file(s), freed ' + formatBytes(data.deleted_size) + '.';
+            statusEl.classList.remove('has-text-grey','has-text-warning','has-text-success','has-text-danger');
+            statusEl.classList.add('has-text-success');
+            // Refresh stats to show updated numbers
+            fileCacherScan(false);
+        }).catch(function(error) {
+            deleteBtn.classList.remove('is-loading');
+            deleteBtn.disabled = true;
+            statusEl.textContent = 'Delete may have partially completed. Please re-scan to refresh counts.';
+            statusEl.classList.remove('has-text-grey','has-text-warning','has-text-success','has-text-danger');
+            statusEl.classList.add('has-text-warning');
+            AdminModals.showError(error.message, 'Delete Failed');
+        });
+    });
+}
+
 {% endblock js %}
 
 {% block js_init %}
@@ -371,6 +457,71 @@ for (var i in shards)
 
 {% if resource_addresses|length == 0 %}
 <div class="notification is-light">No resource services are configured.</div>
+{% endif %}
+
+{# ── File Cacher ──────────────────────────────────────────────── #}
+{% if admin.permission_all %}
+<div class="tp-card mb-5">
+  <div class="tp-card-header-modern">
+    <div class="tp-card-header-icon"><svg class="icon"><use href="#icon-database"/></svg></div>
+    <h3 class="tp-card-title-modern">File Cacher</h3>
+  </div>
+  <div class="tp-card-body">
+    <div id="filecacher-placeholder">
+      <p class="has-text-grey mb-3" style="font-size: 0.9rem;">
+        Analyze the file store to find orphan files that are no longer referenced by any task or contest data.
+        This scan can be slow on large databases.
+      </p>
+      <button class="button is-info is-outlined" id="filecacher-scan-btn" onclick="fileCacherScan()">
+        <span class="icon is-small"><svg class="icon"><use href="#icon-activity"/></svg></span>
+        <span>Scan File Store</span>
+      </button>
+    </div>
+    <div id="filecacher-loading" style="display: none;">
+      <p class="has-text-grey"><img src="{{ url("static", "loading.gif") }}" alt="loading..." style="vertical-align: middle; margin-right: 6px;" />Scanning file store&hellip; This may take a while.</p>
+    </div>
+    <div id="filecacher-results" style="display: none;">
+      <div class="grid is-col-min-8 is-gap-4 mb-4">
+        <div class="cell">
+          <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Total Files</span>
+          <div class="has-text-weight-medium" id="fc-total-files">—</div>
+        </div>
+        <div class="cell">
+          <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Referenced Files</span>
+          <div class="has-text-weight-medium" id="fc-referenced-files">—</div>
+        </div>
+        <div class="cell">
+          <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Orphan Files</span>
+          <div class="has-text-weight-medium" id="fc-orphan-files">—</div>
+        </div>
+        <div class="cell">
+          <span class="has-text-grey is-size-s is-uppercase has-text-weight-semibold">Orphan Size</span>
+          <div class="has-text-weight-medium" id="fc-orphan-size">—</div>
+        </div>
+      </div>
+      <div class="is-flex is-align-items-center" style="gap: 0.75rem;">
+        <button class="button is-danger is-outlined" id="filecacher-delete-btn" onclick="fileCacherDeleteOrphans()" disabled>
+          <span class="icon is-small"><svg class="icon"><use href="#icon-trash"/></svg></span>
+          <span>Delete Orphan Files</span>
+        </button>
+        <button class="button is-info is-outlined" onclick="fileCacherScan()">
+          <span class="icon is-small"><svg class="icon"><use href="#icon-activity"/></svg></span>
+          <span>Re-scan</span>
+        </button>
+        <span id="filecacher-delete-status" class="has-text-grey" style="font-size: 0.85rem;"></span>
+      </div>
+    </div>
+    <div id="filecacher-error" style="display: none;">
+      <div class="notification is-danger is-light">
+        <div id="filecacher-error-msg"></div>
+        <button class="button is-small is-info is-outlined mt-3" onclick="fileCacherScan()">
+          <span class="icon is-small"><svg class="icon"><use href="#icon-activity"/></svg></span>
+          <span>Retry Scan</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endif %}
 
 {% endblock core %}

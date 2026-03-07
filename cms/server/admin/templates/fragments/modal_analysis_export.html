@@ -114,7 +114,7 @@
             <div style="margin-top: 8px;">
               {% for t in all_types %}
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <span class="badge badge-slate badge-pill">{{ t }}</span>
+                <span class="tag is-size-s has-text-weight-semibold">{{ t }}</span>
                 <span style="font-size: 0.85em; color: #6b7280;">({{ type_counts.get(t, 0) }} training day{{ 's' if type_counts.get(t, 0) != 1 else '' }})</span>
                 <input type="number" class="input type-pct-input" data-type="{{ t }}"
                        min="0" max="100" step="1" placeholder="%" style="width: 80px;" />

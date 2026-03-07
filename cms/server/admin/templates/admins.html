@@ -32,7 +32,7 @@
             {% for a in admins %}
             <tr {% if not a.enabled %}style="opacity: 0.6"{% endif %}>
                 <td>
-                    <span class="has-text-weight-semibold is-size-6">{{ a.username }}</span>
+                    <span class="has-text-weight-semibold">{{ a.username }}</span>
                     {% if a.id == admin.id %}
                     <span class="tag has-text-info is-bordered ml-2">you</span>
                     {% endif %}
@@ -84,7 +84,7 @@
     </table>
 </div>
 
-<div class="tp-filter-card mt-6 is-size-7 has-text-grey">
+<div class="box is-bordered has-background-inherit is-size-7 has-text-grey">
     <ul class="ml-0 pl-5">
         <li>Disabled admins cannot log in.</li>
         <li>Admins with <strong>All permissions</strong> can do any operation, regardless of other permission bits.</li>

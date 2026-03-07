@@ -321,9 +321,11 @@ class RemoveTrainingProgramStudentHandler(StudentBaseHandler):
             if td_participation is not None:
                 self.sql_session.delete(td_participation)
 
-        if self.try_commit():
-            self.service.proxy_service.reinitialize()
+        if not self.try_commit():
+            self.set_status(500)
+            return
 
+        self.service.proxy_service.reinitialize()
         self.write("../../students")
 
 

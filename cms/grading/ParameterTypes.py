@@ -100,26 +100,42 @@ class ParameterType(metaclass=ABCMeta):
         return self.parse_string(handler.get_argument(
             prefix + self.short_name))
 
-    def render(self, prefix: str, previous_value: object | None = None) -> str:
+    def render(
+        self,
+        prefix: str,
+        previous_value: object | None = None,
+        extra_class: str = "",
+        input_id: str | None = None,
+    ) -> str:
         """Generate a form snippet for this parameter type.
 
         prefix: prefix to add to the fields names in the form.
         previous_value: if not None, display this value as
             default.
+        extra_class: additional CSS classes to add to the input/select element.
+        input_id: if not None, use this id for the rendered control.
 
         return: HTML form for the parameter type.
 
         """
         # Markup avoids escaping when other templates include this.
-        return Markup(self.TEMPLATE.render(
-            parameter=self, prefix=prefix, previous_value=previous_value))
+        return Markup(
+            self.TEMPLATE.render(
+                parameter=self,
+                prefix=prefix,
+                previous_value=previous_value,
+                extra_class=extra_class,
+                input_id=input_id,
+            )
+        )
 
 
 class ParameterTypeString(ParameterType):
     """Type for a string parameter."""
 
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
-<input type="text"
+<input class="input{% if extra_class %} {{ extra_class }}{% endif %}" type="text"
+       {% if input_id is not none %}id="{{ input_id }}"{% endif %}
        name="{{ prefix ~ parameter.short_name }}"
        value="{{ previous_value if previous_value is not none else '' }}" />
 """)
@@ -137,7 +153,8 @@ class ParameterTypeInt(ParameterType):
     """Type for an integer parameter."""
 
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
-<input type="text"
+<input class="input{% if extra_class %} {{ extra_class }}{% endif %}" type="text"
+       {% if input_id is not none %}id="{{ input_id }}"{% endif %}
        name="{{ prefix ~ parameter.short_name }}"
        value="{{ previous_value }}" />
 """)
@@ -154,14 +171,15 @@ class ParameterTypeOptionalInt(ParameterType):
     """Type for an optional integer parameter with a default value."""
 
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
-<input type="text"
+<input class="input{% if extra_class %} {{ extra_class }}{% endif %}" type="text"
+       {% if input_id is not none %}id="{{ input_id }}"{% endif %}
        name="{{ prefix ~ parameter.short_name }}"
        value="{{ previous_value if previous_value is not none else '' }}" />
 """)
 
     def __init__(self, name: str, short_name: str, description: str, default: int):
         """Initialization.
-        
+
         default: the default value to use when the parameter is missing or empty.
         """
         super().__init__(name, short_name, description)
@@ -189,14 +207,17 @@ class ParameterTypeChoice(ParameterType):
     """Type for a parameter giving a choice among a finite number of items."""
 
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
-<select name="{{ prefix ~ parameter.short_name }}">
-{% for choice_value, choice_description in parameter.values.items() %}
-  <option value="{{ choice_value }}"
-          {% if choice_value == previous_value %}selected{% endif %}>
-    {{ choice_description }}
-  </option>
-{% endfor %}
-</select>
+<div class="select{% if extra_class %} {{ extra_class }}{% endif %}">
+  <select {% if input_id is not none %}id="{{ input_id }}"{% endif %}
+          name="{{ prefix ~ parameter.short_name }}">
+  {% for choice_value, choice_description in parameter.values.items() %}
+    <option value="{{ choice_value }}"
+            {% if choice_value == previous_value %}selected{% endif %}>
+      {{ choice_description }}
+    </option>
+  {% endfor %}
+  </select>
+</div>
 """)
 
     def __init__(self, name, short_name, description, values: dict):
@@ -225,18 +246,29 @@ class ParameterTypeCollection(ParameterType):
     """Type of a parameter containing a tuple of sub-parameters."""
 
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
-<table>
 {% for subp in parameter.subparameters %}
   {% set subp_prefix = "%s%s_%d_"|format(prefix, parameter.short_name,
                                          loop.index0) %}
   {% set subp_previous_value = (previous_value[loop.index0]
                                 if previous_value is not none else none) %}
-  <tr>
-    <td>{{ subp.name }}</td>
-    <td>{{ subp.render(subp_prefix, subp_previous_value) }}</td>
-  </tr>
+  {% set subp_input_id = (
+      input_id if input_id is not none and loop.index0 == 0 else
+      "%s_%d"|format(input_id, loop.index0) if input_id is not none else
+      subp_prefix ~ subp.short_name
+  ) %}
+  <div class="field is-horizontal">
+    <div class="field-label is-small">
+      <label class="label" for="{{ subp_input_id }}">{{ subp.name }}</label>
+    </div>
+    <div class="field-body">
+      <div class="field">
+        <div class="control">
+          {{ subp.render(subp_prefix, subp_previous_value, "is-small", subp_input_id) }}
+        </div>
+      </div>
+    </div>
+  </div>
 {% endfor %}
-</table>
 """)
 
     def __init__(

@@ -107,6 +107,8 @@ from .main import (
     LogoutHandler,
     ResourcesHandler,
     NotificationsHandler,
+    FileCacherStatsHandler,
+    FileCacherDeleteOrphansHandler,
     MarkdownRenderHandler,
 )
 from .submission import \
@@ -225,6 +227,8 @@ HANDLERS = [
     (r"/resources/([0-9]+|all)", ResourcesHandler),
     (r"/resources/([0-9]+|all)/([0-9]+)", ResourcesHandler),
     (r"/notifications", NotificationsHandler),
+    (r"/filecacher/stats", FileCacherStatsHandler),
+    (r"/filecacher/delete_orphans", FileCacherDeleteOrphansHandler),
     (r"/file/([a-f0-9]+)/([a-zA-Z0-9_.-]+)", FileFromDigestHandler),
     (r"/render_markdown", MarkdownRenderHandler),
     # Contest

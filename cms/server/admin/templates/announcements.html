@@ -110,7 +110,7 @@ inputs.forEach(function(input) {
     </div>
 
     <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
-    <textarea class="announcement_raw_text textarea" style="display:none;">{{ msg.text|e }}</textarea>
+    <textarea class="announcement_raw_text textarea is-display-none">{{ msg.text|e }}</textarea>
     <input type="hidden" class="announcement_raw_visible_to_tags" value="{{ msg.visible_to_tags|join(', ')|e }}">
 
     {{ card.card_footer(msg.admin.name if msg.admin is not none else "<unknown>", extra_left_html=tags_html) }}
