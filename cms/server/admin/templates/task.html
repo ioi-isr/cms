@@ -481,7 +481,7 @@ document.addEventListener('click', function(e) {
                                                 <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
                                                 <a href="{{ url("file", attachment.digest, attachment.filename) }}" style="color: inherit;">{{ attachment.filename }}</a>
                                             </span>
-                                            <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment"></button>
+                                            <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment" aria-label="Delete attachment"></button>
                                         </div>
                                     </div>
                                     {% endfor %}
@@ -581,22 +581,22 @@ document.addEventListener('click', function(e) {
                             </div>
                         </div>
                         <div class="cell is-col-span-1">
-                            {{ form_field('token_max_number', 'Maximum number of tokens', task.token_max_number if task.token_max_number is not none else '', info_tooltip='The maximum number of tokens a contestant can use in this task. Used only if tokens are finite.') }}
+                            {{ form_field('token_max_number', 'Maximum number of tokens', task.token_max_number if task.token_max_number is not none else '', type='number', info_tooltip='The maximum number of tokens a contestant can use in this task. Used only if tokens are finite.') }}
                         </div>
                         <div class="cell is-col-span-1">
-                            {{ form_field('token_min_interval', 'Minimum interval between tokens (seconds)', task.token_min_interval.total_seconds()|int, info_tooltip='The minimum amount of time (in seconds) after using a token before being able to use another. Used only if finite.') }}
+                            {{ form_field('token_min_interval', 'Minimum interval between tokens (seconds)', task.token_min_interval.total_seconds()|int, type='number', info_tooltip='The minimum amount of time (in seconds) after using a token before being able to use another. Used only if finite.') }}
                         </div>
                         <div class="cell is-col-span-1">
-                            {{ form_field('token_gen_initial', 'Initial number of tokens', task.token_gen_initial, info_tooltip='The number of tokens available when the contest starts. Used only if finite.') }}
+                            {{ form_field('token_gen_initial', 'Initial number of tokens', task.token_gen_initial, type='number', info_tooltip='The number of tokens available when the contest starts. Used only if finite.') }}
                         </div>
                         <div class="cell is-col-span-1">
-                            {{ form_field('token_gen_number', 'Token generation number', task.token_gen_number, info_tooltip='The number of tokens generated periodically. Used only if finite.') }}
+                            {{ form_field('token_gen_number', 'Token generation number', task.token_gen_number, type='number', info_tooltip='The number of tokens generated periodically. Used only if finite.') }}
                         </div>
                         <div class="cell is-col-span-1">
-                            {{ form_field('token_gen_interval', 'Token generation period (minutes)', task.token_gen_interval.total_seconds()|int // 60, info_tooltip='The amount of time (in minutes) between two token generation events. Used only if finite.') }}
+                            {{ form_field('token_gen_interval', 'Token generation period (minutes)', task.token_gen_interval.total_seconds()|int // 60, type='number', info_tooltip='The amount of time (in minutes) between two token generation events. Used only if finite.') }}
                         </div>
                         <div class="cell is-col-span-1">
-                            {{ form_field('token_gen_max', 'Maximum accumulated tokens', task.token_gen_max if task.token_gen_max is not none else '', info_tooltip='Maximum number of tokens available at any given time. Used only if finite.') }}
+                            {{ form_field('token_gen_max', 'Maximum accumulated tokens', task.token_gen_max if task.token_gen_max is not none else '', type='number', info_tooltip='Maximum number of tokens available at any given time. Used only if finite.') }}
                         </div>
                       </div>
                     </div>
@@ -619,16 +619,16 @@ document.addEventListener('click', function(e) {
                         <div class="fixed-grid has-2-cols">
                           <div class="grid">
                             <div class="cell is-col-span-1">
-                                {{ form_field('max_submission_number', 'Maximum number of submissions', task.max_submission_number if task.max_submission_number is not none else '', info_tooltip='Maximum number of submissions each contestant can submit for this task. Leave empty for no limits.') }}
+                                {{ form_field('max_submission_number', 'Maximum number of submissions', task.max_submission_number if task.max_submission_number is not none else '', type='number', info_tooltip='Maximum number of submissions each contestant can submit for this task. Leave empty for no limits.') }}
                             </div>
                             <div class="cell is-col-span-1">
-                                {{ form_field('max_user_test_number', 'Maximum number of user tests', task.max_user_test_number if task.max_user_test_number is not none else '', info_tooltip='Maximum number of user tests each contestant can submit. Leave empty for no limits.') }}
+                                {{ form_field('max_user_test_number', 'Maximum number of user tests', task.max_user_test_number if task.max_user_test_number is not none else '', type='number', info_tooltip='Maximum number of user tests each contestant can submit. Leave empty for no limits.') }}
                             </div>
                             <div class="cell is-col-span-1">
-                                {{ form_field('min_submission_interval', 'Min interval between submissions (s)', task.min_submission_interval.total_seconds()|int if task.min_submission_interval is not none else '', info_tooltip='The minimum amount of time (in seconds) that a contestant needs to wait after a submission. Leave empty for no limits.') }}
+                                {{ form_field('min_submission_interval', 'Min interval between submissions (s)', task.min_submission_interval.total_seconds()|int if task.min_submission_interval is not none else '', type='number', info_tooltip='The minimum amount of time (in seconds) that a contestant needs to wait after a submission. Leave empty for no limits.') }}
                             </div>
                             <div class="cell is-col-span-1">
-                                {{ form_field('min_user_test_interval', 'Min interval between user tests (s)', task.min_user_test_interval.total_seconds()|int if task.min_user_test_interval is not none else '', info_tooltip='The minimum amount of time (in seconds) that a contestant needs to wait after a user test. Leave empty for no limits.') }}
+                                {{ form_field('min_user_test_interval', 'Min interval between user tests (s)', task.min_user_test_interval.total_seconds()|int if task.min_user_test_interval is not none else '', type='number', info_tooltip='The minimum amount of time (in seconds) that a contestant needs to wait after a user test. Leave empty for no limits.') }}
                             </div>
                           </div>
                         </div>
@@ -643,7 +643,7 @@ document.addEventListener('click', function(e) {
                         <h3 class="tp-card-title-modern">Score Options</h3>
                     </div>
                     <div class="tp-card-body">
-                        {{ form_field('score_precision', 'Score decimal places', task.score_precision, info_tooltip="The number of decimal places the scores will be rounded to. Example: '2' to allow 98.76.") }}
+                        {{ form_field('score_precision', 'Score decimal places', task.score_precision, type='number', info_tooltip="The number of decimal places the scores will be rounded to. Example: '2' to allow 98.76.") }}
 
                         <div class="field">
                             <label class="label" for="score_mode">
@@ -794,10 +794,10 @@ document.addEventListener('click', function(e) {
                             <div class="fixed-grid has-2-cols">
                               <div class="grid">
                                 <div class="cell is-col-span-1">
-                                    {{ form_field('time_limit_' ~ dataset.id, 'Time limit (seconds)', dataset.time_limit if dataset.time_limit is not none else '', info_tooltip='Total maximum time for each evaluation, in seconds.') }}
+                                    {{ form_field('time_limit_' ~ dataset.id, 'Time limit (seconds)', dataset.time_limit if dataset.time_limit is not none else '', type='number', info_tooltip='Total maximum time for each evaluation, in seconds.') }}
                                 </div>
                                 <div class="cell is-col-span-1">
-                                    {{ form_field('memory_limit_' ~ dataset.id, 'Memory limit (MiB)', dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else '', info_tooltip='Total maximum memory usage for each evaluation, in MiB (2^20 bytes).') }}
+                                    {{ form_field('memory_limit_' ~ dataset.id, 'Memory limit (MiB)', dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else '', type='number', info_tooltip='Total maximum memory usage for each evaluation, in MiB (2^20 bytes).') }}
                                 </div>
                               </div>
                             </div>
@@ -877,7 +877,7 @@ document.addEventListener('click', function(e) {
                                                     <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file-code"/></svg>
                                                     <a href="{{ url("file", manager.digest, manager.filename) }}" style="color: inherit;">{{ manager.filename }}</a>
                                                 </span>
-                                                <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager"></button>
+                                                <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager" aria-label="Delete manager"></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1024,7 +1024,7 @@ document.addEventListener('click', function(e) {
                                             <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
                                                 <svg class="icon is-small"><use href="#icon-refresh"/></svg>
                                             </button>
-                                            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
+                                            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete")}}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;" aria-label="Delete validator">
                                                 <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                             </button>
                                           </span>
@@ -1226,10 +1226,10 @@ document.addEventListener('click', function(e) {
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content" style="gap: 4px;">
+                                        {% if admin.permission_all %}
                                         <button type="button" class="btn-icon-only" onclick='ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});' title="Edit" aria-label="Edit model solution">
                                             <svg class="icon is-small"><use href="#icon-edit"/></svg>
                                         </button>
-                                        {% if admin.permission_all %}
                                         <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-replace-ms-{{ meta.id }}');" title="Replace" aria-label="Replace model solution">
                                             <svg class="icon is-small"><use href="#icon-replace"/></svg>
                                         </button>
@@ -1493,17 +1493,19 @@ document.addEventListener('click', function(e) {
                                 <td>
                                     <div class="list-cell-wrapper center-content">
                                     {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
+                                    {% if admin.permission_all %}
                                     <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-edit-generator-{{ generator.id }}');" title="Edit generator" aria-label="Edit generator" style="margin-left: 8px;">
                                         <svg class="icon is-small"><use href="#icon-edit"/></svg>
                                     </button>
+                                    {% endif %}
                                     </div>
                                 </td>
                                 <td>
                                     <div class="list-cell-wrapper center-content" style="gap: 8px;">
+                                    {% if admin.permission_all %}
                                     <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-generate-tc-{{ generator.id }}');" title="Generate testcases" aria-label="Generate testcases">
                                         <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
                                     </button>
-                                    {% if admin.permission_all %}
                                     <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');" title="Delete generator" aria-label="Delete generator">
                                         <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                     </button>

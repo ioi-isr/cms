@@ -284,7 +284,9 @@ function fileCacherShowState(state) {
 function fileCacherScan(clearDeleteStatus) {
     fileCacherShowState('loading');
     if (clearDeleteStatus !== false) {
-        document.getElementById('filecacher-delete-status').textContent = '';
+        var statusEl = document.getElementById('filecacher-delete-status');
+        statusEl.textContent = '';
+        statusEl.classList.remove('has-text-grey','has-text-warning','has-text-success','has-text-danger');
     }
     fetch('{{ url("filecacher", "stats") }}', {
         headers: { 'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value }
@@ -318,6 +320,8 @@ function fileCacherDeleteOrphans() {
         deleteBtn.disabled = true;
         deleteBtn.classList.add('is-loading');
         statusEl.textContent = 'Deleting orphan files...';
+        statusEl.classList.remove('has-text-grey','has-text-warning','has-text-success','has-text-danger');
+        statusEl.classList.add('has-text-grey');
         fetch('{{ url("filecacher", "delete_orphans") }}', {
             method: 'POST',
             headers: { 'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value }
@@ -329,7 +333,7 @@ function fileCacherDeleteOrphans() {
         }).then(function(data) {
             deleteBtn.classList.remove('is-loading');
             statusEl.textContent = 'Deleted ' + formatNumber(data.deleted_count) + ' file(s), freed ' + formatBytes(data.deleted_size) + '.';
-            statusEl.classList.remove('has-text-grey');
+            statusEl.classList.remove('has-text-grey','has-text-warning','has-text-success','has-text-danger');
             statusEl.classList.add('has-text-success');
             // Refresh stats to show updated numbers
             fileCacherScan(false);
@@ -337,7 +341,7 @@ function fileCacherDeleteOrphans() {
             deleteBtn.classList.remove('is-loading');
             deleteBtn.disabled = true;
             statusEl.textContent = 'Delete may have partially completed. Please re-scan to refresh counts.';
-            statusEl.classList.remove('has-text-success');
+            statusEl.classList.remove('has-text-grey','has-text-warning','has-text-success','has-text-danger');
             statusEl.classList.add('has-text-warning');
             AdminModals.showError(error.message, 'Delete Failed');
         });

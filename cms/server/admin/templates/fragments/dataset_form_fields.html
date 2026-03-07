@@ -37,10 +37,11 @@
         {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
         {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
         {% set val = values[i] if values is not none and i < values|length else none %}
+        {% set param_input_id = "TaskTypeOptions_%s_%s_%s"|format(suffix, task_type_name, param_def.short_name) %}
         <div class="field param_row" data-param-short="{{ param_def.short_name }}">
-            <label class="label">{{ param_def.name }}</label>
+            <label class="label" for="{{ param_input_id }}">{{ param_def.name }}</label>
             <div class="control">
-                {{ param_def.render("TaskTypeOptions_%s_%s_"|format(suffix, task_type_name), previous_value=val)|safe }}
+                {{ param_def.render("TaskTypeOptions_%s_%s_"|format(suffix, task_type_name), previous_value=val, input_id=param_input_id)|safe }}
             </div>
         </div>
         {% endfor %}

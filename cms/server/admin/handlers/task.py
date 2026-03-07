@@ -493,6 +493,7 @@ class StatementHandler(BaseHandler):
         self.sql_session.delete(statement)
         if not self.try_commit():
             self.set_status(500)
+            return
 
         # Page to redirect to.
         self.write("%s" % task.id)
@@ -591,6 +592,7 @@ class AttachmentHandler(BaseHandler):
         self.sql_session.delete(attachment)
         if not self.try_commit():
             self.set_status(500)
+            return
 
         # Page to redirect to.
         self.write("%s" % task.id)
@@ -684,11 +686,10 @@ class RemoveTaskHandler(BaseHandler):
                 self.sql_session.flush()
         if not self.try_commit():
             self.set_status(500)
+            return
         else:
             self.service.proxy_service.reinitialize()
-
-        # Maybe they'll want to do this again (for another task)
-        self.write(self.url("tasks"))
+            self.write(self.url("tasks"))
 
 
 class DefaultSubmissionFormatHandler(BaseHandler):

@@ -323,9 +323,9 @@ class RemoveTrainingProgramStudentHandler(StudentBaseHandler):
 
         if not self.try_commit():
             self.set_status(500)
-        else:
-            self.service.proxy_service.reinitialize()
+            return
 
+        self.service.proxy_service.reinitialize()
         self.write("../../students")
 
 
