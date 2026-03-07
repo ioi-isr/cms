@@ -2011,3 +2011,16 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
         font-size: 0.78em;
     }
 }
+
+/* Drag-and-drop file upload */
+.bulma-file-drop.is-dragover .file-cta {
+    border-color: var(--bulma-link);
+    background-color: var(--bulma-link-light);
+}
+.file-drop-zone {
+    transition: border-color 0.15s, background-color 0.15s;
+}
+.file-drop-zone.is-dragover {
+    border-color: var(--bulma-link) !important;
+    background-color: var(--bulma-link-light) !important;
+}

@@ -456,7 +456,10 @@ document.addEventListener('click', function(e) {
 
                         <!-- Attachments -->
                         <div class="cell is-col-span-2">
-                            <fieldset class="field" style="border: none; padding: 0; margin: 0;">
+                            <fieldset class="field file-drop-zone" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
+                                     ondragover="event.preventDefault();this.classList.add('is-dragover')"
+                                     ondragleave="this.classList.remove('is-dragover')"
+                                     ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('attachment_file');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()">
                                 <legend class="label mb-0 is-pulled-left">
                                         Attachments
                                         <span class="info" title="Attachments for this task. Contestants can view and download attachments from the task page."></span>
@@ -844,7 +847,10 @@ document.addEventListener('click', function(e) {
                             {% endfor %}
 
                             <div class="field" style="margin-top: 16px;">
-                                <fieldset style="border: none; padding: 0; margin: 0;">
+                                <fieldset class="file-drop-zone" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
+                                         ondragover="event.preventDefault();this.classList.add('is-dragover')"
+                                         ondragleave="this.classList.remove('is-dragover')"
+                                         ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('manager_file_{{ dataset.id }}');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()">
                                 <legend class="label mb-0 is-pulled-left">
                                         Managers
                                         <span class="info" title="Managers are sources, headers, libraries or binaries used during evaluation."></span>
