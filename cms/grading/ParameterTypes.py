@@ -101,7 +101,11 @@ class ParameterType(metaclass=ABCMeta):
             prefix + self.short_name))
 
     def render(
-        self, prefix: str, previous_value: object | None = None, extra_class: str = ""
+        self,
+        prefix: str,
+        previous_value: object | None = None,
+        extra_class: str = "",
+        input_id: str | None = None,
     ) -> str:
         """Generate a form snippet for this parameter type.
 
@@ -109,6 +113,7 @@ class ParameterType(metaclass=ABCMeta):
         previous_value: if not None, display this value as
             default.
         extra_class: additional CSS classes to add to the input/select element.
+        input_id: if not None, use this id for the rendered control.
 
         return: HTML form for the parameter type.
 
@@ -120,6 +125,7 @@ class ParameterType(metaclass=ABCMeta):
                 prefix=prefix,
                 previous_value=previous_value,
                 extra_class=extra_class,
+                input_id=input_id,
             )
         )
 
@@ -129,6 +135,7 @@ class ParameterTypeString(ParameterType):
 
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
 <input class="input{% if extra_class %} {{ extra_class }}{% endif %}" type="text"
+       {% if input_id is not none %}id="{{ input_id }}"{% endif %}
        name="{{ prefix ~ parameter.short_name }}"
        value="{{ previous_value if previous_value is not none else '' }}" />
 """)
@@ -147,6 +154,7 @@ class ParameterTypeInt(ParameterType):
 
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
 <input class="input{% if extra_class %} {{ extra_class }}{% endif %}" type="text"
+       {% if input_id is not none %}id="{{ input_id }}"{% endif %}
        name="{{ prefix ~ parameter.short_name }}"
        value="{{ previous_value }}" />
 """)
@@ -164,6 +172,7 @@ class ParameterTypeOptionalInt(ParameterType):
 
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
 <input class="input{% if extra_class %} {{ extra_class }}{% endif %}" type="text"
+       {% if input_id is not none %}id="{{ input_id }}"{% endif %}
        name="{{ prefix ~ parameter.short_name }}"
        value="{{ previous_value if previous_value is not none else '' }}" />
 """)
@@ -199,7 +208,8 @@ class ParameterTypeChoice(ParameterType):
 
     TEMPLATE = GLOBAL_ENVIRONMENT.from_string("""
 <div class="select{% if extra_class %} {{ extra_class }}{% endif %}">
-  <select name="{{ prefix ~ parameter.short_name }}">
+  <select {% if input_id is not none %}id="{{ input_id }}"{% endif %}
+          name="{{ prefix ~ parameter.short_name }}">
   {% for choice_value, choice_description in parameter.values.items() %}
     <option value="{{ choice_value }}"
             {% if choice_value == previous_value %}selected{% endif %}>
@@ -241,14 +251,16 @@ class ParameterTypeCollection(ParameterType):
                                          loop.index0) %}
   {% set subp_previous_value = (previous_value[loop.index0]
                                 if previous_value is not none else none) %}
+  {% set subp_input_id = ("%s_%d"|format(input_id, loop.index0)
+                          if input_id is not none else none) %}
   <div class="field is-horizontal">
     <div class="field-label is-small">
-      <label class="label">{{ subp.name }}</label>
+      <label class="label"{% if subp_input_id is not none %} for="{{ subp_input_id }}"{% endif %}>{{ subp.name }}</label>
     </div>
     <div class="field-body">
       <div class="field">
         <div class="control">
-          {{ subp.render(subp_prefix, subp_previous_value, "is-small") }}
+          {{ subp.render(subp_prefix, subp_previous_value, "is-small", subp_input_id) }}
         </div>
       </div>
     </div>

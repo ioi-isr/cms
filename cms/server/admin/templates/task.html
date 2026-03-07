@@ -386,26 +386,27 @@ document.addEventListener('click', function(e) {
                         </div>
                         <div class="cell is-col-span-1">
                             <div class="field">
-                                <label class="label">Position</label>
+                                <p class="label">Position</p>
                                 <div class="p-2">{{ task.num }}</div>
                             </div>
                         </div>
 
                         <!-- Statements -->
                         <div class="cell is-col-span-2">
-                            <div class="field">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                    <label class="label mb-0" for="statements-table">
+                            <fieldset class="field" style="border: none; padding: 0; margin: 0;">
+                                <legend class="label mb-0 is-pulled-left">
                                         Statements
                                         <span class="info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants."></span>
-                                    </label>
-                                    {% if admin.permission_all %}
+                                </legend>
+                                {% if admin.permission_all %}
+                                <div class="is-pulled-right">
                                     <button type="button" onclick="MicroModal.show('modal-add-statement');" class="button">
                                         <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                         <span>Add Statement</span>
                                     </button>
-                                    {% endif %}
                                 </div>
+                                {% endif %}
+                                <div style="clear: both; margin-bottom: 12px;"></div>
                                 {% if task.statements|length == 0 %}
                                 <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No statements uploaded yet</div>
                                 {% else %}
@@ -450,24 +451,25 @@ document.addEventListener('click', function(e) {
                                     </table>
                                 </div>
                                 {% endif %}
-                            </div>
+                            </fieldset>
                         </div>
 
                         <!-- Attachments -->
                         <div class="cell is-col-span-2">
-                            <div class="field">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                    <label class="label mb-0">
+                            <fieldset class="field" style="border: none; padding: 0; margin: 0;">
+                                <legend class="label mb-0 is-pulled-left">
                                         Attachments
                                         <span class="info" title="Attachments for this task. Contestants can view and download attachments from the task page."></span>
-                                    </label>
-                                    {% if admin.permission_all %}
+                                </legend>
+                                {% if admin.permission_all %}
+                                <div class="is-pulled-right">
                                     <button type="button" onclick="document.getElementById('attachment_file').click();" class="button">
                                         <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                         <span>Add File</span>
                                     </button>
-                                    {% endif %}
                                 </div>
+                                {% endif %}
+                                <div style="clear: both; margin-bottom: 12px;"></div>
                                 {% if task.attachments|length == 0 %}
                                 <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No attachments.</div>
                                 {% else %}
@@ -485,7 +487,7 @@ document.addEventListener('click', function(e) {
                                     {% endfor %}
                                 </div>
                                 {% endif %}
-                            </div>
+                            </fieldset>
                         </div>
 
                         <!-- Submission format & Feedback level -->
@@ -813,10 +815,10 @@ document.addEventListener('click', function(e) {
                         </div>
                         <div class="tp-card-body">
                             <div class="field">
-                                <label class="label">Task type</label>
+                                <label class="label" for="task_type_{{ dataset.id }}">Task type</label>
                                 <div class="control">
                                     <div class="select">
-                                        <select name="task_type_{{ dataset.id }}">
+                                        <select id="task_type_{{ dataset.id }}" name="task_type_{{ dataset.id }}">
                                             {% for task_type_name, task_type in TASK_TYPES.items() %}
                                             <option value="{{ task_type_name }}" {% if dataset.task_type == task_type_name %}selected{% endif %}>{{ task_type_name }}</option>
                                             {% endfor %}
@@ -832,7 +834,7 @@ document.addEventListener('click', function(e) {
                                 {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
                                 {% set parameter_value = parameters[i] if dataset.task_type == task_type_name and parameters is not none and i < parameters|length else none %}
                                 <div class="field param_row" data-param-short="{{ param_def.short_name }}">
-                                    <label class="label">{{ param_def.name }}</label>
+                                    <p class="label">{{ param_def.name }}</p>
                                     <div class="control">
                                         {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value)|safe }}
                                     </div>
@@ -842,18 +844,20 @@ document.addEventListener('click', function(e) {
                             {% endfor %}
 
                             <div class="field" style="margin-top: 16px;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                    <label class="label" style="margin-bottom: 0;">
+                                <fieldset style="border: none; padding: 0; margin: 0;">
+                                <legend class="label mb-0 is-pulled-left">
                                         Managers
                                         <span class="info" title="Managers are sources, headers, libraries or binaries used during evaluation."></span>
-                                    </label>
-                                    {% if admin.permission_all %}
+                                </legend>
+                                {% if admin.permission_all %}
+                                <div class="is-pulled-right">
                                     <button type="button" onclick="document.getElementById('manager_file_{{ dataset.id }}').click();" class="button">
                                     <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                     <span>Add Manager</span>
                                 </button>
-                                    {% endif %}
                                 </div>
+                                {% endif %}
+                                <div style="clear: both; margin-bottom: 12px;"></div>
                                 {% if dataset.managers|length == 0 %}
                                 <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No managers.</div>
                                 {% else %}
@@ -881,6 +885,7 @@ document.addEventListener('click', function(e) {
                                     {% endfor %}
                                 </div>
                                 {% endif %}
+                                </fieldset>
                             </div>
                         </div>
                     </div>
@@ -1320,10 +1325,10 @@ document.addEventListener('click', function(e) {
                     </div>
                     <div class="tp-card-body">
                         <div class="field">
-                            <label class="label">Score Type</label>
+                            <label class="label" for="score_type_{{ dataset.id }}">Score Type</label>
                             <div class="control">
                                 <div class="select is-fullwidth">
-                                    <select name="score_type_{{ dataset.id }}">
+                                    <select id="score_type_{{ dataset.id }}" name="score_type_{{ dataset.id }}">
                                         {% for score_type_name, score_type in SCORE_TYPES.items() %}
                                         <option value="{{ score_type_name }}" {% if dataset.score_type == score_type_name %}selected{% endif %}>{{ score_type_name }}</option>
                                         {% endfor %}
@@ -1332,9 +1337,9 @@ document.addEventListener('click', function(e) {
                             </div>
                         </div>
                         <div class="field">
-                            <label class="label">Score Parameters</label>
+                            <label class="label" for="score_type_parameters_{{ dataset.id }}">Score Parameters</label>
                             <div class="control">
-                                <textarea class="textarea" name="score_type_parameters_{{ dataset.id }}" rows="3" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
+                                <textarea id="score_type_parameters_{{ dataset.id }}" class="textarea" name="score_type_parameters_{{ dataset.id }}" rows="3" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
                             </div>
                         </div>
                     </div>

@@ -829,18 +829,6 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     margin: 0;
 }
 
-#sidebar .sidebar_left {
-    text-align: left;
-    width: 54px;
-    float: left;
-}
-
-#sidebar .sidebar_right {
-    width: 180px;
-    text-align: right;
-    float: right;
-}
-
 #sidebar a {
     text-decoration: none;
     line-height: 1.35;
@@ -898,20 +886,6 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     clear: both;
 }
 
-.unread {
-    display: inline-block;
-    font-size: 0.75em;
-    text-align: center;
-    border-radius: 1em;
-    width: 2em;
-    background-color: var(--bulma-danger);
-    text-shadow: none;
-}
-
-.unread.unread-delay {
-    background-color: var(--bulma-warning);
-}
-
 .secret_notice {
     font-size: 0.8em;
     line-height: 1.125em;
@@ -919,7 +893,6 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
     margin: 20px auto 20px;
     color: var(--bulma-danger);
 }
-
 
 .cr_notice {
     font-size: 0.6em;
