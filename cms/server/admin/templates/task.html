@@ -842,10 +842,11 @@ document.addEventListener('click', function(e) {
                                 {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
                                 {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
                                 {% set parameter_value = parameters[i] if dataset.task_type == task_type_name and parameters is not none and i < parameters|length else none %}
+                                {% set param_input_id = "TaskTypeOptions_%d_%s_%s"|format(dataset.id, task_type_name, param_def.short_name) %}
                                 <div class="field param_row" data-param-short="{{ param_def.short_name }}">
-                                    <p class="label">{{ param_def.name }}</p>
+                                    <label class="label" for="{{ param_input_id }}">{{ param_def.name }}</label>
                                     <div class="control">
-                                        {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value)|safe }}
+                                        {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value, input_id=param_input_id)|safe }}
                                     </div>
                                 </div>
                                 {% endfor %}
@@ -1359,7 +1360,7 @@ document.addEventListener('click', function(e) {
                         <div class="field">
                             <label class="label" for="score_type_parameters_{{ dataset.id }}">Score Parameters</label>
                             <div class="control">
-                                <textarea id="score_type_parameters_{{ dataset.id }}" class="textarea" name="score_type_parameters_{{ dataset.id }}" rows="3" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
+                                <textarea id="score_type_parameters_{{ dataset.id }}" class="textarea is-size-s is-family-monospace" name="score_type_parameters_{{ dataset.id }}" rows="3">{% if dataset.score_type_parameters is not none %}{{ dataset.score_type_parameters|tojson|forceescape }}{% endif %}</textarea>
                             </div>
                         </div>
                     </div>
