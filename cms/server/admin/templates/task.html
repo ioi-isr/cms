@@ -957,7 +957,7 @@ document.addEventListener('click', function(e) {
 
                         {% if ds_ns.any_validator_running %}
                         <article class="message is-info" style="margin-bottom: 16px;">
-                            <div class="message-body">
+                            <div class="message-body is-flex is-gap-2">
                                 <div class="info-alert-icon">
                                     <svg class="icon is-small"><use href="#icon-cpu"/></svg>
                                 </div>
@@ -968,7 +968,7 @@ document.addEventListener('click', function(e) {
                         </article>
                         {% elif ds_ns.total_not_validated > 0 %}
                         <article class="message is-warning" style="margin-bottom: 16px;">
-                            <div class="message-body">
+                            <div class="message-body is-flex is-gap-2">
                                 <div class="info-alert-icon">
                                     <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
                                 </div>

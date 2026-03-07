@@ -1190,11 +1190,6 @@
    Info Alert (Bulma .message overrides for icon/badge positioning)
    ========================================================================== */
 
-.message .message-body {
-    display: flex;
-    gap: 12px;
-}
-
 .info-alert-icon {
     flex-shrink: 0;
     margin-top: 2px;

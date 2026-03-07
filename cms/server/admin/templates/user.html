@@ -40,14 +40,13 @@
 </div>
 
 <!-- Password Reset -->
-<h2 class="title is-5 mt-5">Password Reset</h2>
-<div>
+<div style="max-width: 1200px;">
   {% if user.password_reset_pending %}
-  <article class="message is-warning is-light">
+  <article class="message is-warning">
+    <div class="message-header">Pending Password Reset</div>
     <div class="message-body">
-      <p class="mb-2"><strong>Pending Password Reset</strong></p>
-      <p class="mb-3">This user has submitted a password reset request that is awaiting approval.</p>
-      <div class="buttons">
+      This user has submitted a password reset request that is awaiting approval.
+      <div class="buttons mt-3">
         <form action="{{ url("user", user.id, "approve_password_reset") }}" method="POST" style="display:inline;"
           data-username="{{ user.username }}"
           onsubmit="return AdminModals.confirmSubmit(event, 'Approve password reset for ' + this.dataset.username + '?', {icon: 'question'});">
@@ -67,8 +66,8 @@
 
   {% if user.password_reset_token and user.password_reset_token_expires %}
   <div class="message is-info is-light">
+    <div class="message-header">Active Password Reset Token</div>
     <div class="message-body">
-      <p class="mb-2"><strong>Active Password Reset Token</strong></p>
       <p class="mb-3">A password reset link is active for this user. Copy and share the reset URL below if email delivery failed.</p>
 
       {% if participations|length > 0 %}

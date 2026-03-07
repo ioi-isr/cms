@@ -9,7 +9,7 @@
 #}
 {% macro alert(title, message, items=none, type='warning') %}
 <article class="message is-{{ type }}">
-    <div class="message-body">
+    <div class="message-body is-flex is-gap-2">
         <div class="info-alert-icon">
             {% if type == 'warning' %}
             <svg class="icon"><use href="#icon-alert-triangle"/></svg>
