@@ -41,7 +41,7 @@
         <div class="field param_row" data-param-short="{{ param_def.short_name }}">
             <label class="label" for="{{ param_input_id }}">{{ param_def.name }}</label>
             <div class="control">
-                {{ param_def.render("TaskTypeOptions_%s_%s_"|format(suffix, task_type_name), previous_value=val, input_id=param_input_id)|safe }}
+                {{ param_def.render("TaskTypeOptions_%s_%s_"|format(suffix, task_type_name), previous_value=val, input_id=param_input_id) }}
             </div>
         </div>
         {% endfor %}

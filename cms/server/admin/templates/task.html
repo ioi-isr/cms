@@ -846,7 +846,7 @@ document.addEventListener('click', function(e) {
                                 <div class="field param_row" data-param-short="{{ param_def.short_name }}">
                                     <label class="label" for="{{ param_input_id }}">{{ param_def.name }}</label>
                                     <div class="control">
-                                        {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value, input_id=param_input_id)|safe }}
+                                        {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value, input_id=param_input_id) }}
                                     </div>
                                 </div>
                                 {% endfor %}
