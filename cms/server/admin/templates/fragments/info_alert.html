@@ -1,5 +1,5 @@
 {#
-  Modern info/warning alert component.
+  Modern info/warning alert component using Bulma message (header-less variant).
 
   Parameters:
   - title: The alert title (e.g., "Pending Delay Requests")
@@ -8,29 +8,31 @@
   - type: 'warning' (amber) or 'info' (blue), defaults to 'warning'
 #}
 {% macro alert(title, message, items=none, type='warning') %}
-<div class="tp-info-alert tp-info-alert-{{ type }}">
-    <div class="tp-info-alert-icon">
-        {% if type == 'warning' %}
-        <svg class="icon"><use href="#icon-alert-triangle"/></svg>
-        {% else %}
-        <svg class="icon"><use href="#icon-info"/></svg>
-        {% endif %}
-    </div>
-    <div class="tp-info-alert-content">
-        <div class="tp-info-alert-title">{{ title }}</div>
-        <div class="tp-info-alert-message">{{ message }}</div>
-        {% if items %}
-        <div class="tp-info-alert-items">
-            {% for item in items %}
-            <a href="{{ item.url }}" class="tp-info-alert-badge">
-                {{ item.label }}
-                {% if item.count is defined and item.count %}
-                <span class="tp-info-alert-count">{{ item.count }}</span>
-                {% endif %}
-            </a>
-            {% endfor %}
+<article class="message is-{{ type }}">
+    <div class="message-body">
+        <div class="info-alert-icon">
+            {% if type == 'warning' %}
+            <svg class="icon"><use href="#icon-alert-triangle"/></svg>
+            {% else %}
+            <svg class="icon"><use href="#icon-info"/></svg>
+            {% endif %}
         </div>
-        {% endif %}
+        <div class="info-alert-content">
+            <strong>{{ title }}</strong>
+            <div>{{ message }}</div>
+            {% if items %}
+            <div class="info-alert-items">
+                {% for item in items %}
+                <a href="{{ item.url }}" class="info-alert-badge">
+                    {{ item.label }}
+                    {% if item.count is defined and item.count %}
+                    <span class="info-alert-count">{{ item.count }}</span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
     </div>
-</div>
+</article>
 {% endmacro %}

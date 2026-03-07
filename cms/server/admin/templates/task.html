@@ -946,27 +946,31 @@ document.addEventListener('click', function(e) {
                         {% set ds_ns.total_not_validated = ds_ns.not_validated_codenames|length %}
 
                         {% if ds_ns.any_validator_running %}
-                        <div class="tp-info-alert tp-info-alert-info" style="margin-bottom: 16px;">
-                            <div class="tp-info-alert-icon">
-                                <svg class="icon is-small"><use href="#icon-cpu"/></svg>
-                            </div>
-                            <div class="tp-info-alert-content">
-                                <div class="tp-info-alert-message">One or more validators are currently running. Refresh the page to see updated results.</div>
-                            </div>
-                        </div>
-                        {% elif ds_ns.total_not_validated > 0 %}
-                        <div class="tp-info-alert tp-info-alert-warning" style="margin-bottom: 16px;">
-                            <div class="tp-info-alert-icon">
-                                <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
-                            </div>
-                            <div class="tp-info-alert-content">
-                                <div class="tp-info-alert-message">{{ ds_ns.total_not_validated }} testcase(s) have not been validated.
-                                {% if admin.permission_all %}
-                                    <button type="button" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600; background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer;">Rerun validators</button>
-                                {% endif %}
+                        <article class="message is-info" style="margin-bottom: 16px;">
+                            <div class="message-body">
+                                <div class="info-alert-icon">
+                                    <svg class="icon is-small"><use href="#icon-cpu"/></svg>
+                                </div>
+                                <div class="info-alert-content">
+                                    <div>One or more validators are currently running. Refresh the page to see updated results.</div>
                                 </div>
                             </div>
-                        </div>
+                        </article>
+                        {% elif ds_ns.total_not_validated > 0 %}
+                        <article class="message is-warning" style="margin-bottom: 16px;">
+                            <div class="message-body">
+                                <div class="info-alert-icon">
+                                    <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+                                </div>
+                                <div class="info-alert-content">
+                                    <div>{{ ds_ns.total_not_validated }} testcase(s) have not been validated.
+                                    {% if admin.permission_all %}
+                                        <button type="button" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600; background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer;">Rerun validators</button>
+                                    {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
                         {% endif %}
 
                         <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
