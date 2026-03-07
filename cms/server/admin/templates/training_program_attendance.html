@@ -92,9 +92,9 @@ AdminTableUtils.initFilterTagify({
           <div class="date-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
           {% endif %}
           {% if td.training_day_types %}
-          <div class="date-header-types" style="margin-top: 4px; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px;">
+          <div class="tags is-justify-content-center">
             {% for type in td.training_day_types %}
-                <span class="badge badge-slate badge-pill" style="font-weight: normal; font-size: 0.7em;">{{ type }}</span>
+                <span class="tag is-opaque-bg">{{ type }}</span>
             {% endfor %}
           </div>
           {% endif %}

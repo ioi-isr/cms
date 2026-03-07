@@ -376,160 +376,183 @@ document.addEventListener('click', function(e) {
                     <h3 class="tp-card-title-modern">Task Information</h3>
                 </div>
                 <div class="tp-card-body">
-                    <div class="tp-form-row">
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Name
-                                <span class="tp-form-info" title="A short name for the task, preferably using only letters, numbers and underscores.">?</span>
-                            </label>
-                            <input type="text" name="name" value="{{ task.name }}" class="tp-form-input">
+                    <div class="fixed-grid has-2-cols">
+                      <div class="grid">
+                        <div class="cell is-col-span-1">
+                            {{ form_field('name', 'Name', task.name, info_tooltip='A short name for the task, preferably using only letters, numbers and underscores.') }}
                         </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Title
-                                <span class="tp-form-info" title="The title of the task as seen by the contestants.">?</span>
-                            </label>
-                            <input type="text" name="title" value="{{ task.title }}" class="tp-form-input">
+                        <div class="cell is-col-span-1">
+                            {{ form_field('title', 'Title', task.title, info_tooltip='The title of the task as seen by the contestants.') }}
                         </div>
-                      <div class="tp-form-group">
-                          <label class="tp-form-label">Position</label>
-                          <div style="padding: 10px 0; color: var(--tp-text-secondary);">{{ task.num }}</div>
-                      </div>
-                    </div>
+                        <div class="cell is-col-span-1">
+                            <div class="field">
+                                <p class="label">Position</p>
+                                <div class="p-2">{{ task.num }}</div>
+                            </div>
+                        </div>
 
-                    <div class="tp-form-group">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                            <label class="tp-form-label" style="margin-bottom: 0;">
-                                Statements
-                                <span class="tp-form-info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants.">?</span>
-                            </label>
-                            {% if admin.permission_all %}
-                            <button type="button" onclick="MicroModal.show('modal-add-statement');" class="button">
-                                <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
-                                <span>Add Statement</span>
-                            </button>
-                            {% endif %}
+                        <!-- Statements -->
+                        <div class="cell is-col-span-2">
+                            <fieldset class="field" style="border: none; padding: 0; margin: 0;">
+                                <legend class="label mb-0 is-pulled-left">
+                                        Statements
+                                        <span class="info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants."></span>
+                                </legend>
+                                {% if admin.permission_all %}
+                                <div class="is-pulled-right">
+                                    <button type="button" onclick="MicroModal.show('modal-add-statement');" class="button">
+                                        <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                                        <span>Add Statement</span>
+                                    </button>
+                                </div>
+                                {% endif %}
+                                <div style="clear: both; margin-bottom: 12px;"></div>
+                                {% if task.statements|length == 0 %}
+                                <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No statements uploaded yet</div>
+                                {% else %}
+                                <div class="statements-table" id="statements-table" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
+                                    <table class="tp-tasks-table" style="margin: 0;">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em;">Language / Source</th>
+                                                <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em; text-align: center;">Primary</th>
+                                                <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em; text-align: center;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for statement in task.statements.values() %}
+                                        <tr>
+                                            <td>
+                                                <div class="list-cell-wrapper" style="gap: 10px;">
+                                                    <span style="display: inline-block; padding: 2px 8px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 4px; font-size: 0.8rem; font-weight: 600; color: var(--tp-text-secondary);">{{ statement.language }}</span>
+                                                    <a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                                        <svg class="icon is-small"><use href="#icon-pdf-statement"/></svg>
+                                                        {{ task.name }}_{{ statement.language }}.pdf
+                                                    </a>
+                                                    {% if statement.source_digest %}
+                                                    <a href="{{ url("file", statement.source_digest, task.name + "_" + statement.language + (statement.source_extension or "_source")) }}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--tp-text-muted);">
+                                                        <svg class="icon is-small"><use href="#icon-doc-statement"/></svg>
+                                                        {{ task.name }}_{{ statement.language }}{{ statement.source_extension or "_source" }}
+                                                    </a>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--tp-primary);" />
+                                            </td>
+                                            <td style="text-align: center;">
+                                                {% if admin.permission_all %}
+                                                <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" title="Delete statement" aria-label="Delete statement">
+                                                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                                </button>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% endif %}
+                            </fieldset>
                         </div>
-                        {% if task.statements|length == 0 %}
-                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No statements uploaded yet</div>
-                        {% else %}
-                        <div class="statements-table" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
-                            <table class="tp-tasks-table" style="margin: 0;">
-                                <thead>
-                                    <tr>
-                                        <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em;">Language / Source</th>
-                                        <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em; text-align: center;">Primary</th>
-                                        <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em; text-align: center;">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                {% for statement in task.statements.values() %}
-                                <tr>
-                                    <td>
-                                        <div class="list-cell-wrapper" style="gap: 10px;">
-                                            <span style="display: inline-block; padding: 2px 8px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 4px; font-size: 0.8rem; font-weight: 600; color: var(--tp-text-secondary);">{{ statement.language }}</span>
-                                            <a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}" style="display: inline-flex; align-items: center; gap: 4px;">
-                                                <svg class="icon is-small"><use href="#icon-pdf-statement"/></svg>
-                                                {{ task.name }}_{{ statement.language }}.pdf
-                                            </a>
-                                            {% if statement.source_digest %}
-                                            <a href="{{ url("file", statement.source_digest, task.name + "_" + statement.language + (statement.source_extension or "_source")) }}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--tp-text-muted);">
-                                                <svg class="icon is-small"><use href="#icon-doc-statement"/></svg>
-                                                {{ task.name }}_{{ statement.language }}{{ statement.source_extension or "_source" }}
-                                            </a>
+
+                        <!-- Attachments -->
+                        <div class="cell is-col-span-2">
+                            <fieldset class="field file-drop-zone" role="group" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
+                                     {% if admin.permission_all %}
+                                     ondragover="event.preventDefault();this.classList.add('is-dragover')"
+                                     ondragleave="this.classList.remove('is-dragover')"
+                                     ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('attachment_file');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()"
+                                     {% endif %}>
+                                <legend class="label mb-0 is-pulled-left">
+                                        Attachments
+                                        <span class="info" title="Attachments for this task. Contestants can view and download attachments from the task page."></span>
+                                </legend>
+                                {% if admin.permission_all %}
+                                <div class="is-pulled-right">
+                                    <button type="button" onclick="document.getElementById('attachment_file').click();" class="button">
+                                        <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                                        <span>Add File</span>
+                                    </button>
+                                </div>
+                                {% endif %}
+                                <div style="clear: both; margin-bottom: 12px;"></div>
+                                {% if task.attachments|length == 0 %}
+                                <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No attachments.</div>
+                                {% else %}
+                                <div class="field is-grouped is-grouped-multiline" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
+                                    {% for attachment in task.attachments.values() %}
+                                    <div class="control">
+                                        <div class="tags has-addons">
+                                            <span class="tag is-link is-light is-medium has-text-black">
+                                                <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
+                                                <a href="{{ url("file", attachment.digest, attachment.filename) }}" style="color: inherit;">{{ attachment.filename }}</a>
+                                            </span>
+                                            {% if admin.permission_all %}
+                                            <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment" aria-label="Delete attachment"></button>
                                             {% endif %}
                                         </div>
-                                    </td>
-                                    <td style="text-align: center;">
-                                        <input type="checkbox" name="primary_statement_{{ statement.language }}" {% if statement.language in primary_statements %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--tp-primary);" />
-                                    </td>
-                                    <td style="text-align: center;">
-                                        <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" title="Delete statement" aria-label="Delete statement">
-                                            <svg class="icon is-small"><use href="#icon-trash"/></svg>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </fieldset>
                         </div>
-                        {% endif %}
-                    </div>
 
-                    <div class="tp-form-group">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                            <label class="tp-form-label" style="margin-bottom: 0;">
-                                Attachments
-                                <span class="tp-form-info" title="Attachments for this task. Contestants can view and download attachments from the task page.">?</span>
-                            </label>
-                            {% if admin.permission_all %}
-                            <button type="button" onclick="document.getElementById('attachment_file').click();" class="button">
-                                <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
-                                <span>Add File</span>
-                            </button>
-                            {% endif %}
-                        </div>
-                        {% if task.attachments|length == 0 %}
-                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No attachments.</div>
-                        {% else %}
-                        <div class="field is-grouped is-grouped-multiline" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
-                            {% for attachment in task.attachments.values() %}
-                            <div class="control">
-                                <div class="tags has-addons">
-                                    <span class="tag is-link is-light is-medium has-text-black">
-                                        <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
-                                        <a href="{{ url("file", attachment.digest, attachment.filename) }}" style="color: inherit;">{{ attachment.filename }}</a>
-                                    </span>
-                                    <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment"></button>
+                        <!-- Submission format & Feedback level -->
+                        <div class="cell is-col-span-1">
+                            <div class="field">
+                                <label class="label" for="submission_format">
+                                    Submission format
+                                    <span class="info" title="A comma-separated list with the names of the files that need to be submitted (with the language extensions changed to %l). The task type dictates the submission format."></span>
+                                </label>
+                                <div class="control" style="display: flex; align-items: center; gap: 8px;">
+                                    <input class="input" type="text" name="submission_format" id="submission_format" value="{{ task.submission_format|join(", ") }}"/>
+                                    {% if task.active_dataset.task_type == "OutputOnly" and admin.permission_all %}
+                                    <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="button"><span>Set Default</span></button>
+                                    {% endif %}
                                 </div>
                             </div>
-                            {% endfor %}
                         </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="tp-form-row">
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Submission format
-                                <span class="tp-form-info" title="A comma-separated list with the names of the files that need to be submitted (with the language extensions changed to %l). The task type dictates the submission format.">?</span>
-                            </label>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="text" name="submission_format" value="{{ task.submission_format|join(", ") }}" class="tp-form-input"/>
-                                {% if task.active_dataset.task_type == "OutputOnly" and admin.permission_all %}
-                                <button type="button" onclick="CMS.AWSUtils.ajax_post('{{ url("task", task.id, "default_submission_format") }}');" class="button"><span>Set Default</span></button>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Feedback level
-                                <span class="tp-form-info" title="With 'restricted' contestants only see limited technical information about each testcase; with 'full' they see more details.">?</span>
-                            </label>
-                            <select name="feedback_level" class="tp-form-input">
-                                <option value={{ FEEDBACK_LEVEL_OI_RESTRICTED }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_OI_RESTRICTED else "" }}>OI Restricted</option>
-                                <option value={{ FEEDBACK_LEVEL_RESTRICTED }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_RESTRICTED else "" }}>Restricted</option>
-                                <option value={{ FEEDBACK_LEVEL_FULL }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_FULL else "" }}>Full</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <fieldset class="tp-form-group" style="border: none; padding: 0; margin: 0;">
-                        <legend class="tp-form-label">
-                            Allowed programming languages
-                            <span class="tp-form-info" title="Programming languages that contestants can use to solve this task. If none are selected, all contest languages are allowed.">?</span>
-                        </legend>
-                        <div style="padding: 16px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 10px;">
-                            <div class="tp-language-grid">
-                                {% for lang in LANGUAGES %}
-                                <label class="tp-checkbox-card">
-                                    <input type="checkbox" name="allowed_languages" value="{{ lang.name }}" {{ "checked" if task.allowed_languages is not none and lang.name in task.allowed_languages else "" }}>
-                                    <span>{{ lang.name }}</span>
+                        <div class="cell is-col-span-1">
+                            <div class="field">
+                                <label class="label" for="feedback_level">
+                                    Feedback level
+                                    <span class="info" title="With 'restricted' contestants only see limited technical information about each testcase; with 'full' they see more details."></span>
                                 </label>
-                                {% endfor %}
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select id="feedback_level" name="feedback_level">
+                                            <option value={{ FEEDBACK_LEVEL_OI_RESTRICTED }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_OI_RESTRICTED else "" }}>OI Restricted</option>
+                                            <option value={{ FEEDBACK_LEVEL_RESTRICTED }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_RESTRICTED else "" }}>Restricted</option>
+                                            <option value={{ FEEDBACK_LEVEL_FULL }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_FULL else "" }}>Full</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </fieldset>
+
+                        <!-- Allowed programming languages -->
+                        <div class="cell is-col-span-2">
+                            <fieldset style="border: none; padding: 0; margin: 0;">
+                                <legend class="label">
+                                    Allowed programming languages
+                                    <span class="info" title="Programming languages that contestants can use to solve this task. If none are selected, all contest languages are allowed."></span>
+                                </legend>
+                                <div style="padding: 16px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 10px;">
+                                    <div class="tp-language-grid">
+                                        {% for lang in LANGUAGES %}
+                                        <label class="tp-checkbox-card">
+                                            <input type="checkbox" name="allowed_languages" value="{{ lang.name }}" {{ "checked" if task.allowed_languages is not none and lang.name in task.allowed_languages else "" }}>
+                                            <span>{{ lang.name }}</span>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </fieldset>
+                        </div>
+                      </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -547,67 +570,44 @@ document.addEventListener('click', function(e) {
                     </h3>
                 </div>
                 <div class="tp-card-body">
-                    <div class="tp-form-group">
-                        <label class="tp-form-label">
-                            Token mode
-                            <span class="tp-form-info" title="Select 'disabled' to remove tokens completely for this task, 'infinite' for allowing any number, or 'finite' to specify the amount.">?</span>
-                        </label>
-                        <select name="token_mode" class="tp-form-input" style="max-width: 300px;">
-                            <option value="{{ TOKEN_MODE_DISABLED }}" {{ "selected" if task.token_mode == TOKEN_MODE_DISABLED else "" }}>Disabled</option>
-                            <option value="{{ TOKEN_MODE_FINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_FINITE else "" }}>Finite</option>
-                            <option value="{{ TOKEN_MODE_INFINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_INFINITE else "" }}>Infinite</option>
-                        </select>
-                    </div>
-
-                    <div class="tp-form-row">
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Maximum number of tokens
-                                <span class="tp-form-info" title="The maximum number of tokens a contestant can use in this task. Used only if tokens are finite.">?</span>
-                            </label>
-                            <input type="text" name="token_max_number" value="{{ task.token_max_number if task.token_max_number is not none else "" }}" class="tp-form-input" />
+                    <div class="fixed-grid has-2-cols">
+                      <div class="grid">
+                        <div class="cell is-col-span-2">
+                            <div class="field">
+                                <label class="label" for="token_mode">
+                                    Token mode
+                                    <span class="info" title="Select 'disabled' to remove tokens completely for this task, 'infinite' for allowing any number, or 'finite' to specify the amount."></span>
+                                </label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select id="token_mode" name="token_mode">
+                                            <option value="{{ TOKEN_MODE_DISABLED }}" {{ "selected" if task.token_mode == TOKEN_MODE_DISABLED else "" }}>Disabled</option>
+                                            <option value="{{ TOKEN_MODE_FINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_FINITE else "" }}>Finite</option>
+                                            <option value="{{ TOKEN_MODE_INFINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_INFINITE else "" }}>Infinite</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Minimum interval between tokens (seconds)
-                                <span class="tp-form-info" title="The minimum amount of time (in seconds) after using a token before being able to use another. Used only if finite.">?</span>
-                            </label>
-                            <input type="text" name="token_min_interval" value="{{ task.token_min_interval.total_seconds()|int }}" class="tp-form-input" />
+                        <div class="cell is-col-span-1">
+                            {{ form_field('token_max_number', 'Maximum number of tokens', task.token_max_number if task.token_max_number is not none else '', type='number', info_tooltip='The maximum number of tokens a contestant can use in this task. Used only if tokens are finite.') }}
                         </div>
-                    </div>
-
-                    <div class="tp-form-row">
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Initial number of tokens
-                                <span class="tp-form-info" title="The number of tokens available when the contest starts. Used only if finite.">?</span>
-                            </label>
-                            <input type="text" name="token_gen_initial" value="{{ task.token_gen_initial }}" class="tp-form-input" />
+                        <div class="cell is-col-span-1">
+                            {{ form_field('token_min_interval', 'Minimum interval between tokens (seconds)', task.token_min_interval.total_seconds()|int if task.token_min_interval is not none else '', type='number', info_tooltip='The minimum amount of time (in seconds) after using a token before being able to use another. Used only if finite.') }}
                         </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Token generation number
-                                <span class="tp-form-info" title="The number of tokens generated periodically. Used only if finite.">?</span>
-                            </label>
-                            <input type="text" name="token_gen_number" value="{{ task.token_gen_number }}" class="tp-form-input" />
+                        <div class="cell is-col-span-1">
+                            {{ form_field('token_gen_initial', 'Initial number of tokens', task.token_gen_initial, type='number', info_tooltip='The number of tokens available when the contest starts. Used only if finite.') }}
                         </div>
-                    </div>
-
-                    <div class="tp-form-row">
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Token generation period (minutes)
-                                <span class="tp-form-info" title="The amount of time (in minutes) between two token generation events. Used only if finite.">?</span>
-                            </label>
-                            <input type="text" name="token_gen_interval" value="{{ task.token_gen_interval.total_seconds()|int // 60 }}" class="tp-form-input" />
+                        <div class="cell is-col-span-1">
+                            {{ form_field('token_gen_number', 'Token generation number', task.token_gen_number, type='number', info_tooltip='The number of tokens generated periodically. Used only if finite.') }}
                         </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Maximum accumulated tokens
-                                <span class="tp-form-info" title="Maximum number of tokens available at any given time. Used only if finite.">?</span>
-                            </label>
-                            <input type="text" name="token_gen_max" value="{{ task.token_gen_max if task.token_gen_max is not none else "" }}" class="tp-form-input" />
+                        <div class="cell is-col-span-1">
+                            {{ form_field('token_gen_interval', 'Token generation period (minutes)', (task.token_gen_interval.total_seconds()|int // 60) if task.token_gen_interval is not none else '', type='number', info_tooltip='The amount of time (in minutes) between two token generation events. Used only if finite.') }}
                         </div>
+                        <div class="cell is-col-span-1">
+                            {{ form_field('token_gen_max', 'Maximum accumulated tokens', task.token_gen_max if task.token_gen_max is not none else '', type='number', info_tooltip='Maximum number of tokens available at any given time. Used only if finite.') }}
+                        </div>
+                      </div>
                     </div>
                 </div>
             </div>
@@ -625,33 +625,21 @@ document.addEventListener('click', function(e) {
                         <h3 class="tp-card-title-modern">Limits</h3>
                     </div>
                     <div class="tp-card-body">
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Maximum number of submissions
-                                <span class="tp-form-info" title="Maximum number of submissions each contestant can submit for this task. Leave empty for no limits.">?</span>
-                            </label>
-                            <input type="text" name="max_submission_number" value="{{ task.max_submission_number if task.max_submission_number is not none else "" }}" class="tp-form-input">
-                        </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Maximum number of user tests
-                                <span class="tp-form-info" title="Maximum number of user tests each contestant can submit. Leave empty for no limits.">?</span>
-                            </label>
-                            <input type="text" name="max_user_test_number" value="{{ task.max_user_test_number if task.max_user_test_number is not none else "" }}" class="tp-form-input">
-                        </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Minimum interval between submissions (seconds)
-                                <span class="tp-form-info" title="The minimum amount of time (in seconds) that a contestant needs to wait after a submission. Leave empty for no limits.">?</span>
-                            </label>
-                            <input type="text" name="min_submission_interval" value="{{ task.min_submission_interval.total_seconds()|int if task.min_submission_interval is not none else "" }}" class="tp-form-input">
-                        </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Minimum interval between user tests (seconds)
-                                <span class="tp-form-info" title="The minimum amount of time (in seconds) that a contestant needs to wait after a user test. Leave empty for no limits.">?</span>
-                            </label>
-                            <input type="text" name="min_user_test_interval" value="{{ task.min_user_test_interval.total_seconds()|int if task.min_user_test_interval is not none else "" }}" class="tp-form-input">
+                        <div class="fixed-grid has-2-cols">
+                          <div class="grid">
+                            <div class="cell is-col-span-1">
+                                {{ form_field('max_submission_number', 'Maximum number of submissions', task.max_submission_number if task.max_submission_number is not none else '', type='number', info_tooltip='Maximum number of submissions each contestant can submit for this task. Leave empty for no limits.') }}
+                            </div>
+                            <div class="cell is-col-span-1">
+                                {{ form_field('max_user_test_number', 'Maximum number of user tests', task.max_user_test_number if task.max_user_test_number is not none else '', type='number', info_tooltip='Maximum number of user tests each contestant can submit. Leave empty for no limits.') }}
+                            </div>
+                            <div class="cell is-col-span-1">
+                                {{ form_field('min_submission_interval', 'Min interval between submissions (s)', task.min_submission_interval.total_seconds()|int if task.min_submission_interval is not none else '', type='number', info_tooltip='The minimum amount of time (in seconds) that a contestant needs to wait after a submission. Leave empty for no limits.') }}
+                            </div>
+                            <div class="cell is-col-span-1">
+                                {{ form_field('min_user_test_interval', 'Min interval between user tests (s)', task.min_user_test_interval.total_seconds()|int if task.min_user_test_interval is not none else '', type='number', info_tooltip='The minimum amount of time (in seconds) that a contestant needs to wait after a user test. Leave empty for no limits.') }}
+                            </div>
+                          </div>
                         </div>
                     </div>
                 </div>
@@ -664,23 +652,22 @@ document.addEventListener('click', function(e) {
                         <h3 class="tp-card-title-modern">Score Options</h3>
                     </div>
                     <div class="tp-card-body">
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
-                                Score decimal places
-                                <span class="tp-form-info" title="The number of decimal places the scores will be rounded to. Example: '2' to allow 98.76.">?</span>
-                            </label>
-                            <input type="text" name="score_precision" value="{{ task.score_precision }}" class="tp-form-input" style="max-width: 100px;">
-                        </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">
+                        {{ form_field('score_precision', 'Score decimal places', task.score_precision, type='number', info_tooltip="The number of decimal places the scores will be rounded to. Example: '2' to allow 98.76.") }}
+
+                        <div class="field">
+                            <label class="label" for="score_mode">
                                 Score mode
-                                <span class="tp-form-info" title="How the score for the task is computed from the score of each submission.">?</span>
+                                <span class="info" title="How the score for the task is computed from the score of each submission."></span>
                             </label>
-                            <select name="score_mode" class="tp-form-input">
-                                <option value="{{ SCORE_MODE_MAX_TOKENED_LAST }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX_TOKENED_LAST else "" }}>Use best among tokened and last submissions (IOI 2010-2012)</option>
-                                <option value="{{ SCORE_MODE_MAX }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX else "" }}>Use best among all submissions (IOI 2013-2016)</option>
-                                <option value="{{ SCORE_MODE_MAX_SUBTASK }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX_SUBTASK else "" }}>Use the sum over each subtask of the best result (IOI 2017-)</option>
-                            </select>
+                            <div class="control">
+                                <div class="select is-fullwidth">
+                                    <select id="score_mode" name="score_mode">
+                                        <option value="{{ SCORE_MODE_MAX_TOKENED_LAST }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX_TOKENED_LAST else "" }}>Use best among tokened and last submissions (IOI 2010-2012)</option>
+                                        <option value="{{ SCORE_MODE_MAX }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX else "" }}>Use best among all submissions (IOI 2013-2016)</option>
+                                        <option value="{{ SCORE_MODE_MAX_SUBTASK }}" {{ "selected" if task.score_mode == SCORE_MODE_MAX_SUBTASK else "" }}>Use the sum over each subtask of the best result (IOI 2017-)</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -709,9 +696,9 @@ document.addEventListener('click', function(e) {
                 <button type="button" class="dataset-tab-btn {{ 'active' if loop.first else '' }}" data-dataset-id="{{ dataset.id }}">
                     {{ dataset.description }}
                     {% if dataset is sameas (task.active_dataset) %}
-                    <span class="badge badge-teal" style="margin-left: 6px; font-size: 0.7em;">Live</span>
+                    <span class="tag has-text-primary-35 is-rounded is-bordered is-tiny ml-2">Live</span>
                     {% elif dataset.autojudge %}
-                    <span class="badge badge-slate" style="margin-left: 6px; font-size: 0.7em;">Autojudge</span>
+                    <span class="tag is-rounded is-bordered is-tiny ml-2">Autojudge</span>
                     {% endif %}
                 </button>
                 {% if admin.permission_all %}
@@ -813,21 +800,15 @@ document.addEventListener('click', function(e) {
                             <h3 class="tp-card-title-modern">Limits</h3>
                         </div>
                         <div class="tp-card-body">
-                            <div class="tp-form-row">
-                                <div class="tp-form-group">
-                                    <label class="tp-form-label">
-                                        Time limit (seconds)
-                                        <span class="tp-form-info" title="Total maximum time for each evaluation, in seconds.">?</span>
-                                    </label>
-                                    <input type="text" name="time_limit_{{ dataset.id }}" value="{{ dataset.time_limit if dataset.time_limit is not none else "" }}" class="tp-form-input"/>
+                            <div class="fixed-grid has-2-cols">
+                              <div class="grid">
+                                <div class="cell is-col-span-1">
+                                    {{ form_field('time_limit_' ~ dataset.id, 'Time limit (seconds)', dataset.time_limit if dataset.time_limit is not none else '', type='number', info_tooltip='Total maximum time for each evaluation, in seconds.') }}
                                 </div>
-                                <div class="tp-form-group">
-                                    <label class="tp-form-label">
-                                        Memory limit (MiB)
-                                        <span class="tp-form-info" title="Total maximum memory usage for each evaluation, in MiB (2^20 bytes).">?</span>
-                                    </label>
-                                    <input type="text" name="memory_limit_{{ dataset.id }}" value="{{ dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else "" }}" class="tp-form-input"/>
+                                <div class="cell is-col-span-1">
+                                    {{ form_field('memory_limit_' ~ dataset.id, 'Memory limit (MiB)', dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else '', type='number', info_tooltip='Total maximum memory usage for each evaluation, in MiB (2^20 bytes).') }}
                                 </div>
+                              </div>
                             </div>
                         </div>
                     </div>
@@ -842,13 +823,17 @@ document.addEventListener('click', function(e) {
                             </h3>
                         </div>
                         <div class="tp-card-body">
-                            <div class="tp-form-group">
-                                <label class="tp-form-label">Task type</label>
-                                <select name="task_type_{{ dataset.id }}" class="tp-form-input" style="max-width: 300px;">
-                                    {% for task_type_name, task_type in TASK_TYPES.items() %}
-                                    <option value="{{ task_type_name }}" {% if dataset.task_type == task_type_name %}selected{% endif %}>{{ task_type_name }}</option>
-                                    {% endfor %}
-                                </select>
+                            <div class="field">
+                                <label class="label" for="task_type_{{ dataset.id }}">Task type</label>
+                                <div class="control">
+                                    <div class="select">
+                                        <select id="task_type_{{ dataset.id }}" name="task_type_{{ dataset.id }}">
+                                            {% for task_type_name, task_type in TASK_TYPES.items() %}
+                                            <option value="{{ task_type_name }}" {% if dataset.task_type == task_type_name %}selected{% endif %}>{{ task_type_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
 
                             {% set parameters = dataset.task_type_parameters %}
@@ -857,29 +842,37 @@ document.addEventListener('click', function(e) {
                                 {% for i in range(task_type.ACCEPTED_PARAMETERS|length) %}
                                 {% set param_def = task_type.ACCEPTED_PARAMETERS[i] %}
                                 {% set parameter_value = parameters[i] if dataset.task_type == task_type_name and parameters is not none and i < parameters|length else none %}
-                                <div class="tp-form-group param_row" data-param-short="{{ param_def.short_name }}">
-                                    <label class="tp-form-label">{{ param_def.name }}</label>
-                                    <div class="tp-task-type-field">
-                                        {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value)|safe }}
+                                {% set param_input_id = "TaskTypeOptions_%d_%s_%s"|format(dataset.id, task_type_name, param_def.short_name) %}
+                                <div class="field param_row" data-param-short="{{ param_def.short_name }}">
+                                    <label class="label" for="{{ param_input_id }}">{{ param_def.name }}</label>
+                                    <div class="control">
+                                        {{ param_def.render("TaskTypeOptions_%d_%s_"|format(dataset.id, task_type_name), parameter_value, input_id=param_input_id) }}
                                     </div>
                                 </div>
                                 {% endfor %}
                             </div>
                             {% endfor %}
 
-                            <div class="tp-form-group" style="margin-top: 16px;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                    <label class="tp-form-label" style="margin-bottom: 0;">
+                            <div class="field" style="margin-top: 16px;">
+                                <fieldset class="file-drop-zone" role="group" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
+                                         {% if admin.permission_all %}
+                                         ondragover="event.preventDefault();this.classList.add('is-dragover')"
+                                         ondragleave="this.classList.remove('is-dragover')"
+                                         ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('manager_file_{{ dataset.id }}');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()"
+                                         {% endif %}>
+                                <legend class="label mb-0 is-pulled-left">
                                         Managers
-                                        <span class="tp-form-info" title="Managers are sources, headers, libraries or binaries used during evaluation.">?</span>
-                                    </label>
-                                    {% if admin.permission_all %}
+                                        <span class="info" title="Managers are sources, headers, libraries or binaries used during evaluation."></span>
+                                </legend>
+                                {% if admin.permission_all %}
+                                <div class="is-pulled-right">
                                     <button type="button" onclick="document.getElementById('manager_file_{{ dataset.id }}').click();" class="button">
                                     <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                     <span>Add Manager</span>
                                 </button>
-                                    {% endif %}
                                 </div>
+                                {% endif %}
+                                <div style="clear: both; margin-bottom: 12px;"></div>
                                 {% if dataset.managers|length == 0 %}
                                 <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No managers.</div>
                                 {% else %}
@@ -899,7 +892,9 @@ document.addEventListener('click', function(e) {
                                                     <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file-code"/></svg>
                                                     <a href="{{ url("file", manager.digest, manager.filename) }}" style="color: inherit;">{{ manager.filename }}</a>
                                                 </span>
-                                                <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager"></button>
+                                                {% if admin.permission_all %}
+                                                <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager" aria-label="Delete manager"></button>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
@@ -907,6 +902,7 @@ document.addEventListener('click', function(e) {
                                     {% endfor %}
                                 </div>
                                 {% endif %}
+                                </fieldset>
                             </div>
                         </div>
                     </div>
@@ -924,7 +920,7 @@ document.addEventListener('click', function(e) {
                         </div>
                         <h3 class="tp-card-title-modern">
                             Subtask Validators
-                            <span class="tp-form-info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid.">?</span>
+                            <span class="info" title="Upload validators to verify testcases meet subtask requirements. Validators receive input and output files and return exit code 0 if valid."></span>
                         </h3>
                         <span style="margin-left: auto; font-size: 0.9rem; color: var(--tp-text-muted);">
                             <strong style="color: var(--tp-text-primary);">{{ subtask_info[dataset.id]|length }}</strong> subtasks configured
@@ -961,27 +957,31 @@ document.addEventListener('click', function(e) {
                         {% set ds_ns.total_not_validated = ds_ns.not_validated_codenames|length %}
 
                         {% if ds_ns.any_validator_running %}
-                        <div class="tp-info-alert tp-info-alert-info" style="margin-bottom: 16px;">
-                            <div class="tp-info-alert-icon">
-                                <svg class="icon is-small"><use href="#icon-cpu"/></svg>
-                            </div>
-                            <div class="tp-info-alert-content">
-                                <div class="tp-info-alert-message">One or more validators are currently running. Refresh the page to see updated results.</div>
-                            </div>
-                        </div>
-                        {% elif ds_ns.total_not_validated > 0 %}
-                        <div class="tp-info-alert tp-info-alert-warning" style="margin-bottom: 16px;">
-                            <div class="tp-info-alert-icon">
-                                <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
-                            </div>
-                            <div class="tp-info-alert-content">
-                                <div class="tp-info-alert-message">{{ ds_ns.total_not_validated }} testcase(s) have not been validated.
-                                {% if admin.permission_all %}
-                                    <button type="button" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600; background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer;">Rerun validators</button>
-                                {% endif %}
+                        <article class="message is-info" style="margin-bottom: 16px;">
+                            <div class="message-body is-flex is-gap-2">
+                                <div class="info-alert-icon">
+                                    <svg class="icon is-small"><use href="#icon-cpu"/></svg>
+                                </div>
+                                <div class="info-alert-content">
+                                    <div>One or more validators are currently running. Refresh the page to see updated results.</div>
                                 </div>
                             </div>
-                        </div>
+                        </article>
+                        {% elif ds_ns.total_not_validated > 0 %}
+                        <article class="message is-warning" style="margin-bottom: 16px;">
+                            <div class="message-body is-flex is-gap-2">
+                                <div class="info-alert-icon">
+                                    <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+                                </div>
+                                <div class="info-alert-content">
+                                    <div>{{ ds_ns.total_not_validated }} testcase(s) have not been validated.
+                                    {% if admin.permission_all %}
+                                        <button type="button" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600; background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer;">Rerun validators</button>
+                                    {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
                         {% endif %}
 
                         <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
@@ -1045,7 +1045,7 @@ document.addEventListener('click', function(e) {
                                             <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
                                                 <svg class="icon is-small"><use href="#icon-refresh"/></svg>
                                             </button>
-                                            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
+                                            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete")}}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;" aria-label="Delete validator">
                                                 <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                             </button>
                                           </span>
@@ -1115,7 +1115,7 @@ document.addEventListener('click', function(e) {
                         </div>
                         <h3 class="tp-card-title-modern">
                             Model Solutions
-                            <span class="tp-form-info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly.">?</span>
+                            <span class="info" title="Model solutions are reference solutions uploaded by admins to verify that the task's test data and scoring work correctly."></span>
                         </h3>
                         <div class="ml-auto is-flex is-align-items-center is-flex-wrap-wrap">
                             {% if admin.permission_all and dataset.model_solution_metas|length > 0 %}
@@ -1247,10 +1247,10 @@ document.addEventListener('click', function(e) {
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper center-content" style="gap: 4px;">
+                                        {% if admin.permission_all %}
                                         <button type="button" class="btn-icon-only" onclick='ModelSolutionModal.openEdit({{ dataset.id }}, {{ url("model_solution", meta.id, "edit")|tojson|forceescape }}, {{ meta.name|tojson|forceescape }}, {{ meta.description|tojson|forceescape }}, {{ meta.expected_score_min }}, {{ meta.expected_score_max }}, {{ meta.subtask_expected_scores|tojson|forceescape }});' title="Edit" aria-label="Edit model solution">
                                             <svg class="icon is-small"><use href="#icon-edit"/></svg>
                                         </button>
-                                        {% if admin.permission_all %}
                                         <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-replace-ms-{{ meta.id }}');" title="Replace" aria-label="Replace model solution">
                                             <svg class="icon is-small"><use href="#icon-replace"/></svg>
                                         </button>
@@ -1345,17 +1345,23 @@ document.addEventListener('click', function(e) {
                         </h3>
                     </div>
                     <div class="tp-card-body">
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">Score Type</label>
-                            <select name="score_type_{{ dataset.id }}" class="tp-form-input">
-                                {% for score_type_name, score_type in SCORE_TYPES.items() %}
-                                <option value="{{ score_type_name }}" {% if dataset.score_type == score_type_name %}selected{% endif %}>{{ score_type_name }}</option>
-                                {% endfor %}
-                            </select>
+                        <div class="field">
+                            <label class="label" for="score_type_{{ dataset.id }}">Score Type</label>
+                            <div class="control">
+                                <div class="select is-fullwidth">
+                                    <select id="score_type_{{ dataset.id }}" name="score_type_{{ dataset.id }}">
+                                        {% for score_type_name, score_type in SCORE_TYPES.items() %}
+                                        <option value="{{ score_type_name }}" {% if dataset.score_type == score_type_name %}selected{% endif %}>{{ score_type_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="tp-form-group">
-                            <label class="tp-form-label">Score Parameters</label>
-                            <textarea name="score_type_parameters_{{ dataset.id }}" class="tp-form-input" rows="3" style="font-family: monospace; font-size: 0.85rem;">{{ dataset.score_type_parameters|tojson|forceescape }}</textarea>
+                        <div class="field">
+                            <label class="label" for="score_type_parameters_{{ dataset.id }}">Score Parameters</label>
+                            <div class="control">
+                                <textarea id="score_type_parameters_{{ dataset.id }}" class="textarea is-size-s is-family-monospace" name="score_type_parameters_{{ dataset.id }}" rows="3">{% if dataset.score_type_parameters is not none %}{{ dataset.score_type_parameters|tojson|forceescape }}{% endif %}</textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1508,17 +1514,19 @@ document.addEventListener('click', function(e) {
                                 <td>
                                     <div class="list-cell-wrapper center-content">
                                     {{ generator.input_filename_template }} / {{ generator.output_filename_template }}
+                                    {% if admin.permission_all %}
                                     <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-edit-generator-{{ generator.id }}');" title="Edit generator" aria-label="Edit generator" style="margin-left: 8px;">
                                         <svg class="icon is-small"><use href="#icon-edit"/></svg>
                                     </button>
+                                    {% endif %}
                                     </div>
                                 </td>
                                 <td>
                                     <div class="list-cell-wrapper center-content" style="gap: 8px;">
+                                    {% if admin.permission_all %}
                                     <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-generate-tc-{{ generator.id }}');" title="Generate testcases" aria-label="Generate testcases">
                                         <svg class="icon is-small"><use href="#icon-play-circle"/></svg>
                                     </button>
-                                    {% if admin.permission_all %}
                                     <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "generator", generator.id, "delete") }}');" title="Delete generator" aria-label="Delete generator">
                                         <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                     </button>

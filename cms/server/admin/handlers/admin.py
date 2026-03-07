@@ -151,7 +151,9 @@ class AdminHandler(BaseHandler):
         admin = self.safe_get_item(Admin, admin_id)
 
         self.sql_session.delete(admin)
-        self.try_commit()
+        if not self.try_commit():
+            self.set_status(500)
+            return
 
         # Page to redirect to.
         self.write("../admins")

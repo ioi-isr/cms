@@ -50,7 +50,7 @@
                 <div class="field">
                     <label class="label" for="folder_id">
                         Folder
-                        <span class="help-tooltip" title="Folder that contains this contest. Leave as (root) for top-level.">?</span>
+                        <span class="info" title="Folder that contains this contest. Leave as (root) for top-level."></span>
                     </label>
                     <div class="control">
                         <div class="select is-fullwidth">
@@ -80,9 +80,9 @@
             <!-- Left Column: Allowed programming languages -->
             <div class="cell is-col-span-1">
                 <fieldset class="tp-form-group">
-                    <legend class="tp-form-label">
+                    <legend class="label">
                         Allowed programming languages
-                        <span class="tp-form-info" title="Programming languages that contestants can use to solve the tasks. All the allowed languages must have task support, for example in managed tasks.">?</span>
+                        <span class="info" title="Programming languages that contestants can use to solve the tasks. All the allowed languages must have task support, for example in managed tasks."></span>
                     </legend>
                     <div class="tp-language-container">
                         <div class="tp-language-grid">
@@ -103,7 +103,7 @@
                 <div class="tp-toggle-wrapper">
                     <label class="tp-toggle-label" for="submissions_download_allowed">
                         Submissions download allowed
-                        <span class="tp-form-info" title="Whether contestants can download their own submissions.">?</span>
+                        <span class="info" title="Whether contestants can download their own submissions."></span>
                     </label>
                     <input type="checkbox" id="submissions_download_allowed" name="submissions_download_allowed" class="tp-toggle-input" {{ "checked" if contest.submissions_download_allowed else "" }}/>
                 </div>
@@ -111,7 +111,7 @@
                 <div class="tp-toggle-wrapper">
                     <label class="tp-toggle-label" for="allow_questions">
                         Allow questions
-                        <span class="tp-form-info" title="Whether contestants can submit questions.">?</span>
+                        <span class="info" title="Whether contestants can submit questions."></span>
                     </label>
                     <input type="checkbox" id="allow_questions" name="allow_questions" class="tp-toggle-input" {{ "checked" if contest.allow_questions else "" }}/>
                 </div>
@@ -119,7 +119,7 @@
                 <div class="tp-toggle-wrapper">
                     <label class="tp-toggle-label" for="allow_delay_requests">
                         Allow delay requests
-                        <span class="tp-form-info" title="If checked, contestants will be able to submit delay requests for this contest.">?</span>
+                        <span class="info" title="If checked, contestants will be able to submit delay requests for this contest."></span>
                     </label>
                     <input type="checkbox" id="allow_delay_requests" name="allow_delay_requests" class="tp-toggle-input" {{ "checked" if contest.allow_delay_requests else "" }}/>
                 </div>
@@ -127,7 +127,7 @@
                 <div class="tp-toggle-wrapper">
                     <label class="tp-toggle-label" for="allow_user_tests">
                         Allow user tests
-                        <span class="tp-form-info" title="Whether contestants can submit user tests.">?</span>
+                        <span class="info" title="Whether contestants can submit user tests."></span>
                     </label>
                     <input type="checkbox" id="allow_user_tests" name="allow_user_tests" class="tp-toggle-input" {{ "checked" if contest.allow_user_tests else "" }}/>
                 </div>
@@ -135,7 +135,7 @@
                 <div class="tp-toggle-wrapper">
                     <label class="tp-toggle-label" for="allow_unofficial_submission_before_analysis_mode">
                         Allow unofficial submission before analysis mode
-                        <span class="tp-form-info" title="Allow contestant to make unofficial submission before analysis mode">?</span>
+                        <span class="info" title="Allow contestant to make unofficial submission before analysis mode"></span>
                     </label>
                     <input type="checkbox" id="allow_unofficial_submission_before_analysis_mode" name="allow_unofficial_submission_before_analysis_mode" class="tp-toggle-input" {{ "checked" if contest.allow_unofficial_submission_before_analysis_mode else "" }}/>
                 </div>
@@ -164,7 +164,7 @@
         <div class="tp-toggle-wrapper">
             <label class="tp-toggle-label" for="block_hidden_participations">
                 Block hidden participations
-                <span class="tp-form-info" title="If checked, contestants that are marked as hidden in this contest will not be able to log in.">?</span>
+                <span class="info" title="If checked, contestants that are marked as hidden in this contest will not be able to log in."></span>
             </label>
             <input type="checkbox" id="block_hidden_participations" name="block_hidden_participations" class="tp-toggle-input" {{ "checked" if contest.block_hidden_participations else "" }}/>
         </div>
@@ -172,7 +172,7 @@
         <div class="tp-toggle-wrapper">
             <label class="tp-toggle-label" for="allow_password_authentication">
                 Allow password authentication
-                <span class="tp-form-info" title="If checked, contestants will be able to log in using username and password.">?</span>
+                <span class="info" title="If checked, contestants will be able to log in using username and password."></span>
             </label>
             <input type="checkbox" id="allow_password_authentication" name="allow_password_authentication" class="tp-toggle-input" {{ "checked" if contest.allow_password_authentication else "" }}/>
         </div>
@@ -180,7 +180,7 @@
         <div class="tp-toggle-wrapper">
             <label class="tp-toggle-label" for="allow_registration">
                 Allow registration
-                <span class="tp-form-info" title="If checked, contestants will be able to autonomously create a user account and a participation in the contest.">?</span>
+                <span class="info" title="If checked, contestants will be able to autonomously create a user account and a participation in the contest."></span>
             </label>
             <input type="checkbox" id="allow_registration" name="allow_registration" class="tp-toggle-input" {{ "checked" if contest.allow_registration else "" }}/>
         </div>
@@ -188,7 +188,7 @@
         <div class="tp-toggle-wrapper">
             <label class="tp-toggle-label" for="ip_restriction">
                 IP based login restriction
-                <span class="tp-form-info" title="If true, contestants with an IP address specified for this contest will only be able to log in from that address.">?</span>
+                <span class="info" title="If true, contestants with an IP address specified for this contest will only be able to log in from that address."></span>
             </label>
             <input type="checkbox" id="ip_restriction" name="ip_restriction" class="tp-toggle-input" {{ "checked" if contest.ip_restriction else "" }}/>
         </div>
@@ -196,7 +196,7 @@
         <div class="tp-toggle-wrapper">
             <label class="tp-toggle-label" for="ip_autologin">
                 IP based autologin
-                <span class="tp-form-info" title="If true, contestants with an IP address specified for this contest will be automatically logged in when connecting from that address.">?</span>
+                <span class="info" title="If true, contestants with an IP address specified for this contest will be automatically logged in when connecting from that address."></span>
             </label>
             <input type="checkbox" id="ip_autologin" name="ip_autologin" class="tp-toggle-input" {{ "checked" if contest.ip_autologin else "" }}/>
         </div>
@@ -281,7 +281,7 @@
                 <div class="field">
                     <label class="label" for="token_mode">
                         Token mode
-                        <span class="help-tooltip" title="Select 'disabled' to remove tokens completely, 'infinite' for allowing any number of tokens, or 'finite' to specify the amount with the following parameters. If you prefer to control tokens at the task level, select 'infinite' here.">?</span>
+                        <span class="info" title="Select 'disabled' to remove tokens completely, 'infinite' for allowing any number of tokens, or 'finite' to specify the amount with the following parameters. If you prefer to control tokens at the task level, select 'infinite' here."></span>
                     </label>
                     <div class="control">
                         <div class="select is-fullwidth">
@@ -330,7 +330,7 @@
         <div class="tp-toggle-wrapper">
             <label class="tp-toggle-label" for="analysis_enabled">
                 Enabled
-                <span class="tp-form-info" title="If true, analysis mode for this contest will be enabled.">?</span>
+                <span class="info" title="If true, analysis mode for this contest will be enabled."></span>
             </label>
             <input type="checkbox" id="analysis_enabled" name="analysis_enabled" class="tp-toggle-input" {{ "checked" if contest.analysis_enabled else "" }}/>
         </div>

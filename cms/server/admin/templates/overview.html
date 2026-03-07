@@ -341,7 +341,7 @@ update_statuses();
                 <label class="tp-filter-label" for="worker_count_input">Workers to enable:</label>
                 <input type="number" id="worker_count_input" min="0" class="input is-small" style="width: 80px;" />
                 <button class="button is-small is-primary" onclick="set_workers_count(); return false;"{% if not admin.permission_all %} disabled{% endif %}>Set Count</button>
-                <span class="overview-hint">Workers 0 to n-1 enabled, rest disabled</span>
+                <span class="has-text-grey-light is-size-7">Workers 0 to n-1 enabled, rest disabled</span>
             </div>
             <div class="table-container" style="width: 100%; max-height: 400px; overflow-y: auto;">
                 <table class="table is-fullwidth is-hoverable is-header-muted" id="workers_status_table">
