@@ -1,6 +1,6 @@
 {% macro bulma_file_input(input_id, name, accept, required=false, filename_id=None, button_text="Choose file…") %}
 {% set filename_id = filename_id or (input_id ~ "-file-name") %}
-<div class="file has-name bulma-file-drop"
+<div class="file has-name bulma-file-drop" role="button"
      ondragover="event.preventDefault();this.classList.add('is-dragover')"
      ondragleave="this.classList.remove('is-dragover')"
      ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=this.querySelector('.file-input');inp.files=event.dataTransfer.files;inp.dispatchEvent(new Event('change',{bubbles:true}))">

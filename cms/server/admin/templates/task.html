@@ -456,7 +456,7 @@ document.addEventListener('click', function(e) {
 
                         <!-- Attachments -->
                         <div class="cell is-col-span-2">
-                            <fieldset class="field file-drop-zone" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
+                            <fieldset class="field file-drop-zone" role="group" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
                                      ondragover="event.preventDefault();this.classList.add('is-dragover')"
                                      ondragleave="this.classList.remove('is-dragover')"
                                      ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('attachment_file');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()">
@@ -847,7 +847,7 @@ document.addEventListener('click', function(e) {
                             {% endfor %}
 
                             <div class="field" style="margin-top: 16px;">
-                                <fieldset class="file-drop-zone" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
+                                <fieldset class="file-drop-zone" role="group" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
                                          ondragover="event.preventDefault();this.classList.add('is-dragover')"
                                          ondragleave="this.classList.remove('is-dragover')"
                                          ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('manager_file_{{ dataset.id }}');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()">

@@ -686,7 +686,6 @@ class RemoveTaskHandler(BaseHandler):
                 self.sql_session.flush()
         if not self.try_commit():
             self.set_status(500)
-            return
         else:
             self.service.proxy_service.reinitialize()
             self.write(self.url("tasks"))
