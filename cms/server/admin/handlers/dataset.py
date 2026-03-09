@@ -1576,6 +1576,13 @@ def _apply_codename_mapping(dataset, testcases, new_codenames):
     return len(changing_testcases)
 
 
+def _add_prefix_if_missing(codename, prefix):
+    """Add prefix to codename only if it's not already a substring."""
+    if prefix in codename:
+        return codename
+    return prefix + codename
+
+
 def _batch_rename_testcases(
     handler, dataset, task, testcases, codename_modifier, fallback_page
 ):
@@ -1714,10 +1721,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 return
 
             def add_prefix_modifier(tc):
-                # Skip adding prefix if codename already starts with it
-                if tc.codename.startswith(value):
-                    return (tc.codename, None)
-                return (value + tc.codename, None)
+                return (_add_prefix_if_missing(tc.codename, value), None)
 
             success, renamed_count = _batch_rename_testcases(
                 self,
@@ -1828,6 +1832,7 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
 
     For each subtask i, sets the regex to .*STi_(?#CMS) and prepends
     STi_ to all testcases belonging to that subtask (sorted descending).
+    Skips adding a prefix if it's already a substring of the codename.
     """
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -1863,43 +1868,20 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
                     tc_to_subtasks[tc_codename] = set()
                 tc_to_subtasks[tc_codename].add(subtask_idx)
 
-        # Build new codename mapping
-        all_testcases = list(dataset.testcases.values())
-        new_codenames = {}
-        seen = {}
-
-        for tc in all_testcases:
+        def subtask_prefix_modifier(tc):
             subtask_indices = tc_to_subtasks.get(tc.codename, set())
-            if not subtask_indices:
-                new_codenames[tc.id] = tc.codename
-            else:
-                # Sort descending so highest index prefix comes first
-                prefix = "".join(
-                    "ST%d_" % i for i in sorted(subtask_indices, reverse=True)
-                )
-                new_codenames[tc.id] = prefix + tc.codename
+            new_codename = tc.codename
+            for i in sorted(subtask_indices, reverse=True):
+                new_codename = _add_prefix_if_missing(
+                    new_codename, "ST%d_" % i)
+            return (new_codename, None)
 
-            nc = new_codenames[tc.id]
-            if nc in seen:
-                self.service.add_notification(
-                    make_datetime(), "Codename conflict",
-                    "Renaming would create duplicate codename '%s'." % nc)
-                self.redirect(fallback_page)
-                return
-            seen[nc] = tc
-
-        # Apply the rename using existing two-phase helper
-        renamed_count = _apply_codename_mapping(
-            dataset, all_testcases, new_codenames)
-
-        # Update submission format for OutputOnly tasks
-        if dataset.active and dataset.task_type == "OutputOnly":
-            try:
-                task.set_default_output_only_submission_format()
-            except Exception as e:
-                raise RuntimeError(
-                    f"Couldn't create default submission format for task "
-                    f"{task.id}, dataset {dataset.id}") from e
+        all_testcases = list(dataset.testcases.values())
+        success, renamed_count = _batch_rename_testcases(
+            self, dataset, task, all_testcases,
+            subtask_prefix_modifier, fallback_page)
+        if not success:
+            return
 
         # Override each subtask's regex to .*ST{i}_(?#CMS)
         params = [list(p) for p in score_type_obj.parameters]
