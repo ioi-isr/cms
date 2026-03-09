@@ -1368,6 +1368,11 @@ document.addEventListener('click', function(e) {
                                 <textarea id="score_type_parameters_{{ dataset.id }}" class="textarea is-size-s is-family-monospace" name="score_type_parameters_{{ dataset.id }}" rows="3">{% if dataset.score_type_parameters is not none %}{{ dataset.score_type_parameters|tojson|forceescape }}{% endif %}</textarea>
                             </div>
                         </div>
+                        {% if admin.permission_all and subtask_info.get(dataset.id) %}
+                        <div style="margin-top: 8px;">
+                            <button type="button" onclick="AdminModals.confirmThen('This will set all subtask regexes to .*STi_(?#CMS) and add STi_ prefixes to all testcases based on their subtask membership. This cannot be easily undone. Continue?', function() { document.getElementById(&quot;apply_subtask_prefixes_form_{{ dataset.id }}&quot;).submit(); }, {icon: &quot;warning&quot;});" class="button is-small">Apply ST prefixes to testcases</button>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 

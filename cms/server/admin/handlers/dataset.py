@@ -1846,21 +1846,13 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        # Check that all subtasks use regex (string) patterns
-        for idx, param in enumerate(score_type_obj.parameters):
-            if len(param) < 2 or not isinstance(param[1], str):
-                self.service.add_notification(
-                    make_datetime(), "Not supported",
-                    "Subtask %d does not use regex patterns." % idx)
-                self.redirect(fallback_page)
-                return
-
-        # Build testcase -> [subtask indices] mapping using existing logic
+        # Build testcase -> set of subtask indices using existing logic
         try:
             targets = score_type_obj.retrieve_target_testcases()
-        except ValueError as e:
+        except (KeyError, ValueError, TypeError) as e:
             self.service.add_notification(
-                make_datetime(), "Error", str(e))
+                make_datetime(), "Error",
+                "Could not retrieve subtask info: %s" % str(e))
             self.redirect(fallback_page)
             return
 
@@ -1868,51 +1860,57 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
         for subtask_idx, testcase_list in enumerate(targets):
             for tc_codename in testcase_list:
                 if tc_codename not in tc_to_subtasks:
-                    tc_to_subtasks[tc_codename] = []
-                tc_to_subtasks[tc_codename].append(subtask_idx)
+                    tc_to_subtasks[tc_codename] = set()
+                tc_to_subtasks[tc_codename].add(subtask_idx)
 
-        # Build new codename mapping: prepend STi_ for each subtask (descending)
+        # Build new codename mapping
+        all_testcases = list(dataset.testcases.values())
         new_codenames = {}
-        for tc_codename, subtask_indices in tc_to_subtasks.items():
-            prefix = "".join(
-                "ST%d_" % idx for idx in sorted(subtask_indices, reverse=True)
-            )
-            new_codenames[tc_codename] = prefix + tc_codename
-
-        # Also include testcases not in any subtask (unchanged)
-        for codename in dataset.testcases:
-            if codename not in new_codenames:
-                new_codenames[codename] = codename
-
-        # Check for conflicts
         seen = {}
-        for old, new in new_codenames.items():
-            if new in seen:
+
+        for tc in all_testcases:
+            subtask_indices = tc_to_subtasks.get(tc.codename, set())
+            if not subtask_indices:
+                new_codenames[tc.id] = tc.codename
+            else:
+                # Sort descending so highest index prefix comes first
+                prefix = "".join(
+                    "ST%d_" % i for i in sorted(subtask_indices, reverse=True)
+                )
+                new_codenames[tc.id] = prefix + tc.codename
+
+            nc = new_codenames[tc.id]
+            if nc in seen:
                 self.service.add_notification(
                     make_datetime(), "Codename conflict",
-                    "Renaming would create duplicate codename '%s'." % new)
+                    "Renaming would create duplicate codename '%s'." % nc)
                 self.redirect(fallback_page)
                 return
-            seen[new] = old
+            seen[nc] = tc
 
-        # Apply rename using existing utility
-        testcases = list(dataset.testcases.values())
-        id_to_new = {
-            tc.id: new_codenames[tc.codename]
-            for tc in testcases if tc.codename in new_codenames
-        }
-        renamed_count = _apply_codename_mapping(dataset, testcases, id_to_new)
+        # Apply the rename using existing two-phase helper
+        renamed_count = _apply_codename_mapping(
+            dataset, all_testcases, new_codenames)
 
-        # Update all subtask regexes to .*STi_(?#CMS)
-        new_params = [list(p) for p in score_type_obj.parameters]
-        for idx in range(len(new_params)):
-            new_params[idx][1] = ".*ST%d_(?#CMS)" % idx
-        dataset.score_type_parameters = new_params
+        # Update submission format for OutputOnly tasks
+        if dataset.active and dataset.task_type == "OutputOnly":
+            try:
+                task.set_default_output_only_submission_format()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Couldn't create default submission format for task "
+                    f"{task.id}, dataset {dataset.id}") from e
+
+        # Override each subtask's regex to .*ST{i}_(?#CMS)
+        params = [list(p) for p in score_type_obj.parameters]
+        for idx in range(len(params)):
+            params[idx][1] = ".*ST%d_(?#CMS)" % idx
+        dataset.score_type_parameters = params
 
         if self.try_commit():
             self.service.add_notification(
                 make_datetime(), "Subtask prefixes applied",
-                "Renamed %d testcases and updated %d subtask regexes."
-                % (renamed_count, len(new_params)))
+                "Applied subtask prefixes to %d testcases and updated "
+                "%d subtask regexes." % (renamed_count, len(params)))
 
         self.redirect(fallback_page)
