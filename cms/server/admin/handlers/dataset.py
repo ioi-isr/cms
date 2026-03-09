@@ -1821,3 +1821,98 @@ class BatchRenameTestcasesHandler(BaseHandler):
                     "Removed substring '%s' from %d testcases." % (substring, renamed_count))
 
         self.redirect(fallback_page)
+
+
+class ApplySubtaskPrefixesHandler(BaseHandler):
+    """Apply STi_ prefixes to all testcases based on subtask membership.
+
+    For each subtask i, sets the regex to .*STi_(?#CMS) and prepends
+    STi_ to all testcases belonging to that subtask (sorted descending).
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
+        from cms.grading.scoretypes import ScoreTypeGroup
+
+        score_type_obj = dataset.score_type_object
+        if not isinstance(score_type_obj, ScoreTypeGroup):
+            self.service.add_notification(
+                make_datetime(), "Not supported",
+                "This operation requires a group-based score type.")
+            self.redirect(fallback_page)
+            return
+
+        # Check that all subtasks use regex (string) patterns
+        for idx, param in enumerate(score_type_obj.parameters):
+            if len(param) < 2 or not isinstance(param[1], str):
+                self.service.add_notification(
+                    make_datetime(), "Not supported",
+                    "Subtask %d does not use regex patterns." % idx)
+                self.redirect(fallback_page)
+                return
+
+        # Build testcase -> [subtask indices] mapping using existing logic
+        try:
+            targets = score_type_obj.retrieve_target_testcases()
+        except ValueError as e:
+            self.service.add_notification(
+                make_datetime(), "Error", str(e))
+            self.redirect(fallback_page)
+            return
+
+        tc_to_subtasks = {}
+        for subtask_idx, testcase_list in enumerate(targets):
+            for tc_codename in testcase_list:
+                if tc_codename not in tc_to_subtasks:
+                    tc_to_subtasks[tc_codename] = []
+                tc_to_subtasks[tc_codename].append(subtask_idx)
+
+        # Build new codename mapping: prepend STi_ for each subtask (descending)
+        new_codenames = {}
+        for tc_codename, subtask_indices in tc_to_subtasks.items():
+            prefix = "".join(
+                "ST%d_" % idx for idx in sorted(subtask_indices, reverse=True)
+            )
+            new_codenames[tc_codename] = prefix + tc_codename
+
+        # Also include testcases not in any subtask (unchanged)
+        for codename in dataset.testcases:
+            if codename not in new_codenames:
+                new_codenames[codename] = codename
+
+        # Check for conflicts
+        seen = {}
+        for old, new in new_codenames.items():
+            if new in seen:
+                self.service.add_notification(
+                    make_datetime(), "Codename conflict",
+                    "Renaming would create duplicate codename '%s'." % new)
+                self.redirect(fallback_page)
+                return
+            seen[new] = old
+
+        # Apply rename using existing utility
+        testcases = list(dataset.testcases.values())
+        id_to_new = {
+            tc.id: new_codenames[tc.codename]
+            for tc in testcases if tc.codename in new_codenames
+        }
+        renamed_count = _apply_codename_mapping(dataset, testcases, id_to_new)
+
+        # Update all subtask regexes to .*STi_(?#CMS)
+        new_params = [list(p) for p in score_type_obj.parameters]
+        for idx in range(len(new_params)):
+            new_params[idx][1] = ".*ST%d_(?#CMS)" % idx
+        dataset.score_type_parameters = new_params
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(), "Subtask prefixes applied",
+                "Renamed %d testcases and updated %d subtask regexes."
+                % (renamed_count, len(new_params)))
+
+        self.redirect(fallback_page)

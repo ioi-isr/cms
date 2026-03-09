@@ -1101,6 +1101,11 @@ document.addEventListener('click', function(e) {
                             </tbody>
                         </table>
                         </div>
+                        {% if admin.permission_all %}
+                        <div style="margin-top: 12px;">
+                            <button type="button" onclick="AdminModals.confirmThen('This will set all subtask regexes to .*STi_(?#CMS) and add STi_ prefixes to all testcases based on their subtask membership. This cannot be easily undone. Continue?', function() { document.getElementById(&quot;apply_subtask_prefixes_form_{{ dataset.id }}&quot;).submit(); }, {icon: &quot;warning&quot;});" class="button is-small">Apply ST prefixes to testcases</button>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -1570,6 +1575,9 @@ document.addEventListener('click', function(e) {
     </form>
     {% endfor %}
     <form id="rerun_validators_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "validators", "rerun") }}" style="display: none;">
+        {{ xsrf_form_html|safe }}
+    </form>
+    <form id="apply_subtask_prefixes_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "testcases", "apply_subtask_prefixes") }}" style="display: none;">
         {{ xsrf_form_html|safe }}
     </form>
     {% endif %}
