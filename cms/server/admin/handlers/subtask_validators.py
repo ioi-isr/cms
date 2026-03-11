@@ -459,7 +459,7 @@ class UpdateSubtaskNameHandler(BaseHandler):
 
         # Support optional redirect back to the task page
         redirect_url = self.get_argument("redirect_url", "")
-        if redirect_url:
+        if redirect_url and redirect_url.startswith("/"):
             self.redirect(redirect_url)
         else:
             self.redirect(fallback_page)
