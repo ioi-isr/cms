@@ -315,57 +315,16 @@ document.addEventListener('click', function(e) {
   }
 });
 
-window.promptEditSubtaskName = function(nameUrl, currentName, subtaskIndex, redirectUrl) {
-  Swal.fire({
-    title: 'Edit Subtask Name',
-    text: 'Enter new name for subtask ' + subtaskIndex + ':',
-    input: 'text',
-    inputValue: currentName || '',
-    showCancelButton: true,
-    confirmButtonText: 'Save',
-    cancelButtonText: 'Cancel',
-    reverseButtons: true,
-    inputValidator: function(value) {
-      if (!value || value.trim() === '') {
-        return 'Name cannot be empty!';
-      }
-    }
-  }).then(function(result) {
-    if (result.isConfirmed && result.value) {
-      var newName = result.value.trim();
-      var form = document.createElement('form');
-      form.method = 'POST';
-      form.action = nameUrl;
+window.toggleSubtaskNameEdit = function(editId, displayId) {
+  document.getElementById(displayId).style.display = 'none';
+  document.getElementById(editId).style.display = '';
+  var input = document.getElementById(editId).querySelector('input[name="name"]');
+  if (input) { input.focus(); input.select(); }
+};
 
-      var input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = 'name';
-      input.value = newName;
-      form.appendChild(input);
-
-      if (redirectUrl) {
-        var redirectInput = document.createElement('input');
-        redirectInput.type = 'hidden';
-        redirectInput.name = 'redirect_url';
-        redirectInput.value = redirectUrl;
-        form.appendChild(redirectInput);
-      }
-
-      var xsrfElem = document.querySelector('input[name="_xsrf"]');
-      if (!xsrfElem) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'CSRF token missing; cannot submit form.' });
-        return;
-      }
-      var xsrf = document.createElement('input');
-      xsrf.type = 'hidden';
-      xsrf.name = '_xsrf';
-      xsrf.value = xsrfElem.value;
-      form.appendChild(xsrf);
-
-      document.body.appendChild(form);
-      form.submit();
-    }
-  });
+window.cancelSubtaskNameEdit = function(editId, displayId) {
+  document.getElementById(editId).style.display = 'none';
+  document.getElementById(displayId).style.display = '';
 };
 
 {% endblock js_init %}
@@ -1082,14 +1041,25 @@ window.promptEditSubtaskName = function(nameUrl, currentName, subtaskIndex, redi
                                 {% endfor %}
                                 <tr>
                                     <td>
-                                        <div class="list-cell-wrapper" style="font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                                        <div id="st_name_display_{{ dataset.id }}_{{ subtask.idx }}" class="list-cell-wrapper" style="font-weight: 600; display: flex; align-items: center; gap: 4px;">
                                             {{ subtask.display_name }}
                                             {% if admin.permission_all %}
-                                            <button type="button" onclick="promptEditSubtaskName('{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}', {{ subtask.name|default('', true)|tojson|forceescape }}, {{ subtask.idx }}, '{{ url("task", task.id) }}')" title="Edit subtask name" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
+                                            <button type="button" onclick="toggleSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')" title="Edit subtask name" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
                                                 <svg class="icon is-small"><use href="#icon-edit"/></svg>
                                             </button>
                                             {% endif %}
                                         </div>
+                                        {% if admin.permission_all %}
+                                        <div id="st_name_edit_{{ dataset.id }}_{{ subtask.idx }}" style="display: none;">
+                                            <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}" style="display: flex; align-items: center; gap: 4px;">
+                                                {{ xsrf_form_html|safe }}
+                                                <input type="hidden" name="redirect_url" value="{{ url("task", task.id) }}" />
+                                                <input class="input is-small" type="text" name="name" value="{{ subtask.name|default('', true) }}" size="20" />
+                                                <button class="button is-small is-success" type="submit">Save</button>
+                                                <button class="button is-small" type="button" onclick="cancelSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')">Cancel</button>
+                                            </form>
+                                        </div>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <div class="list-cell-wrapper validator-column" style="display: flex; align-items: center; gap: 6px;">
