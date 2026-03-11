@@ -464,10 +464,10 @@
    Uses --score (0-100) to calculate hue: 0 (Red) -> 60 (Yellow) -> 120 (Green)
    The hue is clamped between 0 and 120 using min/max */
 .cell-content.score-cell {
-    --hue: calc(var(--score, 0) * 1.2);
-
-    background-color: color-mix(in srgb, hsl(min(120, max(0, var(--hue))), 75%, 90%) 50%, transparent);
-    color: hsl(min(120, max(0, var(--hue))), 90%, 20%);
+    --safe-score: clamp(0, var(--score, 0), 100);
+    --hue: calc(var(--safe-score) * 1.2);
+    background-color: hsl(var(--hue), 70%, var(--bulma-background-l));
+    color: hsl(var(--hue), 70%, var(--bulma-text-strong-l));
 }
 
 /* Modern progress bar using CSS custom properties

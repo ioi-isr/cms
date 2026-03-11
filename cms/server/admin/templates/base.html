@@ -754,7 +754,7 @@ $(document).ready(initHamburgerMenu);
           <span class="tag is-{{ badge.color }} is-rounded" style="position:absolute; top:-2px; right:-8px; height: 18px; min-width: 18px; padding: 0 4px; font-size: 0.7rem; font-weight: bold;">{{ badge.count }}</span>
         {% endfor %}
       </div>
-      <div class="is-size-7 mt-0 has-text-centered">{{ item.mobile_text if item.mobile_text is defined else item.text }}</div>
+      <div class="is-tiny mt-0 has-text-centered">{{ item.mobile_text if item.mobile_text is defined else item.text }}</div>
     </a>
     {% endfor %}
 
@@ -809,11 +809,17 @@ $(document).ready(initHamburgerMenu);
         <div class="modal modal--wide" id="modal-show-file" aria-hidden="true">
             <div class="modal__overlay" tabindex="-1" data-micromodal-close>
                 <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-show-file-title" style="max-width: 900px; max-height: 85vh; display: flex; flex-direction: column;">
-                    <header class="modal__header">
-                        <h2 class="modal__title" id="modal-show-file-title"></h2>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <a id="modal-show-file-download" href="#" style="font-size: 0.85rem;">Download</a>
-                            <a id="modal-show-file-copy" href="#" style="font-size: 0.85rem;">Copy</a>
+                    <header class="modal__header is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-center gap-2">
+                        <h2 class="modal__title is-flex-grow-1 m-0" id="modal-show-file-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></h2>
+                        <div class="is-flex is-align-items-center gap-2">
+                            <button id="modal-show-file-download" class="button is-ghost">
+                                <span class="icon"><svg><use href="#icon-download"/></svg></span>
+                                <span class="is-hidden-mobile">Download</span>
+                            </button>
+                            <button id="modal-show-file-copy" class="button is-ghost">
+                                <span class="icon"><svg><use href="#icon-copy"/></svg></span>
+                                <span class="is-hidden-mobile">Copy</span>
+                            </button>
                             <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
                         </div>
                     </header>

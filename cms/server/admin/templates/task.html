@@ -1101,11 +1101,6 @@ document.addEventListener('click', function(e) {
                             </tbody>
                         </table>
                         </div>
-                        {% if admin.permission_all %}
-                        <div style="margin-top: 12px;">
-                            <button type="button" onclick="AdminModals.confirmThen('This will set all subtask regexes to .*STi_(?#CMS) and add STi_ prefixes to all testcases based on their subtask membership. This cannot be easily undone. Continue?', function() { document.getElementById(&quot;apply_subtask_prefixes_form_{{ dataset.id }}&quot;).submit(); }, {icon: &quot;warning&quot;});" class="button is-small">Apply ST prefixes to testcases</button>
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>

@@ -1853,20 +1853,15 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
 
         # Build testcase -> set of subtask indices using existing logic
         try:
-            targets = score_type_obj.retrieve_target_testcases()
+            from cms.server.util import build_tc_to_subtasks_mapping
+
+            tc_to_subtasks = build_tc_to_subtasks_mapping(score_type_obj)
         except (KeyError, ValueError, TypeError) as e:
             self.service.add_notification(
                 make_datetime(), "Error",
                 "Could not retrieve subtask info: %s" % str(e))
             self.redirect(fallback_page)
             return
-
-        tc_to_subtasks = {}
-        for subtask_idx, testcase_list in enumerate(targets):
-            for tc_codename in testcase_list:
-                if tc_codename not in tc_to_subtasks:
-                    tc_to_subtasks[tc_codename] = set()
-                tc_to_subtasks[tc_codename].add(subtask_idx)
 
         def subtask_prefix_modifier(tc):
             subtask_indices = tc_to_subtasks.get(tc.codename, set())
