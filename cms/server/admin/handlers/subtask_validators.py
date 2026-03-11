@@ -426,7 +426,13 @@ class UpdateSubtaskNameHandler(BaseHandler):
         subtask_index = int(subtask_index)
 
         # The page that submitted this form (either task page or subtask details).
-        fallback_page = self.request.headers.get("Referer") or self.url(
+        referer = self.request.headers.get("Referer")
+        if referer:
+            parsed = urlsplit(referer)
+            # Only use Referer if it's a relative path (no scheme/host)
+            if parsed.scheme or parsed.netloc:
+                referer = None
+        fallback_page = referer or self.url(
             "dataset", dataset_id, "subtask", subtask_index, "details"
         )
 
