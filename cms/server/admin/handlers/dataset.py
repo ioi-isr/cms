@@ -1851,7 +1851,7 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        # Build testcase -> set of subtask indices using existing logic
+        # Build testcase -> sorted list of subtask indices using existing logic
         try:
             from cms.server.util import build_tc_to_subtasks_mapping
 

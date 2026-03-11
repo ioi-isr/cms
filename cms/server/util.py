@@ -64,7 +64,7 @@ def build_tc_to_subtasks_mapping(score_type_obj):
 
     score_type_obj: the score type object (should be ScoreTypeGroup).
 
-    return: dict mapping testcase codename to set of subtask indices.
+    return: dict mapping testcase codename to sorted list of subtask indices.
     raise: ValueError if retrieve_target_testcases() fails.
     """
     targets = score_type_obj.retrieve_target_testcases()
@@ -75,7 +75,6 @@ def build_tc_to_subtasks_mapping(score_type_obj):
                 tc_to_subtasks[tc_codename] = set()
             tc_to_subtasks[tc_codename].add(subtask_idx)
     return {k: sorted(v) for k, v in tc_to_subtasks.items()}
-    return tc_to_subtasks
 
 
 def exclude_internal_contests(query):
