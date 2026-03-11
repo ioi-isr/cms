@@ -429,8 +429,9 @@ class UpdateSubtaskNameHandler(BaseHandler):
         referer = self.request.headers.get("Referer")
         if referer:
             parsed = urlsplit(referer)
-            # Only use Referer if it's a relative path (no scheme/host)
-            if parsed.scheme or parsed.netloc:
+            # Extract just the path for a safe redirect
+            referer = parsed.path
+            if not referer or not referer.startswith("/"):
                 referer = None
         fallback_page = referer or self.url(
             "dataset", dataset_id, "subtask", subtask_index, "details"
