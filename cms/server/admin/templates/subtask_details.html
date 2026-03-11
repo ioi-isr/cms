@@ -495,14 +495,23 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
               {% endif %}
               {% if admin.permission_all %}
               <input id="validator_file_replace" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
-              <a href="javascript:void(0);" class="ml-2" onclick="document.getElementById('validator_file_replace').click();">replace</a>
-              <a href="javascript:void(0);" class="ml-2 has-text-danger" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>
+              <button type="button" class="button is-ghost is-small ml-2" onclick="document.getElementById('validator_file_replace').click();" title="Replace validator">
+                <svg class="icon is-small"><use href="#icon-refresh"/></svg>
+                <span>replace</span>
+              </button>
+              <button type="button" class="button is-ghost is-small has-text-danger" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete validator">
+                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                <span>delete</span>
+              </button>
               {% endif %}
             {% else %}
               <em class="has-text-grey">No validator uploaded</em>
               {% if admin.permission_all %}
               <input id="validator_file_add" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
-              <a href="javascript:void(0);" class="ml-2" onclick="document.getElementById('validator_file_add').click();">add</a>
+              <button type="button" class="button is-ghost is-small ml-2" onclick="document.getElementById('validator_file_add').click();" title="Add validator">
+                <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                <span>add</span>
+              </button>
               {% endif %}
             {% endif %}
           </td>
@@ -513,7 +522,10 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
           <td>
             <code>{{ subtask_regex|tojson|forceescape }}</code>
             {% if admin.permission_all %}
-            <a href="javascript:void(0);" class="ml-2" onclick="document.getElementById('regex_edit_row').style.display = 'table-row'; document.getElementById('regex_display_row').style.display = 'none';">edit</a>
+            <button type="button" class="button is-ghost is-small ml-2" onclick="document.getElementById('regex_edit_row').style.display = 'table-row'; document.getElementById('regex_display_row').style.display = 'none';" title="Edit regex">
+              <svg class="icon is-small"><use href="#icon-edit"/></svg>
+              <span>edit</span>
+            </button>
             {% endif %}
           </td>
         </tr>
@@ -552,7 +564,10 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
               <em class="has-text-grey">No name set</em>
             {% endif %}
             {% if admin.permission_all %}
-            <a href="javascript:void(0);" class="ml-2" onclick="document.getElementById('name_edit_row').style.display = 'table-row'; document.getElementById('name_display_row').style.display = 'none';">{{ "edit" if subtask_name else "add" }}</a>
+            <button type="button" class="button is-ghost is-small ml-2" onclick="document.getElementById('name_edit_row').style.display = 'table-row'; document.getElementById('name_display_row').style.display = 'none';" title="{{ 'Edit name' if subtask_name else 'Add name' }}">
+              <svg class="icon is-small"><use href="#icon-edit"/></svg>
+              <span>{{ "edit" if subtask_name else "add" }}</span>
+            </button>
             {% endif %}
           </td>
         </tr>
