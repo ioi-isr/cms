@@ -74,6 +74,7 @@ def build_tc_to_subtasks_mapping(score_type_obj):
             if tc_codename not in tc_to_subtasks:
                 tc_to_subtasks[tc_codename] = set()
             tc_to_subtasks[tc_codename].add(subtask_idx)
+    return {k: sorted(v) for k, v in tc_to_subtasks.items()}
     return tc_to_subtasks
 
 
