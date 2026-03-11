@@ -456,7 +456,13 @@ class UpdateSubtaskNameHandler(BaseHandler):
                 make_datetime(),
                 "Subtask name updated",
                 "Subtask %d name set to: %s" % (subtask_index, new_name))
-        self.redirect(fallback_page)
+
+        # Support optional redirect back to the task page
+        redirect_url = self.get_argument("redirect_url", "")
+        if redirect_url:
+            self.redirect(redirect_url)
+        else:
+            self.redirect(fallback_page)
 
 
 class RerunSubtaskValidatorsHandler(BaseHandler):
