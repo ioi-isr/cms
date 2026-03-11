@@ -483,8 +483,8 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
   <div class="card-content">
     {# Validator #}
     <div class="field is-horizontal">
-      <div class="field-label is-normal">
-        <label class="label">Validator</label>
+      <div class="field-label">
+        <label class="label" for="validator_file_replace">Validator</label>
       </div>
       <div class="field-body">
         <div class="field">
@@ -492,14 +492,14 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
             {% if validator %}
               <a href="javascript:void(0);" onclick='utils.show_file({{ validator.filename|tojson|forceescape }}, {{ url("file", validator.digest, validator.filename)|tojson|forceescape }})'>{{ validator.filename }}</a>
               {% if validator.executable_digest %}
-                <span class="tag is-success is-light is-rounded ml-2">compiled</span>
+                <span class="tag has-text-success-on-scheme is-opaque-bg is-rounded ml-2">compiled</span>
               {% else %}
-                <span class="tag is-danger is-light is-rounded ml-2">compilation failed</span>
+                <span class="tag has-text-danger-on-scheme is-opaque-bg is-rounded ml-2">compilation failed</span>
               {% endif %}
               {% if admin.permission_all %}
               <input id="validator_file_replace" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
               <button type="button" class="button is-ghost is-small ml-2" onclick="document.getElementById('validator_file_replace').click();" title="Replace validator">
-                <svg class="icon is-small"><use href="#icon-refresh"/></svg>
+                <svg class="icon is-small"><use href="#icon-replace"/></svg>
                 <span>replace</span>
               </button>
               <button type="button" class="button is-ghost is-small has-text-danger" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete validator">
@@ -524,8 +524,8 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     {# Regex pattern #}
     {% if uses_regex %}
     <div class="field is-horizontal" id="regex_display_row">
-      <div class="field-label is-normal">
-        <label class="label">Regex pattern</label>
+      <div class="field-label">
+        <span class="label">Regex pattern</span>
       </div>
       <div class="field-body">
         <div class="field">
@@ -543,13 +543,13 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     </div>
     <div class="field is-horizontal" id="regex_edit_row" style="display: none;">
       <div class="field-label is-normal">
-        <label class="label">Regex pattern</label>
+        <label class="label" for="subtask_regex_input">Regex pattern</label>
       </div>
       <div class="field-body">
         <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "regex") }}" class="field is-grouped">
           {{ xsrf_form_html|safe }}
           <div class="control">
-            <input class="input is-small" type="text" name="regex" value="{{ subtask_regex|tojson|forceescape }}" size="40" />
+            <input class="input is-small" type="text" name="regex" id="subtask_regex_input" value="{{ subtask_regex|tojson|forceescape }}" size="40" />
           </div>
           <div class="control">
             <label class="checkbox">
@@ -569,8 +569,8 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     {% endif %}
     {# Name #}
     <div class="field is-horizontal" id="name_display_row">
-      <div class="field-label is-normal">
-        <label class="label">Name</label>
+      <div class="field-label">
+        <span class="label">Name</span>
       </div>
       <div class="field-body">
         <div class="field">
@@ -592,13 +592,13 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     </div>
     <div class="field is-horizontal" id="name_edit_row" style="display: none;">
       <div class="field-label is-normal">
-        <label class="label">Name</label>
+        <label class="label" for="subtask_name_input">Name</label>
       </div>
       <div class="field-body">
         <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "name") }}" class="field is-grouped">
           {{ xsrf_form_html|safe }}
           <div class="control">
-            <input class="input is-small" type="text" name="name" value="{{ subtask_name or "" }}" size="40" />
+            <input class="input is-small" type="text" name="name" id="subtask_name_input" value="{{ subtask_name or "" }}" size="40" />
           </div>
           <div class="control">
             <button class="button is-small is-success" type="submit">Save</button>
@@ -611,25 +611,20 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     </div>
     {# Testcase counts #}
     <div class="field is-horizontal">
-      <div class="field-label is-normal">
-        <label class="label">Testcases in subtask</label>
+      <div class="field-label">
+        <span class="label">Testcases</span>
       </div>
       <div class="field-body">
         <div class="field">
           <div class="control">
-            <span class="tag is-info is-light is-rounded">{{ subtask_testcases|length }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="field is-horizontal">
-      <div class="field-label is-normal">
-        <label class="label">Additional testcases</label>
-      </div>
-      <div class="field-body">
-        <div class="field">
-          <div class="control">
-            <span class="tag is-light is-rounded">{{ other_testcases|length }}</span>
+            <div class="tags">
+              <span class="tag is-info has-text-info-on-scheme is-opaque-bg is-rounded">
+                <strong>{{ subtask_testcases|length }}</strong>&nbsp;In Subtask
+              </span>
+              <span class="tag has-text-light-on-scheme is-opaque-bg is-rounded">
+                <strong>{{ other_testcases|length }}</strong>&nbsp;Additional
+              </span>
+            </div>
           </div>
         </div>
       </div>

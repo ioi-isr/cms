@@ -316,15 +316,15 @@ document.addEventListener('click', function(e) {
 });
 
 window.toggleSubtaskNameEdit = function(editId, displayId) {
-  document.getElementById(displayId).style.display = 'none';
-  document.getElementById(editId).style.display = '';
+  document.getElementById(displayId).classList.add('is-hidden');
+  document.getElementById(editId).classList.remove('is-hidden');
   var input = document.getElementById(editId).querySelector('input[name="name"]');
   if (input) { input.focus(); input.select(); }
 };
 
 window.cancelSubtaskNameEdit = function(editId, displayId) {
-  document.getElementById(editId).style.display = 'none';
-  document.getElementById(displayId).style.display = '';
+  document.getElementById(editId).classList.add('is-hidden');
+  document.getElementById(displayId).classList.remove('is-hidden');
 };
 
 {% endblock js_init %}
@@ -1041,22 +1041,31 @@ window.cancelSubtaskNameEdit = function(editId, displayId) {
                                 {% endfor %}
                                 <tr>
                                     <td>
-                                        <div id="st_name_display_{{ dataset.id }}_{{ subtask.idx }}" class="list-cell-wrapper" style="font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                                        <div id="st_name_display_{{ dataset.id }}_{{ subtask.idx }}" class="list-cell-wrapper has-text-weight-semibold">
                                             {{ subtask.display_name }}
                                             {% if admin.permission_all %}
-                                            <button type="button" onclick="toggleSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')" title="Edit subtask name" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
+                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="toggleSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')" title="Edit subtask name" aria-label="Edit subtask name">
                                                 <svg class="icon is-small"><use href="#icon-edit"/></svg>
                                             </button>
                                             {% endif %}
                                         </div>
                                         {% if admin.permission_all %}
-                                        <div id="st_name_edit_{{ dataset.id }}_{{ subtask.idx }}" style="display: none;">
-                                            <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}" style="display: flex; align-items: center; gap: 4px;">
+                                        <div id="st_name_edit_{{ dataset.id }}_{{ subtask.idx }}" class="is-hidden mt-1">
+                                            <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}">
                                                 {{ xsrf_form_html|safe }}
-                                                <input type="hidden" name="redirect_url" value="{{ url("task", task.id) }}" />
-                                                <input class="input is-small" type="text" name="name" value="{{ subtask.name|default('', true) }}" size="20" />
-                                                <button class="button is-small is-success" type="submit">Save</button>
-                                                <button class="button is-small" type="button" onclick="cancelSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')">Cancel</button>
+                                                <div class="field mb-2">
+                                                    <div class="control">
+                                                        <input class="input is-small is-fullwidth" type="text" name="name" value="{{ subtask.name|default('', true) }}" />
+                                                    </div>
+                                                </div>
+                                                <div class="field is-grouped">
+                                                    <div class="control">
+                                                        <button class="button is-small is-success" type="submit">Save</button>
+                                                    </div>
+                                                    <div class="control">
+                                                        <button class="button is-small" type="button" onclick="cancelSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')">Cancel</button>
+                                                    </div>
+                                                </div>
                                             </form>
                                         </div>
                                         {% endif %}
@@ -1074,10 +1083,10 @@ window.cancelSubtaskNameEdit = function(editId, displayId) {
                                           {% endif %}
                                           {% if admin.permission_all %}
                                           <span style="margin-left: auto; display: flex; gap: 4px; flex-shrink: 0;">
-                                            <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
-                                                <svg class="icon is-small"><use href="#icon-refresh"/></svg>
+                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
+                                                <svg class="icon is-small"><use href="#icon-replace"/></svg>
                                             </button>
-                                            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete")}}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;" aria-label="Delete validator">
+                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete")}}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;" aria-label="Delete validator">
                                                 <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                             </button>
                                           </span>
@@ -1088,7 +1097,7 @@ window.cancelSubtaskNameEdit = function(editId, displayId) {
                                             <span>No validator</span>
                                           </span>
                                           {% if admin.permission_all %}
-                                          <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator">
+                                          <button type="button" class="button is-ghost is-small has-text-primary-on-scheme ml-1" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator">
                                             <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                           </button>
                                           {% endif %}

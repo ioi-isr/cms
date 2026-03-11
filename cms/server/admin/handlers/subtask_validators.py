@@ -25,6 +25,7 @@ The execution logic is in cms/grading/subtask_validation.py.
 import json
 import logging
 import re
+from urllib.parse import urlsplit
 
 import tornado.web
 
@@ -424,7 +425,10 @@ class UpdateSubtaskNameHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         subtask_index = int(subtask_index)
 
-        fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+        # The page that submitted this form (either task page or subtask details).
+        fallback_page = self.request.headers.get("Referer") or self.url(
+            "dataset", dataset_id, "subtask", subtask_index, "details"
+        )
 
         new_name = self.get_argument("name", "").strip()
         if not new_name:
@@ -457,13 +461,7 @@ class UpdateSubtaskNameHandler(BaseHandler):
                 "Subtask name updated",
                 "Subtask %d name set to: %s" % (subtask_index, new_name))
 
-        # Support optional redirect back to the task page
-        redirect_url = self.get_argument("redirect_url", "")
-        if redirect_url and redirect_url.startswith("/") \
-                and not redirect_url.startswith("//"):
-            self.redirect(redirect_url)
-        else:
-            self.redirect(fallback_page)
+        self.redirect(fallback_page)
 
 
 class RerunSubtaskValidatorsHandler(BaseHandler):
