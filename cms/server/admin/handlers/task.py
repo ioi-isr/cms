@@ -330,8 +330,12 @@ class TaskHandler(BaseHandler):
                     "testcase_%s_public" % testcase.id, False))
 
             # Test that the score type parameters are valid.
+            # Use no_autoflush to prevent premature flushing of
+            # potentially invalid field values (e.g. invalid task name)
+            # which would cause an IntegrityError before try_commit.
             try:
-                dataset.score_type_object
+                with self.sql_session.no_autoflush:
+                    dataset.score_type_object
             except (AssertionError, ValueError) as error:
                 self.application.service.add_notification(
                     make_datetime(), "Invalid score type parameters",

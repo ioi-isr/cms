@@ -318,13 +318,38 @@ document.addEventListener('click', function(e) {
 window.toggleSubtaskNameEdit = function(editId, displayId) {
   document.getElementById(displayId).classList.add('is-hidden');
   document.getElementById(editId).classList.remove('is-hidden');
-  var input = document.getElementById(editId).querySelector('input[name="name"]');
+  var input = document.getElementById(editId).querySelector('input[data-field="name"]');
   if (input) { input.focus(); input.select(); }
 };
 
 window.cancelSubtaskNameEdit = function(editId, displayId) {
   document.getElementById(editId).classList.add('is-hidden');
   document.getElementById(displayId).classList.remove('is-hidden');
+};
+
+window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
+  var container = document.getElementById(editId);
+  var input = container.querySelector('input[data-field="name"]');
+  if (!input) return;
+  var xsrf = document.querySelector('input[name="_xsrf"]');
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = actionUrl;
+  form.style.display = 'none';
+  if (xsrf) {
+    var xsrfInput = document.createElement('input');
+    xsrfInput.type = 'hidden';
+    xsrfInput.name = '_xsrf';
+    xsrfInput.value = xsrf.value;
+    form.appendChild(xsrfInput);
+  }
+  var nameInput = document.createElement('input');
+  nameInput.type = 'hidden';
+  nameInput.name = 'name';
+  nameInput.value = input.value;
+  form.appendChild(nameInput);
+  document.body.appendChild(form);
+  form.submit();
 };
 
 {% endblock js_init %}
@@ -1051,22 +1076,19 @@ window.cancelSubtaskNameEdit = function(editId, displayId) {
                                         </div>
                                         {% if admin.permission_all %}
                                         <div id="st_name_edit_{{ dataset.id }}_{{ subtask.idx }}" class="is-hidden mt-1">
-                                            <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}">
-                                                {{ xsrf_form_html|safe }}
-                                                <div class="field mb-2">
-                                                    <div class="control">
-                                                        <input class="input is-small is-fullwidth" type="text" name="name" value="{{ subtask.name|default('', true) }}" />
-                                                    </div>
+                                            <div class="field mb-2">
+                                                <div class="control">
+                                                    <input class="input is-small is-fullwidth" type="text" data-field="name" value="{{ subtask.name|default('', true) }}" onkeydown="if(event.key==='Enter'){event.preventDefault();submitSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}', '{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}');}" />
                                                 </div>
-                                                <div class="field is-grouped">
-                                                    <div class="control">
-                                                        <button class="button is-small is-success" type="submit">Save</button>
-                                                    </div>
-                                                    <div class="control">
-                                                        <button class="button is-small" type="button" onclick="cancelSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')">Cancel</button>
-                                                    </div>
+                                            </div>
+                                            <div class="field is-grouped">
+                                                <div class="control">
+                                                    <button class="button is-small is-success" type="button" onclick="submitSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}', '{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}')">Save</button>
                                                 </div>
-                                            </form>
+                                                <div class="control">
+                                                    <button class="button is-small" type="button" onclick="cancelSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')">Cancel</button>
+                                                </div>
+                                            </div>
                                         </div>
                                         {% endif %}
                                     </td>
