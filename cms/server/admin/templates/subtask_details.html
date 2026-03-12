@@ -381,10 +381,10 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
     </p>
     {% endif %}
     {% if admin.permission_all %}
-    <div id="{{ table_id }}_batch_actions" class="batch-actions mb-3">
+    <div id="{{ table_id }}_batch_actions" class="tp-filter-card mb-3">
       <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
-      <a href="javascript:void(0);" onclick='batchAddPrefix({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }}, {{ uses_regex|tojson|forceescape }}, {{ suggested_prefix|default("", true)|tojson|forceescape }})' class="ml-3">Add prefix</a> |
-      <a href="javascript:void(0);" onclick='batchRemoveSubstring({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }})'>Remove common substring</a>
+      <button type="button" class="button is-ghost" onclick='batchAddPrefix({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }}, {{ uses_regex|tojson|forceescape }}, {{ suggested_prefix|default("", true)|tojson|forceescape }})' aria-label="Add prefix">Add prefix</button> |
+      <button type="button" class="button is-ghost" onclick='batchRemoveSubstring({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }})' aria-label="Remove common substring">Remove common substring</button>
     </div>
     {% endif %}
     <table id="{{ table_id }}" class="table is-bordered is-striped is-hoverable mt-3">

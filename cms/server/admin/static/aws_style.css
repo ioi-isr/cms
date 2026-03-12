@@ -1141,15 +1141,6 @@ body.admin .filter-row .filter-btn[data-filter="not_validated"] {
     font-weight: 700;
 }
 
-body.admin .batch-actions {
-    margin-top: 10px;
-    padding: 10px;
-    background-color: var(--bulma-scheme-main-ter);
-    border-radius: 6px;
-    border: 1px solid var(--bulma-border-weak);
-    display: none;
-}
-
 /* Validator table */
 body.admin .validator-table td {
     vertical-align: middle;

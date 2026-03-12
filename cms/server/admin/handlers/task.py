@@ -335,7 +335,7 @@ class TaskHandler(BaseHandler):
             # which would cause an IntegrityError before try_commit.
             try:
                 with self.sql_session.no_autoflush:
-                    dataset.score_type_object
+                    _ = dataset.score_type_object
             except (AssertionError, ValueError) as error:
                 self.application.service.add_notification(
                     make_datetime(), "Invalid score type parameters",

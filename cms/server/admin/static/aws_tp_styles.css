@@ -466,6 +466,7 @@
 .cell-content.score-cell {
     --safe-score: clamp(0, var(--score, 0), 100);
     --hue: calc(var(--safe-score) * 1.2);
+
     background-color: hsl(var(--hue), 70%, var(--bulma-background-l));
     color: hsl(var(--hue), 70%, var(--bulma-text-strong-l));
 }
@@ -599,26 +600,22 @@
 
 /* Override Bulma default button styles to match tp-btn-primary */
 .button {
-    border-radius: 6px !important;
     padding: 6px 16px !important;
     font-size: 0.9rem !important;
 }
 
 /* Override Bulma button sizes */
 .button.is-small {
-    border-radius: 4px !important;
     padding: 4px 12px !important;
     font-size: 0.85rem !important;
 }
 
 .button.is-medium {
-    border-radius: 8px !important;
     padding: 8px 20px !important;
     font-size: 1rem !important;
 }
 
 .button.is-large {
-    border-radius: 10px !important;
     padding: 12px 24px !important;
     font-size: 1.1rem !important;
 }

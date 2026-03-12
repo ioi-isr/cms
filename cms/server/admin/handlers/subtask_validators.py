@@ -429,9 +429,16 @@ class UpdateSubtaskNameHandler(BaseHandler):
         referer = self.request.headers.get("Referer")
         if referer:
             parsed = urlsplit(referer)
-            # Extract just the path for a safe redirect
-            referer = parsed.path
-            if not referer or not referer.startswith("/"):
+            # Accept only path-only URLs (no scheme/netloc) to prevent
+            # protocol-relative redirects like "//attacker.tld"
+            if (
+                not parsed.scheme
+                and not parsed.netloc
+                and parsed.path.startswith("/")
+                and not parsed.path.startswith("//")
+            ):
+                referer = parsed.path
+            else:
                 referer = None
         fallback_page = referer or self.url(
             "dataset", dataset_id, "subtask", subtask_index, "details"

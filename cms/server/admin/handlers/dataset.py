@@ -33,6 +33,7 @@ import logging
 import re
 import shutil
 import tempfile
+import uuid
 import zipfile
 
 import collections
@@ -1546,32 +1547,68 @@ class RenameTestcaseHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
-def _apply_codename_mapping(dataset, testcases, new_codenames):
-    """Apply a codename mapping to testcases using two-phase approach.
+def _apply_codename_mapping(dataset, testcases, new_codenames, sql_session=None):
+    """Apply a codename mapping to testcases using two-phase DB update.
 
-    This uses a two-phase approach to safely handle cases where a new codename
-    equals another selected testcase's old codename.
+    This uses a two-phase approach with temporary intermediate names to safely
+    handle cases where a new codename equals another selected testcase's old
+    codename, avoiding DB UNIQUE constraint violations during chained updates.
 
     Args:
         dataset: The dataset containing the testcases
         testcases: List of testcases being renamed
         new_codenames: Dict mapping testcase.id to new codename
+        sql_session: SQLAlchemy session for flushing (optional, but recommended
+                     to avoid UNIQUE constraint violations)
 
     Returns:
         Number of testcases actually renamed (where codename changed)
     """
-    # Phase 1: Remove all old codenames for testcases that are changing
+    # Identify testcases that are actually changing
     changing_testcases = []
     for tc in testcases:
         new_codename = new_codenames.get(tc.id)
         if new_codename is not None and tc.codename != new_codename:
-            del dataset.testcases[tc.codename]
             changing_testcases.append((tc, new_codename))
 
-    # Phase 2: Update codenames and re-add to dataset
-    for tc, new_codename in changing_testcases:
-        tc.codename = new_codename
-        dataset.testcases[new_codename] = tc
+    if not changing_testcases:
+        return 0
+
+    # Collect all existing codenames to ensure temp names don't collide
+    existing_codenames = set(dataset.testcases.keys())
+    final_codenames = {new_cn for _, new_cn in changing_testcases}
+
+    # Phase 1: Assign unique temporary codenames and flush to DB
+    temp_mappings = []  # (tc, temp_codename, final_codename)
+    for tc, final_codename in changing_testcases:
+        # Generate a unique temp codename that doesn't collide with existing
+        # or final codenames
+        while True:
+            temp_codename = f"__tmp_{uuid.uuid4().hex[:12]}__"
+            if (
+                temp_codename not in existing_codenames
+                and temp_codename not in final_codenames
+            ):
+                break
+
+        del dataset.testcases[tc.codename]
+        tc.codename = temp_codename
+        dataset.testcases[temp_codename] = tc
+        existing_codenames.add(temp_codename)
+        temp_mappings.append((tc, temp_codename, final_codename))
+
+    # Flush to DB to persist temp names before applying final names
+    if sql_session is not None:
+        sql_session.flush()
+
+    # Phase 2: Update to final codenames and flush again
+    for tc, temp_codename, final_codename in temp_mappings:
+        del dataset.testcases[temp_codename]
+        tc.codename = final_codename
+        dataset.testcases[final_codename] = tc
+
+    if sql_session is not None:
+        sql_session.flush()
 
     return len(changing_testcases)
 
@@ -1638,8 +1675,10 @@ def _batch_rename_testcases(
 
         new_codenames[tc.id] = new_codename
 
-    # Apply the rename using two-phase approach
-    renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
+    # Apply the rename using two-phase approach with DB flush
+    renamed_count = _apply_codename_mapping(
+        dataset, testcases, new_codenames, handler.sql_session
+    )
 
     # Update submission format for OutputOnly tasks
     if dataset.active and dataset.task_type == "OutputOnly":
@@ -1856,10 +1895,10 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
             from cms.server.util import build_tc_to_subtasks_mapping
 
             tc_to_subtasks = build_tc_to_subtasks_mapping(score_type_obj)
-        except (KeyError, ValueError, TypeError) as e:
+        except (KeyError, ValueError, TypeError, re.error) as e:
             self.service.add_notification(
-                make_datetime(), "Error",
-                "Could not retrieve subtask info: %s" % str(e))
+                make_datetime(), "Error", "Could not retrieve subtask info: %s" % str(e)
+            )
             self.redirect(fallback_page)
             return
 

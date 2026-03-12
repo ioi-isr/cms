@@ -15,7 +15,7 @@
     {%- endif -%}
 {%- endmacro %}
 
-{% macro render_student_cell(p, contest, student_tags_by_participation) -%}
+{% macro render_student_cell(p, contest, student_tags_by_participation, hide_tag=None) -%}
 <div class="combined-ranking-student-wrapper">
   <div class="combined-ranking-student-info">
     <div class="combined-ranking-name-row">
@@ -32,7 +32,9 @@
     {% if student_tags_by_participation and student_tags_by_participation.get(p.id, []) %}
     <div class="tags mt-1">
       {% for tag in student_tags_by_participation.get(p.id, []) %}
+        {% if tag != hide_tag %}
         <span class="tag is-opaque-bg has-text-primary-35 is-tiny">{{ tag }}</span>
+        {% endif %}
       {% endfor %}
     </div>
     {% endif %}
@@ -45,6 +47,14 @@
   .td-ranking-table .score-only { display: none; }
   .td-ranking-table.hide-indicators .indicator { display: none; }
   .td-ranking-table.hide-indicators .score-only { display: inline; }
+  .task-header-full { display: inline; }
+  .task-header-abbr { display: none; }
+  .task-legend { display: none; }
+  @media screen and (max-width: 768px) {
+    .task-header-full { display: none; }
+    .task-header-abbr { display: inline; }
+    .task-legend { display: block; }
+  }
 </style>
 <h1 class="title is-spaced">Ranking</h1>
 
@@ -104,6 +114,16 @@
     </div>
   </div>
 
+  <div class="task-legend mb-3">
+    <div class="tags are-small">
+      {% for task in group_tasks %}
+      <span class="tag is-light"><strong>T{{ loop.index }}</strong>:&nbsp;<a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></span>
+      {% endfor %}
+      {% if not task_archive_progress_by_participation %}
+      <span class="tag is-light"><strong>G</strong>:&nbsp;Global</span>
+      {% endif %}
+    </div>
+  </div>
   <div class="table-container">
     <table class="table is-bordered is-striped is-hoverable is-narrow is-fullwidth td-ranking-table" id="ranking-table-{{ loop.index }}">
     <thead>
@@ -116,10 +136,10 @@
         <th>Team</th>
         {% endif %}
         {% for task in group_tasks %}
-        <th data-sort-settings="numeric reversed"><a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
+        <th data-sort-settings="numeric reversed"><a class="has-text-inherit" href="{{ url("task", task.id) }}"><span class="task-header-full">{{ task.name }}</span><span class="task-header-abbr">T{{ loop.index }}</span></a></th>
         {% endfor %}
         {% if not task_archive_progress_by_participation %}
-        <th data-sort-settings="numeric reversed">Global</th>
+        <th data-sort-settings="numeric reversed"><span class="task-header-full">Global</span><span class="task-header-abbr">G</span></th>
         {% endif %}
       </tr>
     </thead>
@@ -127,7 +147,7 @@
       {% for p in group_participations %}
       <tr>
         <td>
-          {{ render_student_cell(p, contest, student_tags_by_participation) }}
+          {{ render_student_cell(p, contest, student_tags_by_participation, hide_tag=group_name) }}
         </td>
         {% if task_archive_progress_by_participation %}
         {% set progress = task_archive_progress_by_participation.get(p.id, {}) %}
@@ -219,6 +239,17 @@
   </div>
 </div>
 
+{% set single_tasks = contest.get_tasks() | list %}
+<div class="task-legend mb-3">
+  <div class="tags are-small">
+    {% for task in single_tasks %}
+    <span class="tag is-light"><strong>T{{ loop.index }}</strong>:&nbsp;<a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></span>
+    {% endfor %}
+    {% if not task_archive_progress_by_participation %}
+    <span class="tag is-light"><strong>G</strong>:&nbsp;Global</span>
+    {% endif %}
+  </div>
+</div>
 <div class="table-container">
 <table id="ranking-table" class="table is-bordered is-striped is-hoverable is-narrow is-fullwidth td-ranking-table">
   <thead>
@@ -230,11 +261,11 @@
       {% if show_teams %}
       <th>Team</th>
       {% endif %}
-      {% for task in contest.get_tasks() %}
-      <th data-sort-settings="numeric reversed"><a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></th>
+      {% for task in single_tasks %}
+      <th data-sort-settings="numeric reversed"><a class="has-text-inherit" href="{{ url("task", task.id) }}"><span class="task-header-full">{{ task.name }}</span><span class="task-header-abbr">T{{ loop.index }}</span></a></th>
       {% endfor %}
       {% if not task_archive_progress_by_participation %}
-      <th data-sort-settings="numeric reversed">Global</th>
+      <th data-sort-settings="numeric reversed"><span class="task-header-full">Global</span><span class="task-header-abbr">G</span></th>
       {% endif %}
     </tr>
   </thead>
