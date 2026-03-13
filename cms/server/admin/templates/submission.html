@@ -38,9 +38,9 @@
             {% else %}
               {% set max_score = "[Cannot get score type - see logs]" %}
             {% endif %}
-            <span class="tag is-opaque-bg has-text-success">Scored ({{ sr.score }} / {{ max_score }})</span>
+            <span class="tag is-opaque-bg has-text-success-on-scheme">Scored ({{ sr.score }} / {{ max_score }})</span>
           {% else %}
-            <span class="tag is-light">N/A</span>
+            <span class="tag is-opaque-bg">N/A</span>
           {% endif %}
         </div>
     </div>

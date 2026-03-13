@@ -55,6 +55,28 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def build_tc_to_subtasks_mapping(score_type_obj):
+    """Build a mapping from testcase codenames to their subtask indices.
+
+    Calls retrieve_target_testcases() on the score type object and builds
+    a dictionary mapping each testcase codename to the set of
+    subtask indices it belongs to.
+
+    score_type_obj: the score type object (should be ScoreTypeGroup).
+
+    return: dict mapping testcase codename to sorted list of subtask indices.
+    raise: ValueError if retrieve_target_testcases() fails.
+    """
+    targets = score_type_obj.retrieve_target_testcases()
+    tc_to_subtasks = {}
+    for subtask_idx, testcase_list in enumerate(targets):
+        for tc_codename in testcase_list:
+            if tc_codename not in tc_to_subtasks:
+                tc_to_subtasks[tc_codename] = set()
+            tc_to_subtasks[tc_codename].add(subtask_idx)
+    return {k: sorted(v) for k, v in tc_to_subtasks.items()}
+
+
 def exclude_internal_contests(query):
     """Exclude internal/system contests from a query.
 

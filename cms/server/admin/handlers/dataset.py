@@ -33,6 +33,7 @@ import logging
 import re
 import shutil
 import tempfile
+import uuid
 import zipfile
 
 import collections
@@ -1546,34 +1547,75 @@ class RenameTestcaseHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
-def _apply_codename_mapping(dataset, testcases, new_codenames):
-    """Apply a codename mapping to testcases using two-phase approach.
+def _apply_codename_mapping(dataset, testcases, new_codenames, sql_session):
+    """Apply a codename mapping to testcases using two-phase DB update.
 
-    This uses a two-phase approach to safely handle cases where a new codename
-    equals another selected testcase's old codename.
+    This uses a two-phase approach with temporary intermediate names to safely
+    handle cases where a new codename equals another selected testcase's old
+    codename, avoiding DB UNIQUE constraint violations during chained updates.
 
     Args:
         dataset: The dataset containing the testcases
         testcases: List of testcases being renamed
         new_codenames: Dict mapping testcase.id to new codename
+        sql_session: SQLAlchemy session for flushing (optional, but recommended
+                     to avoid UNIQUE constraint violations)
 
     Returns:
         Number of testcases actually renamed (where codename changed)
     """
-    # Phase 1: Remove all old codenames for testcases that are changing
+    # Identify testcases that are actually changing
     changing_testcases = []
     for tc in testcases:
         new_codename = new_codenames.get(tc.id)
         if new_codename is not None and tc.codename != new_codename:
-            del dataset.testcases[tc.codename]
             changing_testcases.append((tc, new_codename))
 
-    # Phase 2: Update codenames and re-add to dataset
-    for tc, new_codename in changing_testcases:
-        tc.codename = new_codename
-        dataset.testcases[new_codename] = tc
+    if not changing_testcases:
+        return 0
+
+    # Collect all existing codenames to ensure temp names don't collide
+    existing_codenames = set(dataset.testcases.keys())
+    final_codenames = {new_cn for _, new_cn in changing_testcases}
+
+    # Phase 1: Assign unique temporary codenames and flush to DB
+    temp_mappings = []  # (tc, temp_codename, final_codename)
+    for tc, final_codename in changing_testcases:
+        # Generate a unique temp codename that doesn't collide with existing
+        # or final codenames
+        while True:
+            temp_codename = f"__tmp_{uuid.uuid4().hex[:12]}__"
+            if (
+                temp_codename not in existing_codenames
+                and temp_codename not in final_codenames
+            ):
+                break
+
+        del dataset.testcases[tc.codename]
+        tc.codename = temp_codename
+        dataset.testcases[temp_codename] = tc
+        existing_codenames.add(temp_codename)
+        temp_mappings.append((tc, temp_codename, final_codename))
+
+    # Flush to DB to persist temp names before applying final names
+    sql_session.flush()
+
+    # Phase 2: Update to final codenames and flush again
+    for tc, temp_codename, final_codename in temp_mappings:
+        del dataset.testcases[temp_codename]
+        tc.codename = final_codename
+        dataset.testcases[final_codename] = tc
+
+    sql_session.flush()
 
     return len(changing_testcases)
+
+
+def _add_prefix_if_missing(codename, prefix):
+    """Add prefix to codename only if it's not already a substring."""
+    if prefix in codename:
+        return codename
+    return prefix + codename
 
 
 def _batch_rename_testcases(
@@ -1631,8 +1673,10 @@ def _batch_rename_testcases(
 
         new_codenames[tc.id] = new_codename
 
-    # Apply the rename using two-phase approach
-    renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
+    # Apply the rename using two-phase approach with DB flush
+    renamed_count = _apply_codename_mapping(
+        dataset, testcases, new_codenames, handler.sql_session
+    )
 
     # Update submission format for OutputOnly tasks
     if dataset.active and dataset.task_type == "OutputOnly":
@@ -1714,10 +1758,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 return
 
             def add_prefix_modifier(tc):
-                # Skip adding prefix if codename already starts with it
-                if tc.codename.startswith(value):
-                    return (tc.codename, None)
-                return (value + tc.codename, None)
+                return (_add_prefix_if_missing(tc.codename, value), None)
 
             success, renamed_count = _batch_rename_testcases(
                 self,
@@ -1819,5 +1860,71 @@ class BatchRenameTestcasesHandler(BaseHandler):
                     make_datetime(),
                     "Testcases renamed",
                     "Removed substring '%s' from %d testcases." % (substring, renamed_count))
+
+        self.redirect(fallback_page)
+
+
+class ApplySubtaskPrefixesHandler(BaseHandler):
+    """Apply STi_ prefixes to all testcases based on subtask membership.
+
+    For each subtask i, sets the regex to .*STi_(?#CMS) and prepends
+    STi_ to all testcases belonging to that subtask (sorted descending).
+    Skips adding a prefix if it's already a substring of the codename.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
+        from cms.grading.scoretypes import ScoreTypeGroup
+
+        score_type_obj = dataset.score_type_object
+        if not isinstance(score_type_obj, ScoreTypeGroup):
+            self.service.add_notification(
+                make_datetime(), "Not supported",
+                "This operation requires a group-based score type.")
+            self.redirect(fallback_page)
+            return
+
+        # Build testcase -> sorted list of subtask indices using existing logic
+        try:
+            from cms.server.util import build_tc_to_subtasks_mapping
+
+            tc_to_subtasks = build_tc_to_subtasks_mapping(score_type_obj)
+        except (KeyError, ValueError, TypeError, re.error) as e:
+            self.service.add_notification(
+                make_datetime(), "Error", "Could not retrieve subtask info: %s" % str(e)
+            )
+            self.redirect(fallback_page)
+            return
+
+        def subtask_prefix_modifier(tc):
+            subtask_indices = tc_to_subtasks.get(tc.codename, set())
+            new_codename = tc.codename
+            for i in sorted(subtask_indices, reverse=True):
+                new_codename = _add_prefix_if_missing(
+                    new_codename, "ST%d_" % i)
+            return (new_codename, None)
+
+        all_testcases = list(dataset.testcases.values())
+        success, renamed_count = _batch_rename_testcases(
+            self, dataset, task, all_testcases,
+            subtask_prefix_modifier, fallback_page)
+        if not success:
+            return
+
+        # Override each subtask's regex to .*ST{i}_(?#CMS)
+        params = [list(p) for p in score_type_obj.parameters]
+        for idx in range(len(params)):
+            params[idx][1] = ".*ST%d_(?#CMS)" % idx
+        dataset.score_type_parameters = params
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(), "Subtask prefixes applied",
+                "Applied subtask prefixes to %d testcases and updated "
+                "%d subtask regexes." % (renamed_count, len(params)))
 
         self.redirect(fallback_page)

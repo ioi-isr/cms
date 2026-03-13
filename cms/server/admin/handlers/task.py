@@ -180,13 +180,9 @@ class TaskHandler(BaseHandler):
                     # This may fail if there are no testcases, but subtask_info
                     # should still be populated from above
                     try:
-                        targets = score_type_obj.retrieve_target_testcases()
-                        tc_to_subtasks = {}
-                        for subtask_idx, testcase_list in enumerate(targets):
-                            for tc_codename in testcase_list:
-                                if tc_codename not in tc_to_subtasks:
-                                    tc_to_subtasks[tc_codename] = []
-                                tc_to_subtasks[tc_codename].append(subtask_idx)
+                        from cms.server.util import build_tc_to_subtasks_mapping
+
+                        tc_to_subtasks = build_tc_to_subtasks_mapping(score_type_obj)
                         testcase_subtasks[dataset.id] = tc_to_subtasks
                     except ValueError as e:
                         # If retrieve_target_testcases fails due to bad parameters/regexes,
@@ -334,8 +330,12 @@ class TaskHandler(BaseHandler):
                     "testcase_%s_public" % testcase.id, False))
 
             # Test that the score type parameters are valid.
+            # Use no_autoflush to prevent premature flushing of
+            # potentially invalid field values (e.g. invalid task name)
+            # which would cause an IntegrityError before try_commit.
             try:
-                dataset.score_type_object
+                with self.sql_session.no_autoflush:
+                    _ = dataset.score_type_object
             except (AssertionError, ValueError) as error:
                 self.application.service.add_notification(
                     make_datetime(), "Invalid score type parameters",

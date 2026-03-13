@@ -380,6 +380,13 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
       <a href="javascript:void(0);" class="filter-btn" data-filter="not_validated" onclick="filterTestcases('{{ table_id }}', 'not_validated')">Not validated</a>
     </p>
     {% endif %}
+    {% if admin.permission_all %}
+    <div id="{{ table_id }}_batch_actions" class="tp-filter-card mb-3">
+      <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
+      <button type="button" class="button is-ghost" onclick='batchAddPrefix({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }}, {{ uses_regex|tojson|forceescape }}, {{ suggested_prefix|default("", true)|tojson|forceescape }})' aria-label="Add prefix">Add prefix</button> |
+      <button type="button" class="button is-ghost" onclick='batchRemoveSubstring({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }})' aria-label="Remove common substring">Remove common substring</button>
+    </div>
+    {% endif %}
     <table id="{{ table_id }}" class="table is-bordered is-striped is-hoverable mt-3">
       <thead>
         <tr>
@@ -456,13 +463,6 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
         {% endfor %}
       </tbody>
     </table>
-    {% if admin.permission_all %}
-    <div id="{{ table_id }}_batch_actions" class="batch-actions">
-      <span><strong><span class="selected-count">0</span></strong> testcase(s) selected:</span>
-      <a href="javascript:void(0);" onclick='batchAddPrefix({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }}, {{ uses_regex|tojson|forceescape }}, {{ suggested_prefix|default("", true)|tojson|forceescape }})' style="margin-left: 10px;">Add prefix</a> |
-      <a href="javascript:void(0);" onclick='batchRemoveSubstring({{ dataset.id }}, {{ table_id|tojson|forceescape }}, {{ url("dataset", dataset.id, "testcases", "batch_rename")|tojson|forceescape }}, {{ subtask_index }})'>Remove common substring</a>
-    </div>
-    {% endif %}
   {% endif %}
   </div>
 </div>
@@ -471,101 +471,166 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
 {% block core %}
 <h1 class="title is-spaced"><a href="{{ url("task", task.id) }}">{{ task.title }} ({{ task.name }})</a> - Subtask {{ subtask_index }}{% if subtask_name %}: {{ subtask_name }}{% endif %} Tests</h1>
 
-<h2>Subtask {{ subtask_index }}{% if subtask_name %} ({{ subtask_name }}){% endif %} Details</h2>
-
 {# Hidden form for XSRF token - used by JavaScript #}
 <form style="display: none;">
   {{ xsrf_form_html|safe }}
 </form>
 
-<table>
-  <tr>
-    <td>Validator:</td>
-    <td>
-      {% if validator %}
-        <a href="javascript:void(0);" onclick='utils.show_file({{ validator.filename|tojson|forceescape }}, {{ url("file", validator.digest, validator.filename)|tojson|forceescape }})'>{{ validator.filename }}</a>
-        {% if validator.executable_digest %}
-          <span style="color: green;">(compiled)</span>
-        {% else %}
-          <span style="color: red;">(compilation failed)</span>
-        {% endif %}
-        {% if admin.permission_all %}
-        <input id="validator_file_replace" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
-        [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_replace').click();">replace</a>]
-        [<a href="javascript:void(0);" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');">delete</a>]
-        {% endif %}
-      {% else %}
-        <em>No validator uploaded</em>
-        {% if admin.permission_all %}
-        <input id="validator_file_add" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
-        [<a href="javascript:void(0);" onclick="document.getElementById('validator_file_add').click();">add</a>]
-        {% endif %}
-      {% endif %}
-    </td>
-  </tr>
-  {% if uses_regex %}
-  <tr>
-    <td>Regex pattern:</td>
-    <td>
-      <code>{{ subtask_regex|tojson|forceescape }}</code>
-      {% if admin.permission_all %}
-      [<a href="javascript:void(0);" onclick="document.getElementById('regex_edit_row').style.display = 'table-row'; this.parentElement.parentElement.style.display = 'none';">edit</a>]
-      {% endif %}
-    </td>
-  </tr>
-  <tr id="regex_edit_row" style="display: none;">
-    <td>Regex pattern:</td>
-    <td>
-      <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "regex") }}" style="display: inline;">
-        {{ xsrf_form_html|safe }}
-        <input type="text" name="regex" value="{{ subtask_regex|tojson|forceescape }}" size="40" />
-        <label style="margin-left: 10px;">
-          <input type="checkbox" name="rescore" value="1" />
-          Re-score all submissions
-        </label>
-        <button type="submit">Save</button>
-        <button type="button" onclick="document.getElementById('regex_edit_row').style.display = 'none'; document.getElementById('regex_edit_row').previousElementSibling.style.display = 'table-row';">Cancel</button>
-      </form>
-    </td>
-  </tr>
-  {% endif %}
-  <tr id="name_display_row">
-    <td>Name:</td>
-    <td>
-      {% if subtask_name %}
-        <code>{{ subtask_name }}</code>
-      {% else %}
-        <em>No name set</em>
-      {% endif %}
-      {% if admin.permission_all %}
-        {% if subtask_name %}
-        [<a href="javascript:void(0);" onclick="document.getElementById('name_edit_row').style.display = 'table-row'; document.getElementById('name_display_row').style.display = 'none';">edit</a>]
-        {% else %}
-        [<a href="javascript:void(0);" onclick="document.getElementById('name_edit_row').style.display = 'table-row'; document.getElementById('name_display_row').style.display = 'none';">add</a>]
-        {% endif %}
-      {% endif %}
-    </td>
-  </tr>
-  <tr id="name_edit_row" style="display: none;">
-    <td>Name:</td>
-    <td>
-      <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "name") }}" style="display: inline;">
-        {{ xsrf_form_html|safe }}
-        <input type="text" name="name" value="{{ subtask_name or "" }}" size="40" />
-        <button type="submit">Save</button>
-        <button type="button" onclick="document.getElementById('name_edit_row').style.display = 'none'; document.getElementById('name_display_row').style.display = 'table-row';">Cancel</button>
-      </form>
-    </td>
-  </tr>
-  <tr>
-    <td>Testcases in subtask:</td>
-    <td>{{ subtask_testcases|length }}</td>
-  </tr>
-  <tr>
-    <td>Additional testcases:</td>
-    <td>{{ other_testcases|length }}</td>
-  </tr>
-</table>
+<div class="card mb-5">
+  <header class="card-header">
+    <p class="card-header-title">Subtask {{ subtask_index }}{% if subtask_name %} ({{ subtask_name }}){% endif %} Details</p>
+  </header>
+  <div class="card-content">
+    {# Validator #}
+    <div class="field is-horizontal">
+      <div class="field-label">
+        <label class="label" for="validator_file_replace">Validator</label>
+      </div>
+      <div class="field-body">
+        <div class="field">
+          <div class="control">
+            {% if validator %}
+              <a href="javascript:void(0);" onclick='utils.show_file({{ validator.filename|tojson|forceescape }}, {{ url("file", validator.digest, validator.filename)|tojson|forceescape }})'>{{ validator.filename }}</a>
+              {% if validator.executable_digest %}
+                <span class="tag has-text-success-on-scheme is-opaque-bg is-rounded ml-2">compiled</span>
+              {% else %}
+                <span class="tag has-text-danger-on-scheme is-opaque-bg is-rounded ml-2">compilation failed</span>
+              {% endif %}
+              {% if admin.permission_all %}
+              <input id="validator_file_replace" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
+              <button type="button" class="button is-ghost is-small ml-2" onclick="document.getElementById('validator_file_replace').click();" title="Replace validator">
+                <svg class="icon is-small"><use href="#icon-replace"/></svg>
+                <span>replace</span>
+              </button>
+              <button type="button" class="button is-ghost is-small has-text-danger" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete") }}');" title="Delete validator">
+                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                <span>delete</span>
+              </button>
+              {% endif %}
+            {% else %}
+              <em class="has-text-grey">No validator uploaded</em>
+              {% if admin.permission_all %}
+              <input id="validator_file_add" type="file" name="validator" style="display: none;" form="validator_form" onchange="document.getElementById('validator_form').submit();" />
+              <button type="button" class="button is-ghost is-small ml-2" onclick="document.getElementById('validator_file_add').click();" title="Add validator">
+                <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                <span>add</span>
+              </button>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {# Regex pattern #}
+    {% if uses_regex %}
+    <div class="field is-horizontal" id="regex_display_row">
+      <div class="field-label">
+        <span class="label">Regex pattern</span>
+      </div>
+      <div class="field-body">
+        <div class="field">
+          <div class="control">
+            <code>{{ subtask_regex|tojson|forceescape }}</code>
+            {% if admin.permission_all %}
+            <button type="button" class="button is-ghost is-small ml-2" onclick="document.getElementById('regex_edit_row').style.display = ''; document.getElementById('regex_display_row').style.display = 'none';" title="Edit regex">
+              <svg class="icon is-small"><use href="#icon-edit"/></svg>
+              <span>edit</span>
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="field is-horizontal" id="regex_edit_row" style="display: none;">
+      <div class="field-label is-normal">
+        <label class="label" for="subtask_regex_input">Regex pattern</label>
+      </div>
+      <div class="field-body">
+        <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "regex") }}" class="field is-grouped">
+          {{ xsrf_form_html|safe }}
+          <div class="control">
+            <input class="input is-small" type="text" name="regex" id="subtask_regex_input" value="{{ subtask_regex|e }}" size="40" />
+          </div>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="rescore" value="1" />
+              Re-score all submissions
+            </label>
+          </div>
+          <div class="control">
+            <button class="button is-small is-success" type="submit">Save</button>
+          </div>
+          <div class="control">
+            <button class="button is-small" type="button" onclick="document.getElementById('regex_edit_row').style.display = 'none'; document.getElementById('regex_display_row').style.display = '';">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    {# Name #}
+    <div class="field is-horizontal" id="name_display_row">
+      <div class="field-label">
+        <span class="label">Name</span>
+      </div>
+      <div class="field-body">
+        <div class="field">
+          <div class="control">
+            {% if subtask_name %}
+              <code>{{ subtask_name }}</code>
+            {% else %}
+              <em class="has-text-grey">No name set</em>
+            {% endif %}
+            {% if admin.permission_all %}
+            <button type="button" class="button is-ghost is-small ml-2" onclick="document.getElementById('name_edit_row').style.display = ''; document.getElementById('name_display_row').style.display = 'none';" title="{{ 'Edit name' if subtask_name else 'Add name' }}">
+              <svg class="icon is-small"><use href="#icon-edit"/></svg>
+              <span>{{ "edit" if subtask_name else "add" }}</span>
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="field is-horizontal" id="name_edit_row" style="display: none;">
+      <div class="field-label is-normal">
+        <label class="label" for="subtask_name_input">Name</label>
+      </div>
+      <div class="field-body">
+        <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "name") }}" class="field is-grouped">
+          {{ xsrf_form_html|safe }}
+          <div class="control">
+            <input class="input is-small" type="text" name="name" id="subtask_name_input" value="{{ subtask_name or "" }}" size="40" />
+          </div>
+          <div class="control">
+            <button class="button is-small is-success" type="submit">Save</button>
+          </div>
+          <div class="control">
+            <button class="button is-small" type="button" onclick="document.getElementById('name_edit_row').style.display = 'none'; document.getElementById('name_display_row').style.display = '';">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {# Testcase counts #}
+    <div class="field is-horizontal">
+      <div class="field-label">
+        <span class="label">Testcases</span>
+      </div>
+      <div class="field-body">
+        <div class="field">
+          <div class="control">
+            <div class="tags">
+              <span class="tag is-info has-text-info-on-scheme is-opaque-bg is-rounded">
+                <strong>{{ subtask_testcases|length }}</strong>&nbsp;In Subtask
+              </span>
+              <span class="tag has-text-light-on-scheme is-opaque-bg is-rounded">
+                <strong>{{ other_testcases|length }}</strong>&nbsp;Additional
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {# Validator upload form placed outside the main content to avoid nesting issues #}
 {% if admin.permission_all %}

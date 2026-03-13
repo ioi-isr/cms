@@ -315,6 +315,43 @@ document.addEventListener('click', function(e) {
   }
 });
 
+window.toggleSubtaskNameEdit = function(editId, displayId) {
+  document.getElementById(displayId).classList.add('is-hidden');
+  document.getElementById(editId).classList.remove('is-hidden');
+  var input = document.getElementById(editId).querySelector('input[data-field="name"]');
+  if (input) { input.focus(); input.select(); }
+};
+
+window.cancelSubtaskNameEdit = function(editId, displayId) {
+  document.getElementById(editId).classList.add('is-hidden');
+  document.getElementById(displayId).classList.remove('is-hidden');
+};
+
+window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
+  var container = document.getElementById(editId);
+  var input = container.querySelector('input[data-field="name"]');
+  if (!input) return;
+  var xsrf = document.querySelector('input[name="_xsrf"]');
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = actionUrl;
+  form.style.display = 'none';
+  if (xsrf) {
+    var xsrfInput = document.createElement('input');
+    xsrfInput.type = 'hidden';
+    xsrfInput.name = '_xsrf';
+    xsrfInput.value = xsrf.value;
+    form.appendChild(xsrfInput);
+  }
+  var nameInput = document.createElement('input');
+  nameInput.type = 'hidden';
+  nameInput.name = 'name';
+  nameInput.value = input.value;
+  form.appendChild(nameInput);
+  document.body.appendChild(form);
+  form.submit();
+};
+
 {% endblock js_init %}
 
 {% block core %}
@@ -1028,7 +1065,33 @@ document.addEventListener('click', function(e) {
                                   {% endif %}
                                 {% endfor %}
                                 <tr>
-                                    <td><div class="list-cell-wrapper" style="font-weight: 600;">{{ subtask.display_name }}</div></td>
+                                    <td>
+                                        <div id="st_name_display_{{ dataset.id }}_{{ subtask.idx }}" class="list-cell-wrapper has-text-weight-semibold">
+                                            {{ subtask.display_name }}
+                                            {% if admin.permission_all %}
+                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="toggleSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')" title="Edit subtask name" aria-label="Edit subtask name">
+                                                <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                        {% if admin.permission_all %}
+                                        <div id="st_name_edit_{{ dataset.id }}_{{ subtask.idx }}" class="is-hidden mt-1">
+                                            <div class="field mb-2">
+                                                <div class="control">
+                                                    <input class="input is-small is-fullwidth" type="text" data-field="name" value="{{ subtask.name|default('', true) }}" onkeydown="if(event.key==='Enter'){event.preventDefault();submitSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}', '{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}');}" />
+                                                </div>
+                                            </div>
+                                            <div class="field is-grouped">
+                                                <div class="control">
+                                                    <button class="button is-small is-success" type="button" onclick="submitSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}', '{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}')">Save</button>
+                                                </div>
+                                                <div class="control">
+                                                    <button class="button is-small" type="button" onclick="cancelSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}')">Cancel</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <div class="list-cell-wrapper validator-column" style="display: flex; align-items: center; gap: 6px;">
                                         {% if admin.permission_all %}
@@ -1042,10 +1105,10 @@ document.addEventListener('click', function(e) {
                                           {% endif %}
                                           {% if admin.permission_all %}
                                           <span style="margin-left: auto; display: flex; gap: 4px; flex-shrink: 0;">
-                                            <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
-                                                <svg class="icon is-small"><use href="#icon-refresh"/></svg>
+                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" aria-label="Replace validator">
+                                                <svg class="icon is-small"><use href="#icon-replace"/></svg>
                                             </button>
-                                            <button type="button" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete")}}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;" aria-label="Delete validator">
+                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete")}}');" title="Delete" aria-label="Delete validator">
                                                 <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                             </button>
                                           </span>
@@ -1056,7 +1119,7 @@ document.addEventListener('click', function(e) {
                                             <span>No validator</span>
                                           </span>
                                           {% if admin.permission_all %}
-                                          <button type="button" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator">
+                                          <button type="button" class="button is-ghost is-small has-text-primary-on-scheme ml-1" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" aria-label="Add validator">
                                             <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                           </button>
                                           {% endif %}
@@ -1363,6 +1426,11 @@ document.addEventListener('click', function(e) {
                                 <textarea id="score_type_parameters_{{ dataset.id }}" class="textarea is-size-s is-family-monospace" name="score_type_parameters_{{ dataset.id }}" rows="3">{% if dataset.score_type_parameters is not none %}{{ dataset.score_type_parameters|tojson|forceescape }}{% endif %}</textarea>
                             </div>
                         </div>
+                        {% if admin.permission_all and subtask_info.get(dataset.id) %}
+                        <div style="margin-top: 8px;">
+                            <button type="button" onclick="AdminModals.confirmThen('This will set all subtask regexes to .*STi_(?#CMS) and add STi_ prefixes to all testcases based on their subtask membership. This cannot be easily undone. Continue?', function() { document.getElementById(&quot;apply_subtask_prefixes_form_{{ dataset.id }}&quot;).submit(); }, {icon: &quot;warning&quot;});" class="button is-small">Apply ST prefixes to testcases</button>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -1570,6 +1638,9 @@ document.addEventListener('click', function(e) {
     </form>
     {% endfor %}
     <form id="rerun_validators_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "validators", "rerun") }}" style="display: none;">
+        {{ xsrf_form_html|safe }}
+    </form>
+    <form id="apply_subtask_prefixes_form_{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "testcases", "apply_subtask_prefixes") }}" style="display: none;">
         {{ xsrf_form_html|safe }}
     </form>
     {% endif %}

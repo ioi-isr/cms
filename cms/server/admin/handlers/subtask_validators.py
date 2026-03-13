@@ -25,6 +25,7 @@ The execution logic is in cms/grading/subtask_validation.py.
 import json
 import logging
 import re
+from urllib.parse import urlsplit
 
 import tornado.web
 
@@ -339,18 +340,7 @@ class UpdateSubtaskRegexHandler(BaseHandler):
 
         fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
 
-        # Parse the regex from JSON (consistent with task page approach)
-        raw_regex = self.get_argument("regex", "")
-        try:
-            new_regex = json.loads(raw_regex)
-        except (json.JSONDecodeError, ValueError):
-            self.service.add_notification(
-                make_datetime(),
-                "Invalid regex",
-                "Regex pattern is not valid JSON.")
-            self.redirect(fallback_page)
-            return
-
+        new_regex = self.get_argument("regex", "").strip()
         if not new_regex:
             self.service.add_notification(
                 make_datetime(),
@@ -424,7 +414,21 @@ class UpdateSubtaskNameHandler(BaseHandler):
         dataset = self.safe_get_item(Dataset, dataset_id)
         subtask_index = int(subtask_index)
 
-        fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
+        # The page that submitted this form (either task page or subtask details).
+        referer = self.request.headers.get("Referer")
+        if referer:
+            parsed = urlsplit(referer)
+            # Extract the path component
+            path = parsed.path or ""
+            # Accept only safe paths: must start with "/" but not "//"
+            # to prevent protocol-relative redirects like "//attacker.tld"
+            if path.startswith("/") and not path.startswith("//"):
+                referer = path
+            else:
+                referer = None
+        fallback_page = referer or self.url(
+            "dataset", dataset_id, "subtask", subtask_index, "details"
+        )
 
         new_name = self.get_argument("name", "").strip()
         if not new_name:
@@ -456,6 +460,7 @@ class UpdateSubtaskNameHandler(BaseHandler):
                 make_datetime(),
                 "Subtask name updated",
                 "Subtask %d name set to: %s" % (subtask_index, new_name))
+
         self.redirect(fallback_page)
 
 

@@ -306,56 +306,6 @@ def create_model_solution_submission(
     return submission
 
 
-def create_model_solution_submission(
-    session: Session,
-    *,
-    task,
-    participation,
-    digests: dict[str, str],
-    language_name: str | None,
-):
-    """Create a submission for a model solution.
-
-    This creates the Submission and File records. Used by both
-    create_model_solution (for new model solutions) and the replace
-    handler (for replacing the file of an existing model solution).
-
-    session: database session
-    task: Task object
-    participation: the model solution participation
-    digests: dict mapping filename to file digest
-    language_name: the language name (e.g., "C++17 / g++"), or None
-
-    return: the created Submission
-
-    """
-    from cmscommon.datetime import make_datetime
-    from .submission import Submission, File
-
-    timestamp = make_datetime()
-    opaque_id = Submission.generate_opaque_id(session, participation.id)
-
-    submission = Submission(
-        opaque_id=opaque_id,
-        timestamp=timestamp,
-        language=language_name,
-        participation=participation,
-        task=task,
-        official=False,
-    )
-    session.add(submission)
-    session.flush()
-
-    for codename, digest in digests.items():
-        session.add(File(
-            filename=codename,
-            digest=digest,
-            submission=submission,
-        ))
-
-    return submission
-
-
 def create_model_solution(
     session: Session,
     *,

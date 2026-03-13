@@ -440,4 +440,4 @@ class Announcement(Base):
     visible_to_tags: list[str] = Column(
         ARRAY(Unicode),
         nullable=False,
-        default=[])
+        default=list)

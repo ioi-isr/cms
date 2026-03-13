@@ -126,7 +126,7 @@ class Task(Base):
     visible_to_tags: list[str] = Column(
         ARRAY(Unicode),
         nullable=False,
-        default=[])
+        default=list)
 
     # Short name and long human readable title of the task.
     name: str = Column(
