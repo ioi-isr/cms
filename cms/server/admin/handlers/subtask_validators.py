@@ -431,10 +431,11 @@ class UpdateSubtaskNameHandler(BaseHandler):
             parsed = urlsplit(referer)
             # Accept only path-only URLs (no scheme/netloc) to prevent
             # protocol-relative redirects like "//attacker.tld"
-            if (
-                not parsed.scheme
-                and not parsed.netloc
-                and parsed.path.startswith("/")
+            if parsed.scheme or parsed.netloc:
+                # Full URL from browser – extract just the path
+                referer = parsed.path
+            elif (
+                parsed.path.startswith("/")
                 and not parsed.path.startswith("//")
             ):
                 referer = parsed.path
