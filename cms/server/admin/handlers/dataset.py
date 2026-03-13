@@ -1547,7 +1547,7 @@ class RenameTestcaseHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
-def _apply_codename_mapping(dataset, testcases, new_codenames, sql_session=None):
+def _apply_codename_mapping(dataset, testcases, new_codenames, sql_session):
     """Apply a codename mapping to testcases using two-phase DB update.
 
     This uses a two-phase approach with temporary intermediate names to safely
@@ -1598,8 +1598,7 @@ def _apply_codename_mapping(dataset, testcases, new_codenames, sql_session=None)
         temp_mappings.append((tc, temp_codename, final_codename))
 
     # Flush to DB to persist temp names before applying final names
-    if sql_session is not None:
-        sql_session.flush()
+    sql_session.flush()
 
     # Phase 2: Update to final codenames and flush again
     for tc, temp_codename, final_codename in temp_mappings:
@@ -1607,8 +1606,7 @@ def _apply_codename_mapping(dataset, testcases, new_codenames, sql_session=None)
         tc.codename = final_codename
         dataset.testcases[final_codename] = tc
 
-    if sql_session is not None:
-        sql_session.flush()
+    sql_session.flush()
 
     return len(changing_testcases)
 

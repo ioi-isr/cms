@@ -117,10 +117,10 @@
   <div class="task-legend mb-3">
     <div class="tags are-small">
       {% for task in group_tasks %}
-      <span class="tag is-light"><strong>T{{ loop.index }}</strong>:&nbsp;<a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></span>
+      <span class="tag is-opaque-bg"><strong>T{{ loop.index }}</strong>:&nbsp;<a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></span>
       {% endfor %}
       {% if not task_archive_progress_by_participation %}
-      <span class="tag is-light"><strong>G</strong>:&nbsp;Global</span>
+      <span class="tag is-opaque-bg"><strong>G</strong>:&nbsp;Global</span>
       {% endif %}
     </div>
   </div>
@@ -243,10 +243,10 @@
 <div class="task-legend mb-3">
   <div class="tags are-small">
     {% for task in single_tasks %}
-    <span class="tag is-light"><strong>T{{ loop.index }}</strong>:&nbsp;<a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></span>
+    <span class="tag is-opaque-bg"><strong>T{{ loop.index }}</strong>:&nbsp;<a class="has-text-inherit" href="{{ url("task", task.id) }}">{{ task.name }}</a></span>
     {% endfor %}
     {% if not task_archive_progress_by_participation %}
-    <span class="tag is-light"><strong>G</strong>:&nbsp;Global</span>
+    <span class="tag is-opaque-bg"><strong>G</strong>:&nbsp;Global</span>
     {% endif %}
   </div>
 </div>

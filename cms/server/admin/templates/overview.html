@@ -72,7 +72,7 @@ function update_queue_status(response)
         strings.push('<tr>');
         strings.push('<td class="has-text-centered">' + (i + 1) + '</td>');
         strings.push('<td>' + job + '</td>');
-        strings.push('<td class="has-text-centered"><span class="tag is-light">' + response['data'][i]['priority'] + '</span></td>');
+        strings.push('<td class="has-text-centered"><span class="tag is-opaque-bg">' + response['data'][i]['priority'] + '</span></td>');
         strings.push('<td class="has-text-right">' + date + '</td>');
         strings.push('</tr>');
     }

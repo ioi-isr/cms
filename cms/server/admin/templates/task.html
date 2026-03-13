@@ -1105,10 +1105,10 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                           {% endif %}
                                           {% if admin.permission_all %}
                                           <span style="margin-left: auto; display: flex; gap: 4px; flex-shrink: 0;">
-                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;">
+                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Replace" aria-label="Replace validator">
                                                 <svg class="icon is-small"><use href="#icon-replace"/></svg>
                                             </button>
-                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete")}}');" title="Delete" style="color: var(--tp-text-muted); display: inline-flex; padding: 2px; background: none; border: none; cursor: pointer;" aria-label="Delete validator">
+                                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "validator", validator.id, "delete")}}');" title="Delete" aria-label="Delete validator">
                                                 <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                             </button>
                                           </span>
@@ -1119,7 +1119,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                             <span>No validator</span>
                                           </span>
                                           {% if admin.permission_all %}
-                                          <button type="button" class="button is-ghost is-small has-text-primary-on-scheme ml-1" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator">
+                                          <button type="button" class="button is-ghost is-small has-text-primary-on-scheme ml-1" onclick="document.getElementById('validator_file_{{ dataset.id }}_{{ subtask.idx }}').click();" title="Add validator" aria-label="Add validator">
                                             <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                           </button>
                                           {% endif %}
