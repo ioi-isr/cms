@@ -429,16 +429,12 @@ class UpdateSubtaskNameHandler(BaseHandler):
         referer = self.request.headers.get("Referer")
         if referer:
             parsed = urlsplit(referer)
-            # Accept only path-only URLs (no scheme/netloc) to prevent
-            # protocol-relative redirects like "//attacker.tld"
-            if parsed.scheme or parsed.netloc:
-                # Full URL from browser – extract just the path
-                referer = parsed.path
-            elif (
-                parsed.path.startswith("/")
-                and not parsed.path.startswith("//")
-            ):
-                referer = parsed.path
+            # Extract the path component
+            path = parsed.path or ""
+            # Accept only safe paths: must start with "/" but not "//"
+            # to prevent protocol-relative redirects like "//attacker.tld"
+            if path.startswith("/") and not path.startswith("//"):
+                referer = path
             else:
                 referer = None
         fallback_page = referer or self.url(

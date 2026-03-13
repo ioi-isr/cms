@@ -549,7 +549,7 @@ window.batchRemoveSubstring = function(datasetId, tableId, url, subtaskIndex) {
         <form method="POST" action="{{ url("dataset", dataset.id, "subtask", subtask_index, "regex") }}" class="field is-grouped">
           {{ xsrf_form_html|safe }}
           <div class="control">
-            <input class="input is-small" type="text" name="regex" id="subtask_regex_input" value="{{ subtask_regex|tojson|forceescape }}" size="40" />
+            <input class="input is-small" type="text" name="regex" id="subtask_regex_input" value="{{ subtask_regex|e }}" size="40" />
           </div>
           <div class="control">
             <label class="checkbox">
