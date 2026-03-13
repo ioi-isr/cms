@@ -812,11 +812,11 @@ $(document).ready(initHamburgerMenu);
                     <header class="modal__header is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-center gap-2">
                       <h2 class="modal__title is-flex-grow-1 m-0" id="modal-show-file-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">File preview</h2>
                         <div class="is-flex is-align-items-center gap-2">
-                            <a id="modal-show-file-download" class="button is-ghost" download>
+                            <a id="modal-show-file-download" class="button is-ghost" download aria-label="Download file" title="Download file">
                                 <span class="icon"><svg><use href="#icon-download"/></svg></span>
                                 <span class="is-hidden-mobile">Download</span>
                             </a>
-                            <button id="modal-show-file-copy" class="button is-ghost">
+                            <button id="modal-show-file-copy" type="button" class="button is-ghost" aria-label="Copy file content" title="Copy file content">
                                 <span class="icon"><svg><use href="#icon-copy"/></svg></span>
                                 <span class="is-hidden-mobile">Copy</span>
                             </button>
