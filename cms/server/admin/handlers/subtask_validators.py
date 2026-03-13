@@ -340,18 +340,7 @@ class UpdateSubtaskRegexHandler(BaseHandler):
 
         fallback_page = self.url("dataset", dataset_id, "subtask", subtask_index, "details")
 
-        # Parse the regex from JSON (consistent with task page approach)
-        raw_regex = self.get_argument("regex", "")
-        try:
-            new_regex = json.loads(raw_regex)
-        except (json.JSONDecodeError, ValueError):
-            self.service.add_notification(
-                make_datetime(),
-                "Invalid regex",
-                "Regex pattern is not valid JSON.")
-            self.redirect(fallback_page)
-            return
-
+        new_regex = self.get_argument("regex", "").strip()
         if not new_regex:
             self.service.add_notification(
                 make_datetime(),
