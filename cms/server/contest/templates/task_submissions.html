@@ -386,7 +386,8 @@ $(document).ready(function () {
       can_play_token,
       can_play_token_now,
       submissions_download_allowed,
-      false) }}
+      false,
+      tokens_info) }}
 {% endif %}
 
 <h4>{% trans %}Official submissions{% endtrans %}</h4>
@@ -402,7 +403,8 @@ $(document).ready(function () {
     can_play_token,
     can_play_token_now,
     submissions_download_allowed,
-    true) }}
+    true,
+    tokens_info) }}
 
 {# Then show submissions from each training day #}
 {% for td_id, td_data in training_day_submissions.items() %}
@@ -423,7 +425,8 @@ $(document).ready(function () {
       can_play_token,
       can_play_token_now,
       submissions_download_allowed,
-      false) }}
+      false,
+      tokens_info) }}
 {% endif %}
 
 <h4>{% trans %}Official submissions{% endtrans %}</h4>
@@ -439,7 +442,8 @@ $(document).ready(function () {
     can_play_token,
     can_play_token_now,
     submissions_download_allowed,
-    true) }}
+    true,
+    tokens_info) }}
 {% endfor %}
 
 {% else %}
@@ -459,7 +463,8 @@ $(document).ready(function () {
       can_play_token,
       can_play_token_now,
       submissions_download_allowed,
-      false) }}
+      false,
+      tokens_info) }}
 {% endif %}
 
 <h3>{% trans %}Official submissions{% endtrans %}</h3>
@@ -475,7 +480,8 @@ $(document).ready(function () {
     can_play_token,
     can_play_token_now,
     submissions_download_allowed,
-    true) }}
+    true,
+    tokens_info) }}
 
 {% endif %}
 
