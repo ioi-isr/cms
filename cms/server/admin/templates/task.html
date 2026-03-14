@@ -413,7 +413,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                     <h3 class="tp-card-title-modern">Task Information</h3>
                 </div>
                 <div class="tp-card-body">
-                    <div class="fixed-grid has-2-cols" style="overflow: hidden;">
+                    <div class="fixed-grid has-2-cols">
                       <div class="grid">
                         <div class="cell is-col-span-1">
                             {{ form_field('name', 'Name', task.name, info_tooltip='A short name for the task, preferably using only letters, numbers and underscores.') }}
@@ -447,7 +447,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                 {% if task.statements|length == 0 %}
                                 <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No statements uploaded yet</div>
                                 {% else %}
-                                <div class="table-container" style="width: 100%;">
+                                <div class="table-container" style="width: 100%; overflow-x: auto;">
                                     <table class="table is-fullwidth m-0">
                                         <thead>
                                             <tr>
