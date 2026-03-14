@@ -877,11 +877,11 @@ CMS.AWSUtils.prototype.init_questions_page = function() {
     var self = this;
     self.show_page("questions", 1);
 
-    var tabs = document.querySelectorAll('.questions-tab');
+    var tabs = document.querySelectorAll('.questions-tabs li');
     tabs.forEach(function(tab) {
         tab.addEventListener('click', function() {
-            tabs.forEach(function(t) { t.classList.remove('active'); });
-            this.classList.add('active');
+            tabs.forEach(function (t) { t.classList.remove('is-active'); });
+            this.classList.add('is-active');
             var filter = this.dataset.filter;
             var cards = document.querySelectorAll('#paged_content_questions .question-card');
             cards.forEach(function(card) {

@@ -413,7 +413,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                     <h3 class="tp-card-title-modern">Task Information</h3>
                 </div>
                 <div class="tp-card-body">
-                    <div class="fixed-grid has-2-cols">
+                    <div class="fixed-grid has-2-cols" style="overflow: hidden;">
                       <div class="grid">
                         <div class="cell is-col-span-1">
                             {{ form_field('name', 'Name', task.name, info_tooltip='A short name for the task, preferably using only letters, numbers and underscores.') }}
@@ -429,26 +429,25 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         </div>
 
                         <!-- Statements -->
-                        <div class="cell is-col-span-2">
+                        <div class="cell is-col-span-2" style="min-width: 0;">
                             <fieldset class="field" style="border: none; padding: 0; margin: 0;">
-                                <legend class="label mb-0 is-pulled-left">
+                                <div class="is-flex is-align-items-center is-justify-content-space-between is-flex-wrap-wrap is-gap-2 mb-3">
+                                    <label class="label mb-0">
                                         Statements
                                         <span class="info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants."></span>
-                                </legend>
-                                {% if admin.permission_all %}
-                                <div class="is-pulled-right">
+                                    </label>
+                                    {% if admin.permission_all %}
                                     <button type="button" onclick="MicroModal.show('modal-add-statement');" class="button">
                                         <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                         <span>Add Statement</span>
                                     </button>
+                                    {% endif %}
                                 </div>
-                                {% endif %}
-                                <div style="clear: both; margin-bottom: 12px;"></div>
                                 {% if task.statements|length == 0 %}
                                 <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No statements uploaded yet</div>
                                 {% else %}
-                                <div class="statements-table" id="statements-table" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
-                                    <table class="tp-tasks-table" style="margin: 0;">
+                                <div class="table-container" style="width: 100%; overflow-x: auto;">
+                                    <table class="table is-fullwidth m-0">
                                         <thead>
                                             <tr>
                                                 <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em;">Language / Source</th>
@@ -1021,8 +1020,8 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         </article>
                         {% endif %}
 
-                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
-                        <table class="tp-tasks-table validator-table">
+                        <div class="table-container is-radiusless" style="width: 100%;">
+                        <table class="table is-hoverable is-padded is-fullwidth validator-table">
                             <thead>
                                 <tr>
                                     <th style="width: 10%; vertical-align: middle;">Subtask</th>

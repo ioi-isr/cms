@@ -17,7 +17,7 @@
         </form>
     {% endif %}
 
-    <form enctype="multipart/form-data" action="{{ url("contest", contest.id) }}" method="POST" name="edit_contest" style="display:inline;">
+    <form enctype="multipart/form-data" action="{{ url("contest", contest.id) }}" method="POST" name="edit_contest" class="is-inline">
         {{ xsrf_form_html|safe }}
 
         <!-- Actions Bar (Moved to Top) -->
@@ -60,9 +60,9 @@
     </form>
 
     <!-- Remove Action -->
-    <div style="margin-top: 24px; text-align: right;">
+    <div class="my-5 has-text-right">
         {% if contest.training_day is none %}
-        <button type="button" class="button is-small is-danger is-light"
+        <button type="button" class="button is-small has-text-danger-on-scheme is-ghost"
             {% if not admin.permission_all %}disabled{% endif %}
             onclick="MicroModal.show('modal-remove-contest')">
             <svg class="icon is-small"><use href="#icon-trash"/></svg>
