@@ -1,7 +1,7 @@
 {% macro rows(url, contest_url, translation, xsrf_form_html,
               actual_phase, task, submissions,
               can_use_tokens, can_play_token, can_play_token_now,
-              submissions_download_allowed, official) -%}
+              submissions_download_allowed, official, tokens_info) -%}
 {#
 Render a submission table with all (un)official submissions passed.
 
@@ -100,7 +100,8 @@ official (boolean): whether to display only the official (true) or unofficial
                     can_use_tokens,
                     can_play_token,
                     can_play_token_now,
-                    submissions_download_allowed) }}
+                    submissions_download_allowed,
+                    tokens_info) }}
             {% endif %}
         {% endfor %}
     {% endif %}
@@ -111,7 +112,7 @@ official (boolean): whether to display only the official (true) or unofficial
 {% macro row(url, contest_url, translation, xsrf_form_html,
              actual_phase, s, opaque_id, show_date,
              can_use_tokens, can_play_token, can_play_token_now,
-             submissions_download_allowed) -%}
+             submissions_download_allowed, tokens_info) -%}
 {#
 Render a row in a submission table.
 
